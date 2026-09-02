@@ -75,6 +75,20 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             args["ticker"],
             limit=args.get("limit", 8),
         )
+    elif name == "get_pead_candidates":
+        return await tools.execute_pead_candidates_tool(
+            sector=args.get("sector"),
+            min_sue=args.get("min_sue", 2.0),
+            limit=args.get("limit", 15),
+        )
+    elif name == "get_earnings_revisions":
+        return await tools.execute_earnings_revisions_tool(
+            args["ticker"],
+        )
+    elif name == "get_sector_bellwethers":
+        return await tools.execute_sector_bellwethers_tool(
+            args["sector"],
+        )
     elif name == "search_prediction_markets":
         return await tools.execute_search_prediction_markets_tool(
             args["query"],

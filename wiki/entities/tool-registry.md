@@ -19,7 +19,7 @@ The file is a JSON array of objects, each with:
 - `name` — the exact function name used in LLM tool definitions and prompt documentation
 - `desc` — a short human-readable description
 
-Current tools: 26 entries covering portfolio ledger, news, market data, prediction markets, macro indicators, and thematic flows.
+Current tools: 32 entries covering portfolio ledger, news, market data, prediction markets, macro indicators, thematic flows, and earnings alpha.
 
 ## Drift Prevention
 
@@ -31,8 +31,9 @@ The registry includes, among others:
 - Portfolio & PnL tools (`get_portfolio_ledger`, `get_position_pnl`, `get_price_history`)
 - News & feeling tools (`get_todays_news_menu`, `fetch_newsletter_content`, `get_market_feeling`)
 - Screening & analysis tools (`run_stock_screener`, `find_uncorrelated_assets`, `get_key_metrics`)
+- Earnings Alpha & PEAD tools (`get_pead_candidates`, `get_earnings_revisions`, `get_sector_bellwethers`, `get_earnings_history`)
 - Prediction market tools (`search_prediction_markets`, `get_prediction_market_odds`)
-- Macro & volatility tools (`get_global_macro_context`, `get_volatility_index_details`, `get_macro_economic_series`, `get_thematic_flows`, `add_thematic_flow`)
+- Macro & volatility tools (`get_global_macro_context`, `get_volatility_index_details`, `get_macro_economic_series`, `get_thematic_flows`, `add_thematic_flow`, `get_options_sentiment`, `get_option_chain`)
 - Audit & compliance tools (`audit_financial_valuation`, `get_verifier_rejections`)
 
 ## Related

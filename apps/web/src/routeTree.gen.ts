@@ -16,6 +16,7 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
+import { Route as EarningsAuditRouteImport } from './routes/earnings-audit'
 import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
@@ -71,6 +72,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
 const GeneratedNewslettersRoute = GeneratedNewslettersRouteImport.update({
   id: '/generated-newsletters',
   path: '/generated-newsletters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EarningsAuditRoute = EarningsAuditRouteImport.update({
+  id: '/earnings-audit',
+  path: '/earnings-audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DailyPredictionsBacktestRoute =
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
@@ -276,6 +285,7 @@ export interface FileRouteTypes {
     | '/barometer-audit'
     | '/chat'
     | '/daily-predictions-backtest'
+    | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
     | '/login'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/barometer-audit'
     | '/chat'
     | '/daily-predictions-backtest'
+    | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
     | '/login'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/barometer-audit'
     | '/chat'
     | '/daily-predictions-backtest'
+    | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
     | '/login'
@@ -366,6 +378,7 @@ export interface RootRouteChildren {
   BarometerAuditRoute: typeof BarometerAuditRoute
   ChatRoute: typeof ChatRoute
   DailyPredictionsBacktestRoute: typeof DailyPredictionsBacktestRoute
+  EarningsAuditRoute: typeof EarningsAuditRoute
   GeneratedNewslettersRoute: typeof GeneratedNewslettersRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LoginRoute: typeof LoginRoute
@@ -438,6 +451,13 @@ declare module '@tanstack/react-router' {
       path: '/generated-newsletters'
       fullPath: '/generated-newsletters'
       preLoaderRoute: typeof GeneratedNewslettersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/earnings-audit': {
+      id: '/earnings-audit'
+      path: '/earnings-audit'
+      fullPath: '/earnings-audit'
+      preLoaderRoute: typeof EarningsAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daily-predictions-backtest': {
@@ -608,6 +628,7 @@ const rootRouteChildren: RootRouteChildren = {
   BarometerAuditRoute: BarometerAuditRoute,
   ChatRoute: ChatRoute,
   DailyPredictionsBacktestRoute: DailyPredictionsBacktestRoute,
+  EarningsAuditRoute: EarningsAuditRoute,
   GeneratedNewslettersRoute: GeneratedNewslettersRoute,
   HowItWorksRoute: HowItWorksRoute,
   LoginRoute: LoginRoute,

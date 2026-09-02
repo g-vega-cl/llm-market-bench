@@ -472,6 +472,80 @@ GET_EARNINGS_HISTORY_TOOL = {
 }
 
 
+GET_PEAD_CANDIDATES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_pead_candidates",
+        "description": (
+            "Retrieve top-decile Post-Earnings Announcement Drift (PEAD) candidates with calculated "
+            "Standardized Unexpected Earnings (SUE) scores, revenue surprises, Sloan accrual quality checks, and drift returns."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sector": {
+                    "type": "string",
+                    "description": "Optional sector ETF filter (e.g., XLK, XLF, XLE).",
+                },
+                "min_sue": {
+                    "type": "number",
+                    "description": "Minimum SUE score threshold (default: 2.0 for top-decile surprise).",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of candidates to return (default: 15).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+
+GET_EARNINGS_REVISIONS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_earnings_revisions",
+        "description": (
+            "Retrieve analyst consensus ratings, buy/hold/sell distribution, and consensus price target "
+            "upside for a specific stock ticker."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol (e.g., NVDA, AAPL, MSFT)",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+
+GET_SECTOR_BELLWETHERS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_sector_bellwethers",
+        "description": (
+            "Retrieve reported earnings signals from sector bellwethers and view the upcoming unannounced "
+            "peers for a specific sector ETF."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sector": {
+                    "type": "string",
+                    "description": "The US Sector ETF symbol (e.g., XLK, XLF, XLE, XLI, XLY, XLP, XLV, XLC).",
+                },
+            },
+            "required": ["sector"],
+        },
+    },
+}
+
+
 SEARCH_PREDICTION_MARKETS_TOOL = {
     "type": "function",
     "function": {
@@ -892,6 +966,9 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_macro_economic_series": GET_MACRO_ECONOMIC_SERIES_TOOL,
     "get_options_sentiment": GET_OPTIONS_SENTIMENT_TOOL,
     "get_option_chain": GET_OPTION_CHAIN_TOOL,
+    "get_pead_candidates": GET_PEAD_CANDIDATES_TOOL,
+    "get_earnings_revisions": GET_EARNINGS_REVISIONS_TOOL,
+    "get_sector_bellwethers": GET_SECTOR_BELLWETHERS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
 }
 
@@ -1992,6 +2069,39 @@ async def execute_earnings_history_tool(ticker: str, limit: int = 8) -> str:
     except Exception as e:
         logger.exception(f"Error executing get_earnings_history tool for {ticker}")
         return f"Error retrieving earnings history for {ticker}: {str(e)}"
+
+
+async def execute_pead_candidates_tool(sector: str | None = None, min_sue: float = 2.0, limit: int = 15) -> str:
+    """Execute get_pead_candidates tool."""
+    try:
+        from tools.earnings_alpha_tools import handle_get_pead_candidates
+
+        return await handle_get_pead_candidates({"sector": sector, "min_sue": min_sue, "limit": limit})
+    except Exception as e:
+        logger.exception("Error executing get_pead_candidates tool")
+        return f"Error retrieving PEAD candidates: {str(e)}"
+
+
+async def execute_earnings_revisions_tool(ticker: str) -> str:
+    """Execute get_earnings_revisions tool."""
+    try:
+        from tools.earnings_alpha_tools import handle_get_earnings_revisions
+
+        return await handle_get_earnings_revisions({"ticker": ticker})
+    except Exception as e:
+        logger.exception(f"Error executing get_earnings_revisions tool for {ticker}")
+        return f"Error retrieving earnings revisions for {ticker}: {str(e)}"
+
+
+async def execute_sector_bellwethers_tool(sector: str) -> str:
+    """Execute get_sector_bellwethers tool."""
+    try:
+        from tools.earnings_alpha_tools import handle_get_sector_bellwethers
+
+        return await handle_get_sector_bellwethers({"sector": sector})
+    except Exception as e:
+        logger.exception(f"Error executing get_sector_bellwethers tool for {sector}")
+        return f"Error retrieving sector bellwethers for {sector}: {str(e)}"
 
 
 async def execute_search_prediction_markets_tool(query: str, platform: str | None = None) -> str:

@@ -6,6 +6,8 @@
 
 ## Entities
 
+- [[entities/earnings-audit]] — Earnings Alpha & PEAD audit dashboard with PEAD, bellwether radar, and analyst revision tabs
+- [[entities/earnings-alpha]] — Engine analytics and pipeline for PEAD, SUE, Sloan accruals, analyst revisions, and sector bellwether signals
 - [[entities/massive-options]] — Auto-indexed page
 - [[entities/tool-registry]] — Centralized canonical tool registry (packages/config/tools.json)
 - [[entities/hotspots]] — Git churn forensics and code hotspot analyzer
@@ -48,6 +50,7 @@
 
 ## Concepts
 
+- [[concepts/earnings-prediction-strategies]] — Auto-indexed page
 - [[concepts/creative-ideation]] — Auto-indexed page
 - [[concepts/api-data-verification]] — Auto-indexed page
 - [[concepts/hallucination-audit]] — Auto-indexed page

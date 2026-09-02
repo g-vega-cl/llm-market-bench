@@ -81,8 +81,11 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 27. **get_options_sentiment**: Retrieves options sentiment, Put/Call ratios (by volume/OI), ATM implied volatility, 25-delta skew, max pain strike, and unusual activity.
 28. **get_option_chain**: Retrieves a compact near-the-money options board with bid, ask, last price, volume, open interest, and Greeks (Delta, Gamma, Theta, Vega).
 29. **get_sector_fundamentals**: Aggregates S&P 500 constituents by Sector ETF to compute cap-weighted Trailing P/E, Forward P/E, and quarterly earnings beat rates across US sectors (XLK, XLF, XLV, XLE, etc.).
+30. **get_pead_candidates**: Retrieves top-decile Post-Earnings Announcement Drift (PEAD) candidates with calculated SUE scores, revenue surprises, Sloan accrual quality checks, and drift returns.
+31. **get_earnings_revisions**: Retrieves analyst consensus ratings, buy/hold/sell distribution, and consensus price target upside for a specific stock ticker.
+32. **get_sector_bellwethers**: Retrieves reported earnings signals from sector bellwethers and views upcoming unannounced peers for a specific sector ETF.
 
-*Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list them.*
+*Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 
 ## Toolbox: Modular Trading Discipline & Reasoning Blocks
 You can dynamically toggle structured trading discipline and reasoning blocks in `selected_prompt_blocks`. The system automatically injects these pre-crafted blocks into the trading prompt. You remain 100% free to edit or write custom strategy text in `new_prompt_text` on top of these blocks:

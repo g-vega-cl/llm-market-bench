@@ -1,0 +1,40 @@
+name: Earnings Alpha & Bellwether Update
+
+on:
+  schedule:
+    # Runs twice daily on weekdays:
+    # 1. 10:30 UTC (6:30 AM EDT / 5:30 AM EST, pre-market reports)
+    # 2. 21:30 UTC (5:30 PM EDT / 4:30 PM EST, after-hours reports)
+    - cron: "30 10 * * 1-5"
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  update-earnings-alpha:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: apps/engine
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run earnings alpha and bellwether update script
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          python scripts/update_earnings_alpha.py

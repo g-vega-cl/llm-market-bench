@@ -100,10 +100,18 @@ To aid event-driven thesis verification (e.g. trading around quarterly announcem
 The tool delegates to:
 - **FMPProvider**: Queries `/stable/earnings?symbol={ticker}`.
 
+## Earnings Alpha, PEAD & Bellwether Tools
+
+To systematically exploit earnings surprises without penny-EPS guessing, the platform provides three dedicated fundamental tools:
+1. **`get_pead_candidates`**: Returns top-decile Standardized Unexpected Earnings (SUE $\ge +2.0$) candidates with positive revenue surprises, Sloan accrual quality checks, and drift returns.
+2. **`get_earnings_revisions`**: Returns analyst buy/sell consensus distributions, coverage counts, and consensus price target upside.
+3. **`get_sector_bellwethers`**: Identifies active reported bellwether signals within a 14-day window and lists upcoming unannounced peers for a specific sector ETF.
+
 ## Related
 
 - [[entities/engine]]
 - [[entities/pipeline]]
 - [[entities/sector-predictor-arena]]
+- [[concepts/earnings-prediction-strategies]]
 - [[concepts/tool-enforcement]]
 

@@ -114,5 +114,17 @@
   {
     "name": "get_option_chain",
     "desc": "Near-the-money options board with bid/ask, volume, OI, and Greeks"
+  },
+  {
+    "name": "get_pead_candidates",
+    "desc": "Top-decile Post-Earnings Announcement Drift (PEAD) candidates with SUE scores"
+  },
+  {
+    "name": "get_earnings_revisions",
+    "desc": "Analyst buy/sell consensus, price targets, and revision sentiment"
+  },
+  {
+    "name": "get_sector_bellwethers",
+    "desc": "Sector bellwether reports, margin surprises, and unannounced peers"
   }
 ]

@@ -48,6 +48,7 @@
 
 ## Concepts
 
+- [[concepts/creative-ideation]] — Auto-indexed page
 - [[concepts/api-data-verification]] — Auto-indexed page
 - [[concepts/hallucination-audit]] — Auto-indexed page
 - [[concepts/release-and-canary-deployments]] — Auto-indexed page

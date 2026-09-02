@@ -13,10 +13,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 - [x] **An "AI" debate or consensus on different ways to invest in different events?** - 2-stage adversarial debate pipeline using `gpt-5.6-luna` (Adversarial Red-Team Challenger + Arbiter Synthesizer) with stress-tested scenarios, pre-mortem failure mode discovery, and interactive UI stress-test panel on `/memories`.
-- [ ] **Recheck calendar events**
 - [x] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
   - Decided it was a bit inconvenient and not worth it.
-- [ ] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.**
+- [x] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.** - Created `.agents/skills/creative-ideation/SKILL.md` skill and `[[concepts/creative-ideation]]` wiki page to exhaust 3 baseline textbook answers, generate 10 non-repeating lateral alternatives, and surface 5 downstream build levers.
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
 - [x] **FRED API Integration** - Federal Reserve Economic Data time series client with Supabase DB caching (`fred_series_cache`), on-demand LLM tool `get_macro_economic_series` for trading agents & Autoresearcher, and structured macroeconomic context injection for daily newsletter generation.
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**

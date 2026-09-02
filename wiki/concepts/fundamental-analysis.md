@@ -80,7 +80,16 @@ A daily background script (`update_market_barometer.py`) gathers fundamental and
 - **Aggregate Price-to-FCF**: $\frac{\sum \text{Market Cap}}{\sum \text{Free Cash Flow}}$ (mathematically computed from constituent Price-to-Free-Cash-Flow multiples `priceToFreeCashFlowRatio`, excluding companies with negative or zero free cash flow to avoid skewing valuation metrics)
 - **Earnings Beat Rate**: Percentage of constituents whose most recent earnings report exceeded estimates.
 
-These daily snapshots are saved to `market_barometer_history` in Supabase. The latest snapshot is injected into the system prompt's global macroeconomic context (`macro_context`), the LLMs can call `get_market_health_barometer` to check historical valuation trends, and the metrics are displayed to users in a premium glassmorphism card on the dashboard [HomePage](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx) (visualizing trailing/forward multiples and an animated earnings surprise beat rate progress bar).
+These daily snapshots are saved to `market_barometer_history` in Supabase. The latest snapshot is injected into the system prompt's global macroeconomic context (`macro_context`), the LLMs can call `get_market_health_barometer` to check historical valuation trends, historical percentile variation ranges (Trailing and Forward P/E vs 30-day distributions), and the **Equity Risk Premium (ERP)** calculated against the 10-Year Treasury Constant Maturity Yield (`treasury_10y` / `DGS10` from FRED). The metrics are displayed to users in a premium glassmorphism card on the dashboard [HomePage](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx) (visualizing trailing/forward multiples and an animated earnings surprise beat rate progress bar).
+
+## Sector Fundamentals & Earnings Aggregator
+
+The `get_sector_fundamentals` tool aggregates constituent-level fundamental and earnings metrics across major US Sector ETFs (`XLK`, `XLF`, `XLV`, `XLE`, `XLI`, `XLY`, `XLP`, `XLU`, `XLRE`, `XLB`, `XLC`):
+- **Cap-Weighted Sector Trailing P/E**: $\frac{\sum \text{Market Cap}}{\sum (\text{Market Cap} / \text{P/E})}$
+- **Cap-Weighted Sector Forward P/E**: $\frac{\sum \text{Market Cap}}{\sum \text{Forward Income}}$
+- **Sector Earnings Beat Rate**: % of reporting constituents beating quarterly EPS expectations.
+
+This tool is accessible to the Auto-Researcher and trading agents via canonical tool dispatch, enabling data-driven sector rotation and relative valuation modeling without artificial prompt injection.
 
 ## Company Earnings & Calendar
 
@@ -95,5 +104,6 @@ The tool delegates to:
 
 - [[entities/engine]]
 - [[entities/pipeline]]
+- [[entities/sector-predictor-arena]]
 - [[concepts/tool-enforcement]]
 

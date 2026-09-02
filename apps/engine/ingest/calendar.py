@@ -207,11 +207,7 @@ class CalendarPipeline:
                             break
 
                 # Resolve target_date deterministically
-                target_date = (
-                    event.target_date
-                    or (source_event["date"] if source_event else None)
-                    or event.expiry_date
-                )
+                target_date = event.target_date or (source_event["date"] if source_event else None) or event.expiry_date
                 if target_date == "unknown" or not target_date:
                     target_date = source_event["date"] if source_event else None
 
@@ -257,4 +253,3 @@ async def run_calendar_pipeline():
     """Entry point for the calendar pipeline."""
     pipeline = CalendarPipeline()
     await pipeline.run()
-

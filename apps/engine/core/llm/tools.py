@@ -424,6 +424,28 @@ GET_MARKET_HEALTH_BAROMETER_TOOL = {
     },
 }
 
+GET_SECTOR_FUNDAMENTALS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_sector_fundamentals",
+        "description": (
+            "Retrieve aggregated sector-level fundamentals across US Sector ETFs (XLK, XLF, XLV, XLE, XLI, XLY, XLP, XLU, XLRE, XLB, XLC), "
+            "including cap-weighted Trailing P/E, Forward P/E, and quarterly Earnings Beat Rates computed from S&P 500 constituents."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of top sectors to return (default: 11 for all major sectors).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+
 GET_EARNINGS_HISTORY_TOOL = {
     "type": "function",
     "function": {
@@ -852,6 +874,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_key_metrics": GET_KEY_METRICS_TOOL,
     "audit_financial_valuation": AUDIT_FINANCIAL_VALUATION_TOOL,
     "get_market_health_barometer": GET_MARKET_HEALTH_BAROMETER_TOOL,
+    "get_sector_fundamentals": GET_SECTOR_FUNDAMENTALS_TOOL,
     "get_earnings_history": GET_EARNINGS_HISTORY_TOOL,
     "search_prediction_markets": SEARCH_PREDICTION_MARKETS_TOOL,
     "get_prediction_market_odds": GET_PREDICTION_MARKET_ODDS_TOOL,
@@ -1573,28 +1596,90 @@ async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: i
 
 
 async def execute_market_health_barometer_tool(limit: int = 5) -> str:
-    """Fetches S&P 500 aggregate valuation and earnings metrics from Supabase."""
+    """Fetches S&P 500 aggregate valuation and earnings metrics from Supabase with historical variation & ERP."""
     try:
         from core.db import get_supabase_client
 
         client = get_supabase_client()
-        res = client.table("market_barometer_history").select("*").order("date", desc=True).limit(limit).execute()
+        # Query up to 30 snapshots for historical context and distribution statistics
+        fetch_limit = max(limit, 30)
+        res = client.table("market_barometer_history").select("*").order("date", desc=True).limit(fetch_limit).execute()
 
         if not res.data:
             return "No S&P 500 Market Health Barometer data found."
 
-        output = f"S&P 500 Aggregate Market Health Barometer (Recent {len(res.data)} daily snapshots):\n"
-        for entry in res.data:
+        all_snapshots = res.data
+        latest_entry = all_snapshots[0]
+        recent_snapshots = all_snapshots[:limit]
+
+        # 1. Latest Forward Earnings Yield & Equity Risk Premium (ERP)
+        fwd_pe = latest_entry.get("forward_pe")
+        fwd_ey_str = "N/A"
+        erp_str = "N/A"
+
+        if fwd_pe is not None and float(fwd_pe) > 0:
+            fwd_pe_val = float(fwd_pe)
+            fwd_ey = 100.0 / fwd_pe_val
+            fwd_ey_str = f"{fwd_ey:.2f}%"
+
+            try:
+                from core.fred import fetch_fred_series_observations
+
+                t10_data = await fetch_fred_series_observations("treasury_10y", lookback_periods=1)
+                latest_yield = None
+                if t10_data and t10_data.get("latest_value") is not None:
+                    latest_yield = float(t10_data["latest_value"])
+                elif t10_data and t10_data.get("observations"):
+                    obs = [o for o in t10_data["observations"] if o.get("value") is not None]
+                    if obs:
+                        latest_yield = float(obs[-1]["value"])
+
+                if latest_yield is not None:
+                    erp = fwd_ey - latest_yield
+                    erp_str = f"{erp:+.2f}% (Forward Earnings Yield {fwd_ey:.2f}% minus 10Y Yield {latest_yield:.2f}%)"
+                else:
+                    erp_str = f"N/A (Forward Earnings Yield: {fwd_ey_str}, 10Y Yield unavailable)"
+            except Exception as e:
+                logger.debug(f"Could not compute ERP from FRED 10Y yield: {e}")
+                erp_str = f"N/A (Forward Earnings Yield: {fwd_ey_str})"
+
+        # 2. Historical Variation & Percentiles over available snapshots
+        pe_vals = [float(e["pe_ratio"]) for e in all_snapshots if e.get("pe_ratio") is not None]
+        fwd_vals = [float(e["forward_pe"]) for e in all_snapshots if e.get("forward_pe") is not None]
+
+        valuation_context_lines = []
+        if pe_vals:
+            cur_pe = pe_vals[0]
+            min_pe, max_pe = min(pe_vals), max(pe_vals)
+            mean_pe = sum(pe_vals) / len(pe_vals)
+            pe_rank = (sum(1 for v in pe_vals if v <= cur_pe) / len(pe_vals)) * 100.0
+            pe_diff = ((cur_pe - mean_pe) / mean_pe * 100.0) if mean_pe > 0 else 0.0
+            valuation_context_lines.append(
+                f"- Trailing P/E: Range {min_pe:.2f} - {max_pe:.2f} (Mean: {mean_pe:.2f}) | {pe_rank:.0f}th percentile ({pe_diff:+.1f}% vs {len(all_snapshots)}d mean)"
+            )
+
+        if fwd_vals:
+            cur_fwd = fwd_vals[0]
+            min_fwd, max_fwd = min(fwd_vals), max(fwd_vals)
+            mean_fwd = sum(fwd_vals) / len(fwd_vals)
+            fwd_rank = (sum(1 for v in fwd_vals if v <= cur_fwd) / len(fwd_vals)) * 100.0
+            fwd_diff = ((cur_fwd - mean_fwd) / mean_fwd * 100.0) if mean_fwd > 0 else 0.0
+            valuation_context_lines.append(
+                f"- Forward P/E:  Range {min_fwd:.2f} - {max_fwd:.2f} (Mean: {mean_fwd:.2f}) | {fwd_rank:.0f}th percentile ({fwd_diff:+.1f}% vs {len(all_snapshots)}d mean)"
+            )
+
+        output = f"S&P 500 Aggregate Market Health Barometer (Recent {len(recent_snapshots)} daily snapshots):\n"
+        for idx, entry in enumerate(recent_snapshots):
             date_str = entry.get("date") or "N/A"
             pe = entry.get("pe_ratio")
-            fwd_pe = entry.get("forward_pe")
+            fwd_pe_entry = entry.get("forward_pe")
             pb = entry.get("pb_ratio")
             ps = entry.get("ps_ratio")
             pfcf = entry.get("pfcf_ratio")
             surprise = entry.get("earnings_surprise_momentum")
 
             pe_val = f"{float(pe):.2f}" if pe is not None else "N/A"
-            fwd_pe_val = f"{float(fwd_pe):.2f}" if fwd_pe is not None else "N/A"
+            fwd_pe_val = f"{float(fwd_pe_entry):.2f}" if fwd_pe_entry is not None else "N/A"
             pb_val = f"{float(pb):.2f}" if pb is not None else "N/A"
             ps_val = f"{float(ps):.2f}" if ps is not None else "N/A"
             pfcf_val = f"{float(pfcf):.2f}" if pfcf is not None else "N/A"
@@ -1603,15 +1688,265 @@ async def execute_market_health_barometer_tool(limit: int = 5) -> str:
             output += f"\n- Date: {date_str}\n"
             output += f"  * Aggregate Trailing P/E: {pe_val}\n"
             output += f"  * Aggregate Forward P/E:  {fwd_pe_val}\n"
+            if idx == 0:
+                output += f"  * Forward Earnings Yield:   {fwd_ey_str}\n"
+                output += f"  * Equity Risk Premium (ERP): {erp_str}\n"
             output += f"  * Aggregate P/S Ratio:   {ps_val}\n"
             output += f"  * Aggregate P/B Ratio:   {pb_val}\n"
             output += f"  * Aggregate Price/FCF:    {pfcf_val}\n"
             output += f"  * Earnings Beat Rate:     {surprise_val} of companies beating expectations\n"
 
+        if valuation_context_lines:
+            output += f"\n[ Historical Valuation Context ({len(all_snapshots)}-Day Snapshot Window) ]\n"
+            output += "\n".join(valuation_context_lines) + "\n"
+
         return output
     except Exception as e:
         logger.exception("Error executing get_market_health_barometer tool")
         return f"Error retrieving barometer data: {str(e)}"
+
+
+# Standard GICS sector string mapping to SPDR Sector ETFs
+GICS_TO_SECTOR_ETF: dict[str, tuple[str, str]] = {
+    "technology": ("XLK", "Technology"),
+    "information technology": ("XLK", "Technology"),
+    "financial services": ("XLF", "Financials"),
+    "financials": ("XLF", "Financials"),
+    "healthcare": ("XLV", "Healthcare"),
+    "health care": ("XLV", "Healthcare"),
+    "energy": ("XLE", "Energy"),
+    "industrials": ("XLI", "Industrials"),
+    "consumer cyclical": ("XLY", "Consumer Discretionary"),
+    "consumer discretionary": ("XLY", "Consumer Discretionary"),
+    "consumer defensive": ("XLP", "Consumer Staples"),
+    "consumer staples": ("XLP", "Consumer Staples"),
+    "utilities": ("XLU", "Utilities"),
+    "real estate": ("XLRE", "Real Estate"),
+    "basic materials": ("XLB", "Materials"),
+    "materials": ("XLB", "Materials"),
+    "communication services": ("XLC", "Communication Services"),
+}
+
+# Fallback constituent ticker mapping for top S&P 500 stocks
+TICKER_TO_SECTOR_ETF: dict[str, tuple[str, str]] = {
+    "AAPL": ("XLK", "Technology"),
+    "MSFT": ("XLK", "Technology"),
+    "NVDA": ("XLK", "Technology"),
+    "AVGO": ("XLK", "Technology"),
+    "ORCL": ("XLK", "Technology"),
+    "ADBE": ("XLK", "Technology"),
+    "CRM": ("XLK", "Technology"),
+    "AMD": ("XLK", "Technology"),
+    "QCOM": ("XLK", "Technology"),
+    "TXN": ("XLK", "Technology"),
+    "INTC": ("XLK", "Technology"),
+    "AMAT": ("XLK", "Technology"),
+    "NOW": ("XLK", "Technology"),
+    "PANW": ("XLK", "Technology"),
+    "LRCX": ("XLK", "Technology"),
+    "KLAC": ("XLK", "Technology"),
+    "ADI": ("XLK", "Technology"),
+    "ANET": ("XLK", "Technology"),
+    "CRWD": ("XLK", "Technology"),
+    "PLTR": ("XLK", "Technology"),
+    "JPM": ("XLF", "Financials"),
+    "BRK.B": ("XLF", "Financials"),
+    "V": ("XLF", "Financials"),
+    "MA": ("XLF", "Financials"),
+    "BAC": ("XLF", "Financials"),
+    "WFC": ("XLF", "Financials"),
+    "GS": ("XLF", "Financials"),
+    "MS": ("XLF", "Financials"),
+    "SPGI": ("XLF", "Financials"),
+    "AXP": ("XLF", "Financials"),
+    "PGR": ("XLF", "Financials"),
+    "CB": ("XLF", "Financials"),
+    "SCHW": ("XLF", "Financials"),
+    "KKR": ("XLF", "Financials"),
+    "MMC": ("XLF", "Financials"),
+    "MCO": ("XLF", "Financials"),
+    "LLY": ("XLV", "Healthcare"),
+    "UNH": ("XLV", "Healthcare"),
+    "JNJ": ("XLV", "Healthcare"),
+    "ABBV": ("XLV", "Healthcare"),
+    "MRK": ("XLV", "Healthcare"),
+    "TMO": ("XLV", "Healthcare"),
+    "ABT": ("XLV", "Healthcare"),
+    "AMGN": ("XLV", "Healthcare"),
+    "ISRG": ("XLV", "Healthcare"),
+    "SYK": ("XLV", "Healthcare"),
+    "REGN": ("XLV", "Healthcare"),
+    "VRTX": ("XLV", "Healthcare"),
+    "MDT": ("XLV", "Healthcare"),
+    "PFE": ("XLV", "Healthcare"),
+    "BSX": ("XLV", "Healthcare"),
+    "HCA": ("XLV", "Healthcare"),
+    "CI": ("XLV", "Healthcare"),
+    "AMZN": ("XLY", "Consumer Discretionary"),
+    "TSLA": ("XLY", "Consumer Discretionary"),
+    "HD": ("XLY", "Consumer Discretionary"),
+    "MCD": ("XLY", "Consumer Discretionary"),
+    "NKE": ("XLY", "Consumer Discretionary"),
+    "BKNG": ("XLY", "Consumer Discretionary"),
+    "TJX": ("XLY", "Consumer Discretionary"),
+    "ABNB": ("XLY", "Consumer Discretionary"),
+    "GOOGL": ("XLC", "Communication Services"),
+    "GOOG": ("XLC", "Communication Services"),
+    "META": ("XLC", "Communication Services"),
+    "NFLX": ("XLC", "Communication Services"),
+    "DIS": ("XLC", "Communication Services"),
+    "CMCSA": ("XLC", "Communication Services"),
+    "VZ": ("XLC", "Communication Services"),
+    "T": ("XLC", "Communication Services"),
+    "XOM": ("XLE", "Energy"),
+    "CVX": ("XLE", "Energy"),
+    "COP": ("XLE", "Energy"),
+    "EOG": ("XLE", "Energy"),
+    "VLO": ("XLE", "Energy"),
+    "GE": ("XLI", "Industrials"),
+    "CAT": ("XLI", "Industrials"),
+    "UNP": ("XLI", "Industrials"),
+    "HON": ("XLI", "Industrials"),
+    "RTX": ("XLI", "Industrials"),
+    "LMT": ("XLI", "Industrials"),
+    "DE": ("XLI", "Industrials"),
+    "ETN": ("XLI", "Industrials"),
+    "UPS": ("XLI", "Industrials"),
+    "WM": ("XLI", "Industrials"),
+    "PH": ("XLI", "Industrials"),
+    "ADP": ("XLI", "Industrials"),
+    "MSI": ("XLI", "Industrials"),
+    "PG": ("XLP", "Consumer Staples"),
+    "COST": ("XLP", "Consumer Staples"),
+    "WMT": ("XLP", "Consumer Staples"),
+    "KO": ("XLP", "Consumer Staples"),
+    "PEP": ("XLP", "Consumer Staples"),
+    "PM": ("XLP", "Consumer Staples"),
+    "MDLZ": ("XLP", "Consumer Staples"),
+    "LIN": ("XLB", "Materials"),
+    "NEE": ("XLU", "Utilities"),
+    "SO": ("XLU", "Utilities"),
+    "DUK": ("XLU", "Utilities"),
+    "PLD": ("XLRE", "Real Estate"),
+    "AMT": ("XLRE", "Real Estate"),
+    "EQIX": ("XLRE", "Real Estate"),
+}
+
+
+async def execute_sector_fundamentals_tool(limit: int = 11) -> str:
+    """Aggregates S&P 500 constituents by GICS Sector ETF to compute sector P/E, Forward P/E, and beat rates."""
+    try:
+        from core.db import get_supabase_client
+
+        client = get_supabase_client()
+        res = (
+            client.table("market_barometer_history")
+            .select("date, pe_ratio, forward_pe, constituents_data")
+            .order("date", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if not res.data:
+            return "No S&P 500 Market Health Barometer data found."
+
+        row = res.data[0]
+        date_str = row.get("date") or "N/A"
+        constituents = row.get("constituents_data") or []
+
+        if not constituents:
+            return f"No constituent data found in market barometer for {date_str}."
+
+        # Group constituents by sector ETF
+        sectors: dict[str, dict] = {}
+
+        for c in constituents:
+            sym = (c.get("symbol") or "").upper().strip()
+            sec_name_raw = (c.get("sector") or "").strip().lower()
+
+            sector_tuple = None
+            if sec_name_raw and sec_name_raw in GICS_TO_SECTOR_ETF:
+                sector_tuple = GICS_TO_SECTOR_ETF[sec_name_raw]
+            elif sym in TICKER_TO_SECTOR_ETF:
+                sector_tuple = TICKER_TO_SECTOR_ETF[sym]
+
+            if not sector_tuple:
+                continue
+
+            etf_sym, etf_name = sector_tuple
+            if etf_sym not in sectors:
+                sectors[etf_sym] = {
+                    "name": etf_name,
+                    "mcap": 0.0,
+                    "sum_mcap_pe": 0.0,
+                    "sum_income": 0.0,
+                    "sum_mcap_fwd": 0.0,
+                    "sum_fwd_income": 0.0,
+                    "beats_count": 0,
+                    "total_reporting": 0,
+                    "constituents_count": 0,
+                }
+
+            sec = sectors[etf_sym]
+            sec["constituents_count"] += 1
+            mcap = float(c.get("market_cap") or 0.0)
+            price = float(c.get("price") or 0.0)
+            sec["mcap"] += mcap
+
+            # Trailing P/E
+            pe = c.get("pe")
+            if pe is not None and float(pe) > 0 and mcap > 0:
+                pe_val = float(pe)
+                sec["sum_mcap_pe"] += mcap
+                sec["sum_income"] += mcap / pe_val
+
+            # Forward P/E
+            next_eps = c.get("next_eps_est")
+            if next_eps is not None and float(next_eps) > 0 and price > 0 and mcap > 0:
+                shares = mcap / price
+                fwd_income = float(next_eps) * shares
+                if fwd_income > 0:
+                    sec["sum_mcap_fwd"] += mcap
+                    sec["sum_fwd_income"] += fwd_income
+
+            # Earnings Beat
+            beat = c.get("beat")
+            if beat is not None:
+                sec["total_reporting"] += 1
+                if beat:
+                    sec["beats_count"] += 1
+
+        if not sectors:
+            return f"No sector mapping could be determined for constituents on {date_str}."
+
+        output = f"S&P 500 Sector Fundamentals & Earnings Breakdown (Date: {date_str}):\n"
+
+        # Sort sectors by market cap descending
+        sorted_sectors = sorted(sectors.items(), key=lambda x: x[1]["mcap"], reverse=True)[:limit]
+
+        for etf_sym, data in sorted_sectors:
+            pe_agg = (data["sum_mcap_pe"] / data["sum_income"]) if data["sum_income"] > 0 else None
+            fwd_pe_agg = (data["sum_mcap_fwd"] / data["sum_fwd_income"]) if data["sum_fwd_income"] > 0 else None
+            beat_rate = (data["beats_count"] / data["total_reporting"] * 100.0) if data["total_reporting"] > 0 else None
+
+            pe_str = f"{pe_agg:.2f}" if pe_agg is not None else "N/A"
+            fwd_pe_str = f"{fwd_pe_agg:.2f}" if fwd_pe_agg is not None else "N/A"
+            beat_str = (
+                f"{beat_rate:.1f}% ({data['beats_count']}/{data['total_reporting']} reporting)"
+                if beat_rate is not None
+                else "N/A"
+            )
+
+            output += (
+                f"- {etf_sym} ({data['name']}): "
+                f"Trailing P/E: {pe_str} | Forward P/E: {fwd_pe_str} | "
+                f"Earnings Beat Rate: {beat_str}\n"
+            )
+
+        return output
+    except Exception as e:
+        logger.exception("Error executing get_sector_fundamentals tool")
+        return f"Error retrieving sector fundamentals data: {str(e)}"
 
 
 async def execute_earnings_history_tool(ticker: str, limit: int = 8) -> str:

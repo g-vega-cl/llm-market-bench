@@ -22,7 +22,7 @@ from execution.providers.fmp import FMPProvider
 
 # Configuration
 CONSTITUENTS_LIMIT = 100  # Top 100 represent ~80% of S&P 500 cap
-SEMAPHORE_LIMIT = 4  # Stay well under 300 calls/min limit
+SEMAPHORE_LIMIT = 2  # Stay well under 300 calls/min limit
 FMP_STABLE_URL = "https://financialmodelingprep.com/stable"
 
 # Fallback top 100 S&P 500 constituents by market capitalization
@@ -131,21 +131,21 @@ FALLBACK_CONSTITUENTS = [
 
 
 async def fetch_with_retry(
-    client: httpx.AsyncClient, url: str, params: dict, semaphore: asyncio.Semaphore, retries: int = 3
+    client: httpx.AsyncClient, url: str, params: dict, semaphore: asyncio.Semaphore, retries: int = 5
 ) -> list | dict | None:
     """Fetch JSON from FMP API with concurrency limiting and exponential backoff retry."""
     backoff = 1.0
     for attempt in range(retries):
         try:
             async with semaphore:
-                # 0.2s polite delay to ensure we don't spam
-                await asyncio.sleep(0.2)
+                # Polite delay to stay well below 300 calls/min
+                await asyncio.sleep(0.15)
                 resp = await client.get(url, params=params)
 
             if resp.status_code == 429:
                 logger.warning(f"FMP Rate Limited (429) on {url}. Retrying in {backoff}s...")
                 await asyncio.sleep(backoff)
-                backoff *= 2
+                backoff = min(backoff * 2, 20.0)
                 continue
 
             resp.raise_for_status()
@@ -155,7 +155,7 @@ async def fetch_with_retry(
                 logger.error(f"Failed FMP fetch for {url} after {retries} attempts: {e}")
                 return None
             await asyncio.sleep(backoff)
-            backoff *= 2
+            backoff = min(backoff * 2, 20.0)
     return None
 
 
@@ -247,6 +247,7 @@ async def fetch_constituent_data(
     return {
         "symbol": symbol,
         "company_name": company_name,
+        "sector": profile.get("sector"),
         "market_cap": market_cap,
         "price": price,
         "pe": ratios.get("priceToEarningsRatio"),
@@ -384,6 +385,7 @@ async def calculate_barometer():
             {
                 "symbol": r["symbol"],
                 "company_name": r["company_name"],
+                "sector": r.get("sector"),
                 "market_cap": r["market_cap"],
                 "price": r["price"],
                 "pe": float(r["pe"]) if r["pe"] is not None else None,

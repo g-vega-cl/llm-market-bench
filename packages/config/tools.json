@@ -60,6 +60,10 @@
     "desc": "Cap-weighted index valuation check"
   },
   {
+    "name": "get_sector_fundamentals",
+    "desc": "Aggregated sector P/E, forward P/E, and earnings beat rates"
+  },
+  {
     "name": "get_earnings_history",
     "desc": "Earnings calendar events"
   },

@@ -167,4 +167,3 @@ async def test_run_calendar_pipeline_low_importance(pipeline):
 
         assert count == 0
         mock_add_memory.assert_not_called()
-

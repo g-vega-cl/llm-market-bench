@@ -80,6 +80,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 26. **add_thematic_flow**: Registers a new emergent thematic narrative or sector rotation flow signal.
 27. **get_options_sentiment**: Retrieves options sentiment, Put/Call ratios (by volume/OI), ATM implied volatility, 25-delta skew, max pain strike, and unusual activity.
 28. **get_option_chain**: Retrieves a compact near-the-money options board with bid, ask, last price, volume, open interest, and Greeks (Delta, Gamma, Theta, Vega).
+29. **get_sector_fundamentals**: Aggregates S&P 500 constituents by Sector ETF to compute cap-weighted Trailing P/E, Forward P/E, and quarterly earnings beat rates across US sectors (XLK, XLF, XLV, XLE, etc.).
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list them.*
 

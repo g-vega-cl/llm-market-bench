@@ -57,7 +57,7 @@ class PromptResearchResult(BaseModel):
             "'get_stock_quote', 'get_price_history', 'get_position_pnl', 'get_volatility_metrics', "
             "'get_sector_alternatives', 'search_related_tickers', 'run_stock_screener', "
             "'find_uncorrelated_assets', 'get_key_metrics', 'get_market_health_barometer', "
-            "'get_earnings_history', 'search_prediction_markets', 'get_prediction_market_odds', "
+            "'get_sector_fundamentals', 'get_earnings_history', 'search_prediction_markets', 'get_prediction_market_odds', "
             "'audit_financial_valuation', 'fetch_newsletter_content', 'search_past_memories', "
             "'get_thematic_flows', 'add_thematic_flow', "
             "'get_portfolio_ledger', 'get_todays_news_menu', 'get_market_feeling', "

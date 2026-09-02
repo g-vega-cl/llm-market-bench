@@ -996,6 +996,9 @@ def main():
         help="Session window for generated newsletter (open or close)",
     )
     parser.add_argument("--start-date", type=str, default="2026-04-27", help="Backtest start date (YYYY-MM-DD)")
+    parser.add_argument(
+        "--target-date", type=str, default=None, help="Target date for daily predictor evaluation (YYYY-MM-DD)"
+    )
     parser.add_argument("--weeks", type=int, default=1, help="Number of backtest weeks")
 
     args = parser.parse_args()
@@ -1042,7 +1045,7 @@ def main():
     elif args.command == COMMAND_EVALUATE_DAILY_PREDICTIONS:
         from tasks.evaluate_daily_predictions import evaluate_daily_predictions
 
-        asyncio.run(evaluate_daily_predictions())
+        asyncio.run(evaluate_daily_predictions(target_date=args.target_date, force_recalc=args.force))
     elif args.command == COMMAND_DAILY_AUTORESEARCH:
         from tasks.daily_autoresearch import run_daily_autoresearch
 

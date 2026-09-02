@@ -162,3 +162,73 @@ async def test_fetch_intraday_prices_uses_ohlc():
     )
     assert hit is True, "SPY hit +0.375% intraday vs +0.25% target — should be True"
     assert dir_hit is True
+
+
+@pytest.mark.asyncio
+async def test_fetch_regular_trading_hours_ohlc_filters_pre_and_post_market():
+    """Test that fetch_regular_trading_hours_ohlc strictly includes 09:30 - 16:00 ET bars
+    and discards pre-market (08:30) and post-market (17:00) price spikes.
+    """
+    from unittest.mock import AsyncMock
+
+    from tasks.evaluate_daily_predictions import fetch_regular_trading_hours_ohlc
+
+    mock_bars = [
+        # Pre-market spike at 08:30 (should be discarded)
+        {"date": "2026-09-01 08:30:00", "open": 750.0, "high": 755.0, "low": 745.0, "close": 752.0},
+        # Regular trading hours bars
+        {"date": "2026-09-01 09:30:00", "open": 762.04, "high": 764.0, "low": 761.17, "close": 763.76},
+        {"date": "2026-09-01 11:30:00", "open": 763.59, "high": 764.67, "low": 762.29, "close": 762.55},
+        {"date": "2026-09-01 14:30:00", "open": 761.20, "high": 761.57, "low": 759.50, "close": 761.39},
+        {"date": "2026-09-01 15:30:00", "open": 761.37, "high": 761.54, "low": 760.61, "close": 761.48},
+        # Post-market spike at 17:00 (should be discarded)
+        {"date": "2026-09-01 17:00:00", "open": 770.0, "high": 780.0, "low": 740.0, "close": 775.0},
+    ]
+
+    mock_provider = MagicMock()
+    mock_provider.get_hourly_history = AsyncMock(return_value=mock_bars)
+
+    mock_mdm = MagicMock()
+    mock_mdm.provider = mock_provider
+
+    with patch("execution.market_data.MarketDataManager", return_value=mock_mdm):
+        open_p, high_p, low_p, close_p = await fetch_regular_trading_hours_ohlc("SPY", "2026-09-01")
+
+    assert open_p == pytest.approx(762.04)  # 09:30 bar open, not 08:30 pre-market
+    assert high_p == pytest.approx(764.67)  # RTH max, not 17:00 post-market 780.0
+    assert low_p == pytest.approx(759.50)  # RTH min from 14:30 bar, not 08:30 pre-market 745.0
+    assert close_p == pytest.approx(761.48)  # 15:30 bar close, not 17:00 post-market
+
+
+@pytest.mark.asyncio
+async def test_evaluate_daily_predictions_with_target_date_and_force():
+    """Test evaluate_daily_predictions targeting a specific date and forcing recalculation."""
+    mock_supabase = MagicMock()
+
+    evaluated_data = [
+        {
+            "id": "pred-uuid-2",
+            "target_date": "2026-09-01",
+            "ticker": "SPY",
+            "predicted_direction": "DOWN",
+            "confidence": 60.0,
+            "expected_return_pct": -0.30,
+            "status": "evaluated",
+        }
+    ]
+
+    mock_query = MagicMock()
+    mock_query.eq.return_value = mock_query
+    mock_query.execute.return_value.data = evaluated_data
+    mock_supabase.table.return_value.select.return_value = mock_query
+
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch(
+            "tasks.evaluate_daily_predictions.fetch_intraday_prices",
+            return_value=(762.01, 764.67, 759.48, 761.78),
+        ),
+    ):
+        evaluated_count = await evaluate_daily_predictions(target_date="2026-09-01", force_recalc=True)
+        assert evaluated_count == 1
+        mock_supabase.table.return_value.update.assert_called()

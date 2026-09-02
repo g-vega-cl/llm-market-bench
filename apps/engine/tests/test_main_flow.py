@@ -371,3 +371,18 @@ async def test_run_ingest_executes_isolated_lin_flow(mock_dependencies):
         mock_lin.side_effect = RuntimeError("LIN FMP network error")
         await run_ingest(force=True)
         mock_lin.assert_awaited_once()
+
+
+def test_main_evaluate_daily_predictions_cli():
+    """Verify CLI argument parsing for evaluate-daily-predictions with target-date and force flags."""
+    import sys
+
+    from main import main
+
+    with (
+        patch.object(sys, "argv", ["main.py", "evaluate-daily-predictions", "--target-date", "2026-09-01", "--force"]),
+        patch("tasks.evaluate_daily_predictions.evaluate_daily_predictions", new_callable=AsyncMock) as mock_eval,
+    ):
+        main()
+        mock_eval.assert_awaited_once_with(target_date="2026-09-01", force_recalc=True)
+

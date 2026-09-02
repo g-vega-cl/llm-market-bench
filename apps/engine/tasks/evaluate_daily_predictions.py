@@ -53,15 +53,77 @@ def compute_intraday_hit_metrics(
     return intraday_hit, intraday_direction_hit
 
 
-async def fetch_intraday_prices(
+async def fetch_regular_trading_hours_ohlc(
     ticker: str, target_date_str: str
 ) -> tuple[float | None, float | None, float | None, float | None]:
-    """Fetch Open, High, Low, and Close prices for ticker on target_date via MarketDataManager."""
+    """Fetch Open, High, Low, and Close strictly during Regular Trading Hours (09:30:00 to 16:00:00 ET).
+
+    Filters timestamped hourly/intraday bars to strictly isolate regular market session price action
+    from pre-market (4:00 AM - 9:30 AM ET) and post-market (4:00 PM - 8:00 PM ET) noise.
+    """
     try:
         from execution.market_data import MarketDataManager
 
         mdm = MarketDataManager()
-        history = await mdm.get_history(ticker, days=10)
+        provider = mdm.provider
+        if provider and hasattr(provider, "get_hourly_history"):
+            bars = await provider.get_hourly_history(ticker, target_date_str, target_date_str)
+            if bars:
+                rth_bars = []
+                for b in bars:
+                    bar_date = b.get("date", "") if isinstance(b, dict) else getattr(b, "date", "")
+                    time_part = bar_date.split(" ")[1] if " " in bar_date else ""
+                    # Regular Trading Hours strictly: 09:30:00 <= time <= 16:00:00
+                    if "09:30:00" <= time_part <= "16:00:00":
+                        rth_bars.append(b)
+
+                if rth_bars:
+                    # Sort ascending by date timestamp
+                    def get_dt(b):
+                        return b.get("date", "") if isinstance(b, dict) else getattr(b, "date", "")
+
+                    sorted_bars = sorted(rth_bars, key=get_dt)
+
+                    def get_f(b, key):
+                        return float(b[key]) if isinstance(b, dict) else float(getattr(b, key))
+
+                    open_price = get_f(sorted_bars[0], "open")
+                    high_price = max(get_f(b, "high") for b in sorted_bars)
+                    low_price = min(get_f(b, "low") for b in sorted_bars)
+                    close_price = get_f(sorted_bars[-1], "close")
+
+                    logger.debug(
+                        f"RTH OHLC for {ticker} on {target_date_str} (from {len(sorted_bars)} bars): "
+                        f"Open={open_price:.2f}, High={high_price:.2f}, Low={low_price:.2f}, Close={close_price:.2f}"
+                    )
+                    return open_price, high_price, low_price, close_price
+
+    except Exception as e:
+        logger.warning(f"Error fetching RTH hourly bars for {ticker} on {target_date_str}: {e}")
+
+    return None, None, None, None
+
+
+async def fetch_intraday_prices(
+    ticker: str, target_date_str: str, force_refresh: bool = False
+) -> tuple[float | None, float | None, float | None, float | None]:
+    """Fetch Open, High, Low, and Close prices for ticker on target_date.
+
+    Prioritizes strict Regular Trading Hours (09:30 - 16:00 ET) hourly bars to isolate regular
+    market session from post-market volatility and premature EOD cache snapshots.
+    Falls back to MarketDataManager.get_history EOD candle.
+    """
+    # 1. Primary: Strict Regular Trading Hours hourly bars (isolates 09:30-16:00 ET)
+    rth_open, rth_high, rth_low, rth_close = await fetch_regular_trading_hours_ohlc(ticker, target_date_str)
+    if rth_open is not None and rth_high is not None and rth_low is not None and rth_close is not None:
+        return rth_open, rth_high, rth_low, rth_close
+
+    # 2. Secondary fallback: MarketDataManager EOD history
+    try:
+        from execution.market_data import MarketDataManager
+
+        mdm = MarketDataManager()
+        history = await mdm.get_history(ticker, days=10, force_refresh=force_refresh)
 
         found_entry = None
         if history:
@@ -71,7 +133,7 @@ async def fetch_intraday_prices(
                     found_entry = entry
                     break
 
-        if not found_entry:
+        if not found_entry and not force_refresh:
             history = await mdm.get_history(ticker, days=10, force_refresh=True)
             if history:
                 for entry in history:
@@ -99,15 +161,30 @@ async def fetch_intraday_open_close(ticker: str, target_date_str: str) -> tuple[
     return open_p, close_p
 
 
-async def evaluate_daily_predictions() -> int:
-    """Evaluate all pending daily predictions against actual market Open, High, Low, and Close prices."""
+async def evaluate_daily_predictions(target_date: str | None = None, force_recalc: bool = False) -> int:
+    """Evaluate daily predictions against actual market Open, High, Low, and Close prices.
+
+    Args:
+        target_date: Optional specific ISO date string (YYYY-MM-DD) to evaluate.
+        force_recalc: If True, re-evaluates already evaluated predictions for target_date.
+    """
     client = get_supabase_client()
 
-    response = client.table("daily_predictions").select("*").eq("status", "pending").execute()
+    query = client.table("daily_predictions").select("*")
+
+    if target_date:
+        query = query.eq("target_date", target_date)
+        if not force_recalc:
+            query = query.eq("status", "pending")
+    else:
+        if not force_recalc:
+            query = query.eq("status", "pending")
+
+    response = query.execute()
 
     pending = response.data
     if not pending:
-        logger.info("No pending daily predictions found to evaluate.")
+        logger.info(f"No daily predictions found to evaluate (target_date={target_date}, force={force_recalc}).")
         return 0
 
     evaluated_count = 0
@@ -120,7 +197,9 @@ async def evaluate_daily_predictions() -> int:
         confidence = pred.get("confidence", 50.0)
         expected_return_pct = pred.get("expected_return_pct")
 
-        open_p, high_p, low_p, close_p = await fetch_intraday_prices(ticker, target_date_str)
+        open_p, high_p, low_p, close_p = await fetch_intraday_prices(
+            ticker, target_date_str, force_refresh=force_recalc
+        )
         if open_p is None or close_p is None or high_p is None or low_p is None:
             logger.warning(
                 f"Could not retrieve Open/High/Low/Close price for {ticker} on {target_date_str}. Skipping evaluation."
@@ -180,4 +259,13 @@ async def evaluate_daily_predictions() -> int:
 
 
 if __name__ == "__main__":
-    asyncio.run(evaluate_daily_predictions())
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Evaluate daily S&P predictions against market prices.")
+    parser.add_argument("--target-date", type=str, default=None, help="Target date (YYYY-MM-DD) to evaluate.")
+    parser.add_argument(
+        "--force", action="store_true", help="Force re-evaluation of predictions even if already evaluated."
+    )
+    args = parser.parse_args()
+
+    asyncio.run(evaluate_daily_predictions(target_date=args.target_date, force_recalc=args.force))

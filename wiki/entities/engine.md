@@ -1,41 +1,38 @@
 ---
-tags: [engine, python, pipeline, data]
+tags: [engine, python, pipeline, ingestion]
 category: entity
 ---
 
 # Engine
 
-The Python data engine (`apps/engine/`) is the core pipeline that ingests financial news, runs LLM analysis, builds consensus, validates trades, and executes them. It is organized into modules under `apps/engine/` with a `main.py` entry point.
+The Python data engine (`apps/engine/`) is the core of the platform. It ingests financial newsletters, runs parallel LLM analysis, builds consensus, validates and executes trades, and provides feedback for continuous improvement.
 
-## Modules
+## Architecture
 
-- **`core/`** — Configuration, LLM client wrappers, tool definitions, and prompt templates
-- **`execution/`** — Market data management, order placement, portfolio operations, and trade settlement
-- **`tasks/`** — Orchestrated pipeline tasks (daily predictor, ingestion, analysis, consensus, execution, feedback)
-- **`tests/`** — Test suite with zero-warning policy and dependency injection patterns
-- **`hotspots.py`** — Git churn forensics and temporal coupling analyzer
+The engine is organized into modules under `apps/engine/`:
 
-## Market Data Management
+- `core/` — configuration, logging, shared utilities
+- `ingest/` — newsletter scraping, economic calendar, government data
+- `analysis/` — parallel LLM analysis with tool-calling loops
+- `consensus/` — semantic grouping, weighted voting, event promotion
+- `execution/` — pre-market validation, Reg T checks, trade settlement
+- `feedback/` — post-mortem, contrarian analysis, cause & effect
+- `autoresearch/` — weekly autonomous prompt improvement loop
+- `tests/` — zero-warning test suite with dependency injection
 
-The `execution/market_data.py` module provides `MarketDataManager`, the central class for fetching live and historical market data. It supports multiple data providers via a provider abstraction.
+## Newsletter Ingestion
 
-### Aftermarket / Pre-Market Quote Provider
+Ingestion is the first phase of the daily pipeline. It fetches newsletters from Gmail using one of two authentication methods:
 
-`MarketDataManager` now supports an optional provider with a `get_aftermarket_quote(ticker)` method. When available, `get_premarket_quote()` first attempts to fetch a dedicated aftermarket quote from this provider. If the provider returns a valid price (>0), that price is used as the pre-market price. Otherwise, it falls back to the standard quote from `get_quote()`. This ensures the most accurate pre-market pricing is used for gap analysis.
+- **Google App Password (Preferred)**: When `GMAIL_EMAIL` and `GMAIL_APP_PASSWORD` are set, the engine connects directly to `imap.gmail.com:993` via SSL using Python's built-in `imaplib`. It uses Gmail's `X-GM-RAW` search extension to run standard Gmail query filters (`from:(...) newer_than:1d`). This method eliminates the need for Google Cloud OAuth setup, token refresh, and consent screen configuration.
+- **OAuth 2.0 (Fallback)**: When `GMAIL_CREDENTIALS_JSON` and `GMAIL_TOKEN_JSON` are provided, the engine falls back to the Google Cloud REST API (`build('gmail', 'v1', ...)`). This path includes resilient JSON secret parsing (`_parse_json_secret`) and automatic retries on transient errors (`502`, `429`).
 
-Key behavior:
-- Provider method `get_aftermarket_quote` returns a dict with `price`, `bid`, `ask`, `volume`
-- If provider returns `None` or raises an exception, fallback to standard quote
-- When an aftermarket quote is present, the previous close is extracted from `quote.price` (prior regular session close), with fallback to `quote.previous_close` or historical data when aftermarket pricing is absent
-
-### Concurrent Proxy Quote Fetching
-
-In `tasks/daily_predictor.py`, the `get_daily_market_context` function now fetches pre-market quotes for macro proxies (QQQ, DIA, IWM, IEF, GLD, USO, UUP) concurrently using `asyncio.gather`. Partial failures (e.g., a single proxy API timeout) are handled gracefully — the failed proxy is skipped without breaking the entire context generation. This improves reliability and speed.
+Both methods parse email bodies (plain text or HTML), extract sender, subject, and date, and produce `NewsletterSnapshot` objects for downstream processing. The IMAP path uses `asyncio.to_thread` to avoid blocking the event loop.
 
 ## Related
 
-- [[concepts/execution]]
-- [[entities/daily-market-predictor]]
-- [[entities/macro-tracker]]
 - [[concepts/ingestion]]
-- [[concepts/code-hotspots]]
+- [[entities/pipeline]]
+- [[entities/generated-newsletters]]
+- [[concepts/tool-enforcement]]
+- [[concepts/rag-strategy]]

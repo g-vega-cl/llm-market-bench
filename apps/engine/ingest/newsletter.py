@@ -6,12 +6,16 @@ and transforming them into structured snapshots for database storage.
 
 import asyncio
 import base64
+import contextlib
+import email
 import hashlib
+import imaplib
 import json
 import re
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from typing import Any
 
@@ -22,7 +26,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from core.config import (
+    GMAIL_APP_PASSWORD,
     GMAIL_CREDENTIALS_JSON,
+    GMAIL_EMAIL,
     GMAIL_SCOPES,
     GMAIL_TOKEN_JSON,
     NEWSLETTER_SENDERS,
@@ -239,6 +245,160 @@ def extract_email_body(payload: dict[str, Any]) -> str:
     return clean_text(collected["plain"]) or NO_CONTENT_FOUND
 
 
+def decode_mime_header(header_value: str | None) -> str:
+    """Decode an RFC 2047 encoded MIME header or return plain text.
+
+    Args:
+        header_value: Raw header string.
+
+    Returns:
+        Decoded human-readable string.
+    """
+    if not header_value:
+        return ""
+    try:
+        decoded_fragments = decode_header(header_value)
+        result = []
+        for fragment, charset in decoded_fragments:
+            if isinstance(fragment, bytes):
+                result.append(fragment.decode(charset or "utf-8", errors="replace"))
+            else:
+                result.append(str(fragment))
+        return "".join(result)
+    except Exception:
+        return str(header_value)
+
+
+def extract_email_message_body(msg: Any) -> str:
+    """Extract plain text or HTML body from a standard email.message.Message.
+
+    Args:
+        msg: Parsed email.message.Message object.
+
+    Returns:
+        Cleaned body text or NO_CONTENT_FOUND.
+    """
+    plain_parts: list[str] = []
+    html_parts: list[str] = []
+
+    if msg.is_multipart():
+        for part in msg.walk():
+            content_type = part.get_content_type()
+            content_disposition = str(part.get("Content-Disposition", ""))
+            if "attachment" in content_disposition:
+                continue
+            payload = part.get_payload(decode=True)
+            if not payload:
+                continue
+            charset = part.get_content_charset() or "utf-8"
+            decoded_text = payload.decode(charset, errors="replace")
+            if content_type == "text/plain":
+                plain_parts.append(decoded_text)
+            elif content_type == "text/html":
+                html_parts.append(decoded_text)
+    else:
+        content_type = msg.get_content_type()
+        payload = msg.get_payload(decode=True)
+        if payload:
+            charset = msg.get_content_charset() or "utf-8"
+            decoded_text = payload.decode(charset, errors="replace")
+            if content_type == "text/plain":
+                plain_parts.append(decoded_text)
+            elif content_type == "text/html":
+                html_parts.append(decoded_text)
+
+    plain_text = "\n".join(plain_parts)
+    html_text = "\n".join(html_parts)
+
+    if plain_text and "click here to read it in full" not in plain_text.lower():
+        return clean_text(plain_text)
+    if html_text:
+        return html_to_readable_text(html_text)
+    return clean_text(plain_text) or NO_CONTENT_FOUND
+
+
+def _fetch_raw_messages_imap(
+    email_address: str, app_password: str, newer_than_days: int = 1
+) -> list[tuple[NewsletterSnapshot, str]]:
+    """Fetch newsletters from Gmail using IMAP with an App Password.
+
+    Args:
+        email_address: Gmail account email address.
+        app_password: 16-character Google App Password.
+        newer_than_days: Only fetch emails from the last N days.
+
+    Returns:
+        List of tuples: (NewsletterSnapshot, sender).
+    """
+    clean_pwd = app_password.replace(" ", "")
+    sender_filter = " OR ".join(NEWSLETTER_SENDERS)
+    query = f"from:({sender_filter}) newer_than:{newer_than_days}d"
+    logger.info(f"Fetching newsletters via IMAP with query: {query}")
+
+    try:
+        mail = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+    except Exception:
+        logger.exception("Failed to connect to imap.gmail.com:993 via SSL")
+        return []
+
+    try:
+        mail.login(email_address, clean_pwd)
+        mail.select("INBOX", readonly=True)
+
+        status, data = mail.search(None, f'X-GM-RAW "{query}"')
+        if status != "OK" or not data or not data[0]:
+            logger.info("No messages found matching query via IMAP.")
+            return []
+
+        msg_ids = data[0].split()
+        logger.info(f"Found {len(msg_ids)} messages via IMAP. Starting download...")
+
+        raw_snapshots: list[tuple[NewsletterSnapshot, str]] = []
+        for msg_id_bytes in msg_ids:
+            msg_id = msg_id_bytes.decode() if isinstance(msg_id_bytes, bytes) else str(msg_id_bytes)
+            try:
+                res, msg_data = mail.fetch(msg_id_bytes, "(RFC822)")
+                if res != "OK" or not msg_data or not msg_data[0] or not isinstance(msg_data[0], tuple):
+                    continue
+                raw_bytes = msg_data[0][1]
+                msg = email.message_from_bytes(raw_bytes)
+
+                subject = decode_mime_header(msg.get("Subject", "No Subject"))
+                sender = decode_mime_header(msg.get("From", "Unknown"))
+                raw_date = msg.get("Date")
+
+                try:
+                    date_dt = parsedate_to_datetime(raw_date)
+                    date = date_dt.isoformat()
+                except Exception:
+                    date = datetime.now().isoformat()
+
+                body = extract_email_message_body(msg)
+
+                snapshot = NewsletterSnapshot(
+                    source_id=generate_source_id(date, sender, subject),
+                    chunk_hash=generate_chunk_hash(body),
+                    sender=sender,
+                    date=date,
+                    subject=subject,
+                    content=body,
+                    ingested_at=datetime.now().isoformat(),
+                )
+                raw_snapshots.append((snapshot, sender))
+            except Exception:
+                logger.exception(f"Error parsing IMAP message {msg_id}")
+
+        return raw_snapshots
+    except Exception:
+        logger.exception("An error occurred during IMAP newsletter retrieval")
+        return []
+    finally:
+        with contextlib.suppress(Exception):
+            mail.close()
+        with contextlib.suppress(Exception):
+            mail.logout()
+
+
 def generate_source_id(date_str: str, sender: str, subject: str) -> str:
     """Generate a unique SourceID based on date, sender, and subject.
 
@@ -377,55 +537,68 @@ async def _process_message(service: Any, msg_ref: dict[str, str]) -> tuple[Newsl
 async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
     """Fetch and process newsletters from Gmail.
 
+    Prefers IMAP via GMAIL_APP_PASSWORD and GMAIL_EMAIL when set.
+    Falls back to Google OAuth REST API if GMAIL_TOKEN_JSON is provided.
+
     Args:
         newer_than_days: Only fetch emails from the last N days.
 
     Returns:
         List of newsletter snapshots as dictionaries.
     """
-    service = get_gmail_service()
-    if not service:
-        return []
+    raw_results: list[tuple[NewsletterSnapshot, str]] = []
+    attempted_senders: set[str] = set()
 
-    sender_filter = " OR ".join(NEWSLETTER_SENDERS)
-    query = f"from:({sender_filter}) newer_than:{newer_than_days}d"
-    logger.info(f"Fetching newsletters with query: {query}")
-
-    max_query_attempts = 3
-    messages = []
-    for attempt in range(1, max_query_attempts + 1):
-        try:
-            results = await asyncio.to_thread(
-                service.users().messages().list(userId="me", q=query, maxResults=20).execute
-            )
-            messages = results.get("messages", [])
-            break
-        except Exception as error:
-            if attempt < max_query_attempts:
-                wait_seconds = attempt * 1.5
-                logger.warning(
-                    f"Attempt {attempt}/{max_query_attempts} failed querying Gmail messages: {error}. "
-                    f"Retrying in {wait_seconds}s..."
-                )
-                await asyncio.sleep(wait_seconds)
-            else:
-                logger.error(f"An error occurred fetching from Gmail after {max_query_attempts} attempts: {error}")
-                return []
-
-    if not messages:
-        logger.info(
-            f"No messages found matching query. "
-            f"Senders checked: {len(NEWSLETTER_SENDERS)}, "
-            f"Time window: {newer_than_days} day(s)."
+    if GMAIL_APP_PASSWORD and GMAIL_EMAIL:
+        logger.info("Using Gmail IMAP with App Password for newsletter ingestion...")
+        raw_results = await asyncio.to_thread(
+            _fetch_raw_messages_imap, GMAIL_EMAIL, GMAIL_APP_PASSWORD, newer_than_days
         )
-        return []
+        if not raw_results:
+            logger.info("No messages were retrieved via IMAP.")
+            return []
+        attempted_senders = {sender for _, sender in raw_results if sender}
+    else:
+        service = get_gmail_service()
+        if not service:
+            return []
 
-    logger.info(f"Found {len(messages)} messages. Starting processing...")
+        sender_filter = " OR ".join(NEWSLETTER_SENDERS)
+        query = f"from:({sender_filter}) newer_than:{newer_than_days}d"
+        logger.info(f"Fetching newsletters with query: {query}")
 
-    try:
+        max_query_attempts = 3
+        messages = []
+        for attempt in range(1, max_query_attempts + 1):
+            try:
+                results = await asyncio.to_thread(
+                    service.users().messages().list(userId="me", q=query, maxResults=20).execute
+                )
+                messages = results.get("messages", [])
+                break
+            except Exception as error:
+                if attempt < max_query_attempts:
+                    wait_seconds = attempt * 1.5
+                    logger.warning(
+                        f"Attempt {attempt}/{max_query_attempts} failed querying Gmail messages: {error}. "
+                        f"Retrying in {wait_seconds}s..."
+                    )
+                    await asyncio.sleep(wait_seconds)
+                else:
+                    logger.error(f"An error occurred fetching from Gmail after {max_query_attempts} attempts: {error}")
+                    return []
+
+        if not messages:
+            logger.info(
+                f"No messages found matching query. "
+                f"Senders checked: {len(NEWSLETTER_SENDERS)}, "
+                f"Time window: {newer_than_days} day(s)."
+            )
+            return []
+
+        logger.info(f"Found {len(messages)} messages. Starting processing...")
+
         # Phase 1: Fetch all raw message bodies (Gmail API calls locked to protect thread-unsafe service)
-        raw_results = []
-        attempted_senders = set()
         lock = asyncio.Lock()
         fetch_tasks = [_fetch_raw_message(service, msg_ref, lock=lock) for msg_ref in messages]
         fetch_results = await asyncio.gather(*fetch_tasks)
@@ -436,6 +609,7 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
             if raw_snapshot:
                 raw_results.append((raw_snapshot, sender))
 
+    try:
         # Phase 2: Clean all bodies in parallel via LLM
         snapshots = []
         if raw_results:

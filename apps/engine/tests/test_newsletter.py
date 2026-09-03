@@ -441,3 +441,74 @@ async def test_ingest_newsletters_query_retry_on_502():
         assert snapshots[0]["source_id"] == "id1"
         assert mock_list.execute.call_count == 2
         mock_sleep.assert_called_once()
+
+
+def test_decode_mime_header():
+    """Test decoding encoded MIME headers and plain strings."""
+    from ingest.newsletter import decode_mime_header
+
+    assert decode_mime_header("Simple Subject") == "Simple Subject"
+    assert decode_mime_header("=?UTF-8?B?TW9ybmluZyBCcmV3?=") == "Morning Brew"
+    assert decode_mime_header(None) == ""
+
+
+def test_fetch_raw_messages_imap():
+    """Test fetching and parsing messages over IMAP with an App Password."""
+    from ingest.newsletter import _fetch_raw_messages_imap
+
+    raw_email = (
+        b"From: Morning Brew <crew@morningbrew.com>\r\n"
+        b"Subject: Market Update\r\n"
+        b"Date: Thu, 03 Sep 2026 09:00:00 -0400\r\n"
+        b"Content-Type: text/plain; charset=utf-8\r\n"
+        b"\r\n"
+        b"Markets are rallying today on macro stability.\r\n"
+    )
+
+    mock_mail = MagicMock()
+    mock_mail.login.return_value = ("OK", [b"Logged in"])
+    mock_mail.select.return_value = ("OK", [b"1"])
+    mock_mail.search.return_value = ("OK", [b"101"])
+    mock_mail.fetch.return_value = ("OK", [(b"101 (RFC822 {150}", raw_email)])
+
+    with patch("imaplib.IMAP4_SSL", return_value=mock_mail) as mock_imap:
+        results = _fetch_raw_messages_imap("test@gmail.com", "abcd efgh ijkl mnop", newer_than_days=1)
+
+        mock_imap.assert_called_once_with("imap.gmail.com", 993)
+        mock_mail.login.assert_called_once_with("test@gmail.com", "abcdefghijklmnop")
+        mock_mail.select.assert_called_once_with("INBOX", readonly=True)
+        assert len(results) == 1
+        snapshot, sender = results[0]
+        assert "crew@morningbrew.com" in sender
+        assert snapshot.subject == "Market Update"
+        assert "Markets are rallying" in snapshot.content
+        mock_mail.close.assert_called_once()
+        mock_mail.logout.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_ingest_newsletters_prefers_imap():
+    """Test that ingest_newsletters prefers IMAP App Password over OAuth when available."""
+    from ingest.newsletter import NewsletterSnapshot, ingest_newsletters
+
+    mock_snapshot = NewsletterSnapshot(
+        source_id="news_brew_123",
+        chunk_hash="hash123",
+        sender="crew@morningbrew.com",
+        date="2026-09-03T09:00:00",
+        subject="Morning Brew",
+        content="Clean content",
+        ingested_at="2026-09-03T09:00:00",
+    )
+
+    with (
+        patch("ingest.newsletter.GMAIL_APP_PASSWORD", "secret_app_pw"),
+        patch("ingest.newsletter.GMAIL_EMAIL", "test@gmail.com"),
+        patch("ingest.newsletter._fetch_raw_messages_imap", return_value=[(mock_snapshot, "crew@morningbrew.com")]),
+        patch("ingest.newsletter.clean_newsletter_content", side_effect=lambda c: c),
+        patch("ingest.newsletter.get_gmail_service") as mock_oauth,
+    ):
+        snapshots = await ingest_newsletters(newer_than_days=1)
+        assert len(snapshots) == 1
+        assert snapshots[0]["source_id"] == "news_brew_123"
+        mock_oauth.assert_not_called()

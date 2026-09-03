@@ -10,11 +10,11 @@ Full daily pipeline from ingestion to feedback. The pipeline runs on a cron sche
 ## Phase 1: Ingestion & Normalization
 *   **Icon**: 📰
 *   **Badge**: 3x Daily Trigger: US Market Hours
-*   **Tags**: [FMP Cache, Gmail API, Ingestion]
+*   **Tags**: [FMP Cache, Gmail Ingestion, Ingestion]
 
 Cloudflare Worker edge dispatcher fires the pipeline during US market hours (3 times daily: 9:35 AM ET, 11:35 AM ET, and 3:30 PM ET) to parse newsletter inputs.
 
-*   Newsletter Ingestion: Scrapes newsletters, feeds, and economic data from Gmail and external APIs with resilient OAuth JSON secret parsing and exponential backoff retry for transient 5xx/429 API errors.
+*   Newsletter Ingestion: Scrapes newsletters from Gmail via SSL IMAP using a Google App Password (preferred) or OAuth 2.0 REST API (fallback), parsing email content and retrying transient errors.
 *   De-Advertisement: Gemini Flash filters out ads, noise, and sponsor blocks from incoming text.
 
 ## Phase 2: Pre-Analysis Setup

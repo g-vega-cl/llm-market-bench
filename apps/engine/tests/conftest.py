@@ -13,6 +13,22 @@ if not os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
     os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "mock-key"
 
 
+@pytest.fixture(autouse=True)
+def isolate_gmail_test_env(monkeypatch):
+    """Ensure unit tests do not hit real Gmail over IMAP by default.
+
+    Isolates ambient GMAIL_APP_PASSWORD and GMAIL_EMAIL environment variables
+    so tests mocking the legacy OAuth REST client continue to run in isolation.
+    Tests explicitly verifying IMAP functionality can patch these variables locally.
+    """
+    monkeypatch.setattr("ingest.newsletter.GMAIL_EMAIL", None)
+    monkeypatch.setattr("ingest.newsletter.GMAIL_APP_PASSWORD", None)
+    monkeypatch.setattr("core.config.GMAIL_EMAIL", None)
+    monkeypatch.setattr("core.config.GMAIL_APP_PASSWORD", None)
+    monkeypatch.delenv("GMAIL_EMAIL", raising=False)
+    monkeypatch.delenv("GMAIL_APP_PASSWORD", raising=False)
+
+
 @pytest.fixture
 def fully_mocked_main():
     """Complete mocking for main.py dependencies.

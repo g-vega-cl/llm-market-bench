@@ -74,9 +74,12 @@ assert DEEPSEEK_FLASH_MODEL in MODEL_WEIGHTS, "MODEL_WEIGHTS missing DEEPSEEK_FL
 MEMORY_DEDUP_THRESHOLD = 0.90
 
 # --- Gmail Configuration ---
+GMAIL_EMAIL = os.getenv("GMAIL_EMAIL")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 GMAIL_CREDENTIALS_JSON = os.getenv("GMAIL_CREDENTIALS_JSON")
 GMAIL_TOKEN_JSON = os.getenv("GMAIL_TOKEN_JSON")
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+
 
 # --- Newsletter Configuration ---
 NEWSLETTER_SENDERS = [

@@ -81,7 +81,8 @@
 - [[concepts/output-normalization]] — LLM output sanitization via Pydantic validators for signal/catalyst/impact/status resilience
 - [[concepts/auditability]] — Philosophy and mechanisms of full calculation and data traceability
 - [[concepts/posthog-stealth-proxy]] — Same-origin reverse proxy architecture to bypass ad blockers for PostHog analytics
-- [[concepts/system-heavy-prompt]] — System-Heavy architecture: System Prompt = rulebook, User Prompt = data injector
+- [[concepts/tool-first-agency]] — Tool-First, Agency-Driven Architecture: tools over prompt-forcing and dual-taxonomy of LLM tasks
+- [[concepts/system-heavy-prompt]] — System-Heavy architecture: System Prompt = rulebook, User Prompt = minimal pull workspace
 - [[concepts/type-safety]] — Strict TypeScript type safety with zero any usage
 - [[concepts/tanstack-query]] — TanStack Query patterns, active/unused factories, and SSR-safe QueryClient setup
 - [[concepts/model-anomalies]] - Catalog of observed LLM behavioral anomalies (empty responses, zero decisions)

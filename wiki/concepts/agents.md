@@ -7,7 +7,7 @@ category: concept
 
 The "LLM Market Bench" platform relies on an orchestrated network of **7 specialized agents** to perform news ingestion, investment analysis, risk verification, consensus building, execution, post-mortem learning, and retrospective audits.
 
-All agent prompt pairs follow the [[concepts/system-heavy-prompt]] design, decoupling instruction rules (System message) from dynamic data injection (User message).
+All agent prompt pairs follow the [[concepts/system-heavy-prompt]] and [[concepts/tool-first-agency]] design: trading agents operate on pull-based tool discovery rather than injected data dumps, while deterministic pipeline utilities receive minimal input payloads.
 
 ---
 
@@ -77,6 +77,7 @@ graph TD
 
 ## Related
 
+- [[concepts/tool-first-agency]] — Tool-first, agency-driven architecture and dual-taxonomy
 - [[concepts/system-heavy-prompt]] — prompt architecture design
 - [[entities/pipeline]] — the daily running lifecycle
 - [[concepts/reasoning]] — reasoning loops, the 5 Whys, and the Reasoning Toolbox

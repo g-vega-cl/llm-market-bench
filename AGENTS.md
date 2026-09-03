@@ -7,4 +7,4 @@ Please refer to [GEMINI.md](./GEMINI.md) for:
 - Mandatory workflows (Search/Plan/TDD)
 - Linting and testing commands
 - Wiki maintenance protocols
-- Architectural principles
+- Architectural principles (including Principle 8: Tool-First, Agency-Driven Architecture)

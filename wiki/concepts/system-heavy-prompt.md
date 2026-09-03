@@ -17,11 +17,11 @@ Traditional LLM prompts mix **Static Logic** (rules, SOPs, constraints) with **D
    - For the primary analysis agent, this is stored in the database as a `PromptVariant` and is **evolvable** by the Meta-Researcher (specifically, the mutable strategies section is evolved, while system/formatting constraints are frozen).
    - For all other agents, it is hardcoded in `prompts.py`.
 
-2. **User Prompt (The Data Case)**:
-   - A minimal skeleton containing only section labels, `{placeholder}` variables for runtime data injection, and a single closing task directive ("Return ONLY...").
+2. **User Prompt (The Minimal Pull Workspace)**:
+   - For trading agents, rather than pre-injecting massive static data dumps, the user prompt is a minimal skeleton containing session coordinates (date, minimal task bounds) and directing the agent to pull data via callable tools (`get_portfolio_ledger`, `get_todays_news_menu`, etc.). See [[concepts/tool-first-agency]].
    - Contains no persona openers, no instructions, no SOPs.
-   - Static in source code for all agents.
    - For auto-research experiment agents, the template used is `EXPERIMENT_USER_PROMPT_TEMPLATE` (a pull-based template). It strips all newsletter text and raw ledger data, relying on dynamic tool selection to retrieve this context and reducing the prompt cache footprint significantly.
+   - For pipeline transformation tasks without an autoresearcher (like `newsletter_generator.py` or de-advertisement), the user prompt supplies the necessary source content payload directly.
 
 ## Motivations
 
@@ -55,6 +55,7 @@ The `TestPureDataInjectionUserPrompts` class in `test_prompts_refactor.py` enfor
 
 ## Related
 
+- [[concepts/tool-first-agency]] — Tool-first, agency-driven architecture and pull-based context
 - [[concepts/agents]] — detailed role and tool definitions for all 8 agents
 - [[entities/autoresearch]] — module implementation and the Karpathy Ratchet
 - [[entities/engine]] — how prompts are invoked in the daily pipeline

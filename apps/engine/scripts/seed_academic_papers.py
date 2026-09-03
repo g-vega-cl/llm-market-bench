@@ -1,4 +1,4 @@
-"""Seeds the top 10 empirical asset pricing papers into the pgvector memory store."""
+"""Seeds curated empirical asset pricing papers into the pgvector memory store."""
 
 import logging
 

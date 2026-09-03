@@ -5,7 +5,7 @@ category: entity
 
 # Academic Paper Seeding
 
-A curated seeding script (`seed_academic_papers.py`) that ingests 20 empirical asset pricing and market anomaly papers into the pgvector memory store as high-importance `ACADEMIC_PAPER` memories. This foundational knowledge grounds LLM trading agents in established financial science, ensuring decisions are informed by decades of peer-reviewed research on factor premiums, behavioral anomalies, and market efficiency.
+A curated seeding script (`seed_academic_papers.py`) that ingests curated empirical asset pricing and market anomaly papers into the pgvector memory store as high-importance `ACADEMIC_PAPER` memories. This foundational knowledge grounds LLM trading agents in established financial science, ensuring decisions are informed by decades of peer-reviewed research on factor premiums, behavioral anomalies, and market efficiency.
 
 ## Purpose
 
@@ -13,13 +13,14 @@ The script populates the vector store with structured summaries of seminal paper
 
 ## Papers Included
 
-The dataset covers five pillars:
+Source of truth is `PAPERS` in `seed_academic_papers.py`. The dataset covers six pillars:
 
-- **Factor Investing & Risk Premiums**: Fama-French (1992, 1993, 2015), Asness, Moskowitz & Pedersen (2013)
-- **Behavioral Finance & Market Anomalies**: Lakonishok, Shleifer & Vishny (1994), Shleifer & Vishny (1995), Barberis, Shleifer & Vishny (1997), De Bondt & Thaler (1985)
-- **Anomalies and Empirical Evidence**: Jegadeesh & Titman (1993), Carhart (1997), Sloan (1996)
-- **Temporal & Calendar Anomalies**: Lou, Polk & Skouras (2019), McConnell & Xu (2008), Ariel (1990), Rozeff & Kinney (1976), French (1980)
-- **Information & Structural Plumbing**: Bernard & Thomas (1989), Lucca & Moench (2015), Shleifer (1986), Ni, Pearson & Poteshman (2005)
+- **Factor Investing & Risk Premiums**: The Cross-Section of Expected Stock Returns (Fama & French, 1992), Common Risk Factors in the Returns on Stocks and Bonds (Fama & French, 1993), Value and Momentum Everywhere (Asness, Moskowitz & Pedersen, 2013), A Five-Factor Asset Pricing Model (Fama & French, 2015), Size Matters, If You Control Your Junk (Asness, Frazzini, Israel, Moskowitz & Pedersen, 2018)
+- **Behavioral Finance & Market Anomalies**: Contrarian Investment, Extrapolation, and Risk (Lakonishok, Shleifer & Vishny, 1994), The Limits of Arbitrage (Shleifer & Vishny, 1995), A Model of Investor Sentiment (Barberis, Shleifer & Vishny, 1997), Does the Stock Market Overreact? (De Bondt & Thaler, 1985)
+- **Anomalies and Empirical Evidence**: Returns to Buying Winners and Selling Losers (Jegadeesh & Titman, 1993), On Persistence in Mutual Fund Performance (Carhart, 1997), Do Stock Prices Fully Reflect Information in Accruals and Cash Flows? (Sloan, 1996)
+- **Temporal & Calendar Anomalies**: The Overnight Return Anomaly (The Night Effect) (Lou, Polk & Skouras, 2019), The Turn-of-the-Month Effect (McConnell & Xu, 2008), The Pre-Holiday Liquidity Vacuum (Ariel, 1990), The January Effect (Rozeff & Kinney, 1976), The Weekend Effect / Monday Effect (French, 1980)
+- **Information & Event-Driven Anomalies**: Post-Earnings-Announcement Drift (PEAD) (Bernard & Thomas, 1989), Pre-FOMC Announcement Drift (Lucca & Moench, 2015)
+- **Structural & Plumbing Anomalies**: The Index Inclusion Effect (The Passive Squeeze) (Shleifer, 1986), Options Expiration Pinning (Max Pain) (Ni, Pearson & Poteshman, 2005), The Index Premium and Its Hidden Cost for Index Funds (Petajisto, 2011), Index Changes and Losses to Index Fund Investors (Chen, Noronha & Singal, 2006)
 
 Each paper is stored with metadata (`source_type`, `citation`, `pillar`) for attribution and filtering.
 

@@ -1,5 +1,6 @@
 """Tests for the academic paper seeding script."""
 
+import pathlib
 from unittest.mock import patch
 
 # We will import the function after creating the script
@@ -34,3 +35,26 @@ def test_seed_academic_papers(mock_add_memory):
     # Verify metadata contains the citation for attribution
     assert first_call_kwargs["metadata"]["source_type"] == "academic_paper"
     assert "citation" in first_call_kwargs["metadata"]
+
+
+def test_docs_have_no_hardcoded_paper_counts():
+    """Docs must not hardcode paper counts that rot when PAPERS grows."""
+    repo_root = pathlib.Path(__file__).resolve().parents[3]
+    targets = [
+        repo_root / "apps/engine/scripts/seed_academic_papers.py",
+        repo_root / "wiki/entities/academic-paper-seeding.md",
+        repo_root / "wiki/index.md",
+    ]
+    banned = ["top 10", "20 papers", "20 empirical"]
+    for path in targets:
+        text = path.read_text().lower()
+        for phrase in banned:
+            assert phrase not in text, f"{path.name} contains stale phrase {phrase!r}"
+
+
+def test_wiki_covers_all_seeded_papers():
+    """Every PAPERS title must appear in the wiki explicit list."""
+    repo_root = pathlib.Path(__file__).resolve().parents[3]
+    wiki = (repo_root / "wiki/entities/academic-paper-seeding.md").read_text()
+    missing = [p["title"] for p in PAPERS if p["title"] not in wiki]
+    assert not missing, f"Wiki missing papers: {missing}"

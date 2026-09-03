@@ -138,4 +138,4 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: something I can autoresearch daily?
         Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
-
+- [ ] - Find if yoyu can set up any PEAD based strategy

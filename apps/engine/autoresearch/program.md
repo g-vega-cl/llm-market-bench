@@ -84,6 +84,9 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 30. **get_pead_candidates**: Retrieves top-decile Post-Earnings Announcement Drift (PEAD) candidates with calculated SUE scores, revenue surprises, Sloan accrual quality checks, and drift returns.
 31. **get_earnings_revisions**: Retrieves analyst consensus ratings, buy/hold/sell distribution, and consensus price target upside for a specific stock ticker.
 32. **get_sector_bellwethers**: Retrieves reported earnings signals from sector bellwethers and views upcoming unannounced peers for a specific sector ETF.
+33. **get_yield_curve_regime**: Classifies the US Treasury yield curve slope (10Y-2Y, 10Y-3M) into 4 macro monetary flow regimes (Bull/Bear Steepener/Flattener) with historical factor tailwinds.
+34. **get_options_vol_surface**: Calculates options implied volatility surface, trailing 20-day realized volatility, options-implied daily move price cone, and IV premium (rich/cheap).
+35. **track_thesis_pillars**: Tracks multi-day falsifiable investment theses with explicit supporting pillars, invalidation risks, and a disconfirming evidence ledger.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 
@@ -94,6 +97,9 @@ You can dynamically toggle structured trading discipline and reasoning blocks in
 3. `catalyst_expiry_timer`: 48h post-catalyst exit rule for short-term news plays to avoid dead capital.
 4. `five_whys_causal`: 5 Whys deep root-cause validation to cut headline noise.
 5. `mece_risk_partition`: Mutually Exclusive, Collectively Exhaustive risk scenario partitioning.
+6. `options_vol_discipline`: Bounding price targets with options-implied daily move cones and IV premium (rich/cheap) awareness.
+7. `macro_regime_routing`: Aligning asset choices with 4-regime yield curve dynamics (Bull/Bear Steepener/Flattener).
+8. `disconfirming_evidence_gate`: Requiring explicit disconfirming evidence checks and conviction downgrades on contradicting data.
 
 ## Self-Auditing & Multi-Step Deliberation Workflow
 Before outputting your final strategy, perform a rigorous self-audit of recent performance:
@@ -120,7 +126,7 @@ Rules:
 - `experiment_type` must be "incremental" or "radical"
 - `confidence` must be 0-100
 - `selected_tools` must contain only valid tool names listed in the toolbox above.
-- `selected_prompt_blocks` must contain valid block keys (`let_winners_run`, `cut_losers_fast`, `catalyst_expiry_timer`, `five_whys_causal`, `mece_risk_partition`).
+- `selected_prompt_blocks` must contain valid block keys (`let_winners_run`, `cut_losers_fast`, `catalyst_expiry_timer`, `five_whys_causal`, `mece_risk_partition`, `options_vol_discipline`, `macro_regime_routing`, `disconfirming_evidence_gate`).
 - `new_prompt_text` must be the COMPLETE modified strategy and analysis section only (do NOT output header/footer constraints or JSON schemas)
 - NEVER leave placeholder text like "<insert here>" — write the actual prompt
 

@@ -19,7 +19,7 @@ The file is a JSON array of objects, each with:
 - `name` — the exact function name used in LLM tool definitions and prompt documentation
 - `desc` — a short human-readable description
 
-Current tools: 32 entries covering portfolio ledger, news, market data, prediction markets, macro indicators, thematic flows, and earnings alpha.
+Current tools: 36 entries covering portfolio ledger, news, market data, prediction markets, macro indicators, thematic flows, earnings alpha, and quantitative options/macro regimes.
 
 ## Drift Prevention
 
@@ -34,6 +34,7 @@ The registry includes, among others:
 - Earnings Alpha & PEAD tools (`get_pead_candidates`, `get_earnings_revisions`, `get_sector_bellwethers`, `get_earnings_history`)
 - Prediction market tools (`search_prediction_markets`, `get_prediction_market_odds`)
 - Macro & volatility tools (`get_global_macro_context`, `get_volatility_index_details`, `get_macro_economic_series`, `get_thematic_flows`, `add_thematic_flow`, `get_options_sentiment`, `get_option_chain`)
+- Quantitative FSI tools (`get_yield_curve_regime`, `get_options_vol_surface`, `track_thesis_pillars`)
 - Audit & compliance tools (`audit_financial_valuation`, `get_verifier_rejections`)
 
 ## Related
@@ -41,3 +42,5 @@ The registry includes, among others:
 - [[entities/engine]]
 - [[entities/autoresearch-arena]]
 - [[concepts/tool-enforcement]]
+- [[concepts/anthropic-fs-insights]]
+

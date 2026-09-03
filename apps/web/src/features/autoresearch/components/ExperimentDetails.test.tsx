@@ -1,4 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
+import toolsConfig from '@repo/config/tools.json';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ExperimentDetails } from './ExperimentDetails';
@@ -28,15 +29,15 @@ const baseExperiment: PromptExperiment = {
             'get_volatility_metrics',
             'get_sector_alternatives',
             'search_related_tickers',
-            'run_stock_screener',
             'find_uncorrelated_assets',
             'get_key_metrics',
+            'run_stock_screener',
+            'audit_financial_valuation',
             'get_market_health_barometer',
+            'get_sector_fundamentals',
             'get_earnings_history',
             'search_prediction_markets',
             'get_prediction_market_odds',
-            'audit_financial_valuation',
-            'web_search',
             'get_global_macro_context',
             'get_volatility_index_details',
             'get_verifier_rejections',
@@ -48,11 +49,11 @@ const baseExperiment: PromptExperiment = {
 };
 
 describe('ExperimentDetails Toolbox Configuration', () => {
-    it('renders 23 / 32 Tools Enabled badge when 23 tools are selected from 32 canonical tools', () => {
+    it(`renders 23 / ${toolsConfig.length} Tools Enabled badge when 23 tools are selected from canonical tools`, () => {
         render(<ExperimentDetails experiment={baseExperiment} />);
 
         expect(screen.getByText('Weekly Toolbox Configuration')).toBeInTheDocument();
-        expect(screen.getByText('23 / 32 Tools Enabled')).toBeInTheDocument();
+        expect(screen.getByText(`23 / ${toolsConfig.length} Tools Enabled`)).toBeInTheDocument();
         expect(screen.getByText('get_global_macro_context')).toBeInTheDocument();
         expect(screen.getByText('get_volatility_index_details')).toBeInTheDocument();
         expect(screen.getByText('get_verifier_rejections')).toBeInTheDocument();
@@ -68,8 +69,8 @@ describe('ExperimentDetails Toolbox Configuration', () => {
 
         render(<ExperimentDetails experiment={customExperiment} />);
 
-        // 32 canonical tools + 1 unknown extra tool = 33 total
-        expect(screen.getByText('2 / 33 Tools Enabled')).toBeInTheDocument();
+        // Canonical tools + 1 unknown extra tool
+        expect(screen.getByText(`2 / ${toolsConfig.length + 1} Tools Enabled`)).toBeInTheDocument();
         expect(screen.getByText('future_hypothetical_quantum_tool')).toBeInTheDocument();
     });
 });

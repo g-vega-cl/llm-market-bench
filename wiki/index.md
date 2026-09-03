@@ -50,6 +50,7 @@
 
 ## Concepts
 
+- [[concepts/anthropic-fs-insights]] — Architectural synthesis and tool-first implementation strategy from Anthropic Financial Services
 - [[concepts/earnings-prediction-strategies]] — Auto-indexed page
 - [[concepts/creative-ideation]] — Auto-indexed page
 - [[concepts/api-data-verification]] — Auto-indexed page
@@ -115,6 +116,7 @@
 
 ## Sources
 
+- [[sources/anthropic-financial-services-source]] — Synthesis of Anthropic Financial Services plugins, MCP tools, and domain workflows
 - [[sources/project-overview-source]] — Multi-agent benchmarking platform goals
 - [[sources/data-flow-source]] — The 6-phase daily pipeline lifecycle
 - [[sources/tool-enforcement-source]] — 4-layer hallucination prevention

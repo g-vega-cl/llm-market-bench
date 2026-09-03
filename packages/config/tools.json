@@ -126,5 +126,17 @@
   {
     "name": "get_sector_bellwethers",
     "desc": "Sector bellwether reports, margin surprises, and unannounced peers"
+  },
+  {
+    "name": "get_yield_curve_regime",
+    "desc": "Classifies US Treasury yield curve slope into 4 macro monetary regimes (Bull/Bear Steepener/Flattener)"
+  },
+  {
+    "name": "get_options_vol_surface",
+    "desc": "Options implied volatility surface, 20d realized vol, implied daily move cone, and IV premium (rich/cheap)"
+  },
+  {
+    "name": "track_thesis_pillars",
+    "desc": "Track multi-day falsifiable thesis pillars, stop-loss triggers, and disconfirming evidence ledger"
   }
 ]

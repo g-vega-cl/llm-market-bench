@@ -155,6 +155,25 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             min_dte=args.get("min_dte"),
             max_dte=args.get("max_dte"),
         )
+    elif name == "get_yield_curve_regime":
+        return await tools.execute_yield_curve_regime_tool()
+    elif name == "get_options_vol_surface":
+        return await tools.execute_options_vol_surface_tool(
+            ticker=args.get("ticker", "SPY"),
+        )
+    elif name == "track_thesis_pillars":
+        return await tools.execute_track_thesis_pillars_tool(
+            ticker=args["ticker"],
+            action=args.get("action", "get"),
+            thesis_statement=args.get("thesis_statement"),
+            pillars=args.get("pillars"),
+            risks=args.get("risks"),
+            disconfirming_factor=args.get("disconfirming_factor"),
+            pillar_impacted=args.get("pillar_impacted"),
+            price_target=args.get("price_target"),
+            stop_loss=args.get("stop_loss"),
+            conviction=args.get("conviction"),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

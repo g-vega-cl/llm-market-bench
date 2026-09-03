@@ -7,6 +7,7 @@ function-tool schema). Handlers translate to provider-specific formats via
 
 import contextlib
 import contextvars
+from typing import Any
 
 from core.config import logger
 from core.db import get_async_supabase_client, get_supabase_client
@@ -933,6 +934,107 @@ GET_OPTION_CHAIN_TOOL = {
     },
 }
 
+GET_YIELD_CURVE_REGIME_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_yield_curve_regime",
+        "description": (
+            "Analyze the US Treasury yield curve slope (10Y-2Y, 10Y-3M, 30Y-5Y) and 5-day delta to classify "
+            "the macroeconomic monetary flow regime into: BULL_STEEPENER, BULL_FLATTENER, BEAR_STEEPENER, or BEAR_FLATTENER, "
+            "with historical factor tailwinds (e.g. Mega-Cap Tech vs Small-Caps vs Energy)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+GET_OPTIONS_VOL_SURFACE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_options_vol_surface",
+        "description": (
+            "Calculates options implied volatility surface, trailing 20-day realized volatility, "
+            "the options-implied daily move price cone (Spot * IV / sqrt(252)), 25-delta skew, "
+            "and implied volatility premium (IV - RV) to classify rich vs cheap options regimes."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock or ETF ticker symbol (e.g., SPY, QQQ, AAPL, NVDA). Default 'SPY'.",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+TRACK_THESIS_PILLARS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "track_thesis_pillars",
+        "description": (
+            "Query, create, or update structured multi-day falsifiable investment theses with explicit "
+            "supporting pillars, invalidation risks, price targets, stop-losses, and a disconfirming evidence ledger. "
+            "Registering disconfirming evidence dynamically transitions conviction states (HIGH -> WEAKENED -> INVALIDATED)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "Stock or asset ticker symbol.",
+                },
+                "action": {
+                    "type": "string",
+                    "enum": ["get", "create", "disconfirm", "invalidate"],
+                    "description": "Operation: 'get' (retrieve active thesis), 'create' (establish new thesis), 'disconfirm' (record disconfirming signal), or 'invalidate'.",
+                },
+                "thesis_statement": {
+                    "type": "string",
+                    "description": "Core 1-2 sentence thesis rationale (for 'create').",
+                },
+                "pillars": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "3-5 key supporting arguments (for 'create').",
+                },
+                "risks": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Key invalidation risks to monitor (for 'create').",
+                },
+                "disconfirming_factor": {
+                    "type": "string",
+                    "description": "Observed market signal, data point, or event contradicting the thesis (for 'disconfirm').",
+                },
+                "pillar_impacted": {
+                    "type": "string",
+                    "description": "Specific pillar weakened by the disconfirming signal (for 'disconfirm').",
+                },
+                "price_target": {
+                    "type": "number",
+                    "description": "Target price for thesis resolution.",
+                },
+                "stop_loss": {
+                    "type": "number",
+                    "description": "Stop-loss price level.",
+                },
+                "conviction": {
+                    "type": "string",
+                    "enum": ["HIGH", "MEDIUM", "LOW"],
+                    "description": "Initial conviction level (for 'create').",
+                },
+            },
+            "required": ["ticker", "action"],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -969,6 +1071,9 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_pead_candidates": GET_PEAD_CANDIDATES_TOOL,
     "get_earnings_revisions": GET_EARNINGS_REVISIONS_TOOL,
     "get_sector_bellwethers": GET_SECTOR_BELLWETHERS_TOOL,
+    "get_yield_curve_regime": GET_YIELD_CURVE_REGIME_TOOL,
+    "get_options_vol_surface": GET_OPTIONS_VOL_SURFACE_TOOL,
+    "track_thesis_pillars": TRACK_THESIS_PILLARS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
 }
 
@@ -3201,3 +3306,68 @@ async def execute_get_option_chain_tool(
     except Exception as e:
         logger.exception("Error executing get_option_chain tool for %s: %s", ticker, e)
         return f"Error fetching option chain for '{ticker}': {str(e)}"
+
+
+async def execute_yield_curve_regime_tool() -> str:
+    """Executes the get_yield_curve_regime tool to classify macroeconomic monetary flow regime."""
+    from analytics.yield_curve import get_yield_curve_regime_report
+
+    try:
+        report = await get_yield_curve_regime_report()
+        return report.get("markdown") or str(report)
+    except Exception as e:
+        logger.exception("Error executing get_yield_curve_regime tool: %s", e)
+        return f"Error analyzing yield curve regime: {str(e)}"
+
+
+async def execute_options_vol_surface_tool(ticker: str = "SPY") -> str:
+    """Executes the get_options_vol_surface tool to compute vol surface, cone, and IV premium."""
+    from analytics.options_surface import get_options_vol_surface_report
+
+    try:
+        report = await get_options_vol_surface_report(ticker=ticker)
+        return report.get("markdown") or str(report)
+    except Exception as e:
+        logger.exception("Error executing get_options_vol_surface tool for %s: %s", ticker, e)
+        return f"Error analyzing options volatility surface for '{ticker}': {str(e)}"
+
+
+async def execute_track_thesis_pillars_tool(
+    ticker: str,
+    action: str = "get",
+    thesis_statement: str | None = None,
+    pillars: list[str] | None = None,
+    risks: list[str] | None = None,
+    disconfirming_factor: str | None = None,
+    pillar_impacted: str | None = None,
+    price_target: float | None = None,
+    stop_loss: float | None = None,
+    conviction: str | None = None,
+) -> str:
+    """Executes the track_thesis_pillars tool to manage multi-day falsifiable investment theses."""
+    from tools.thesis_tools import execute_track_thesis_pillars
+
+    try:
+        res = await execute_track_thesis_pillars(
+            ticker=ticker,
+            action=action,
+            thesis_statement=thesis_statement,
+            pillars=pillars,
+            risks=risks,
+            disconfirming_factor=disconfirming_factor,
+            pillar_impacted=pillar_impacted,
+            price_target=price_target,
+            stop_loss=stop_loss,
+            conviction=conviction,
+        )
+        return res.get("markdown") or str(res)
+    except Exception as e:
+        logger.exception("Error executing track_thesis_pillars tool for %s: %s", ticker, e)
+        return f"Error executing thesis tracker for '{ticker}': {str(e)}"
+
+
+async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:
+    """Convenience tool execution dispatcher."""
+    from core.llm.handlers.base import execute_tool as _exec
+
+    return await _exec(name, args, model_name=model_name)

@@ -52,6 +52,36 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "2. Ensure zero blindspots across upside catalysts, downside risks, and industry correlation."
         ),
     },
+    "options_vol_discipline": {
+        "title": "OPTIONS VOLATILITY DISCIPLINE (Cone & Implied Move Bounds)",
+        "content": (
+            "=== DISCIPLINE: OPTIONS VOLATILITY CONE ===\n"
+            "1. Implied Move Bounding: Invoke `get_options_vol_surface` to inspect the 1-sigma options-implied daily move cone. "
+            "Do NOT project intraday price targets exceeding this cone without extreme multi-signal catalyst confirmation.\n"
+            "2. IV Premium Regime Awareness: When IV Premium is RICH (IV > RV20), respect mean-reversion pullbacks and avoid buying extended breakout tops. "
+            "When CHEAP, anticipate aggressive expansion moves."
+        ),
+    },
+    "macro_regime_routing": {
+        "title": "MACRO REGIME ROUTING (Yield Curve & Monetary Flow Alignment)",
+        "content": (
+            "=== FRAMEWORK: MACRO REGIME ROUTING ===\n"
+            "1. Curve Regime Alignment: Invoke `get_yield_curve_regime` on economic data or Fed days. "
+            "Align asset allocations with historical factor tailwinds:\n"
+            "- BULL_STEEPENER: Favor Small-Caps (IWM), Regional Banks (KRE), and high-beta cyclicals.\n"
+            "- BULL_FLATTENER: Favor Mega-Cap Growth (QQQ) and duration.\n"
+            "- BEAR_STEEPENER: Favor Energy (XLE), Commodities, and Value.\n"
+            "- BEAR_FLATTENER: Favor Defensives (XLP/XLV) or Cash preservation."
+        ),
+    },
+    "disconfirming_evidence_gate": {
+        "title": "DISCONFIRMING EVIDENCE GATE (Falsifiable Thesis Discipline)",
+        "content": (
+            "=== DISCIPLINE: DISCONFIRMING EVIDENCE GATE ===\n"
+            "1. Falsification Before Sizing: Before increasing exposure to an asset, query `track_thesis_pillars` and identify at least ONE disconfirming signal that could prove your trade wrong.\n"
+            "2. Automatic Conviction Downgrade: If disconfirming evidence emerges against a core pillar, immediately downgrade conviction to WEAKENED and tighten stop-loss thresholds."
+        ),
+    },
 }
 
 

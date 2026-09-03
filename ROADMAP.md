@@ -13,9 +13,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **A programming/business buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
-- [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
-- [ ] **Set up a 'global' agent hook/env for my projects?**
 - [x] **A live suggestion maker in chat / next best questions** - Assistant generates 2-3 contextual follow-up research questions in `<suggested_questions>` tags rendered as interactive prompt chips on `/chat`. See `[[entities/investment-chat-gateway]]`.
 - [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
 - [x] add metrics add CAPE, PE, forward PE, book-to-market Etc.... ? Do I already have them? P/free cash flow
@@ -25,7 +23,8 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
     - Resolved via 4-layer Tool Enforcement and Price Pre-Injection architecture (`core/llm/tools.py`, `core/llm/prompts.py`). Verified across 200 production logs (0 ungrounded numbers found). See `[[concepts/hallucination-audit]]`.
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
-- [ ] - check if this repo would help: https://github.com/anthropics/financial-services
+- [x] - check if this repo would help: https://github.com/anthropics/financial-services
+  - Ingested and synthesized in `[[sources/anthropic-financial-services-source]]` and `[[concepts/anthropic-fs-insights]]`. Implemented tool-first analytical architecture with `get_yield_curve_regime`, `get_options_vol_surface`, and `track_thesis_pillars` integrated into the canonical registry and autoresearch prompt blocks.
 - [ ] - alongside Karpathy wiki https://claude.com/blog/new-in-claude-managed-agents https://platform.claude.com/docs/en/managed-agents/define-outcomes
 - [ ] - add a local model?
 - [ ] - can I add how much I have spent in each provider? Would be fun to visualize

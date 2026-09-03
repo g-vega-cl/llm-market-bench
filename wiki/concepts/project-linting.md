@@ -58,6 +58,11 @@ pnpm biome check --write
 pnpm biome check --write --unsafe
 ```
 
+### Wiki Linters (`apps/engine/`)
+
+- **Structural Lint (`apps/engine/wiki_lint.py`)**: Runs on pre-commit when `wiki/` or `raw/` files change. Validates frontmatter completeness, broken wiki links, orphan pages, index coverage, codebase path references, and configuration parity against `packages/config/models.json` and `packages/config/tools.json`. Runs in ~20ms in pure Python.
+- **Git Drift Auditor (`apps/engine/wiki_lint_llm.py`)**: Runs weekly on Saturday 10:00 AM ET via `.github/workflows/wiki-lint.yml`. Queries `git log --since="7 days ago"`, maps modified code/config files to the corresponding 5-8 wiki pages, and checks for code-documentation drift against an explicit rubric. Exits in 0.5s if no functional code changed that week.
+
 ### Zero-Warning Test Enforcement
 
 - **Python (`pytest.ini`)**: Configured at repository root and `apps/engine/` to filter third-party deprecation warnings (e.g. `websockets.legacy`).

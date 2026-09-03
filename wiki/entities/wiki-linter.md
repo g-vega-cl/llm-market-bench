@@ -14,22 +14,20 @@ Runs on every commit via pre-commit hook (`apps/engine/wiki_lint.py`). Checks:
 - Broken wiki-links (cross-references to non-existent pages)
 - Orphan pages (no inbound links from other pages or index)
 - Index coverage gaps (pages missing from index.md)
+- Codebase reference validation (verifies backticked code paths on disk)
+- Configuration parity (verifies active models in `packages/config/models.json` and tools in `packages/config/tools.json` are documented)
 
 Runs in ~20ms with no API cost.
 
-## LLM Deep Lint
+## LLM Git Drift Auditor
 
-Runs weekly via GitHub Actions (Saturday 10:00 ET) or manually. Sends all wiki pages to DeepSeek via OpenRouter to check for:
-- Contradictions between pages
-- Stale claims (outdated code references)
-- Missing concept pages
-- Data gaps and thin pages
+Runs weekly via GitHub Actions (Saturday 10:00 ET) or manually (`apps/engine/wiki_lint_llm.py`). Compares recent code commits against the specific wiki pages documenting those subsystems to detect code-documentation drift.
 
-Recent improvements:
-- **Reasoning Token Headroom & Flash Model Default** (2026-08-16): Switched default deep lint model to DeepSeek v4 Flash (`deepseek/deepseek-v4-flash`), increased response token budget (`max_tokens: 16384`), and capped reasoning tokens (`max_tokens: 4096`) to prevent chain-of-thought token exhaustion on large prompt payloads without sending unsupported effort levels.
-- **Improved Error Handling** (2026-08-16): HTTP errors from OpenRouter now extract and surface the API's error message (e.g., invalid reasoning effort) instead of a generic status code, aiding debugging.
-- **File manifest injection** (2026-07-10): the prompt now includes a JSON manifest of all wiki files, preventing false-positive "missing page" errors caused by text truncation.
-- **Increased input size**: max input raised from 75k to 120k chars to accommodate more files.
+Key features:
+- **Event-Driven Scoping**: Queries `git log --since="7 days ago"` to find modified code/config files, skipping static pages that haven't changed.
+- **Targeted Page Mapping**: Scores and selects only the 5-8 wiki pages directly linked or relevant to the changed code files.
+- **Outcome Drift Rubric**: Evaluates candidate pages for stale architectural claims, invalid configuration defaults, and omitted subsystem documentation.
+- **Immediate Fast-Path**: If no functional code changed that week, exits cleanly in 0.5s with zero LLM calls.
 
 ## Related
 

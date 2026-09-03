@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -28,22 +29,21 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WIKI_DIR = REPO_ROOT / "wiki"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-SYSTEM_PROMPT = """You are performing a quality audit of a project wiki. The wiki is
+SYSTEM_PROMPT = """You are performing a quality and code-drift audit of a project wiki. The wiki is
 a structured, interlinked knowledge base for the "LLM Market Bench" project.
 
-Your task: read the wiki pages provided, then identify issues.
+Your task: compare recent git commits against the provided wiki pages to identify documentation drift and inaccuracies.
 
 Look for:
-1. **Contradictions**: Conflicting information between pages.
-2. **Stale claims**: Outdated or superseded content.
-3. **Missing pages**: Referenced concepts/entities that lack a page.
-4. **Data gaps**: Crucial information missing from the project docs.
-5. **Weak cross-references**: Related pages that should link but don't.
-6. **Low-quality pages**: Thin or vague content.
+1. **Stale claims**: Wiki content describing an architecture, CLI command, default config, model name, or behavior that was changed or invalidated by the recent commits.
+2. **Contradictions**: Discrepancies between the committed code and the documented behavior in these pages.
+3. **Missing documentation**: Significant new capabilities, tools, or modules introduced in the commits that are omitted from the relevant wiki pages.
+4. **Data gaps**: Crucial architectural details omitted from the project docs.
 
 GUIDELINES:
-- Be concise. Focus on the most critical issues.
-- Limit yourself to a maximum of 10 findings.
+- Base your findings strictly on discrepancies between the commits and the provided wiki pages.
+- If the wiki pages accurately reflect the code or the commits do not invalidate them, return an empty findings list.
+- Limit yourself to a maximum of 5 high-signal findings.
 - Output ONLY valid JSON. No conversational text.
 - Do NOT repeat yourself.
 
@@ -52,10 +52,10 @@ Output format:
   "findings": [
     {
       "severity": "high|medium|low",
-      "type": "contradiction|stale|missing-page|data-gap|weak-link|thin",
+      "type": "stale|contradiction|missing-doc|data-gap",
       "pages": ["path/to/page.md"],
-      "description": "Short, punchy description",
-      "suggestion": "Actionable fix"
+      "description": "Short, punchy description of the drift",
+      "suggestion": "Actionable fix or text update"
     }
   ],
   "summary": "One-sentence overview."
@@ -63,16 +63,99 @@ Output format:
 """
 
 
-def collect_wiki_content() -> str:
-    """Read wiki pages. Truncates to stay within reasonable context limits."""
-    parts = []
-    # Only read the first 120k chars to ensure we don't blow the context window
-    # and leave room for the model to think and respond.
-    current_size = 0
-    max_input_size = 120000
+def get_recent_commits(days: int = 7, repo_root: Path = REPO_ROOT) -> tuple[str, set[str]]:
+    """Query git log for commits in the last N days, returning summary and changed code files."""
+    try:
+        raw_log = subprocess.check_output(
+            [
+                "git",
+                "log",
+                f"--since={days} days ago",
+                "--pretty=format:COMMIT:%h %s",
+                "--name-only",
+            ],
+            cwd=str(repo_root),
+            text=True,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to query git log: {e}")
+        return "", set()
 
-    for f in sorted(WIKI_DIR.rglob("*.md")):
-        rel = str(f.relative_to(WIKI_DIR))
+    commit_lines = []
+    changed_files = set()
+
+    for line in raw_log.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("COMMIT:"):
+            commit_lines.append(line)
+        else:
+            # Skip doc, asset, lockfile, and workflow paths
+            if not line.startswith(("wiki/", "raw/", "docs/", ".husky/", ".github/")):
+                changed_files.add(line)
+
+    summary = "\n".join(commit_lines)
+    return summary, changed_files
+
+
+def find_matching_wiki_pages(
+    changed_files: set[str],
+    wiki_dir: Path = WIKI_DIR,
+    max_pages: int = 8,
+) -> list[str]:
+    """Find wiki pages that document or reference the changed code files."""
+    if not changed_files or not wiki_dir.is_dir():
+        return []
+
+    page_scores: dict[str, int] = {}
+    wiki_files = [f for f in wiki_dir.rglob("*.md") if not str(f.relative_to(wiki_dir)).startswith("log")]
+
+    for f in wiki_files:
+        rel_wiki = str(f.relative_to(wiki_dir))
+        content = f.read_text()
+        score = 0
+
+        for code_file in changed_files:
+            file_path = Path(code_file)
+            file_name = file_path.name
+            stem = file_path.stem.replace("_", "-")
+
+            if code_file in content:
+                score += 3
+            elif file_name in content or stem in rel_wiki:
+                score += 2
+
+        if score > 0:
+            page_scores[rel_wiki] = score
+
+    sorted_pages = sorted(page_scores.keys(), key=lambda p: page_scores[p], reverse=True)
+    return sorted_pages[:max_pages]
+
+
+def collect_wiki_content(
+    matching_pages: list[str] | None = None,
+    max_input_size: int = 120000,
+    wiki_dir: Path = WIKI_DIR,
+) -> str:
+    """Read wiki pages. If matching_pages is given, read only those pages."""
+    parts = []
+    current_size = 0
+
+    if matching_pages is not None:
+        for rel in matching_pages:
+            path = wiki_dir / rel
+            if path.is_file():
+                content = path.read_text()
+                part = f"=== {rel} ===\n\n{content}\n"
+                if current_size + len(part) > max_input_size:
+                    break
+                parts.append(part)
+                current_size += len(part)
+        return "\n".join(parts)
+
+    for f in sorted(wiki_dir.rglob("*.md")):
+        rel = str(f.relative_to(wiki_dir))
         if rel == "log.md" or rel.startswith("log/") or rel.startswith("log\\"):
             continue
         content = f.read_text()
@@ -86,10 +169,29 @@ def collect_wiki_content() -> str:
     return "\n".join(parts)
 
 
-def call_openrouter(content: str, model: str, api_key: str, all_files: list[str] | None = None) -> dict:
-    """Send wiki content to the LLM and return parsed findings."""
+def call_openrouter(
+    content: str,
+    model: str,
+    api_key: str,
+    all_files: list[str] | None = None,
+    commits_summary: str = "",
+) -> dict:
+    """Send wiki content and recent commit summary to the LLM and return parsed findings."""
     if all_files is None:
         all_files = []
+
+    user_parts = []
+    if commits_summary:
+        user_parts.append(f"Recent Git Commits:\n{commits_summary}\n")
+    if all_files:
+        user_parts.append(
+            f"Here is a manifest of all files present in the wiki directory:\n"
+            f"{json.dumps(all_files, indent=2)}\n\n"
+            f"Use this manifest to verify if cross-referenced links/pages actually exist in the project "
+            f"(even if their contents were truncated or not fully provided in the content below).\n"
+        )
+    user_parts.append(f"Lint these wiki pages:\n\n{content}")
+    user_content = "\n".join(user_parts)
 
     payload = {
         "model": model,
@@ -97,13 +199,7 @@ def call_openrouter(content: str, model: str, api_key: str, all_files: list[str]
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": (
-                    f"Here is a manifest of all files present in the wiki directory:\n"
-                    f"{json.dumps(all_files, indent=2)}\n\n"
-                    f"Use this manifest to verify if cross-referenced links/pages actually exist in the project "
-                    f"(even if their contents were truncated or not fully provided in the content below).\n\n"
-                    f"Lint these wiki pages:\n\n{content}"
-                ),
+                "content": user_content,
             },
         ],
         "temperature": 0.1,  # Lower temperature for more stable JSON
@@ -121,7 +217,7 @@ def call_openrouter(content: str, model: str, api_key: str, all_files: list[str]
     }
 
     logger.info(f"Calling OpenRouter model: {model}")
-    resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=120)
+    resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=60)
     if not resp.ok:
         try:
             err_data = resp.json()
@@ -199,6 +295,7 @@ def call_openrouter(content: str, model: str, api_key: str, all_files: list[str]
 def main():
     parser = argparse.ArgumentParser(description="LLM wiki lint via OpenRouter")
     parser.add_argument("--model", help="OpenRouter model name (e.g., anthropic/claude-haiku-4-5)")
+    parser.add_argument("--days", type=int, default=7, help="Number of days of git history to audit (default: 7)")
     args = parser.parse_args()
 
     model = args.model or os.getenv("WIKI_LINT_MODEL") or "deepseek/deepseek-v4-flash"
@@ -208,20 +305,41 @@ def main():
         logger.error("OPENROUTER_API_KEY not set")
         sys.exit(1)
 
-    logger.info(f"Collecting wiki pages from: {WIKI_DIR}")
-    content = collect_wiki_content()
+    logger.info(f"Querying git history for past {args.days} days...")
+    commits_summary, changed_files = get_recent_commits(days=args.days)
+
+    if not changed_files:
+        logger.info(f"No functional code changes detected in the past {args.days} days.")
+        print(
+            json.dumps(
+                {
+                    "findings": [],
+                    "summary": f"No functional code changes detected in the past {args.days} days. Wiki is in sync with the codebase.",
+                },
+                indent=2,
+            )
+        )
+        return
+
+    logger.info(f"Found {len(changed_files)} changed code/config files across recent commits.")
+    matching_pages = find_matching_wiki_pages(changed_files, wiki_dir=WIKI_DIR, max_pages=8)
+
+    if not matching_pages:
+        matching_pages = [
+            p for p in ["overview.md", "entities/engine.md", "entities/pipeline.md"] if (WIKI_DIR / p).is_file()
+        ]
+
+    logger.info(f"Auditing {len(matching_pages)} relevant wiki pages: {matching_pages}")
+    content = collect_wiki_content(matching_pages=matching_pages)
     total_chars = len(content)
-    all_files = sorted([str(f.relative_to(WIKI_DIR)) for f in WIKI_DIR.rglob("*.md")])
-    total_files = len(all_files)
-    logger.info(f"  {total_files} files, {total_chars} chars")
+    logger.info(f"Audit content size: {total_chars} chars")
 
     try:
-        result = call_openrouter(content, model, api_key, all_files=all_files)
+        result = call_openrouter(content, model, api_key, commits_summary=commits_summary)
     except requests.RequestException as e:
         logger.error(f"OpenRouter API error: {e}")
         sys.exit(1)
     except json.JSONDecodeError:
-        # call_openrouter already logged raw content
         logger.error("Failed to parse LLM response after multiple strategies")
         sys.exit(1)
     except Exception:

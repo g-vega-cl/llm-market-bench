@@ -14,7 +14,7 @@
 - Typecheck web: `cd apps/web && pnpm run typecheck`
 - Test web: `cd apps/web && pnpm test -- --coverage`
 - Structural Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` (use `--fix` to auto-index new pages)
-- LLM Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint_llm.py --model <model_name>`
+- LLM Wiki Lint (Git Drift Auditor): `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint_llm.py --days 7 --model <model_name>`
 - Auto-wiki dry: `./apps/engine/.venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
 - Code Hotspot & Churn Forensics: `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py` (use `--write-wiki` to refresh wiki page)
 

@@ -145,3 +145,41 @@ def test_call_openrouter_payload_settings():
         assert "reasoning" in payload
         assert "effort" not in payload["reasoning"]
         assert payload["reasoning"].get("max_tokens") == 4096
+
+
+def test_get_recent_commits():
+    from apps.engine.wiki_lint_llm import get_recent_commits
+
+    mock_log = (
+        "COMMIT:abc1234 feat(engine): update predictor\n"
+        "apps/engine/tasks/daily_predictor.py\n"
+        "wiki/entities/daily-market-predictor.md\n"
+        "\n"
+        "COMMIT:def5678 fix(config): fix tool config\n"
+        "packages/config/tools.json\n"
+    )
+
+    with patch("subprocess.check_output", return_value=mock_log):
+        summary, changed_files = get_recent_commits(days=7)
+        assert "feat(engine): update predictor" in summary
+        assert "apps/engine/tasks/daily_predictor.py" in changed_files
+        assert "packages/config/tools.json" in changed_files
+        # wiki/ files should be excluded from changed code files
+        assert "wiki/entities/daily-market-predictor.md" not in changed_files
+
+
+def test_find_matching_wiki_pages(tmp_path):
+    from apps.engine.wiki_lint_llm import find_matching_wiki_pages
+
+    wiki_dir = tmp_path / "wiki"
+    wiki_dir.mkdir()
+    page1 = wiki_dir / "predictor.md"
+    page1.write_text("Documents `apps/engine/tasks/daily_predictor.py`.")
+    page2 = wiki_dir / "unrelated.md"
+    page2.write_text("Documents something else.")
+
+    changed_files = {"apps/engine/tasks/daily_predictor.py"}
+    matched = find_matching_wiki_pages(changed_files, wiki_dir=wiki_dir)
+
+    assert "predictor.md" in matched
+    assert "unrelated.md" not in matched

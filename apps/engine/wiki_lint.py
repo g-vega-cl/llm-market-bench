@@ -9,6 +9,7 @@ Exit code 0 = clean, 1 = issues found.
 """
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -52,6 +53,51 @@ def validate_codebase_references(content: str, repo_root: Path, file_rel: str) -
         full_path = repo_root / cleaned_path
         if not full_path.exists():
             errors.append(f"Broken code reference: `{cleaned_path}` does not exist on disk")
+
+    return errors
+
+
+def validate_config_parity(pages: dict[str, Path], repo_root: Path) -> list[str]:
+    """Validates that configured models and tools are documented in wiki/."""
+    errors = []
+    combined_wiki_text = " ".join(path.read_text() for path in pages.values())
+
+    # 1. Models parity
+    models_path = repo_root / "packages" / "config" / "models.json"
+    if models_path.is_file():
+        try:
+            models_data = json.loads(models_path.read_text())
+            active_models = []
+            if isinstance(models_data, dict):
+                for k, v in models_data.items():
+                    if isinstance(v, str) and not k.startswith("AUTORESEARCH_"):
+                        active_models.append(v)
+            for model_name in active_models:
+                if model_name not in combined_wiki_text:
+                    errors.append(
+                        f"Undocumented model: `{model_name}` from packages/config/models.json is missing in wiki/"
+                    )
+        except Exception as e:
+            errors.append(f"Failed to read models.json for parity check: {e}")
+
+    # 2. Tools parity
+    tools_path = repo_root / "packages" / "config" / "tools.json"
+    if tools_path.is_file():
+        try:
+            tools_data = json.loads(tools_path.read_text())
+            tool_names = []
+            if isinstance(tools_data, list):
+                tool_names = [t["name"] for t in tools_data if isinstance(t, dict) and "name" in t]
+            elif isinstance(tools_data, dict):
+                tool_names = [t["name"] for t in tools_data.get("tools", []) if isinstance(t, dict) and "name" in t]
+
+            for tool_name in tool_names:
+                if tool_name not in combined_wiki_text:
+                    errors.append(
+                        f"Undocumented tool: `{tool_name}` from packages/config/tools.json is missing in wiki/"
+                    )
+        except Exception as e:
+            errors.append(f"Failed to read tools.json for parity check: {e}")
 
     return errors
 
@@ -202,6 +248,11 @@ def lint(fix: bool = False) -> list[str]:
         for link in index_links:
             if not resolve_link(link):
                 issues.append(f"[dead-index] index.md: [[{link}]] does not resolve to a file")
+
+    # 5. Config parity validation (models.json, tools.json)
+    config_errors = validate_config_parity(pages, REPO_ROOT)
+    for err in config_errors:
+        issues.append(f"[config-parity] {err}")
 
     return issues
 

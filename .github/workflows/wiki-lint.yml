@@ -15,7 +15,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     permissions:
       contents: read
       issues: write
@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -43,7 +45,7 @@ jobs:
         run: |
           MODEL="${{ inputs.model || 'deepseek/deepseek-v4-flash' }}"
           echo "Using model: $MODEL"
-          PYTHONPATH=. python apps/engine/wiki_lint_llm.py --model "$MODEL" > /tmp/findings.json
+          PYTHONPATH=. python apps/engine/wiki_lint_llm.py --model "$MODEL" --days 7 > /tmp/findings.json
           # Use a more robust way to count findings, handling potential extra data or empty files
           FINDINGS_COUNT=$(python -c "
           import json

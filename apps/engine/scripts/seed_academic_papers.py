@@ -189,6 +189,33 @@ PAPERS = [
         "application": "Tilt portfolios toward high-quality, high-profitability companies that do not engage in empire-building or excessive capital expenditure.",
         "example_scenario": "An agent screens for stocks to hold long-term. It filters out fast-growing firms with massive capital expenditures and negative cash flow, instead selecting firms with high return on equity and conservative asset growth to harvest the profitability and investment premiums.",
     },
+    {
+        "title": "Size Matters, If You Control Your Junk",
+        "citation": "Asness, Frazzini, Israel, Moskowitz, & Pedersen, 2018, Journal of Financial Economics",
+        "pillar": "Factor Investing & Risk Premiums",
+        "core_thesis": "The Fama-French size premium appears weak and unstable because small caps are heavily contaminated with low-quality, unprofitable companies. Controlling for quality reveals a massive, robust, and statistically significant size premium across time and global markets.",
+        "mechanism": "Small firms naturally load negatively on the Quality factor (lower profit margins, higher debt leverage, higher bankruptcy risk). When quality is held constant across profitability, growth, safety, and payout, small high-quality firms dramatically outperform large high-quality firms, while small junk firms suffer catastrophic underperformance.",
+        "application": "Eliminate low-quality and unprofitable companies from small-cap universes. Require positive GAAP earnings and robust operating profitability before applying size tilts.",
+        "example_scenario": "When building a small-cap portfolio, the agent rejects raw Russell 2000 exposure because over 40% of constituents are unprofitable zombies. Instead, the agent screens for small caps with positive net income and strong ROIC to capture the restored size premium.",
+    },
+    {
+        "title": "The Index Premium and Its Hidden Cost for Index Funds",
+        "citation": "Petajisto, 2011, Journal of Empirical Finance",
+        "pillar": "Structural & Plumbing Anomalies",
+        "core_thesis": "Predictable index rebalancing creates an artificial index premium that forces passive funds to buy additions at peak prices and sell deletions at fire-sale discounts, extracting massive hidden costs.",
+        "mechanism": "Arbitrageurs front-run the forced buying and selling of index-tracking funds ahead of scheduled reconstitution dates. While the annual hidden drag for the S&P 500 is 38 to 44 bps, the Russell 2000 incurs approximately 1.80% (180 bps) of annual drag.",
+        "application": "Avoid mechanical market-cap-ranked indices with single-day reconstitutions. Favor funds with dynamic rebalancing bands (like Avantis or CRSP packeting) or direct indexing.",
+        "example_scenario": "An agent avoids allocating capital to passive Russell 2000 ETFs right before the June reconstitution, recognizing that forced turnover and front-running impose an uncompensated 1.8% annual drag on returns.",
+    },
+    {
+        "title": "Index Changes and Losses to Index Fund Investors",
+        "citation": "Chen, Noronha, & Singal, 2006, Financial Analysts Journal",
+        "pillar": "Structural & Plumbing Anomalies",
+        "core_thesis": "Quantifies the exact wealth transfer from passive Russell 2000 index fund investors to Wall Street arbitrageurs around the annual June reconstitution.",
+        "mechanism": "Prospective Russell 2000 additions rise 9.5% between May and June, then drop 5.4% in July. Deletions fall 14.1%, then rebound 5.8%. Passive funds executing at closing prices on reconstitution day suffer an estimated 1.30% to 1.84% annual loss.",
+        "application": "Systematic portfolio architectures should use patient execution or direct indexing with zero cap ceilings, eliminating the forced front-run rebalancing of traditional small-cap indices.",
+        "example_scenario": "The agent designs a small-cap compounder portfolio that never forces sales when a company graduates to large cap, directly avoiding the 1.3% to 1.8% annual leakage documented by Chen, Noronha, and Singal.",
+    },
 ]
 
 

@@ -1,0 +1,63 @@
+name: SMID Quality Compounder Strategy
+
+on:
+  schedule:
+    # Full Quarterly Rebalance: 14:00 UTC (10:00 AM ET) on May 20, Aug 20, Nov 20, and Mar 5
+    - cron: '0 14 20 5,8,11 *'
+    - cron: '0 14 5 3 *'
+    # Monthly Health Check: 14:00 UTC on the 1st of every month
+    - cron: '0 14 1 * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Execution mode'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - rebalance
+          - health_check
+      target_holdings:
+        description: 'Target number of holdings'
+        required: false
+        default: '25'
+        type: string
+      dry_run:
+        description: 'Dry run (simulate without modifying database)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  run-compounder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd apps/engine
+          python3 -m venv venv
+          ./venv/bin/pip install -r requirements.txt
+
+      - name: Execute SMID Compounder Task
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+        run: |
+          cd apps/engine
+          DRY_RUN_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          ./venv/bin/python3 tasks/smid_compounder_task.py --mode ${{ inputs.mode || 'auto' }} --target-holdings ${{ inputs.target_holdings || '25' }} $DRY_RUN_FLAG

@@ -18,6 +18,7 @@ import type { BenchmarkDataPoint } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { PositionsTable } from '../components/PositionsTable';
+import { StrategyExplainer } from '../components/StrategyExplainer';
 import { TradesTable } from '../components/TradesTable';
 import { hasVerifier } from '../lib/config';
 import { portfolioQueries } from '../queries/options';
@@ -116,6 +117,8 @@ export function PortfolioDetailPage({
                 </header>
 
                 <div className="flex flex-col space-y-12">
+                    <StrategyExplainer ownerId={portfolio.owner_id} />
+
                     {/* Performance Chart */}
                     <section>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 w-full">

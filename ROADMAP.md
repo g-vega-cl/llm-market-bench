@@ -12,10 +12,8 @@ A living document of features and improvements in progress or planned for the pl
   - Couldn't find any.
 - [ ] **A programming/business buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
-- [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
+- [x] **Small/mid-cap Zero-Ceiling compounder portfolio (`sys-smid-quality-compounder`)** - Quality factor screen (positive GAAP net income, FCF, ROIC > 10%) with multi-bagger retention and strict exit discipline. See `[[concepts/small-cap-quality-premium]]`.
 - [x] **A live suggestion maker in chat / next best questions** - Assistant generates 2-3 contextual follow-up research questions in `<suggested_questions>` tags rendered as interactive prompt chips on `/chat`. See `[[entities/investment-chat-gateway]]`.
-- [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
 - [x] add metrics add CAPE, PE, forward PE, book-to-market Etc.... ? Do I already have them? P/free cash flow
 - [x] manage prompt size with increasing memory/lessons learned database.
 - [x] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades

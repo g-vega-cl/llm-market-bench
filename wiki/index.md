@@ -6,6 +6,8 @@
 
 ## Entities
 
+- [[entities/strategy-explainer]] — Collapsible strategy description card for system portfolios
+- [[entities/smid-compounder]] — Zero-ceiling small/mid-cap quality compounder system portfolio
 - [[entities/earnings-audit]] — Earnings Alpha & PEAD audit dashboard with PEAD, bellwether radar, and analyst revision tabs
 - [[entities/earnings-alpha]] — Engine analytics and pipeline for PEAD, SUE, Sloan accruals, analyst revisions, and sector bellwether signals
 - [[entities/massive-options]] — Auto-indexed page
@@ -50,6 +52,7 @@
 
 ## Concepts
 
+- [[concepts/small-cap-quality-premium]] — Auto-indexed page
 - [[concepts/anthropic-fs-insights]] — Architectural synthesis and tool-first implementation strategy from Anthropic Financial Services
 - [[concepts/earnings-prediction-strategies]] — Auto-indexed page
 - [[concepts/creative-ideation]] — Auto-indexed page

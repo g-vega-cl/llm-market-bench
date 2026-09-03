@@ -75,6 +75,17 @@ function PortfolioCard({
                     </Badge>
                 </div>
 
+                {portfolio.owner_id === 'sys-smid-quality-compounder' && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3 font-medium">
+                        Quality & Momentum Small-to-Large Compounder (Zero-Ceiling)
+                    </p>
+                )}
+                {portfolio.owner_id === 'sys-sector-ls-consensus' && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3 font-medium">
+                        Consensus Sector Long/Short Dispersion
+                    </p>
+                )}
+
                 <div className="flex flex-wrap gap-2 mb-4">
                     {isSystem && !deprecated && (
                         <Badge variant="glass" size="xs" colorScheme="warning" showDot>

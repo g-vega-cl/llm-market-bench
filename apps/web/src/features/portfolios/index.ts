@@ -15,6 +15,7 @@ export { BENCHMARK_OPTIONS, BenchmarkSelector } from './components/BenchmarkSele
 export { PerformanceChart } from './components/PerformanceChart';
 export { PortfolioComparisonChart } from './components/PortfolioComparisonChart';
 export { PositionsTable } from './components/PositionsTable';
+export { StrategyExplainer } from './components/StrategyExplainer';
 export { TradesTable } from './components/TradesTable';
 export { getActiveOwnerIds, normalizeOwnerId } from './lib/config';
 export { PortfolioDetailPage } from './pages/PortfolioDetailPage';

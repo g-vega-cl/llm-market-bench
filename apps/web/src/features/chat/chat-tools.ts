@@ -127,10 +127,35 @@ export const QUERY_DATABASE_TABLE_TOOL: ChatToolDefinition = {
     },
 };
 
+export const GET_MY_SAVED_THESES_TOOL: ChatToolDefinition = {
+    type: 'function',
+    function: {
+        name: 'get_my_saved_theses',
+        description:
+            'Retrieve the user’s personal saved research theses and private market notes from their chat_memories. Use this when the user asks about their own saved notes, past theses, or personal insights.',
+        parameters: {
+            type: 'object',
+            properties: {
+                ticker: {
+                    type: 'string',
+                    description:
+                        'Optional stock ticker (e.g. NVO, NVDA, AAPL) to filter the user’s private theses.',
+                },
+                limit: {
+                    type: 'number',
+                    description:
+                        'Maximum number of saved theses to retrieve (default: 5, max: 20).',
+                },
+            },
+        },
+    },
+};
+
 export const EXPOSED_CHAT_READ_TOOLS: ChatToolDefinition[] = [
     SEARCH_MEMORIES_AND_THESES_TOOL,
     GET_STOCK_CONTEXT_AND_TRADES_TOOL,
     GET_MARKET_SENTIMENT_AND_NEWSLETTER_TOOL,
+    GET_MY_SAVED_THESES_TOOL,
     QUERY_DATABASE_TABLE_TOOL,
 ];
 
@@ -544,19 +569,98 @@ export async function executeMarketSentimentTool(
     }
 }
 
+async function fetchChatMemoriesFromDb(
+    client: { from: (table: string) => { select: (cols: string) => SupabaseGenericQuery } },
+    userId: string | undefined,
+    ticker: string | null,
+    limit: number,
+): Promise<Record<string, unknown>[]> {
+    let query = client
+        .from('chat_memories')
+        .select('id, ticker, thesis, tags, importance_score, created_at');
+
+    if (userId) {
+        query = query.eq('user_id', userId);
+    }
+    if (ticker) {
+        query = query.eq('ticker', ticker);
+    }
+
+    query = query.order('created_at', { ascending: false });
+    const res = await query.limit(limit);
+    return (res as { data: Record<string, unknown>[] | null }).data || [];
+}
+
+export async function executeGetMySavedThesesTool(
+    args: Record<string, unknown>,
+    supabaseClient: unknown,
+    userId?: string,
+): Promise<{ result: string; trace: ToolTrace }> {
+    const ticker = args.ticker ? String(args.ticker).trim().toUpperCase() : null;
+    const limit = Math.min(Math.max(Number(args.limit) || 5, 1), 20);
+
+    try {
+        if (supabaseClient && typeof supabaseClient === 'object' && 'from' in supabaseClient) {
+            const client = supabaseClient as {
+                from: (table: string) => { select: (cols: string) => SupabaseGenericQuery };
+            };
+            const data = await fetchChatMemoriesFromDb(client, userId, ticker, limit);
+
+            return {
+                result: JSON.stringify({
+                    theses: data,
+                    count: data.length,
+                    ticker,
+                }),
+                trace: {
+                    tool_name: 'get_my_saved_theses',
+                    summary: `Retrieved ${data.length} saved thesis${data.length === 1 ? '' : 'es'}${ticker ? ` for ${ticker}` : ''}`,
+                },
+            };
+        }
+
+        return {
+            result: JSON.stringify({ theses: [], count: 0, ticker }),
+            trace: {
+                tool_name: 'get_my_saved_theses',
+                summary: 'No saved theses found',
+            },
+        };
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+            result: JSON.stringify({ error: `Failed to retrieve saved theses: ${message}` }),
+            trace: {
+                tool_name: 'get_my_saved_theses',
+                summary: 'Error retrieving saved theses',
+            },
+        };
+    }
+}
+
+type ToolExecutor = (
+    args: Record<string, unknown>,
+    supabaseClient: unknown,
+    userId?: string,
+) => Promise<{ result: string; trace: ToolTrace }>;
+
+const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
+    search_memories_and_theses: (args, client) => executeSearchMemoriesTool(args, client),
+    get_stock_context_and_trades: (args, client) => executeStockContextTool(args, client),
+    get_market_sentiment_and_newsletter: (args, client) => executeMarketSentimentTool(args, client),
+    get_my_saved_theses: (args, client, userId) =>
+        executeGetMySavedThesesTool(args, client, userId),
+};
+
 export async function executeChatTool(
     toolName: string,
     args: Record<string, unknown>,
     supabaseClient: unknown,
+    userId?: string,
 ): Promise<{ result: string; trace: ToolTrace }> {
-    switch (toolName) {
-        case 'search_memories_and_theses':
-            return await executeSearchMemoriesTool(args, supabaseClient);
-        case 'get_stock_context_and_trades':
-            return await executeStockContextTool(args, supabaseClient);
-        case 'get_market_sentiment_and_newsletter':
-            return await executeMarketSentimentTool(args, supabaseClient);
-        default:
-            return await executeDatabaseQueryTool(args, supabaseClient);
+    const executor = TOOL_EXECUTORS[toolName];
+    if (executor) {
+        return await executor(args, supabaseClient, userId);
     }
+    return await executeDatabaseQueryTool(args, supabaseClient);
 }

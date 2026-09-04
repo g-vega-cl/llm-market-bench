@@ -22,9 +22,11 @@ vi.mock('./chat-types', () => ({
 
 vi.mock('./chat-server', () => ({
     sendChatMessageFn: vi.fn(),
+    distillChatMemoryFn: vi.fn(),
+    saveChatMemoryFn: vi.fn(),
 }));
 
-import { sendChatMessageFn } from './chat-server';
+import { distillChatMemoryFn, saveChatMemoryFn, sendChatMessageFn } from './chat-server';
 
 describe('ChatPage Component', () => {
     beforeEach(() => {
@@ -136,6 +138,58 @@ describe('ChatPage Component', () => {
         await waitFor(() => {
             expect(sendChatMessageFn).toHaveBeenCalledTimes(2);
             expect(screen.getByText('NVDA vs AMD comparison details.')).toBeInTheDocument();
+        });
+    });
+
+    it('promotes assistant message to private memory when Promote to Memory is clicked', async () => {
+        (sendChatMessageFn as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            role: 'assistant',
+            content: 'NVO shows strong GLP-1 revenue momentum.',
+        });
+
+        (distillChatMemoryFn as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ticker: 'NVO',
+            thesis: 'NVO GLP-1 revenue momentum is robust.',
+            tags: ['GLP-1', 'pharma'],
+            importance_score: 8,
+        });
+
+        (saveChatMemoryFn as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            id: 'saved-mem-123',
+            user_id: 'user-1',
+            ticker: 'NVO',
+            thesis: 'NVO GLP-1 revenue momentum is robust.',
+            tags: ['GLP-1', 'pharma'],
+            importance_score: 8,
+            created_at: '2026-09-04T12:00:00Z',
+        });
+
+        render(<ChatPage user={{ email: 'g.vega.cl@gmail.com' }} />);
+
+        const chip = screen.getByText(
+            /Should I invest in NVO based on current memories and trades?/i,
+        );
+        fireEvent.click(chip);
+
+        await waitFor(() => {
+            expect(screen.getByText('Promote to Memory')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByText('Promote to Memory'));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Promote Insight to Private Memory/i)).toBeInTheDocument();
+            expect(
+                screen.getByDisplayValue('NVO GLP-1 revenue momentum is robust.'),
+            ).toBeInTheDocument();
+        });
+
+        const saveButton = screen.getByRole('button', { name: /Save to My Theses/i });
+        fireEvent.click(saveButton);
+
+        await waitFor(() => {
+            expect(saveChatMemoryFn).toHaveBeenCalled();
+            expect(screen.getByText(/✓ Saved to My Theses/i)).toBeInTheDocument();
         });
     });
 });

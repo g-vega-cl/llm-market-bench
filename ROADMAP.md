@@ -23,10 +23,9 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
 - [x] - check if this repo would help: https://github.com/anthropics/financial-services
   - Ingested and synthesized in `[[sources/anthropic-financial-services-source]]` and `[[concepts/anthropic-fs-insights]]`. Implemented tool-first analytical architecture with `get_yield_curve_regime`, `get_options_vol_surface`, and `track_thesis_pillars` integrated into the canonical registry and autoresearch prompt blocks.
-- [ ] - alongside Karpathy wiki https://claude.com/blog/new-in-claude-managed-agents https://platform.claude.com/docs/en/managed-agents/define-outcomes
 - [ ] - add a local model?
-- [ ] - can I add how much I have spent in each provider? Would be fun to visualize
-- [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
+- [x] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
+  - Implemented as "Promote to Memory". Users promote assistant answers to private structured theses (ticker, thesis, tags, importance score 1-10) using an interactive review and refinement modal. Distilled on the server with DeepSeek and persisted to user-isolated `chat_memories` table with row-level security. Added `get_my_saved_theses` tool.
 - [ ] - Revisit alpaca trades.
 - [ ] **Audit the Wiki Lint pipeline.** —
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
@@ -139,3 +138,4 @@ Feels like I have done that before to no avail
         Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 - [ ] - Find if yoyu can set up any PEAD based strategy
+- [ ] - I like the idea of a "finacial/trading" benchmark for agents.

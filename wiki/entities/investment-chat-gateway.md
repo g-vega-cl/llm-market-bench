@@ -17,13 +17,20 @@ Gated "Should I invest in this stock?" chat interface connecting users with LLM 
 - **ChatInterface**: Core component providing message stream, input, tool trace accordion, and suggested prompt chips. Handles authorization gating, localStorage persistence, and auto-scrolling.
 - **ChatPage**: Wraps ChatInterface in a full-page layout with hero header and section heading.
 
-### Tool Suite (4 specialized tools)
-The chat agent (DeepSeek Flash) uses these read-only tools against Supabase:
+### Tool Suite (5 specialized tools)
+The chat agent (DeepSeek Flash) uses these tools against Supabase:
 
-1. **search_memories_and_theses** — Searches `memories` and `cause_and_effect` tables by ticker or keyword. Returns memory cards, causal links, and importance scores.
-2. **get_stock_context_and_trades** — Retrieves recent trades, execution prices, buy/sell theses, and model decisions from the `trades` and `decisions` tables.
-3. **get_market_sentiment_and_newsletter** — Fetches latest `market_feeling` entry and `generated_newsletters` entry.
-4. **query_database_table** — Generic safe read-only SQL-like query against any table (trades, portfolios, sector_predictions, etc.).
+1. **search_memories_and_theses**. Searches `memories` and `cause_and_effect` tables by ticker or keyword. Returns memory cards, causal links, and importance scores.
+2. **get_stock_context_and_trades**. Retrieves recent trades, execution prices, buy/sell theses, and model decisions from the `trades` and `decisions` tables.
+3. **get_market_sentiment_and_newsletter**. Fetches the latest `market_feeling` entry and `generated_newsletters` entry.
+4. **query_database_table**. Generic safe read-only SQL query against permitted tables.
+5. **get_my_saved_theses**. Retrieves user-saved private theses and notes from `chat_memories` by ticker or keyword. Only accessible when authenticated.
+
+### Private memory promotion workflow
+Users can promote assistant answers into structured private theses instead of saving full chat logs or running unbounded self-critique loops:
+- **Review modal.** Clicking "Promote to Memory" calls `distillChatMemoryFn` on the server. The function distills the exchange into ticker, core thesis, tags, and an importance score between 1 and 10. The modal supports manual edits and an optional prompt to re-distill.
+- **Strict storage isolation.** Saved theses live in `chat_memories` with `user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`. Row-level security restricts read, write, update, and delete actions to `auth.uid() = user_id`.
+- **Agent boundary.** Automated engine agents and the daily predictor query public benchmark `memories` where `user_id IS NULL`. They never read `chat_memories`. This keeps user notes private and blocks prompt injections from entering automated trading pipelines.
 
 ### Deep Links & Context Sharing
 - **Daily Market Briefings**: Briefing pages have a "Discuss in AI Chat" button pre-populating the query with the newsletter title and summary.

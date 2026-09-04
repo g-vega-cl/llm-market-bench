@@ -2,13 +2,16 @@ import { Badge, Button, Card } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { MarkdownContent } from '~/components/ui/MarkdownContent';
-import { sendChatMessageFn } from './chat-server';
+import { distillChatMemoryFn, saveChatMemoryFn, sendChatMessageFn } from './chat-server';
 import {
     ALLOWED_CHAT_EMAILS,
+    type ChatMemory,
     type ChatMessage,
+    type DistillMemoryResult,
     SUGGESTED_RESEARCH_PROMPTS,
     type ToolTrace,
 } from './chat-types';
+import { PromoteMemoryModal } from './PromoteMemoryModal';
 
 const STORAGE_KEY = 'benchify_chat_messages_v2';
 
@@ -109,6 +112,8 @@ function MessageBubble({
     onToggleTrace,
     showSuggestions,
     onSelectSuggestion,
+    isDistilling,
+    onPromoteMemory,
 }: {
     msg: ChatMessage;
     isUser: boolean;
@@ -116,6 +121,8 @@ function MessageBubble({
     onToggleTrace: () => void;
     showSuggestions: boolean;
     onSelectSuggestion: (q: string) => void;
+    isDistilling?: boolean;
+    onPromoteMemory?: () => void;
 }) {
     const traces = msg.tool_traces || [];
 
@@ -137,6 +144,33 @@ function MessageBubble({
 
             <ToolTracesView traces={traces} isOpen={isTraceOpen} onToggle={onToggleTrace} />
 
+            {!isUser && onPromoteMemory && (
+                <div className="mt-1.5 pl-1 flex items-center gap-2">
+                    {msg.saved_memory_id ? (
+                        <Badge
+                            variant="outline"
+                            size="sm"
+                            colorScheme="success"
+                            className="text-[11px] py-0.5"
+                        >
+                            ✓ Saved to My Theses
+                        </Badge>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={onPromoteMemory}
+                            disabled={isDistilling}
+                            className="flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-cyan-300 transition-colors bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-cyan-800/60 rounded-lg px-2.5 py-1"
+                        >
+                            <span>{isDistilling ? '⏳' : '🧠'}</span>
+                            <span>
+                                {isDistilling ? 'Distilling thesis...' : 'Promote to Memory'}
+                            </span>
+                        </button>
+                    )}
+                </div>
+            )}
+
             {showSuggestions && (
                 <SuggestedQuestionsView
                     questions={msg.suggested_questions}
@@ -145,6 +179,16 @@ function MessageBubble({
             )}
         </div>
     );
+}
+
+function findPrecedingUserQuery(messages: ChatMessage[], currentIndex: number): string {
+    for (let i = currentIndex - 1; i >= 0; i--) {
+        const item = messages[i];
+        if (item?.role === 'user' && item?.content) {
+            return item.content;
+        }
+    }
+    return 'General investment inquiry';
 }
 
 export function ChatInterface({
@@ -174,6 +218,14 @@ export function ChatInterface({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [expandedTraces, setExpandedTraces] = useState<Record<number, boolean>>({});
+    const [distillingIdx, setDistillingIdx] = useState<number | null>(null);
+    const [modalState, setModalState] = useState<{
+        isOpen: boolean;
+        messageIndex: number;
+        userQuery: string;
+        assistantResponse: string;
+        initialData: DistillMemoryResult;
+    } | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -215,6 +267,46 @@ export function ChatInterface({
 
     const toggleTrace = (index: number) => {
         setExpandedTraces((prev) => ({ ...prev, [index]: !prev[index] }));
+    };
+
+    const handleStartPromote = async (msgIndex: number, visibleList: ChatMessage[]) => {
+        const targetMsg = visibleList[msgIndex];
+        if (!targetMsg?.content || distillingIdx !== null) return;
+
+        const userQuery = findPrecedingUserQuery(visibleList, msgIndex);
+        setDistillingIdx(msgIndex);
+        setError(null);
+        try {
+            const distilled = await distillChatMemoryFn({
+                data: {
+                    userQuery,
+                    assistantResponse: targetMsg.content,
+                },
+            });
+            setModalState({
+                isOpen: true,
+                messageIndex: msgIndex,
+                userQuery,
+                assistantResponse: targetMsg.content,
+                initialData: distilled,
+            });
+        } catch (err) {
+            const errText = err instanceof Error ? err.message : 'Failed to distill thesis';
+            setError(errText);
+        } finally {
+            setDistillingIdx(null);
+        }
+    };
+
+    const handleModalSavedSuccess = (saved: ChatMemory, visibleList: ChatMessage[]) => {
+        if (!modalState) return;
+        const targetMsg = visibleList[modalState.messageIndex];
+        if (!targetMsg) return;
+
+        setMessages((prev) =>
+            prev.map((m) => (m === targetMsg ? { ...m, saved_memory_id: saved.id } : m)),
+        );
+        setModalState(null);
     };
 
     const executeSend = async (messageText: string) => {
@@ -388,6 +480,12 @@ export function ChatInterface({
                             onToggleTrace={() => toggleTrace(idx)}
                             showSuggestions={Boolean(isLatestAssistant && !isLoading)}
                             onSelectSuggestion={handleChipClick}
+                            isDistilling={distillingIdx === idx}
+                            onPromoteMemory={
+                                !isUser && msg !== INITIAL_GREETING
+                                    ? () => handleStartPromote(idx, visibleMessages)
+                                    : undefined
+                            }
                         />
                     );
                 })}
@@ -501,6 +599,29 @@ export function ChatInterface({
                     </Button>
                 </div>
             </form>
+
+            {modalState && (
+                <PromoteMemoryModal
+                    isOpen={modalState.isOpen}
+                    onClose={() => setModalState(null)}
+                    userQuery={modalState.userQuery}
+                    assistantResponse={modalState.assistantResponse}
+                    initialData={modalState.initialData}
+                    onSave={async (payload) => {
+                        return await saveChatMemoryFn({ data: payload });
+                    }}
+                    onRedistill={async (instruction) => {
+                        return await distillChatMemoryFn({
+                            data: {
+                                userQuery: modalState.userQuery,
+                                assistantResponse: modalState.assistantResponse,
+                                customInstruction: instruction,
+                            },
+                        });
+                    }}
+                    onSavedSuccess={(saved) => handleModalSavedSuccess(saved, visibleMessages)}
+                />
+            )}
         </div>
     );
 }

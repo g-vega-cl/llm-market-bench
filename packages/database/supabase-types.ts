@@ -33,6 +33,39 @@ export type Database = {
     };
     public: {
         Tables: {
+            chat_memories: {
+                Row: {
+                    created_at: string | null;
+                    id: string;
+                    importance_score: number | null;
+                    source_query: string | null;
+                    tags: string[] | null;
+                    thesis: string;
+                    ticker: string | null;
+                    user_id: string;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    id?: string;
+                    importance_score?: number | null;
+                    source_query?: string | null;
+                    tags?: string[] | null;
+                    thesis: string;
+                    ticker?: string | null;
+                    user_id: string;
+                };
+                Update: {
+                    created_at?: string | null;
+                    id?: string;
+                    importance_score?: number | null;
+                    source_query?: string | null;
+                    tags?: string[] | null;
+                    thesis?: string;
+                    ticker?: string | null;
+                    user_id?: string;
+                };
+                Relationships: [];
+            };
             cause_and_effect: {
                 Row: {
                     analysis: string;

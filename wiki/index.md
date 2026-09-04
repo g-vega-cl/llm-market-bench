@@ -52,6 +52,7 @@
 
 ## Concepts
 
+- [[concepts/private-memory-vault]] — User-curated private market thesis storage with RLS isolation and distillation workflow
 - [[concepts/small-cap-quality-premium]] — Auto-indexed page
 - [[concepts/anthropic-fs-insights]] — Architectural synthesis and tool-first implementation strategy from Anthropic Financial Services
 - [[concepts/earnings-prediction-strategies]] — Auto-indexed page

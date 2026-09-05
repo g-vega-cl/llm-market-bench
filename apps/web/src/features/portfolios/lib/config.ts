@@ -135,12 +135,40 @@ export function isAutoresearchPortfolio(ownerId: string | null): boolean {
     return getAutoresearchOwnerIds().includes(normalized);
 }
 
+let cachedVerifierOwnerIds: string[] | null = null;
+
+export function getVerifierOwnerIds(): string[] {
+    if (cachedVerifierOwnerIds) {
+        return cachedVerifierOwnerIds;
+    }
+
+    try {
+        const config = modelsConfig as Record<string, unknown>;
+        const enabled = config.VERIFIER_ENABLED_OWNER_IDS;
+        if (Array.isArray(enabled)) {
+            cachedVerifierOwnerIds = enabled.map((id) => normalizeOwnerId(id));
+            return cachedVerifierOwnerIds;
+        }
+
+        const tracks = config.AUTORESEARCH_TRACKS as Record<string, string[]> | undefined;
+        if (tracks?.track_claude && Array.isArray(tracks.track_claude)) {
+            cachedVerifierOwnerIds = tracks.track_claude.map((id) => normalizeOwnerId(id));
+            return cachedVerifierOwnerIds;
+        }
+
+        return [];
+    } catch (error) {
+        console.error('Failed to load verifier config:', error);
+        return [];
+    }
+}
+
 /**
  * Checks if a portfolio uses a verifier based on its owner ID.
- * MiniMax portfolios do not use the verifier.
+ * Only track_claude portfolios use the verifier.
  */
 export function hasVerifier(ownerId: string | null): boolean {
     if (!ownerId) return false;
     const normalized = normalizeOwnerId(ownerId);
-    return !normalized.includes('minimax');
+    return getVerifierOwnerIds().includes(normalized);
 }

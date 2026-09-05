@@ -408,17 +408,18 @@ async def _process_single_decision(
                             if not portfolio.metrics:
                                 portfolio.calculate_reg_t_metrics(p_map)
 
-                            from core.config import SKIP_VERIFIER_OWNER_IDS
+                            from core.config import is_verifier_enabled_for_owner
+                            from core.models import VerificationResult
 
-                            if d.model_name in SKIP_VERIFIER_OWNER_IDS:
+                            if not is_verifier_enabled_for_owner(d.model_name):
                                 logger.info(
-                                    f"[{d.ticker}] Skipping verification for model {d.model_name} per SKIP_VERIFIER_OWNER_IDS configuration."
+                                    f"[{d.ticker}] Skipping verification for model {d.model_name} per verifier portfolio configuration."
                                 )
-                                verification = type(
-                                    "VerificationResult",
-                                    (),
-                                    {"status": "APPROVED", "verification_reasoning": "Skipped per model config"},
-                                )()
+                                verification = VerificationResult(
+                                    status="APPROVED",
+                                    verification_reasoning="Skipped per verifier portfolio configuration",
+                                    confidence_score=100,
+                                )
                             else:
                                 # --- Skeptical Verification ---
                                 logger.info(f"[{d.ticker}] Verifying...")

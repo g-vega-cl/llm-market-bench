@@ -8,6 +8,7 @@ vi.mock('@repo/config/models.json', () => ({
         GEMINI_MODEL: 'gemini-3.5-flash-lite',
         DEEPSEEK_MODEL: 'deepseek-v4-pro',
         AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.5-flash-lite', 'deepseek-v4-pro'],
+        VERIFIER_ENABLED_OWNER_IDS: ['claude-haiku-4-5', 'deepseek-v4-flash'],
     },
 }));
 
@@ -23,6 +24,7 @@ describe('Portfolio Config Utils', () => {
                 GEMINI_MODEL: 'gemini-3.5-flash-lite',
                 DEEPSEEK_MODEL: 'deepseek-v4-pro',
                 AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.5-flash-lite', 'deepseek-v4-pro'],
+                VERIFIER_ENABLED_OWNER_IDS: ['claude-haiku-4-5', 'deepseek-v4-flash'],
             },
         }));
         // Dynamic import to get fresh module state for caching tests
@@ -141,8 +143,11 @@ describe('Portfolio Config Utils', () => {
 
     describe('hasVerifier', () => {
         it('identifies if a portfolio uses a verifier correctly', () => {
-            expect(configModule.hasVerifier('gemini-3.5-flash-lite')).toBe(true);
-            expect(configModule.hasVerifier('deepseek-v4-pro')).toBe(true);
+            expect(configModule.hasVerifier('claude-haiku-4-5')).toBe(true);
+            expect(configModule.hasVerifier('deepseek-v4-flash')).toBe(true);
+            expect(configModule.hasVerifier('gemini-3.5-flash-lite')).toBe(false);
+            expect(configModule.hasVerifier('deepseek-v4-pro')).toBe(false);
+            expect(configModule.hasVerifier('gpt-5.6-luna')).toBe(false);
             expect(configModule.hasVerifier('MiniMax-M3')).toBe(false);
             expect(configModule.hasVerifier('minimax-m3')).toBe(false);
         });

@@ -11,10 +11,41 @@ from core.llm.prompt_factory import PromptFactory
 
 @pytest.mark.asyncio
 async def test_skip_verifier_owner_ids_config():
-    """Verify SKIP_VERIFIER_OWNER_IDS includes configured models like deepseek-v4-flash."""
+    """Verify only track_claude portfolios have verifier enabled, all others bypass it."""
+    assert hasattr(config, "VERIFIER_ENABLED_OWNER_IDS")
     assert hasattr(config, "SKIP_VERIFIER_OWNER_IDS")
+    assert hasattr(config, "is_verifier_enabled_for_owner")
+
+    # Track Claude portfolios have verifier enabled
+    assert config.is_verifier_enabled_for_owner("claude-haiku-4-5") is True
+    assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is True
+    assert "claude-haiku-4-5" in config.VERIFIER_ENABLED_OWNER_IDS
+    assert "deepseek-v4-flash" in config.VERIFIER_ENABLED_OWNER_IDS
+
+    # All other portfolios skip LLM verification
+    assert config.is_verifier_enabled_for_owner("MiniMax-M3") is False
+    assert config.is_verifier_enabled_for_owner("gemini-3.5-flash-lite") is False
+    assert config.is_verifier_enabled_for_owner("deepseek-v4-pro") is False
+    assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
+
     assert "MiniMax-M3" in config.SKIP_VERIFIER_OWNER_IDS
-    assert "deepseek-v4-flash" in config.SKIP_VERIFIER_OWNER_IDS
+    assert "gemini-3.5-flash-lite" in config.SKIP_VERIFIER_OWNER_IDS
+    assert "deepseek-v4-pro" in config.SKIP_VERIFIER_OWNER_IDS
+    assert "gpt-5.6-luna" in config.SKIP_VERIFIER_OWNER_IDS
+    assert "deepseek-v4-flash" not in config.SKIP_VERIFIER_OWNER_IDS
+
+
+@pytest.mark.asyncio
+async def test_verifier_gating_helper_contract():
+    """Verify is_verifier_enabled_for_owner correctly respects VERIFIER_ENABLED_OWNER_IDS."""
+    assert config.is_verifier_enabled_for_owner("claude-haiku-4-5") is True
+    assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is True
+    assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
+    assert config.is_verifier_enabled_for_owner("gemini-3.5-flash-lite") is False
+    assert config.is_verifier_enabled_for_owner("deepseek-v4-pro") is False
+    assert config.is_verifier_enabled_for_owner("MiniMax-M3") is False
+    assert config.is_verifier_enabled_for_owner(None) is False
+    assert config.is_verifier_enabled_for_owner("") is False
 
 
 @pytest.mark.asyncio

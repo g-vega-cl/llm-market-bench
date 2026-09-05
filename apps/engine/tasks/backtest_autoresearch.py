@@ -723,8 +723,10 @@ async def run_simulated_tick(t_sim: datetime, active_prompt: str):
                         current_prices[d.ticker] = t_data.price
                     portfolio.calculate_reg_t_metrics(current_prices)
 
-                    # Minimax skips verification stage
-                    if d.model_provider != "minimax":
+                    # Only verify models with verifier enabled (track_claude)
+                    from core.config import is_verifier_enabled_for_owner
+
+                    if is_verifier_enabled_for_owner(d.model_name):
                         summary = await portfolio.get_portfolio_summary(current_prices)
 
                         # Skeptical second step LLM verifier
@@ -732,7 +734,6 @@ async def run_simulated_tick(t_sim: datetime, active_prompt: str):
                             decision=d,
                             portfolio_context=summary,
                             aggregated_context=aggregated_context,
-                            contrarian_context="",
                             uncrowded_context=uncrowded_context,
                         )
                         verification_msg = verification.verification_reasoning

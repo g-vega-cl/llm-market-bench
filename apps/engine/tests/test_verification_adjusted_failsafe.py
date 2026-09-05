@@ -95,9 +95,8 @@ async def test_adjusted_allocation_failsafe_rejection():
         reasoning="Test failsafe",
         ticker="AAPL",
         source_id="src_1",
-        price=180.0,
-        model_provider="openai",
-        model_name="gpt-4o",
+        model_provider="anthropic",
+        model_name="claude-haiku-4-5",
         allocation_percentage=20.0,
     )
 

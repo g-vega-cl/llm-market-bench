@@ -7,11 +7,12 @@ category: entity
 
 The database cleanup module (`core/cleanup.py`) provides a reusable, testable function for periodic database maintenance. It is invoked via the `cleanup` command in `main.py` and replaces the inline cleanup script previously embedded in the CI workflow.
 
-## Schedule & Lifecycle
+## Schedule and lifecycle
 
 The cleanup module is tightly coupled with the system's weekly audit cycle:
 - **Trigger**: Runs automatically every Friday at 16:00 EST (21:00 UTC) as the final step of the `System Audit` (`audit.yml`) GitHub Actions workflow.
-- **Workflow Pipeline**: The workflow first executes `python main.py audit` to analyze logs and flag any system or model anomalies. Immediately following the audit step, it triggers `python main.py cleanup` to prune expired or resolved data.
+- **Workflow pipeline**: The workflow first executes `python main.py audit` to analyze logs and flag any system or model anomalies. Immediately following the audit step, it triggers `python main.py cleanup` to prune expired or resolved data.
+- **Workflow secrets**: The cleanup step in `audit.yml` requires `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEEPSEEK_API_KEY`, and `GEMINI_API_KEY`. The LLM keys power stage 6 (memory consolidation), allowing DeepSeek Flash to synthesize clusters and Gemini to generate vector embeddings for the new canonical records.
 
 ## Retention Policy & Database Operations
 

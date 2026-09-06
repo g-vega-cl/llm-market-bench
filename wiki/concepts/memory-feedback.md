@@ -104,6 +104,7 @@ An offline weekly consolidation pipeline groups overlapping memories to compound
 2. **Synthesis**: For clusters of 2 or more overlapping memories, the system invokes DeepSeek Flash (`DEEPSEEK_FLASH_MODEL` from `core.config`) using `instructor` to guarantee a structured Pydantic schema response.
 3. **Canonical Record Creation**: A single canonical consolidated memory is inserted with `status='ACTIVE'`, `relationship_type='UPDATE'`, and `parent_id` pointing to the primary parent.
 4. **Supersedence**: The original memories in the cluster are updated to `status='SUPERSEDED'`, maintaining reference links while removing them from the active analysis hot path.
+5. **Execution Environment**: Runs every Friday at 16:00 EST (21:00 UTC) via `.github/workflows/audit.yml` (`python main.py cleanup`), requiring `DEEPSEEK_API_KEY` for synthesis and `GEMINI_API_KEY` for vector embedding generation.
 
 
 ### Event Chain Graph Traversal

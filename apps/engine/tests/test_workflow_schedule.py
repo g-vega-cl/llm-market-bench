@@ -184,3 +184,27 @@ def test_autoresearch_workflow_env_keys():
     assert step_env["MINIMAX_API_KEY"] == "${{ secrets.MINIMAX_API_KEY }}"
     assert "MASSIVE_API_KEY" in step_env, f"Expected MASSIVE_API_KEY in step env, found: {list(step_env.keys())}"
     assert step_env["MASSIVE_API_KEY"] == "${{ secrets.MASSIVE_API_KEY }}"
+
+
+def test_cleanup_workflow_env_keys():
+    """Verify audit.yml cleanup step includes DEEPSEEK_API_KEY and GEMINI_API_KEY for memory consolidation."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    audit_yml_path = root / ".github" / "workflows" / "audit.yml"
+
+    assert audit_yml_path.exists(), f"Could not find workflow file at {audit_yml_path}"
+
+    with open(audit_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    jobs = config.get("jobs", {})
+    audit_job = jobs.get("audit", {})
+    steps = audit_job.get("steps", [])
+
+    cleanup_step = next((s for s in steps if s.get("name") == "Cleanup old records"), None)
+    assert cleanup_step is not None, "Could not find 'Cleanup old records' step in audit.yml"
+
+    step_env = cleanup_step.get("env", {})
+    assert "DEEPSEEK_API_KEY" in step_env, f"Expected DEEPSEEK_API_KEY in cleanup env, found: {list(step_env.keys())}"
+    assert step_env["DEEPSEEK_API_KEY"] == "${{ secrets.DEEPSEEK_API_KEY }}"
+    assert "GEMINI_API_KEY" in step_env, f"Expected GEMINI_API_KEY in cleanup env, found: {list(step_env.keys())}"
+    assert step_env["GEMINI_API_KEY"] == "${{ secrets.GEMINI_API_KEY }}"

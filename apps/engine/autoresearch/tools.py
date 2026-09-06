@@ -137,3 +137,23 @@ async def query_past_newsletters(
     except Exception as e:
         logger.exception("Error querying past newsletters for autoresearcher: %s", e)
         return f"Error querying past newsletters: {str(e)}"
+
+
+async def query_verifier_audit_context(
+    track_id: str = "track_claude",
+    limit: int = 5,
+    ticker: str | None = None,
+) -> str:
+    """Fetch verifier system SOP prompt, recent verifier rejections, and strategic nudge for track_claude.
+
+    Args:
+        track_id: Research track ID to audit.
+        limit: Max rejection decisions to retrieve.
+        ticker: Optional ticker filter.
+
+    Returns:
+        Formatted verifier audit and strategic nudge string.
+    """
+    from core.llm.tools import execute_inspect_verifier_rules_tool
+
+    return await execute_inspect_verifier_rules_tool(limit=limit, ticker=ticker, track_id=track_id)

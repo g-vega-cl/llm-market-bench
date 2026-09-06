@@ -19,15 +19,17 @@ Located in `apps/engine/tasks/daily_autoresearch.py`. The `run_daily_autoresearc
 6. Mutates the prompt using DeepSeek Flash meta-researcher, feeding it the day-by-day catalyst context and active thematic playbooks.
 7. Deploys a new active variant, demoting all prior `active` variants for that track to `saved`.
 
-## Track Isolation
+## Track Isolation & Agency-Driven Tooling
 
 - Each model (`deepseek-v4-flash`, `MiniMax-M3`) has its own independent prompt lineage.
 - No cross-track fallback: queries are always scoped by `track_id`.
 - Baseline seeding creates a new baseline for a model if none exists.
+- **Track-Specific Tooling**: For `track_claude` (the sole track executing skeptical verification), `researcher.py` provides the optional `inspect_verifier_rules_and_rejections` tool inside `run_tool_loop`. The meta-researcher autonomously pulls the verifier SOP rules and rejection logs on demand rather than having data forcibly pre-injected into prompts (see [[concepts/verifier-bypass]]).
 
 ## Related
 
 - [[concepts/auto-research-prompt-improver]]
 - [[concepts/multi-track-autoresearch]]
+- [[concepts/verifier-bypass]]
 - [[entities/daily-market-predictor]]
 - [[entities/pipeline]]

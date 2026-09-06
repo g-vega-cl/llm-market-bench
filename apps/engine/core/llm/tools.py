@@ -828,6 +828,32 @@ GET_VERIFIER_REJECTIONS_TOOL = {
     },
 }
 
+INSPECT_VERIFIER_RULES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "inspect_verifier_rules_and_rejections",
+        "description": (
+            "Inspect the skeptical verifier system prompt (SOP rules, DCF intrinsic valuation checks, "
+            "and volatility hurdles) and retrieve recent verifier-rejected trades for track_claude. "
+            "Only available for track_claude portfolios."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of recent rejection records to retrieve (default: 5).",
+                },
+                "ticker": {
+                    "type": "string",
+                    "description": "Optional ticker symbol to filter rejections by.",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
 
 GET_MACRO_ECONOMIC_SERIES_TOOL = {
     "type": "function",
@@ -1075,6 +1101,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_options_vol_surface": GET_OPTIONS_VOL_SURFACE_TOOL,
     "track_thesis_pillars": TRACK_THESIS_PILLARS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
+    "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
 
 
@@ -3088,6 +3115,96 @@ async def execute_get_verifier_rejections_tool(
     except Exception as e:
         logger.exception(f"Error in execute_get_verifier_rejections_tool: {e}")
         return f"Error retrieving verifier rejections: {str(e)}"
+
+
+async def execute_inspect_verifier_rules_tool(
+    limit: int = 5,
+    ticker: str | None = None,
+    track_id: str = "track_claude",
+) -> str:
+    """Retrieve verifier system SOP prompt, recent rejected trades, and strategic autoresearch nudge.
+
+    Strictly scoped to track_claude where skeptical second-step verification is active.
+    """
+    if track_id != "track_claude":
+        return (
+            f"Error: 'inspect_verifier_rules_and_rejections' is strictly scoped to 'track_claude'. "
+            f"Current track is '{track_id}'. Portfolios in other tracks bypass the verification stage entirely."
+        )
+
+    import inspect
+    import json
+
+    from core.config import AUTORESEARCH_TRACKS, VERIFIER_ENABLED_OWNER_IDS
+    from core.llm.prompts import VERIFIER_SYSTEM_PROMPT
+
+    claude_track_models = list(AUTORESEARCH_TRACKS.get("track_claude", VERIFIER_ENABLED_OWNER_IDS))
+
+    lines = [
+        "=== SKEPTICAL VERIFIER SYSTEM SOP (Active for track_claude) ===",
+        VERIFIER_SYSTEM_PROMPT,
+        "",
+        f"=== RECENT VERIFIER-REJECTED TRADES (track_claude: {', '.join(claude_track_models)}) ===",
+    ]
+
+    try:
+        sb_client = await get_async_supabase_client()
+        query = (
+            sb_client.table("decisions")
+            .select("id, ticker, signal, status, reasoning, model_name, metadata, created_at")
+            .eq("status", "REJECTED_VERIFICATION")
+            .in_("model_name", claude_track_models)
+            .order("created_at", desc=True)
+            .limit(limit)
+        )
+        if ticker:
+            query = query.eq("ticker", ticker.upper())
+
+        res = query.execute()
+        if inspect.isawaitable(res):
+            res = await res
+        rows = res.data or []
+
+        if not rows:
+            lines.append("No recent verifier rejections recorded. The verifier remains active for track_claude.")
+        else:
+            for r in rows:
+                meta = r.get("metadata")
+                if isinstance(meta, str):
+                    try:
+                        meta = json.loads(meta)
+                    except Exception:
+                        meta = {}
+                elif not isinstance(meta, dict):
+                    meta = {}
+
+                reason = meta.get("reason") or meta.get("info") or "No explicit verifier reason recorded"
+                agent_thesis = r.get("reasoning", "") or ""
+                if len(agent_thesis) > 160:
+                    agent_thesis = agent_thesis[:160] + "..."
+
+                lines.append(
+                    f"- [{r.get('status')}] {r.get('signal')} {r.get('ticker')} (Model: {r.get('model_name') or 'N/A'})\n"
+                    f"  • Verifier Objection: {reason}\n"
+                    f"  • Proposed Agent Thesis: {agent_thesis}"
+                )
+    except Exception as e:
+        logger.exception(f"Error retrieving verifier rejections for inspect_verifier_rules_tool: {e}")
+        lines.append(f"Notice: Could not load recent rejections from database: {e}")
+
+    lines.extend(
+        [
+            "",
+            "=== STRATEGIC NUDGE FOR AUTORESEARCHER (track_claude) ===",
+            "The trading agent in track_claude operates under this skeptical second-step Verifier.",
+            "Trades are routinely blocked if they violate the 5 SOP checks above (e.g. chasing recent price spikes >5%, "
+            "ignoring DCF intrinsic valuation multiples, or lacking alternative sector plays).",
+            "Evolve the trading prompt to instruct the agent to anticipate these hurdles (e.g., check intrinsic valuation "
+            "multiples, avoid chasing extended moves, and explore uncrowded alternatives) so high-conviction trades pass verification.",
+        ]
+    )
+
+    return "\n".join(lines)
 
 
 async def execute_web_search_tool(query: str, max_results: int = 5) -> str:

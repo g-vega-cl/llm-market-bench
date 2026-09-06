@@ -117,3 +117,4 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 - [ ] - Find if yoyu can set up any PEAD based strategy
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
+- [ ] - Make sure my agents are thinking agents.

@@ -54,8 +54,19 @@ else:
     verification = await verify_trading_decision(...)
 ```
 
+## Autoresearch Verifier Inspection Tool
+
+Because `track_claude` is the only track subject to skeptical second-step verification, the auto-research meta-improver for `track_claude` has access to an optional function-calling tool: `inspect_verifier_rules_and_rejections`.
+
+In alignment with **Principle 8 (Tool-First, Agency-Driven Architecture)**, verifier data is never bloated into the researcher prompt. Instead:
+1. `researcher.py` provides `INSPECT_VERIFIER_RULES_TOOL` inside `run_tool_loop` exclusively when `track_id == 'track_claude'`.
+2. The meta-researcher LLM decides autonomously whether to call the tool.
+3. If invoked, `execute_inspect_verifier_rules_tool` returns the verbatim `VERIFIER_SYSTEM_PROMPT` SOP, recent `REJECTED_VERIFICATION` decisions, and an actionable prompt engineering nudge.
+4. Non-Claude tracks (`track_default`, `track_openai`) strictly bypass this tool.
+
 ## Related
 
 - [[concepts/execution]] — Pre-market validation, Reg T checks, trade settlement
 - [[concepts/minimax-portfolio]] — Simplified execution model for MiniMax-M3
 - [[entities/autoresearch]] — Multi-track prompt optimization
+- [[concepts/multi-track-autoresearch]] — Isolated prompt lineage per track

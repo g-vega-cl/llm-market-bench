@@ -130,11 +130,79 @@ async def run_research(
             "Generate a novel, high-conviction trading strategy prompt from scratch."
         )
 
+    if track_id == "track_claude":
+        system_program += (
+            "\n\n=== TRACK NOTE: SKEPTICAL VERIFIER ACTIVE ===\n"
+            "This portfolio track (track_claude) runs under a skeptical second-step Verifier. "
+            "You have access to the tool 'inspect_verifier_rules_and_rejections'. "
+            "You may optionally call this tool to inspect the Verifier's 5 skeptical SOP checks, "
+            "intrinsic valuation rules, and recent verifier-rejected trades before proposing prompt updates."
+        )
+
     try:
         messages = [
             {"role": "system", "content": system_program},
             {"role": "user", "content": user_content},
         ]
+
+        if track_id == "track_claude":
+            from core.llm import tools
+
+            override_tools = [tools.INSPECT_VERIFIER_RULES_TOOL]
+            max_tool_steps = 3
+
+            try:
+                if provider == "openai":
+                    from core.llm.handlers.openai import run_tool_loop
+
+                    await run_tool_loop(
+                        client.client,
+                        model_name,
+                        messages,
+                        provider=provider,
+                        max_tool_steps=max_tool_steps,
+                        override_tools=override_tools,
+                        enable_web_search=False,
+                    )
+                elif provider == "deepseek":
+                    from core.llm.handlers.deepseek import run_tool_loop
+
+                    await run_tool_loop(
+                        client.client,
+                        model_name,
+                        messages,
+                        provider=provider,
+                        max_tool_steps=max_tool_steps,
+                        override_tools=override_tools,
+                        enable_web_search=False,
+                    )
+                elif provider == "anthropic":
+                    from core.llm.handlers.anthropic import run_tool_loop
+
+                    await run_tool_loop(
+                        client.client,
+                        model_name,
+                        messages,
+                        max_tool_steps=max_tool_steps,
+                        override_tools=override_tools,
+                    )
+                elif provider == "gemini":
+                    from core.llm.handlers.gemini import run_tool_loop
+
+                    await run_tool_loop(
+                        client.client,
+                        model_name,
+                        messages,
+                        max_tool_steps=max_tool_steps,
+                        override_tools=override_tools,
+                    )
+            except Exception as e:
+                logger.warning("Tool execution loop failed in autoresearcher for %s: %s", track_id, e)
+
+            if provider == "deepseek":
+                from core.llm.handlers import deepseek as deepseek_handler
+
+                messages = deepseek_handler.prepare_messages_for_instructor(messages)
 
         create_args = {
             "model": model_name,

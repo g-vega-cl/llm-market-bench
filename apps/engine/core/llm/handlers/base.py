@@ -11,13 +11,14 @@ def _is_valid_ticker(ticker: str) -> bool:
     return bool(re.match(r"^[A-Z0-9.\-]{1,5}$", ticker_clean))
 
 
-async def execute_tool(name: str, args: dict, model_name: str) -> str:
+async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
     """Dispatches tool execution to the correct tool implementation.
 
     Args:
         name: Name of the tool to execute.
         args: Arguments dictionary for the tool.
         model_name: Name of the model (used as owner_id for some tools).
+        **kwargs: Optional additional context (e.g. track_id).
 
     Returns:
         The tool's result as a string.
@@ -125,6 +126,13 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
     elif name == "get_verifier_rejections":
         return await tools.execute_get_verifier_rejections_tool(
             ticker=args.get("ticker"), limit=args.get("limit", 5), model_name=model_name
+        )
+    elif name == "inspect_verifier_rules_and_rejections":
+        track_id = kwargs.get("track_id") or args.get("track_id", "track_claude")
+        return await tools.execute_inspect_verifier_rules_tool(
+            limit=args.get("limit", 5),
+            ticker=args.get("ticker"),
+            track_id=track_id,
         )
     elif name == "get_thematic_flows":
         return await tools.execute_get_thematic_flows_tool(limit=args.get("limit", 5))

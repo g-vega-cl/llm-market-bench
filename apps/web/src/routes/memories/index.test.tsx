@@ -6,6 +6,13 @@ vi.mock('~/features/memories/api/fetch-memories', () => ({
         hasMore: false,
         nextCursor: null,
     })),
+    fetchNewMemories: vi.fn(async (since: string) => [
+        {
+            id: 'm-new-1',
+            content: `New memory since ${since}`,
+            created_at: '2026-05-28',
+        },
+    ]),
     searchMemories: vi.fn(async (queryText: string, _limit: number) => [
         {
             id: 'm-quantum-1',
@@ -16,7 +23,11 @@ vi.mock('~/features/memories/api/fetch-memories', () => ({
     ]),
 }));
 
-import { fetchMemories, searchMemories } from '~/features/memories/api/fetch-memories';
+import {
+    fetchMemories,
+    fetchNewMemories,
+    searchMemories,
+} from '~/features/memories/api/fetch-memories';
 import { Route } from './index';
 
 describe('/memories route server functions', () => {
@@ -31,6 +42,13 @@ describe('/memories route server functions', () => {
         const result = await fetchMemories(undefined, 50, undefined);
         expect(result.data).toHaveLength(1);
         expect(fetchMemories).toHaveBeenCalledWith(undefined, 50, undefined);
+    });
+
+    it('fetchNewMemories mock returns delta memories', async () => {
+        const result = await fetchNewMemories('2026-05-25');
+        expect(result).toHaveLength(1);
+        expect(result[0].content).toContain('New memory since 2026-05-25');
+        expect(fetchNewMemories).toHaveBeenCalledWith('2026-05-25');
     });
 
     it('Route component is defined correctly', () => {

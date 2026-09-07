@@ -21,7 +21,7 @@ export const memoriesQueries = {
                     : Promise.reject(new Error('fetchFn required')),
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage: T) => lastPage?.nextCursor ?? undefined,
-            staleTime: 1000 * 60 * 5, // 5 minutes
+            staleTime: 1000 * 60 * 60 * 4, // 4 hours
         }),
 
     detail: <T>(opts: { id: string; fetchFn?: () => Promise<T> }) =>

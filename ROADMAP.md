@@ -23,7 +23,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Implement Redis?
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
-- [ ] - add memories sorting by importance or filter by date too.
+- [x] - add memories sorting by importance or filter by date too.
+  - Added Importance sort dropdown (`Highest Importance`, `Lowest Importance`, `Newest`, `Oldest`) and quick `High Impact (8+)` toggle.
+  - Added Date preset filter pills (`All Time`, `7D`, `30D`, `90D`).
+  - Added 4-hour cache TTL and mount delta-sync via `validateCacheState` / `fetchNewMemories`.
+  - Added PostHog analytics tracking for sort, date preset, and high-impact filter changes.
 - [x] - Benchify: lighthouse CLI/performance audit.
 - [ ] - Benchify: update autoresearch scoring display in FE. How to keep them synced?
 - [ ] - Benchify: add which ticker corresponds to each scenario in memories possible scenarios

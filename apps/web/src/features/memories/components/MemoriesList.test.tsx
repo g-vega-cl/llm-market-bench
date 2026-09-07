@@ -178,6 +178,65 @@ describe('MemoriesList', () => {
         expect(screen.getByText('View event chain →')).toBeInTheDocument();
     });
 
+    it('renders date preset buttons and handles onDatePresetChange', () => {
+        const onDatePresetChange = vi.fn();
+        renderWithClient(
+            <MemoriesList
+                memories={mockMemories}
+                filter="all"
+                onFilterChange={vi.fn()}
+                datePreset="all"
+                onDatePresetChange={onDatePresetChange}
+            />,
+        );
+
+        expect(screen.getByText('All Time')).toBeInTheDocument();
+        expect(screen.getByText('7D')).toBeInTheDocument();
+        expect(screen.getByText('30D')).toBeInTheDocument();
+        expect(screen.getByText('90D')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('7D'));
+        expect(onDatePresetChange).toHaveBeenCalledWith('7d');
+    });
+
+    it('renders sort selector and handles onSortChange', () => {
+        const onSortChange = vi.fn();
+        renderWithClient(
+            <MemoriesList
+                memories={mockMemories}
+                filter="all"
+                onFilterChange={vi.fn()}
+                sortBy="newest"
+                onSortChange={onSortChange}
+            />,
+        );
+
+        const select = screen.getByLabelText(/sort by/i);
+        expect(select).toBeInTheDocument();
+
+        fireEvent.change(select, { target: { value: 'importance_desc' } });
+        expect(onSortChange).toHaveBeenCalledWith('importance_desc');
+    });
+
+    it('renders high impact button and handles onHighImpactToggle', () => {
+        const onHighImpactToggle = vi.fn();
+        renderWithClient(
+            <MemoriesList
+                memories={mockMemories}
+                filter="all"
+                onFilterChange={vi.fn()}
+                onlyHighImpact={false}
+                onHighImpactToggle={onHighImpactToggle}
+            />,
+        );
+
+        const highImpactBtn = screen.getByText(/8\+ Impact/i);
+        expect(highImpactBtn).toBeInTheDocument();
+
+        fireEvent.click(highImpactBtn);
+        expect(onHighImpactToggle).toHaveBeenCalledTimes(1);
+    });
+
     describe('Memory Category Classification', () => {
         it('classifies MARKET_EVENT and CALENDAR_EVENT correctly', () => {
             const m1: Memory = {

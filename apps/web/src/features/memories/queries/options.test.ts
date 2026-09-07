@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { memoriesQueries } from './options';
 
 describe('memoriesQueries options config', () => {
@@ -20,5 +20,10 @@ describe('memoriesQueries options config', () => {
     it('sets staleTime to Infinity for the cause and effect query', () => {
         const options = memoriesQueries.causeAndEffect({ eventId: 'test-event-id' });
         expect(options.staleTime).toBe(Number.POSITIVE_INFINITY);
+    });
+
+    it('sets staleTime to 4 hours for the memory list query', () => {
+        const options = memoriesQueries.list({ fetchFn: vi.fn() });
+        expect(options.staleTime).toBe(1000 * 60 * 60 * 4);
     });
 });

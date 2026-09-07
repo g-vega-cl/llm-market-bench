@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
-import { fetchMemories, searchMemories } from '~/features/memories/api/fetch-memories';
+import {
+    fetchMemories,
+    fetchNewMemories,
+    searchMemories,
+} from '~/features/memories/api/fetch-memories';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 
 interface MemoriesQueryParams {
@@ -14,6 +18,10 @@ interface SearchQueryParams {
     limit?: number;
 }
 
+interface SyncQueryParams {
+    since?: string;
+}
+
 const getMemories = createServerFn({ method: 'GET' })
     .inputValidator((d: MemoriesQueryParams | { data?: MemoriesQueryParams } | undefined) => d)
     .handler(async ({ data }) => {
@@ -23,6 +31,22 @@ const getMemories = createServerFn({ method: 'GET' })
         const category = payload?.category;
         const limit = payload?.limit ?? 50;
         return fetchMemories(cursor, limit, category);
+    });
+
+const syncMemories = createServerFn({ method: 'GET' })
+    .inputValidator((d: SyncQueryParams | { data?: SyncQueryParams } | string | undefined) => d)
+    .handler(async ({ data }) => {
+        let since = '';
+        if (typeof data === 'string') {
+            since = data;
+        } else if (data && 'data' in data && data.data) {
+            since = data.data.since ?? '';
+        } else if (data && 'since' in data) {
+            since = data.since ?? '';
+        }
+
+        if (!since) return [];
+        return fetchNewMemories(since);
     });
 
 const queryMemories = createServerFn({ method: 'GET' })
@@ -91,6 +115,7 @@ function RouteComponent() {
     const initialData = Route.useLoaderData();
     const getMemoriesFn = useServerFn(getMemories);
     const queryMemoriesFn = useServerFn(queryMemories);
+    const syncMemoriesFn = useServerFn(syncMemories);
 
     return (
         <MemoriesPage
@@ -99,6 +124,7 @@ function RouteComponent() {
             initialCursor={initialData.nextCursor}
             fetchFn={(cursor, category) => getMemoriesFn({ data: { cursor, category, limit: 50 } })}
             searchFn={(query) => queryMemoriesFn({ data: { query } })}
+            deltaSyncFn={(since) => syncMemoriesFn({ data: { since } })}
         />
     );
 }

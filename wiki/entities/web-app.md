@@ -14,6 +14,7 @@ TanStack Start dashboard (React + TypeScript) providing real-time portfolio data
 - **Autoresearch Milestone Cards**: Shows active ratchet score, best baseline score, delta, and baseline anchor status. No fallback indicator.
 - **Variant Sidebar**: Lists all experiments for the selected model with status badges (`🟢 ACTIVE`, `🏆 BASELINE`, `❌ DISCARDED`, `📦 SAVED`).
 - **Investment Chat Gateway** (`/chat`): Gated conversational research interface with live database query tools, memory search, and ticker context deep-dives. See [[entities/investment-chat-gateway]].
+- **AI Memories Page** (`/memories`): Searchable and filterable archive of market consensus events, economic calendar catalysts, empirical academic principles, post-mortems, and resolved trades. Features client-side importance sorting (highest/lowest/newest/oldest), date preset filters (`All Time`, `7D`, `30D`, `90D`), high-impact (`8+ Impact 🔥`) isolation, interactive event flow graphs, and a 4-hour TanStack cache with on-mount delta-sync. See [[concepts/memory-feedback]].
 
 
 ## Architecture
@@ -26,6 +27,7 @@ TanStack Start dashboard (React + TypeScript) providing real-time portfolio data
 
 - [[entities/daily-market-predictor]]
 - [[entities/investment-chat-gateway]]
+- [[concepts/memory-feedback]]
 - [[concepts/multi-track-autoresearch]]
 - [[concepts/tanstack-query]]
 - [[concepts/type-safety]]

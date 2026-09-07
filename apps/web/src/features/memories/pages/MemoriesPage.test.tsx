@@ -13,9 +13,10 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 // Mock PostHog
+const mockCapture = vi.fn();
 vi.mock('@posthog/react', () => ({
     usePostHog: () => ({
-        capture: vi.fn(),
+        capture: mockCapture,
     }),
 }));
 
@@ -253,5 +254,265 @@ describe('MemoriesPage (SSR-First)', () => {
         // Standard feed is restored
         expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
         expect(screen.queryByText('Trump energy deal nuclear')).not.toBeInTheDocument();
+    });
+
+    it('sorts memories by importance (highest first and lowest first)', () => {
+        const scoredMemories = [
+            {
+                id: 's1',
+                content: 'Low importance event',
+                created_at: '2026-05-25T12:00:00.000Z',
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: 3,
+                target_date: null,
+            },
+            {
+                id: 's2',
+                content: 'High importance event',
+                created_at: '2026-05-24T12:00:00.000Z',
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: 9,
+                target_date: null,
+            },
+            {
+                id: 's3',
+                content: 'Medium importance event',
+                created_at: '2026-05-23T12:00:00.000Z',
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: 6,
+                target_date: null,
+            },
+        ];
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage
+                    initialMemories={scoredMemories}
+                    initialHasMore={false}
+                    initialCursor={null}
+                    fetchFn={vi.fn()}
+                />
+            </QueryClientProvider>,
+        );
+
+        const sortSelect = screen.getByLabelText(/sort by/i);
+
+        // Change sort to 'importance_desc'
+        fireEvent.change(sortSelect, { target: { value: 'importance_desc' } });
+
+        const cardsAfterSortDesc = screen.getAllByText(/importance event/i);
+        expect(cardsAfterSortDesc[0]).toHaveTextContent('High importance event');
+        expect(cardsAfterSortDesc[1]).toHaveTextContent('Medium importance event');
+        expect(cardsAfterSortDesc[2]).toHaveTextContent('Low importance event');
+
+        // Check PostHog tracking
+        expect(mockCapture).toHaveBeenCalledWith('memories_sort_changed', {
+            sort_by: 'importance_desc',
+            result_count: 3,
+        });
+
+        // Change sort to 'importance_asc'
+        fireEvent.change(sortSelect, { target: { value: 'importance_asc' } });
+
+        const cardsAfterSortAsc = screen.getAllByText(/importance event/i);
+        expect(cardsAfterSortAsc[0]).toHaveTextContent('Low importance event');
+        expect(cardsAfterSortAsc[1]).toHaveTextContent('Medium importance event');
+        expect(cardsAfterSortAsc[2]).toHaveTextContent('High importance event');
+    });
+
+    it('filters memories by date presets (7D, 30D, 90D)', () => {
+        const now = Date.now();
+        const datedMemories = [
+            {
+                id: 'd1',
+                content: 'Memory from 3 days ago',
+                created_at: new Date(now - 3 * 86400000).toISOString(),
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: 5,
+                target_date: null,
+            },
+            {
+                id: 'd2',
+                content: 'Memory from 20 days ago',
+                created_at: new Date(now - 20 * 86400000).toISOString(),
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: 5,
+                target_date: null,
+            },
+            {
+                id: 'd3',
+                content: 'Memory from 60 days ago',
+                created_at: new Date(now - 60 * 86400000).toISOString(),
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: 5,
+                target_date: null,
+            },
+        ];
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage
+                    initialMemories={datedMemories}
+                    initialHasMore={false}
+                    initialCursor={null}
+                    fetchFn={vi.fn()}
+                />
+            </QueryClientProvider>,
+        );
+
+        // Click "7D" preset
+        fireEvent.click(screen.getByText('7D'));
+        expect(screen.getByText('Memory from 3 days ago')).toBeInTheDocument();
+        expect(screen.queryByText('Memory from 20 days ago')).not.toBeInTheDocument();
+        expect(screen.queryByText('Memory from 60 days ago')).not.toBeInTheDocument();
+
+        expect(mockCapture).toHaveBeenCalledWith('memories_date_preset_changed', {
+            date_preset: '7d',
+            result_count: 1,
+        });
+
+        // Click "30D" preset
+        fireEvent.click(screen.getByText('30D'));
+        expect(screen.getByText('Memory from 3 days ago')).toBeInTheDocument();
+        expect(screen.getByText('Memory from 20 days ago')).toBeInTheDocument();
+        expect(screen.queryByText('Memory from 60 days ago')).not.toBeInTheDocument();
+
+        // Click "All Time"
+        fireEvent.click(screen.getByText('All Time'));
+        expect(screen.getByText('Memory from 3 days ago')).toBeInTheDocument();
+        expect(screen.getByText('Memory from 20 days ago')).toBeInTheDocument();
+        expect(screen.getByText('Memory from 60 days ago')).toBeInTheDocument();
+    });
+
+    it('filters memories by high impact (8+) toggle and fires telemetry', () => {
+        const impactMemories = [
+            {
+                id: 'i1',
+                content: 'Standard routine memory',
+                created_at: '2026-05-25T12:00:00.000Z',
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: 6,
+                target_date: null,
+            },
+            {
+                id: 'i2',
+                content: 'Crucial macro catalyst',
+                created_at: '2026-05-24T12:00:00.000Z',
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: 9,
+                target_date: null,
+            },
+        ];
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage
+                    initialMemories={impactMemories}
+                    initialHasMore={false}
+                    initialCursor={null}
+                    fetchFn={vi.fn()}
+                />
+            </QueryClientProvider>,
+        );
+
+        expect(screen.getByText('Standard routine memory')).toBeInTheDocument();
+        expect(screen.getByText('Crucial macro catalyst')).toBeInTheDocument();
+
+        // Toggle 8+ Impact
+        fireEvent.click(screen.getByText(/8\+ Impact/i));
+
+        expect(screen.queryByText('Standard routine memory')).not.toBeInTheDocument();
+        expect(screen.getByText('Crucial macro catalyst')).toBeInTheDocument();
+
+        expect(mockCapture).toHaveBeenCalledWith('memories_high_impact_toggled', {
+            enabled: true,
+            result_count: 1,
+        });
+
+        // Untoggle
+        fireEvent.click(screen.getByText(/8\+ Impact/i));
+        expect(screen.getByText('Standard routine memory')).toBeInTheDocument();
+        expect(screen.getByText('Crucial macro catalyst')).toBeInTheDocument();
+    });
+
+    it('runs delta-sync on mount and prepends newly appended memories', async () => {
+        const deltaNewMemory = {
+            id: 'd-new',
+            content: 'Brand new morning catalyst memory',
+            created_at: '2026-05-26T12:00:00.000Z',
+            metadata: {},
+            status: 'ACTIVE',
+            parent_id: null,
+            relationship_type: null,
+            relevance_score: null,
+            memory_type: 'MARKET_EVENT',
+            importance_score: 8,
+            target_date: null,
+        };
+
+        const deltaSyncFnMock = vi.fn().mockResolvedValue([deltaNewMemory]);
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage
+                    initialMemories={mockMemories}
+                    initialHasMore={false}
+                    initialCursor={null}
+                    fetchFn={vi.fn()}
+                    deltaSyncFn={deltaSyncFnMock}
+                />
+            </QueryClientProvider>,
+        );
+
+        // Assert deltaSyncFn was called with the newest created_at timestamp
+        expect(deltaSyncFnMock).toHaveBeenCalledWith('2026-05-25T12:00:00.000Z');
+
+        // New memory should appear in DOM
+        await waitFor(() => {
+            expect(screen.getByText('Brand new morning catalyst memory')).toBeInTheDocument();
+        });
+
+        // Old memories should still be present
+        expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
     });
 });

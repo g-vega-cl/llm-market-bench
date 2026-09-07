@@ -78,6 +78,14 @@ To maintain consistency, the database `memory_type` values and Frontend UI selec
 - **Resolved Events (`status === 'RESOLVED'`)**: (displayed as "Resolved", filtering memories by resolved status).
 - **Lessons (`LESSON_LEARNED`)**: (retained for generic legacy lessons).
 
+### Sorting, Date Presets & Smart Caching
+To navigate large historical memory corpuses efficiently, the Memories page features:
+1. **Importance Sorting**: Dropdown selector supporting `Newest First` (default), `Highest Importance` (orders by `importance_score` descending 10→1, tiebreak `created_at` desc), `Lowest Importance`, and `Oldest First`.
+2. **Date Presets**: Fast client-side filter pills (`All Time`, `7D`, `30D`, `90D`) evaluating memory `created_at` against sliding time windows.
+3. **High Impact (8+) Toggle**: One-click filter isolating critical macro events, Horizon Watch catalysts, and key trade post-mortems with `importance_score >= 8`.
+4. **4-Hour Caching with Mount Delta-Sync**: TanStack Query caches the memory list with a 4-hour `staleTime` (`1000 * 60 * 60 * 4`). On mount, a lightweight check calls `syncMemories` to inspect whether any new records arrived since the newest cached memory, prepending newly ingested deltas without full-table reloads.
+5. **PostHog Analytics**: Tracks `memories_sort_changed`, `memories_date_preset_changed`, and `memories_high_impact_toggled` along with result counts to observe how users explore historical market theses.
+
 *Note: The empty Decisions (`decision_reasoning`) and redundant, permanently empty Lessons (`lesson_learned`) filters are completely removed. Decisions are managed under the specialized **Reasoning** page rather than the memories table. Post-mortem lessons and academic principles fully cover all lessons learned, so a dedicated empty general lessons tab is unnecessary.*
 
 

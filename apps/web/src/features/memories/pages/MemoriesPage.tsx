@@ -6,12 +6,14 @@ import {
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { type InfiniteData, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 import {
+    type DatePresetOption,
     getMemoryCategory,
     MemoriesList,
     type Memory,
+    type MemorySortOption,
 } from '~/features/memories/components/MemoriesList';
 import type { PaginatedMemories } from '../api/fetch-memories';
 
@@ -24,9 +26,78 @@ interface MemoriesPageProps {
         category: string | undefined,
     ) => Promise<PaginatedMemories>;
     searchFn?: (query: string) => Promise<Memory[]>;
+    deltaSyncFn?: (since: string) => Promise<Memory[]>;
 }
 
 const PAGE_SIZE = 50;
+
+function computeFilteredMemories(
+    sourceList: Memory[],
+    filter: string,
+    onlyHighImpact: boolean,
+    datePreset: DatePresetOption,
+    sortBy: MemorySortOption,
+): Memory[] {
+    // 1. Category / Status Filter
+    let list = sourceList;
+    if (filter === 'RESOLVED') {
+        list = list.filter((m) => m.status === 'RESOLVED');
+    } else if (filter !== 'all') {
+        list = list.filter((m) => getMemoryCategory(m) === filter);
+    }
+
+    // 2. High Impact Filter (importance_score >= 8)
+    if (onlyHighImpact) {
+        list = list.filter((m) => (m.importance_score ?? 5) >= 8);
+    }
+
+    // 3. Date Preset Filter (based on created_at)
+    if (datePreset !== 'all') {
+        const now = Date.now();
+        const daysMap: Record<string, number> = {
+            '7d': 7,
+            '30d': 30,
+            '90d': 90,
+        };
+        const maxDays = daysMap[datePreset] ?? 0;
+        if (maxDays > 0) {
+            const cutoffMs = now - maxDays * 24 * 60 * 60 * 1000;
+            list = list.filter((m) => {
+                if (!m.created_at) return false;
+                const memTime = new Date(m.created_at).getTime();
+                return memTime >= cutoffMs;
+            });
+        }
+    }
+
+    // 4. Sorting
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const scoreA = a.importance_score ?? 5;
+        const scoreB = b.importance_score ?? 5;
+
+        switch (sortBy) {
+            case 'importance_desc':
+                if (scoreB !== scoreA) {
+                    return scoreB - scoreA;
+                }
+                return dateB - dateA;
+            case 'importance_asc':
+                if (scoreA !== scoreB) {
+                    return scoreA - scoreB;
+                }
+                return dateB - dateA;
+            case 'oldest':
+                return dateA - dateB;
+            default:
+                return dateB - dateA;
+        }
+    });
+
+    return sorted;
+}
 
 export function MemoriesPage({
     initialMemories,
@@ -34,9 +105,14 @@ export function MemoriesPage({
     initialCursor,
     fetchFn,
     searchFn,
+    deltaSyncFn,
 }: MemoriesPageProps) {
     const posthog = usePostHog();
+    const queryClient = useQueryClient();
     const [filter, setFilter] = React.useState<string>('all');
+    const [sortBy, setSortBy] = React.useState<MemorySortOption>('newest');
+    const [datePreset, setDatePreset] = React.useState<DatePresetOption>('all');
+    const [onlyHighImpact, setOnlyHighImpact] = React.useState<boolean>(false);
     const [displayLimit, setDisplayLimit] = React.useState<number>(PAGE_SIZE);
 
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -44,9 +120,126 @@ export function MemoriesPage({
     const [searchResults, setSearchResults] = React.useState<Memory[] | null>(null);
     const [isSearching, setIsSearching] = React.useState(false);
 
+    // Standard infinite query for paginated scroll/fetch with 4-hour cache
+    const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
+        useInfiniteQuery({
+            queryKey: ['benchify', 'memories', 'list'],
+            queryFn: async ({ pageParam }) => {
+                const res = await fetchFn(pageParam, undefined);
+                return res;
+            },
+            initialPageParam: undefined as string | undefined,
+            getNextPageParam: (lastPage) =>
+                lastPage.hasMore ? (lastPage.nextCursor ?? undefined) : undefined,
+            initialData: {
+                pages: [
+                    {
+                        data: initialMemories,
+                        hasMore: initialHasMore,
+                        nextCursor: initialCursor,
+                    },
+                ],
+                pageParams: [undefined],
+            },
+            staleTime: 1000 * 60 * 60 * 4, // 4 hours
+            refetchOnWindowFocus: false,
+        });
+
+    // Flatten all fetched pages into a single memories list
+    const memories = React.useMemo(() => {
+        return data ? data.pages.flatMap((page) => page.data || []) : [];
+    }, [data]);
+
+    // Delta-sync check on mount: check if newer memories arrived and prepend them
+    const hasCheckedDeltaSync = React.useRef(false);
+    React.useEffect(() => {
+        if (!deltaSyncFn || hasCheckedDeltaSync.current || memories.length === 0) return;
+        const newestCreatedAt = memories[0]?.created_at;
+        if (!newestCreatedAt) return;
+
+        hasCheckedDeltaSync.current = true;
+        deltaSyncFn(newestCreatedAt)
+            .then((newRecords) => {
+                if (newRecords && newRecords.length > 0) {
+                    queryClient.setQueryData(
+                        ['benchify', 'memories', 'list'],
+                        (old: InfiniteData<PaginatedMemories> | undefined) => {
+                            if (!old?.pages || old.pages.length === 0) return old;
+                            const firstPage = old.pages[0];
+                            return {
+                                ...old,
+                                pages: [
+                                    {
+                                        ...firstPage,
+                                        data: [...newRecords, ...(firstPage.data || [])],
+                                    },
+                                    ...old.pages.slice(1),
+                                ],
+                            };
+                        },
+                    );
+                }
+            })
+            .catch((err) => {
+                console.error('Delta-sync check failed:', err);
+            });
+    }, [deltaSyncFn, memories, queryClient]);
+
     const handleFilterChange = (newFilter: string) => {
         setFilter(newFilter);
         setDisplayLimit(PAGE_SIZE);
+    };
+
+    const handleSortChange = (newSort: MemorySortOption) => {
+        const sourceList = searchResults !== null ? searchResults : memories;
+        const nextFiltered = computeFilteredMemories(
+            sourceList,
+            filter,
+            onlyHighImpact,
+            datePreset,
+            newSort,
+        );
+        setSortBy(newSort);
+        setDisplayLimit(PAGE_SIZE);
+        posthog.capture('memories_sort_changed', {
+            sort_by: newSort,
+            result_count: nextFiltered.length,
+        });
+    };
+
+    const handleDatePresetChange = (newPreset: DatePresetOption) => {
+        const sourceList = searchResults !== null ? searchResults : memories;
+        const nextFiltered = computeFilteredMemories(
+            sourceList,
+            filter,
+            onlyHighImpact,
+            newPreset,
+            sortBy,
+        );
+        setDatePreset(newPreset);
+        setDisplayLimit(PAGE_SIZE);
+        posthog.capture('memories_date_preset_changed', {
+            date_preset: newPreset,
+            result_count: nextFiltered.length,
+        });
+    };
+
+    const handleHighImpactToggle = () => {
+        const nextImpact = !onlyHighImpact;
+        const sourceList = searchResults !== null ? searchResults : memories;
+        const nextFiltered = computeFilteredMemories(
+            sourceList,
+            filter,
+            nextImpact,
+            datePreset,
+            sortBy,
+        );
+        setOnlyHighImpact(nextImpact);
+        setDisplayLimit(PAGE_SIZE);
+        posthog.capture('memories_high_impact_toggled', {
+            enabled: nextImpact,
+            result_count: nextFiltered.length,
+        });
     };
 
     const handleSearchSubmit = async (e: React.FormEvent) => {
@@ -79,45 +272,11 @@ export function MemoriesPage({
         posthog.capture('memories_search_cleared');
     };
 
-    // Standard infinite query for paginated scroll/fetch
-    const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
-        useInfiniteQuery({
-            queryKey: ['benchify', 'memories', 'list'],
-            queryFn: async ({ pageParam }) => {
-                const res = await fetchFn(pageParam, undefined);
-                return res;
-            },
-            initialPageParam: undefined as string | undefined,
-            getNextPageParam: (lastPage) =>
-                lastPage.hasMore ? (lastPage.nextCursor ?? undefined) : undefined,
-            initialData: {
-                pages: [
-                    {
-                        data: initialMemories,
-                        hasMore: initialHasMore,
-                        nextCursor: initialCursor,
-                    },
-                ],
-                pageParams: [undefined],
-            },
-            staleTime: 1000 * 30, // 30 seconds
-            refetchOnWindowFocus: false,
-        });
-
-    // Flatten all fetched pages into a single memories list
-    const memories = React.useMemo(() => {
-        return data ? data.pages.flatMap((page) => page.data || []) : [];
-    }, [data]);
-
-    // 100% Instantaneous Client-Side Filtering
+    // 100% Instantaneous Client-Side Filtering and Sorting
     const filteredMemories = React.useMemo(() => {
         const sourceList = searchResults !== null ? searchResults : memories;
-        if (filter === 'all') return sourceList;
-        if (filter === 'RESOLVED') {
-            return sourceList.filter((m) => m.status === 'RESOLVED');
-        }
-        return sourceList.filter((m) => getMemoryCategory(m) === filter);
-    }, [memories, searchResults, filter]);
+        return computeFilteredMemories(sourceList, filter, onlyHighImpact, datePreset, sortBy);
+    }, [memories, searchResults, filter, onlyHighImpact, datePreset, sortBy]);
 
     // Client-Side Pagination (limits rendered memories for DOM performance)
     const displayedMemories = React.useMemo(() => {
@@ -257,6 +416,12 @@ export function MemoriesPage({
                     memories={displayedMemories}
                     filter={filter}
                     onFilterChange={handleFilterChange}
+                    sortBy={sortBy}
+                    onSortChange={handleSortChange}
+                    datePreset={datePreset}
+                    onDatePresetChange={handleDatePresetChange}
+                    onlyHighImpact={onlyHighImpact}
+                    onHighImpactToggle={handleHighImpactToggle}
                 />
 
                 {/* Load More Button */}

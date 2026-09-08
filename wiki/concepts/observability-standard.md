@@ -49,9 +49,12 @@ When the engine rejects a model's trading recommendation due to a safety guardra
 ### TypeScript (Web)
 - Query Cache Errors: Logged globally in `apps/web/src/lib/query-client.tsx`.
 - Mutation Errors: Logged globally to ensure UI-driven actions are traceable in the browser console/Sentry.
+- Error Tracking & Bot Noise Suppression: Automated security scanners (e.g. Microsoft Safe Links) generate synthetic CefSharp unhandled promise rejections. Handled via PostHog server-side suppression rules rather than client bundle bloat, as detailed in [[concepts/posthog-stealth-proxy]].
 
 ## Related
 - [[entities/pipeline]]
 - [[entities/auto-wiki]]
 - [[sources/anomaly-detector-source]]
 - [[concepts/agent-workflow]]
+- [[concepts/posthog-stealth-proxy]]
+

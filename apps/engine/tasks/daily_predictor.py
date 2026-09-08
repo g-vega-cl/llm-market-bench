@@ -258,12 +258,25 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
     return "\n".join(context_lines)
 
 
-async def run_daily_prediction(ticker: str = "SPY") -> list[dict]:
-    """Run daily predictions at 8:00 AM ET for target ticker across model arena (DeepSeek & MiniMax)."""
+async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list[dict]:
+    """Run daily predictions ahead of market open for target ticker across model arena (DeepSeek & MiniMax)."""
+    from execution.market_data import MarketDataManager
+
+    today = datetime.now(UTC).date()
+
+    if not force:
+        mdm = MarketDataManager()
+        is_trading = await mdm.is_trading_day(today)
+        if not is_trading:
+            logger.info(
+                f"Skipping daily prediction for {ticker} on {today}: "
+                f"Market is closed (weekend or holiday). Use --force to override."
+            )
+            return []
+
     client = get_supabase_client()
     context = await get_daily_market_context(ticker=ticker)
 
-    today = datetime.now(UTC).date()
     user_msg = (
         f"Market Context:\n{context}\n\n"
         f"Analyze the market context and predict whether {ticker} will close HIGHER (UP) or LOWER (DOWN) "
@@ -373,4 +386,11 @@ async def run_daily_prediction(ticker: str = "SPY") -> list[dict]:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_daily_prediction(ticker="SPY"))
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run daily S&P predictions across model arena.")
+    parser.add_argument("--ticker", type=str, default="SPY", help="Ticker to predict (default: SPY)")
+    parser.add_argument("--force", action="store_true", help="Force prediction even on weekends or market holidays.")
+    args = parser.parse_args()
+
+    asyncio.run(run_daily_prediction(ticker=args.ticker, force=args.force))

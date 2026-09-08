@@ -466,3 +466,63 @@ def test_daily_predictor_prompt_header_includes_options():
         "volatility skew" in DAILY_PREDICTOR_CONSTRAINTS_HEADER.lower()
         or "skew" in DAILY_PREDICTOR_CONSTRAINTS_HEADER.lower()
     )
+
+
+@pytest.mark.asyncio
+async def test_run_daily_prediction_skips_when_not_trading_day():
+    mock_mdm = MagicMock()
+    mock_mdm.is_trading_day = AsyncMock(return_value=False)
+
+    mock_supabase = MagicMock()
+
+    with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
+    ):
+        results = await run_daily_prediction(ticker="SPY", force=False)
+        assert results == []
+        mock_supabase.table.return_value.upsert.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_daily_prediction_runs_when_force_flag_passed():
+    mock_mdm = MagicMock()
+    mock_mdm.is_trading_day = AsyncMock(return_value=False)
+
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
+        {"variant_tag": "daily-pred-tag1", "prompt_content": DAILY_PREDICTOR_PROMPT}
+    ]
+    mock_supabase.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "test-uuid"}]
+
+    mock_deepseek = MagicMock()
+    mock_deepseek.chat.completions.create.return_value = DailyPredictionOutput(
+        predicted_direction="UP",
+        confidence=70.0,
+        expected_return_pct=0.30,
+        rationale="Forced run context.",
+        catalysts=["Catalyst 1"],
+    )
+
+    mock_minimax = AsyncMock()
+    mock_minimax.chat_with_json_response = AsyncMock(
+        return_value={
+            "predicted_direction": "UP",
+            "confidence": 65.0,
+            "expected_return_pct": 0.25,
+            "rationale": "Forced run context.",
+            "catalysts": ["Catalyst 1"],
+        }
+    )
+    mock_minimax.close = AsyncMock()
+
+    with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch("tasks.daily_predictor.get_daily_market_context", new_callable=AsyncMock, return_value="Mock context"),
+        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
+        patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
+        patch("tasks.daily_predictor.close_client", new_callable=AsyncMock),
+    ):
+        results = await run_daily_prediction(ticker="SPY", force=True)
+        assert len(results) == 2

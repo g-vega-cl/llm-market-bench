@@ -40,18 +40,13 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             COMMAND="${{ inputs.action }}"
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            # The only native schedule trigger in this workflow is Sunday 10 PM UTC for prompt autoresearch
+            COMMAND="daily-autoresearch"
           else
-            HOUR=$(date -u +%H)
-            if [ "$HOUR" = "13" ]; then
-              COMMAND="daily-predictor"
-            elif [ "$HOUR" = "21" ]; then
-              COMMAND="evaluate-daily-predictions"
-            elif [ "$HOUR" = "22" ]; then
-              COMMAND="daily-autoresearch"
-            else
-              COMMAND="daily-predictor"
-            fi
+            COMMAND="daily-predictor"
           fi
+
 
           echo "command=$COMMAND" >> $GITHUB_OUTPUT
 

@@ -232,3 +232,95 @@ async def test_evaluate_daily_predictions_with_target_date_and_force():
         evaluated_count = await evaluate_daily_predictions(target_date="2026-09-01", force_recalc=True)
         assert evaluated_count == 1
         mock_supabase.table.return_value.update.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_evaluate_daily_predictions_marks_holiday_as_skipped():
+    """Test that predictions recorded on non-trading days (holidays/weekends)
+    are marked as 'skipped_market_closed' rather than left in 'pending' indefinitely.
+    """
+    mock_supabase = MagicMock()
+
+    pending_data = [
+        {
+            "id": "pred-holiday-1",
+            "target_date": "2026-09-07",
+            "ticker": "SPY",
+            "predicted_direction": "UP",
+            "confidence": 60.0,
+            "expected_return_pct": 0.20,
+            "status": "pending",
+        }
+    ]
+
+    mock_query = MagicMock()
+    mock_query.eq.return_value = mock_query
+    mock_query.execute.return_value.data = pending_data
+    mock_supabase.table.return_value.select.return_value = mock_query
+
+    mock_delete = MagicMock()
+    mock_delete.eq.return_value.execute = MagicMock()
+    mock_supabase.table.return_value.delete.return_value = mock_delete
+
+    mock_mdm = MagicMock()
+    from unittest.mock import AsyncMock
+
+    mock_mdm.is_trading_day = AsyncMock(return_value=False)
+
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch(
+            "tasks.evaluate_daily_predictions.fetch_intraday_prices",
+            return_value=(None, None, None, None),
+        ),
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+    ):
+        evaluated_count = await evaluate_daily_predictions(target_date="2026-09-07")
+        assert evaluated_count == 0
+        mock_supabase.table.return_value.delete.assert_called()
+        mock_delete.eq.assert_called_with("id", "pred-holiday-1")
+
+
+@pytest.mark.asyncio
+async def test_evaluate_daily_predictions_skips_active_session_before_market_close():
+    """Test that predictions for today are NOT evaluated while the market session is still active."""
+    import datetime
+    from unittest.mock import AsyncMock
+    from zoneinfo import ZoneInfo
+
+    mock_supabase = MagicMock()
+    today_et = datetime.datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+
+    pending_data = [
+        {
+            "id": "pred-today-1",
+            "target_date": today_et,
+            "ticker": "SPY",
+            "predicted_direction": "UP",
+            "confidence": 60.0,
+            "expected_return_pct": 0.20,
+            "status": "pending",
+        }
+    ]
+
+    mock_query = MagicMock()
+    mock_query.eq.return_value = mock_query
+    mock_query.execute.return_value.data = pending_data
+    mock_supabase.table.return_value.select.return_value = mock_query
+
+    # Freeze ET time to 10:30 AM (during active session)
+    fake_now = datetime.datetime(2026, 9, 8, 10, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.evaluate_daily_predictions.get_ny_now", return_value=fake_now),
+        patch(
+            "tasks.evaluate_daily_predictions.fetch_intraday_prices",
+            new_callable=AsyncMock,
+            return_value=(769.0, 770.0, 768.0, 769.5),
+        ) as mock_fetch,
+    ):
+        evaluated_count = await evaluate_daily_predictions(target_date=today_et, force_recalc=False)
+        assert evaluated_count == 0
+        mock_fetch.assert_not_called()
+        mock_supabase.table.return_value.update.assert_not_called()

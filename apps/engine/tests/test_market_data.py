@@ -365,3 +365,34 @@ async def test_get_premarket_quote_prefers_aftermarket_quote():
     assert result["change"] == 4.50
     assert abs(result["change_pct"] - (4.50 / 592.00 * 100.0)) < 0.001
     assert result["volume"] == 120000
+
+
+@pytest.mark.asyncio
+async def test_is_trading_day_weekends():
+    manager = MarketDataManager()
+    # 2026-09-05 is Saturday, 2026-09-06 is Sunday
+    assert await manager.is_trading_day("2026-09-05") is False
+    assert await manager.is_trading_day("2026-09-06") is False
+
+
+@pytest.mark.asyncio
+async def test_is_trading_day_market_holiday():
+    manager = MarketDataManager()
+    # 2026-09-07 is Labor Day (US market holiday)
+    mock_holidays = [
+        {"exchange": "NASDAQ", "date": "2026-09-07", "name": "Labor Day", "isClosed": True},
+        {"exchange": "NASDAQ", "date": "2026-07-03", "name": "Independence Day", "isClosed": True},
+    ]
+    with patch.object(manager, "get_market_holidays", new_callable=AsyncMock, return_value=mock_holidays):
+        assert await manager.is_trading_day("2026-09-07") is False
+
+
+@pytest.mark.asyncio
+async def test_is_trading_day_regular_weekday():
+    manager = MarketDataManager()
+    # 2026-09-08 is Tuesday (active trading day)
+    mock_holidays = [
+        {"exchange": "NASDAQ", "date": "2026-09-07", "name": "Labor Day", "isClosed": True},
+    ]
+    with patch.object(manager, "get_market_holidays", new_callable=AsyncMock, return_value=mock_holidays):
+        assert await manager.is_trading_day("2026-09-08") is True

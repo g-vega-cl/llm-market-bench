@@ -1042,7 +1042,8 @@ def main():
     elif args.command == COMMAND_DAILY_PREDICTOR:
         from tasks.daily_predictor import run_daily_prediction
 
-        asyncio.run(run_daily_prediction(ticker=args.ticker))
+        asyncio.run(run_daily_prediction(ticker=args.ticker, force=args.force))
+
     elif args.command == COMMAND_EVALUATE_DAILY_PREDICTIONS:
         from tasks.evaluate_daily_predictions import evaluate_daily_predictions
 

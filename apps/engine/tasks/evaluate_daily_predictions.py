@@ -9,6 +9,16 @@ from core.config import logger
 from core.db import get_supabase_client
 
 
+def get_ny_now() -> datetime:
+    """Helper to return current New York datetime."""
+    try:
+        from zoneinfo import ZoneInfo
+
+        return datetime.now(ZoneInfo("America/New_York"))
+    except ImportError:
+        return datetime.now()
+
+
 def calculate_brier_score(predicted_direction: str, confidence: float, actual_direction: str) -> float:
     """Calculate Brier Score for binary outcome.
 
@@ -197,10 +207,37 @@ async def evaluate_daily_predictions(target_date: str | None = None, force_recal
         confidence = pred.get("confidence", 50.0)
         expected_return_pct = pred.get("expected_return_pct")
 
+        # Skip evaluating today's session if market has not closed yet (4:00 PM ET / 16:00 ET)
+        now_et = get_ny_now()
+        today_et_str = now_et.date().isoformat()
+        if (
+            target_date_str == today_et_str
+            and (now_et.hour < 16 or (now_et.hour == 16 and now_et.minute < 5))
+            and not force_recalc
+        ):
+            logger.info(
+                f"Skipping evaluation for prediction {pred_id} ({ticker} on {target_date_str}): "
+                f"Market session is still active (Time: {now_et.strftime('%H:%M')} ET < 16:05 ET)."
+            )
+            continue
+
         open_p, high_p, low_p, close_p = await fetch_intraday_prices(
             ticker, target_date_str, force_refresh=force_recalc
         )
+
         if open_p is None or close_p is None or high_p is None or low_p is None:
+            from execution.market_data import MarketDataManager
+
+            mdm = MarketDataManager()
+            is_trading = await mdm.is_trading_day(target_date_str)
+            if not is_trading:
+                logger.warning(
+                    f"Target date {target_date_str} for prediction {pred_id} was not a trading day (weekend or holiday). "
+                    f"Deleting invalid non-trading day prediction."
+                )
+                client.table("daily_predictions").delete().eq("id", pred_id).execute()
+                continue
+
             logger.warning(
                 f"Could not retrieve Open/High/Low/Close price for {ticker} on {target_date_str}. Skipping evaluation."
             )

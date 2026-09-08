@@ -58,6 +58,22 @@ def test_daily_predictor_workflow_schedule():
     )
 
 
+def test_daily_predictor_schedule_routes_to_autoresearch():
+    """Verify daily-predictor.yml routes schedule events to daily-autoresearch without fragile hour checks."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    predictor_yml_path = root / ".github" / "workflows" / "daily-predictor.yml"
+
+    content = predictor_yml_path.read_text()
+    # When event is schedule, it must set daily-autoresearch
+    assert 'elif [ "${{ github.event_name }}" = "schedule" ]; then' in content or (
+        'COMMAND="daily-autoresearch"' in content and "github.event_name" in content
+    )
+    # Must NOT have fragile HOUR=22 check that defaults to daily-predictor on runner delay
+    assert '[ "$HOUR" = "22" ]' not in content, (
+        'Found fragile \'[ "$HOUR" = "22" ]\' check in daily-predictor.yml which fails on runner queue delays.'
+    )
+
+
 def test_daily_predictor_workflow_env_keys():
     """Verify daily-predictor.yml includes MINIMAX_API_KEY for the MiniMax model arena runner."""
     root = Path(__file__).resolve().parent.parent.parent.parent

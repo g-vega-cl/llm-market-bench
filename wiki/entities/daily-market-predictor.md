@@ -10,17 +10,21 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 ## Key Features
 
 1. **Pre-Market Inference (9:20 AM ET)**:
-   - Command: `python main.py daily-predictor [--ticker SPY]`
+   - Command: `python main.py daily-predictor [--ticker SPY] [--force]`
+   - **Trading Day and Holiday Validation**: Checks `MarketDataManager.is_trading_day()` against FMP exchange holidays (with rule-based fallback for US federal market holidays). Automatically exits without logging predictions on weekends or exchange holidays such as Labor Day, unless bypassed with `--force`.
    - **Pure Model Arena**: Runs **DeepSeek Flash** (`deepseek-v4-flash` via Instructor) and **MiniMax-M3** (`MiniMax-M3` via MiniMax JSON client with explicit JSON schema footer, 8,192 token ceiling, and YAML fallback parser) in an isolated model arena, logging predictions independently for each model without reasoning cross-contamination.
    - Context: Synthesizes dual AI Wall Street newsletter briefings (prior session `close` executive summary & key takeaways via `execute_fetch_daily_newsletter_tool(session="close", include_full_content=False)` plus today's full pre-market `open` briefing via `execute_fetch_daily_newsletter_tool(session="open", include_full_content=True)`), live pre-market price quotes & overnight gap metrics (via FMP `/quote` and `MarketDataManager.get_premarket_quote` across US indices `SPY`, `QQQ`, `DIA`, `IWM`, international proxies `EWJ`, `VGK`, Treasury yield proxies `TLT`, `IEF`, and commodities/FX `GLD`, `USO`, `UUP`), technical indicators (SMA20, 5-day return), options derivatives positioning & volatility skew (via `execute_get_options_sentiment_tool(ticker="SPY")` with timestamp & session staleness metadata), and canonical tools context (`execute_get_global_macro_context_tool`, `execute_get_volatility_index_details_tool`, `execute_market_health_barometer_tool`, `execute_get_market_feeling_tool`).
    - **Zero-Mean Anti-Bias Mandate**: System prompt enforces a zero-mean distribution baseline (~50/50 UP vs DOWN) to eliminate pre-trained LLM long-term market drift bias. Requires strictly symmetric evaluation of bearish breakdown signals (VWAP resistance, RSI > 70 overbought exhaustion, yield surges) alongside bullish momentum signals.
 
 2. **Post-Market Evaluation (5:15 PM EDT / 4:15 PM EST)**:
    - Command: `python main.py evaluate-daily-predictions [--target-date YYYY-MM-DD] [--force]`
+   - **Active Session Guard**: Skips evaluation if the target date is today and the market session is still active (< 16:05 ET) to prevent premature evaluation against early intraday price snapshots.
+   - **Non-Trading Day Purging**: If price data cannot be fetched and the target date was a non-trading day (weekend or market holiday), deletes the invalid prediction from `daily_predictions` to prevent indefinite retry loops.
    - Scopes today's 9:30 AM Open, High, Low, and 4:00 PM Close prices safely after market close by prioritizing timestamped Regular Trading Hours (`09:30:00 <= timestamp <= 16:00:00` ET) hourly bars (with automatic fallback to FMP `/historical-price-eod/full` EOD history). This guarantees zero extended-hours/post-market price contamination while immediately capturing afternoon price extremes.
    - Calculates **Directional Accuracy** (`is_correct`), **Intraday Target Hit Rate** (`intraday_hit`), **Intraday Direction Hit Rate** (`intraday_direction_hit`), and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
    - `intraday_hit` evaluates whether the stock reached or surpassed the predicted target return percentage (`expected_return_pct`) at any point between Open and Close (e.g. hitting +0.35% intraday high even if it closed at -0.20%).
    - **System Portfolio Execution**: Automatically triggers mechanical 100% equity day trading execution for each model's systematic portfolio (`sys-daily-spy-{model_name}`), logging trade records and updating portfolio equity/performance snapshots based on profit target hits or 3:30 PM time-based exits.
+
 
 3. **Weekly Prompt Evolution & Performance Ratchet (Sunday 6:00 PM ET / 10:00 PM UTC)**:
    - Command: `python main.py daily-autoresearch`
@@ -54,9 +58,11 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 2. **Runner Environment & API Key Injection**:
    - `.github/workflows/daily-predictor.yml` provisions secrets for financial data (`FMP_API_KEY`, `FRED_API_KEY`), database access (`SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`), and all participating models (`DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`).
 
-3. **Market-Open Safety Guardrail**:
+3. **Market-Open and Schedule Guardrails**:
    - Implemented in `.github/workflows/daily-predictor.yml`.
+   - **Direct Schedule Routing**: Native schedule events (`0 22 * * SUN`) route directly to `daily-autoresearch` without hour-dependent branching, ensuring runner queue delays cannot trigger `daily-predictor`.
    - If a pre-market `daily-predictor` run is triggered or delayed after **9:30 AM EDT (13:30 UTC)**, the step automatically logs a warning and exits cleanly without recording stale intraday predictions.
+
 
 ## Database Schema
 

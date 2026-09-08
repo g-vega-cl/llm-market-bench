@@ -73,7 +73,15 @@ class MarketDataManager:
     }
     _market_status_lock = None
 
+    _holidays_cache: dict = {
+        "holidays": None,
+        "fetched_at": None,
+        "ttl_seconds": 86400,  # 24 hours
+    }
+    _holidays_lock = None
+
     # In-memory cache for screener results to avoid redundant API hits within a session
+
     _screener_cache: dict = {}
 
     def __init__(self, cache_ttl_seconds: int | None = None):
@@ -199,6 +207,125 @@ class MarketDataManager:
             cache["fetched_at"] = datetime.datetime.now(datetime.UTC)
 
             return result
+
+    async def get_market_holidays(self) -> list[dict]:
+        """Fetch US market holidays from FMP API with in-memory caching."""
+        import datetime
+
+        now = datetime.datetime.now(datetime.UTC)
+        cache = MarketDataManager._holidays_cache
+
+        if cache["holidays"] is not None and cache["fetched_at"] is not None:
+            elapsed = (now - cache["fetched_at"]).total_seconds()
+            if elapsed < cache["ttl_seconds"]:
+                return cache["holidays"]
+
+        if MarketDataManager._holidays_lock is None:
+            import asyncio
+
+            MarketDataManager._holidays_lock = asyncio.Lock()
+
+        async with MarketDataManager._holidays_lock:
+            if cache["holidays"] is not None and cache["fetched_at"] is not None:
+                elapsed = (now - cache["fetched_at"]).total_seconds()
+                if elapsed < cache["ttl_seconds"]:
+                    return cache["holidays"]
+
+            holidays: list[dict] = []
+            if FMP_API_KEY:
+                try:
+                    import httpx
+
+                    async with httpx.AsyncClient() as client:
+                        url = "https://financialmodelingprep.com/stable/holidays-by-exchange"
+                        params = {"exchange": "NASDAQ", "apikey": FMP_API_KEY}
+                        resp = await client.get(url, params=params, timeout=10.0)
+                        resp.raise_for_status()
+                        data = resp.json()
+                        if isinstance(data, list):
+                            holidays = data
+                except Exception as e:
+                    logger.warning(f"Failed to fetch market holidays from FMP: {e}")
+
+            cache["holidays"] = holidays
+            cache["fetched_at"] = datetime.datetime.now(datetime.UTC)
+            return holidays
+
+    def _is_known_us_market_holiday_fallback(self, date_obj) -> bool:
+        """Rule-based fallback for US stock exchange holidays when API data is unavailable."""
+        month = date_obj.month
+        day = date_obj.day
+        weekday = date_obj.weekday()  # Monday=0, Sunday=6
+
+        return bool(
+            # New Year's Day (Jan 1, observed Jan 2 if Sun)
+            (month == 1 and day == 1)
+            or (month == 1 and day == 2 and weekday == 0)
+            # Martin Luther King Jr. Day (Third Monday in January)
+            or (month == 1 and weekday == 0 and 15 <= day <= 21)
+            # Washington's Birthday / Presidents' Day (Third Monday in February)
+            or (month == 2 and weekday == 0 and 15 <= day <= 21)
+            # Memorial Day (Last Monday in May)
+            or (month == 5 and weekday == 0 and day >= 25)
+            # Juneteenth (June 19, observed June 20 if Sun, June 18 if Sat)
+            or (month == 6 and day == 19)
+            or (month == 6 and day == 20 and weekday == 0)
+            or (month == 6 and day == 18 and weekday == 4)
+            # Independence Day (July 4, observed July 5 if Sun, July 3 if Sat)
+            or (month == 7 and day == 4)
+            or (month == 7 and day == 5 and weekday == 0)
+            or (month == 7 and day == 3 and weekday == 4)
+            # Labor Day (First Monday in September)
+            or (month == 9 and weekday == 0 and 1 <= day <= 7)
+            # Thanksgiving Day (Fourth Thursday in November)
+            or (month == 11 and weekday == 3 and 22 <= day <= 28)
+            # Christmas Day (Dec 25, observed Dec 26 if Sun, Dec 24 if Sat)
+            or (month == 12 and day == 25)
+            or (month == 12 and day == 26 and weekday == 0)
+            or (month == 12 and day == 24 and weekday == 4)
+        )
+
+    async def is_trading_day(self, target_date=None) -> bool:
+        """Checks if a given date is an active US equity trading day (non-weekend, non-holiday).
+
+        Args:
+            target_date: Target date to check (datetime.date, ISO string YYYY-MM-DD, or None for today ET).
+
+        Returns:
+            True if target_date is a regular trading session, False if weekend or market holiday.
+        """
+        import datetime
+
+        if target_date is None:
+            try:
+                from zoneinfo import ZoneInfo
+
+                date_obj = datetime.datetime.now(ZoneInfo("America/New_York")).date()
+            except ImportError:
+                date_obj = datetime.datetime.now().date()
+        elif isinstance(target_date, str):
+            date_obj = datetime.date.fromisoformat(target_date[:10])
+        elif isinstance(target_date, datetime.datetime):
+            date_obj = target_date.date()
+        else:
+            date_obj = target_date
+
+        # 1. Weekends (Saturday=5, Sunday=6)
+        if date_obj.weekday() >= 5:
+            return False
+
+        # 2. Check market holidays from FMP
+        date_str = date_obj.isoformat()
+        try:
+            holidays = await self.get_market_holidays()
+            for h in holidays:
+                if h.get("date") == date_str and h.get("isClosed", True):
+                    return False
+        except Exception as e:
+            logger.warning(f"Error checking market holiday for {date_str}: {e}")
+
+        # 3. Rule-based US market holiday fallback
+        return not self._is_known_us_market_holiday_fallback(date_obj)
 
     async def get_quote(self, ticker: str, force_refresh: bool = False) -> TickerData | None:
         """Fetch stock quote, checking cache first unless force_refresh is True.

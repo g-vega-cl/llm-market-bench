@@ -34,6 +34,15 @@ interface PortfoliosPageProps {
     }>;
 }
 
+const SYSTEM_PORTFOLIO_SUBTITLES: Record<string, string> = {
+    'sys-smid-quality-compounder': 'Quality & Momentum Small-to-Large Compounder (Zero-Ceiling)',
+    'sys-sector-ls-consensus': 'Consensus Sector Long/Short Dispersion',
+    'sys-sector-uncorr-20d': '20-Day Uncorrelated Sector Momentum (Low-Beta Barbell)',
+    'sys-sector-uncorr-7d': '7-Day Uncorrelated Sector Momentum (Weekly Rotation)',
+    'sys-sector-naive-momentum': '20-Day Unconstrained Momentum (Top 2 Winners)',
+    'sys-sector-mean-reversion': '7-Day Sector Mean Reversion (Oversold Bounce)',
+};
+
 function PortfolioCard({
     portfolio,
     deprecated = false,
@@ -75,14 +84,9 @@ function PortfolioCard({
                     </Badge>
                 </div>
 
-                {portfolio.owner_id === 'sys-smid-quality-compounder' && (
+                {SYSTEM_PORTFOLIO_SUBTITLES[portfolio.owner_id] && (
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3 font-medium">
-                        Quality & Momentum Small-to-Large Compounder (Zero-Ceiling)
-                    </p>
-                )}
-                {portfolio.owner_id === 'sys-sector-ls-consensus' && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3 font-medium">
-                        Consensus Sector Long/Short Dispersion
+                        {SYSTEM_PORTFOLIO_SUBTITLES[portfolio.owner_id]}
                     </p>
                 )}
 

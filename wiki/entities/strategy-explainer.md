@@ -11,6 +11,10 @@ React component (`StrategyExplainer.tsx`) that renders a collapsible strategy de
 
 - **`sys-smid-quality-compounder`** — Small/Mid-Cap Quality Compounder with Zero-Ceiling Invariant
 - **`sys-sector-ls-consensus`** — Weekly Sector Long/Short Consensus Strategy
+- **`sys-sector-uncorr-20d`** — 20-Day Uncorrelated Sector Momentum (Low-Beta Barbell)
+- **`sys-sector-uncorr-7d`** — 7-Day Uncorrelated Sector Momentum (Weekly Rotation)
+- **`sys-sector-naive-momentum`** — 20-Day Unconstrained Momentum (Top 2 Winners Benchmark Control)
+- **`sys-sector-mean-reversion`** — 7-Day Sector Mean Reversion (Oversold Bounce)
 - **`sys-daily-spy-*`** — Daily S&P 500 Intraday Trader
 
 Returns `null` for non-system portfolios (e.g., individual LLM agents).

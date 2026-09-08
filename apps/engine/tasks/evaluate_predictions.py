@@ -383,13 +383,21 @@ async def run_evaluation(force: bool = False):
     # Trigger systematic sector long/short portfolio rebalance for evaluated windows
     if evaluated_windows:
         try:
-            from execution.system_portfolios import execute_system_sector_rebalance
+            from execution.system_portfolios import (
+                execute_all_system_mechanical_sector_rebalances,
+                execute_system_sector_rebalance,
+            )
 
             for (w_start, w_end), w_data in evaluated_windows.items():
                 await execute_system_sector_rebalance(
                     week_start_date=w_start,
                     week_end_date=w_end,
                     predictions=w_data["predictions"],
+                    price_map=w_data["price_map"],
+                )
+                await execute_all_system_mechanical_sector_rebalances(
+                    week_start_date=w_start,
+                    week_end_date=w_end,
                     price_map=w_data["price_map"],
                 )
         except Exception as e:

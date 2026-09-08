@@ -5,196 +5,297 @@ interface StrategyExplainerProps {
     ownerId: string;
 }
 
-export function StrategyExplainer({ ownerId }: StrategyExplainerProps) {
+interface ExplainerConfig {
+    emoji: string;
+    title: string;
+    badgeText: string;
+    badgeColorScheme: 'success' | 'info' | 'warning' | 'accent';
+    subtitle: string;
+    borderColor: string;
+    bgColor: string;
+    gridColsClass?: string;
+    pillars: Array<{
+        title: string;
+        description: React.ReactNode;
+    }>;
+}
+
+const STRATEGY_CONFIGS: Record<string, ExplainerConfig> = {
+    'sys-smid-quality-compounder': {
+        emoji: '🌱',
+        title: 'Small/Mid-Cap Quality Compounder Strategy',
+        badgeText: 'Zero-Ceiling Invariant',
+        badgeColorScheme: 'success',
+        subtitle:
+            'Overcoming the Russell 2000 reconstitution bleed via quality filtering and multi-bagger retention.',
+        borderColor: 'border-emerald-500/20',
+        bgColor: 'bg-emerald-950/10',
+        gridColsClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+        pillars: [
+            {
+                title: '📚 Academic Thesis',
+                description: (
+                    <>
+                        Grounded in Asness et al. (2018){' '}
+                        <em>"Size Matters, If You Control Your Junk"</em> and Chen, Noronha, &
+                        Singal (2006). Eliminates the ~1.8% annual Russell reconstitution
+                        front-running loss and weeds out unprofitable zombies.
+                    </>
+                ),
+            },
+            {
+                title: '🎯 Entry Screen ($1B–$10B)',
+                description:
+                    'S&P 600 rule: 4 quarters positive GAAP Net Income + positive Free Cash Flow + ROIC > 10% + top quintile 12-month relative momentum. Target portfolio of 25 to 30 concentrated compounders.',
+            },
+            {
+                title: '🚀 The Zero-Ceiling Rule',
+                description: (
+                    <>
+                        When a holding grows into a large cap ($20B, $50B, $100B+), it is{' '}
+                        <strong>never sold for size reasons</strong>. Bessembinder (2018) showed
+                        that 4% of stocks generate all net market wealth; multi-baggers ride
+                        indefinitely.
+                    </>
+                ),
+            },
+            {
+                title: '🛑 Strict Exit Discipline',
+                description:
+                    'Positions are only liquidated if fundamentals break: trailing 12-month net income turns negative, 2 consecutive quarters of negative cash flow, or debt leverage spikes. Rebalances quarterly following SEC 10-Q deadlines.',
+            },
+        ],
+    },
+    'sys-sector-ls-consensus': {
+        emoji: '⚖️',
+        title: 'Weekly Sector Long/Short Consensus Strategy',
+        badgeText: 'Market Neutral Tilt',
+        badgeColorScheme: 'info',
+        subtitle:
+            'Mechanical sector rotation allocating 50% long to predicted best sectors and 50% short to predicted worst sectors.',
+        borderColor: 'border-blue-500/20',
+        bgColor: 'bg-blue-950/10',
+        pillars: [
+            {
+                title: '📊 Consensus Signal',
+                description:
+                    'Aggregates weekly predictions from multi-model sector arenas across major US sector ETFs (XLE, XLF, XLK, XLI, XLP, XLY, XLU, XLV, XLB, XLC, XBI, XOP).',
+            },
+            {
+                title: '⚔️ Conflict Netting',
+                description:
+                    'If any ETF appears simultaneously in both the predicted best and predicted worst sets across different models, it is netted out and dropped from both sides.',
+            },
+            {
+                title: '⏱️ Disciplined Cadence',
+                description:
+                    'Positions are entered at Monday 9:30 AM ET open with 5 bps slippage and closed at Friday 4:00 PM ET close, with zero weekend overnight risk.',
+            },
+        ],
+    },
+    'sys-sector-uncorr-20d': {
+        emoji: '🛡️',
+        title: '20-Day Uncorrelated Sector Momentum',
+        badgeText: 'Low-Beta Barbell',
+        badgeColorScheme: 'success',
+        subtitle:
+            'Systematic weekly rotation selecting the top-performing pair of US sector ETFs with rolling 90-day correlation |ρ| < 0.30 and trailing 20-day returns.',
+        borderColor: 'border-emerald-500/20',
+        bgColor: 'bg-emerald-950/10',
+        pillars: [
+            {
+                title: '🛡️ Uncorrelated Filter',
+                description:
+                    'Requires pairwise Pearson correlation |ρ| < 0.30 over 90 days, eliminating single-factor concentration and significantly dampening max drawdowns.',
+            },
+            {
+                title: '📈 20-Day Momentum',
+                description:
+                    'Evaluates trailing 20-day (~1 month) returns to filter out 1-week whipsaws and ride persistent institutional sector rotations.',
+            },
+            {
+                title: '⚖️ 50/50 Execution',
+                description:
+                    'Rebalances 50% capital into each ETF at Monday open and liquidates at Friday close with 5 bps execution friction.',
+            },
+        ],
+    },
+    'sys-sector-uncorr-7d': {
+        emoji: '⚡',
+        title: '7-Day Uncorrelated Sector Momentum',
+        badgeText: 'Rapid Rotation',
+        badgeColorScheme: 'info',
+        subtitle:
+            'Weekly rebalance selecting the top uncorrelated sector ETF pair (|ρ| < 0.30) based on trailing 7-day returns.',
+        borderColor: 'border-teal-500/20',
+        bgColor: 'bg-teal-950/10',
+        pillars: [
+            {
+                title: '⚡ Weekly Pulse',
+                description:
+                    'Directly tracks the Sunday correlation matrix snapshot and the Uncorrelated Pairs with Positive Momentum screener.',
+            },
+            {
+                title: '🛡️ Low-Beta Pairing',
+                description:
+                    'Constrains assets to |ρ| < 0.30, forcing the portfolio to pick independent rallies rather than concentrated factor bets.',
+            },
+            {
+                title: '⚖️ 50/50 Allocation',
+                description:
+                    'Equal capital split between both ETFs entered at Monday open and liquidated at Friday close.',
+            },
+        ],
+    },
+    'sys-sector-naive-momentum': {
+        emoji: '🚀',
+        title: '20-Day Unconstrained Momentum',
+        badgeText: 'Control Benchmark',
+        badgeColorScheme: 'accent',
+        subtitle:
+            'Benchmark control holding the top 2 highest-returning sectors over the past 20 days regardless of pairwise correlation.',
+        borderColor: 'border-purple-500/20',
+        bgColor: 'bg-purple-950/10',
+        pillars: [
+            {
+                title: '🚀 Maximum Beta Momentum',
+                description:
+                    'Selects top 2 winners unconstrained by correlation, allowing concentration in surging high-beta clusters (e.g. XLK + SMH).',
+            },
+            {
+                title: '🔬 Scientific Control',
+                description:
+                    'Provides a direct baseline to quantify the exact risk-adjusted alpha provided by correlation filters versus raw momentum.',
+            },
+            {
+                title: '⚖️ 50/50 Weekly Split',
+                description:
+                    'Equal weight across both top winners, rebalanced weekly with 5 bps friction.',
+            },
+        ],
+    },
+    'sys-sector-mean-reversion': {
+        emoji: '🔄',
+        title: '7-Day Sector Mean Reversion',
+        badgeText: 'Contrarian Bounce',
+        badgeColorScheme: 'warning',
+        subtitle:
+            'Systematic contrarian strategy buying the bottom 2 worst-performing sector ETFs of the prior week to capture oversold mean-reversion bounces.',
+        borderColor: 'border-amber-500/20',
+        bgColor: 'bg-amber-950/10',
+        pillars: [
+            {
+                title: '🔄 Oversold Rebound',
+                description:
+                    'Exploits the short-term 1-week overreaction anomaly where heavily dumped sectors consistently bounce the following week.',
+            },
+            {
+                title: '📉 Bottom 2 Selection',
+                description:
+                    'Systematically selects the 2 sector ETFs with the lowest trailing 7-day returns across the US sector universe.',
+            },
+            {
+                title: '⚖️ 50/50 Weekly Holding',
+                description: 'Equal weight entered at Monday open and liquidated at Friday close.',
+            },
+        ],
+    },
+};
+
+const DAILY_SPY_CONFIG: ExplainerConfig = {
+    emoji: '⚡',
+    title: 'Daily S&P 500 Intraday Trader',
+    badgeText: 'Intraday 100% Equity',
+    badgeColorScheme: 'warning',
+    subtitle:
+        'Systematic day trading on SPY executing at 9:30 AM ET open with profit target limit orders and 3:30 PM time exits.',
+    borderColor: 'border-amber-500/20',
+    bgColor: 'bg-amber-950/10',
+    pillars: [
+        {
+            title: '🎯 Profit Target Exit',
+            description:
+                'If intraday high/low touches the expected return percentage during regular trading hours, position closes immediately at the profit target price.',
+        },
+        {
+            title: '⏱️ Time Exit Fallback',
+            description:
+                'If profit target is not reached during regular trading hours, position closes systematically at 3:30 PM ET price to avoid overnight gap risk.',
+        },
+        {
+            title: '⛽ Zero Leverage / Slippage',
+            description:
+                'Allocates 100% available cash per session with 5 bps slippage modeling on both entry and exit legs.',
+        },
+    ],
+};
+
+function ExplainerCard({ config }: { config: ExplainerConfig }) {
     const [isExpanded, setIsExpanded] = React.useState(true);
 
-    if (ownerId === 'sys-smid-quality-compounder') {
-        return (
-            <Card
-                variant="glass"
-                padding="md"
-                className="border border-emerald-500/20 bg-emerald-950/10"
+    return (
+        <Card
+            variant="glass"
+            padding="md"
+            className={`border ${config.borderColor} ${config.bgColor}`}
+        >
+            <button
+                type="button"
+                className="w-full flex items-center justify-between text-left select-none cursor-pointer"
+                onClick={() => setIsExpanded(!isExpanded)}
             >
-                <button
-                    type="button"
-                    className="w-full flex items-center justify-between text-left select-none cursor-pointer"
-                    onClick={() => setIsExpanded(!isExpanded)}
+                <div className="flex items-center gap-2.5">
+                    <span className="text-xl">{config.emoji}</span>
+                    <div>
+                        <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                            {config.title}
+                            <Badge variant="glass" size="xs" colorScheme={config.badgeColorScheme}>
+                                {config.badgeText}
+                            </Badge>
+                        </h3>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                            {config.subtitle}
+                        </p>
+                    </div>
+                </div>
+                <span className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded">
+                    {isExpanded ? 'Collapse ▲' : 'Details ▼'}
+                </span>
+            </button>
+
+            {isExpanded && (
+                <div
+                    className={`mt-4 pt-4 border-t border-zinc-200/20 dark:border-zinc-800 grid ${
+                        config.gridColsClass ?? 'grid-cols-1 md:grid-cols-3'
+                    } gap-4 text-xs`}
                 >
-                    <div className="flex items-center gap-2.5">
-                        <span className="text-xl">🌱</span>
-                        <div>
-                            <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                                Small/Mid-Cap Quality Compounder Strategy
-                                <Badge variant="glass" size="xs" colorScheme="success">
-                                    Zero-Ceiling Invariant
-                                </Badge>
-                            </h3>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Overcoming the Russell 2000 reconstitution bleed via quality
-                                filtering and multi-bagger retention.
-                            </p>
-                        </div>
-                    </div>
-                    <span className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded">
-                        {isExpanded ? 'Collapse ▲' : 'Details ▼'}
-                    </span>
-                </button>
-
-                {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-zinc-200/20 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                        <div className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50">
+                    {config.pillars.map((p) => (
+                        <div
+                            key={p.title}
+                            className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50"
+                        >
                             <span className="font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
-                                📚 Academic Thesis
+                                {p.title}
                             </span>
-                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                Grounded in Asness et al. (2018){' '}
-                                <em>"Size Matters, If You Control Your Junk"</em> and Chen, Noronha,
-                                & Singal (2006). Eliminates the ~1.8% annual Russell reconstitution
-                                front-running loss and weeds out unprofitable zombies.
-                            </p>
+                            <div className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                                {p.description}
+                            </div>
                         </div>
+                    ))}
+                </div>
+            )}
+        </Card>
+    );
+}
 
-                        <div className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50">
-                            <span className="font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
-                                🎯 Entry Screen ($1B–$10B)
-                            </span>
-                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                S&P 600 rule: 4 quarters positive GAAP Net Income + positive Free
-                                Cash Flow + ROIC &gt; 10% + top quintile 12-month relative momentum.
-                                Target portfolio of 25 to 30 concentrated compounders.
-                            </p>
-                        </div>
+export function StrategyExplainer({ ownerId }: StrategyExplainerProps) {
+    const config =
+        STRATEGY_CONFIGS[ownerId] ??
+        (ownerId.startsWith('sys-daily-spy-') ? DAILY_SPY_CONFIG : null);
 
-                        <div className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50">
-                            <span className="font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
-                                🚀 The Zero-Ceiling Rule
-                            </span>
-                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                When a holding grows into a large cap ($20B, $50B, $100B+), it is{' '}
-                                <strong>never sold for size reasons</strong>. Bessembinder (2018)
-                                showed that 4% of stocks generate all net market wealth;
-                                multi-baggers ride indefinitely.
-                            </p>
-                        </div>
-
-                        <div className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50">
-                            <span className="font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
-                                🛑 Strict Exit Discipline
-                            </span>
-                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                Positions are only liquidated if fundamentals break: trailing
-                                12-month net income turns negative, 2 consecutive quarters of
-                                negative cash flow, or debt leverage spikes. Rebalances quarterly
-                                following SEC 10-Q deadlines.
-                            </p>
-                        </div>
-                    </div>
-                )}
-            </Card>
-        );
+    if (!config) {
+        return null;
     }
 
-    if (ownerId === 'sys-sector-ls-consensus') {
-        return (
-            <Card variant="glass" padding="md" className="border border-blue-500/20 bg-blue-950/10">
-                <button
-                    type="button"
-                    className="w-full flex items-center justify-between text-left select-none cursor-pointer"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                >
-                    <div className="flex items-center gap-2.5">
-                        <span className="text-xl">⚖️</span>
-                        <div>
-                            <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                                Weekly Sector Long/Short Consensus Strategy
-                                <Badge variant="glass" size="xs" colorScheme="info">
-                                    Market Neutral Tilt
-                                </Badge>
-                            </h3>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Mechanical sector rotation allocating 50% long to predicted best
-                                sectors and 50% short to predicted worst sectors.
-                            </p>
-                        </div>
-                    </div>
-                    <span className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded">
-                        {isExpanded ? 'Collapse ▲' : 'Details ▼'}
-                    </span>
-                </button>
-
-                {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-zinc-200/20 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                        <div className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50">
-                            <span className="font-semibold text-zinc-700 dark:text-zinc-200">
-                                📊 Consensus Signal
-                            </span>
-                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                Aggregates weekly predictions from multi-model sector arenas across
-                                major US sector ETFs (XLE, XLF, XLK, XLI, XLP, XLY, XLU, XLV, XLB,
-                                XLC, XBI, XOP).
-                            </p>
-                        </div>
-
-                        <div className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50">
-                            <span className="font-semibold text-zinc-700 dark:text-zinc-200">
-                                ⚔️ Conflict Netting
-                            </span>
-                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                If any sector ETF appears in both predicted best and predicted worst
-                                sets across models, it is dropped from both sides to eliminate
-                                contradictory exposures.
-                            </p>
-                        </div>
-
-                        <div className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50">
-                            <span className="font-semibold text-zinc-700 dark:text-zinc-200">
-                                ⏱️ Execution Cadence
-                            </span>
-                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                Entered at Monday market open and liquidated at Friday close with 5
-                                bps slippage, isolating weekly cross-sectional sector dispersion.
-                            </p>
-                        </div>
-                    </div>
-                )}
-            </Card>
-        );
-    }
-
-    if (ownerId.startsWith('sys-daily-spy-')) {
-        return (
-            <Card
-                variant="glass"
-                padding="md"
-                className="border border-amber-500/20 bg-amber-950/10"
-            >
-                <button
-                    type="button"
-                    className="w-full flex items-center justify-between text-left select-none cursor-pointer"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                >
-                    <div className="flex items-center gap-2.5">
-                        <span className="text-xl">⚡</span>
-                        <div>
-                            <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                                Daily S&P 500 Intraday Trader
-                                <Badge variant="glass" size="xs" colorScheme="warning">
-                                    Intraday 100% Equity
-                                </Badge>
-                            </h3>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Systematic day trading on SPY executing at 9:30 AM ET open with
-                                profit target limit orders and 3:30 PM time exits.
-                            </p>
-                        </div>
-                    </div>
-                    <span className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded">
-                        {isExpanded ? 'Collapse ▲' : 'Details ▼'}
-                    </span>
-                </button>
-            </Card>
-        );
-    }
-
-    return null;
+    return <ExplainerCard config={config} />;
 }

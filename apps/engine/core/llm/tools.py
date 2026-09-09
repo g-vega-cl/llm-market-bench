@@ -1062,6 +1062,36 @@ TRACK_THESIS_PILLARS_TOOL = {
 }
 
 
+GET_CATALYST_RADAR_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_catalyst_radar",
+        "description": "Retrieve high-velocity market concepts paired with upcoming or digesting calendar triggers (CPI, earnings, FOMC, deadlines).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "days_ahead": {
+                    "type": "integer",
+                    "description": "Forward-looking window in calendar days (e.g. 7 for '1 week from now', 14 for 2 weeks). Defaults to 7.",
+                },
+                "include_digesting": {
+                    "type": "boolean",
+                    "description": "Include events from the past 1-3 days currently in market digestion. Defaults to true.",
+                },
+                "min_velocity": {
+                    "type": "number",
+                    "description": "Minimum concept velocity score (higher = faster accelerating mentions). Defaults to 1.2.",
+                },
+                "detail": {
+                    "type": "boolean",
+                    "description": "If true, returns full excerpts and scenario details; if false, returns a compact at-a-glance table. Defaults to false.",
+                },
+            },
+        },
+    },
+}
+
+
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
     "get_price_history": PRICE_HISTORY_TOOL,
@@ -1100,6 +1130,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_yield_curve_regime": GET_YIELD_CURVE_REGIME_TOOL,
     "get_options_vol_surface": GET_OPTIONS_VOL_SURFACE_TOOL,
     "track_thesis_pillars": TRACK_THESIS_PILLARS_TOOL,
+    "get_catalyst_radar": GET_CATALYST_RADAR_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -3481,6 +3512,27 @@ async def execute_track_thesis_pillars_tool(
     except Exception as e:
         logger.exception("Error executing track_thesis_pillars tool for %s: %s", ticker, e)
         return f"Error executing thesis tracker for '{ticker}': {str(e)}"
+
+
+async def execute_get_catalyst_radar_tool(
+    days_ahead: int = 7,
+    include_digesting: bool = True,
+    min_velocity: float = 1.2,
+    detail: bool = False,
+) -> str:
+    """Executes catalyst radar retrieval for LLMs."""
+    try:
+        from analysis.catalyst_radar import fetch_catalyst_radar, format_catalyst_radar_context
+
+        radar_items = fetch_catalyst_radar(
+            days_ahead=days_ahead,
+            include_digesting=include_digesting,
+            min_velocity=min_velocity,
+        )
+        return format_catalyst_radar_context(radar_items, detail=detail)
+    except Exception as e:
+        logger.exception("Error executing get_catalyst_radar tool: %s", e)
+        return f"Error retrieving catalyst radar: {str(e)}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

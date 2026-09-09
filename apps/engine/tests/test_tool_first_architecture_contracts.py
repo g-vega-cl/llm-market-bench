@@ -7,6 +7,8 @@ Verifies that:
 4. Pipeline utility tasks (e.g. newsletter generator) remain distinct and allowed to define editorial prompts.
 """
 
+from pathlib import Path
+
 from autoresearch.prompt_blocks import AVAILABLE_PROMPT_BLOCKS
 from core.llm import prompts
 from core.llm.tools import CANONICAL_TOOLS_REGISTRY
@@ -53,7 +55,6 @@ def test_modular_prompt_blocks_isolated_from_baseline():
         )
 
 
-
 def test_pull_tools_registered_in_canonical_registry():
     """Verify that core pull-based context tools are registered in CANONICAL_TOOLS_REGISTRY.
 
@@ -67,6 +68,7 @@ def test_pull_tools_registered_in_canonical_registry():
         "get_global_macro_context",
         "get_options_vol_surface",
         "get_yield_curve_regime",
+        "get_catalyst_radar",
     ]
 
     for tool_name in required_pull_tools:
@@ -82,3 +84,35 @@ def test_pipeline_utility_tasks_separation():
 
     # Pipeline generator functions exist and are distinct from trading analysis
     assert callable(_call_deepseek_flash)
+
+
+def test_web_api_loaders_never_bulk_select_vector_embeddings():
+    """Enforces Principle 9 (Zero Compute on Frontend): Web API loaders must never bulk-select raw vector columns.
+
+    Per [[concepts/zero-frontend-compute]], high-dimensional vector columns (concept_vector, embedding)
+    must never be bulk-selected over HTTP on user read paths or page loaders to compute derived values
+    in JavaScript. Derived cross-domain intelligence must be pre-materialized in background pipelines.
+    """
+    web_api_dir = Path(__file__).resolve().parent.parent.parent / "web" / "src" / "features"
+    assert web_api_dir.exists(), f"Web features directory not found: {web_api_dir}"
+
+    violations = []
+    for file_path in web_api_dir.glob("**/api/fetch-*.ts"):
+        content = file_path.read_text(encoding="utf-8")
+        # Check for bulk queries selecting concept_vector or embedding without single-id lookup
+        for line in content.splitlines():
+            if ".select(" in line:
+                if "embedding" in line:
+                    violations.append(f"{file_path.name}: {line.strip()}")
+                if (
+                    "concept_vector" in line
+                    and ".limit(" in content
+                    and ".single()" not in content
+                ):
+                    violations.append(f"{file_path.name}: {line.strip()}")
+
+    assert not violations, (
+        "Forbidden bulk vector column selection in web API fetchers (violates Principle 9):\n"
+        + "\n".join(violations)
+    )
+

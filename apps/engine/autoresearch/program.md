@@ -87,6 +87,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 33. **get_yield_curve_regime**: Classifies the US Treasury yield curve slope (10Y-2Y, 10Y-3M) into 4 macro monetary flow regimes (Bull/Bear Steepener/Flattener) with historical factor tailwinds.
 34. **get_options_vol_surface**: Calculates options implied volatility surface, trailing 20-day realized volatility, options-implied daily move price cone, and IV premium (rich/cheap).
 35. **track_thesis_pillars**: Tracks multi-day falsifiable investment theses with explicit supporting pillars, invalidation risks, and a disconfirming evidence ledger.
+36. **get_catalyst_radar**: Retrieves high-velocity narrative market concepts paired with upcoming or digesting calendar triggers (CPI, earnings, FOMC, deadlines).
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 
@@ -100,6 +101,7 @@ You can dynamically toggle structured trading discipline and reasoning blocks in
 6. `options_vol_discipline`: Bounding price targets with options-implied daily move cones and IV premium (rich/cheap) awareness.
 7. `macro_regime_routing`: Aligning asset choices with 4-regime yield curve dynamics (Bull/Bear Steepener/Flattener).
 8. `disconfirming_evidence_gate`: Requiring explicit disconfirming evidence checks and conviction downgrades on contradicting data.
+9. `catalyst_radar_discipline`: Pre-trade catalyst scan and asymmetric event volatility timing.
 
 ## Self-Auditing & Multi-Step Deliberation Workflow
 Before outputting your final strategy, perform a rigorous self-audit of recent performance:

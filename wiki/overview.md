@@ -60,3 +60,4 @@ The daily pipeline runs on a cron schedule during US market hours in six phases:
 - [[concepts/tool-enforcement]]
 - [[concepts/minimax-portfolio]]
 - [[concepts/rag-strategy]]
+- [[concepts/catalyst-radar]]

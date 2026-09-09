@@ -87,5 +87,6 @@ To completely eliminate database overhead during the initial request phase for n
 ## Related
 
 - [[concepts/performance-auditing-strategy]]
+- [[concepts/zero-frontend-compute]]
 - [[entities/web-app]]
 - [[concepts/tanstack-query]]

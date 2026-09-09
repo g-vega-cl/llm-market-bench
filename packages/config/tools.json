@@ -138,5 +138,9 @@
   {
     "name": "track_thesis_pillars",
     "desc": "Track multi-day falsifiable thesis pillars, stop-loss triggers, and disconfirming evidence ledger"
+  },
+  {
+    "name": "get_catalyst_radar",
+    "desc": "Retrieve high-velocity market concepts paired with upcoming and digesting calendar triggers"
   }
 ]

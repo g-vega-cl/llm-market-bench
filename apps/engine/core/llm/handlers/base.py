@@ -182,6 +182,13 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             stop_loss=args.get("stop_loss"),
             conviction=args.get("conviction"),
         )
+    elif name == "get_catalyst_radar":
+        return await tools.execute_get_catalyst_radar_tool(
+            days_ahead=args.get("days_ahead", 7),
+            include_digesting=args.get("include_digesting", True),
+            min_velocity=args.get("min_velocity", 1.2),
+            detail=args.get("detail", False),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

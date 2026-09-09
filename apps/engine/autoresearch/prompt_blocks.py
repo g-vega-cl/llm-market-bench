@@ -82,6 +82,14 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "2. Automatic Conviction Downgrade: If disconfirming evidence emerges against a core pillar, immediately downgrade conviction to WEAKENED and tighten stop-loss thresholds."
         ),
     },
+    "catalyst_radar_discipline": {
+        "title": "CATALYST RADAR (Upcoming & Digesting Events)",
+        "content": (
+            "=== DISCIPLINE: CATALYST RADAR ===\n"
+            "1. Pre-Trade Radar Scan: Invoke `get_catalyst_radar` to inspect high-velocity concepts with upcoming or actively digesting calendar triggers before initiating large directional trades.\n"
+            "2. Asymmetric Event Timing: If a high-impact catalyst is scheduled within 7 days (or currently in 1-3 day market digestion), account for event volatility and potential reversal risk rather than assuming linear trend continuation."
+        ),
+    },
 }
 
 

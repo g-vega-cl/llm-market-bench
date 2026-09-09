@@ -33,3 +33,11 @@ jobs:
         run: |
           cd apps/engine
           python main.py calendar
+
+      - name: Update Catalyst Radar
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          cd apps/engine
+          python scripts/update_catalyst_radar.py

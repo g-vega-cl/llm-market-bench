@@ -665,6 +665,13 @@ async def _stage_decision_processing(
 
             decay_memories(sb_client)
 
+            try:
+                from analysis.catalyst_radar import compute_and_store_catalyst_radar
+
+                compute_and_store_catalyst_radar(sb_client)
+            except Exception as radar_err:
+                logger.warning(f"Could not auto-update catalyst radar in background: {radar_err}")
+
             return consensus_events
         except Exception as e:
             logger.error(f"Background consensus/momentum failed: {e}")
@@ -1014,6 +1021,12 @@ def main():
         asyncio.run(run_government_pipeline())
     elif args.command == COMMAND_CALENDAR:
         asyncio.run(run_calendar_pipeline())
+        try:
+            from analysis.catalyst_radar import compute_and_store_catalyst_radar
+
+            compute_and_store_catalyst_radar()
+        except Exception as radar_err:
+            logger.warning(f"Could not auto-update catalyst radar after calendar pipeline: {radar_err}")
     elif args.command == COMMAND_CAUSE_AND_EFFECT:
         asyncio.run(run_cause_and_effect())
     elif args.command == COMMAND_AUDIT:

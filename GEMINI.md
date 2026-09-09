@@ -66,6 +66,7 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
    - **Provide Tools, Don't Push Data**: Rather than bloating prompts with massive pre-injected data tables (news text dumps, macro snapshots, ledger XML), capabilities and data retrieval MUST be packaged as callable tools in `packages/config/tools.json` and `apps/engine/core/llm/tools.py`. The agent is given lean context and decides autonomously *which* tools to invoke.
    - **Autoresearch Owns Prompt Evolution**: Prompt mutation belongs exclusively to the Autoresearcher loop (`PromptResearchResult`). Developers may define optional, reusable reasoning blocks in `apps/engine/autoresearch/prompt_blocks.py` for the Autoresearcher to test and adopt, but must NEVER bake them into baseline prompts.
    - **Pipeline Utility & Editorial Tasks Allowed Direct Prompts**: Deterministic production utilities without an autoresearcher (e.g. `newsletter_generator.py`, de-advertisement `cleaner.py`, consensus synthesis) are exempt from the tool-pull requirement. Developers are expected to directly engineer system prompts for editorial voice, markdown layouts, and schemas, and pass input payloads directly.
+9. **Zero Compute on Frontend (MANDATORY)**: The web layer (`apps/web`) is strictly presentation. Never execute heavy calculations, mathematical modeling, multi-table joins, or bulk raw data fetches on web read paths. All derived intelligence must be pre-calculated and materialized into lean tables during background pipelines. See `[[concepts/zero-frontend-compute]]`.
 
 
 ## Config

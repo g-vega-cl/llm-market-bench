@@ -54,6 +54,12 @@ export function ConceptsPage({ initialData, fetchFn, fetchMemoriesFn }: Concepts
                                 Newest
                             </span>
                             : Chronological discovery.
+                            <br />
+                            <span className="font-semibold text-amber-600 dark:text-amber-400">
+                                ⚡ Keep an Eye
+                            </span>
+                            : Imminent and digesting calendar triggers linked to high-velocity
+                            narratives.
                         </p>
                     </div>
                     <div>

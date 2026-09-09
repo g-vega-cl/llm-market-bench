@@ -15,6 +15,7 @@ The database is organized into several functional areas:
 - `agents` — Registered LLM agents and their model configurations
 - `agents_tool_use` — Tool execution logs per agent
 - `analysis_sessions` — Top-level grouping for each analysis cycle
+- `catalyst_radar` — Pre-computed collisions between narrative concepts and calendar events for the Keep an Eye radar (see [[concepts/catalyst-radar]])
 - `chat_memories` — User-curated private research theses with full RLS isolation (see [[concepts/private-memory-vault]])
 - `decisions` — Agent buy/sell decisions (1 row per agent per ticker per session)
 - `economic_calendar_events` — Parsed economic indicator data

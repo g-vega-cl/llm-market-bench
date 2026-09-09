@@ -100,6 +100,7 @@ Weekly (Sunday 6:00 PM ET / 10:00 PM UTC), the pipeline runs `daily-autoresearch
 
 - [[concepts/consensus]]
 - [[concepts/ingestion]]
+- [[concepts/catalyst-radar]]
 - [[entities/engine]]
 - [[entities/autoresearch]]
 - [[entities/daily-market-predictor]]

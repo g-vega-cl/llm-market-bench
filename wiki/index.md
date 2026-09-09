@@ -52,6 +52,10 @@
 
 ## Concepts
 
+- [[concepts/zero-frontend-compute]] — Mandate that all heavy computation be pre-materialized in background pipelines, never performed on the web frontend
+- [[concepts/zero-frontend-compute]] — Auto-indexed page
+- [[concepts/catalyst-radar]] — 4-stage digestion lifecycle and vector-matched concept-calendar radar for upcoming and digesting market events
+- [[concepts/catalyst-radar]] — Auto-indexed page
 - [[concepts/weekly-audit]] — Weekly ingestion and consensus pipeline audit with sampling, LLM analysis, and SQL checks
 - [[concepts/structured-historical-parallel]] — Structured historical precedent capture, persistence, and UI rendering pattern
 - [[concepts/private-memory-vault]] — User-curated private market thesis storage with RLS isolation and distillation workflow

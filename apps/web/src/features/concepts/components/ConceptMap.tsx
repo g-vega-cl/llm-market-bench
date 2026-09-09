@@ -17,6 +17,19 @@ import { useMemo, useState } from 'react';
 import type { ConceptMemory } from '../api/fetch-concepts';
 import { conceptsQueries } from '../queries/options';
 
+export interface ConceptCatalyst {
+    catalyst_id: string;
+    catalyst_title: string;
+    target_date: string;
+    days_to_event: number;
+    stage: 'upcoming' | 'active' | 'digesting';
+    date_offset_label: string;
+    impact: string;
+    similarity: number;
+    memory_content?: string;
+    related_tickers?: string[];
+}
+
 export type Concept = {
     id: string;
     concept_name: string;
@@ -26,9 +39,11 @@ export type Concept = {
     velocity_score: number;
     first_mention_at: string;
     last_mention_at: string;
+    concept_vector?: number[] | string | null;
+    catalyst?: ConceptCatalyst | null;
 };
 
-type TabType = 'trending' | 'volume' | 'newest';
+type TabType = 'trending' | 'volume' | 'newest' | 'keep-an-eye';
 
 export function ConceptMap({
     data,
@@ -41,6 +56,10 @@ export function ConceptMap({
     const [activeTab, setActiveTab] = useState<TabType>('trending');
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    const catalystCount = useMemo(() => {
+        return (data || []).filter((c) => c.catalyst != null).length;
+    }, [data]);
 
     // Track tab changes in PostHog
     const handleTabChange = (tab: TabType) => {
@@ -65,13 +84,28 @@ export function ConceptMap({
     const processedConcepts = useMemo(() => {
         if (!data) return [];
 
+        let baseList = data;
+        if (activeTab === 'keep-an-eye') {
+            baseList = data.filter((c) => c.catalyst != null);
+        }
+
         // 1. Filter by search query
-        const filtered = data.filter((c) =>
-            c.concept_name.toLowerCase().includes(searchQuery.toLowerCase()),
-        );
+        const filtered = baseList.filter((c) => {
+            const matchesName = c.concept_name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesCatalyst = c.catalyst?.catalyst_title
+                ?.toLowerCase()
+                .includes(searchQuery.toLowerCase());
+            return matchesName || matchesCatalyst;
+        });
 
         // 2. Sort based on active tab
         return [...filtered].sort((a, b) => {
+            if (activeTab === 'keep-an-eye') {
+                const daysA = a.catalyst ? Math.abs(a.catalyst.days_to_event) : 999;
+                const daysB = b.catalyst ? Math.abs(b.catalyst.days_to_event) : 999;
+                if (daysA !== daysB) return daysA - daysB;
+                return (b.velocity_score || 0) - (a.velocity_score || 0);
+            }
             if (activeTab === 'trending') {
                 return (b.velocity_score || 0) - (a.velocity_score || 0);
             }
@@ -131,6 +165,51 @@ export function ConceptMap({
         );
     };
 
+    const getStageBadge = (stage: 'upcoming' | 'active' | 'digesting') => {
+        if (stage === 'active') {
+            return (
+                <Badge colorScheme="danger" variant="soft" size="sm" showDot>
+                    Today
+                </Badge>
+            );
+        }
+        if (stage === 'upcoming') {
+            return (
+                <Badge colorScheme="info" variant="soft" size="sm" showDot>
+                    Upcoming
+                </Badge>
+            );
+        }
+        return (
+            <Badge colorScheme="warning" variant="soft" size="sm" showDot>
+                Digesting
+            </Badge>
+        );
+    };
+
+    const getImpactBadge = (impact: string) => {
+        const imp = impact.toUpperCase();
+        if (imp.includes('BULLISH')) {
+            return (
+                <Badge colorScheme="success" variant="soft" size="sm">
+                    {impact}
+                </Badge>
+            );
+        }
+        if (imp.includes('BEARISH')) {
+            return (
+                <Badge colorScheme="danger" variant="soft" size="sm">
+                    {impact}
+                </Badge>
+            );
+        }
+        return (
+            <Badge colorScheme="neutral" variant="soft" size="sm">
+                {impact}
+            </Badge>
+        );
+    };
+
     return (
         <div className="space-y-6 w-full max-w-full overflow-hidden">
             {/* Controls Header */}
@@ -158,6 +237,13 @@ export function ConceptMap({
                             className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
                         >
                             Newest ⏱️
+                        </Button>
+                        <Button
+                            variant={activeTab === 'keep-an-eye' ? 'solid' : 'ghost'}
+                            onClick={() => handleTabChange('keep-an-eye')}
+                            className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
+                        >
+                            ⚡ Keep an Eye {catalystCount > 0 ? `(${catalystCount})` : ''}
                         </Button>
                     </div>
                 </div>
@@ -231,20 +317,38 @@ export function ConceptMap({
                                 </div>
                             </button>
 
-                            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800 font-mono">
-                                <div>
-                                    <span>Mentions: </span>
-                                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-                                        {concept.mention_count}
-                                    </span>
+                            {concept.catalyst ? (
+                                <div className="space-y-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs">
+                                    <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center justify-between gap-2">
+                                        <span className="truncate">
+                                            {concept.catalyst.catalyst_title}
+                                        </span>
+                                        {getStageBadge(concept.catalyst.stage)}
+                                    </div>
+                                    <div className="flex items-center justify-between text-zinc-500 font-mono text-[11px]">
+                                        <span>
+                                            {concept.catalyst.target_date} (
+                                            {concept.catalyst.date_offset_label})
+                                        </span>
+                                        {getImpactBadge(concept.catalyst.impact)}
+                                    </div>
                                 </div>
-                                <div>
-                                    <span>Velocity: </span>
-                                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-                                        {concept.velocity_score.toFixed(2)}
-                                    </span>
+                            ) : (
+                                <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800 font-mono">
+                                    <div>
+                                        <span>Mentions: </span>
+                                        <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                            {concept.mention_count}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span>Velocity: </span>
+                                        <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                            {concept.velocity_score.toFixed(2)}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {isExpanded && (
                                 <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 min-w-0">
@@ -253,6 +357,8 @@ export function ConceptMap({
                                         fetchMemoriesFn={fetchMemoriesFn}
                                         formatDate={formatDate}
                                         getDurationDays={getDurationDays}
+                                        getStageBadge={getStageBadge}
+                                        getImpactBadge={getImpactBadge}
                                     />
                                 </div>
                             )}
@@ -270,12 +376,22 @@ export function ConceptMap({
             <div className="hidden md:block w-full max-w-full">
                 <Table>
                     <TableHeader>
-                        <TableRow isHoverable={false}>
-                            <TableHead>Concept Name</TableHead>
-                            <TableHead align="right">Mentions</TableHead>
-                            <TableHead align="right">Momentum Velocity</TableHead>
-                            <TableHead align="center">Status</TableHead>
-                        </TableRow>
+                        {activeTab === 'keep-an-eye' ? (
+                            <TableRow isHoverable={false}>
+                                <TableHead>Concept Name</TableHead>
+                                <TableHead>Catalyst Event</TableHead>
+                                <TableHead align="right">Target Date</TableHead>
+                                <TableHead align="center">Stage</TableHead>
+                                <TableHead align="center">Impact</TableHead>
+                            </TableRow>
+                        ) : (
+                            <TableRow isHoverable={false}>
+                                <TableHead>Concept Name</TableHead>
+                                <TableHead align="right">Mentions</TableHead>
+                                <TableHead align="right">Momentum Velocity</TableHead>
+                                <TableHead align="center">Status</TableHead>
+                            </TableRow>
+                        )}
                     </TableHeader>
                     <TableBody>
                         {processedConcepts.map((concept) => {
@@ -308,24 +424,48 @@ export function ConceptMap({
                                                         />
                                                     </svg>
                                                 </span>
-                                                {concept.concept_name}
+                                                <span>{concept.concept_name}</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell
-                                            align="right"
-                                            className="text-zinc-700 dark:text-zinc-300 font-mono"
-                                        >
-                                            {concept.mention_count}
-                                        </TableCell>
-                                        <TableCell
-                                            align="right"
-                                            className="text-zinc-700 dark:text-zinc-300 font-mono"
-                                        >
-                                            {concept.velocity_score.toFixed(2)}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            {getVelocityBadge(concept.velocity_score)}
-                                        </TableCell>
+
+                                        {activeTab === 'keep-an-eye' && concept.catalyst ? (
+                                            <>
+                                                <TableCell className="font-semibold text-zinc-900 dark:text-zinc-100">
+                                                    {concept.catalyst.catalyst_title}
+                                                </TableCell>
+                                                <TableCell
+                                                    align="right"
+                                                    className="text-zinc-700 dark:text-zinc-300 font-mono text-xs"
+                                                >
+                                                    {concept.catalyst.target_date} (
+                                                    {concept.catalyst.date_offset_label})
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    {getStageBadge(concept.catalyst.stage)}
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    {getImpactBadge(concept.catalyst.impact)}
+                                                </TableCell>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <TableCell
+                                                    align="right"
+                                                    className="text-zinc-700 dark:text-zinc-300 font-mono"
+                                                >
+                                                    {concept.mention_count}
+                                                </TableCell>
+                                                <TableCell
+                                                    align="right"
+                                                    className="text-zinc-700 dark:text-zinc-300 font-mono"
+                                                >
+                                                    {concept.velocity_score.toFixed(2)}
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    {getVelocityBadge(concept.velocity_score)}
+                                                </TableCell>
+                                            </>
+                                        )}
                                     </TableRow>
 
                                     {isExpanded && (
@@ -333,12 +473,17 @@ export function ConceptMap({
                                             isHoverable={false}
                                             className="bg-zinc-50/40 dark:bg-zinc-950/40"
                                         >
-                                            <TableCell colSpan={4} className="px-3 sm:px-6 py-4">
+                                            <TableCell
+                                                colSpan={activeTab === 'keep-an-eye' ? 5 : 4}
+                                                className="px-3 sm:px-6 py-4"
+                                            >
                                                 <ConceptDetails
                                                     concept={concept}
                                                     fetchMemoriesFn={fetchMemoriesFn}
                                                     formatDate={formatDate}
                                                     getDurationDays={getDurationDays}
+                                                    getStageBadge={getStageBadge}
+                                                    getImpactBadge={getImpactBadge}
                                                 />
                                             </TableCell>
                                         </TableRow>
@@ -348,7 +493,10 @@ export function ConceptMap({
                         })}
                         {processedConcepts.length === 0 && (
                             <TableRow isHoverable={false}>
-                                <TableCell colSpan={4} className="py-12 text-center text-zinc-500">
+                                <TableCell
+                                    colSpan={activeTab === 'keep-an-eye' ? 5 : 4}
+                                    className="py-12 text-center text-zinc-500"
+                                >
                                     No concepts found matching your filters.
                                 </TableCell>
                             </TableRow>
@@ -365,6 +513,8 @@ interface ConceptDetailsProps {
     fetchMemoriesFn: (conceptId: string) => Promise<ConceptMemory[]>;
     formatDate: (dateStr: string | null) => string;
     getDurationDays: (first: string | null, last: string | null) => number;
+    getStageBadge: (stage: 'upcoming' | 'active' | 'digesting') => React.ReactNode;
+    getImpactBadge: (impact: string) => React.ReactNode;
 }
 
 function ConceptDetails({
@@ -372,6 +522,8 @@ function ConceptDetails({
     fetchMemoriesFn,
     formatDate,
     getDurationDays,
+    getStageBadge,
+    getImpactBadge,
 }: ConceptDetailsProps) {
     const {
         data: memories,
@@ -383,6 +535,42 @@ function ConceptDetails({
 
     return (
         <div className="space-y-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm animate-fade-in min-w-0 max-w-full overflow-hidden">
+            {/* Catalyst Radar Box if linked catalyst exists */}
+            {concept.catalyst && (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                            ⚡ Catalyst Radar: {concept.catalyst.catalyst_title}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            {getStageBadge(concept.catalyst.stage)}
+                            {getImpactBadge(concept.catalyst.impact)}
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-600 dark:text-zinc-400 font-mono">
+                        <div>
+                            <span className="font-semibold text-zinc-500">Target Date:</span>{' '}
+                            {concept.catalyst.target_date} ({concept.catalyst.date_offset_label})
+                        </div>
+                        <div>
+                            <span className="font-semibold text-zinc-500">Relevance:</span>{' '}
+                            {Math.round(concept.catalyst.similarity * 100)}% Match
+                        </div>
+                        {concept.catalyst.related_tickers &&
+                            concept.catalyst.related_tickers.length > 0 && (
+                                <div>
+                                    <span className="font-semibold text-zinc-500">Tickers:</span>{' '}
+                                    {concept.catalyst.related_tickers.join(', ')}
+                                </div>
+                            )}
+                    </div>
+                    {concept.catalyst.memory_content && (
+                        <p className="text-xs text-zinc-600 dark:text-zinc-300 pt-1.5 border-t border-amber-500/20">
+                            {concept.catalyst.memory_content}
+                        </p>
+                    )}
+                </div>
+            )}
             {/* Top row: Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pb-4 border-b border-zinc-100 dark:border-zinc-900">
                 <div className="space-y-1">

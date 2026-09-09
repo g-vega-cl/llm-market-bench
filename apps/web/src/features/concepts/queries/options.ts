@@ -7,7 +7,7 @@ export const conceptsQueries = {
         queryOptions({
             queryKey: conceptsQueryKeys.list(),
             queryFn: opts?.fetchFn,
-            staleTime: Number.POSITIVE_INFINITY,
+            staleTime: 1000 * 60 * 5, // 5 minutes - revalidates automatically when new pipeline data arrives
         }),
     memories: (conceptId: string, fetchFn: () => Promise<ConceptMemory[]>) =>
         queryOptions({

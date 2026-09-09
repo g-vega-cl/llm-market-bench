@@ -180,4 +180,84 @@ describe('ConceptMap (Tabbed Table)', () => {
         expect(mobileCard).toHaveTextContent('Mentions: 50');
         expect(mobileCard).toHaveTextContent('Velocity: 2.50');
     });
+
+    it('renders Keep an Eye tab and displays catalyst countdowns and digestion stages', () => {
+        const mockDataWithCatalysts: Concept[] = [
+            ...mockData,
+            {
+                id: '4',
+                concept_name: 'Semiconductor Export Controls',
+                pca_x: 0.2,
+                pca_y: 0.4,
+                mention_count: 35,
+                velocity_score: 3.8,
+                first_mention_at: '2026-08-01T12:00:00Z',
+                last_mention_at: '2026-09-08T12:00:00Z',
+                catalyst: {
+                    catalyst_id: 'cat-1',
+                    catalyst_title: 'TSMC Monthly Revenue Report',
+                    target_date: '2026-09-16',
+                    days_to_event: 7,
+                    stage: 'upcoming',
+                    date_offset_label: '1 week from now',
+                    impact: 'BULLISH',
+                    similarity: 0.88,
+                    memory_content:
+                        'TSMC monthly sales release with foundry utilization commentary',
+                    related_tickers: ['TSM'],
+                },
+            },
+            {
+                id: '5',
+                concept_name: 'Antitrust Remedies',
+                pca_x: -0.2,
+                pca_y: 0.1,
+                mention_count: 20,
+                velocity_score: 2.1,
+                first_mention_at: '2026-08-15T12:00:00Z',
+                last_mention_at: '2026-09-08T12:00:00Z',
+                catalyst: {
+                    catalyst_id: 'cat-2',
+                    catalyst_title: 'DOJ Google Antitrust Remedies Deadline',
+                    target_date: '2026-09-07',
+                    days_to_event: -2,
+                    stage: 'digesting',
+                    date_offset_label: 'digesting, 2 days ago',
+                    impact: 'BEARISH',
+                    similarity: 0.81,
+                    memory_content: 'DOJ deadline for proposed remedies',
+                    related_tickers: ['GOOGL'],
+                },
+            },
+        ];
+
+        renderWithQueryClient(
+            <ConceptMap data={mockDataWithCatalysts} fetchMemoriesFn={mockFetchMemoriesFn} />,
+        );
+
+        // Keep an Eye tab button should exist with count badge (2)
+        const keepAnEyeTab = screen.getByRole('button', { name: /keep an eye/i });
+        expect(keepAnEyeTab).toBeInTheDocument();
+        expect(keepAnEyeTab).toHaveTextContent('Keep an Eye');
+
+        // Click Keep an Eye tab
+        fireEvent.click(keepAnEyeTab);
+
+        // Should filter to only concepts with catalysts
+        expect(screen.queryByText('Inflationary Shock')).not.toBeInTheDocument();
+        expect(screen.queryByText('Quantum Computing')).not.toBeInTheDocument();
+
+        // Should display semiconductor export controls and antitrust remedies
+        expect(screen.getAllByText('Semiconductor Export Controls')[0]).toBeInTheDocument();
+        expect(screen.getAllByText('TSMC Monthly Revenue Report')[0]).toBeInTheDocument();
+        expect(screen.getAllByText(/1 week from now/i)[0]).toBeInTheDocument();
+        expect(screen.getAllByText('Upcoming')[0]).toBeInTheDocument();
+
+        expect(screen.getAllByText('Antitrust Remedies')[0]).toBeInTheDocument();
+        expect(
+            screen.getAllByText('DOJ Google Antitrust Remedies Deadline')[0],
+        ).toBeInTheDocument();
+        expect(screen.getAllByText(/digesting, 2 days ago/i)[0]).toBeInTheDocument();
+        expect(screen.getAllByText('Digesting')[0]).toBeInTheDocument();
+    });
 });

@@ -49,6 +49,7 @@ async def test_run_cleanup_calls_correct_deletes():
     for call in mock_lt.call_args_list:
         if call.args:
             assert isinstance(call.args[1], str)
+            assert call.args[1] != 'now() - interval "7 days"'
             assert call.args[1] != 'now() - interval "48 hours"'
             assert call.args[1] != 'now() - interval "30 days"'
             assert call.args[1] != 'now() - interval "180 days"'

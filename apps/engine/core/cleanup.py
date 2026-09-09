@@ -23,7 +23,7 @@ async def run_cleanup():
     """Perform periodic database cleanup of stale logs and records.
 
     This function coordinates the following 6 database maintenance stages:
-      1. Ingestion Logs: Prunes metadata log records older than 48 hours.
+      1. Ingestion Logs: Prunes metadata log records older than 7 days.
       2. System Audits: Deletes closed/resolved/ignored logs older than 30 days.
       3. Market Feelings: Discards outdated classification metrics older than 30 days.
       4. Superseded Memories: Purges older iterations of consolidated vector memories (> 180 days).
@@ -39,10 +39,10 @@ async def run_cleanup():
     now = datetime.now(UTC)
 
     try:
-        # 1. Cleanup ingestion logs (> 48h)
-        logger.info("Cleaning ingestion_logs older than 48 hours...")
-        threshold_48h = (now - timedelta(hours=48)).isoformat()
-        sb.table("ingestion_logs").delete().lt("created_at", threshold_48h).execute()
+        # 1. Cleanup ingestion logs (> 7 days)
+        logger.info("Cleaning ingestion_logs older than 7 days...")
+        threshold_7d = (now - timedelta(days=7)).isoformat()
+        sb.table("ingestion_logs").delete().lt("created_at", threshold_7d).execute()
 
         # 2. Cleanup resolved/ignored audits (> 30 days)
         logger.info("Cleaning resolved/ignored system_audits older than 30 days...")

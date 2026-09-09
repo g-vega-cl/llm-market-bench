@@ -155,4 +155,39 @@ AUDIT_CHECKS = [
         "source_table": "memories",
         "analysis_method": "SQL_CHECK",
     },
+    {
+        "id": "empty_newsletter_content",
+        "title": "Empty Newsletter Snapshots",
+        "description": "Newsletter snapshots with empty or truncated content (< 50 chars)",
+        "query": """
+            SELECT row_to_json(t)::jsonb FROM (
+                SELECT id, sender, subject, date, ingested_at
+                FROM newsletter_snapshots
+                WHERE content IS NULL OR LENGTH(TRIM(content)) < 50
+            ) t
+        """,
+        "severity": "HIGH",
+        "source_table": "newsletter_snapshots",
+        "analysis_method": "SQL_CHECK",
+    },
+    {
+        "id": "duplicate_consensus_memories",
+        "title": "Duplicate Consensus Event Memories",
+        "description": "Multiple active MARKET_EVENT memories with identical event_name created within 7 days",
+        "query": """
+            SELECT row_to_json(t)::jsonb FROM (
+                SELECT metadata->>'event_name' as event_name, COUNT(*) as count, ARRAY_AGG(id) as memory_ids
+                FROM memories
+                WHERE memory_type = 'MARKET_EVENT'
+                AND status = 'ACTIVE'
+                AND created_at > NOW() - INTERVAL '7 days'
+                AND metadata->>'event_name' IS NOT NULL
+                GROUP BY metadata->>'event_name'
+                HAVING COUNT(*) > 1
+            ) t
+        """,
+        "severity": "HIGH",
+        "source_table": "memories",
+        "analysis_method": "SQL_CHECK",
+    },
 ]

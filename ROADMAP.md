@@ -20,9 +20,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
 - [x] - Benchify: lighthouse CLI/performance audit.
-- [x] - Benchify: historical parallel more details - goes well with LLM chat. — Structured HistoricalParallelDetail in Arbiter synthesis, rendered in MemoryCard under Show Analysis, and deep-linked to /chat.
-- [ ] - Benchify: keep and expose my DB locally too? So I can offload data from supabase and use both DBs?
-- [ ] - Weekly audit for ingestion & consensus?
+- [x] - Weekly audit for ingestion & consensus: sampled log analysis (latest anchor + error-weighted runs), 7-day retention, and SQL checks.
 - [ ] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar?
 - [ ] - Benchify: audit the ad stripping llm
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.

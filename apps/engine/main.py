@@ -1023,7 +1023,7 @@ def main():
 
         configure_audit(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
         configure_analyzer(DEEPSEEK_API_KEY)
-        asyncio.run(run_audit())
+        asyncio.run(run_audit(dry_run=args.dry_run))
     elif args.command == COMMAND_AUTORESEARCH:
         from autoresearch.runner import run, run_all
 

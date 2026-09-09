@@ -19,9 +19,9 @@ The cleanup module is tightly coupled with the system's weekly audit cycle:
 The `run_cleanup()` function in `apps/engine/core/cleanup.py` connects to Supabase using a service role client and executes direct, interval-based PostgreSQL deletions to maintain optimum table performance and indexing speed:
 
 1. **Ingestion Logs (`ingestion_logs` table)**:
-   - **Retention**: 48 hours
-   - **Operator**: `.delete().lt("created_at", threshold_48h)` where `threshold_48h` is Python-calculated `(now - timedelta(hours=48)).isoformat()` (UTC).
-   - **Rationale**: Keeps the ingestion stream log table compact to speed up metadata indexing and JIT parsing during the daily run.
+   - **Retention**: 7 days
+   - **Operator**: `.delete().lt("created_at", threshold_7d)` where `threshold_7d` is Python-calculated `(now - timedelta(days=7)).isoformat()` (UTC).
+   - **Rationale**: Preserves a full week of multi-run ingestion and consensus logs for the Friday weekly system audit before pruning.
 2. **Resolved/Ignored System Audits (`system_audits` table)**:
    - **Retention**: 30 days
    - **Operator**: `.delete().in_("status", ["RESOLVED", "IGNORED"]).lt("created_at", threshold_30d)` where `threshold_30d` is Python-calculated `(now - timedelta(days=30)).isoformat()` (UTC).

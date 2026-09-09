@@ -52,6 +52,7 @@
 
 ## Concepts
 
+- [[concepts/weekly-audit]] — Weekly ingestion and consensus pipeline audit with sampling, LLM analysis, and SQL checks
 - [[concepts/structured-historical-parallel]] — Structured historical precedent capture, persistence, and UI rendering pattern
 - [[concepts/private-memory-vault]] — User-curated private market thesis storage with RLS isolation and distillation workflow
 - [[concepts/small-cap-quality-premium]] — Auto-indexed page

@@ -12,15 +12,13 @@ A living document of features and improvements in progress or planned for the pl
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
 - [ ] - add a local model?
-- [ ] - make an autoresearcher for the verifier or allow the current autoresearch to be aware of the verifier
+- [ ] - make an autoresearcher for the verifier
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
 - [ ] - Benchify allow people yo use their own models/keys/prompts and compete.
-- [ ] - Events/Consensus events : tend to be a bit ambiguous, maybe click and show the source of the event? The news that prompted it?
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
 - [x] - Benchify: lighthouse CLI/performance audit.
-- [x] - Weekly audit for ingestion & consensus: sampled log analysis (latest anchor + error-weighted runs), 7-day retention, and SQL checks.
 - [ ] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar?
 - [ ] - Benchify: audit the ad stripping llm
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.

@@ -16,9 +16,9 @@ export function ScoreCalculation() {
                 <div className="text-sm font-medium text-zinc-500 dark:text-zinc-500 uppercase tracking-wider">
                     Risk-Adjusted Score Formula
                 </div>
-                <div className="text-2xl md:text-3xl font-mono font-bold text-zinc-900 dark:text-zinc-100 text-center leading-relaxed">
-                    (Portfolio% - SPY%) + (Portfolio% - Do-Nothing%) - Opportunity Cost% - (Max
-                    Drawdown% × 0.3)
+                <div className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-zinc-900 dark:text-zinc-100 text-center leading-relaxed">
+                    0.4 × (Portfolio% - SPY%) + 0.4 × (Portfolio% - Do-Nothing%) + 0.2 × (Portfolio%
+                    - 10Y Bond%) - (Max Drawdown% × 0.3)
                 </div>
             </div>
 
@@ -26,35 +26,34 @@ export function ScoreCalculation() {
                 <div className="space-y-2">
                     <SubHeading>Excess Return</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        The primary goal: outperform the S&P 500 benchmark and a "Do-Nothing"
-                        alternative (holding inherited positions). We calculate the sum of excess
-                        returns over SPY and Do-Nothing to isolate active trading value-add without
-                        the drag of the previous week.
+                        The primary goal: outperform the S&P 500 benchmark (40% weight) and a
+                        &quot;Do-Nothing&quot; alternative (40% weight) holding inherited positions.
+                        Isolates active trading value-add without previous week drag.
                     </p>
                 </div>
                 <div className="space-y-2">
-                    <SubHeading>Opportunity Cost</SubHeading>
+                    <SubHeading>Risk-Free Excess</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        If the portfolio returns fail to clear the active Treasury Bond yield hurdle
-                        compounded for the week, an asymmetric penalty is applied:{' '}
+                        The 10-Year Treasury Bond yield forms the 20% risk-free component of the
+                        triad composite benchmark. Provides a clean 1:1 excess return signal{' '}
                         <span className="font-mono text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-200/50 dark:bg-zinc-800 px-1 py-0.5 rounded">
-                            max(0, Bond Yield% - Portfolio%)
-                        </span>
-                        .
+                            Portfolio% - 10Y Bond%
+                        </span>{' '}
+                        without asymmetric double penalties.
                     </p>
                 </div>
                 <div className="space-y-2">
                     <SubHeading>Risk Penalty</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
                         We multiply the maximum drawdown by 0.3. This penalizes volatility and
-                        ensures the AI prioritizes capital preservation.
+                        peak-to-trough drawdowns, ensuring the AI prioritizes capital preservation.
                     </p>
                 </div>
                 <div className="space-y-2">
-                    <SubHeading>The "Ratchet"</SubHeading>
+                    <SubHeading>The &quot;Ratchet&quot;</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        If the score is lower than the all-time best, the experiment is discarded
-                        and we revert to the baseline prompt.
+                        If the score is lower than the all-time best baseline for this model track,
+                        the experiment is discarded and we revert to the baseline prompt.
                     </p>
                 </div>
             </div>

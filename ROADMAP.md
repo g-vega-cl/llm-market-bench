@@ -20,7 +20,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
 - [x] - Benchify: lighthouse CLI/performance audit.
-- [ ] - Benchify: update autoresearch scoring display in FE. How to keep them synced?
+- [x] - Benchify: update autoresearch scoring display in FE. How to keep them synced?
+  - Audited all scoring displays across weekly portfolio autoresearch and daily market predictions.
+  - Resolved formula drift in `ScoreCalculation.tsx` and `ScoreBreakdown.tsx` to align with the engine's 40/40/20 Benchmark-Triad Model.
+  - Updated the evaluator report formula string in `evaluator.py`.
+  - Documented the Frontend-Backend Scoring Synchronization Contract in the wiki (`wiki/entities/autoresearch-arena.md` and `wiki/concepts/auditability.md`).
 - [ ] - Benchify: add which ticker corresponds to each scenario in memories possible scenarios
 - [ ] - Benchify: historical parallel more details - goes well with LLM chat.
 - [ ] - Benchify: keep and expose my DB locally too? So I can offload data from supabase and use both DBs?

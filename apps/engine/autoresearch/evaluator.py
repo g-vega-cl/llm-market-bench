@@ -309,14 +309,14 @@ async def evaluate_week(
         f"Do-Nothing: {score_result['do_nothing_return_pct']:+.2f}% | "
         f"SPY: {spy_return_pct:+.2f}% | "
         f"drawdown: -{max_drawdown:.2f}%)",
-        f"Opportunity Cost Hurdle (compounded to {days_in_period} days):",
-        f"  - Actual 10-year Treasury Bond Yield (Active Hurdle): {bond_annual_rate:.2f}% annual ({bond_return_pct:+.4f}% compounded)",
+        f"Benchmark-Triad Components (compounded to {days_in_period} days):",
+        f"  - Actual 10-year Treasury Bond Yield (20% Triad Benchmark): {bond_annual_rate:.2f}% annual ({bond_return_pct:+.4f}% compounded)",
         f"  - Actual US Dollar Index Return (DXY/UUP) [Context Only]: {dollar_return_pct:+.4f}%",
-        f"  - Opportunity Cost Penalty: {opp_penalty:+.4f}%",
+        f"  - Risk-Free Excess Return (Portfolio - Bond): {opp_penalty:+.4f}%",
         baseline_line,
-        f"Formula: (Portfolio_Return - Do-Nothing_Return) + (Portfolio_Return - SPY_Return) - Opportunity_Cost_Penalty - (Drawdown × 0.3) = "
-        f"({portfolio_ret:.2f} - {score_result['do_nothing_return_pct']:.2f}) + ({portfolio_ret:.2f} - {spy_return_pct:.2f}) - {opp_penalty:.2f} - ({max_drawdown:.2f} × 0.3) = "
-        f"{portfolio_ret - score_result['do_nothing_return_pct']:.2f} + {portfolio_ret - spy_return_pct:.2f} - {opp_penalty:.2f} - {max_drawdown * 0.3:.2f} = "
+        f"Formula: 0.4 × (Portfolio - SPY) + 0.4 × (Portfolio - Do-Nothing) + 0.2 × (Portfolio - Bond) - (Drawdown × 0.3) = "
+        f"0.4 × ({portfolio_ret:.2f} - {spy_return_pct:.2f}) + 0.4 × ({portfolio_ret:.2f} - {score_result['do_nothing_return_pct']:.2f}) + 0.2 × ({portfolio_ret:.2f} - {bond_return_pct:.2f}) - ({max_drawdown:.2f} × 0.3) = "
+        f"{0.4 * (portfolio_ret - spy_return_pct):.2f} + {0.4 * (portfolio_ret - score_result['do_nothing_return_pct']):.2f} + {0.2 * (portfolio_ret - bond_return_pct):.2f} - {max_drawdown * 0.3:.2f} = "
         f"{score_result['score']}",
         "",
         "# Control Reference",

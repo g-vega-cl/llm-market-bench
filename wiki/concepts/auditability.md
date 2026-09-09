@@ -41,6 +41,11 @@ Our logs are actively audited:
 - Weekly automated `audit` loops parse system/model anomalies.
 - Hardened stack traces are output via `logger.exception()` to ensure root-cause analysis is straightforward.
 
+### 5. Scoring Auditability & Frontend Symmetry
+Autoresearch scores determine whether prompt variants are promoted to baseline or discarded.
+- **Engine as Source of Truth**: The engine ([`apps/engine/autoresearch/metrics.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/autoresearch/metrics.py), [`apps/engine/tasks/daily_autoresearch.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/tasks/daily_autoresearch.py)) computes the official performance and ratchet scores.
+- **Mandatory Frontend Synchronization**: Because frontend cards ([`ScoreCalculation.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreCalculation.tsx), [`ScoreBreakdown.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreBreakdown.tsx), [`DailyScoreDisplay.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx), [`DailyScoreBreakdown.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/daily-predictions/components/DailyScoreBreakdown.tsx)) display explanatory formulas and step-by-step arithmetic breakdowns, any modification to scoring formulas, weights, benchmarks, or penalties in the engine **must be updated in the frontend and verified via tests in the same change**.
+
 ## Related
 
 - [[concepts/hallucination-audit]]

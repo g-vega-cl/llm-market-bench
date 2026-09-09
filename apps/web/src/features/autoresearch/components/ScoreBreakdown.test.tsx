@@ -34,6 +34,10 @@ describe('ScoreBreakdown', () => {
         expect(screen.getByText('10.0000%')).toBeInTheDocument();
         expect(screen.getByText('-3.0000%')).toBeInTheDocument();
         expect(screen.getByText('10.0000% × 0.3 = 3.0000%')).toBeInTheDocument();
+        expect(
+            screen.getByText(/score = Composite Excess Return - Drawdown Penalty/i),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/score = \+?5\.0000% - 3\.0000%/i)).toBeInTheDocument();
     });
 
     it('renders with negative excess return and score', () => {

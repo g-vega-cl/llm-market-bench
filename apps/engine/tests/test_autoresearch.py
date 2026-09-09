@@ -1993,6 +1993,40 @@ class TestBaselineTracking:
             f"First week report must indicate no baseline yet:\n{report}"
         )
 
+    @pytest.mark.asyncio
+    async def test_report_formula_matches_benchmark_triad(self, monkeypatch):
+        """Report formula string must display the Benchmark-Triad 40/40/20 weights."""
+        from autoresearch import evaluator
+
+        async def _fake_ws_metrics(*a, **k):
+            return {"total_return_pct": 2.0, "max_drawdown": 0.02}
+
+        monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
+
+        async def _fake_spy_returns(*a, **k):
+            return [0.001, 0.001, 0.001]
+
+        monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
+
+        async def fake_get_active_prompt():
+            return "PROMPT"
+
+        async def fake_get_previous_variants(**kw):
+            return []
+
+        async def fake_get_all_time_baseline():
+            return None
+
+        monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
+        monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+        monkeypatch.setattr(evaluator, "get_all_time_baseline", fake_get_all_time_baseline)
+
+        report, _, _ = await evaluator.evaluate_week()
+        assert (
+            "Formula: 0.4 × (Portfolio - SPY) + 0.4 × (Portfolio - Do-Nothing) + 0.2 × (Portfolio - Bond) - (Drawdown × 0.3)"
+            in report
+        )
+
 
 # ==============================================================================
 # TDD: _daily_returns must compute equal-weighted percentage returns.

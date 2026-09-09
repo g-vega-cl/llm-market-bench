@@ -220,17 +220,17 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
                             <SignValue value={dollarReturn} suffix="%" showSign={true} />
                         </div>
 
-                        {/* Asymmetric Penalty Formula */}
+                        {/* Risk-Free Excess Calculation */}
                         <div className="flex items-center justify-between pt-2 border-t border-zinc-200 dark:border-zinc-800">
                             <span className="flex flex-col font-sans text-zinc-800 dark:text-zinc-200">
-                                <span className="font-bold">Hurdle Penalty Calculation</span>
+                                <span className="font-bold">Risk-Free Excess Calculation</span>
                                 <span className="font-mono text-[10px] text-zinc-500 lowercase">
-                                    max(0.0, bond_hurdle - portfolio_return)
+                                    portfolio_return - bond_hurdle
                                 </span>
                             </span>
                             <span className="font-bold text-zinc-850 dark:text-zinc-200">
-                                max(0.0, {bondReturn.toFixed(4)}% - {portfolioReturn.toFixed(4)}%) ={' '}
-                                {opportunityCost.toFixed(4)}%
+                                {portfolioReturn.toFixed(4)}% - {bondReturn.toFixed(4)}% ={' '}
+                                <SignValue value={excessVsBond} suffix="%" showSign={true} />
                             </span>
                         </div>
                     </div>
@@ -517,17 +517,9 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
                         <div className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider border-b border-zinc-800 pb-1.5 mb-2">
                             Math Equation Breakdown
                         </div>
-                        <div>
-                            score = (Excess vs SPY + Excess vs Do-Nothing) - Opportunity Cost -
-                            Drawdown Penalty
-                        </div>
+                        <div>score = Composite Excess Return - Drawdown Penalty</div>
                         <div className="text-emerald-400 pt-1 font-bold">
-                            score = ({excessVsSpy.toFixed(4)}% + {excessVsDoNothing.toFixed(4)}%) -{' '}
-                            {opportunityCost.toFixed(4)}% - {drawdownPenalty.toFixed(4)}%
-                        </div>
-                        <div className="text-emerald-400 font-bold">
-                            score = {excessReturn.toFixed(4)}% - {opportunityCost.toFixed(4)}% -{' '}
-                            {drawdownPenalty.toFixed(4)}%
+                            score = {excessReturn.toFixed(4)}% - {drawdownPenalty.toFixed(4)}%
                         </div>
                         <div className="text-emerald-450 font-bold text-sm pt-1.5 border-t border-zinc-800">
                             score = <SignValue value={score} showSign={false} />

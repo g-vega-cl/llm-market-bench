@@ -180,9 +180,23 @@ async def _synthesize_and_promote_group(
 
     majority_impact = _resolve_impact_tie(impact_weights)
 
+    def _format_historical_parallel_tag(hp: Any) -> str:
+        if not hp:
+            return ""
+        if isinstance(hp, dict):
+            title = hp.get("title") or "Historical Precedent"
+            timeframe = hp.get("timeframe")
+            tf_part = f" ({timeframe})" if timeframe and timeframe != "Historical" else ""
+            return f" [Historical Parallel: {title}{tf_part}]"
+        return f" [Historical Parallel: {hp}]"
+
     # --- LLM Synthesis ---
     synthesis = await synthesize_event(
-        event_name=representative_name, impact=majority_impact, reasonings=reasonings, scenarios=scenarios
+        event_name=representative_name,
+        impact=majority_impact,
+        reasonings=reasonings,
+        scenarios=scenarios,
+        candidate_parallels=parallels,
     )
 
     # Reject vague government events — they lack actionable specificity
@@ -195,11 +209,20 @@ async def _synthesize_and_promote_group(
 
     is_ongoing = synthesis.get("is_ongoing", ongoing_votes > (cumulative_weight / 2))
     is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
-    historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)
+    historical_parallel = synthesis.get("historical_parallel")
+    if not historical_parallel and parallels:
+        historical_parallel = {
+            "title": parallels[0],
+            "timeframe": "Historical",
+            "precedent": parallels[0],
+            "market_reaction": "Historical price movements not detailed.",
+            "takeaway": "Apply disciplined risk management.",
+            "affected_assets": [],
+        }
 
     # --- Early dedup check to avoid wasted DiscoveryAgent calls & save embedding quota ---
     # Memory content does not include discovered assets, so we can check duplicate before discovery.
-    prelim_parallel_str = f" [Historical Parallel: {historical_parallel}]" if historical_parallel else ""
+    prelim_parallel_str = _format_historical_parallel_tag(historical_parallel)
     prelim_ongoing_str = " [ONGOING]" if is_ongoing else ""
     prelim_summary_text = (synthesis["name"] + " " + synthesis["summary"]).lower()
     prelim_is_thematic = any(
@@ -331,7 +354,7 @@ async def _synthesize_and_promote_group(
     should_resolve = relationship.get("should_resolve", False)
 
     # Promote to long-term memory
-    parallel_str = f" [Historical Parallel: {historical_parallel}]" if historical_parallel else ""
+    parallel_str = _format_historical_parallel_tag(historical_parallel)
     ongoing_str = " [ONGOING]" if is_ongoing else ""
 
     summary_text = (consensus_data["event_name"] + " " + consensus_data["reasoning"]).lower()

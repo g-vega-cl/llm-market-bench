@@ -289,7 +289,9 @@ async def test_evaluate_daily_predictions_skips_active_session_before_market_clo
     from zoneinfo import ZoneInfo
 
     mock_supabase = MagicMock()
-    today_et = datetime.datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+    # Freeze ET time to 10:30 AM (during active session)
+    fake_now = datetime.datetime(2026, 9, 8, 10, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+    today_et = fake_now.date().isoformat()
 
     pending_data = [
         {
@@ -307,9 +309,6 @@ async def test_evaluate_daily_predictions_skips_active_session_before_market_clo
     mock_query.eq.return_value = mock_query
     mock_query.execute.return_value.data = pending_data
     mock_supabase.table.return_value.select.return_value = mock_query
-
-    # Freeze ET time to 10:30 AM (during active session)
-    fake_now = datetime.datetime(2026, 9, 8, 10, 30, 0, tzinfo=ZoneInfo("America/New_York"))
 
     with (
         patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),

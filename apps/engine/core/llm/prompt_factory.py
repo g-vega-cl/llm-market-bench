@@ -208,6 +208,10 @@ class PromptFactory:
         """Builds messages for synthesizing events."""
         if "challenger_critique" not in kwargs:
             kwargs["challenger_critique"] = "No explicit adversarial critique provided."
+        if "candidate_parallels" not in kwargs or not kwargs["candidate_parallels"]:
+            kwargs["candidate_parallels"] = "No candidate historical parallels identified by models."
+        elif isinstance(kwargs["candidate_parallels"], list):
+            kwargs["candidate_parallels"] = "\n".join(f"- {p}" for p in kwargs["candidate_parallels"])
         return cls._build_messages(
             provider, prompts.SYNTHESIS_SYSTEM_PROMPT, prompts.SYNTHESIS_USER_PROMPT_TEMPLATE, **kwargs
         )

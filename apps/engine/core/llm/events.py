@@ -44,8 +44,23 @@ def _normalize_future_date(date_str: str | None, note_str: str | None) -> tuple[
     return None, note_str
 
 
+class HistoricalParallelDetail(BaseModel):
+    """Structured details of an identified historical parallel."""
+
+    title: str = Field(..., description="Name of the historical event, crisis, or episode")
+    timeframe: str = Field(..., description="Date range or era, e.g. 'Jan - Apr 2024' or '1973-1974'")
+    precedent: str = Field(..., description="Summary of what occurred during that precedent")
+    market_reaction: str = Field(..., description="Asset and sector price reactions during the episode")
+    takeaway: str = Field(..., description="Actionable playbook or lesson learned for the current setup")
+    affected_assets: list[str] = Field(default_factory=list, description="Key tickers or asset classes involved")
+
+
 async def synthesize_event(
-    event_name: str, impact: str, reasonings: list[str], scenarios: list[str] = None
+    event_name: str,
+    impact: str,
+    reasonings: list[str],
+    scenarios: list[str] | None = None,
+    candidate_parallels: list[str] | None = None,
 ) -> dict[str, Any]:
     """Synthesizes a unified event name, summary, and stress-tested scenarios via a 2-stage debate.
 
@@ -141,7 +156,7 @@ async def synthesize_event(
             future_date_note: str | None = None
             is_ongoing: bool = False
             is_future_catalyst: bool = False
-            historical_parallel: str | None = None
+            historical_parallel: HistoricalParallelDetail | str | None = None
             scenarios: list[ScenarioDetail] = Field(
                 default_factory=list,
                 description="List of distinct possible scenarios. REQUIRED: At least two scenarios.",
@@ -155,6 +170,7 @@ async def synthesize_event(
             combined_reasonings=combined_reasonings,
             combined_scenarios=combined_scenarios,
             challenger_critique=challenger_critique_text,
+            candidate_parallels=candidate_parallels,
         )
 
         synthesis_awaitable = client.chat.completions.create(
@@ -210,6 +226,21 @@ async def synthesize_event(
             "stress_tested": True,
         }
 
+        historical_parallel_data = None
+        if isinstance(resp.historical_parallel, HistoricalParallelDetail):
+            historical_parallel_data = resp.historical_parallel.model_dump()
+        elif isinstance(resp.historical_parallel, dict):
+            historical_parallel_data = resp.historical_parallel
+        elif isinstance(resp.historical_parallel, str) and resp.historical_parallel.strip():
+            historical_parallel_data = {
+                "title": resp.historical_parallel.strip(),
+                "timeframe": "Historical",
+                "precedent": resp.historical_parallel.strip(),
+                "market_reaction": "Historical price movements not detailed.",
+                "takeaway": "Apply disciplined risk management.",
+                "affected_assets": [],
+            }
+
         return {
             "name": resp.name,
             "summary": resp.summary,
@@ -217,7 +248,7 @@ async def synthesize_event(
             "future_date_note": normalized_note,
             "is_ongoing": resp.is_ongoing,
             "is_future_catalyst": resp.is_future_catalyst,
-            "historical_parallel": resp.historical_parallel,
+            "historical_parallel": historical_parallel_data,
             "scenarios": [s.model_dump() for s in resp.scenarios] if resp.scenarios else [],
             "scenario_analysis": fallback_str,
             "importance_score": resp.importance_score,

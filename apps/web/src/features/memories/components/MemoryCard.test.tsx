@@ -10,9 +10,24 @@ vi.mock('@tanstack/react-router', async () => {
     const actual = await vi.importActual('@tanstack/react-router');
     return {
         ...actual,
-        Link: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
-            <a {...props}>{children}</a>
-        ),
+        Link: ({
+            children,
+            to,
+            search,
+            ...props
+        }: {
+            children: React.ReactNode;
+            to?: string;
+            search?: Record<string, string>;
+            [key: string]: unknown;
+        }) => {
+            const searchStr = search ? `?${new URLSearchParams(search).toString()}` : '';
+            return (
+                <a href={`${to || ''}${searchStr}`} {...props}>
+                    {children}
+                </a>
+            );
+        },
     };
 });
 
@@ -326,6 +341,98 @@ describe('MemoryCard scenario rendering', () => {
             ).toBeInTheDocument();
             expect(screen.getByText(/3-5 year grid queue/i)).toBeInTheDocument();
             expect(screen.getByText(/State regulatory friction/i)).toBeInTheDocument();
+        });
+    });
+
+    it('does not render historical parallel section when card is collapsed', () => {
+        const memory = makeMemory({
+            historical_parallel: {
+                title: '1970s Oil Shock',
+                timeframe: '1973-1974',
+                precedent: 'OPEC oil embargo triggered supply shock.',
+                market_reaction: 'Crude quadrupled, equities entered deep stagflation.',
+                takeaway: 'Energy assets hedged headline inflation.',
+                affected_assets: ['XLE', 'USO'],
+            },
+        });
+
+        renderWithClient(<MemoryCard memory={memory} />);
+
+        expect(screen.getByText('Show Analysis')).toBeInTheDocument();
+        expect(screen.queryByText(/1970s Oil Shock/i)).not.toBeInTheDocument();
+    });
+
+    it('renders structured historical parallel panel inside Show Analysis when expanded', async () => {
+        const memory = makeMemory({
+            historical_parallel: {
+                title: '2024 Red Sea Disruptions',
+                timeframe: 'Jan - Mar 2024',
+                precedent: 'Drone attacks rerouted commercial shipping around Africa.',
+                market_reaction: 'Brent rallied 12% while shipping rates doubled.',
+                takeaway: 'Premiums peaked early and normalized over 90 days.',
+                affected_assets: ['USO', 'FRO'],
+            },
+        });
+
+        renderWithClient(<MemoryCard memory={memory} />);
+
+        fireEvent.click(screen.getByText('Show Analysis'));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Historical Precedent/i)).toBeInTheDocument();
+            expect(screen.getByText(/2024 Red Sea Disruptions/i)).toBeInTheDocument();
+            expect(screen.getByText(/Jan - Mar 2024/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Drone attacks rerouted commercial shipping around Africa./i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/Brent rallied 12% while shipping rates doubled./i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/Premiums peaked early and normalized over 90 days./i),
+            ).toBeInTheDocument();
+            expect(screen.getByText('$USO')).toBeInTheDocument();
+            expect(screen.getByText('$FRO')).toBeInTheDocument();
+        });
+    });
+
+    it('renders deep link to AI Chat with pre-populated query and ticker', async () => {
+        const memory = makeMemory({
+            historical_parallel: {
+                title: '2024 Red Sea Disruptions',
+                timeframe: 'Jan - Mar 2024',
+                precedent: 'Drone attacks rerouted shipping.',
+                market_reaction: 'Brent rallied 12%.',
+                takeaway: 'Premiums decayed.',
+                affected_assets: ['USO'],
+            },
+        });
+
+        renderWithClient(<MemoryCard memory={memory} />);
+        fireEvent.click(screen.getByText('Show Analysis'));
+
+        await waitFor(() => {
+            const chatLink = screen.getByRole('link', { name: /interrogate parallel in ai chat/i });
+            expect(chatLink).toBeInTheDocument();
+            expect(chatLink).toHaveAttribute('href', expect.stringContaining('/chat'));
+            expect(chatLink).toHaveAttribute('href', expect.stringContaining('ticker=USO'));
+            expect(chatLink).toHaveAttribute(
+                'href',
+                expect.stringContaining('2024+Red+Sea+Disruptions'),
+            );
+        });
+    });
+
+    it('renders legacy string historical parallel without crashing', async () => {
+        const memory = makeMemory({
+            historical_parallel: 'Like 1970s stagflation',
+        });
+
+        renderWithClient(<MemoryCard memory={memory} />);
+        fireEvent.click(screen.getByText('Show Analysis'));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Like 1970s stagflation/i)).toBeInTheDocument();
         });
     });
 });

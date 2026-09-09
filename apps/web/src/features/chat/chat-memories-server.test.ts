@@ -4,7 +4,7 @@ import {
     handleFetchMyChatMemories,
     handleSaveChatMemory,
 } from './chat-server';
-import { executeGetMySavedThesesTool } from './chat-tools';
+import { executeGetMySavedThesesTool, executeSearchMemoriesTool } from './chat-tools';
 
 // Mock Supabase Server Client
 const mockGetUser = vi.fn();
@@ -284,6 +284,64 @@ describe('Chat Memories Server Handlers', () => {
             expect(trace.tool_name).toBe('get_my_saved_theses');
             expect(trace.summary).toContain('Retrieved 1 saved thesis for NVO');
             expect(result).toContain('NVO capex margin drag');
+        });
+    });
+
+    describe('executeSearchMemoriesTool', () => {
+        it('returns structured historical_parallel in search_memories_and_theses results', async () => {
+            const mockMemories = [
+                {
+                    id: 'mem-1',
+                    title: 'Strait of Hormuz Escalation',
+                    content: 'Naval tensions threaten Gulf tanker traffic.',
+                    tickers: ['USO'],
+                    tags: ['oil', 'geopolitics'],
+                    importance_score: 8,
+                    possible_scenarios: null,
+                    metadata: {
+                        historical_parallel: {
+                            title: '2024 Red Sea Disruptions',
+                            timeframe: 'Jan - Mar 2024',
+                            precedent: 'Drone attacks rerouted shipping.',
+                            market_reaction: 'Brent jumped 12%.',
+                            takeaway: 'Short-term spike faded.',
+                            affected_assets: ['USO'],
+                        },
+                    },
+                    created_at: '2026-09-09T10:00:00Z',
+                },
+            ];
+
+            const mockLimit = vi.fn().mockResolvedValue({ data: mockMemories, error: null });
+            const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit });
+            const mockContains = vi.fn().mockReturnValue({
+                order: mockOrder,
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            });
+            const mockSelect = vi.fn().mockReturnValue({ contains: mockContains });
+
+            const mockSupabase = {
+                from: vi.fn().mockReturnValue({ select: mockSelect }),
+            };
+
+            const { result, trace } = await executeSearchMemoriesTool(
+                { ticker: 'USO' },
+                mockSupabase,
+            );
+
+            expect(mockSupabase.from).toHaveBeenCalledWith('memories');
+            expect(mockContains).toHaveBeenCalledWith('tickers', ['USO']);
+            expect(trace.tool_name).toBe('search_memories_and_theses');
+            expect(trace.summary).toContain('Retrieved 1 memories');
+
+            const parsed = JSON.parse(result);
+            expect(parsed.memories).toHaveLength(1);
+            expect(parsed.memories[0].historical_parallel).toBeDefined();
+            expect(parsed.memories[0].historical_parallel.title).toBe('2024 Red Sea Disruptions');
+            expect(parsed.memories[0].historical_parallel.market_reaction).toBe(
+                'Brent jumped 12%.',
+            );
+            expect(parsed.memories[0].historical_parallel.affected_assets).toContain('USO');
         });
     });
 });

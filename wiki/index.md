@@ -52,6 +52,7 @@
 
 ## Concepts
 
+- [[concepts/structured-historical-parallel]] — Structured historical precedent capture, persistence, and UI rendering pattern
 - [[concepts/private-memory-vault]] — User-curated private market thesis storage with RLS isolation and distillation workflow
 - [[concepts/small-cap-quality-premium]] — Auto-indexed page
 - [[concepts/anthropic-fs-insights]] — Architectural synthesis and tool-first implementation strategy from Anthropic Financial Services

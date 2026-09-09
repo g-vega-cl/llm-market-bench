@@ -1,62 +1,49 @@
 ---
-tags: [consensus, synthesis, events, momentum]
+tags: [consensus, event-promotion, historical-parallel]
 category: concept
 ---
 
-# Consensus & Synthesis
+# Consensus
 
-Transforms individual LLM decisions into coherent market events.
+Semantic grouping, weighted voting, event promotion, and structured historical parallel synthesis.
 
-## Event Consensus Protocol
+## Overview
 
-The Event Consensus Protocol is executed between the two analysis passes of the daily pipeline. The macro events extracted by individual models in **Pass 1** are grouped, promoted, and synthesized. The resulting promoted consensus events are then formatted and injected as today's macro context (`{consensus_context}`) into **Pass 2** to drive informed asset-level trading decisions.
+The consensus engine aggregates model observations into coherent events, resolves conflicts via weighted voting, and promotes high-signal events to long-term memory. It now also synthesizes structured historical parallels from candidate precedents identified by models.
 
-1. **Semantic Grouping**: Embeddings cluster events by cosine similarity across LLMs (threshold 0.75).
+## Phases
 
-   * **API Rate-Limit Resilience**: Uses `tenacity` exponential backoff retries (4 max attempts, max 30s) and an explicit 1.2s minimum call interval throttle (`_EMBED_MIN_INTERVAL`) to stay safely under Vertex AI's 60 req/min quota and absorb transient `429 RESOURCE_EXHAUSTED` errors.
-   * **Exact-Match Fallback**: If the embedding API fails or mismatches, the engine gracefully falls back to exact string-based grouping to prevent pipeline crashes.
-2. **Weighted Consensus**: Cumulative model weight must exceed promotion threshold (default 2.0). Weights are explicit per `packages/config/models.json` in `core/config.py:MODEL_WEIGHTS` — all 6 models (`gpt-5.6-luna`, `claude-haiku-4-5`, `gemini-3.5-flash-lite`, `deepseek-v4-pro`, `deepseek-v4-flash`, `MiniMax-M3`) carry `1.0`. Fix 2026-08-27 added the missing `MiniMax-M3`/`deepseek-v4-flash` entries with an assertion guard; implicit fallback is no longer relied upon.
-3. **Temporal Deduplication & Pre-Discovery Dedup**: New events checked against `memories` table within recency window. **Decoupled thresholds (fix 2026-08-27):** semantic grouping uses `0.75` (`MOMENTUM_SIMILARITY_THRESHOLD`) while memory promotion dedup uses `0.90` (`core/config.py:MEMORY_DEDUP_THRESHOLD`, `analysis/consensus.py:336`). Lookback remains `24h` for consensus (vs `168h` for general `store.add_memory`).
-   * **Pre-Discovery Early Deduplication (fix 2026-09-01)**: Before delegating to `DiscoveryAgent`, `_synthesize_and_promote_group` checks if the synthesized event already exists as a recent memory duplicate. If duplicate is detected, DiscoveryAgent calls are skipped, saving API quota and execution latency, and the preliminary embedding is reused directly during `add_memory` reinforcement.
-4. **Relationship Analysis**: Links to ancestor events as REVERSAL, RESOLUTION, or UPDATE
-5. **Two-Stage Adversarial Debate (`gpt-5.6-luna`)**:
-   * **Stage 1 (Adversarial Red-Team Challenger)**: `gpt-5.6-luna` acts as a contrarian risk manager, stress-testing the consensus observations against blind spots, regulatory/supply headwinds, and generating an explicit *Pre-Mortem Failure Mode*.
-   * **Stage 2 (Arbiter / Synthesizer)**: `gpt-5.6-luna` ingests the initial observations and the adversarial critique to generate balanced, hedged scenario outcomes and actionable trading plans.
-   * **Debate Trace & UI Persistence**: The full critique and failure modes are persisted under `metadata.debate` (`stress_tested: true`) and surfaced on `/memories` cards with the `🛡️ Stress-Tested` badge.
-6. **Scenario Analysis**: Requires ≥2 distinct outcomes with specific trading plans
-7. **Alpha Discovery**: Promoted events trigger DiscoveryAgent for investable assets
+### 1. Semantic Grouping
 
-## Trend & Momentum
+Events are grouped by semantic similarity using embeddings. Groups with sufficient cumulative weight proceed to synthesis.
 
-Concept velocity tracked via hybrid formula: `Momentum = Intensity × Growth`.
-- Intensity: log-scaled mention count
-- Growth: short-vs-long window mention rate
-- **Concept Merging**: Semantic merging threshold is set to `0.85` (`MOMENTUM_CONCEPT_MERGE_THRESHOLD`) to prevent distinct concepts from prematurely coalescing into a single entity, while velocity counting maintains a permissive `0.75` threshold (`MOMENTUM_SIMILARITY_THRESHOLD`).
-- Stale concepts decay via half-life (28 days)
-- **PCA Dimensionality Reduction**: PCA reduces embedding vectors to 2D coordinates for semantic tracking (viewable in narrative details). The coordinate calculation ensures vector parsing alignment to prevent index-shifting/data-corruption if a concept vector is malformed or skipped.
+### 2. Weighted Voting
 
-## Horizon Watch
+Within each group, models vote on impact (bullish/bearish/neutral), confidence, and whether the event is ongoing or a future catalyst. Votes are weighted by model reliability.
 
-Only high-importance future catalysts with specific ISO 8601 dates appear on the
-dashboard. Vague timeframes excluded.
+### 3. Structured Historical Parallel Synthesis
 
-## Metadata & UI Representation
+When models or news cite historical precedents, the Arbiter (via `synthesize_event`) produces a structured `HistoricalParallelDetail` object:
 
-Promoted consensus events (`MARKET_EVENT` memory type) store the models that reached agreement inside their database metadata:
-* **`participating_agents`**: A list of strings matching the participating models (e.g. `["openai_gpt-5.4-nano", "anthropic_claude-haiku-4-5"]`). This is consumed by the web app to render agent avatars.
-* **`models_involved`**: A list of strings matching unique models involved.
+- **title**: Concise name of the historical episode (e.g., "2024 Red Sea Tanker Disruptions")
+- **timeframe**: Era or date window (e.g., "Jan - Mar 2024")
+- **precedent**: What happened historically
+- **market_reaction**: How asset prices, commodities, or sectors reacted
+- **takeaway**: Actionable lesson or risk playbook for today
+- **affected_assets**: List of relevant ticker symbols or asset classes
 
-The UI displays the avatars of these models directly on the market consensus cards to indicate consensus visually. The old overall "Consensus" percentage bar has been removed to avoid confusion.
+Candidate parallels from individual model observations are collected and passed to the LLM synthesizer via the `candidate_parallels` parameter. The synthesizer selects the single best parallel and enriches it with structured fields. If no parallel is identified, the field is null.
 
-## Performance & Execution Optimizations
+### 4. Memory Persistence
 
-*   **Single-Consensus Invocation Architecture**: Resolved the double-consensus bug where `process_consensus` was executed twice. A global memory cache (`_last_consensus_events` / `get_last_consensus_events`) in `consensus.py` allows the synchronously-derived consensus events from Pass 1 to be reused during the background momentum/decay processing stage, preventing redundant LLM and database executions.
-*   **Parallel Scenario Asset Discovery**: In `_synthesize_and_promote_group`, asset discovery tasks for all scenarios under a promoted consensus event are processed concurrently using `asyncio.gather`, improving throughput.
-*   **Parallel Screener History Enrichment**: The stock screening tool (`execute_stock_screener_tool`) enriches screened tickers in parallel using `asyncio.gather` for price history lookups, preventing sequential database request bottlenecks.
+The structured historical parallel is stored in `metadata.historical_parallel` when the event is promoted to long-term memory. The memory content string includes a formatted tag like `[Historical Parallel: 2024 Red Sea Tanker Disruptions (Jan - Mar 2024)]`.
+
+### 5. Event Promotion
+
+Events meeting importance and confidence thresholds are promoted to long-term memory with full metadata, including the structured historical parallel, scenarios, and discovered assets.
 
 ## Related
 
-- [[entities/pipeline]]
-- [[concepts/reasoning]]
-- [[concepts/execution]]
 - [[concepts/memory-feedback]]
+- [[entities/engine]]
+- [[concepts/rag-strategy]]

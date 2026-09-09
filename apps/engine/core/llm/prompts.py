@@ -340,7 +340,13 @@ SYNTHESIS_SYSTEM_PROMPT = (
     "   - 'is_future_catalyst': true ONLY if the consensus is that this is a distinctly pending, upcoming event with undefined outcomes (like an upcoming meeting or data release). If it's an ongoing trend, structural rotation, or past investment, set to false.\n"
     "      - **CRITICAL: Do NOT mark broad themes, ongoing structural shifts, or VAGUE timeframes (e.g., 'later this year', 'in 2026', 'by Q3') as future catalysts. These are Memories or Trends.**\n"
     "      - **CRITICAL: If you cannot name the specific day or a very tight window (e.g., 'this week'), it is NOT a future catalyst for Horizon Watch.**\n"
-    "   - 'historical_parallel': a short string describing the parallel if identified by models.\n"
+    "   - 'historical_parallel': a structured object describing the single best historical precedent if models or news identify a parallel (or null if none). Must include:\n"
+    "     - title: Concise name of the historical episode (e.g., '2024 Red Sea Tanker Disruptions', '1973 Oil Embargo')\n"
+    "     - timeframe: Era or date window (e.g., 'Jan - Mar 2024', '1973-1974')\n"
+    "     - precedent: What happened historically during that episode\n"
+    "     - market_reaction: How asset prices, commodities, or sectors reacted\n"
+    "     - takeaway: Actionable lesson, risk playbook, or duration insight for today\n"
+    "     - affected_assets: List of relevant ticker symbols or asset classes (e.g. ['USO', 'XLE', 'FRO'])\n"
     "   - 'importance_score': a unified score (1-10) based on the consensus of model observations. Focus on trade-leading importance."
 )
 
@@ -351,6 +357,9 @@ MODEL OBSERVATIONS:
 
 SCENARIO ANALYSES:
 {combined_scenarios}
+
+CANDIDATE HISTORICAL PARALLELS:
+{candidate_parallels}
 
 ADVERSARIAL RED-TEAM CRITIQUE:
 {challenger_critique}

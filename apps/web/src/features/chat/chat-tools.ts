@@ -18,7 +18,7 @@ export const SEARCH_MEMORIES_AND_THESES_TOOL: ChatToolDefinition = {
     function: {
         name: 'search_memories_and_theses',
         description:
-            'Search past agent market memories, lessons learned, causal chains (cause_and_effect), and scenario analyses by ticker or thematic query (e.g. NVO, NVDA, semiconductors, GLP-1, interest rates).',
+            'Search past agent market memories, lessons learned, historical parallels, causal chains (cause_and_effect), and scenario analyses by ticker or thematic query (e.g. NVO, NVDA, semiconductors, GLP-1, interest rates).',
         parameters: {
             type: 'object',
             properties: {
@@ -343,7 +343,7 @@ async function fetchMemoriesAndCausal(
     let memQuery = client
         .from('memories')
         .select(
-            'id, title, content, tickers, tags, importance_score, possible_scenarios, created_at',
+            'id, title, content, tickers, tags, importance_score, possible_scenarios, metadata, created_at',
         );
     if (ticker) {
         memQuery = memQuery.contains('tickers', [ticker]);
@@ -365,7 +365,25 @@ async function fetchMemoriesAndCausal(
         causalRecords = causeRes.data || [];
     }
 
-    return { memories: memRes.data || [], causalRecords };
+    const formattedMemories = (memRes.data || []).map((m: Record<string, unknown>) => {
+        const meta = (m.metadata && typeof m.metadata === 'object' ? m.metadata : {}) as Record<
+            string,
+            unknown
+        >;
+        return {
+            id: m.id,
+            title: m.title,
+            content: m.content,
+            tickers: m.tickers,
+            tags: m.tags,
+            importance_score: m.importance_score,
+            possible_scenarios: m.possible_scenarios,
+            historical_parallel: meta.historical_parallel || null,
+            created_at: m.created_at,
+        };
+    });
+
+    return { memories: formattedMemories, causalRecords };
 }
 
 export async function executeSearchMemoriesTool(

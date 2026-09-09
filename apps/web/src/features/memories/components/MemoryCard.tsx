@@ -24,6 +24,15 @@ export interface DebateRecord {
     stress_tested?: boolean;
 }
 
+export interface HistoricalParallelRecord {
+    title?: string;
+    timeframe?: string;
+    precedent?: string;
+    market_reaction?: string;
+    takeaway?: string;
+    affected_assets?: string[];
+}
+
 export interface StructuredScenario {
     cleanHeader: string;
     percentage: string | null;
@@ -347,7 +356,8 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 !!childResolution ||
                 !!parentCauseAndEffect ||
                 !!childCauseAndEffect ||
-                !!memory.metadata?.debate) && (
+                !!memory.metadata?.debate ||
+                !!memory.metadata?.historical_parallel) && (
                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <button
                         type="button"
@@ -532,6 +542,136 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                 {memory.metadata.debate.challenger_critique}
                                             </p>
                                         )}
+                                </div>
+                            )}
+
+                            {/* Historical Precedent / Parallel Section */}
+                            {memory.metadata?.historical_parallel && (
+                                <div className="mb-6 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl space-y-3">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-indigo-500 text-lg">📜</span>
+                                            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider flex items-center gap-2 flex-wrap">
+                                                <span>Historical Precedent:</span>
+                                                {typeof memory.metadata.historical_parallel ===
+                                                    'object' &&
+                                                    memory.metadata.historical_parallel.title && (
+                                                        <span className="font-semibold normal-case text-indigo-600 dark:text-indigo-400">
+                                                            {
+                                                                memory.metadata.historical_parallel
+                                                                    .title
+                                                            }
+                                                        </span>
+                                                    )}
+                                            </h4>
+                                        </div>
+                                        {typeof memory.metadata.historical_parallel === 'object' &&
+                                            memory.metadata.historical_parallel.timeframe && (
+                                                <Badge
+                                                    variant="soft"
+                                                    colorScheme="neutral"
+                                                    size="xs"
+                                                >
+                                                    {memory.metadata.historical_parallel.timeframe}
+                                                </Badge>
+                                            )}
+                                    </div>
+
+                                    {typeof memory.metadata.historical_parallel === 'string' ? (
+                                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                            {memory.metadata.historical_parallel}
+                                        </p>
+                                    ) : (
+                                        <>
+                                            {memory.metadata.historical_parallel.precedent && (
+                                                <div className="space-y-1">
+                                                    <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                                        Precedent:
+                                                    </span>
+                                                    <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                                        {
+                                                            memory.metadata.historical_parallel
+                                                                .precedent
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {memory.metadata.historical_parallel
+                                                .market_reaction && (
+                                                <div className="space-y-1 pt-2 border-t border-indigo-500/10">
+                                                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                                                        Market Reaction:
+                                                    </span>
+                                                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono bg-zinc-900/10 dark:bg-zinc-900/40 p-2.5 rounded-md border border-zinc-200 dark:border-zinc-800">
+                                                        {
+                                                            memory.metadata.historical_parallel
+                                                                .market_reaction
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {memory.metadata.historical_parallel.takeaway && (
+                                                <div className="space-y-1 pt-2 border-t border-indigo-500/10">
+                                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                                                        Key Takeaway & Playbook:
+                                                    </span>
+                                                    <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                                        {
+                                                            memory.metadata.historical_parallel
+                                                                .takeaway
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {memory.metadata.historical_parallel.affected_assets &&
+                                                memory.metadata.historical_parallel.affected_assets
+                                                    .length > 0 && (
+                                                    <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-indigo-500/10">
+                                                        <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mr-1">
+                                                            Assets Involved:
+                                                        </span>
+                                                        {memory.metadata.historical_parallel.affected_assets.map(
+                                                            (asset: string, aIdx: number) => (
+                                                                <Badge
+                                                                    key={aIdx}
+                                                                    variant="soft"
+                                                                    colorScheme="info"
+                                                                    size="xs"
+                                                                >
+                                                                    ${asset.replace('$', '')}
+                                                                </Badge>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                            <div className="pt-2 border-t border-indigo-500/10 flex justify-end">
+                                                <Link
+                                                    to="/chat"
+                                                    search={{
+                                                        q: `Analyze the historical parallel "${memory.metadata.historical_parallel.title || 'Precedent'}" (${memory.metadata.historical_parallel.timeframe || 'Past'}) for ${memory.metadata?.event_name || 'this event'}. How did ${(memory.metadata.historical_parallel.affected_assets || []).join(', ') || 'markets'} react, and does that playbook apply today?`,
+                                                        ticker:
+                                                            memory.metadata.historical_parallel.affected_assets?.[0]?.replace(
+                                                                '$',
+                                                                '',
+                                                            ) ||
+                                                            (typeof memory.metadata?.ticker ===
+                                                            'string'
+                                                                ? memory.metadata.ticker
+                                                                : undefined),
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 transition-colors border border-indigo-200 dark:border-indigo-800/60"
+                                                    title="Interrogate this historical parallel in AI Chat"
+                                                >
+                                                    <span>💬</span>
+                                                    <span>Interrogate Parallel in AI Chat →</span>
+                                                </Link>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
 

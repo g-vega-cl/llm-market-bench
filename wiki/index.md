@@ -52,6 +52,7 @@
 
 ## Concepts
 
+- [[concepts/calendar-scenario-analysis]] — Auto-indexed page
 - [[concepts/ad-stripping-audit]] — De-advertisement cleaner empirical audit, guardrail architecture, and pure ad filtering
 - [[concepts/ad-stripping-audit]] — Auto-indexed page
 - [[concepts/zero-frontend-compute]] — Mandate that all heavy computation be pre-materialized in background pipelines, never performed on the web frontend

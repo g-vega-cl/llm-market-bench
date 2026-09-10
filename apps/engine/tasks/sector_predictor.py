@@ -135,6 +135,20 @@ async def run_sector_predictions():
     data_block = await get_predictor_data()
 
     today = datetime.now(UTC).date()
+    from core.time_utils import get_current_day_info
+
+    day_info = get_current_day_info()
+    forward_cal_context = ""
+    try:
+        from core.llm.tools import execute_get_calendar_scenario_analysis_tool
+
+        cal_str = await execute_get_calendar_scenario_analysis_tool(
+            timeframe="all_upcoming", min_importance=6, detail=False
+        )
+        if cal_str and not cal_str.startswith("Error"):
+            forward_cal_context = f"\n\nUpcoming High-Impact Catalysts & Macro Scenarios:\n{cal_str}\n"
+    except Exception as e:
+        logger.warning(f"Error fetching forward calendar scenarios for sector predictor: {e}")
 
     models = [
         {"name": DEEPSEEK_FLASH_MODEL, "client": get_deepseek_client(), "type": "instructor", "provider": "deepseek"},
@@ -154,7 +168,12 @@ async def run_sector_predictions():
             for attempt in range(3):
                 try:
                     user_msg = (
-                        f"Data:\n{data_block}\nPredict the best sector, worst sector, and pair for the next {tf}."
+                        f"=== EXACT TEMPORAL CONTEXT ===\n{day_info}\n"
+                        f"Target Forecast Horizon: {tf} (from {today.isoformat()} to {target_date.isoformat()})\n"
+                        f"==============================\n"
+                        f"{forward_cal_context}\n"
+                        f"Historical Market Correlation and Return Data:\n{data_block}\n\n"
+                        f"Predict the best sector, worst sector, and pair for the next {tf}."
                     )
                     if model["type"] == "minimax":
                         user_msg += "\nNote: Output only the required JSON response. Keep any internal reasoning concise to avoid token truncation."

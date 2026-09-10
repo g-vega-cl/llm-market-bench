@@ -189,6 +189,14 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             min_velocity=args.get("min_velocity", 1.2),
             detail=args.get("detail", False),
         )
+    elif name == "get_calendar_scenario_analysis":
+        return await tools.execute_get_calendar_scenario_analysis_tool(
+            timeframe=args.get("timeframe", "next_week"),
+            ticker=args.get("ticker"),
+            min_importance=args.get("min_importance", 5),
+            detail=args.get("detail", True),
+            include_historical_memories=args.get("include_historical_memories", True),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

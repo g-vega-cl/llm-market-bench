@@ -1092,6 +1092,41 @@ GET_CATALYST_RADAR_TOOL = {
 }
 
 
+GET_CALENDAR_SCENARIO_ANALYSIS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_calendar_scenario_analysis",
+        "description": "Retrieve upcoming economic and corporate calendar triggers paired with probability-weighted scenario analyses, conditional trading plans, and affected assets for tomorrow, next week, or custom forward horizons.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "timeframe": {
+                    "type": "string",
+                    "enum": ["tomorrow", "next_week", "next_14_days", "all_upcoming"],
+                    "description": "Forward-looking time horizon: 'tomorrow' (next trading day), 'next_week' (next 7 days, default), 'next_14_days', or 'all_upcoming'.",
+                },
+                "ticker": {
+                    "type": "string",
+                    "description": "Optional ticker symbol (e.g. SPY, NVDA, AAPL) to filter for events, scenarios, or assets relevant to a specific company.",
+                },
+                "min_importance": {
+                    "type": "integer",
+                    "description": "Minimum importance score (1-10) for calendar triggers. Defaults to 5.",
+                },
+                "detail": {
+                    "type": "boolean",
+                    "description": "If true, returns full multi-scenario breakdowns, conditional execution plans, and discovered assets. Defaults to true.",
+                },
+                "include_historical_memories": {
+                    "type": "boolean",
+                    "description": "If true, cross-references historical precedents and past lessons learned for matched catalysts. Defaults to true.",
+                },
+            },
+        },
+    },
+}
+
+
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
     "get_price_history": PRICE_HISTORY_TOOL,
@@ -1131,6 +1166,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_options_vol_surface": GET_OPTIONS_VOL_SURFACE_TOOL,
     "track_thesis_pillars": TRACK_THESIS_PILLARS_TOOL,
     "get_catalyst_radar": GET_CATALYST_RADAR_TOOL,
+    "get_calendar_scenario_analysis": GET_CALENDAR_SCENARIO_ANALYSIS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -3533,6 +3569,33 @@ async def execute_get_catalyst_radar_tool(
     except Exception as e:
         logger.exception("Error executing get_catalyst_radar tool: %s", e)
         return f"Error retrieving catalyst radar: {str(e)}"
+
+
+async def execute_get_calendar_scenario_analysis_tool(
+    timeframe: str = "next_week",
+    ticker: str | None = None,
+    min_importance: int = 5,
+    detail: bool = True,
+    include_historical_memories: bool = True,
+    ref_date: Any | None = None,
+) -> str:
+    """Executes upcoming calendar and scenario analysis retrieval for LLMs."""
+    try:
+        from analysis.calendar_scenarios import (
+            execute_get_calendar_scenario_analysis_tool as _exec_cal,
+        )
+
+        return await _exec_cal(
+            timeframe=timeframe,
+            ticker=ticker,
+            min_importance=min_importance,
+            detail=detail,
+            include_historical_memories=include_historical_memories,
+            ref_date=ref_date,
+        )
+    except Exception as e:
+        logger.exception("Error executing get_calendar_scenario_analysis tool: %s", e)
+        return f"Error retrieving calendar scenario analysis: {str(e)}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

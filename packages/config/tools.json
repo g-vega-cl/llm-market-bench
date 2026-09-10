@@ -142,5 +142,9 @@
   {
     "name": "get_catalyst_radar",
     "desc": "Retrieve high-velocity market concepts paired with upcoming and digesting calendar triggers"
+  },
+  {
+    "name": "get_calendar_scenario_analysis",
+    "desc": "Upcoming calendar events and scenario analysis (tomorrow, next week, or forward window) with conditional trading plans, probabilities, and profit mechanisms"
   }
 ]

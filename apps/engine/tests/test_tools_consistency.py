@@ -10,6 +10,7 @@ from core.llm.tools import (
     FETCH_DAILY_NEWSLETTER_TOOL,
     FETCH_NEWSLETTER_CONTENT_TOOL,
     FIND_UNCORRELATED_ASSETS_TOOL,
+    GET_CALENDAR_SCENARIO_ANALYSIS_TOOL,
     GET_CATALYST_RADAR_TOOL,
     GET_EARNINGS_HISTORY_TOOL,
     GET_EARNINGS_REVISIONS_TOOL,
@@ -112,6 +113,7 @@ def test_tools_json_matches_engine_tool_definitions():
         GET_OPTIONS_VOL_SURFACE_TOOL,
         TRACK_THESIS_PILLARS_TOOL,
         GET_CATALYST_RADAR_TOOL,
+        GET_CALENDAR_SCENARIO_ANALYSIS_TOOL,
     ]
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}
 

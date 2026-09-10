@@ -43,9 +43,14 @@ The synthesizer prompt (`core/llm/prompts.py`) instructs the LLM to produce this
 
 The `PromptFactory.build_synthesis_messages` method now accepts a `candidate_parallels` parameter, which is formatted into the user prompt as a bullet list of candidate historical parallels identified by models.
 
+### Forward Calendar & Scenario Analysis
+
+The `analysis/calendar_scenarios.py` module and `core/time_utils.py` provide exact temporal anchoring (EDT/UTC, market session phase, tomorrow/next-week dates) and the `get_calendar_scenario_analysis` pull tool. It synthesizes probability-weighted scenario trees (Bull/Base/Bear), conditional trading plans, target assets, and historical precedent memory lessons across portfolio analysis, daily predictor, and sector predictor flows. See [[concepts/calendar-scenario-analysis]].
+
 ## Related
 
 - [[concepts/consensus]]
 - [[concepts/memory-feedback]]
+- [[concepts/calendar-scenario-analysis]]
 - [[entities/pipeline]]
 - [[concepts/rag-strategy]]

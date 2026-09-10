@@ -5,7 +5,6 @@ multiple LLM providers (OpenAI, Claude, Gemini, DeepSeek).
 """
 
 import asyncio
-from datetime import datetime
 
 from core import llm
 from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL, GEMINI_MODEL, MINIMAX_MODEL, OPENAI_MODEL, logger
@@ -68,12 +67,10 @@ async def analyze_macro_events(chunks: list[dict]) -> list[MacroEvent]:
         logger.warning("No valid chunks for macro analysis.")
         return []
 
-    from zoneinfo import ZoneInfo
-
     from core.models import MacroEventsResponse
+    from core.time_utils import get_current_day_info
 
-    now = datetime.now(ZoneInfo("America/New_York"))
-    day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
+    day_info = get_current_day_info()
 
     tasks = []
     task_configs = []
@@ -202,26 +199,11 @@ async def analyze_trading_decisions(
     market_data_block = "\n".join(mkt_lines)
 
     # 5. Calendar dates context
-    import calendar
-
     from core.llm.prompts import CALENDAR_STRATEGY_KNOWLEDGE
     from core.models import TradingDecisionsResponse
+    from core.time_utils import get_current_day_info
 
-    now = datetime.now()
-    day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
-    last_day = calendar.monthrange(now.year, now.month)[1]
-    days_to_end = last_day - now.day
-    if now.day in [1, 2, 3]:
-        day_info += f" We are in the Turn of the Month (ToM) window (Day {now.day})."
-    elif days_to_end == 0:
-        day_info += " Today is the LAST trading day of the month (ToM Start)."
-    else:
-        day_info += f" {days_to_end} days until month-end."
-
-    if now.day == 15:
-        day_info += " Today is mid-month (Payday Anomaly)."
-    elif now.day == 14:
-        day_info += " Tomorrow is mid-month payday."
+    day_info = get_current_day_info()
 
     # 6. Construct tasks for trading pass
     tasks = []
@@ -470,26 +452,10 @@ async def analyze_chunks_streaming(chunks: list[dict]):
             logger.info(f"[{model}] All chunks already analyzed. Skipping analysis task.")
             continue
 
-        import calendar
-
-        now = datetime.now()
-        day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
-
-        last_day = calendar.monthrange(now.year, now.month)[1]
-        days_to_end = last_day - now.day
-        if now.day in [1, 2, 3]:
-            day_info += f" We are in the Turn of the Month (ToM) window (Day {now.day})."
-        elif days_to_end == 0:
-            day_info += " Today is the LAST trading day of the month (ToM Start)."
-        else:
-            day_info += f" {days_to_end} days until month-end."
-
-        if now.day == 15:
-            day_info += " Today is mid-month (Payday Anomaly)."
-        elif now.day == 14:
-            day_info += " Tomorrow is mid-month payday."
-
         from core.llm.prompts import CALENDAR_STRATEGY_KNOWLEDGE
+        from core.time_utils import get_current_day_info
+
+        day_info = get_current_day_info()
 
         BATCH_SIZE = 20
         for i in range(0, len(chunks_to_analyze), BATCH_SIZE):

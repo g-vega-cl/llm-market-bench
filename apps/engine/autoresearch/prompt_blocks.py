@@ -90,6 +90,17 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "2. Asymmetric Event Timing: If a high-impact catalyst is scheduled within 7 days (or currently in 1-3 day market digestion), account for event volatility and potential reversal risk rather than assuming linear trend continuation."
         ),
     },
+    "forward_calendar_scenario_anticipation": {
+        "title": "FORWARD CALENDAR & SCENARIO ANTICIPATION (Tomorrow & Next Week Positioning)",
+        "content": (
+            "=== DISCIPLINE: FORWARD CALENDAR & SCENARIO ANTICIPATION ===\n"
+            "1. Forward Catalyst Questioning: Before placing trades, actively think:\n"
+            "   - 'What is scheduled to happen tomorrow? What will happen next week?'\n"
+            "   - 'How can I position now to profit from these scheduled events before the market moves?'\n"
+            '2. Tool-Driven Scenario Pull: Invoke `get_calendar_scenario_analysis(timeframe="tomorrow")` or `timeframe="next_week"` to pull scheduled macro/corporate triggers, scenario probability trees (Bull/Base/Bear), conditional trading plans, and discovered investable assets.\n'
+            "3. Historical Playbook Check: Evaluate historical precedent memories returned by the tool to understand how similar past catalysts actually impacted asset prices."
+        ),
+    },
 }
 
 

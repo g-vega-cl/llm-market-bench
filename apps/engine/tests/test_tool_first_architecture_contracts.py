@@ -69,6 +69,7 @@ def test_pull_tools_registered_in_canonical_registry():
         "get_options_vol_surface",
         "get_yield_curve_regime",
         "get_catalyst_radar",
+        "get_calendar_scenario_analysis",
     ]
 
     for tool_name in required_pull_tools:
@@ -104,15 +105,9 @@ def test_web_api_loaders_never_bulk_select_vector_embeddings():
             if ".select(" in line:
                 if "embedding" in line:
                     violations.append(f"{file_path.name}: {line.strip()}")
-                if (
-                    "concept_vector" in line
-                    and ".limit(" in content
-                    and ".single()" not in content
-                ):
+                if "concept_vector" in line and ".limit(" in content and ".single()" not in content:
                     violations.append(f"{file_path.name}: {line.strip()}")
 
     assert not violations, (
-        "Forbidden bulk vector column selection in web API fetchers (violates Principle 9):\n"
-        + "\n".join(violations)
+        "Forbidden bulk vector column selection in web API fetchers (violates Principle 9):\n" + "\n".join(violations)
     )
-

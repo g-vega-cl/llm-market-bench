@@ -102,10 +102,27 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
         execute_get_volatility_index_details_tool,
         execute_market_health_barometer_tool,
     )
+    from core.time_utils import get_current_day_info
     from execution.market_data import MarketDataManager
 
-    context_lines = [f"Asset: {ticker} (S&P 500 ETF)"]
+    day_info = get_current_day_info()
+    context_lines = [
+        f"Asset: {ticker} (S&P 500 ETF)",
+        f"=== EXACT TEMPORAL CONTEXT ===\n{day_info}\n==============================",
+    ]
     today_str = datetime.now(UTC).date().isoformat()
+
+    # 1. Forward High-Impact Calendar Scenarios (Tomorrow & Next Week)
+    try:
+        from core.llm.tools import execute_get_calendar_scenario_analysis_tool
+
+        cal_str = await execute_get_calendar_scenario_analysis_tool(
+            timeframe="tomorrow", ticker=ticker, min_importance=6, detail=False
+        )
+        if cal_str and not cal_str.startswith("Error"):
+            context_lines.append(f"Upcoming High-Impact Catalysts & Scenarios:\n{cal_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching forward calendar scenarios for daily predictor: {e}")
 
     # 1. AI Wall Street Synthesized Newsletters (Previous Close + Today Open)
     try:

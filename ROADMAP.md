@@ -21,25 +21,18 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar? — Implemented Catalyst Radar in `apps/engine/analysis/catalyst_radar.py`, `get_catalyst_radar` agent tool, and "⚡ Keep an Eye" tab in `/concepts` with 4-stage digestion lifecycle.
 - [ ] - Benchify: Enforce "Zero Compute on Frontend" in `searchMemories()` (`apps/web/src/features/memories/api/fetch-memories.ts`). Replace the unpaginated full-table query (3,144 rows + embeddings = ~18.8MB) and client-side Levenshtein loop with database-level text filtering and pagination.
 - [ ] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`.
-- [x] - Benchify: audit the ad stripping llm — Audited 1,327 historical snapshots, added `ads_summary` and `is_pure_ad` classification to `NewsletterCleaningResponse`, added footer boilerplate stripping and verbatim number preservation to `DE_ADVERTISEMENT_SYSTEM_PROMPT`, added catastrophic over-stripping fallback, filtered out empty/pure-ad snapshots in `newsletter.py`, purged 5 corrupted spam records from DB, and added full TDD test suite. See `[[concepts/ad-stripping-audit]]`.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
-- [x] - Benchify: make agents think "what's going to happen tomorrow? What will happen next week?" How can I profit from that? Your scenario analysis and calendar should be useful for this. Pass it the exact date and time when making choices? — Centralized temporal anchoring in `apps/engine/core/time_utils.py` (`get_current_day_info`) pushing exact time (EDT/UTC), market session phase (Pre-market/Regular/Post/Closed), and anchored tomorrow/next-week dates to portfolio analysis (`analyze.py`), daily predictor (`daily_predictor.py`), and sector predictor (`sector_predictor.py`). Implemented pull-based `get_calendar_scenario_analysis` agent tool in `apps/engine/analysis/calendar_scenarios.py` with multi-scenario probability trees (Bull/Base/Bear), conditional trading plans, target assets, and historical precedent memory lessons. Added modular `forward_calendar_scenario_anticipation` block to `prompt_blocks.py` for Autoresearchers. See `[[concepts/calendar-scenario-analysis]]`.
 
-Make autoresearcher with more variables and more "temperatures?" More portfolios too?
+- [ ] - make autoresearcher with more variables and more "temperatures?" More portfolios too?
 
-Many of these things should be able to be picked up by autoresearch, I guess the loop is quite slow. How to speed up the loop?
+- [ ] - Many of these things should be able to be picked up by autoresearch, I guess the loop is quite slow. How to speed up the loop?
 
 - [ ] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
 - [ ] - Benchify: per user log and reasons tracker. This ties to the LLM chat. Each user can track their own trades too and their reasoning.
-- [ ] - Benchify: it's stock analysis also part of my sources?
-- [ ] - Benchify: check if "today vibes" also includes the emails. Also maybe add the FMP summary to it too.
 - [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs.
 - [ ] - Try to track government stuff again, but make it explicit, make it maybe outside ingestion and consensus.
-- [ ] - Think about how tools are defined and used.
-- [ ] - Benchify: you don't have to trade ultra-high caps, feel free to dabble on mediumer caps. But still liquid
 - [ ] - Benchify: LLMs existed for a while before they exploded, same with crypto, what other techs are like this? Quantum?
-- [ ] - Benchify: fed watch api like but free?: https://share.gemini.google/iul3v5Q9C3AE
 - [ ] - Benchify: add institutional buying and Congress buying?
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
 - [ ] - Benchify: track specific governments with liquid enough stock markets like Canada and trade based on government deals and pipelines and government money

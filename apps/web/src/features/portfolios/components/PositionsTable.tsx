@@ -9,17 +9,19 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { useState } from 'react';
+import type { FrontierTheme } from '../api/fetch-portfolios';
 
 export type Position = PositionWithReasoning;
 
 interface PositionsTableProps {
     positions: Position[];
+    themes?: FrontierTheme[];
 }
 
 type SortKey = 'invested' | 'portfolio_pct' | 'pnl_usd' | 'pnl_pct';
 type SortDirection = 'asc' | 'desc';
 
-export function PositionsTable({ positions }: PositionsTableProps) {
+export function PositionsTable({ positions, themes }: PositionsTableProps) {
     const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
     const [sortKey, setSortKey] = useState<SortKey | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -29,6 +31,20 @@ export function PositionsTable({ positions }: PositionsTableProps) {
         (sum, pos) => sum + (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0),
         0,
     );
+
+    const tickerToThemeMap = React.useMemo(() => {
+        const map = new Map<string, string>();
+        if (themes) {
+            for (const theme of themes) {
+                if (Array.isArray(theme.tickers)) {
+                    for (const t of theme.tickers) {
+                        map.set(String(t).toUpperCase(), theme.theme_name);
+                    }
+                }
+            }
+        }
+        return map;
+    }, [themes]);
 
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
@@ -157,6 +173,12 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                                         </svg>
                                     </span>
                                     {pos.ticker}
+                                    {pos.ticker &&
+                                        tickerToThemeMap.has(pos.ticker.toUpperCase()) && (
+                                            <span className="text-[11px] font-normal px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700/60 font-sans tracking-tight">
+                                                {tickerToThemeMap.get(pos.ticker.toUpperCase())}
+                                            </span>
+                                        )}
                                 </div>
                             </TableCell>
                             <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">

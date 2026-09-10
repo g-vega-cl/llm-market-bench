@@ -6,6 +6,8 @@
 
 ## Entities
 
+- [[entities/frontier-tech-portfolio]] — Automated frontier technology supercycle portfolio with 5-point rubric qualification, small-cap guardrails, and venture power-law sizing
+- [[entities/frontier-tech-portfolio]] — Auto-indexed page
 - [[entities/strategy-explainer]] — Collapsible strategy description card for system portfolios
 - [[entities/smid-compounder]] — Zero-ceiling small/mid-cap quality compounder system portfolio
 - [[entities/earnings-audit]] — Earnings Alpha & PEAD audit dashboard with PEAD, bellwether radar, and analyst revision tabs

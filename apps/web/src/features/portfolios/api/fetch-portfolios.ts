@@ -376,3 +376,35 @@ export async function fetchBenchmarkHistory(
 
     return result;
 }
+
+export interface FrontierTheme {
+    id: string;
+    portfolio_id: string;
+    theme_name: string;
+    thesis: string;
+    catalysts: string;
+    rubric_score: number;
+    status: string;
+    tickers: string[];
+    created_at?: string;
+    updated_at?: string;
+}
+
+export async function fetchFrontierThemes(portfolioId: string): Promise<FrontierTheme[]> {
+    const supabase = getSupabaseServerClient();
+    try {
+        const { data, error } = await supabase
+            .from('frontier_themes')
+            .select('*')
+            .eq('portfolio_id', portfolioId)
+            .eq('status', 'active')
+            .order('rubric_score', { ascending: false });
+
+        if (error) {
+            return [];
+        }
+        return (data as FrontierTheme[]) || [];
+    } catch {
+        return [];
+    }
+}

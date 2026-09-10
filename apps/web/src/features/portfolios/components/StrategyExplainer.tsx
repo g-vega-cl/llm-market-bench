@@ -66,6 +66,39 @@ const STRATEGY_CONFIGS: Record<string, ExplainerConfig> = {
             },
         ],
     },
+    'sys-frontier-tech': {
+        emoji: '⚛️',
+        title: 'Frontier Tech Supercycle Strategy',
+        badgeText: '5-Point Rubric & Power-Law',
+        badgeColorScheme: 'accent',
+        subtitle:
+            'Identifying pre-explosion technological gestations and accumulating small-cap pure plays before mainstream market mania.',
+        borderColor: 'border-violet-500/20',
+        bgColor: 'bg-violet-950/10',
+        gridColsClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+        pillars: [
+            {
+                title: '🔬 5-Point Supercycle Rubric',
+                description:
+                    'Qualifies themes satisfying >= 3 of 5 criteria: cost deflation/scaling law, pure-play enabler bottleneck, talent migration, regulatory catalyst, and early pilot contracts.',
+            },
+            {
+                title: '🛡️ Small-Cap Guardrails',
+                description:
+                    'Major US exchanges only (NASDAQ, NYSE, AMEX), minimum $100M market cap, and $1M daily trading volume to weed out illiquid penny stocks.',
+            },
+            {
+                title: '🛑 Anti-Overpaying & Runway',
+                description:
+                    'Requires at least 18 months of cash runway (cash / burn) and strictly rejects stocks trading > 150% of their 200-day moving average to avoid buying the top of retail hype.',
+            },
+            {
+                title: '🚀 Venture Power-Law Sizing',
+                description:
+                    'Allocates 2% to 4% stakes per stock across 5-8 themes. Zero tight stop-losses; holds through multi-year volatility, exiting only on fundamental thesis death.',
+            },
+        ],
+    },
     'sys-sector-ls-consensus': {
         emoji: '⚖️',
         title: 'Weekly Sector Long/Short Consensus Strategy',

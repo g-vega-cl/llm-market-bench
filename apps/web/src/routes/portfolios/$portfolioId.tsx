@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import {
     fetchBenchmarkHistory,
+    fetchFrontierThemes,
     fetchPerformanceHistory,
     fetchPortfolioById,
     fetchPositions,
@@ -12,14 +13,15 @@ import { PortfolioDetailPage } from '~/features/portfolios/pages/PortfolioDetail
 const getPortfolioData = createServerFn({ method: 'GET' })
     .inputValidator((d: string) => d)
     .handler(async ({ data: portfolioId }: { data: string }) => {
-        const [portfolio, positions, history, trades] = await Promise.all([
+        const [portfolio, positions, history, trades, themes] = await Promise.all([
             fetchPortfolioById(portfolioId),
             fetchPositions(portfolioId),
             fetchPerformanceHistory(portfolioId),
             fetchTrades(portfolioId),
+            fetchFrontierThemes(portfolioId),
         ]);
 
-        return { portfolio, positions, history, trades };
+        return { portfolio, positions, history, trades, themes };
     });
 
 const getBenchmarkData = createServerFn({ method: 'GET' })

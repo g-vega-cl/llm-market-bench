@@ -14,8 +14,9 @@ import {
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
-import type { BenchmarkDataPoint } from '../api/fetch-portfolios';
+import type { BenchmarkDataPoint, FrontierTheme } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
+import { FrontierThemeCards } from '../components/FrontierThemeCards';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { PositionsTable } from '../components/PositionsTable';
 import { StrategyExplainer } from '../components/StrategyExplainer';
@@ -28,6 +29,7 @@ interface PortfolioDetailData {
     positions: PositionWithReasoning[];
     history: PortfolioPerformance[];
     trades: TradeWithReasoning[];
+    themes?: FrontierTheme[];
 }
 
 interface PortfolioDetailPageProps {
@@ -56,7 +58,7 @@ export function PortfolioDetailPage({
         initialData,
     });
 
-    const { portfolio, positions, history, trades } = data;
+    const { portfolio, positions, history, trades, themes } = data;
 
     const hasHistory = history && history.length > 0;
     const startDate = hasHistory ? history[0].date : '';
@@ -144,10 +146,15 @@ export function PortfolioDetailPage({
                         )}
                     </section>
 
+                    {/* Frontier Themes (sys-frontier-tech) */}
+                    {themes && themes.length > 0 && (
+                        <FrontierThemeCards themes={themes} positions={positions} />
+                    )}
+
                     {/* Positions Table */}
                     <section>
                         <SectionHeading gradient="electric">Current Positions</SectionHeading>
-                        <PositionsTable positions={positions} />
+                        <PositionsTable positions={positions} themes={themes} />
                     </section>
 
                     {/* Recent Trades Table */}

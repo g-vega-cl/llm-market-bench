@@ -1,0 +1,76 @@
+name: Frontier Technology Supercycle Strategy
+
+on:
+  schedule:
+    # Monthly Discovery and Rebalance: 14:00 UTC on the 1st of every month
+    - cron: '0 14 1 * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Execution mode'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - rebalance
+          - health_check
+          - bootstrap
+      target_weight:
+        description: 'Target weight per stock (e.g. 0.03 = 3%)'
+        required: false
+        default: '0.03'
+        type: string
+      dry_run:
+        description: 'Dry run (simulate without modifying database)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  run-frontier-tech:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd apps/engine
+          python3 -m venv venv
+          ./venv/bin/pip install -r requirements.txt
+
+      - name: Execute Frontier Tech Supercycle Task
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+        run: |
+          cd apps/engine
+          DRY_RUN_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          MODE_FLAG=""
+          if [ -n "${{ inputs.mode }}" ]; then
+            MODE_FLAG="--mode ${{ inputs.mode }}"
+          fi
+          WEIGHT_FLAG=""
+          if [ -n "${{ inputs.target_weight }}" ]; then
+            WEIGHT_FLAG="--target-weight ${{ inputs.target_weight }}"
+          fi
+
+          ./venv/bin/python3 main.py frontier-tech $MODE_FLAG $WEIGHT_FLAG $DRY_RUN_FLAG

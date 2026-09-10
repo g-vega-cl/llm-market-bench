@@ -47,8 +47,13 @@ The `PromptFactory.build_synthesis_messages` method now accepts a `candidate_par
 
 The `analysis/calendar_scenarios.py` module and `core/time_utils.py` provide exact temporal anchoring (EDT/UTC, market session phase, tomorrow/next-week dates) and the `get_calendar_scenario_analysis` pull tool. It synthesizes probability-weighted scenario trees (Bull/Base/Bear), conditional trading plans, target assets, and historical precedent memory lessons across portfolio analysis, daily predictor, and sector predictor flows. See [[concepts/calendar-scenario-analysis]].
 
+### Frontier Tech Supercycle Portfolio
+
+The `execution/frontier_tech.py` and `tasks/frontier_tech_task.py` modules run monthly discovery, 5-point rubric qualification, and small-cap guardrail screening for the `sys-frontier-tech` portfolio. See [[entities/frontier-tech-portfolio]].
+
 ## Related
 
+- [[entities/frontier-tech-portfolio]]
 - [[concepts/consensus]]
 - [[concepts/memory-feedback]]
 - [[concepts/calendar-scenario-analysis]]

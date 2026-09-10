@@ -60,7 +60,14 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Allocation**: 50% Asset A, 50% Asset B.
 - **Trigger**: Rebalanced weekly via `apps/engine/tasks/evaluate_predictions.py`.
 
+### 7. Frontier Technology Supercycle Strategy (`sys-frontier-tech`)
+- **Signal**: Monthly autonomous discovery of pre-explosion gestation themes scored against a 5-point supercycle rubric.
+- **Selection Rule**: Small-cap pure-play equities on major US exchanges with $\ge \$100\text{M}$ market cap, $\ge \$1\text{M}$ daily volume, $\ge 18$ months cash runway, and price $\le 150\%$ of 200-day moving average.
+- **Allocation**: Venture power-law sizing (2% to 4% per stock) across 5 to 8 themes with multi-year retention and fundamental thesis death exits.
+- **Trigger**: Rebalanced monthly via `apps/engine/tasks/frontier_tech_task.py`. Detailed documentation in [[entities/frontier-tech-portfolio]].
+
 ## Related
+- [[entities/frontier-tech-portfolio]]
 - [[entities/daily-market-predictor]]
 - [[entities/sector-predictor-arena]]
 - [[concepts/minimax-portfolio]]

@@ -30,6 +30,7 @@ from core.config import (
     COMMAND_DAILY_AUTORESEARCH,
     COMMAND_DAILY_PREDICTOR,
     COMMAND_EVALUATE_DAILY_PREDICTIONS,
+    COMMAND_FRONTIER_TECH,
     COMMAND_GENERATE_NEWSLETTER,
     COMMAND_GOVERNMENT,
     COMMAND_INGEST,
@@ -964,6 +965,7 @@ def main():
             COMMAND_GENERATE_NEWSLETTER,
             COMMAND_LIN_RENKO,
             COMMAND_AUDIT_ALPACA,
+            COMMAND_FRONTIER_TECH,
         ],
         help="Action to perform",
     )
@@ -1008,6 +1010,19 @@ def main():
         "--target-date", type=str, default=None, help="Target date for daily predictor evaluation (YYYY-MM-DD)"
     )
     parser.add_argument("--weeks", type=int, default=1, help="Number of backtest weeks")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="auto",
+        choices=["auto", "rebalance", "health_check", "bootstrap"],
+        help="Execution mode for tasks (default: auto)",
+    )
+    parser.add_argument(
+        "--target-weight",
+        type=float,
+        default=0.03,
+        help="Target position weight for portfolio tasks (default: 0.03)",
+    )
 
     args = parser.parse_args()
 
@@ -1085,6 +1100,16 @@ def main():
         from audit.alpaca_audit import run_alpaca_audit
 
         asyncio.run(run_alpaca_audit(model_name=args.model, days=args.days, json_output=args.json))
+    elif args.command == COMMAND_FRONTIER_TECH:
+        from tasks.frontier_tech_task import run_frontier_tech_task
+
+        asyncio.run(
+            run_frontier_tech_task(
+                mode=args.mode,
+                dry_run=args.dry_run,
+                target_weight=args.target_weight,
+            )
+        )
 
 
 if __name__ == "__main__":

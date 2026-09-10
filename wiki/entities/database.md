@@ -19,6 +19,7 @@ The database is organized into several functional areas:
 - `chat_memories` — User-curated private research theses with full RLS isolation (see [[concepts/private-memory-vault]])
 - `decisions` — Agent buy/sell decisions (1 row per agent per ticker per session)
 - `economic_calendar_events` — Parsed economic indicator data
+- `frontier_themes` — Qualified frontier technology supercycle themes and constituent pure-play tickers (see [[entities/frontier-tech-portfolio]])
 - `generated_newsletters` — Daily AI market briefings
 - `government_incentives` — High-impact policy tracking
 - `market_feeling` — Daily and weekly market sentiment assessments

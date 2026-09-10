@@ -512,3 +512,58 @@ async def test_ingest_newsletters_prefers_imap():
         assert len(snapshots) == 1
         assert snapshots[0]["source_id"] == "news_brew_123"
         mock_oauth.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ingest_newsletters_filters_pure_ads_and_empty_content(caplog):
+    """Test that pure advertisement emails and empty content are filtered out during ingestion."""
+    from ingest.cleaner import CleanedNewsletterText
+    from ingest.newsletter import NewsletterSnapshot, ingest_newsletters
+
+    pure_ad_snapshot = NewsletterSnapshot(
+        source_id="news_ad_1",
+        chunk_hash="hash_ad",
+        sender="promo@etoro.com",
+        date="2026-09-03T09:00:00",
+        subject="Get $500 bonus today!",
+        content="Get $500 bonus today! Deposit now.",
+        ingested_at="2026-09-03T09:00:00",
+    )
+
+    legit_snapshot = NewsletterSnapshot(
+        source_id="news_brew_1",
+        chunk_hash="hash_brew",
+        sender="crew@morningbrew.com",
+        date="2026-09-03T09:00:00",
+        subject="Market Wrap",
+        content="GDP rose 2.8% in Q3. Markets rallied.",
+        ingested_at="2026-09-03T09:00:00",
+    )
+
+    async def mock_cleaner(content):
+        if "bonus" in content:
+            return CleanedNewsletterText("", is_pure_ad=True, ads_removed_count=1, ads_summary=["Bonus promo"])
+        return CleanedNewsletterText(content, is_pure_ad=False, ads_removed_count=0)
+
+    caplog.set_level(logging.INFO, logger="engine")
+
+    with (
+        patch("ingest.newsletter.GMAIL_APP_PASSWORD", "secret_app_pw"),
+        patch("ingest.newsletter.GMAIL_EMAIL", "test@gmail.com"),
+        patch(
+            "ingest.newsletter._fetch_raw_messages_imap",
+            return_value=[
+                (pure_ad_snapshot, "promo@etoro.com"),
+                (legit_snapshot, "crew@morningbrew.com"),
+            ],
+        ),
+        patch("ingest.newsletter.clean_newsletter_content", side_effect=mock_cleaner),
+    ):
+        snapshots = await ingest_newsletters(newer_than_days=1)
+
+        # Pure ad snapshot must be discarded, only the legit snapshot should remain
+        assert len(snapshots) == 1
+        assert snapshots[0]["source_id"] == "news_brew_1"
+        assert "Filtered out pure promotional or empty email from promo@etoro.com" in caplog.text
+        # Must NOT trigger a false semantic fragility alert for promo@etoro.com
+        assert "SEMANTIC FRAGILITY ALERT: Found message(s) from 'promo@etoro.com'" not in caplog.text

@@ -21,7 +21,7 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar? — Implemented Catalyst Radar in `apps/engine/analysis/catalyst_radar.py`, `get_catalyst_radar` agent tool, and "⚡ Keep an Eye" tab in `/concepts` with 4-stage digestion lifecycle.
 - [ ] - Benchify: Enforce "Zero Compute on Frontend" in `searchMemories()` (`apps/web/src/features/memories/api/fetch-memories.ts`). Replace the unpaginated full-table query (3,144 rows + embeddings = ~18.8MB) and client-side Levenshtein loop with database-level text filtering and pagination.
 - [ ] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`.
-- [ ] - Benchify: audit the ad stripping llm
+- [x] - Benchify: audit the ad stripping llm — Audited 1,327 historical snapshots, added `ads_summary` and `is_pure_ad` classification to `NewsletterCleaningResponse`, added footer boilerplate stripping and verbatim number preservation to `DE_ADVERTISEMENT_SYSTEM_PROMPT`, added catastrophic over-stripping fallback, filtered out empty/pure-ad snapshots in `newsletter.py`, purged 5 corrupted spam records from DB, and added full TDD test suite. See `[[concepts/ad-stripping-audit]]`.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [x] - I don't see lightouse in CI

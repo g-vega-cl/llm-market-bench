@@ -437,13 +437,14 @@ Return ONLY the JSON object with 'lesson', 'is_regret', and 'sentiment_shift'.
 
 DE_ADVERTISEMENT_SYSTEM_PROMPT = (
     "You are a specialized content filter for financial analysts. "
-    "Your goal is to remove advertisements and promotional fluff while strictly "
-    "preserving all financial news, market analysis, and data chunks.\n\n"
+    "Your goal is to remove advertisements, promotional fluff, and newsletter boilerplate while strictly "
+    "preserving all financial news, market analysis, tables, and data chunks verbatim.\n\n"
     "=== YOUR TASK ===\n"
     "1. Identify and remove any sections that are clearly advertisements, sponsored content, or promotional fluff.\n"
     '2. STICK TO THE FACTS: If a section is "sponsored" but contains actual market data or financial insights, KEEP it, but remove the "sponsored" branding.\n'
-    "3. PRESERVE ALL ORIGINAL NEWS: Do not summarize. Keep the original wording and structure of the actual news and analysis.\n"
-    '4. REMOVE: Referral programs ("Invite a friend"), merchandise ads, third-party product placements, and generic "sponsored by" blocks that contain no news value.'
+    "3. PRESERVE ALL ORIGINAL NEWS AND NUMBERS VERBATIM: Do not summarize. Keep the exact original wording, sentences, and structure of the actual news. NEVER modify, drop, or round financial figures, stock prices, earnings figures (EPS, revenue), percentages, tickers, or dates.\n"
+    '4. REMOVE FLUFF AND BOILERPLATE: Referral programs ("Invite a friend"), merchandise ads, third-party product placements, generic "sponsored by" blocks, unsubscribe links, email preference centers, subscription management links, and physical mailing address footers that contain no news value.\n'
+    '5. PURE ADVERTISEMENT DETECTION: If the entire email is promotional marketing, a platform sales pitch, webinar invite, discount offer, or subscription drive with zero substantive market analysis or financial news, set is_pure_ad = true and cleaned_content = "".'
 )
 
 DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE = """NEWSLETTER CONTENT:
@@ -451,7 +452,11 @@ DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE = """NEWSLETTER CONTENT:
 {content}
 ---
 
-Return the results as a structured JSON object with the 'cleaned_content' (the filtered newsletter body) and 'ads_removed_count' (the number of advertisement blocks you identified and removed)."""
+Return the results as a structured JSON object with:
+- 'cleaned_content': The filtered newsletter body with ads and footer fluff removed verbatim. Empty string if is_pure_ad is true.
+- 'ads_removed_count': The integer count of advertisement and fluff blocks identified and removed.
+- 'ads_summary': A list of brief summaries (1 sentence each) describing each removed advertisement or fluff block.
+- 'is_pure_ad': Boolean, true only if the entire email was promotional/advertising with zero substantive financial news."""
 
 VERIFIER_SYSTEM_PROMPT = (
     "You are a skeptical senior investment verifier. Your job is to perform a 'second reasoning step' "

@@ -490,50 +490,6 @@ async def _fetch_raw_message(
     return None, sender
 
 
-async def _process_message(service: Any, msg_ref: dict[str, str]) -> tuple[NewsletterSnapshot | None, str | None]:
-    """Fetch a single message and transform it into a NewsletterSnapshot.
-
-    Args:
-        service: Gmail API service resource.
-        msg_ref: Dictionary containing the message 'id'.
-
-    Returns:
-        A tuple of (NewsletterSnapshot or None, sender_string or None).
-    """
-    sender = None
-    try:
-        msg = service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute()
-        headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
-
-        subject = headers.get("Subject", "No Subject")
-        sender = headers.get("From", "Unknown")
-        raw_date = headers.get("Date")
-
-        try:
-            date_dt = parsedate_to_datetime(raw_date)
-            date = date_dt.isoformat()
-        except Exception:
-            date = datetime.now().isoformat()
-
-        body = extract_email_body(msg["payload"])
-
-        # --- De-advertisement Pass ---
-        cleaned_body = await clean_newsletter_content(body)
-
-        return NewsletterSnapshot(
-            source_id=generate_source_id(date, sender, subject),
-            chunk_hash=generate_chunk_hash(cleaned_body),
-            sender=sender,
-            date=date,
-            subject=subject,
-            content=cleaned_body,
-            ingested_at=datetime.now().isoformat(),
-        ), sender
-    except Exception as e:
-        logger.error(f"Error processing message {msg_ref.get('id')}: {e}")
-        return None, sender
-
-
 async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
     """Fetch and process newsletters from Gmail.
 
@@ -612,6 +568,7 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
     try:
         # Phase 2: Clean all bodies in parallel via LLM
         snapshots = []
+        pure_ad_senders = set()
         if raw_results:
             cleaning_tasks = [clean_newsletter_content(snapshot.content) for snapshot, _ in raw_results]
             cleaned_bodies = await asyncio.gather(*cleaning_tasks, return_exceptions=True)
@@ -619,10 +576,22 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
             # Phase 3: Assemble cleaned snapshots
             for (raw_snapshot, sender), cleaned_body in zip(raw_results, cleaned_bodies, strict=True):
                 if isinstance(cleaned_body, Exception):
-                    logger.error(f"Cleaning failed for {sender}: {cleaned_body}. Using raw body.")
+                    logger.error("Cleaning failed for %s: %s. Using raw body.", sender, cleaned_body)
                     cleaned_body = raw_snapshot.content
-                raw_snapshot.content = cleaned_body
-                raw_snapshot.chunk_hash = generate_chunk_hash(cleaned_body)
+
+                # Filter out pure marketing/promotional emails and empty bodies
+                if getattr(cleaned_body, "is_pure_ad", False) or not str(cleaned_body).strip():
+                    logger.info(
+                        "Filtered out pure promotional or empty email from %s: '%s'",
+                        sender,
+                        raw_snapshot.subject,
+                    )
+                    if sender:
+                        pure_ad_senders.add(sender)
+                    continue
+
+                raw_snapshot.content = str(cleaned_body)
+                raw_snapshot.chunk_hash = generate_chunk_hash(raw_snapshot.content)
                 snapshots.append(asdict(raw_snapshot))
 
         # Summarize results by sender
@@ -632,9 +601,9 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
         # Detect if any sender found in today's messages failed to produce a snapshot
         # This indicates a template change or parsing error.
         for attempted_sender in attempted_senders:
-            # Check if this attempted sender resulted in any snapshot
+            # Check if this attempted sender resulted in any snapshot or pure ad
             found = any(attempted_sender.lower() in s["sender"].lower() for s in snapshots)
-            if not found:
+            if not found and attempted_sender not in pure_ad_senders:
                 logger.warning(
                     f"SEMANTIC FRAGILITY ALERT: Found message(s) from '{attempted_sender}' "
                     f"but yielded 0 valid snapshots. Check if the newsletter template has changed!"

@@ -287,10 +287,19 @@ class NewsletterCleaningResponse(BaseModel):
     Attributes:
         cleaned_content: The newsletter body with advertisements removed.
         ads_removed_count: Number of advertisement blocks identified and removed.
+        ads_summary: Short summary or title of each removed advertisement block.
+        is_pure_ad: True if the entire email was promotional/marketing with zero substantive financial news.
     """
 
     cleaned_content: str = Field(..., description="The cleaned newsletter text")
     ads_removed_count: int = Field(0, description="Number of ad blocks removed")
+    ads_summary: list[str] = Field(
+        default_factory=list, description="Short summary of each removed advertisement block"
+    )
+    is_pure_ad: bool = Field(
+        default=False,
+        description="True if the entire email was promotional/marketing with zero substantive financial news",
+    )
 
 
 class VerificationResult(BaseModel):

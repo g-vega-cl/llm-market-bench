@@ -52,6 +52,8 @@
 
 ## Concepts
 
+- [[concepts/ad-stripping-audit]] — De-advertisement cleaner empirical audit, guardrail architecture, and pure ad filtering
+- [[concepts/ad-stripping-audit]] — Auto-indexed page
 - [[concepts/zero-frontend-compute]] — Mandate that all heavy computation be pre-materialized in background pipelines, never performed on the web frontend
 - [[concepts/zero-frontend-compute]] — Auto-indexed page
 - [[concepts/catalyst-radar]] — 4-stage digestion lifecycle and vector-matched concept-calendar radar for upcoming and digesting market events

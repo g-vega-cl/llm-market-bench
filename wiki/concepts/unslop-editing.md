@@ -28,4 +28,4 @@ The unslop patterns synthesize common AI anti-patterns observed across LLM-gener
 
 ## Related
 
-- [[entities/gemini]] — project-level mandates and command reference
+- [[entities/agent-rules]] — project-level mandates and canonical instructions

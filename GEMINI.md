@@ -67,6 +67,17 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
    - **Autoresearch Owns Prompt Evolution**: Prompt mutation belongs exclusively to the Autoresearcher loop (`PromptResearchResult`). Developers may define optional, reusable reasoning blocks in `apps/engine/autoresearch/prompt_blocks.py` for the Autoresearcher to test and adopt, but must NEVER bake them into baseline prompts.
    - **Pipeline Utility & Editorial Tasks Allowed Direct Prompts**: Deterministic production utilities without an autoresearcher (e.g. `newsletter_generator.py`, de-advertisement `cleaner.py`, consensus synthesis) are exempt from the tool-pull requirement. Developers are expected to directly engineer system prompts for editorial voice, markdown layouts, and schemas, and pass input payloads directly.
 9. **Zero Compute on Frontend (MANDATORY)**: The web layer (`apps/web`) is strictly presentation. Never execute heavy calculations, mathematical modeling, multi-table joins, or bulk raw data fetches on web read paths. All derived intelligence must be pre-calculated and materialized into lean tables during background pipelines. See `[[concepts/zero-frontend-compute]]`.
+10. **Vertical Slice Islands & File Size Ceiling (MANDATORY)**:
+    - **Size limits**: Soft ceiling at 400 lines of code. Any file crossing 400 lines requires decomposition into sub-components or domain sub-modules. Hard ceiling at 800 lines to prevent tool viewport truncation and patch collision. Target size for modular units is 100 to 300 lines.
+    - **Cohesive islands over micro-file fragmentation**: Group related logic, validation, and domain state into complete vertical slices. Avoid micro-file indirection chains (such as 10-line files spread across multiple directory layers) that degrade agent tool tracing.
+    - **Colocated tests**: Every component or module island must have its test file sitting immediately next to it (`foo.ts` and `foo.test.ts`, or `feature.py` and `test_feature.py`).
+    - **Isolated boundaries**: Keep island interfaces narrow, explicit, and typed. Avoid ambient global state. See `[[concepts/vertical-slice-islands]]`.
+11. **Design System & UI Consistency (MANDATORY)**:
+    - **Enforce UI design system**: All web UI components in `apps/web` must consume `@llm-market-bench/ui-design-system` primitives and patterns (`Button`, `Card`, `Badge`, `SectionHeading`, `Table`, etc.).
+    - **Zero arbitrary values**: Never use square-bracket Tailwind escapes (such as `w-[230px]` or `bg-[#1a2b3c]`). Use established theme spacing, typography, and token classes.
+    - **Prefer default system props**: Always use built-in props (`colorScheme`, `variant`, `size`, `radius`) to achieve styling rather than ad-hoc custom `className` utility overrides.
+    - **Unified high-contrast dark theme**: The application standardizes on a single theme ("Bloomberg Terminal meets Wired"). Never introduce light/dark toggles, custom theme switches, or `dark:` conditional classes. See `[[entities/design-system]]`.
+
 
 
 ## Config

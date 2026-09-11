@@ -27,7 +27,8 @@ TanStack Start dashboard (React + TypeScript) providing real-time portfolio data
 
 - [[entities/daily-market-predictor]]
 - [[entities/investment-chat-gateway]]
-- [[concepts/memory-feedback]]
-- [[concepts/multi-track-autoresearch]]
+- [[entities/design-system]]
+- [[concepts/vertical-slice-islands]]
+- [[concepts/zero-frontend-compute]]
 - [[concepts/tanstack-query]]
 - [[concepts/type-safety]]

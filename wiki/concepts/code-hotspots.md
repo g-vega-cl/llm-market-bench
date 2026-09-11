@@ -61,8 +61,10 @@ Files that consistently change in the same commit indicate implicit architectura
 When planning or modifying files listed in this report:
 1. **CRITICAL / HIGH Risk Files**: Always write a reproduction test first. Check blast radius and avoid adding new procedural responsibilities.
 2. **Coupled Files**: When editing one side of a temporal pair, inspect the coupled partner to ensure shared state, schemas, or tests stay in sync.
-3. **Refactoring Priority**: Files with high fix ratios (>30%) are primary candidates for modularization.
+3. **Refactoring Priority**: Files with high fix ratios (>30%) or crossing the 400 LOC soft ceiling are primary candidates for modularization into [[concepts/vertical-slice-islands]].
 
 ## Related
 * [[concepts/visual-planning]]
+* [[concepts/vertical-slice-islands]]
+* [[entities/agent-rules]]
 * [[overview]]

@@ -19,11 +19,11 @@ A custom Python script (`apps/engine/commit_msg_lint.py`) that enforces [Convent
 
 - Invoked automatically by the `commit-msg` Git hook at `.husky/commit-msg`.
 - Script location: `apps/engine/commit_msg_lint.py`.
-- For full protocol details, see [[entities/gemini]].
+- For full protocol details, see [[entities/agent-rules]].
 
 ## Related
 
-- [[entities/gemini]] — project-level mandates including Commit Message Protocol
+- [[entities/agent-rules]] — project-level mandates including Commit Message Protocol
 - [[concepts/project-linting]]
 - [[entities/biome-linter]]
 - [[entities/ruff-linter]]

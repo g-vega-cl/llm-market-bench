@@ -34,6 +34,7 @@ Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual 
 
 - [[concepts/project-linting]]
 - [[concepts/visual-planning]]
+- [[concepts/vertical-slice-islands]]
 - [[entities/engine]]
-- [[entities/gemini]]
+- [[entities/agent-rules]]
 - [[concepts/observability-standard]]

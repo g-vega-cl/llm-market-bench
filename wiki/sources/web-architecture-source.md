@@ -17,4 +17,6 @@ Synthesized from `raw/docs/web/README.md`.
 ## Related
 
 - [[entities/web-app]]
+- [[concepts/vertical-slice-islands]]
+- [[entities/design-system]]
 - [[concepts/rag-strategy]]

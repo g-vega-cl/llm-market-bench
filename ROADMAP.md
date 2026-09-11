@@ -39,9 +39,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: add institutional buying and Congress buying?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 - [ ] - Benchify: market data free APIs?
-- [ ] - Benchify: What about making a benchmark for day trading/investing for users?
-- [ ] - Benchify: is AI better working with many small files for separation of concerns and avoid side effects? Islands?
-- [ ] - Benchify: fed watch api like but free? - https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html - https://share.gemini.google/iul3v5Q9C3AE
+- [x] - Benchify: is AI better working with many small files for separation of concerns and avoid side effects? Islands?
+    - Confirmed with git forensics: AI agents perform best with vertical slice islands (100 to 300 LOC) and colocated tests, while files over 700 LOC have 40% to 66% bug ratios. Avoided hyper-fragmented micro-files. Codified as Principle 10 and 11 in `GEMINI.md` and created `[[concepts/vertical-slice-islands]]`.
 - [ ] - Benchify: free APIs to the LLMs chat?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
@@ -96,3 +95,20 @@ Feels like I have done that before to no avail
 - [ ] - Find if yoyu can set up any PEAD based strategy
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
 - [ ] - Make sure my agents are thinking agents.
+
+## Hotspot Refactoring (Vertical Slice Islands)
+
+Decompose critical monolithic hotspots identified by churn forensics into isolated modules (target 100 to 300 LOC) with colocated tests.
+
+- [ ] **Refactor `apps/engine/core/llm/tools.py`** (3,128 LOC)
+  - Decompose the monolithic tool registry into domain modules (`tools/market_data.py`, `tools/technicals.py`, `tools/sec_filings.py`, `tools/portfolio.py`) with a thin dispatcher barrel.
+- [ ] **Refactor `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx`** (1,471 LOC, 20.0% fix ratio)
+  - Extract page sub-components (chart panels, variant sidebars, score modals, history tables) into colocated components under `features/daily-predictions/components/` under 300 LOC each.
+- [ ] **Refactor `apps/engine/core/llm/analysis.py`** (1,150 LOC, 63.6% bug fix ratio, CRITICAL)
+  - Split prompt assembly, response parsing, and validation into separate vertical modules to eliminate patch search collisions and regression cascades.
+- [ ] **Refactor `apps/engine/main.py`** (949 LOC, 40.7% bug fix ratio, CRITICAL)
+  - Decompose the monolithic CLI entry point into sub-command routers under `apps/engine/cli/` to keep entry points under 200 LOC.
+- [ ] **Refactor `apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx`** (912 LOC, 55.6% bug fix ratio, HIGH)
+  - Break metric calculations, ratchet comparisons, and breakdown charts into isolated UI primitives.
+- [ ] **Refactor `apps/engine/execution/market_data.py`** (749 LOC, 66.7% bug fix ratio, CRITICAL)
+  - Separate data provider clients, price caching, and transform logic into modular units.

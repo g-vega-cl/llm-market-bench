@@ -50,7 +50,7 @@
 - [[entities/macro-tracker]] — 23-ticker global macro regime monitoring
 - [[entities/sector-predictor-arena]] — Weekly top and worst sector predictions with S&P 500 alpha scoring and model arena dashboard
 - [[entities/llm-leaderboard]] — LLM ranking and diagnostic screening system (composite scoring, verifier rates, and consistency metrics)
-- [[entities/gemini]] — Project-level mandates, precedence directives, and command reference
+- [[entities/agent-rules]] — Canonical agent instructions, precedence directives, and GEMINI.md pointer
 
 ## Concepts
 
@@ -126,6 +126,7 @@
 - [[concepts/fundamental-analysis]] — Standardized fundamental metrics, company earnings tools, and S&P 500 Market Health Barometer
 - [[concepts/market-feeling]] — LLM-driven daily and weekend market sentiment analysis grounded in newsletters, S&P 500 barometer, prediction markets, and ticker price swings
 - [[concepts/temporal-sandboxing]] — Point-in-time database client wrapping, local cache redirection, and Alpaca order simulation
+- [[concepts/vertical-slice-islands]] — Self-contained modular architecture, size limits, and test colocation
 
 
 

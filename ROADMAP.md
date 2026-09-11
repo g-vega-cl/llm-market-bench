@@ -18,7 +18,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
-- [x] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar? — Implemented Catalyst Radar in `apps/engine/analysis/catalyst_radar.py`, `get_catalyst_radar` agent tool, and "⚡ Keep an Eye" tab in `/concepts` with 4-stage digestion lifecycle.
 - [ ] - Benchify: Enforce "Zero Compute on Frontend" in `searchMemories()` (`apps/web/src/features/memories/api/fetch-memories.ts`). Replace the unpaginated full-table query (3,144 rows + embeddings = ~18.8MB) and client-side Levenshtein loop with database-level text filtering and pagination.
 - [ ] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
@@ -32,7 +31,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: per user log and reasons tracker. This ties to the LLM chat. Each user can track their own trades too and their reasoning.
 - [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs.
 - [ ] - Try to track government stuff again, but make it explicit, make it maybe outside ingestion and consensus.
-- [ ] - Benchify: LLMs existed for a while before they exploded, same with crypto, what other techs are like this? Quantum?
 - [ ] - Benchify: add institutional buying and Congress buying?
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
 - [ ] - Benchify: track specific governments with liquid enough stock markets like Canada and trade based on government deals and pipelines and government money
@@ -40,7 +38,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - An LLM that focuses only on government opportunities. - Like deals in pipeline, new reforms, under the radar things
 - [ ] - Benchify: add institutional buying and Congress buying?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
-- [ ] - Benchify: free APIs?
+- [ ] - Benchify: market data free APIs?
 - [ ] - Benchify: What about making a benchmark for day trading/investing for users?
 - [ ] - Benchify: is AI better working with many small files for separation of concerns and avoid side effects? Islands?
 - [ ] - Benchify: fed watch api like but free? - https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html - https://share.gemini.google/iul3v5Q9C3AE

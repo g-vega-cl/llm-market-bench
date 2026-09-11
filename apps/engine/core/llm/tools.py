@@ -1127,6 +1127,41 @@ GET_CALENDAR_SCENARIO_ANALYSIS_TOOL = {
 }
 
 
+GET_BARRIER_TOUCH_PROBABILITIES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_barrier_touch_probabilities",
+        "description": "Empirical Triple Barrier Method touch probabilities conditional on market regime. Calculates the historical percentage of times price touched the profit target (+X%) before the stop loss (-Y%), or expired at the vertical time stop, within the current trend and volatility state.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock or ETF ticker symbol (e.g. SPY, QQQ, NVDA).",
+                },
+                "target_pct": {
+                    "type": "number",
+                    "description": "Optional upper profit-take barrier percentage (e.g. 2.0 for +2.0%). Defaults to 1.5x local ATR.",
+                },
+                "stop_pct": {
+                    "type": "number",
+                    "description": "Optional lower stop-loss barrier percentage (e.g. 1.5 for -1.5%). Defaults to 1.0x local ATR.",
+                },
+                "horizon_bars": {
+                    "type": "integer",
+                    "description": "Vertical time barrier (holding period in daily bars, default 5).",
+                },
+                "lookback_days": {
+                    "type": "integer",
+                    "description": "Historical days of lookback for regime matching (default 252).",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
     "get_price_history": PRICE_HISTORY_TOOL,
@@ -1167,6 +1202,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "track_thesis_pillars": TRACK_THESIS_PILLARS_TOOL,
     "get_catalyst_radar": GET_CATALYST_RADAR_TOOL,
     "get_calendar_scenario_analysis": GET_CALENDAR_SCENARIO_ANALYSIS_TOOL,
+    "get_barrier_touch_probabilities": GET_BARRIER_TOUCH_PROBABILITIES_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -3596,6 +3632,32 @@ async def execute_get_calendar_scenario_analysis_tool(
     except Exception as e:
         logger.exception("Error executing get_calendar_scenario_analysis tool: %s", e)
         return f"Error retrieving calendar scenario analysis: {str(e)}"
+
+
+async def execute_barrier_touch_probabilities_tool(
+    ticker: str,
+    target_pct: float | None = None,
+    stop_pct: float | None = None,
+    horizon_bars: int = 5,
+    lookback_days: int = 252,
+) -> str:
+    """Executes empirical Triple Barrier Method touch probability analysis."""
+    try:
+        from analytics.barrier_probabilities import get_barrier_touch_probabilities_report
+
+        report = await get_barrier_touch_probabilities_report(
+            ticker=ticker,
+            target_pct=target_pct,
+            stop_pct=stop_pct,
+            horizon_bars=horizon_bars,
+            lookback_days=lookback_days,
+        )
+        if "markdown" in report:
+            return report["markdown"]
+        return report.get("error", "Unknown error calculating barrier touch probabilities.")
+    except Exception as e:
+        logger.exception("Error executing get_barrier_touch_probabilities tool for %s: %s", ticker, e)
+        return f"Error calculating barrier touch probabilities: {str(e)}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

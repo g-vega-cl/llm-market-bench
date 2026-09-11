@@ -13,7 +13,7 @@ The script populates the vector store with structured summaries of seminal paper
 
 ## Papers Included
 
-Source of truth is `PAPERS` in `seed_academic_papers.py`. The dataset covers six pillars:
+Source of truth is `PAPERS` in `seed_academic_papers.py`. The dataset covers seven pillars:
 
 - **Factor Investing & Risk Premiums**: The Cross-Section of Expected Stock Returns (Fama & French, 1992), Common Risk Factors in the Returns on Stocks and Bonds (Fama & French, 1993), Value and Momentum Everywhere (Asness, Moskowitz & Pedersen, 2013), A Five-Factor Asset Pricing Model (Fama & French, 2015), Size Matters, If You Control Your Junk (Asness, Frazzini, Israel, Moskowitz & Pedersen, 2018)
 - **Behavioral Finance & Market Anomalies**: Contrarian Investment, Extrapolation, and Risk (Lakonishok, Shleifer & Vishny, 1994), The Limits of Arbitrage (Shleifer & Vishny, 1995), A Model of Investor Sentiment (Barberis, Shleifer & Vishny, 1997), Does the Stock Market Overreact? (De Bondt & Thaler, 1985)
@@ -21,6 +21,7 @@ Source of truth is `PAPERS` in `seed_academic_papers.py`. The dataset covers six
 - **Temporal & Calendar Anomalies**: The Overnight Return Anomaly (The Night Effect) (Lou, Polk & Skouras, 2019), The Turn-of-the-Month Effect (McConnell & Xu, 2008), The Pre-Holiday Liquidity Vacuum (Ariel, 1990), The January Effect (Rozeff & Kinney, 1976), The Weekend Effect / Monday Effect (French, 1980)
 - **Information & Event-Driven Anomalies**: Post-Earnings-Announcement Drift (PEAD) (Bernard & Thomas, 1989), Pre-FOMC Announcement Drift (Lucca & Moench, 2015)
 - **Structural & Plumbing Anomalies**: The Index Inclusion Effect (The Passive Squeeze) (Shleifer, 1986), Options Expiration Pinning (Max Pain) (Ni, Pearson & Poteshman, 2005), The Index Premium and Its Hidden Cost for Index Funds (Petajisto, 2011), Index Changes and Losses to Index Fund Investors (Chen, Noronha & Singal, 2006)
+- **Regime Shifts & Dynamic Labeling**: The Triple Barrier Method and Meta-Labeling (López de Prado, 2018), A New Approach to the Economic Analysis of Nonstationary Time Series and the Business Cycle (Hamilton, 1989), Regime Shifts: Implications for Dynamic Asset Allocation (Kritzman, Page, & Turkington, 2012)
 
 Each paper is stored with metadata (`source_type`, `citation`, `pillar`) for attribution and filtering.
 

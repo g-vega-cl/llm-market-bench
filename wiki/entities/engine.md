@@ -51,11 +51,16 @@ The `analysis/calendar_scenarios.py` module and `core/time_utils.py` provide exa
 
 The `execution/frontier_tech.py` and `tasks/frontier_tech_task.py` modules run monthly discovery, 5-point rubric qualification, and small-cap guardrail screening for the `sys-frontier-tech` portfolio. See [[entities/frontier-tech-portfolio]].
 
+### Triple Barrier Method and Regime Probabilities
+
+The `analytics/barrier_probabilities.py` module evaluates empirical Triple Barrier Method (López de Prado) touch frequencies conditional on prevailing volatility and trend regimes via the `get_barrier_touch_probabilities` pull tool. It computes historical win rates, stop-out rates, vertical expiration returns, and expected value net of 10 bps slippage. See [[concepts/triple-barrier-probabilities]].
+
 ## Related
 
 - [[entities/frontier-tech-portfolio]]
 - [[concepts/consensus]]
 - [[concepts/memory-feedback]]
 - [[concepts/calendar-scenario-analysis]]
+- [[concepts/triple-barrier-probabilities]]
 - [[entities/pipeline]]
 - [[concepts/rag-strategy]]

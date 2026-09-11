@@ -146,5 +146,9 @@
   {
     "name": "get_calendar_scenario_analysis",
     "desc": "Upcoming calendar events and scenario analysis (tomorrow, next week, or forward window) with conditional trading plans, probabilities, and profit mechanisms"
+  },
+  {
+    "name": "get_barrier_touch_probabilities",
+    "desc": "Empirical Triple Barrier Method touch probabilities conditional on regime (take-profit vs stop-loss vs vertical time exit)"
   }
 ]

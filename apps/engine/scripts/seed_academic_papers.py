@@ -216,6 +216,33 @@ PAPERS = [
         "application": "Systematic portfolio architectures should use patient execution or direct indexing with zero cap ceilings, eliminating the forced front-run rebalancing of traditional small-cap indices.",
         "example_scenario": "The agent designs a small-cap compounder portfolio that never forces sales when a company graduates to large cap, directly avoiding the 1.3% to 1.8% annual leakage documented by Chen, Noronha, and Singal.",
     },
+    {
+        "title": "The Triple Barrier Method and Meta-Labeling",
+        "citation": "López de Prado, 2018, Advances in Financial Machine Learning",
+        "pillar": "Regime Shifts & Dynamic Labeling",
+        "core_thesis": "Fixed-time horizon labeling fails because it ignores intra-period path dependency, volatility clustering, and risk limits. Labels must be defined dynamically using upper profit-taking barriers, lower stop-loss barriers, and vertical time-expiration limits scaled by local volatility.",
+        "mechanism": "Financial asset returns are non-stationary with volatile, path-dependent trajectories. Traditional close-to-close returns misclassify trades that struck extreme adverse excursions before recovering, or profitable runs that collapsed before expiration. Dynamically adjusting barrier widths to local volatility (such as ATR or realized volatility) creates realistic trade outcomes and permits meta-labeling to size bets by confidence.",
+        "application": "Define dynamic stop-loss and profit-take thresholds scaled by realized volatility rather than static percentage moves, and reject setups where conditional touch probabilities yield negative expected value.",
+        "example_scenario": "An agent wants to buy a breakout on a high-beta stock. Instead of setting an arbitrary 2% target, the agent checks local volatility and the Triple Barrier hitting probabilities. Observing that high volatility triggers stops 65% of the time before hitting targets on this timeframe, the agent avoids the trade or widens stops to match ATR.",
+    },
+    {
+        "title": "A New Approach to the Economic Analysis of Nonstationary Time Series and the Business Cycle",
+        "citation": "Hamilton, 1989, Econometrica",
+        "pillar": "Regime Shifts & Dynamic Labeling",
+        "core_thesis": "Economic and financial time series switch between distinct discrete unobserved states (regimes) governed by Markov transition probabilities, where parameters like drift and variance differ fundamentally across states.",
+        "mechanism": "Financial markets do not follow a single stationary Gaussian distribution. Instead, they shift between low-volatility expansion states and high-volatility contraction states. Parameter estimates calculated across regimes produce spurious averages that fail to describe either state accurately.",
+        "application": "Condition return expectations, volatility forecasts, and strategy parameters on the prevailing market regime rather than long-term unconditional averages.",
+        "example_scenario": "During an abrupt market correction, an agent avoids buying dips based on 5-year average metrics. Recognizing that the market has transitioned into a high-variance contraction regime, the agent shifts risk thresholds to regime-conditioned parameters where drawdowns are deeper and volatility persists.",
+    },
+    {
+        "title": "Regime Shifts: Implications for Dynamic Asset Allocation",
+        "citation": "Kritzman, Page, & Turkington, 2012, Financial Analysts Journal",
+        "pillar": "Regime Shifts & Dynamic Labeling",
+        "core_thesis": "Asset returns and cross-asset correlations behave fundamentally differently in quiet versus turbulent regimes. Using Hidden Markov Models to identify regime shifts dramatically improves downside protection without sacrificing upside participation.",
+        "mechanism": "During periods of market turbulence, cross-asset correlations spike toward 1.0, destroying standard diversification benefits when investors need them most. In quiet regimes, risk premiums compound smoothly. Dynamic allocation that hedges or de-risks upon regime transitions avoids catastrophic left-tail drawdowns.",
+        "application": "Measure financial turbulence via Mahalanobis distance and switch to defensive capital preservation or tighter barriers when turbulence exceeds critical thresholds.",
+        "example_scenario": "When macro turbulence metrics spike, the portfolio agent recognizes that normal diversification between equities and credit will break down. Instead of relying on passive rebalancing, the agent cuts exposure and raises cash until turbulence metrics normalize.",
+    },
 ]
 
 

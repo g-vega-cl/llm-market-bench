@@ -89,6 +89,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 35. **track_thesis_pillars**: Tracks multi-day falsifiable investment theses with explicit supporting pillars, invalidation risks, and a disconfirming evidence ledger.
 36. **get_catalyst_radar**: Retrieves high-velocity narrative market concepts paired with upcoming or digesting calendar triggers (CPI, earnings, FOMC, deadlines).
 37. **get_calendar_scenario_analysis**: Retrieves upcoming economic/corporate calendar triggers paired with probability-weighted scenario analyses, conditional trading plans, and affected assets for tomorrow, next week, or forward windows.
+38. **get_barrier_touch_probabilities**: Evaluates empirical Triple Barrier Method (López de Prado) touch frequencies conditional on prevailing volatility and trend regimes (win rate on profit target vs stop loss vs vertical time stop expiration).
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 

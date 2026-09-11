@@ -197,6 +197,14 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             detail=args.get("detail", True),
             include_historical_memories=args.get("include_historical_memories", True),
         )
+    elif name == "get_barrier_touch_probabilities":
+        return await tools.execute_barrier_touch_probabilities_tool(
+            ticker=args["ticker"],
+            target_pct=args.get("target_pct"),
+            stop_pct=args.get("stop_pct"),
+            horizon_bars=args.get("horizon_bars", 5),
+            lookback_days=args.get("lookback_days", 252),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

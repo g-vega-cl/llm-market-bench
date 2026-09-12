@@ -44,25 +44,17 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: free APIs to the LLMs chat?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
-- [ ] - Statistically, in X regime, indicated by X indicator. What percentage of X timeframe candles are X% up vs X% down vs not reaching that %? And can that be made a strategy?
-
-Feels like I have done that before to no avail
-
 - [x] - Benchify; make an statistic if any of our buys were ever profitable. Like what if I followed my agent's buys and decide on the sells myself?
     - Did this, I think it was basically a 50/50 bet. Even I checked if it ever touched something like .5% or .1% and it didn't change it much.
 - [ ] - Benchify: I might already have something like this, try to predict earnings movement. Maybe just up/down from beginning of trading day?
-- [x] - benchify: memory consensus events check if the predictions came true, if the scenarios worked as expected
-- [x] - When a card says "resolved" show which scenario "won" or show more details on why it was resolved, and what resolved
-- [ ] - Chart based on candle volatility not time - RENKO
-- [ ] - Single company focused llm
+- [ ] - Single company focused llm - Did this with LIN, but I don't think it's working as expected. REVISIT.
+        - [ ] - Benchify: "hyperfocus on a mid size company?
+        - [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?
 - [ ] - Look for statistical analysis for markets
-- [ ] - backtest sector researcher.
 - [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
 - [ ] - Benchify: move all newsletters to dedicated email
-- [ ] - Benchify: "hyperfocus on a mid size company?
 - [ ] - https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/honcho.md
 - [ ] - Benchify: Toronto stock market
-- [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?
 - [ ] - another step in my LLM after newsletter read to look for related info and news online?
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
 - [ ] - check if the daily SPY and sector portfolios are working

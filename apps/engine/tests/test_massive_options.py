@@ -337,7 +337,7 @@ async def test_get_options_snapshot_auto_resolves_spot_price():
     ):
         mock_fetch.return_value = {"status": "OK", "results": []}
 
-        await client.get_options_snapshot("SPY", current_price=None)
+        await client.get_options_snapshot("SPY", current_price=None, force_refresh=True)
         assert mock_fetch.called
         # Check current_price was populated with resolved quote
         _, kwargs = mock_fetch.call_args

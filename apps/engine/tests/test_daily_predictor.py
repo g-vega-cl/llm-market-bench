@@ -78,7 +78,11 @@ async def test_run_daily_prediction_arena_success():
     )
     mock_minimax.close = AsyncMock()
 
+    mock_mdm = MagicMock()
+    mock_mdm.is_trading_day = AsyncMock(return_value=True)
+
     with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
         patch("tasks.daily_predictor.get_daily_market_context", new_callable=AsyncMock, return_value="Mock context"),
         patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
         patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
@@ -127,7 +131,11 @@ async def test_run_daily_prediction_partial_failure():
     mock_minimax.chat_with_json_response = AsyncMock(side_effect=Exception("MiniMax API Timeout"))
     mock_minimax.close = AsyncMock()
 
+    mock_mdm = MagicMock()
+    mock_mdm.is_trading_day = AsyncMock(return_value=True)
+
     with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
         patch("tasks.daily_predictor.get_daily_market_context", new_callable=AsyncMock, return_value="Mock context"),
         patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
         patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
@@ -366,7 +374,11 @@ async def test_minimax_daily_prediction_includes_strict_json_prompt_and_tokens()
     mock_minimax.chat_with_json_response = mock_minimax_chat
     mock_minimax.close = AsyncMock()
 
+    mock_mdm = MagicMock()
+    mock_mdm.is_trading_day = AsyncMock(return_value=True)
+
     with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
         patch("tasks.daily_predictor.get_daily_market_context", new_callable=AsyncMock, return_value="Mock context"),
         patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
         patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),

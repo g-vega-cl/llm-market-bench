@@ -54,6 +54,7 @@
 
 ## Concepts
 
+- [[concepts/honcho-dialectic-memory]] — Honcho persistent memory evaluation, multi-pass reconciliation patterns, and blueprint for chat gateway user modeling
 - [[concepts/triple-barrier-probabilities]] — Auto-indexed page
 - [[concepts/calendar-scenario-analysis]] — Auto-indexed page
 - [[concepts/ad-stripping-audit]] — De-advertisement cleaner empirical audit, guardrail architecture, and pure ad filtering

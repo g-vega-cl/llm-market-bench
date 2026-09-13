@@ -55,6 +55,10 @@ The `execution/frontier_tech.py` and `tasks/frontier_tech_task.py` modules run m
 
 The `analytics/barrier_probabilities.py` module evaluates empirical Triple Barrier Method (López de Prado) touch frequencies conditional on prevailing volatility and trend regimes via the `get_barrier_touch_probabilities` pull tool. It computes historical win rates, stop-out rates, vertical expiration returns, and expected value net of 10 bps slippage. See [[concepts/triple-barrier-probabilities]].
 
+### Real-Time Stock News
+
+The `analysis/ticker_news.py` module fetches structured financial headlines, publisher sources, published timestamps, and article summaries for individual tickers via the `get_ticker_news` pull tool. Backed by FMP's stable stock news endpoint, it gives trading and predictor agents verified, noise-free company news on demand without brittle web scraping.
+
 ## Related
 
 - [[entities/frontier-tech-portfolio]]

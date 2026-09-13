@@ -32,6 +32,7 @@ DEFAULT_ANTHROPIC_TOOLS = [
         tools.SEARCH_PAST_MEMORIES_TOOL,
         tools.GET_OPTIONS_SENTIMENT_TOOL,
         tools.GET_OPTION_CHAIN_TOOL,
+        tools.GET_TICKER_NEWS_TOOL,
     )
 ]
 

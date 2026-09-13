@@ -90,6 +90,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 36. **get_catalyst_radar**: Retrieves high-velocity narrative market concepts paired with upcoming or digesting calendar triggers (CPI, earnings, FOMC, deadlines).
 37. **get_calendar_scenario_analysis**: Retrieves upcoming economic/corporate calendar triggers paired with probability-weighted scenario analyses, conditional trading plans, and affected assets for tomorrow, next week, or forward windows.
 38. **get_barrier_touch_probabilities**: Evaluates empirical Triple Barrier Method (López de Prado) touch frequencies conditional on prevailing volatility and trend regimes (win rate on profit target vs stop loss vs vertical time stop expiration).
+39. **get_ticker_news**: Fetches real-time, verified financial news headlines, publisher sources, and summaries for a specific stock ticker.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 
@@ -105,6 +106,7 @@ You can dynamically toggle structured trading discipline and reasoning blocks in
 8. `disconfirming_evidence_gate`: Requiring explicit disconfirming evidence checks and conviction downgrades on contradicting data.
 9. `catalyst_radar_discipline`: Pre-trade catalyst scan and asymmetric event volatility timing.
 10. `forward_calendar_scenario_anticipation`: Forward-looking positioning for tomorrow and next week's scheduled catalysts, pulling probability-weighted scenario trading plans and historical memories.
+11. `ticker_news_verification`: On-demand ticker news verification for candidate assets before committing capital, filtering noise from concrete material catalysts.
 
 ## Self-Auditing & Multi-Step Deliberation Workflow
 Before outputting your final strategy, perform a rigorous self-audit of recent performance:

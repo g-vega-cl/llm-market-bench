@@ -341,7 +341,12 @@ async def analyze_with_provider(
 
                 # If no tools are specified in the active variant, default to the baseline pull tools
                 if not isinstance(selected_tool_names, list):
-                    selected_tool_names = ["get_portfolio_ledger", "get_todays_news_menu", "web_search"]
+                    selected_tool_names = [
+                        "get_portfolio_ledger",
+                        "get_todays_news_menu",
+                        "get_ticker_news",
+                        "web_search",
+                    ]
                     logger.info(
                         f"No selected_tools found in active variant for experiment agent {model_name}. "
                         f"Defaulting to baseline pull tools: {selected_tool_names}"
@@ -372,6 +377,7 @@ async def analyze_with_provider(
                 override_tools = [
                     tools.CANONICAL_TOOLS_REGISTRY["get_portfolio_ledger"],
                     tools.CANONICAL_TOOLS_REGISTRY["get_todays_news_menu"],
+                    tools.CANONICAL_TOOLS_REGISTRY["get_ticker_news"],
                     tools.CALCULATE_BUY_QUANTITY_TOOL,
                     tools.CALCULATE_SELL_QUANTITY_TOOL,
                 ]

@@ -65,7 +65,7 @@ class PromptResearchResult(BaseModel):
             "'get_macro_economic_series', 'get_options_sentiment', 'get_option_chain', "
             "'get_pead_candidates', 'get_earnings_revisions', 'get_sector_bellwethers', "
             "'get_yield_curve_regime', 'get_options_vol_surface', 'track_thesis_pillars', 'get_catalyst_radar', "
-            "'get_calendar_scenario_analysis', 'get_barrier_touch_probabilities', 'web_search'. "
+            "'get_calendar_scenario_analysis', 'get_barrier_touch_probabilities', 'get_ticker_news', 'web_search'. "
             "Do NOT include execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') "
             "as they are automatically force-injected by the system."
         ),
@@ -75,7 +75,8 @@ class PromptResearchResult(BaseModel):
         description=(
             "List of modular prompt block IDs to enable for the trading agent, chosen from: "
             "'let_winners_run', 'cut_losers_fast', 'catalyst_expiry_timer', 'five_whys_causal', 'mece_risk_partition', "
-            "'options_vol_discipline', 'macro_regime_routing', 'disconfirming_evidence_gate', 'catalyst_radar_discipline'."
+            "'options_vol_discipline', 'macro_regime_routing', 'disconfirming_evidence_gate', 'catalyst_radar_discipline', "
+            "'ticker_news_verification'."
         ),
     )
     change_description: str = Field(..., description="One sentence explaining what was changed and why")

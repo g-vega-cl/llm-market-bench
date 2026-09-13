@@ -64,7 +64,7 @@ When working on autonomous decision agents (such as `apps/engine/core/llm/analys
 ### Mandated (Best Practices)
 - ✅ **Package Capabilities as Tools**: Implement clean, callable tools with descriptive docstrings and schemas in `apps/engine/core/llm/tools.py` and register them in `packages/config/tools.json`.
 - ✅ **Provide Modular Blocks for Autoresearch**: If crafting a new reasoning pattern (e.g. options volatility bounding or macro regime routing), register it as an optional block in `apps/engine/autoresearch/prompt_blocks.py`. The Autoresearcher LLM can then choose to test it via `selected_prompt_blocks`.
-- ✅ **Pull Over Push**: Give the agent lean seed context (e.g. current date, high-level directive) and pull tools (`get_portfolio_ledger`, `get_todays_news_menu`, `get_options_vol_surface`, `get_yield_curve_regime`). The agent pulls whatever information it deems relevant.
+- ✅ **Pull Over Push**: Give the agent lean seed context (e.g. current date, high-level directive) and pull tools (`get_portfolio_ledger`, `get_todays_news_menu`, `get_ticker_news`, `get_options_vol_surface`, `get_yield_curve_regime`). The agent pulls whatever information it deems relevant.
 
 ---
 

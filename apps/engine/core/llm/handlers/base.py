@@ -205,6 +205,11 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             horizon_bars=args.get("horizon_bars", 5),
             lookback_days=args.get("lookback_days", 252),
         )
+    elif name == "get_ticker_news":
+        return await tools.execute_get_ticker_news_tool(
+            ticker=args["ticker"],
+            limit=args.get("limit", 5),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

@@ -101,6 +101,14 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "3. Historical Playbook Check: Evaluate historical precedent memories returned by the tool to understand how similar past catalysts actually impacted asset prices."
         ),
     },
+    "ticker_news_verification": {
+        "title": "TICKER NEWS VERIFICATION (Single-Stock Catalyst Check)",
+        "content": (
+            "=== DISCIPLINE: TICKER NEWS VERIFICATION ===\n"
+            "1. On-Demand News Pull: When evaluating a specific stock ticker cited in newsletter summaries or screener results, invoke `get_ticker_news(ticker=TICKER, limit=5)` to verify whether recent breaking headlines or earnings releases confirm or invalidate the trade setup.\n"
+            "2. Noise Filter: Distinguish between promotional commentary and concrete material catalysts (earnings surprises, M&A, regulatory rulings, contract awards) before committing capital."
+        ),
+    },
 }
 
 

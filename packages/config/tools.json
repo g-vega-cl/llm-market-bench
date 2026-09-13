@@ -150,5 +150,9 @@
   {
     "name": "get_barrier_touch_probabilities",
     "desc": "Empirical Triple Barrier Method touch probabilities conditional on regime (take-profit vs stop-loss vs vertical time exit)"
+  },
+  {
+    "name": "get_ticker_news",
+    "desc": "Real-time stock news headlines, publisher sources, and summaries by ticker"
   }
 ]

@@ -1,42 +1,26 @@
 ---
-tags: [autoresearch, prompt-evolution, meta-researcher, ratchet]
+tags: [concept, autoresearch, prompt-improver, meta-research]
 category: concept
 ---
 
 # Auto-Research Prompt Improver
 
-Weekly autonomous prompt iteration via a meta-researcher LLM (DeepSeek Flash). The system evaluates recent prediction performance, computes a multi-factor ratchet score, and mutates the trading prompt to improve future predictions.
+Weekly autonomous prompt iteration via a meta-researcher LLM. The system evaluates live trading performance over the past week and generates an improved trading prompt for the next week.
 
-## Pipeline (Weekly: Sunday 6:00 PM ET / 10:00 PM UTC)
+## Mechanism
 
-1. **Fetch predictions** for the prior 7 days for a specific model track (evaluating all available trading sessions).
-2. **Fetch context-enriched postmortems**: Queries `newsletter_snapshots`, `memories` (market events, post-mortems, resolutions), and `concept_metrics` (thematic velocity & mention counts) across the prior 14 days via `fetch_autoresearch_context`.
-3. **Fetch current active prompt** for that model track (strictly scoped by `track_id`). If none exists, fall back to the model's baseline, then seed a new baseline if needed.
-4. **Update parent variant metrics** with the current ratchet score.
-5. **Ratchet comparison**: Compare current score against the best baseline score within the same model track. If the current score exceeds the best baseline, promote it to `baseline` status; if lower, revert to the best baseline prompt.
-6. **Mutate prompt** using DeepSeek Flash meta-researcher, feeding it the enriched postmortem with day-by-day catalyst context, timid vs overshooting diagnosis, and active thematic playbooks.
-7. **Deploy new active variant**: Insert a new `active` record for the model track, demoting all prior `active` variants for that track to `saved`.
+1. The meta-researcher (`apps/engine/autoresearch/researcher.py`) receives the current trading prompt, recent performance metrics, and the list of available tools and modular prompt blocks.
+2. It proposes changes: which tools to include, which prompt blocks to enable, and a free-form change description.
+3. The new prompt and block selection are persisted to the database for the next trading cycle.
 
-## Context-Enriched Postmortems & Thematic Learning
+## Modifiable Elements
 
-Rather than evaluating raw numerical predictions in isolation, the meta-researcher receives an event-enriched postmortem table:
-- **Daily Catalyst Alignment**: Cross-references prediction dates with ingested newsletters and market events to identify why magnitude was timid or overshooting on high-impact catalyst days.
-- **Thematic Playbooks**: Injects top active narrative clusters from `concept_metrics` (with velocity scores) to allow the meta-researcher to discover cause-and-effect market dynamics autonomously.
+The researcher can toggle:
 
-## Ratchet Score Formula
-
-$$\text{Ratchet Score} = (0.55 \times \text{close\_accuracy\_pct}) + (0.35 \times \text{intraday\_hit\_pct}) + (0.10 \times \text{magnitude\_capture\_pct}) - (\text{mean\_brier} \times 50.0)$$
-
-## Key Design Decisions
-
-- **Track-scoped baselines**: Baselines are per-model, not global. Each model track has its own `baseline` variant.
-- **No cross-track fallback**: The system never falls back to another model's active prompt or baseline.
-- **Single active variant**: Only one `active` variant per model track at any time.
+- **Pull tools**: The list of non-execution tools available to the analysis agent (e.g., `get_portfolio_ledger`, `get_todays_news_menu`, `get_ticker_news`, `web_search`, and many more). Execution tools (`calculate_buy_quantity`, `calculate_sell_quantity`) are force-injected and not togglable.
+- **Prompt blocks**: Enable/disable any of the modular discipline blocks (`let_winners_run`, `cut_losers_fast`, `catalyst_expiry_timer`, `five_whys_causal`, `mece_risk_partition`, `options_vol_discipline`, `macro_regime_routing`, `disconfirming_evidence_gate`, `catalyst_radar_discipline`, `forward_calendar_scenario_anticipation`, `ticker_news_verification`).
 
 ## Related
 
+- [[concepts/modular-prompt-blocks]]
 - [[entities/autoresearch]]
-- [[concepts/multi-track-autoresearch]]
-- [[entities/daily-market-predictor]]
-- [[concepts/brier-score]]
-- [[concepts/magnitude-calibration]]

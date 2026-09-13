@@ -1161,6 +1161,28 @@ GET_BARRIER_TOUCH_PROBABILITIES_TOOL = {
     },
 }
 
+GET_TICKER_NEWS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_ticker_news",
+        "description": "Real-time stock news headlines, publisher sources, and summaries for a specific stock ticker.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol (e.g. 'AAPL', 'NVDA', 'SPY').",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of recent news articles to return (1-20, default 5).",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1203,6 +1225,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_catalyst_radar": GET_CATALYST_RADAR_TOOL,
     "get_calendar_scenario_analysis": GET_CALENDAR_SCENARIO_ANALYSIS_TOOL,
     "get_barrier_touch_probabilities": GET_BARRIER_TOUCH_PROBABILITIES_TOOL,
+    "get_ticker_news": GET_TICKER_NEWS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -3658,6 +3681,17 @@ async def execute_barrier_touch_probabilities_tool(
     except Exception as e:
         logger.exception("Error executing get_barrier_touch_probabilities tool for %s: %s", ticker, e)
         return f"Error calculating barrier touch probabilities: {str(e)}"
+
+
+async def execute_get_ticker_news_tool(ticker: str, limit: int = 5) -> str:
+    """Executes the get_ticker_news tool to retrieve real-time stock news."""
+    try:
+        from analysis.ticker_news import execute_get_ticker_news_tool as _exec_news
+
+        return await _exec_news(ticker=ticker, limit=limit)
+    except Exception as e:
+        logger.exception("Error executing get_ticker_news tool for %s: %s", ticker, e)
+        return f"Error fetching news for '{ticker}': {str(e)}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

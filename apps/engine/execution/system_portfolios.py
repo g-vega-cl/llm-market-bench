@@ -25,8 +25,20 @@ MECHANICAL_SECTOR_OWNER_IDS = [
     SYS_SECTOR_MEAN_REV_OWNER_ID,
 ]
 MECHANICAL_SECTOR_UNIVERSE = [
-    "XLK", "SMH", "XLE", "XLF", "XLV", "XLY",
-    "XLI", "XLB", "XLU", "XLRE", "XLC", "XOP", "XME", "XBI"
+    "XLK",
+    "SMH",
+    "XLE",
+    "XLF",
+    "XLV",
+    "XLY",
+    "XLI",
+    "XLB",
+    "XLU",
+    "XLRE",
+    "XLC",
+    "XOP",
+    "XME",
+    "XBI",
 ]
 SYS_SECTOR_START_DATE = "2026-08-17"
 SYS_DAILY_SPY_OWNER_PREFIX = "sys-daily-spy-"
@@ -268,6 +280,28 @@ async def execute_system_sector_rebalance(
     current_cash = portfolio.cash_balance
     slip_factor = slippage_bps / 10000.0
 
+    client = get_supabase_client()
+
+    # Idempotency guard: clean up existing trades for this window and revert PnL
+    start_ts = f"{week_start_date}T13:30:00Z"
+    end_ts = f"{week_end_date}T20:00:00Z"
+    existing_trades_res = (
+        client.table("trades")
+        .select("id, realized_pnl")
+        .eq("portfolio_id", str(portfolio.id))
+        .in_("executed_at", [start_ts, end_ts])
+        .execute()
+    )
+    existing_trades = existing_trades_res.data or []
+    if existing_trades:
+        prev_pnl = sum(float(t["realized_pnl"]) for t in existing_trades if t.get("realized_pnl") is not None)
+        current_cash = max(0.0, current_cash - prev_pnl)
+        for t in existing_trades:
+            client.table("trades").delete().eq("id", t["id"]).execute()
+        logger.info(
+            f"Idempotency cleanup: Removed {len(existing_trades)} existing trades for {SYS_SECTOR_LS_OWNER_ID} ({week_start_date} to {week_end_date}), reverted PnL: ${prev_pnl:,.2f}"
+        )
+
     long_budget = (current_cash * 0.5) if (long_sectors and short_sectors) else (current_cash if long_sectors else 0.0)
     short_budget = (
         (current_cash * 0.5) if (long_sectors and short_sectors) else (current_cash if short_sectors else 0.0)
@@ -276,7 +310,6 @@ async def execute_system_sector_rebalance(
     per_long_alloc = (long_budget / len(long_sectors)) if long_sectors else 0.0
     per_short_alloc = (short_budget / len(short_sectors)) if short_sectors else 0.0
 
-    client = get_supabase_client()
     executed_trades = []
     total_realized_pnl = 0.0
 
@@ -429,8 +462,29 @@ async def execute_mechanical_sector_rebalance(
     current_cash = portfolio.cash_balance
     slip_factor = slippage_bps / 10000.0
 
-    budget_per_sector = current_cash / len(clean_sectors)
     client = get_supabase_client()
+
+    # Idempotency guard: clean up existing trades for this window and revert PnL
+    start_ts = f"{week_start_date}T13:30:00Z"
+    end_ts = f"{week_end_date}T20:00:00Z"
+    existing_trades_res = (
+        client.table("trades")
+        .select("id, realized_pnl")
+        .eq("portfolio_id", str(portfolio.id))
+        .in_("executed_at", [start_ts, end_ts])
+        .execute()
+    )
+    existing_trades = existing_trades_res.data or []
+    if existing_trades:
+        prev_pnl = sum(float(t["realized_pnl"]) for t in existing_trades if t.get("realized_pnl") is not None)
+        current_cash = max(0.0, current_cash - prev_pnl)
+        for t in existing_trades:
+            client.table("trades").delete().eq("id", t["id"]).execute()
+        logger.info(
+            f"Idempotency cleanup: Removed {len(existing_trades)} existing trades for {owner_id} ({week_start_date} to {week_end_date}), reverted PnL: ${prev_pnl:,.2f}"
+        )
+
+    budget_per_sector = current_cash / len(clean_sectors)
     executed_trades = []
     total_realized_pnl = 0.0
 
@@ -590,6 +644,27 @@ async def execute_system_daily_trade(
     portfolio = await get_or_create_system_portfolio(owner_id)
     current_cash = portfolio.cash_balance
 
+    client = get_supabase_client()
+
+    # Idempotency guard: clean up any existing trades for this portfolio and session
+    existing_trades_res = (
+        client.table("trades")
+        .select("id, realized_pnl")
+        .eq("portfolio_id", str(portfolio.id))
+        .gte("executed_at", f"{target_date_str}T00:00:00Z")
+        .lte("executed_at", f"{target_date_str}T23:59:59Z")
+        .execute()
+    )
+    existing_trades = existing_trades_res.data or []
+    if existing_trades:
+        prev_pnl = sum(float(t["realized_pnl"]) for t in existing_trades if t.get("realized_pnl") is not None)
+        current_cash = max(0.0, current_cash - prev_pnl)
+        for t in existing_trades:
+            client.table("trades").delete().eq("id", t["id"]).execute()
+        logger.info(
+            f"Idempotency cleanup: Removed {len(existing_trades)} existing trades for {owner_id} on {target_date_str}, reverted PnL: ${prev_pnl:,.2f}"
+        )
+
     execution = compute_daily_trade_execution(
         prediction=prediction,
         intraday=intraday_data,
@@ -600,8 +675,6 @@ async def execute_system_daily_trade(
     shares = execution["shares"]
     if shares <= 0:
         return {"status": "skipped", "reason": "Insufficient capital"}
-
-    client = get_supabase_client()
     direction = execution["direction"]
     entry_signal = "BUY" if direction == "UP" else "SHORT"
     exit_signal = "SELL" if direction == "UP" else "COVER"

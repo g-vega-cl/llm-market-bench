@@ -55,9 +55,12 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/honcho.md
 - [ ] - Benchify: Toronto stock market
-- [ ] - another step in my LLM after newsletter read to look for related info and news online?
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
-- [ ] - check if the daily SPY and sector portfolios are working
+- [x] - check if the daily SPY and sector portfolios are working
+    - Audited historical trades and portfolios: identified duplicate SPY trades on 2026-09-01 caused by re-evaluation without trade deduplication.
+    - Removed duplicate trade pair in DB and corrected cash balances for DeepSeek ($9,876.50) and MiniMax ($10,025.41).
+    - Added idempotency guardrails in `execute_system_daily_trade()`, `execute_system_sector_rebalance()`, and `execute_mechanical_sector_rebalance()`.
+    - Added strict 7-day timeframe filter in `evaluate_predictions.py` to isolate weekly system portfolios from longer-horizon predictions.
 - [ ] -  Benchify: an autoresearch autoresearcher?
 - [x] - Benchify: pass daily newsletter to daily predictor? Or give it a tool that can access it? And run it after the newsletter. And same for the portfolio autoresearch
     - Added canonical `fetch_daily_newsletter` tool in `core/llm/tools.py` for trading LLMs (OpenAI, Claude, Gemini).

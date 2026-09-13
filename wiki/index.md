@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/fetch-daily-newsletter-tool]] — Canonical daily newsletter fetch tool for trading LLMs
 - [[entities/frontier-tech-portfolio]] — Automated frontier technology supercycle portfolio with 5-point rubric qualification, small-cap guardrails, and venture power-law sizing
 - [[entities/frontier-tech-portfolio]] — Auto-indexed page
 - [[entities/strategy-explainer]] — Collapsible strategy description card for system portfolios

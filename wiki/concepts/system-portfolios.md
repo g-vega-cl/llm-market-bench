@@ -31,7 +31,12 @@ System portfolios are automated, rule-based investment and trading strategies th
   - **Entry Price**: Open Price $\times (1 \pm 0.0005)$ (5 bps slippage).
   - **Profit Target Exit**: If intraday price reaches target return ($P_{open} \times (1 \pm |\text{expected\_return\_pct}| / 100)$), position closes immediately at the profit target price.
   - **Time-Based Exit**: If profit target is not reached during regular trading hours, position is closed at 3:30 PM ET price (or Day Close price) with 5 bps slippage.
-- **Trigger**: Integrated into the daily predictor evaluation pipeline.
+- **Idempotency Guardrails**: Re-evaluation runs (`--force`) cleanly remove previous session trades and revert prior realized PnL before executing and recording the updated trade, guaranteeing zero double-buy or duplicate-trade compounding.
+- **Trigger**: Integrated into the daily predictor evaluation pipeline (`apps/engine/tasks/evaluate_daily_predictions.py`).
+
+### Idempotency & Timeframe Guardrails
+- **Strict 7-Day Window Scoping**: The sector predictor produces predictions across 4 horizons (`7d`, `30d`, `60d`, `90d`). Weekly system portfolios (`sys-sector-ls-consensus` and the 4 mechanical sector benchmarks) strictly filter on `timeframe == '7d'`, preventing longer-horizon monthly or quarterly prediction evaluations from falsely triggering weekly portfolio rebalances.
+- **Idempotent Rebalancing**: If `evaluate_predictions.py` or mechanical rebalances are executed with `--force`, any existing trades matching the window boundaries (`week_start_date` and `week_end_date`) are purged and their net PnL is subtracted before re-allocating, ensuring exact idempotency.
 
 ### 3. 20-Day Uncorrelated Sector Momentum (`sys-sector-uncorr-20d`)
 - **Signal**: Rolling 90-day correlation matrix + trailing 20-day (~1 month) sector returns from `correlation_data`.

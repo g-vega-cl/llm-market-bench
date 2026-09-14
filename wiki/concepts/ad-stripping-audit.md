@@ -59,13 +59,17 @@ An empirical audit of the `newsletter_snapshots` production table (1,327 total r
 In `apps/engine/ingest/cleaner.py`:
 - If an input is substantial ($\ge 200$ characters) and the LLM returns $< 50$ characters *without* setting `is_pure_ad = true`, the engine logs a warning and automatically falls back to the original content to prevent data loss.
 
-### 4. Pure Ad Ingestion Filter & Semantic Fragility Coordination
+### 4. Empty & Placeholder Content Short-Circuit
+In `apps/engine/ingest/cleaner.py`:
+- Empty strings, `None`, and no-content sentinels (`config.NO_CONTENT_FOUND` / `"NO_CONTENT_FOUND"`) short-circuit before client instantiation. This avoids unnecessary LLM calls, eliminates API latency/costs on empty emails, and ensures test suites execute without live credentials.
+
+### 5. Pure Ad Ingestion Filter & Semantic Fragility Coordination
 In `apps/engine/ingest/newsletter.py`:
 - Cleaned text is returned as `CleanedNewsletterText` (a `str` subclass carrying `is_pure_ad`, `ads_removed_count`, and `ads_summary`).
 - Snapshots marked with `is_pure_ad = true` or empty content are discarded before insertion into Supabase.
 - Senders of filtered pure ads are recorded to avoid false-positive `SEMANTIC FRAGILITY ALERT` warnings when all messages from a sender on a given day were promotional.
 
-### 5. Database Cleanup
+### 6. Database Cleanup
 The 5 historical zero-length spam rows in Supabase were purged, bringing empty snapshot count to 0 and resolving the `empty_newsletter_content` weekly audit check.
 
 ---

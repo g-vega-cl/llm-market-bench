@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from core import config
 from core.models import NewsletterCleaningResponse
 from ingest.cleaner import CleanedNewsletterText, clean_newsletter_content
 
@@ -42,14 +43,20 @@ def test_newsletter_cleaning_response_schema():
 @pytest.mark.asyncio
 async def test_clean_newsletter_empty_and_no_content():
     """Verify empty content or NO_CONTENT_FOUND is returned unchanged without LLM calls."""
-    res_empty = await clean_newsletter_content("")
-    assert res_empty == ""
+    with patch("core.llm.clients.get_gemini_client") as mock_client:
+        res_empty = await clean_newsletter_content("")
+        assert res_empty == ""
 
-    res_none = await clean_newsletter_content(None)
-    assert res_none is None
+        res_none = await clean_newsletter_content(None)
+        assert res_none is None
 
-    res_placeholder = await clean_newsletter_content("NO_CONTENT_FOUND")
-    assert res_placeholder == "NO_CONTENT_FOUND"
+        res_placeholder = await clean_newsletter_content("NO_CONTENT_FOUND")
+        assert res_placeholder == "NO_CONTENT_FOUND"
+
+        res_config_placeholder = await clean_newsletter_content(config.NO_CONTENT_FOUND)
+        assert res_config_placeholder == config.NO_CONTENT_FOUND
+
+        mock_client.assert_not_called()
 
 
 @pytest.mark.asyncio

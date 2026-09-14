@@ -41,7 +41,7 @@ async def clean_newsletter_content(content: str) -> str:
     Returns:
         Cleaned newsletter text (CleanedNewsletterText) with advertisements removed.
     """
-    if not content or content == config.NO_CONTENT_FOUND:
+    if not content or content in (config.NO_CONTENT_FOUND, "NO_CONTENT_FOUND"):
         return content
 
     logger.debug("Starting advertisement removal pass...")

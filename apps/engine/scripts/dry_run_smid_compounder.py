@@ -70,9 +70,15 @@ def run_smid_dry_run(candidate_limit: int = 25, portfolio_cash: float = 10000.0)
             sector = item.get("sector", "N/A")
 
             # Fetch fundamentals
-            inc_resp = client.get(f"https://financialmodelingprep.com/stable/income-statement?symbol={symbol}&period=quarter&apikey={FMP_API_KEY}")
-            cf_resp = client.get(f"https://financialmodelingprep.com/stable/cash-flow-statement?symbol={symbol}&period=quarter&apikey={FMP_API_KEY}")
-            bs_resp = client.get(f"https://financialmodelingprep.com/stable/balance-sheet-statement?symbol={symbol}&period=quarter&apikey={FMP_API_KEY}")
+            inc_resp = client.get(
+                f"https://financialmodelingprep.com/stable/income-statement?symbol={symbol}&period=quarter&apikey={FMP_API_KEY}"
+            )
+            cf_resp = client.get(
+                f"https://financialmodelingprep.com/stable/cash-flow-statement?symbol={symbol}&period=quarter&apikey={FMP_API_KEY}"
+            )
+            bs_resp = client.get(
+                f"https://financialmodelingprep.com/stable/balance-sheet-statement?symbol={symbol}&period=quarter&apikey={FMP_API_KEY}"
+            )
 
             inc_data = inc_resp.json() if inc_resp.status_code == 200 else []
             cf_data = cf_resp.json() if cf_resp.status_code == 200 else []
@@ -117,17 +123,21 @@ def run_smid_dry_run(candidate_limit: int = 25, portfolio_cash: float = 10000.0)
 
     print("\n3. Top Ranked Quality & Momentum Compounders:")
     print("--------------------------------------------------------------------------------")
-    print(f"{'Ticker':<7} {'Sector':<20} {'Market Cap':<10} {'TTM Net Inc':<12} {'TTM FCF':<12} {'ROIC':<7} {'12M Mom':<9} {'Score':<6}")
+    print(
+        f"{'Ticker':<7} {'Sector':<20} {'Market Cap':<10} {'TTM Net Inc':<12} {'TTM FCF':<12} {'ROIC':<7} {'12M Mom':<9} {'Score':<6}"
+    )
     print("--------------------------------------------------------------------------------")
     for c in selected_candidates:
         cap_str = f"${c['market_cap'] / 1e9:.2f}B"
         ni_str = f"${c['quality']['ttm_net_income'] / 1e6:.1f}M"
         fcf_str = f"${c['quality']['ttm_fcf'] / 1e6:.1f}M"
         roic_str = f"{c['quality']['roic'] * 100:.1f}%"
-        mom_str = f"{c['momentum_12m']:+.1f}%" if c['momentum_12m'] is not None else "N/A"
+        mom_str = f"{c['momentum_12m']:+.1f}%" if c["momentum_12m"] is not None else "N/A"
         score_str = f"{c['composite_score']:.1f}"
-        sec_short = c['sector'][:18]
-        print(f"{c['symbol']:<7} {sec_short:<20} {cap_str:<10} {ni_str:<12} {fcf_str:<12} {roic_str:<7} {mom_str:<9} {score_str:<6}")
+        sec_short = c["sector"][:18]
+        print(
+            f"{c['symbol']:<7} {sec_short:<20} {cap_str:<10} {ni_str:<12} {fcf_str:<12} {roic_str:<7} {mom_str:<9} {score_str:<6}"
+        )
     print("--------------------------------------------------------------------------------")
 
     # 4. Simulate portfolio allocation with Zero-Ceiling Invariant
@@ -140,9 +150,7 @@ def run_smid_dry_run(candidate_limit: int = 25, portfolio_cash: float = 10000.0)
             "market_cap": 22000000000.0,  # Grown into a $22B large-cap!
         }
     ]
-    sample_evaluations = {
-        "DECK": {"should_sell": False, "reason": "hold_quality_winner"}
-    }
+    sample_evaluations = {"DECK": {"should_sell": False, "reason": "hold_quality_winner"}}
 
     rebalance_plan = compute_smid_rebalance_orders(
         current_holdings=sample_current_holdings,
@@ -157,13 +165,17 @@ def run_smid_dry_run(candidate_limit: int = 25, portfolio_cash: float = 10000.0)
     print(f"  - Retained Winners (Zero-Ceiling Rule): {len(rebalance_plan['retained'])}")
     for ret in rebalance_plan["retained"]:
         val = ret["shares"] * ret["current_price"]
-        print(f"      ● {ret['ticker']} (Market Cap ${ret['market_cap']/1e9:.1f}B): Holding {ret['shares']} shares (${val:,.2f}) -> {ret['reason']}")
+        print(
+            f"      ● {ret['ticker']} (Market Cap ${ret['market_cap'] / 1e9:.1f}B): Holding {ret['shares']} shares (${val:,.2f}) -> {ret['reason']}"
+        )
 
     print(f"  - Liquidations (Zombie/Distress): {len(rebalance_plan['sales'])}")
 
     print("  - New Buys Deployed:")
     for buy in rebalance_plan["buys"]:
-        print(f"      ● BUY {buy['ticker']}: {buy['shares']} shares @ ${buy['execution_price']:.2f} (Total: ${buy['total_cost']:,.2f})")
+        print(
+            f"      ● BUY {buy['ticker']}: {buy['shares']} shares @ ${buy['execution_price']:.2f} (Total: ${buy['total_cost']:,.2f})"
+        )
 
     print(f"  - Cash Remaining: ${rebalance_plan['remaining_cash']:,.2f}")
     print("================================================================================")

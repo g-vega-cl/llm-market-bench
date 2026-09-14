@@ -60,11 +60,23 @@ async def test_task_health_check_liquidates_zombie_and_retains_winner(mock_portf
             if ticker == "DECK":
                 inc = [{"netIncome": 50000000.0, "operatingIncome": 60000000.0} for _ in range(4)]
                 cf = [{"freeCashFlow": 40000000.0} for _ in range(4)]
-                bs = [{"totalStockholdersEquity": 100000000.0, "totalDebt": 20000000.0, "cashAndCashEquivalents": 10000000.0}]
+                bs = [
+                    {
+                        "totalStockholdersEquity": 100000000.0,
+                        "totalDebt": 20000000.0,
+                        "cashAndCashEquivalents": 10000000.0,
+                    }
+                ]
             else:
                 inc = [{"netIncome": -30000000.0, "operatingIncome": -20000000.0} for _ in range(4)]
                 cf = [{"freeCashFlow": -10000000.0} for _ in range(4)]
-                bs = [{"totalStockholdersEquity": 50000000.0, "totalDebt": 80000000.0, "cashAndCashEquivalents": 5000000.0}]
+                bs = [
+                    {
+                        "totalStockholdersEquity": 50000000.0,
+                        "totalDebt": 80000000.0,
+                        "cashAndCashEquivalents": 5000000.0,
+                    }
+                ]
             return inc, cf, bs
 
         mock_stmts.side_effect = get_mock_stmts
@@ -104,11 +116,23 @@ async def test_task_rebalance_mode_deploys_buys(mock_portfolio):
             if ticker == "DECK":
                 inc = [{"netIncome": 50000000.0, "operatingIncome": 60000000.0} for _ in range(4)]
                 cf = [{"freeCashFlow": 40000000.0} for _ in range(4)]
-                bs = [{"totalStockholdersEquity": 100000000.0, "totalDebt": 20000000.0, "cashAndCashEquivalents": 10000000.0}]
+                bs = [
+                    {
+                        "totalStockholdersEquity": 100000000.0,
+                        "totalDebt": 20000000.0,
+                        "cashAndCashEquivalents": 10000000.0,
+                    }
+                ]
             else:
                 inc = [{"netIncome": -30000000.0, "operatingIncome": -20000000.0} for _ in range(4)]
                 cf = [{"freeCashFlow": -10000000.0} for _ in range(4)]
-                bs = [{"totalStockholdersEquity": 50000000.0, "totalDebt": 80000000.0, "cashAndCashEquivalents": 5000000.0}]
+                bs = [
+                    {
+                        "totalStockholdersEquity": 50000000.0,
+                        "totalDebt": 80000000.0,
+                        "cashAndCashEquivalents": 5000000.0,
+                    }
+                ]
             return inc, cf, bs
 
         mock_stmts.side_effect = get_mock_stmts

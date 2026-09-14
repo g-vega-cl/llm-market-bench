@@ -36,6 +36,7 @@ from core.config import (
     COMMAND_INGEST,
     COMMAND_LIN_RENKO,
     COMMAND_POST_ANALYSIS,
+    COMMAND_SECTOR_TRADE,
     COMMAND_SEED_DAILY_PREDICTOR,
     COMMAND_WEEKEND_INGEST,
     logger,
@@ -843,6 +844,18 @@ async def run_ingest(force: bool = False):
                 )
             except Exception:
                 logger.exception("Isolated LIN Renko Flow execution failed")
+
+            # Systematic Weekly Sector Entry Hook (Monday Morning Market Open)
+            try:
+                now_ny = datetime.now(ZoneInfo("America/New_York"))
+                # If Monday and morning session (before 11:00 AM ET)
+                if now_ny.weekday() == 0 and now_ny.hour < 11:
+                    logger.info("Monday morning detected — Checking systematic weekly sector portfolio entry...")
+                    from execution.sector_trading import run_sector_trade
+
+                    await run_sector_trade(action="entry")
+            except Exception:
+                logger.exception("Systematic weekly sector entry hook failed")
         finally:
             from execution.providers.factory import get_active_provider_class
 
@@ -966,6 +979,7 @@ def main():
             COMMAND_LIN_RENKO,
             COMMAND_AUDIT_ALPACA,
             COMMAND_FRONTIER_TECH,
+            COMMAND_SECTOR_TRADE,
         ],
         help="Action to perform",
     )
@@ -1004,6 +1018,13 @@ def main():
         choices=["open", "close"],
         default="open",
         help="Session window for generated newsletter (open or close)",
+    )
+    parser.add_argument(
+        "--action",
+        type=str,
+        choices=["entry", "open", "exit", "close", "status"],
+        default="entry",
+        help="Action for sector trade (entry, exit, status)",
     )
     parser.add_argument("--start-date", type=str, default="2026-04-27", help="Backtest start date (YYYY-MM-DD)")
     parser.add_argument(
@@ -1108,6 +1129,16 @@ def main():
                 mode=args.mode,
                 dry_run=args.dry_run,
                 target_weight=args.target_weight,
+            )
+        )
+    elif args.command == COMMAND_SECTOR_TRADE:
+        from execution.sector_trading import run_sector_trade
+
+        asyncio.run(
+            run_sector_trade(
+                action=args.action,
+                target_date_str=args.target_date,
+                dry_run=args.dry_run,
             )
         )
 

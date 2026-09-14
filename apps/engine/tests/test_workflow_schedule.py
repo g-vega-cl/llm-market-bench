@@ -224,3 +224,32 @@ def test_cleanup_workflow_env_keys():
     assert step_env["DEEPSEEK_API_KEY"] == "${{ secrets.DEEPSEEK_API_KEY }}"
     assert "GEMINI_API_KEY" in step_env, f"Expected GEMINI_API_KEY in cleanup env, found: {list(step_env.keys())}"
     assert step_env["GEMINI_API_KEY"] == "${{ secrets.GEMINI_API_KEY }}"
+
+
+def test_sector_trade_workflow_schedule_and_env():
+    """Verify sector-trade.yml covers Monday entry and Friday exit with required environment variables."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    trade_yml_path = root / ".github" / "workflows" / "sector-trade.yml"
+
+    assert trade_yml_path.exists(), f"Could not find workflow file at {trade_yml_path}"
+
+    with open(trade_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    on_key = "on" if "on" in config else True
+    schedule = config.get(on_key, {}).get("schedule", [])
+    cron_triggers = [t.get("cron") for t in schedule if isinstance(t, dict) and "cron" in t]
+
+    assert "35 13,14 * * 1" in cron_triggers, f"Expected Monday 9:35 AM trigger in {cron_triggers}"
+    assert "5 20,21 * * 5" in cron_triggers, f"Expected Friday 4:05 PM trigger in {cron_triggers}"
+
+    jobs = config.get("jobs", {})
+    trade_job = jobs.get("trade-sectors", {})
+    steps = trade_job.get("steps", [])
+    run_step = next((s for s in steps if s.get("name") == "Run Systematic Sector Trading"), None)
+    assert run_step is not None
+
+    step_env = run_step.get("env", {})
+    assert "FMP_API_KEY" in step_env
+    assert "SUPABASE_PROJECT_URL" in step_env
+    assert "SUPABASE_SERVICE_ROLE_KEY" in step_env

@@ -68,7 +68,12 @@ A living document of features and improvements in progress or planned for the pl
     - Updated `get_daily_market_context` in `daily_predictor.py` to fetch today's morning briefing with graceful fallback.
     - Updated `DAILY_PREDICTOR_PROMPT` constraints header to document synthesized newsletter context.
     - Updated Cron Dispatcher to trigger `generate-newsletter.yml` at 9:12 AM ET with automatic chained downstream dispatch to `daily-predictor.yml`.
-- [ ] - Benchify: daily trades for sector predictor audit
+- [x] - Benchify: daily trades for sector predictor audit
+    - Decomposed weekly sector portfolios into live lifecycle execution in `apps/engine/execution/sector_trading.py`.
+    - Added Monday market-open entry (`BUY`/`SHORT`) populating `portfolio_positions` and Friday market-close exit (`SELL`/`COVER`) booking realized PnL.
+    - Updated `update_prices.py` to mark open sector positions and short legs to market intraday, writing daily `portfolio_performance` snapshots.
+    - Added dedicated GitHub Actions workflow `.github/workflows/sector-trade.yml` and integrated Monday morning entry hook in `main.py ingest`.
+    - Added comprehensive unit tests in `apps/engine/tests/test_sector_trading.py` and schedule verification in `test_workflow_schedule.py`.
 - [ ] - Benchify: a bond trader?
 - [ ] - Benchify : do we get volume alongside price? Volume deviations?
 - [x] - Benchify, audit with alpaca. Like, a single portfolio see if it matches alpaca moves and equity movement

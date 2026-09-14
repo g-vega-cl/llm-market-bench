@@ -81,9 +81,7 @@ def test_compute_rebalance_orders_zero_ceiling_retention():
         }
     ]
     # Holding evaluation indicates healthy quality
-    holding_evaluations = {
-        "DECK": {"should_sell": False, "reason": "hold_quality_winner"}
-    }
+    holding_evaluations = {"DECK": {"should_sell": False, "reason": "hold_quality_winner"}}
     candidate_pool = []
     available_cash = 1000.0
 
@@ -113,9 +111,7 @@ def test_compute_rebalance_orders_liquidates_failing_holding_and_buys_candidate(
             "market_cap": 800000000.0,
         }
     ]
-    holding_evaluations = {
-        "ZOM": {"should_sell": True, "reason": "unprofitable_zombie"}
-    }
+    holding_evaluations = {"ZOM": {"should_sell": True, "reason": "unprofitable_zombie"}}
     candidate_pool = [
         {
             "symbol": "NEW1",

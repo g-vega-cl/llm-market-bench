@@ -42,6 +42,12 @@ class Portfolio:
         # Metrics cache
         self.metrics: RegTMetrics | None = None
 
+    @property
+    def total_equity(self) -> float:
+        if self.metrics:
+            return self.metrics.total_equity
+        return self.cash_balance
+
     async def initialize(self):
         """Loads from DB or creates a new portfolio if none exists."""
         supabase = get_supabase_client()
@@ -565,7 +571,7 @@ class Portfolio:
             return
 
         # Ensure we have the latest metrics
-        metrics = self.calculate_reg_t_metrics(current_prices)
+        metrics = self.metrics or self.calculate_reg_t_metrics(current_prices)
 
         supabase = get_supabase_client()
         try:

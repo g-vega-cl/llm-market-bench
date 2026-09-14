@@ -21,7 +21,7 @@ def _make_sample_income_statements(quarterly_net_income: list[float]) -> list[di
     """Helper to generate FMP /stable/income-statement fixture."""
     return [
         {
-            "date": f"2026-0{i+1}-30",
+            "date": f"2026-0{i + 1}-30",
             "netIncome": ni,
             "operatingIncome": ni * 1.2,
             "revenue": ni * 5.0 if ni > 0 else 50000000.0,
@@ -35,7 +35,7 @@ def _make_sample_cash_flow_statements(quarterly_fcf: list[float]) -> list[dict]:
     """Helper to generate FMP /stable/cash-flow-statement fixture."""
     return [
         {
-            "date": f"2026-0{i+1}-30",
+            "date": f"2026-0{i + 1}-30",
             "freeCashFlow": fcf,
             "operatingCashFlow": fcf + 1000000.0,
             "capitalExpenditure": -1000000.0,

@@ -23,3 +23,5 @@ Returns `null` for non-system portfolios (e.g., individual LLM agents).
 
 - [[entities/web-app]] — TanStack Start dashboard
 - [[entities/smid-compounder]] — The SMID quality compounder system portfolio
+- [[concepts/system-portfolios]] — Mechanical and quantitative benchmark strategies
+- [[entities/sector-predictor-arena]] — Weekly sector ETF predictions and live rebalancing

@@ -275,8 +275,7 @@ async def run_smid_compounder_task(
         supabase = get_supabase_client()
         today_str = now.strftime("%Y-%m-%d")
         total_equity = portfolio.cash_balance + sum(
-            pos.quantity * current_prices.get(t, pos.average_cost_basis)
-            for t, pos in portfolio.positions.items()
+            pos.quantity * current_prices.get(t, pos.average_cost_basis) for t, pos in portfolio.positions.items()
         )
 
         supabase.table("portfolio_performance").upsert(

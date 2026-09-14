@@ -326,9 +326,7 @@ def compute_and_store_catalyst_radar(
         chunk_size = 50
         for i in range(0, len(records), chunk_size):
             chunk = records[i : i + chunk_size]
-            sb_client.table("catalyst_radar").upsert(
-                chunk, on_conflict="concept_id,catalyst_id"
-            ).execute()
+            sb_client.table("catalyst_radar").upsert(chunk, on_conflict="concept_id,catalyst_id").execute()
 
         logger.info("Catalyst radar compute: Successfully stored %d collisions.", len(records))
         return len(records)

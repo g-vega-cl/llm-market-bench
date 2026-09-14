@@ -108,11 +108,28 @@ async def update_prices():
     # 2. Collect all unique tickers across all portfolios
     all_tickers = set()
     portfolios_to_update = []
+    open_shorts_by_portfolio: dict[str, list[dict]] = {}
 
     for owner in owners:
         try:
             p = await initialize_with_retry(owner)
             all_tickers.update(p.positions.keys())
+            if owner == "sys-sector-ls-consensus" and p.id:
+                try:
+                    short_res = (
+                        sb_client.table("trades")
+                        .select("ticker, price, quantity")
+                        .eq("portfolio_id", str(p.id))
+                        .eq("signal", "SHORT")
+                        .is_("realized_pnl", "null")
+                        .execute()
+                    )
+                    shorts = short_res.data or []
+                    if shorts:
+                        open_shorts_by_portfolio[str(p.id)] = shorts
+                        all_tickers.update([s["ticker"] for s in shorts])
+                except Exception as ex:
+                    logger.warning(f"Could not load open shorts for {owner}: {ex}")
             portfolios_to_update.append(p)
         except Exception as e:
             logger.error(f"Failed to initialize portfolio {owner}: {e}")
@@ -142,6 +159,16 @@ async def update_prices():
 
             logger.info(f"Recalculating metrics for portfolio: {p.owner_id}")
             p.calculate_reg_t_metrics(price_map)
+
+            # Adjust for open short positions (unrealized PnL) if applicable
+            if p.id and str(p.id) in open_shorts_by_portfolio:
+                shorts = open_shorts_by_portfolio[str(p.id)]
+                short_unrealized = sum(
+                    (float(s["price"]) - price_map.get(s["ticker"], float(s["price"]))) * int(s["quantity"])
+                    for s in shorts
+                )
+                p.metrics.total_equity += short_unrealized
+                p.metrics.excess_liquidity += short_unrealized
 
             # Persist updated metrics to main portfolios table
             await p.save_metrics()

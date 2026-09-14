@@ -245,6 +245,7 @@ def test_compute_and_store_catalyst_radar(monkeypatch):
 
 def test_fetch_catalyst_radar_from_table():
     """Verify fetch_catalyst_radar reads pre-computed table rows and computes dates on read."""
+
     class MockQuery:
         def __init__(self, data=None):
             self.data = data or []
@@ -294,4 +295,3 @@ def test_fetch_catalyst_radar_from_table():
     assert items[0].days_to_event == 1
     assert items[0].date_offset_label == "tomorrow"
     assert items[0].stage == "upcoming"
-

@@ -132,6 +132,7 @@ COMMAND_GENERATE_NEWSLETTER = "generate-newsletter"
 COMMAND_LIN_RENKO = "lin-renko"
 COMMAND_AUDIT_ALPACA = "audit-alpaca"
 COMMAND_FRONTIER_TECH = "frontier-tech"
+COMMAND_SECTOR_TRADE = "sector-trade"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

@@ -54,6 +54,7 @@ def main():
     sb = get_supabase_client()
     if args.dry_run:
         from analysis.catalyst_radar import fetch_catalyst_radar
+
         items = fetch_catalyst_radar(
             sb_client=sb,
             days_ahead=args.days_ahead,
@@ -62,8 +63,13 @@ def main():
         )
         logger.info("[DRY RUN] Matched %d concept-catalyst collisions.", len(items))
         if items:
-            logger.info("[DRY RUN] Top collision: %s <-> %s (target: %s, sim: %.2f)",
-                        items[0].concept_name, items[0].catalyst_title, items[0].target_date, items[0].similarity)
+            logger.info(
+                "[DRY RUN] Top collision: %s <-> %s (target: %s, sim: %.2f)",
+                items[0].concept_name,
+                items[0].catalyst_title,
+                items[0].target_date,
+                items[0].similarity,
+            )
         return
 
     stored = compute_and_store_catalyst_radar(

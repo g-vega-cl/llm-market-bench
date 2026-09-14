@@ -1,0 +1,88 @@
+name: Systematic Weekly Sector Trading
+
+on:
+  schedule:
+    # Monday 13:35 UTC (9:35 AM EDT) & 14:35 UTC (9:35 AM EST) - Market Open Entry
+    - cron: '35 13,14 * * 1'
+    # Friday 20:05 UTC (4:05 PM EDT) & 21:05 UTC (4:05 PM EST) - Market Close Exit
+    - cron: '5 20,21 * * 5'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Trade action to execute'
+        required: true
+        default: 'entry'
+        type: choice
+        options:
+          - 'entry'
+          - 'exit'
+          - 'status'
+
+jobs:
+  trade-sectors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: apps/engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python3 -m venv venv
+          ./venv/bin/pip install -r requirements.txt
+
+      - name: Determine action & verify ET time window
+        id: determine_action
+        run: |
+          python3 -c '
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          event_name = os.getenv("GITHUB_EVENT_NAME")
+          manual_action = os.getenv("INPUT_ACTION")
+
+          if event_name == "workflow_dispatch" and manual_action:
+              action = manual_action
+              skip = "false"
+          else:
+              ny_now = datetime.now(ZoneInfo("America/New_York"))
+              weekday = ny_now.weekday()
+              hour = ny_now.hour
+
+              if weekday == 0 and 9 <= hour <= 10:
+                  action = "entry"
+                  skip = "false"
+              elif weekday == 4 and 16 <= hour <= 17:
+                  action = "exit"
+                  skip = "false"
+              else:
+                  action = "status"
+                  skip = "true"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"action={action}\n")
+              f.write(f"skip={skip}\n")
+          '
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          INPUT_ACTION: ${{ inputs.action }}
+
+      - name: Run Systematic Sector Trading
+        if: steps.determine_action.outputs.skip != 'true'
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+        run: |
+          PYTHONPATH=. ./venv/bin/python3 main.py sector-trade --action ${{ steps.determine_action.outputs.action }}

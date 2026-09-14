@@ -49,7 +49,9 @@ def compute_smid_rebalance_orders(
                     "reason": ev.get("reason", "fundamental_exit"),
                 }
             )
-            logger.info(f"SMID Compounder: Liquidating {ticker} ({shares} shares at {exit_price:.2f}). Reason: {ev.get('reason')}")
+            logger.info(
+                f"SMID Compounder: Liquidating {ticker} ({shares} shares at {exit_price:.2f}). Reason: {ev.get('reason')}"
+            )
         else:
             retained.append(
                 {

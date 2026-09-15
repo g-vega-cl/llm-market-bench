@@ -39,7 +39,7 @@ async def test_openai_models_receive_clean_baseline_prompt():
 @pytest.mark.asyncio
 async def test_all_models_prompt_clean_from_hardcoded_audit():
     """Verify that all other evolvable models also do not receive hardcoded pre-audit prompts."""
-    owners = ["claude-haiku-4-5", "deepseek-v4-pro", "gemini-3.5-flash-lite", "MiniMax-M3"]
+    owners = ["claude-haiku-4-5", "deepseek-v4-flash", "gemini-3.5-flash-lite", "MiniMax-M3"]
 
     for owner in owners:
         with patch("core.db.get_async_supabase_client", side_effect=Exception("Mocked DB")):

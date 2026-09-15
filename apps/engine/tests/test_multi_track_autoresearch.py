@@ -30,7 +30,6 @@ async def test_skip_verifier_owner_ids_config():
 
     assert "MiniMax-M3" in config.SKIP_VERIFIER_OWNER_IDS
     assert "gemini-3.5-flash-lite" in config.SKIP_VERIFIER_OWNER_IDS
-    assert "deepseek-v4-pro" in config.SKIP_VERIFIER_OWNER_IDS
     assert "gpt-5.6-luna" in config.SKIP_VERIFIER_OWNER_IDS
     assert "deepseek-v4-flash" not in config.SKIP_VERIFIER_OWNER_IDS
 

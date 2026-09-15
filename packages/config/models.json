@@ -3,12 +3,11 @@
   "ANTHROPIC_MODEL": "claude-haiku-4-5",
   "GEMINI_MODEL": "gemini-3.5-flash-lite",
   "GEMINI_EMBEDDING_MODEL": "gemini-embedding-001",
-  "DEEPSEEK_MODEL": "deepseek-v4-pro",
+  "DEEPSEEK_MODEL": "deepseek-v4-flash",
   "DEEPSEEK_FLASH_MODEL": "deepseek-v4-flash",
   "MINIMAX_MODEL": "MiniMax-M3",
   "AUTORESEARCH_EXPERIMENT_OWNER_IDS": [
     "gemini-3.5-flash-lite",
-    "deepseek-v4-pro",
     "MiniMax-M3",
     "claude-haiku-4-5",
     "deepseek-v4-flash"
@@ -16,7 +15,6 @@
   "AUTORESEARCH_TRACKS": {
     "track_default": [
       "gemini-3.5-flash-lite",
-      "deepseek-v4-pro",
       "MiniMax-M3"
     ],
     "track_claude": [
@@ -34,7 +32,6 @@
   "SKIP_VERIFIER_OWNER_IDS": [
     "gpt-5.6-luna",
     "gemini-3.5-flash-lite",
-    "deepseek-v4-pro",
     "MiniMax-M3"
   ],
   "AUTORESEARCH_TRACK_MODELS": {

@@ -20,7 +20,6 @@ Only portfolios in `track_claude` run the skeptical second-step verification. Al
   "SKIP_VERIFIER_OWNER_IDS": [
     "gpt-5.6-luna",
     "gemini-3.5-flash-lite",
-    "deepseek-v4-pro",
     "MiniMax-M3"
   ]
 }

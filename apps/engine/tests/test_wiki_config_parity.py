@@ -12,13 +12,13 @@ def test_validate_config_parity_success(tmp_path):
     config_dir.mkdir(parents=True)
 
     models_file = config_dir / "models.json"
-    models_file.write_text(json.dumps({"DEEPSEEK_MODEL": "deepseek-v4-pro"}))
+    models_file.write_text(json.dumps({"DEEPSEEK_MODEL": "deepseek-v4-flash"}))
 
     tools_file = config_dir / "tools.json"
     tools_file.write_text(json.dumps([{"name": "get_portfolio_ledger", "desc": "Ledger"}]))
 
     page = wiki_dir / "tools.md"
-    page.write_text("We use deepseek-v4-pro and get_portfolio_ledger tool.")
+    page.write_text("We use deepseek-v4-flash and get_portfolio_ledger tool.")
 
     pages = {"tools.md": page}
     errors = validate_config_parity(pages, repo_root)
@@ -34,7 +34,7 @@ def test_validate_config_parity_missing_tool(tmp_path):
     config_dir.mkdir(parents=True)
 
     models_file = config_dir / "models.json"
-    models_file.write_text(json.dumps({"DEEPSEEK_MODEL": "deepseek-v4-pro"}))
+    models_file.write_text(json.dumps({"DEEPSEEK_MODEL": "deepseek-v4-flash"}))
 
     tools_file = config_dir / "tools.json"
     tools_file.write_text(
@@ -47,7 +47,7 @@ def test_validate_config_parity_missing_tool(tmp_path):
     )
 
     page = wiki_dir / "tools.md"
-    page.write_text("We use deepseek-v4-pro and get_portfolio_ledger tool.")
+    page.write_text("We use deepseek-v4-flash and get_portfolio_ledger tool.")
 
     pages = {"tools.md": page}
     errors = validate_config_parity(pages, repo_root)

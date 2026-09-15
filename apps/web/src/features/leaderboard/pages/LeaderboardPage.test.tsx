@@ -28,7 +28,7 @@ vi.mock('@tanstack/react-start', () => ({
 
 const mockLeaderboardData: LLMLeaderboardRow[] = [
     {
-        model_name: 'deepseek-v4-pro',
+        model_name: 'deepseek-v4-flash',
         total_equity: 10820,
         return_pct: 8.2,
         realized_pnl: 820,
@@ -90,7 +90,7 @@ describe('LeaderboardPage', () => {
         expect(screen.getByText('Place #3')).toBeDefined();
 
         // Should render model display names from config or fallback
-        expect(screen.getAllByText('DeepSeek (v4-pro)').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('DeepSeek (v4-flash)').length).toBeGreaterThan(0);
         expect(screen.getAllByText('MiniMax (M3)').length).toBeGreaterThan(0);
         expect(screen.getAllByText('OpenAI (gpt-5.6-luna)').length).toBeGreaterThan(0);
 

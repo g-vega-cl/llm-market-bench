@@ -2,6 +2,6 @@ export const MODELS = {
     OPENAI: 'gpt-5.6-luna',
     ANTHROPIC: 'claude-haiku-4-5',
     GEMINI: 'gemini-3.5-flash-lite',
-    DEEPSEEK: 'deepseek-v4-pro',
+    DEEPSEEK: 'deepseek-v4-flash',
     MINIMAX: 'MiniMax-M3',
 } as const;

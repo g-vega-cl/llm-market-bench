@@ -15,7 +15,7 @@ import { fetchLeaderboard } from './fetch-leaderboard';
 test('fetchLeaderboard calls get_llm_leaderboard_metrics RPC with correct params and filters old models', async () => {
     const mockData = [
         {
-            model_name: 'deepseek-v4-pro',
+            model_name: 'deepseek-v4-flash',
             total_equity: 10820,
             return_pct: 8.2,
             realized_pnl: 820,
@@ -59,7 +59,7 @@ test('fetchLeaderboard calls get_llm_leaderboard_metrics RPC with correct params
     });
     // The old model 'old-gpt-model-v1' should be filtered out
     expect(result).toHaveLength(1);
-    expect(result[0].model_name).toBe('deepseek-v4-pro');
+    expect(result[0].model_name).toBe('deepseek-v4-flash');
     expect(result[0].composite_score).toBe(89.5);
 });
 

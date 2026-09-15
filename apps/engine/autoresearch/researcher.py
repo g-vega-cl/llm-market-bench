@@ -1,6 +1,6 @@
 """Auto-research LLM interface.
 
-Calls DeepSeek v4 Pro (configurable via AUTORESEARCH_MODEL) to evaluate
+Calls DeepSeek v4 Flash (configurable via AUTORESEARCH_MODEL) to evaluate
 trading performance and propose prompt improvements. Uses Instructor
 for structured output, following the same pattern as verification.py.
 """

@@ -32,7 +32,7 @@ export const modelDisplayConfig: Record<
         gradient: 'electric',
     },
     [MODELS.DEEPSEEK]: {
-        name: 'DeepSeek (v4-pro)',
+        name: 'DeepSeek (v4-flash)',
         color: 'text-purple-400',
         bgColor: 'bg-purple-500',
         emoji: '🟣',

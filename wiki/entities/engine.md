@@ -59,6 +59,10 @@ The `analytics/barrier_probabilities.py` module evaluates empirical Triple Barri
 
 The `analysis/ticker_news.py` module fetches structured financial headlines, publisher sources, published timestamps, and article summaries for individual tickers via the `get_ticker_news` pull tool. Backed by FMP's stable stock news endpoint, it gives trading and predictor agents verified, noise-free company news on demand without brittle web scraping.
 
+### Congress Trading Disclosures
+
+The `apps/engine/tools/congress_tools.py` module and `apps/engine/scripts/update_congress_trades.py` pipeline ingest, normalize, and cache STOCK Act personal financial disclosures from the US Senate and House of Representatives. Agents query these transactions via the `get_congress_trades` pull tool to inspect politician buying and selling, trade amounts, and filing dates.
+
 ## Related
 
 - [[entities/frontier-tech-portfolio]]

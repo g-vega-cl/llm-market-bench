@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/congress-trades]] — STOCK Act disclosure ingestion, Supabase persistence, and agent pull tool
 - [[entities/sector-trading]] — Live weekly sector portfolio entry, exit, and status execution engine
 - [[entities/fetch-daily-newsletter-tool]] — Canonical daily newsletter fetch tool for trading LLMs
 - [[entities/frontier-tech-portfolio]] — Automated frontier technology supercycle portfolio with 5-point rubric qualification, small-cap guardrails, and venture power-law sizing

@@ -126,3 +126,7 @@ export interface LLMLeaderboardRow {
     consistency_score: number;
     composite_score: number;
 }
+
+export type CongressTrade = Database['public']['Tables']['congress_trades']['Row'];
+export type CongressTradeInsert = Database['public']['Tables']['congress_trades']['Insert'];
+export type CongressTradeUpdate = Database['public']['Tables']['congress_trades']['Update'];

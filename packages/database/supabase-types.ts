@@ -4,7 +4,7 @@ export type Database = {
     // Allows to automatically instantiate createClient with right options
     // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
     __InternalSupabase: {
-        PostgrestVersion: '14.1';
+        PostgrestVersion: '14.5';
     };
     graphql_public: {
         Tables: {
@@ -33,38 +33,68 @@ export type Database = {
     };
     public: {
         Tables: {
-            chat_memories: {
+            catalyst_radar: {
                 Row: {
+                    catalyst_id: string;
+                    catalyst_title: string;
+                    concept_id: string;
+                    concept_name: string;
                     created_at: string | null;
                     id: string;
-                    importance_score: number | null;
-                    source_query: string | null;
-                    tags: string[] | null;
-                    thesis: string;
-                    ticker: string | null;
-                    user_id: string;
+                    impact: string;
+                    memory_content: string;
+                    related_tickers: Json | null;
+                    similarity: number;
+                    target_date: string;
+                    updated_at: string | null;
+                    velocity_score: number;
                 };
                 Insert: {
+                    catalyst_id: string;
+                    catalyst_title: string;
+                    concept_id: string;
+                    concept_name: string;
                     created_at?: string | null;
                     id?: string;
-                    importance_score?: number | null;
-                    source_query?: string | null;
-                    tags?: string[] | null;
-                    thesis: string;
-                    ticker?: string | null;
-                    user_id: string;
+                    impact?: string;
+                    memory_content: string;
+                    related_tickers?: Json | null;
+                    similarity: number;
+                    target_date: string;
+                    updated_at?: string | null;
+                    velocity_score?: number;
                 };
                 Update: {
+                    catalyst_id?: string;
+                    catalyst_title?: string;
+                    concept_id?: string;
+                    concept_name?: string;
                     created_at?: string | null;
                     id?: string;
-                    importance_score?: number | null;
-                    source_query?: string | null;
-                    tags?: string[] | null;
-                    thesis?: string;
-                    ticker?: string | null;
-                    user_id?: string;
+                    impact?: string;
+                    memory_content?: string;
+                    related_tickers?: Json | null;
+                    similarity?: number;
+                    target_date?: string;
+                    updated_at?: string | null;
+                    velocity_score?: number;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: 'catalyst_radar_catalyst_id_fkey';
+                        columns: ['catalyst_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'memories';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'catalyst_radar_concept_id_fkey';
+                        columns: ['concept_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'concept_metrics';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             cause_and_effect: {
                 Row: {
@@ -103,6 +133,39 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                 ];
+            };
+            chat_memories: {
+                Row: {
+                    created_at: string | null;
+                    id: string;
+                    importance_score: number | null;
+                    source_query: string | null;
+                    tags: string[] | null;
+                    thesis: string;
+                    ticker: string | null;
+                    user_id: string;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    id?: string;
+                    importance_score?: number | null;
+                    source_query?: string | null;
+                    tags?: string[] | null;
+                    thesis: string;
+                    ticker?: string | null;
+                    user_id: string;
+                };
+                Update: {
+                    created_at?: string | null;
+                    id?: string;
+                    importance_score?: number | null;
+                    source_query?: string | null;
+                    tags?: string[] | null;
+                    thesis?: string;
+                    ticker?: string | null;
+                    user_id?: string;
+                };
+                Relationships: [];
             };
             concept_metrics: {
                 Row: {
@@ -143,6 +206,57 @@ export type Database = {
                     pca_y?: number | null;
                     updated_at?: string | null;
                     velocity_score?: number | null;
+                };
+                Relationships: [];
+            };
+            congress_trades: {
+                Row: {
+                    amount_est_midpoint: number;
+                    amount_range: string;
+                    asset_description: string | null;
+                    chamber: string;
+                    created_at: string;
+                    disclosure_date: string;
+                    district: string | null;
+                    id: string;
+                    owner: string | null;
+                    representative_name: string;
+                    source_url: string | null;
+                    symbol: string;
+                    transaction_date: string;
+                    transaction_type: string;
+                };
+                Insert: {
+                    amount_est_midpoint?: number;
+                    amount_range: string;
+                    asset_description?: string | null;
+                    chamber: string;
+                    created_at?: string;
+                    disclosure_date: string;
+                    district?: string | null;
+                    id?: string;
+                    owner?: string | null;
+                    representative_name: string;
+                    source_url?: string | null;
+                    symbol: string;
+                    transaction_date: string;
+                    transaction_type: string;
+                };
+                Update: {
+                    amount_est_midpoint?: number;
+                    amount_range?: string;
+                    asset_description?: string | null;
+                    chamber?: string;
+                    created_at?: string;
+                    disclosure_date?: string;
+                    district?: string | null;
+                    id?: string;
+                    owner?: string | null;
+                    representative_name?: string;
+                    source_url?: string | null;
+                    symbol?: string;
+                    transaction_date?: string;
+                    transaction_type?: string;
                 };
                 Relationships: [];
             };
@@ -253,6 +367,84 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            daily_predictions: {
+                Row: {
+                    actual_direction: string | null;
+                    brier_score: number | null;
+                    catalysts: Json | null;
+                    close_price: number | null;
+                    confidence: number;
+                    created_at: string;
+                    expected_return_pct: number | null;
+                    high_price: number | null;
+                    id: string;
+                    intraday_direction_hit: boolean | null;
+                    intraday_hit: boolean | null;
+                    is_correct: boolean | null;
+                    low_price: number | null;
+                    model_name: string;
+                    open_price: number | null;
+                    predicted_direction: string;
+                    prediction_date: string;
+                    prompt_variant_tag: string | null;
+                    rationale: string | null;
+                    status: string;
+                    target_date: string;
+                    ticker: string;
+                    updated_at: string;
+                };
+                Insert: {
+                    actual_direction?: string | null;
+                    brier_score?: number | null;
+                    catalysts?: Json | null;
+                    close_price?: number | null;
+                    confidence: number;
+                    created_at?: string;
+                    expected_return_pct?: number | null;
+                    high_price?: number | null;
+                    id?: string;
+                    intraday_direction_hit?: boolean | null;
+                    intraday_hit?: boolean | null;
+                    is_correct?: boolean | null;
+                    low_price?: number | null;
+                    model_name: string;
+                    open_price?: number | null;
+                    predicted_direction: string;
+                    prediction_date: string;
+                    prompt_variant_tag?: string | null;
+                    rationale?: string | null;
+                    status?: string;
+                    target_date: string;
+                    ticker?: string;
+                    updated_at?: string;
+                };
+                Update: {
+                    actual_direction?: string | null;
+                    brier_score?: number | null;
+                    catalysts?: Json | null;
+                    close_price?: number | null;
+                    confidence?: number;
+                    created_at?: string;
+                    expected_return_pct?: number | null;
+                    high_price?: number | null;
+                    id?: string;
+                    intraday_direction_hit?: boolean | null;
+                    intraday_hit?: boolean | null;
+                    is_correct?: boolean | null;
+                    low_price?: number | null;
+                    model_name?: string;
+                    open_price?: number | null;
+                    predicted_direction?: string;
+                    prediction_date?: string;
+                    prompt_variant_tag?: string | null;
+                    rationale?: string | null;
+                    status?: string;
+                    target_date?: string;
+                    ticker?: string;
+                    updated_at?: string;
+                };
+                Relationships: [];
+            };
             decisions: {
                 Row: {
                     confidence: number;
@@ -314,6 +506,218 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                 ];
+            };
+            earnings_alpha_snapshots: {
+                Row: {
+                    actual_eps: number | null;
+                    analyst_buy_ratio_pct: number | null;
+                    analyst_consensus: string | null;
+                    analyst_coverage_count: number | null;
+                    created_at: string | null;
+                    days_since_earnings_report: number | null;
+                    eps_surprise: number | null;
+                    estimated_eps: number | null;
+                    has_extreme_pre_earnings_runup: boolean | null;
+                    has_sufficient_earnings_history: boolean | null;
+                    id: string;
+                    is_sloan_accrual_clean: boolean | null;
+                    is_top_decile_sue: boolean | null;
+                    post_earnings_alpha_vs_spy: number | null;
+                    post_earnings_drift_pct: number | null;
+                    pre_earnings_20d_return_pct: number | null;
+                    quarters_analyzed_count: number | null;
+                    report_date: string | null;
+                    revenue_actual: number | null;
+                    revenue_estimated: number | null;
+                    revenue_surprise_pct: number | null;
+                    sector: string;
+                    sloan_accrual_ratio: number | null;
+                    snapshot_date: string;
+                    sue_score: number | null;
+                    target_consensus_price: number | null;
+                    target_consensus_upside_pct: number | null;
+                    ticker: string;
+                };
+                Insert: {
+                    actual_eps?: number | null;
+                    analyst_buy_ratio_pct?: number | null;
+                    analyst_consensus?: string | null;
+                    analyst_coverage_count?: number | null;
+                    created_at?: string | null;
+                    days_since_earnings_report?: number | null;
+                    eps_surprise?: number | null;
+                    estimated_eps?: number | null;
+                    has_extreme_pre_earnings_runup?: boolean | null;
+                    has_sufficient_earnings_history?: boolean | null;
+                    id?: string;
+                    is_sloan_accrual_clean?: boolean | null;
+                    is_top_decile_sue?: boolean | null;
+                    post_earnings_alpha_vs_spy?: number | null;
+                    post_earnings_drift_pct?: number | null;
+                    pre_earnings_20d_return_pct?: number | null;
+                    quarters_analyzed_count?: number | null;
+                    report_date?: string | null;
+                    revenue_actual?: number | null;
+                    revenue_estimated?: number | null;
+                    revenue_surprise_pct?: number | null;
+                    sector: string;
+                    sloan_accrual_ratio?: number | null;
+                    snapshot_date: string;
+                    sue_score?: number | null;
+                    target_consensus_price?: number | null;
+                    target_consensus_upside_pct?: number | null;
+                    ticker: string;
+                };
+                Update: {
+                    actual_eps?: number | null;
+                    analyst_buy_ratio_pct?: number | null;
+                    analyst_consensus?: string | null;
+                    analyst_coverage_count?: number | null;
+                    created_at?: string | null;
+                    days_since_earnings_report?: number | null;
+                    eps_surprise?: number | null;
+                    estimated_eps?: number | null;
+                    has_extreme_pre_earnings_runup?: boolean | null;
+                    has_sufficient_earnings_history?: boolean | null;
+                    id?: string;
+                    is_sloan_accrual_clean?: boolean | null;
+                    is_top_decile_sue?: boolean | null;
+                    post_earnings_alpha_vs_spy?: number | null;
+                    post_earnings_drift_pct?: number | null;
+                    pre_earnings_20d_return_pct?: number | null;
+                    quarters_analyzed_count?: number | null;
+                    report_date?: string | null;
+                    revenue_actual?: number | null;
+                    revenue_estimated?: number | null;
+                    revenue_surprise_pct?: number | null;
+                    sector?: string;
+                    sloan_accrual_ratio?: number | null;
+                    snapshot_date?: string;
+                    sue_score?: number | null;
+                    target_consensus_price?: number | null;
+                    target_consensus_upside_pct?: number | null;
+                    ticker?: string;
+                };
+                Relationships: [];
+            };
+            fred_series_cache: {
+                Row: {
+                    fetched_at: string;
+                    frequency: string;
+                    latest_date: string;
+                    latest_value: number | null;
+                    observations: Json;
+                    series_id: string;
+                    title: string;
+                    units: string;
+                };
+                Insert: {
+                    fetched_at?: string;
+                    frequency?: string;
+                    latest_date?: string;
+                    latest_value?: number | null;
+                    observations?: Json;
+                    series_id: string;
+                    title?: string;
+                    units?: string;
+                };
+                Update: {
+                    fetched_at?: string;
+                    frequency?: string;
+                    latest_date?: string;
+                    latest_value?: number | null;
+                    observations?: Json;
+                    series_id?: string;
+                    title?: string;
+                    units?: string;
+                };
+                Relationships: [];
+            };
+            frontier_themes: {
+                Row: {
+                    catalysts: string;
+                    created_at: string | null;
+                    id: string;
+                    portfolio_id: string;
+                    rubric_score: number;
+                    status: string;
+                    theme_name: string;
+                    thesis: string;
+                    tickers: Json;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    catalysts: string;
+                    created_at?: string | null;
+                    id?: string;
+                    portfolio_id: string;
+                    rubric_score?: number;
+                    status?: string;
+                    theme_name: string;
+                    thesis: string;
+                    tickers?: Json;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    catalysts?: string;
+                    created_at?: string | null;
+                    id?: string;
+                    portfolio_id?: string;
+                    rubric_score?: number;
+                    status?: string;
+                    theme_name?: string;
+                    thesis?: string;
+                    tickers?: Json;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'frontier_themes_portfolio_id_fkey';
+                        columns: ['portfolio_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'portfolios';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            generated_newsletters: {
+                Row: {
+                    bullet_points: Json | null;
+                    content: string;
+                    created_at: string | null;
+                    formatted_time: string | null;
+                    id: string;
+                    read_time_minutes: number | null;
+                    session: string;
+                    source_count: number | null;
+                    summary: string;
+                    title: string;
+                };
+                Insert: {
+                    bullet_points?: Json | null;
+                    content: string;
+                    created_at?: string | null;
+                    formatted_time?: string | null;
+                    id?: string;
+                    read_time_minutes?: number | null;
+                    session: string;
+                    source_count?: number | null;
+                    summary: string;
+                    title: string;
+                };
+                Update: {
+                    bullet_points?: Json | null;
+                    content?: string;
+                    created_at?: string | null;
+                    formatted_time?: string | null;
+                    id?: string;
+                    read_time_minutes?: number | null;
+                    session?: string;
+                    source_count?: number | null;
+                    summary?: string;
+                    title?: string;
+                };
+                Relationships: [];
             };
             ingestion_logs: {
                 Row: {
@@ -438,45 +842,6 @@ export type Database = {
                     stdev_pct?: number | null;
                     ticker?: string;
                     today_pct_change?: number | null;
-                };
-                Relationships: [];
-            };
-            generated_newsletters: {
-                Row: {
-                    id: string;
-                    title: string;
-                    summary: string;
-                    content: string;
-                    bullet_points: Json | null;
-                    session: string;
-                    read_time_minutes: number | null;
-                    source_count: number | null;
-                    formatted_time: string | null;
-                    created_at: string | null;
-                };
-                Insert: {
-                    id?: string;
-                    title: string;
-                    summary: string;
-                    content: string;
-                    bullet_points?: Json | null;
-                    session: string;
-                    read_time_minutes?: number | null;
-                    source_count?: number | null;
-                    formatted_time?: string | null;
-                    created_at?: string | null;
-                };
-                Update: {
-                    id?: string;
-                    title?: string;
-                    summary?: string;
-                    content?: string;
-                    bullet_points?: Json | null;
-                    session?: string;
-                    read_time_minutes?: number | null;
-                    source_count?: number | null;
-                    formatted_time?: string | null;
-                    created_at?: string | null;
                 };
                 Relationships: [];
             };
@@ -629,6 +994,27 @@ export type Database = {
                     sender?: string;
                     source_id?: string;
                     subject?: string;
+                };
+                Relationships: [];
+            };
+            options_data_cache: {
+                Row: {
+                    contracts: Json;
+                    fetched_at: string | null;
+                    metrics: Json;
+                    ticker: string;
+                };
+                Insert: {
+                    contracts?: Json;
+                    fetched_at?: string | null;
+                    metrics?: Json;
+                    ticker: string;
+                };
+                Update: {
+                    contracts?: Json;
+                    fetched_at?: string | null;
+                    metrics?: Json;
+                    ticker?: string;
                 };
                 Relationships: [];
             };
@@ -815,20 +1201,32 @@ export type Database = {
             };
             price_history: {
                 Row: {
+                    close: number | null;
                     fetched_at: string | null;
+                    high: number | null;
+                    low: number | null;
                     market_cap: number | null;
+                    open: number | null;
                     price: number;
                     ticker: string;
                 };
                 Insert: {
+                    close?: number | null;
                     fetched_at?: string | null;
+                    high?: number | null;
+                    low?: number | null;
                     market_cap?: number | null;
+                    open?: number | null;
                     price: number;
                     ticker: string;
                 };
                 Update: {
+                    close?: number | null;
                     fetched_at?: string | null;
+                    high?: number | null;
+                    low?: number | null;
                     market_cap?: number | null;
+                    open?: number | null;
                     price?: number;
                     ticker?: string;
                 };
@@ -847,7 +1245,7 @@ export type Database = {
                     prompt_name: string;
                     research_output: Json | null;
                     status: string;
-                    track_id: string | null;
+                    track_id: string;
                     variant_tag: string;
                     week_end: string;
                     week_start: string;
@@ -864,7 +1262,7 @@ export type Database = {
                     prompt_name?: string;
                     research_output?: Json | null;
                     status?: string;
-                    track_id?: string | null;
+                    track_id?: string;
                     variant_tag: string;
                     week_end: string;
                     week_start: string;
@@ -881,7 +1279,7 @@ export type Database = {
                     prompt_name?: string;
                     research_output?: Json | null;
                     status?: string;
-                    track_id?: string | null;
+                    track_id?: string;
                     variant_tag?: string;
                     week_end?: string;
                     week_start?: string;
@@ -896,11 +1294,65 @@ export type Database = {
                     },
                 ];
             };
+            sector_bellwether_signals: {
+                Row: {
+                    classification: string;
+                    created_at: string | null;
+                    cycle_report_day: number | null;
+                    id: string;
+                    is_active_bellwether_signal: boolean | null;
+                    is_reported: boolean | null;
+                    market_cap: number | null;
+                    market_cap_rank: number | null;
+                    operating_margin_surprise_delta: number | null;
+                    report_date: string | null;
+                    revenue_surprise_pct: number | null;
+                    sector: string;
+                    snapshot_date: string;
+                    sue_score: number | null;
+                    ticker: string;
+                };
+                Insert: {
+                    classification: string;
+                    created_at?: string | null;
+                    cycle_report_day?: number | null;
+                    id?: string;
+                    is_active_bellwether_signal?: boolean | null;
+                    is_reported?: boolean | null;
+                    market_cap?: number | null;
+                    market_cap_rank?: number | null;
+                    operating_margin_surprise_delta?: number | null;
+                    report_date?: string | null;
+                    revenue_surprise_pct?: number | null;
+                    sector: string;
+                    snapshot_date: string;
+                    sue_score?: number | null;
+                    ticker: string;
+                };
+                Update: {
+                    classification?: string;
+                    created_at?: string | null;
+                    cycle_report_day?: number | null;
+                    id?: string;
+                    is_active_bellwether_signal?: boolean | null;
+                    is_reported?: boolean | null;
+                    market_cap?: number | null;
+                    market_cap_rank?: number | null;
+                    operating_margin_surprise_delta?: number | null;
+                    report_date?: string | null;
+                    revenue_surprise_pct?: number | null;
+                    sector?: string;
+                    snapshot_date?: string;
+                    sue_score?: number | null;
+                    ticker?: string;
+                };
+                Relationships: [];
+            };
             sector_predictions: {
                 Row: {
                     benchmark_spy_return: number | null;
-                    confidence: number | null;
                     brier_score: number | null;
+                    confidence: number | null;
                     created_at: string;
                     evaluation_audit_data: Json | null;
                     id: string;
@@ -924,8 +1376,8 @@ export type Database = {
                 };
                 Insert: {
                     benchmark_spy_return?: number | null;
-                    confidence?: number | null;
                     brier_score?: number | null;
+                    confidence?: number | null;
                     created_at?: string;
                     evaluation_audit_data?: Json | null;
                     id?: string;
@@ -949,8 +1401,8 @@ export type Database = {
                 };
                 Update: {
                     benchmark_spy_return?: number | null;
-                    confidence?: number | null;
                     brier_score?: number | null;
+                    confidence?: number | null;
                     created_at?: string;
                     evaluation_audit_data?: Json | null;
                     id?: string;

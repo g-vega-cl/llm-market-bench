@@ -154,5 +154,9 @@
   {
     "name": "get_ticker_news",
     "desc": "Real-time stock news headlines, publisher sources, and summaries by ticker"
+  },
+  {
+    "name": "get_congress_trades",
+    "desc": "Stock trading disclosures by US Congress members (Senate and House) with transaction types, amounts, and filing dates"
   }
 ]

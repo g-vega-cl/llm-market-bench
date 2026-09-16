@@ -91,6 +91,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 37. **get_calendar_scenario_analysis**: Retrieves upcoming economic/corporate calendar triggers paired with probability-weighted scenario analyses, conditional trading plans, and affected assets for tomorrow, next week, or forward windows.
 38. **get_barrier_touch_probabilities**: Evaluates empirical Triple Barrier Method (López de Prado) touch frequencies conditional on prevailing volatility and trend regimes (win rate on profit target vs stop loss vs vertical time stop expiration).
 39. **get_ticker_news**: Fetches real-time, verified financial news headlines, publisher sources, and summaries for a specific stock ticker.
+40. **get_congress_trades**: Retrieves STOCK Act stock transaction disclosures for US Senate and House of Representatives members with transaction types, amount ranges, and filing dates.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 

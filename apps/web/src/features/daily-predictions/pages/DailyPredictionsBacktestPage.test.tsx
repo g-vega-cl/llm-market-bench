@@ -56,7 +56,7 @@ describe('DailyPredictionsBacktestPage', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: true,
-            track_id: null,
+            track_id: 'track_default',
         },
     ];
 

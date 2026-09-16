@@ -1183,6 +1183,40 @@ GET_TICKER_NEWS_TOOL = {
     },
 }
 
+GET_CONGRESS_TRADES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_congress_trades",
+        "description": "Retrieve stock trading disclosures by US Congress members (Senate and House) under the STOCK Act.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "Optional stock ticker symbol (e.g. 'NVDA', 'AAPL'). Omit to get broad recent trades across all tickers.",
+                },
+                "chamber": {
+                    "type": "string",
+                    "description": "Optional chamber filter: 'senate' or 'house'. Omit for both.",
+                },
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days of disclosures to look back (default 45).",
+                },
+                "transaction_type": {
+                    "type": "string",
+                    "description": "Optional transaction type filter: 'purchase' or 'sale'.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of records to return (default 20).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1226,6 +1260,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_calendar_scenario_analysis": GET_CALENDAR_SCENARIO_ANALYSIS_TOOL,
     "get_barrier_touch_probabilities": GET_BARRIER_TOUCH_PROBABILITIES_TOOL,
     "get_ticker_news": GET_TICKER_NEWS_TOOL,
+    "get_congress_trades": GET_CONGRESS_TRADES_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -3692,6 +3727,31 @@ async def execute_get_ticker_news_tool(ticker: str, limit: int = 5) -> str:
     except Exception as e:
         logger.exception("Error executing get_ticker_news tool for %s: %s", ticker, e)
         return f"Error fetching news for '{ticker}': {str(e)}"
+
+
+async def execute_get_congress_trades_tool(
+    ticker: str | None = None,
+    symbol: str | None = None,
+    chamber: str | None = None,
+    days: int = 45,
+    transaction_type: str | None = None,
+    limit: int = 20,
+) -> str:
+    """Executes the get_congress_trades tool to retrieve STOCK Act disclosures."""
+    try:
+        from tools.congress_tools import handle_get_congress_trades
+
+        sym = ticker or symbol
+        return await handle_get_congress_trades(
+            symbol=sym,
+            chamber=chamber,
+            days=days,
+            transaction_type=transaction_type,
+            limit=limit,
+        )
+    except Exception as e:
+        logger.exception("Error executing get_congress_trades tool: %s", e)
+        return f"Error retrieving Congress trading disclosures: {e}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

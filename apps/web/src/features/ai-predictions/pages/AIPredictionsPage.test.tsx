@@ -128,7 +128,7 @@ describe('AIPredictionsPage', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: null,
+            track_id: 'track_default',
         },
     ];
 

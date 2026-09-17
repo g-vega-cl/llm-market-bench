@@ -64,6 +64,7 @@ A living document of features and improvements in progress or planned for the pl
         Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 - [ ] - Find if yoyu can set up any PEAD based strategy
+- [ ] - Find if you can do a "MAx pain" strategy
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
 - [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
 - [ ] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...

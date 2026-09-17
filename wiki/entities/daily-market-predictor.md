@@ -56,7 +56,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - Decoupled from intraday trading workflows: `daily-autoresearch` runs weekly (Sunday 6:00 PM ET / 10:00 PM UTC) directly via native GitHub Actions schedule (`0 22 * * SUN` in `daily-predictor.yml`).
 
 2. **Runner Environment & API Key Injection**:
-   - `.github/workflows/daily-predictor.yml` provisions secrets for financial data (`FMP_API_KEY`, `FRED_API_KEY`), database access (`SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`), and all participating models (`DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`).
+   - `.github/workflows/daily-predictor.yml` provisions secrets for financial data (`FMP_API_KEY`, `FRED_API_KEY`, `MASSIVE_API_KEY`), database access (`SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`), and all participating models (`DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`).
 
 3. **Market-Open and Schedule Guardrails**:
    - Implemented in `.github/workflows/daily-predictor.yml`.

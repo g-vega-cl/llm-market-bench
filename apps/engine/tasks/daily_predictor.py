@@ -239,6 +239,8 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
         options_str = await execute_get_options_sentiment_tool(ticker=ticker)
         if options_str and not options_str.startswith("Error") and not options_str.startswith("No options"):
             context_lines.append(f"Options Derivatives Positioning ({ticker}):\n{options_str}")
+        elif options_str and options_str.startswith("Error"):
+            logger.warning(f"Options derivatives retrieval returned error for {ticker}: {options_str}")
     except Exception as e:
         logger.warning(f"Error fetching options derivatives context for {ticker}: {e}")
 

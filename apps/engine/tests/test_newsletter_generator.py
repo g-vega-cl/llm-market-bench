@@ -202,3 +202,130 @@ async def test_generate_daily_newsletter_with_fred_macro_context():
         mock_llm_call.assert_called_once()
         assert "macro_context" in mock_llm_call.call_args.kwargs
         assert "Fed Funds: 5.25%" in mock_llm_call.call_args.kwargs["macro_context"]
+
+
+@pytest.mark.asyncio
+async def test_get_newsletter_options_context_success():
+    """Verify that get_newsletter_options_context compiles SPY options sentiment, vol surface, and VIX details."""
+    from tasks.newsletter_generator import get_newsletter_options_context
+
+    with (
+        patch(
+            "core.llm.tools.execute_get_options_sentiment_tool",
+            new_callable=AsyncMock,
+            return_value="### Options Derivatives: SPY\n- Put/Call Ratio: 0.85\n- Max Pain: $590.00",
+        ) as mock_opts,
+        patch(
+            "core.llm.tools.execute_options_vol_surface_tool",
+            new_callable=AsyncMock,
+            return_value="### Options Vol Surface: SPY\n- Options-Implied Daily Move: ±0.65%",
+        ) as mock_surf,
+        patch(
+            "core.llm.tools.execute_get_volatility_index_details_tool",
+            new_callable=AsyncMock,
+            return_value="VIXY/VIXM Ratio: 1.15 (Contango)",
+        ) as mock_vix,
+    ):
+        ctx = await get_newsletter_options_context(ticker="SPY")
+        assert "Options Derivatives: SPY" in ctx
+        assert "Max Pain: $590.00" in ctx
+        assert "Options-Implied Daily Move: ±0.65%" in ctx
+        assert "VIXY/VIXM Ratio" in ctx
+        mock_opts.assert_called_once_with(ticker="SPY")
+        mock_surf.assert_called_once_with(ticker="SPY")
+        mock_vix.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_get_newsletter_options_context_graceful_on_errors(caplog):
+    """Verify that get_newsletter_options_context handles tool errors gracefully and logs warnings."""
+    from tasks.newsletter_generator import get_newsletter_options_context
+
+    with (
+        caplog.at_level("WARNING", logger="engine"),
+        patch(
+            "core.llm.tools.execute_get_options_sentiment_tool",
+            new_callable=AsyncMock,
+            return_value="Error fetching options sentiment for 'SPY': 403 Forbidden",
+        ),
+        patch(
+            "core.llm.tools.execute_options_vol_surface_tool",
+            new_callable=AsyncMock,
+            side_effect=Exception("API Timeout"),
+        ),
+        patch(
+            "core.llm.tools.execute_get_volatility_index_details_tool",
+            new_callable=AsyncMock,
+            return_value="VIXY/VIXM Ratio: 1.05",
+        ),
+    ):
+        ctx = await get_newsletter_options_context(ticker="SPY")
+        assert "VIXY/VIXM Ratio: 1.05" in ctx
+        assert "Error fetching options sentiment" not in ctx
+        assert any("options sentiment" in r.message.lower() for r in caplog.records)
+        assert any("options vol surface" in r.message.lower() for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_call_deepseek_flash_includes_options_context():
+    """Verify that _call_deepseek_flash includes options_context in user_prompt."""
+    from tasks.newsletter_generator import _call_deepseek_flash
+
+    mock_client = MagicMock()
+    mock_output = GeneratedNewsletterOutput(
+        title="Test Briefing",
+        summary="Test Summary",
+        bullet_points=["Point 1"],
+        content="Test content",
+    )
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_output)
+
+    with (
+        patch("core.llm.clients.get_deepseek_client", return_value=mock_client),
+        patch("core.llm.clients.close_client", new_callable=AsyncMock),
+    ):
+        resp = await _call_deepseek_flash(
+            chunks=[{"sender": "WSJ", "subject": "Market Open", "content": "Stocks rising"}],
+            session="open",
+            formatted_time="09:12 ET",
+            macro_context="Fed Funds: 5.25%",
+            options_context="SPY Put/Call Ratio: 0.85 | Max Pain: $590.00",
+        )
+        assert resp.title == "Test Briefing"
+        create_args = mock_client.chat.completions.create.call_args[1]
+        user_msg = next(m["content"] for m in create_args["messages"] if m["role"] == "user")
+        assert "Official Options Derivatives & Volatility Structure:" in user_msg
+        assert "SPY Put/Call Ratio: 0.85" in user_msg
+
+
+@pytest.mark.asyncio
+async def test_generate_daily_newsletter_passes_options_context():
+    """Verify that generate_daily_newsletter fetches options context and forwards it to _call_deepseek_flash."""
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = []
+    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "opts-gen-id"}]
+
+    mock_llm_response = GeneratedNewsletterOutput(
+        title="Options Aware Briefing",
+        summary="Options skew reflects upside positioning",
+        bullet_points=["Max Pain $590 pins near-term trading"],
+        content="Market briefing with options context",
+        read_time_minutes=6,
+    )
+
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock, return_value="Macro"),
+        patch(
+            "tasks.newsletter_generator.get_newsletter_options_context",
+            new_callable=AsyncMock,
+            return_value="Options metrics: Max Pain $590",
+        ) as mock_get_opts,
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
+    ):
+        result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
+        assert result is not None
+        mock_get_opts.assert_called_once_with(ticker="SPY")
+        mock_llm_call.assert_called_once()
+        assert "options_context" in mock_llm_call.call_args.kwargs
+        assert "Options metrics: Max Pain $590" in mock_llm_call.call_args.kwargs["options_context"]

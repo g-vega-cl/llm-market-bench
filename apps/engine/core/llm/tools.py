@@ -3656,6 +3656,10 @@ async def execute_options_vol_surface_tool(ticker: str = "SPY") -> str:
         return f"Error analyzing options volatility surface for '{ticker}': {str(e)}"
 
 
+# Alias for canonical naming convention
+execute_get_options_vol_surface_tool = execute_options_vol_surface_tool
+
+
 async def execute_track_thesis_pillars_tool(
     ticker: str,
     action: str = "get",

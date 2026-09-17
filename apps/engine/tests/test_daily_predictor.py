@@ -471,6 +471,45 @@ async def test_get_daily_market_context_options_derivatives_injection():
         mock_options_tool.assert_called_once_with(ticker="SPY")
 
 
+@pytest.mark.asyncio
+async def test_get_daily_market_context_options_error_logged(caplog):
+    """Verify that get_daily_market_context logs a warning and proceeds when options retrieval returns error string."""
+    from tasks.daily_predictor import get_daily_market_context
+
+    mock_history = [{"price": 590.0, "fetched_at": "2026-08-18T00:00:00Z"}]
+    mock_mdm = MagicMock()
+    mock_mdm.is_premarket = AsyncMock(return_value=False)
+    mock_mdm.get_history = AsyncMock(return_value=mock_history)
+    mock_mdm.get_premarket_quote = AsyncMock(
+        return_value={"price": 595.0, "previous_close": 590.0, "change": 5.0, "change_pct": 0.85}
+    )
+
+    with (
+        caplog.at_level("WARNING", logger="tasks.daily_predictor"),
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch("core.llm.tools.execute_fetch_daily_newsletter_tool", new_callable=AsyncMock, return_value=None),
+        patch(
+            "core.llm.tools.execute_get_options_sentiment_tool",
+            new_callable=AsyncMock,
+            return_value="Error fetching options sentiment for 'SPY': API key missing",
+        ) as mock_options_tool,
+        patch(
+            "core.llm.tools.execute_get_global_macro_context_tool", new_callable=AsyncMock, return_value="Macro test"
+        ),
+        patch(
+            "core.llm.tools.execute_get_volatility_index_details_tool", new_callable=AsyncMock, return_value="VIX test"
+        ),
+        patch("core.llm.tools.execute_market_health_barometer_tool", new_callable=AsyncMock, return_value="Baro test"),
+        patch("core.llm.tools.execute_get_market_feeling_tool", new_callable=AsyncMock, return_value="Feeling test"),
+    ):
+        ctx = await get_daily_market_context(ticker="SPY")
+        assert "Options Derivatives Positioning (SPY):" not in ctx
+        assert mock_options_tool.called
+        assert any(
+            "Options derivatives retrieval returned error for SPY" in record.message for record in caplog.records
+        )
+
+
 def test_daily_predictor_prompt_header_includes_options():
     """Verify that DAILY_PREDICTOR_CONSTRAINTS_HEADER mentions options positioning and volatility skew."""
     assert "options" in DAILY_PREDICTOR_CONSTRAINTS_HEADER.lower()

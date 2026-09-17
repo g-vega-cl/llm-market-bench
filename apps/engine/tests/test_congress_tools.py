@@ -118,13 +118,24 @@ async def test_fetch_congress_trades_from_fmp():
         }
     ]
 
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+    with (
+        patch("tools.congress_tools.FMP_API_KEY", "test-fmp-key"),
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
+    ):
         mock_get.return_value = mock_response
         trades = await fetch_congress_trades_from_fmp(chamber="house", symbol="NVDA")
         assert len(trades) == 1
         assert trades[0]["symbol"] == "NVDA"
         assert trades[0]["representative_name"] == "Nancy Pelosi"
         assert trades[0]["amount_est_midpoint"] == 3000000.5
+
+
+@pytest.mark.asyncio
+async def test_fetch_congress_trades_missing_api_key():
+    """Verify empty list returned when FMP_API_KEY is unset."""
+    with patch("tools.congress_tools.FMP_API_KEY", ""):
+        trades = await fetch_congress_trades_from_fmp(chamber="house", symbol="NVDA")
+        assert trades == []
 
 
 @pytest.mark.asyncio

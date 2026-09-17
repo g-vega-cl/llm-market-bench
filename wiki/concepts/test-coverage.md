@@ -49,11 +49,16 @@ Thresholds are periodically reviewed and ratcheted upward as the codebase mature
 - **Ratchet Mechanism**: When a component's actual test coverage consistently exceeds the baseline threshold by a significant margin (e.g., 5%+), a task is scheduled to increase the minimum threshold inside `.husky/pre-commit` and update this document accordingly. This prevents coverage regression and drives gradual code quality improvements.
 - **Ultimate Goal**: The long-term target is to reach a uniform 80% coverage across all core business-logic components.
 
-## Design Considerations: Staged/Changed-Only Tests
+## Hermetic Testing & Zero-Network Policy (MANDATORY)
 
-A common optimization is to run only the tests related to files modified in the current commit. However, we intentionally run the full test suite in the pre-commit hook due to the following constraints:
+All tests in the repository must be 100% hermetic:
+- **No Outbound Network Calls**: Tests must never initiate live HTTP requests, WebSocket connections, or external socket calls to third-party services (FMP, Massive/Polygon, FRED, Alpaca, Supabase, LLM provider APIs, or Gmail IMAP).
+- **Socket & DNS Enforcement**: `apps/engine/tests/conftest.py` installs a global, session-scoped network guard fixture (`block_external_network_calls`). Any attempt to resolve external DNS or open a non-loopback TCP connection immediately raises a `RuntimeError`, failing the test fast before network packets leave the machine.
+- **Credential Independence**: Tests must never rely on ambient environment variables (`FMP_API_KEY`, `OPENAI_API_KEY`, etc.). When testing functions that check API keys, tests must explicitly mock or patch the key (e.g. `patch("tools.congress_tools.FMP_API_KEY", "test-key")`), ensuring tests pass reliably in clean CI runners.
 
-1. **Global Coverage Enforcement**: Both the engine (70%) and web (40%) workspaces enforce global coverage thresholds in the pre-commit hook. Running only a subset of tests prevents coverage from being measured across the entire codebase, resulting in calculated coverage that drops below the minimum thresholds and triggers commit failures.
-2. **Tooling Limitations (Pytest)**: While Vitest supports running related tests out of the box via `vitest related`, Pytest does not natively map changed source code files to their dependent tests. Doing so would require third-party impact-analysis plugins (like `pytest-testmon` or `pytest-picked`), which introduce additional dependency tracking files (`.testmondata`) or fail to trace indirect imports.
-3. **Verification Integrity**: Running the full test suite guarantees that no regressions have been introduced elsewhere in the codebase before code is committed.
+## Related
+
+- [[sources/engine-testing-source]]
+- [[sources/web-testing-source]]
+
 

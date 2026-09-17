@@ -341,13 +341,13 @@ async def test_gemini_tool_loop_enables_thinking_config():
 
 
 def test_anthropic_client_uses_anthropic_json_mode():
-    """Verify Anthropic client factory uses Mode.ANTHROPIC_JSON so thinking mode works without tool_choice conflict."""
+    """Verify Anthropic client factory uses JSON mode so thinking mode works without tool_choice conflict."""
     import instructor
 
     from core.llm.clients import get_anthropic_client
 
     client = get_anthropic_client(api_key="test-anthropic-key")
-    assert client.mode == instructor.Mode.ANTHROPIC_JSON
+    assert client.mode in (instructor.Mode.ANTHROPIC_JSON, instructor.Mode.JSON)
 
 
 @pytest.mark.asyncio

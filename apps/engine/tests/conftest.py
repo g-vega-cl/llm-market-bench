@@ -13,6 +13,40 @@ if not os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
     os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "mock-key"
 
 
+import socket
+
+_real_socket_connect = socket.socket.connect
+_real_getaddrinfo = socket.getaddrinfo
+
+
+@pytest.fixture(autouse=True, scope="session")
+def block_external_network_calls():
+    """Globally block external socket connections and DNS resolution during tests.
+
+    Allows internal IPC and loopback (127.0.0.1, ::1, localhost, unix sockets),
+    while throwing a RuntimeError on any attempt to connect to external services.
+    """
+
+    def guarded_connect(self, address):
+        if isinstance(address, str):
+            return _real_socket_connect(self, address)
+        host = address[0]
+        if host in ("127.0.0.1", "::1", "localhost"):
+            return _real_socket_connect(self, address)
+        raise RuntimeError(f"External network connection blocked during test: attempted {address}")
+
+    def guarded_getaddrinfo(host, port, *args, **kwargs):
+        if host in ("127.0.0.1", "::1", "localhost", None):
+            return _real_getaddrinfo(host, port, *args, **kwargs)
+        raise RuntimeError(f"External DNS resolution blocked during test: attempted {host}:{port}")
+
+    socket.socket.connect = guarded_connect
+    socket.getaddrinfo = guarded_getaddrinfo
+    yield
+    socket.socket.connect = _real_socket_connect
+    socket.getaddrinfo = _real_getaddrinfo
+
+
 @pytest.fixture(autouse=True)
 def isolate_gmail_test_env(monkeypatch):
     """Ensure unit tests do not hit real Gmail over IMAP by default.

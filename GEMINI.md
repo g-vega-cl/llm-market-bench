@@ -25,6 +25,7 @@
 - **Test Coverage**: Enforced in `.husky/pre-commit` (70% engine, 40% web).
 - Both run in `.husky/pre-commit` before tests (fail-fast).
 - Format with `ruff format` / `biome check --write`.
+- **Zero External Network Calls in Tests (MANDATORY)**: Unit and integration tests MUST NEVER make outbound network calls (HTTP/HTTPS, external sockets, or external DNS resolution). All external APIs, SDK clients, and databases must be strictly mocked (`httpx`, `requests`, `AsyncAnthropic`, `AsyncOpenAI`, Supabase, FMP, Massive, FRED, Gmail IMAP). Tests must be 100% hermetic and run successfully without internet access or ambient API keys. An autouse session fixture in `apps/engine/tests/conftest.py` intercepts socket connects and DNS lookups, throwing a `RuntimeError` if an unmocked network connection is attempted.
 
 **After every code change, verify lint and coverage pass before marking work complete.** The pre-commit hook will block commits with lint errors or low coverage. Run `ruff check` on changed Python files and `biome check` on changed TS files. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint or low coverage is not done.
 
@@ -53,7 +54,7 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
    - **Wait for Approval**: Stop and wait for an explicit "Go ahead" before beginning the Execution phase.
    - **TDD Requirement**: Every plan MUST include a reproduction test that fails without the change.
    - **Visual Plan**: Plans for non-trivial features, migrations, or design questions MUST follow the terminal-friendly visual planning guidelines defined in `[[concepts/visual-planning]]`.
-3. **TDD First**: Every implementation plan MUST include a step for creating a reproduction test first. Verification requires a test that fails without your change and passes with it.
+3. **TDD First & Hermetic Testing**: Every implementation plan MUST include a step for creating a reproduction test first. Verification requires a test that fails without your change and passes with it. Tests must be 100% hermetic: **NEVER make live network calls or rely on ambient environment API keys**. Mock all external HTTP, SDK, and DB interfaces.
 4. **Code is Truth**: Docs are hints. When they conflict, trust the code. Read the code before acting — don't assume.
 5. **Observability**: Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.
 6. **Hotspot Awareness**: Before modifying high-risk areas, check hotspots with `apps/engine/hotspots.py`. Files flagged as CRITICAL or HIGH risk with high bug ratios require defensive editing, regression tests, and verification before changes are made.

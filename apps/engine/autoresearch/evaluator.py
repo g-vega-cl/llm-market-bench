@@ -302,6 +302,15 @@ async def evaluate_week(
     max_drawdown = score_result["max_drawdown"]
     opp_penalty = score_result["opportunity_cost_penalty"]
 
+    # Fetch prior autoresearch memories for this track
+    track_memories = ""
+    try:
+        from memory.store import retrieve_autoresearch_memories
+
+        track_memories = retrieve_autoresearch_memories(track_id=track_id, scope="portfolio_trading", limit=5)
+    except Exception as e:
+        logger.warning("Could not fetch autoresearch memories for %s: %s", track_id, e)
+
     report_parts = [
         "# Weekly Performance",
         f"Score: {score_result['score']}  "
@@ -339,11 +348,26 @@ async def evaluate_week(
         "```",
         current_prompt_mutable,
         "```",
-        "",
-        "# Instructions",
-        "Propose a new strategy and analysis section to replace the sections shown above. Return ONLY valid JSON with "
-        "new_prompt_text (containing the modified strategy and analysis rules section only), "
-        "change_description, experiment_type, research_reasoning, and confidence.",
     ]
+
+    if track_memories:
+        report_parts.extend(
+            [
+                "",
+                f"# Prior Autoresearch Memories & Insights (Track: {track_id})",
+                track_memories,
+            ]
+        )
+
+    report_parts.extend(
+        [
+            "",
+            "# Instructions",
+            "Propose a new strategy and analysis section to replace the sections shown above. Return ONLY valid JSON with "
+            "new_prompt_text (containing the modified strategy and analysis rules section only), "
+            "change_description, experiment_type, research_reasoning, confidence, and research_insight "
+            "(a 1-2 sentence durable takeaway or hypothesis outcome to store in long-term memory for this track).",
+        ]
+    )
 
     return "\n".join(report_parts), score_result, baseline_variant.get("variant_tag") if baseline_variant else None

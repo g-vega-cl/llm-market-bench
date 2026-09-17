@@ -142,7 +142,7 @@ async def test_generate_new_daily_prompt_success():
             "brier_score": 0.04,
         }
     ]
-    new_prompt = await generate_new_daily_prompt(
+    new_prompt, insight = await generate_new_daily_prompt(
         old_prompt=old_prompt,
         baseline_score=70.0,
         predictions=predictions,

@@ -50,7 +50,7 @@ async def test_generate_new_prompt_preserves_sandwich_and_mutates_only_strategie
     fake_researcher = FakeMetaResearcher()
     old_prompt = SECTOR_PREDICTOR_PROMPT
 
-    result = await generate_new_prompt(old_prompt, 75.0, fake_researcher)
+    result, insight = await generate_new_prompt(old_prompt, 75.0, fake_researcher)
 
     # Verify meta-prompt sent to LLM contains ONLY the mutable strategies
     meta_prompt_sent = fake_researcher.chat.completions.last_meta_prompt

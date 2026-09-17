@@ -383,7 +383,7 @@ async def test_predictor_autoresearch_ratchet_success(mock_get_gemini):
     mock_client.table.side_effect = intercept_db
 
     with patch("tasks.predictor_autoresearch.get_supabase_client", return_value=mock_client):
-        await run_predictor_autoresearch()
+        await run_predictor_autoresearch(target_models=["deepseek-v4-flash"])
 
     # Assert metrics update on active-tag
     assert any(up[0] == "prompt_experiments" and up[1].get("metrics") == {"score": 85.0} for up in db_updates)
@@ -492,7 +492,7 @@ async def test_predictor_autoresearch_ratchet_revert(mock_get_gemini):
     mock_client.table.side_effect = intercept_db
 
     with patch("tasks.predictor_autoresearch.get_supabase_client", return_value=mock_client):
-        await run_predictor_autoresearch()
+        await run_predictor_autoresearch(target_models=["deepseek-v4-flash"])
 
     # Assert metrics update on active-tag
     assert any(up[0] == "prompt_experiments" and up[1].get("metrics") == {"score": 70.0} for up in db_updates)
@@ -599,7 +599,7 @@ async def test_predictor_autoresearch_always_inserts_active(mock_get_gemini):
     mock_client.table.side_effect = intercept_db
 
     with patch("tasks.predictor_autoresearch.get_supabase_client", return_value=mock_client):
-        await run_predictor_autoresearch()
+        await run_predictor_autoresearch(target_models=["deepseek-v4-flash"])
 
     # Assert that even though the content is identical, the new active variant is still inserted
     assert len(db_inserts) == 1

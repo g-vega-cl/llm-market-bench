@@ -21,10 +21,18 @@ Located in `apps/engine/tasks/daily_autoresearch.py`. The `run_daily_autoresearc
 
 ## Track Isolation & Agency-Driven Tooling
 
-- Each model (`deepseek-v4-flash`, `MiniMax-M3`) has its own independent prompt lineage.
-- No cross-track fallback: queries are always scoped by `track_id`.
+- **Strict Track Isolation**: Each model and track maintains independent prompt lineages and memory records:
+  - Daily Predictor: `deepseek-v4-flash` and `MiniMax-M3`.
+  - Sector Predictor: All 4 models (`deepseek-v4-flash`, `MiniMax-M3`, `gemini-3.5-flash-lite`, `gpt-5.6-luna`).
+  - Portfolio Trading: `track_default`, `track_claude`, `track_openai`.
+- No cross-track fallback or cross-pollination: prompt queries and memory lookups are always scoped strictly by `track_id` and `scope`.
 - Baseline seeding creates a new baseline for a model if none exists.
-- **Track-Specific Tooling**: For `track_claude` (the sole track executing skeptical verification), `researcher.py` provides the optional `inspect_verifier_rules_and_rejections` tool inside `run_tool_loop`. The meta-researcher autonomously pulls the verifier SOP rules and rejection logs on demand rather than having data forcibly pre-injected into prompts (see [[concepts/verifier-bypass]]).
+- **Autoresearch Memories (`AUTORESEARCH_INSIGHT`)**: During each optimization cycle, the meta-researcher synthesizes a succinct causal takeaway or hypothesis postmortem (`research_insight`).
+  - Saved to the central pgvector `memories` table with `memory_type="AUTORESEARCH_INSIGHT"` and metadata (`track_id`, `scope`, `is_baseline_beat`, `ratchet_score`, `baseline_score`).
+  - Context Anti-Bloat & Tiered Decay: Baseline-beating insights (`is_baseline_beat=True`) are preserved permanently (0% decay). Exploratory, non-winning insights decay at a 50% half-life per 30 days. Retrievals are capped at `limit=5` to safeguard context windows.
+- **Track-Specific Tooling**:
+  - `query_past_research_memories(track_id, limit)`: Callable tool allowing the portfolio meta-researcher to pull historical hypothesis records on demand.
+  - For `track_claude` (the sole track executing skeptical verification), `researcher.py` provides the optional `inspect_verifier_rules_and_rejections` tool inside `run_tool_loop` (see [[concepts/verifier-bypass]]).
 
 ## Related
 

@@ -27,40 +27,57 @@ class SectorPredictionResponse(BaseModel):
     reasoning: str
 
 
-async def fetch_active_prompt() -> tuple[str, str]:
+async def fetch_active_prompt(model_name: str | None = None) -> tuple[str, str]:
     """Fetch the active SECTOR_PREDICTOR_PROMPT from the database, or use fallback."""
     client = get_supabase_client()
     try:
-        response = (
+        query = (
             client.table("prompt_experiments")
             .select("variant_tag, prompt_content")
             .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
             .eq("status", "active")
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
         )
+        if model_name:
+            query = query.eq("track_id", model_name)
+        response = query.order("created_at", desc=True).limit(1).execute()
 
         if response.data:
             return response.data[0]["variant_tag"], response.data[0]["prompt_content"]
 
+        # Check for model track baseline if active was not found
+        if model_name:
+            base_resp = (
+                client.table("prompt_experiments")
+                .select("variant_tag, prompt_content")
+                .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+                .eq("track_id", model_name)
+                .eq("status", "baseline")
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if base_resp.data:
+                return base_resp.data[0]["variant_tag"], base_resp.data[0]["prompt_content"]
+
         # If no active prompt in DB, bootstrap the baseline
-        logger.info("No active SECTOR_PREDICTOR_PROMPT found. Bootstrapping baseline...")
+        track_label = model_name or "default"
+        logger.info(f"No active SECTOR_PREDICTOR_PROMPT found for {track_label}. Bootstrapping baseline...")
         today = datetime.now(UTC).date()
         week_start = today - timedelta(days=7)
         week_end = today
-        tag = "sector-pred-baseline"
+        tag = f"sector-pred-baseline-{model_name}" if model_name else "sector-pred-baseline"
 
         client.table("prompt_experiments").insert(
             {
                 "variant_tag": tag,
                 "prompt_name": "SECTOR_PREDICTOR_PROMPT",
                 "prompt_content": SECTOR_PREDICTOR_PROMPT,
+                "track_id": model_name or "default",
                 "week_start": week_start.isoformat(),
                 "week_end": week_end.isoformat(),
                 "status": "active",
                 "experiment_type": "baseline",
-                "change_description": "Initial baseline sector predictor prompt.",
+                "change_description": f"Initial baseline sector predictor prompt for {track_label}.",
             }
         ).execute()
         return tag, SECTOR_PREDICTOR_PROMPT
@@ -131,7 +148,6 @@ async def get_predictor_data() -> str:
 
 async def run_sector_predictions():
     client = get_supabase_client()
-    prompt_tag, prompt_content = await fetch_active_prompt()
     data_block = await get_predictor_data()
 
     today = datetime.now(UTC).date()
@@ -164,6 +180,7 @@ async def run_sector_predictions():
         target_date = today + timedelta(days=days)
 
         for model in models:
+            prompt_tag, prompt_content = await fetch_active_prompt(model_name=model["name"])
             success = False
             for attempt in range(3):
                 try:

@@ -126,7 +126,8 @@ Return ONLY a valid JSON object with these fields:
   "change_description": "<1 sentence: what you changed and why>",
   "experiment_type": "incremental",
   "research_reasoning": "<detailed: why this change, what you expect to happen, what risks you considered>",
-  "confidence": 75
+  "confidence": 75,
+  "research_insight": "<1-2 sentences: durable strategic takeaway or lesson learned to store in long-term memory for this track>"
 }
 ```
 
@@ -136,6 +137,7 @@ Rules:
 - `selected_tools` must contain only valid tool names listed in the toolbox above.
 - `selected_prompt_blocks` must contain valid block keys (`let_winners_run`, `cut_losers_fast`, `catalyst_expiry_timer`, `five_whys_causal`, `mece_risk_partition`, `options_vol_discipline`, `macro_regime_routing`, `disconfirming_evidence_gate`).
 - `new_prompt_text` must be the COMPLETE modified strategy and analysis section only (do NOT output header/footer constraints or JSON schemas)
+- `research_insight` is optional but strongly recommended: provide a 1-2 sentence durable strategic rule or failure mode takeaway to store in long-term institutional memory for this track.
 - NEVER leave placeholder text like "<insert here>" — write the actual prompt
 
 

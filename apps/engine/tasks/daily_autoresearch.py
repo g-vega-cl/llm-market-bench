@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.config import DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, logger
 from core.db import get_supabase_client
@@ -19,7 +19,15 @@ from core.llm.daily_predictor_prompts import (
 
 
 class DailyMetaPromptResponse(BaseModel):
-    new_prompt: str
+    new_prompt: str = Field(..., description="The complete modified strategy and analytical reasoning instructions text")
+    research_insight: str | None = Field(
+        default=None,
+        description=(
+            "A concise, durable strategic takeaway or lesson learned from this week's prediction results "
+            "(e.g. how specific macro catalysts, gap-ups, or VIX levels affected SPY accuracy and magnitude calibration). "
+            "This will be preserved in long-term memory for this model track."
+        ),
+    )
 
 
 def calculate_magnitude_capture(p: dict) -> float:
@@ -112,11 +120,15 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     return float(calculate_daily_ratchet_metrics(predictions)["score"])
 
 
-def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str) -> dict:
-    """Fetch recent newsletters, market events, and active concept themes within the evaluation date window."""
+def fetch_autoresearch_context(
+    client, start_date_str: str, end_date_str: str, track_id: str | None = None
+) -> dict:
+    """Fetch recent newsletters, market events, active concept themes, and track-specific autoresearch memories."""
     context = {
         "daily_events": {},
         "active_concepts": [],
+        "track_id": track_id,
+        "track_memories": "",
     }
 
     try:
@@ -186,6 +198,16 @@ def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str) -
                     context["active_concepts"].append(f"- **{c_name}** (Velocity: {vel:.1f}, Mentions: {mentions})")
     except Exception as e:
         logger.warning(f"Error fetching active concepts for autoresearch context: {e}")
+
+    if track_id:
+        try:
+            from memory.store import retrieve_autoresearch_memories
+
+            track_memories = retrieve_autoresearch_memories(track_id=track_id, scope="daily_predictor", limit=5)
+            if track_memories:
+                context["track_memories"] = track_memories
+        except Exception as e:
+            logger.warning(f"Error fetching autoresearch memories for {track_id}: {e}")
 
     return context
 
@@ -294,6 +316,13 @@ def compute_magnitude_postmortem_summary(
         lines.append("\n#### ACTIVE THEMATIC CONCEPTS & MARKET PLAYBOOKS:")
         lines.extend(active_concepts)
 
+    # Append Prior Autoresearch Memories for this track if present
+    track_mems = macro_context.get("track_memories") if macro_context else None
+    if track_mems:
+        track_name = macro_context.get("track_id") or "CURRENT TRACK"
+        lines.append(f"\n#### PRIOR AUTORESEARCH MEMORIES & LESSONS (Track: {track_name}):")
+        lines.append(track_mems)
+
     return "\n".join(lines)
 
 
@@ -303,7 +332,7 @@ async def generate_new_daily_prompt(
     predictions: list[dict] | None = None,
     macro_context: dict | None = None,
     meta_researcher=None,
-) -> str:
+) -> tuple[str, str | None]:
     """Generate a mutated strategy instruction prompt using DeepSeek Flash."""
     _, mutable_strategies, _ = split_daily_predictor_prompt(old_prompt)
 
@@ -325,7 +354,8 @@ async def generate_new_daily_prompt(
         "instruct the predictor to be more confident and aggressive in expected_return_pct magnitude (e.g. +0.50% to +1.20% instead of timid +0.20%).\n"
         "4. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
         "5. Rewrite ONLY the strategy / analytical reasoning section of the prompt. "
-        "Do NOT include output formatting rules or JSON schema definitions; the output structure is automatically enforced.\n\n"
+        "Do NOT include output formatting rules or JSON schema definitions; the output structure is automatically enforced.\n"
+        "6. Provide a concise `research_insight` (1-2 sentences) summarizing the core lesson or causal rule learned from this week's results to persist in this track's institutional memory.\n\n"
         "CURRENT STRATEGY INSTRUCTIONS:\n"
         f"```text\n{mutable_strategies}\n```\n\n"
         "Output ONLY the raw new strategy instructions text."
@@ -351,10 +381,14 @@ async def generate_new_daily_prompt(
                 lines = lines[:-1]
             new_strategies = "\n".join(lines).strip()
 
-        return DAILY_PREDICTOR_CONSTRAINTS_HEADER + new_strategies + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+        assembled_prompt = DAILY_PREDICTOR_CONSTRAINTS_HEADER + new_strategies + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+        insight = getattr(resp, "research_insight", None)
+        if insight:
+            insight = insight.strip()
+        return assembled_prompt, insight
     except Exception as e:
         logger.error(f"Error generating new daily predictor prompt: {e}")
-        return old_prompt
+        return old_prompt, None
 
 
 async def run_daily_autoresearch_for_model(
@@ -481,10 +515,12 @@ async def run_daily_autoresearch_for_model(
             client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
 
     # 5. Fetch 14-day rich macro, newsletter, and concepts context
-    macro_context = fetch_autoresearch_context(client, fourteen_days_ago.isoformat(), today.isoformat())
+    macro_context = fetch_autoresearch_context(
+        client, fourteen_days_ago.isoformat(), today.isoformat(), track_id=model_name
+    )
 
     # 6. Mutate prompt using DeepSeek Flash with enriched context
-    new_prompt = await generate_new_daily_prompt(
+    new_prompt, research_insight = await generate_new_daily_prompt(
         old_prompt=current_prompt,
         baseline_score=current_score,
         predictions=predictions,
@@ -495,6 +531,34 @@ async def run_daily_autoresearch_for_model(
     # 7. Deploy new active prompt variant scoped to track_id, demoting prior active variants
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"
     week_end = today + timedelta(days=7)
+    is_baseline_beat = (baseline_score == -100.0) or (current_score >= baseline_score)
+
+    if research_insight:
+        if dry_run:
+            logger.info(f"[DRY RUN] Would record track memory for {model_name}: {research_insight}")
+        else:
+            try:
+                from memory.store import add_memory
+
+                importance = 9 if is_baseline_beat else 6
+                add_memory(
+                    content=f"[{model_name.upper()} DAILY PREDICTOR INSIGHT] {research_insight}",
+                    memory_type="AUTORESEARCH_INSIGHT",
+                    importance_score=importance,
+                    metadata={
+                        "scope": "daily_predictor",
+                        "track_id": model_name,
+                        "model_name": model_name,
+                        "ratchet_score": current_score,
+                        "baseline_score": baseline_score if baseline_score != -100.0 else None,
+                        "is_baseline_beat": is_baseline_beat,
+                        "variant_tag": new_tag,
+                    },
+                    check_similarity=True,
+                )
+                logger.info(f"Recorded autoresearch memory for {model_name}: {research_insight[:80]}...")
+            except Exception as e:
+                logger.warning(f"Failed to record autoresearch memory for {model_name}: {e}")
 
     if dry_run:
         logger.info(

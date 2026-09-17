@@ -157,3 +157,25 @@ async def query_verifier_audit_context(
     from core.llm.tools import execute_inspect_verifier_rules_tool
 
     return await execute_inspect_verifier_rules_tool(limit=limit, ticker=ticker, track_id=track_id)
+
+
+async def query_past_research_memories(track_id: str = "track_default", limit: int = 5) -> str:
+    """Fetch recent durable autoresearch insight memories for this specific portfolio track.
+
+    Args:
+        track_id: Research track ID to audit.
+        limit: Max memories to retrieve.
+
+    Returns:
+        Formatted summary string of past autoresearch insights for this track.
+    """
+    try:
+        from memory.store import retrieve_autoresearch_memories
+
+        res = retrieve_autoresearch_memories(track_id=track_id, scope="portfolio_trading", limit=limit)
+        if not res:
+            return f"No past autoresearch insight memories found for track {track_id}."
+        return f"=== PAST AUTORESEARCH MEMORIES (Track: {track_id}) ===\n{res}"
+    except Exception as e:
+        logger.exception("Error querying past research memories for autoresearcher: %s", e)
+        return f"Error querying past research memories: {str(e)}"

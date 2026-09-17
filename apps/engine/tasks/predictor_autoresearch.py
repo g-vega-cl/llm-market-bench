@@ -6,9 +6,15 @@ from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from core.config import logger
+from core.config import (
+    DEEPSEEK_FLASH_MODEL,
+    GEMINI_MODEL,
+    MINIMAX_MODEL,
+    OPENAI_MODEL,
+    logger,
+)
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_gemini_client
 from core.llm.predictor_prompts import (
@@ -17,9 +23,18 @@ from core.llm.predictor_prompts import (
     split_predictor_prompt,
 )
 
+TARGET_SECTOR_MODELS = [DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, GEMINI_MODEL, OPENAI_MODEL]
+
 
 class MetaPromptResponse(BaseModel):
-    new_prompt: str
+    new_prompt: str = Field(..., description="The complete modified strategy and analytical reasoning instructions text")
+    research_insight: str | None = Field(
+        default=None,
+        description=(
+            "A durable strategic takeaway on sector rotation, macro alpha, or correlation dynamics "
+            "to preserve in long-term memory for this model track."
+        ),
+    )
 
 
 def calculate_baseline_score(predictions: list[dict]) -> float:
@@ -75,18 +90,32 @@ def calculate_baseline_score(predictions: list[dict]) -> float:
     return float(final_score)
 
 
-async def generate_new_prompt(old_prompt: str, baseline_score: float, meta_researcher) -> str:
+async def generate_new_prompt(
+    old_prompt: str,
+    baseline_score: float,
+    meta_researcher,
+    track_memories: str = "",
+    model_name: str | None = None,
+) -> tuple[str, str | None]:
     """Generate a new prompt variant."""
     _, mutable_strategies, _ = split_predictor_prompt(old_prompt)
+
+    mem_block = ""
+    if track_memories:
+        track_label = model_name or "CURRENT TRACK"
+        mem_block = f"\n### PRIOR AUTORESEARCH INSIGHTS & LESSONS (Track: {track_label}):\n{track_memories}\n"
 
     meta_prompt = (
         "You are a Meta-Researcher AI tasked with improving an LLM's system prompt "
         "for predicting the best performing market sectors and uncorrelated pairs.\n\n"
         f"The current prompt strategy achieved a percentile score of {baseline_score:.1f}/100.0.\n"
+        f"{mem_block}\n"
         "Your goal is to rewrite ONLY the strategy / analytical reasoning section of the prompt "
         "to be more effective, focusing on deeper logic, macro quantitative signals, and better data extraction. "
         "Do NOT include any output formatting instructions or JSON schemas in your output; "
         "the required output format is enforced automatically by the system.\n\n"
+        "Provide a concise `research_insight` (1-2 sentences) summarizing the key sector rotation or correlation "
+        "principle discovered from this evaluation cycle to persist in this track's institutional memory.\n\n"
         "CURRENT STRATEGY INSTRUCTIONS:\n"
         f"```text\n{mutable_strategies}\n```\n\n"
         "Output ONLY the new raw strategy instructions text."
@@ -111,23 +140,32 @@ async def generate_new_prompt(old_prompt: str, baseline_score: float, meta_resea
             if lines and lines[-1].startswith("```"):
                 lines = lines[:-1]
             new_strategies = "\n".join(lines).strip()
-        return SECTOR_PREDICTOR_CONSTRAINTS_HEADER + new_strategies + SECTOR_PREDICTOR_CONSTRAINTS_FOOTER
+
+        assembled_prompt = SECTOR_PREDICTOR_CONSTRAINTS_HEADER + new_strategies + SECTOR_PREDICTOR_CONSTRAINTS_FOOTER
+        insight = getattr(resp, "research_insight", None)
+        if insight:
+            insight = insight.strip()
+        return assembled_prompt, insight
     except Exception as e:
         logger.error(f"Error generating new prompt: {e}")
-        return old_prompt
+        return old_prompt, None
 
 
-async def run_predictor_autoresearch():
-    client = get_supabase_client()
-
-    today = datetime.now(UTC).date()
-    seven_days_ago = today - timedelta(days=7)
-
-    # 1. Fetch evaluated predictions from the last week
+async def run_predictor_autoresearch_for_model(
+    model_name: str,
+    client,
+    today,
+    seven_days_ago,
+    meta_researcher,
+    dry_run: bool = False,
+):
+    """Run weekly prompt evolution, track isolation, and ratchet check for a single sector predictor model."""
+    # 1. Fetch evaluated predictions from the last week for this specific model
     response = (
         client.table("sector_predictions")
         .select("*")
         .eq("status", "evaluated")
+        .eq("model_name", model_name)
         .gte("target_date", seven_days_ago.isoformat())
         .lte("target_date", today.isoformat())
         .execute()
@@ -135,17 +173,18 @@ async def run_predictor_autoresearch():
 
     predictions = response.data
     if not predictions:
-        logger.info("No evaluated predictions found in the last week. Skipping autoresearch.")
+        logger.info(f"No evaluated sector predictions found for {model_name} in the last week. Skipping autoresearch.")
         return
 
     # Calculate weekly score using baseline ratchet formula (including Brier penalty)
     weekly_score = calculate_baseline_score(predictions)
 
-    # 2. Fetch current active prompt
+    # 2. Fetch current active prompt for this model track
     prompt_response = (
         client.table("prompt_experiments")
         .select("*")
         .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+        .eq("track_id", model_name)
         .eq("status", "active")
         .order("created_at", desc=True)
         .limit(1)
@@ -153,26 +192,60 @@ async def run_predictor_autoresearch():
     )
 
     if not prompt_response.data:
-        logger.warning("No active SECTOR_PREDICTOR_PROMPT found. Cannot run autoresearch.")
+        # Check model track baseline
+        prompt_response = (
+            client.table("prompt_experiments")
+            .select("*")
+            .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+            .eq("track_id", model_name)
+            .eq("status", "baseline")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+    if not prompt_response.data:
+        # Seed baseline for this model track
+        from tasks.sector_predictor import fetch_active_prompt
+
+        tag, content = await fetch_active_prompt(model_name=model_name)
+        prompt_response = (
+            client.table("prompt_experiments")
+            .select("*")
+            .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+            .eq("track_id", model_name)
+            .eq("variant_tag", tag)
+            .execute()
+        )
+
+    if not prompt_response.data:
+        logger.warning(f"No active SECTOR_PREDICTOR_PROMPT found for {model_name}. Cannot run autoresearch.")
         return
 
     current_prompt = prompt_response.data[0]["prompt_content"]
     parent_tag = prompt_response.data[0]["variant_tag"]
 
     # 3. Update the active prompt variant metrics in DB
-    client.table("prompt_experiments").update({"metrics": {"score": weekly_score}}).eq(
-        "variant_tag", parent_tag
-    ).execute()
-    logger.info(f"Updated prompt variant {parent_tag} with weekly score {weekly_score:.4f}")
+    if not dry_run:
+        client.table("prompt_experiments").update({"metrics": {"score": weekly_score}}).eq(
+            "variant_tag", parent_tag
+        ).execute()
+    logger.info(f"Updated prompt variant {parent_tag} ({model_name}) with weekly score {weekly_score:.4f}")
 
-    # 4. Fetch all-time baseline prompt variant to perform ratchet comparison
-    all_variants = client.table("prompt_experiments").select("*").eq("prompt_name", "SECTOR_PREDICTOR_PROMPT").execute()
+    # 4. Fetch all-time baseline prompt variant for this model track
+    all_variants = (
+        client.table("prompt_experiments")
+        .select("*")
+        .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+        .eq("track_id", model_name)
+        .execute()
+    )
 
     baseline_score = -1.0
     baseline_tag = parent_tag
     baseline_content = current_prompt
 
-    for v in all_variants.data:
+    for v in all_variants.data or []:
         if v["variant_tag"] == parent_tag:
             continue
         m = v.get("metrics") or {}
@@ -182,51 +255,132 @@ async def run_predictor_autoresearch():
             baseline_tag = v["variant_tag"]
             baseline_content = v["prompt_content"]
 
+    is_baseline_beat = (baseline_score == -1.0) or (weekly_score >= baseline_score)
+
     # Compare weekly score with baseline
     if baseline_score != -1.0 and weekly_score < baseline_score:
         logger.info(
-            f"RATCHET: Weekly score {weekly_score:.4f} failed to beat baseline {baseline_score:.4f}. Reverting to {baseline_tag}."
+            f"SECTOR RATCHET ({model_name}): Weekly score {weekly_score:.4f} failed to beat baseline {baseline_score:.4f}. "
+            f"Reverting to {baseline_tag}."
         )
-        # Revert active prompt in DB to baseline content and mark as discarded
-        client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
+        if not dry_run:
+            client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
         current_prompt = baseline_content
         parent_tag = baseline_tag
     else:
         logger.info(
-            f"RATCHET: Weekly score {weekly_score:.4f} beats/equals baseline {baseline_score:.4f}. Establishing {parent_tag} as baseline."
+            f"SECTOR RATCHET ({model_name}): Weekly score {weekly_score:.4f} beats/equals baseline {baseline_score:.4f}. "
+            f"Establishing {parent_tag} as baseline."
         )
-        client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
-        # Demote all other active/baseline predictor prompts to saved
-        client.table("prompt_experiments").update({"status": "saved"}).in_("status", ["active", "baseline"]).eq(
-            "prompt_name", "SECTOR_PREDICTOR_PROMPT"
-        ).neq("variant_tag", parent_tag).execute()
+        if not dry_run:
+            client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
+            client.table("prompt_experiments").update({"status": "saved"}).in_("status", ["active", "baseline"]).eq(
+                "prompt_name", "SECTOR_PREDICTOR_PROMPT"
+            ).eq("track_id", model_name).neq("variant_tag", parent_tag).execute()
 
-    # 5. Generate new prompt mutated from (post-revert) current_prompt
-    meta_researcher = get_gemini_client()
+    # 5. Fetch isolated memories for this sector track
+    track_memories = ""
     try:
-        new_prompt = await generate_new_prompt(current_prompt, weekly_score, meta_researcher)
-    finally:
-        await close_client(meta_researcher, "gemini")
+        from memory.store import retrieve_autoresearch_memories
 
-    # 6. Insert new prompt and set status to active
-    new_tag = f"sector-pred-{uuid.uuid4().hex[:8]}"
+        track_memories = retrieve_autoresearch_memories(track_id=model_name, scope="sector_predictor", limit=5)
+    except Exception as e:
+        logger.warning(f"Error fetching autoresearch memories for {model_name}: {e}")
+
+    # 6. Generate new prompt mutated from (post-revert) current_prompt
+    new_prompt, research_insight = await generate_new_prompt(
+        current_prompt,
+        weekly_score,
+        meta_researcher,
+        track_memories=track_memories,
+        model_name=model_name,
+    )
+
+    # 7. Insert new prompt and set status to active
+    new_tag = f"sector-pred-{model_name}-{uuid.uuid4().hex[:8]}"
     week_end = today + timedelta(days=7)
+
+    if research_insight:
+        if dry_run:
+            logger.info(f"[DRY RUN] Would record sector memory for {model_name}: {research_insight}")
+        else:
+            try:
+                from memory.store import add_memory
+
+                importance = 9 if is_baseline_beat else 6
+                add_memory(
+                    content=f"[{model_name.upper()} SECTOR PREDICTOR INSIGHT] {research_insight}",
+                    memory_type="AUTORESEARCH_INSIGHT",
+                    importance_score=importance,
+                    metadata={
+                        "scope": "sector_predictor",
+                        "track_id": model_name,
+                        "model_name": model_name,
+                        "ratchet_score": weekly_score,
+                        "baseline_score": baseline_score if baseline_score != -1.0 else None,
+                        "is_baseline_beat": is_baseline_beat,
+                        "variant_tag": new_tag,
+                    },
+                    check_similarity=True,
+                )
+                logger.info(f"Recorded autoresearch memory for {model_name}: {research_insight[:80]}...")
+            except Exception as e:
+                logger.warning(f"Failed to record autoresearch memory for {model_name}: {e}")
+
+    if dry_run:
+        logger.info(
+            f"[DRY RUN] Would deploy new sector prompt variant for {model_name}: {new_tag}\n"
+            f"[DRY RUN] Parent Tag: {parent_tag}\n"
+            f"[DRY RUN] Mutated Content Preview:\n{new_prompt[:300]}..."
+        )
+        return
+
+    # Demote all existing active variants for this model track to saved
+    client.table("prompt_experiments").update({"status": "saved"}).eq("prompt_name", "SECTOR_PREDICTOR_PROMPT").eq(
+        "track_id", model_name
+    ).eq("status", "active").execute()
 
     client.table("prompt_experiments").insert(
         {
             "variant_tag": new_tag,
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
             "prompt_content": new_prompt,
+            "track_id": model_name,
             "week_start": today.isoformat(),
             "week_end": week_end.isoformat(),
             "status": "active",
             "experiment_type": "incremental",
             "parent_tag": parent_tag,
-            "change_description": f"Autoresearch generated from baseline {weekly_score:.1f}",
+            "change_description": f"Autoresearch generated for {model_name} from score {weekly_score:.1f}",
         }
     ).execute()
 
-    logger.info(f"Successfully generated and deployed new predictor prompt: {new_tag}")
+    logger.info(f"Successfully generated and deployed new predictor prompt for {model_name}: {new_tag}")
+
+
+async def run_predictor_autoresearch(dry_run: bool = False, target_models: list[str] | None = None):
+    """Run weekly prompt evolution across all 4 sector predictor model tracks."""
+    client = get_supabase_client()
+
+    today = datetime.now(UTC).date()
+    seven_days_ago = today - timedelta(days=7)
+
+    if target_models is None:
+        target_models = TARGET_SECTOR_MODELS
+
+    meta_researcher = get_gemini_client()
+    try:
+        for model_name in target_models:
+            await run_predictor_autoresearch_for_model(
+                model_name=model_name,
+                client=client,
+                today=today,
+                seven_days_ago=seven_days_ago,
+                meta_researcher=meta_researcher,
+                dry_run=dry_run,
+            )
+    finally:
+        await close_client(meta_researcher, "gemini")
 
 
 if __name__ == "__main__":

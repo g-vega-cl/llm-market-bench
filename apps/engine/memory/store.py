@@ -161,6 +161,71 @@ def retrieve_uncrowded_trades(limit: int = 5) -> str:
     return retrieve_thematic_flows(limit=limit)
 
 
+def retrieve_autoresearch_memories(track_id: str, scope: str | None = None, limit: int = 5) -> str:
+    """Fetches active AUTORESEARCH_INSIGHT memories isolated to a specific model or track ID.
+
+    Args:
+        track_id: The specific model track ID (e.g. 'deepseek-v4-flash', 'MiniMax-M3', 'track_claude').
+        scope: Optional scope discriminator ('daily_predictor', 'sector_predictor', 'portfolio_trading').
+        limit: Max number of memories to return.
+
+    Returns:
+        Formatted markdown string of past autoresearch insights for this track.
+    """
+    try:
+        import json
+
+        client = get_supabase_client()
+        response = (
+            client.table("memories")
+            .select("content, importance_score, metadata, created_at")
+            .eq("memory_type", "AUTORESEARCH_INSIGHT")
+            .eq("status", "ACTIVE")
+            .order("importance_score", desc=True)
+            .order("created_at", desc=True)
+            .limit(limit * 4)
+            .execute()
+        )
+
+        if not response or not getattr(response, "data", None):
+            return ""
+
+        filtered = []
+        for row in response.data:
+            meta = row.get("metadata") or {}
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except Exception:
+                    meta = {}
+
+            row_track = meta.get("track_id")
+            if row_track != track_id:
+                continue
+
+            if scope and meta.get("scope") != scope:
+                continue
+
+            filtered.append(row)
+            if len(filtered) >= limit:
+                break
+
+        if not filtered:
+            return ""
+
+        lines = []
+        for row in filtered:
+            imp = row.get("importance_score", 5)
+            content = strip_html(row.get("content", ""))
+            if content:
+                lines.append(f"- (Importance: {imp}/10) {content}")
+
+        return "\n".join(lines)
+    except Exception as e:
+        logger.error(f"Error in retrieve_autoresearch_memories: {e}")
+        return ""
+
+
 def retrieve_for_decision(
     ticker: str,
     reasoning: str,
@@ -622,7 +687,7 @@ def decay_memories(sb_client: Client, decay_days: int = None):
         # Fetch active memories with relevance > threshold
         response = (
             sb_client.table("memories")
-            .select("id", "relevance_score", "created_at", "memory_type")
+            .select("id, relevance_score, created_at, memory_type, importance_score, metadata")
             .eq("status", "ACTIVE")
             .lt("created_at", cutoff)
             .gt("relevance_score", config.MEMORIES_DECAY_THRESHOLD)
@@ -633,16 +698,29 @@ def decay_memories(sb_client: Client, decay_days: int = None):
             logger.info("No stale memories to decay.")
             return
 
+        import json
+
         decay_count = 0
         for memory in response.data:
             mt = memory.get("memory_type", "MARKET_EVENT")
             if mt in ("LESSON_LEARNED", "POST_MORTEM", "ACADEMIC_PAPER"):
                 continue  # Never decay: behavioral patterns and immutable trade outcomes
 
+            if mt == "AUTORESEARCH_INSIGHT":
+                meta = memory.get("metadata") or {}
+                if isinstance(meta, str):
+                    try:
+                        meta = json.loads(meta)
+                    except Exception:
+                        meta = {}
+                # Baseline winners and high-importance insights are preserved permanently
+                if meta.get("is_baseline_beat") is True or int(memory.get("importance_score") or 0) >= 8:
+                    continue
+                decay_factor = 0.50
             # THEMATIC_FLOW / UNCROWDED_TRADE: cycle-specific theses decay slowly.
             # 0.72/month → relevant for ~2 months, below 0.05 threshold by month 12.
             # This lets AI-rotation style theses fade naturally as the cycle turns.
-            if mt in ("THEMATIC_FLOW", "UNCROWDED_TRADE"):
+            elif mt in ("THEMATIC_FLOW", "UNCROWDED_TRADE"):
                 decay_factor = 0.72
             elif mt == "MARKET_EVENT":
                 decay_factor = 0.5  # 50% per 30 days

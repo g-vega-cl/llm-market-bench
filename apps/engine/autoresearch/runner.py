@@ -290,6 +290,30 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
                 parent_tag=parent_tag,
             )
         logger.info("New active prompt variant: %s", tag)
+
+        if result.research_insight:
+            try:
+                from memory.store import add_memory
+
+                is_baseline_beat = (baseline_metrics is None) or (score >= baseline_metrics.get("score", 0))
+                importance = 9 if is_baseline_beat else 6
+                add_memory(
+                    content=f"[{track_id.upper()} PORTFOLIO AUTORESEARCH INSIGHT] {result.research_insight}",
+                    memory_type="AUTORESEARCH_INSIGHT",
+                    importance_score=importance,
+                    metadata={
+                        "scope": "portfolio_trading",
+                        "track_id": track_id,
+                        "ratchet_score": score,
+                        "baseline_score": baseline_metrics.get("score") if baseline_metrics else None,
+                        "is_baseline_beat": is_baseline_beat,
+                        "variant_tag": tag,
+                    },
+                    check_similarity=True,
+                )
+                logger.info("Recorded autoresearch memory for track %s: %s", track_id, result.research_insight[:80])
+            except Exception as e:
+                logger.warning("Failed to record autoresearch memory for track %s: %s", track_id, e)
     except Exception as e:
         logger.error("Failed to save variant: %s", e)
         logger.error("AUTORESEARCH_RESULT: FAILED_SAVE | error=%s", e)

@@ -84,6 +84,13 @@ class PromptResearchResult(BaseModel):
     experiment_type: str = Field(..., description="'incremental' or 'radical'")
     research_reasoning: str = Field(..., description="Detailed reasoning for this change")
     confidence: int = Field(ge=0, le=100, description="Confidence in this change (0-100)")
+    research_insight: str | None = Field(
+        default=None,
+        description=(
+            "A concise, durable strategic takeaway, hypothesis outcome, or postmortem lesson from this week's trading performance "
+            "to store in long-term memory for this portfolio track."
+        ),
+    )
 
 
 async def run_research(

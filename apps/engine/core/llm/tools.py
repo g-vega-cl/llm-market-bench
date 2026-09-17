@@ -1217,6 +1217,51 @@ GET_CONGRESS_TRADES_TOOL = {
     },
 }
 
+ANALYZE_THEMATIC_BENEFICIARIES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "analyze_thematic_beneficiaries",
+        "description": "Screens second-order winners and thematic beneficiaries via factor correlation, beta sensitivity, and options positioning relative to an anchor ticker.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "anchor_ticker": {
+                    "type": "string",
+                    "description": "The primary anchor ticker driving the theme (e.g. 'NVDA' for AI, 'LLY' for GLP-1).",
+                },
+                "theme": {
+                    "type": "string",
+                    "description": "Optional human-readable theme name or hypothesis (e.g. 'AI Power & Memory', 'GLP-1 Apparel Shift').",
+                },
+                "candidate_tickers": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional explicit list of candidate peer tickers to evaluate against the anchor.",
+                },
+                "candidate_industries": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional list of FMP industries to screen candidates from (e.g. ['Regulated Electric', 'Electrical Equipment & Parts']).",
+                },
+                "candidate_sectors": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional list of FMP sectors to screen candidates from (e.g. ['Utilities', 'Industrials']).",
+                },
+                "lookback_days": {
+                    "type": "integer",
+                    "description": "Lookback window in trading days for calculating correlation, beta, and momentum (default 60).",
+                },
+                "include_institutional": {
+                    "type": "boolean",
+                    "description": "Whether to cluster SEC Form 13F institutional co-ownership across top funds (default false).",
+                },
+            },
+            "required": ["anchor_ticker"],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1261,6 +1306,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_barrier_touch_probabilities": GET_BARRIER_TOUCH_PROBABILITIES_TOOL,
     "get_ticker_news": GET_TICKER_NEWS_TOOL,
     "get_congress_trades": GET_CONGRESS_TRADES_TOOL,
+    "analyze_thematic_beneficiaries": ANALYZE_THEMATIC_BENEFICIARIES_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -3752,6 +3798,41 @@ async def execute_get_congress_trades_tool(
     except Exception as e:
         logger.exception("Error executing get_congress_trades tool: %s", e)
         return f"Error retrieving Congress trading disclosures: {e}"
+
+
+async def execute_analyze_thematic_beneficiaries_tool(
+    anchor_ticker: str,
+    theme: str | None = None,
+    candidate_tickers: list[str] | None = None,
+    candidate_industries: list[str] | None = None,
+    candidate_sectors: list[str] | None = None,
+    lookback_days: int = 60,
+    options_top_n: int = 3,
+    include_financials: bool = True,
+    include_institutional: bool = False,
+) -> str:
+    """Executes the analyze_thematic_beneficiaries tool to identify related winners."""
+    try:
+        from analysis.thematic_beneficiaries import (
+            compute_thematic_beneficiaries,
+            format_thematic_beneficiaries_markdown,
+        )
+
+        result = await compute_thematic_beneficiaries(
+            anchor_ticker=anchor_ticker,
+            theme=theme,
+            candidate_tickers=candidate_tickers,
+            candidate_industries=candidate_industries,
+            candidate_sectors=candidate_sectors,
+            lookback_days=lookback_days,
+            options_top_n=options_top_n,
+            include_financials=include_financials,
+            include_institutional=include_institutional,
+        )
+        return format_thematic_beneficiaries_markdown(result)
+    except Exception as e:
+        logger.exception("Error executing analyze_thematic_beneficiaries tool for %s: %s", anchor_ticker, e)
+        return f"Error analyzing thematic beneficiaries for '{anchor_ticker}': {e}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

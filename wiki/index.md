@@ -6,6 +6,10 @@
 
 ## Entities
 
+- [[entities/thematic-beneficiaries]] — Thematic beneficiary identification and markdown formatting tool
+- [[entities/sec-13f-client]] — SEC 13F filing client for EDGAR institutional holdings
+- [[entities/sec-13f-client]] — Auto-indexed page
+- [[entities/thematic-beneficiaries]] — Auto-indexed page
 - [[entities/congress-trades]] — STOCK Act disclosure ingestion, Supabase persistence, and agent pull tool
 - [[entities/sector-trading]] — Live weekly sector portfolio entry, exit, and status execution engine
 - [[entities/fetch-daily-newsletter-tool]] — Canonical daily newsletter fetch tool for trading LLMs

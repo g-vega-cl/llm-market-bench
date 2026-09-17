@@ -158,5 +158,10 @@
   {
     "name": "get_congress_trades",
     "desc": "Stock trading disclosures by US Congress members (Senate and House) with transaction types, amounts, and filing dates"
+  },
+  {
+    "name": "analyze_thematic_beneficiaries",
+    "desc": "Screens second-order winners and thematic beneficiaries via factor correlation, beta sensitivity, options positioning, and institutional co-ownership"
   }
 ]
+

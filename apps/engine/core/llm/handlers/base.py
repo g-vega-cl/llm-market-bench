@@ -218,6 +218,18 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             transaction_type=args.get("transaction_type"),
             limit=args.get("limit", 20),
         )
+    elif name == "analyze_thematic_beneficiaries":
+        return await tools.execute_analyze_thematic_beneficiaries_tool(
+            anchor_ticker=args.get("anchor_ticker") or args.get("ticker", ""),
+            theme=args.get("theme"),
+            candidate_tickers=args.get("candidate_tickers"),
+            candidate_industries=args.get("candidate_industries"),
+            candidate_sectors=args.get("candidate_sectors"),
+            lookback_days=args.get("lookback_days", 60),
+            options_top_n=args.get("options_top_n", 3),
+            include_financials=args.get("include_financials", True),
+            include_institutional=args.get("include_institutional", False),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

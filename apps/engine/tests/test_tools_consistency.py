@@ -6,6 +6,7 @@ from pathlib import Path
 from autoresearch.researcher import PromptResearchResult
 from core.llm.tools import (
     ADD_THEMATIC_FLOW_TOOL,
+    ANALYZE_THEMATIC_BENEFICIARIES_TOOL,
     AUDIT_FINANCIAL_VALUATION_TOOL,
     FETCH_DAILY_NEWSLETTER_TOOL,
     FETCH_NEWSLETTER_CONTENT_TOOL,
@@ -120,6 +121,7 @@ def test_tools_json_matches_engine_tool_definitions():
         GET_BARRIER_TOUCH_PROBABILITIES_TOOL,
         GET_TICKER_NEWS_TOOL,
         GET_CONGRESS_TRADES_TOOL,
+        ANALYZE_THEMATIC_BENEFICIARIES_TOOL,
     ]
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}
 

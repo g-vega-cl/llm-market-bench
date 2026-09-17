@@ -35,8 +35,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: add institutional buying and Congress buying?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 - [ ] - Benchify: market data free APIs?
-- [x] - Benchify: is AI better working with many small files for separation of concerns and avoid side effects? Islands?
-    - Confirmed with git forensics: AI agents perform best with vertical slice islands (100 to 300 LOC) and colocated tests, while files over 700 LOC have 40% to 66% bug ratios. Avoided hyper-fragmented micro-files. Codified as Principle 10 and 11 in `GEMINI.md` and created `[[concepts/vertical-slice-islands]]`.
 - [ ] - Benchify: free APIs to the LLMs chat?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
@@ -71,15 +69,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 - [ ] - Find if yoyu can set up any PEAD based strategy
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
-- [x] - Make sure my agents are thinking agents.
-    - Audited thinking and reasoning configurations across all 5 LLM providers (OpenAI, Anthropic, Gemini, DeepSeek, MiniMax) and 7 specialized agents.
-    - Conducted empirical live API experiments resolving why thinking interferes with tool calling:
-        - Anthropic rejects thinking when tools are forced: `Error 400: Thinking may not be enabled when tool_choice forces tool use.`
-        - OpenAI rejects tool schemas with reasoning on chat completions: `Error 400: Function tools with reasoning_effort are not supported in /v1/chat/completions.`
-        - DeepSeek narrates tool calls inside `reasoning_content` instead of emitting structured API tool calls when thinking is active during tool loops, causing 0 executions and downstream hard enforcement rejections.
-    - Standardized the two-step architecture: Step 1 executes deterministic tool loops with thinking suppressed to ensure reliable API tool calling without hallucinations; Step 2 enables deep thinking during analytical synthesis and structured extraction.
-    - Enabled DeepSeek thinking mode (`extra_body={"thinking": {"type": "enabled"}}`) across Daily S&P Predictor (`daily_predictor.py`), Sector Predictor (`sector_predictor.py`), Verifier Agent (`verification.py`), and Autoresearch meta-agent (`researcher.py`).
-    - Added comprehensive reproduction and regression test suite in `apps/engine/tests/test_thinking_agents.py` verifying thinking activation during extraction and suppression during tool loops.
 
 ## Hotspot Refactoring (Vertical Slice Islands)
 

@@ -60,12 +60,36 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
 - [ ] - Benchify: insider trading tracker, congress, CEO, whales , 13Fs?Canada insider trader specifically?
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
-- [ ] - Benchify; tool for think about related winners? Memory/energy/etc... in AI, clothes GLP, etc...
 - [ ] - Benchify: something I can autoresearch daily?
         Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 - [ ] - Find if yoyu can set up any PEAD based strategy
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
+- [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
+- [ ] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...
+- [ ] - Benchify : format better the newsletter section of: The Catalyst Radar & Key Levels.
+- [ ] - Benchify : audit if option data is being used for daily predictor and newsletter
+- [ ] - Benchify, if you were to show this up as a portfolio project. What would you improve. - Lighthouse, design, maybe audit data fetching. CDNs? It should be lighting fast. SSR?
+- [ ] - Benchify: even though CPI was released at 8:30 and predictor/newsletter at 9:15, we still didn't get/fetch the result of the CPI
+- [ ] - Benchify: I don't like the "collapse" in mobile.in my theme portfolios
+- [ ] - Benchify: a tool that describes how the market/stock/spy moved during the day? Or one that brings you the daily prices?
+- [ ] - Benchify: audit that the "sector trend" and others portfolios are set up.
+- [ ] - Benchify : daily predictor prompt diff
+- [ ] - Benchify : in the daily predictor. It shows as if the current new prompt had a score already
+- [ ] - Benchify : daily predictor doesn't show tools used in autoresearch
+- [ ] - Benchify : sector autoresearch doesn't show many things
+- [ ] - Benchify : audit the must show values in autoresearch. We must show the same things in all autoresearch, like score, how is it calculated, proper dates, easily see baselines, prompt difference.. tools used. Etc...
+- [ ] - Benchify audit sector predictor portfolio. Seems like it's wrong
+- [ ] - Benchify: daily autoresearcher "lesson learned"? Like, every day, when you check if you were right or wrong, also ask "why" and see if it's worth adding these insights as memories or as an special label for daily predictor
+- [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
+- [ ] - Benchify: add a "this could be a trade or force in the future". Like, ABNB with world cup, or cybersecurity/infrastructure with AI, or some undervalued company going through a temporary rough patch.
+- [ ] - Benchify: add "buffet sayings" tool? Like buy low sell high, buy when others are scared, etc....?
+- [ ] - Benchify: prompt tool question, "how did markets react the last time XYZ happened?"
+- [ ] - Benchify : find weekly /daily/monthly gainers and ask: why didn't we predict this?
+- [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money
+- [ ] - Benchify: any way of tracking which tools were used?
+- [ ] - Benchify: daily portfolios but sell at 3:50ish, not when target is hit.
+- [ ] - Benchify: Right now we have in trades a single newsletter attribution usually but with AI more than one newsletter could have been the reason of the trade or even not newsletters and other thoughts how can we improve attribution"1
 
 ## Hotspot Refactoring (Vertical Slice Islands)
 

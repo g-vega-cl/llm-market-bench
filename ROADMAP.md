@@ -75,7 +75,15 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 - [ ] - Find if yoyu can set up any PEAD based strategy
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
-- [ ] - Make sure my agents are thinking agents.
+- [x] - Make sure my agents are thinking agents.
+    - Audited thinking and reasoning configurations across all 5 LLM providers (OpenAI, Anthropic, Gemini, DeepSeek, MiniMax) and 7 specialized agents.
+    - Conducted empirical live API experiments resolving why thinking interferes with tool calling:
+        - Anthropic rejects thinking when tools are forced: `Error 400: Thinking may not be enabled when tool_choice forces tool use.`
+        - OpenAI rejects tool schemas with reasoning on chat completions: `Error 400: Function tools with reasoning_effort are not supported in /v1/chat/completions.`
+        - DeepSeek narrates tool calls inside `reasoning_content` instead of emitting structured API tool calls when thinking is active during tool loops, causing 0 executions and downstream hard enforcement rejections.
+    - Standardized the two-step architecture: Step 1 executes deterministic tool loops with thinking suppressed to ensure reliable API tool calling without hallucinations; Step 2 enables deep thinking during analytical synthesis and structured extraction.
+    - Enabled DeepSeek thinking mode (`extra_body={"thinking": {"type": "enabled"}}`) across Daily S&P Predictor (`daily_predictor.py`), Sector Predictor (`sector_predictor.py`), Verifier Agent (`verification.py`), and Autoresearch meta-agent (`researcher.py`).
+    - Added comprehensive reproduction and regression test suite in `apps/engine/tests/test_thinking_agents.py` verifying thinking activation during extraction and suppression during tool loops.
 
 ## Hotspot Refactoring (Vertical Slice Islands)
 

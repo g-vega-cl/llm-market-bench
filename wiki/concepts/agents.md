@@ -28,6 +28,7 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] and [[concept
 - **Execution Safeguards**:
   - **Case-Insensitive Gates**: Safely bypasses mixed/lowercase `"HOLD"` signals without calling the backend LLM.
   - **Specialized Provider Mapping & Cost Optimization**: Dynamically routes verifications to the matching provider client while substituting lightweight models where appropriate (e.g. routing all `deepseek` trade verifications and `deepseek_reasoner` to `DEEPSEEK_FLASH_MODEL` to avoid high reasoning token costs).
+  - **DeepSeek Thinking Mode**: Enables thinking mode (`extra_body={"thinking": {"type": "enabled"}}`) during final verification extraction to perform deep DCF and valuation audits, while suppressing thinking during tool execution to avoid hallucinated tool call narration.
   - **OpenAI Reasoning Compatibility**: Sets `reasoning_effort="none"` on Instructor verification extraction calls to ensure OpenAI reasoning models (`gpt-5.6-luna`) cleanly execute function tools on `/v1/chat/completions`.
   - **Transient Retry Resilience**: Performs up to 3 attempts with exponential backoff for transient HTTP errors (429, timeouts, bad gateways, connection drops) before falling back to fail-safe rejection.
 
@@ -61,6 +62,33 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] and [[concept
 
 ---
 
+## Thinking Agents Architecture
+
+All agent arenas and predictors across the system operate as thinking agents while preserving native tool execution capabilities:
+
+### Single Pipeline Task vs Multi-Turn Tool Loops
+- **Pipeline Step**: From the orchestrator perspective (e.g. daily predictor, pre-market analysis, verification, autoresearcher), an evaluation is a **single asynchronous pipeline task**.
+- **Iterative Tool Loop**: Internally, `run_tool_loop` executes up to `max_tool_steps` (default 5 iterations). If an LLM calls Tool A (e.g., `get_stock_quote`), the engine executes it, sends the result back in the message history, and allows the model to evaluate the result in its internal thinking trace before deciding to call Tool B (e.g., `get_options_sentiment`), and finally sizing with `calculate_buy_quantity`.
+- **Performance Impact**: Sequential multi-turn tool calling does not degrade system performance. Bounded token budgets (1,024 to 2,048 tokens) and capped tool steps keep wall-clock runtime fast (typically 2-6 seconds total), while grounding every decision on real market data.
+
+### Provider Execution Contracts
+- **Anthropic (`claude-haiku-4-5`)**:
+  - Sets `thinking={"type": "enabled", "budget_tokens": 2048}` during tool loops.
+  - Multi-turn tool execution preserves `ThinkingBlock` elements in assistant history across turns.
+  - Structured extraction uses `Mode.ANTHROPIC_JSON` via Instructor to avoid forced `tool_choice`, preventing 400 errors.
+- **Gemini (`gemini-3.5-flash-lite`)**:
+  - Uses `types.ThinkingConfig(thinking_budget=2048)` in `GenerateContentConfig`.
+  - Native `types.Content` objects preserve thought parts and function call IDs across turns.
+- **DeepSeek (`deepseek-v4-flash`)**:
+  - Enables `extra_body={"thinking": {"type": "enabled"}}` during structured extraction and reasoning steps across all tasks.
+  - Suppresses thinking during the tool execution loop so the model emits structured API `tool_calls` rather than narrating tool usage in thinking prose.
+- **OpenAI (`gpt-5.6-luna`)**:
+  - Sets `reasoning_effort="none"` during tool calling and extraction when function tool messages are in history, as required by OpenAI `/v1/chat/completions`.
+- **MiniMax (`MiniMax-M3`)**:
+  - Interfaces via Anthropic-compatible format with `Mode.ANTHROPIC_JSON` for reliable structured extraction.
+
+---
+
 ## Agent Flow & Interactions
 
 ```mermaid
@@ -77,6 +105,7 @@ graph TD
 
 ## Related
 
+- [[concepts/thinking-agents]] — Thinking agents architecture, historical blockers, and provider execution contracts
 - [[concepts/tool-first-agency]] — Tool-first, agency-driven architecture and dual-taxonomy
 - [[concepts/system-heavy-prompt]] — prompt architecture design
 - [[entities/pipeline]] — the daily running lifecycle

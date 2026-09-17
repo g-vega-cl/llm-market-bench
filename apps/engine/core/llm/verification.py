@@ -198,12 +198,15 @@ async def verify_trading_decision(
                     for part in content:
                         if isinstance(part, dict) and "text" in part:
                             flat_content += part["text"]
+                        elif isinstance(part, dict) and "thinking" in part:
+                            flat_content += f"\n[Thinking: {part['thinking']}]"
                         elif isinstance(part, dict) and "input" in part:
                             flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
                         elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
                             flat_content += f"\n[Tool Result: {part['content']}]"
-                    content = flat_content
-                instructor_messages.append({"role": m["role"], "content": str(content)})
+                    content = flat_content.strip()
+                if content:
+                    instructor_messages.append({"role": m["role"], "content": str(content)})
             elif hasattr(m, "role"):
                 # Handle Google GenAI Content objects
                 content_text = ""
@@ -216,7 +219,8 @@ async def verify_trading_decision(
                         content_text += f"\n[Tool Result: {part.function_response.response}]"
 
                 role = "model" if m.role == "model" else "user"
-                instructor_messages.append({"role": role, "content": content_text})
+                if content_text.strip():
+                    instructor_messages.append({"role": role, "content": content_text.strip()})
 
         response_model = list[VerificationResult] if provider == "gemini" else VerificationResult
 
@@ -231,24 +235,36 @@ async def verify_trading_decision(
             for msg in create_args["messages"]:
                 if isinstance(msg, dict) and msg.get("role") == "assistant":
                     msg["role"] = "model"
-            if create_args["messages"]:
-                last_msg = create_args["messages"][-1]
-                last_role = last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
-                if last_role in ("model", "assistant"):
-                    create_args["messages"].append(
-                        {
-                            "role": "user",
-                            "content": (
-                                "Based on the preceding evaluation, extract and structure the final verification result "
-                                "matching the schema exactly."
-                            ),
-                        }
-                    )
+
+        if provider in ("gemini", "anthropic") and create_args["messages"]:
+            last_msg = create_args["messages"][-1]
+            last_role = last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
+            if last_role in ("model", "assistant"):
+                create_args["messages"].append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Based on the preceding evaluation, extract and structure the final verification result "
+                            "matching the schema exactly."
+                        ),
+                    }
+                )
 
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
+            create_args["thinking"] = {"type": "enabled", "budget_tokens": 1024}
+            if create_args["messages"] and create_args["messages"][0].get("role") == "system":
+                create_args["system"] = create_args["messages"][0]["content"]
+                create_args["messages"] = create_args["messages"][1:]
+        if provider == "gemini":
+            from google.genai import types
+
+            if hasattr(types, "ThinkingConfig"):
+                create_args["thinking_config"] = types.ThinkingConfig(thinking_budget=1024)
         if provider == "openai":
             create_args["reasoning_effort"] = "none"
+        if provider == "deepseek" and "deepseek" in model_name.lower():
+            create_args["extra_body"] = {"thinking": {"type": "enabled"}}
 
         # Retry loop for Instructor extraction — handles both validation errors
         # and empty/None responses by injecting repair prompts.

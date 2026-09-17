@@ -216,6 +216,16 @@ async def run_research(
         }
         if provider == "openai":
             create_args["reasoning_effort"] = "none"
+        if provider == "deepseek" or "deepseek" in model_name.lower():
+            create_args["extra_body"] = {"thinking": {"type": "enabled"}}
+        if provider == "anthropic":
+            create_args["thinking"] = {"type": "enabled", "budget_tokens": 4096}
+        if provider == "gemini":
+            from google.genai import types
+
+            if hasattr(types, "ThinkingConfig"):
+                create_args["thinking_config"] = types.ThinkingConfig(thinking_budget=4096)
+
 
         wrapper = None
         last_error = None

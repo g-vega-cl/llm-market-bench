@@ -321,14 +321,28 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                 if m_type == "instructor":
                     deepseek_client = get_deepseek_client()
                     try:
-                        resp_awaitable = deepseek_client.chat.completions.create(
-                            model=model_name,
-                            response_model=DailyPredictionOutput,
-                            messages=[
+                        create_kwargs = {
+                            "model": model_name,
+                            "response_model": DailyPredictionOutput,
+                            "messages": [
                                 {"role": "system", "content": prompt_content},
                                 {"role": "user", "content": user_msg},
                             ],
-                        )
+                        }
+                        if provider == "deepseek" or "deepseek" in model_name.lower():
+                            create_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                        elif provider == "anthropic":
+                            create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": 2048}
+                            create_kwargs["max_tokens"] = 4000
+                        elif provider == "gemini":
+                            from google.genai import types
+
+                            if hasattr(types, "ThinkingConfig"):
+                                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+                        elif provider == "openai":
+                            create_kwargs["reasoning_effort"] = "low"
+
+                        resp_awaitable = deepseek_client.chat.completions.create(**create_kwargs)
                         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
                             resp = await resp_awaitable
                         else:

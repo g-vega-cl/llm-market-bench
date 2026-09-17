@@ -112,6 +112,10 @@ async def run_tool_loop(
         if system_prompt:
             args["system"] = system_prompt
 
+        # Extended thinking for Claude models that support it
+        if "claude" in model_name.lower() or "haiku" in model_name.lower() or "sonnet" in model_name.lower():
+            args["thinking"] = {"type": "enabled", "budget_tokens": 2048}
+
         try:
             resp = await raw_client.messages.create(**args)
         except Exception as e:
@@ -149,6 +153,16 @@ async def run_tool_loop(
                         "input": content_block.input,
                     }
                 )
+            elif content_block.type == "thinking":
+                thinking_text = getattr(content_block, "thinking", "")
+                if thinking_text:
+                    assistant_content.append(
+                        {
+                            "type": "thinking",
+                            "thinking": thinking_text,
+                            "signature": getattr(content_block, "signature", None),
+                        }
+                    )
             # Skip server_tool_use blocks - they are internal to Anthropic's server
 
         # Ensure assistant content is never empty to avoid 400 errors from API

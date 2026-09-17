@@ -183,6 +183,9 @@ async def run_tool_loop(
                     types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="BLOCK_NONE"),
                 ],
             }
+            if hasattr(types, "ThinkingConfig"):
+                config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+
 
             if enable_google_search:
                 # Gemini 3 requires this flag to mix built-in tools (google_search) with

@@ -190,6 +190,17 @@ async def run_sector_predictions():
                         }
                         if model.get("provider") == "openai":
                             create_kwargs["reasoning_effort"] = "none"
+                        if model.get("provider") == "deepseek" or "deepseek" in model["name"].lower():
+                            create_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                        if model.get("provider") == "gemini":
+                            from google.genai import types
+
+                            if hasattr(types, "ThinkingConfig"):
+                                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+                        if model.get("provider") == "anthropic":
+                            create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": 2048}
+                            create_kwargs["max_tokens"] = 4000
+
 
                         resp_awaitable = client_inst.chat.completions.create(**create_kwargs)
                         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):

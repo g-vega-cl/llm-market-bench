@@ -23,9 +23,16 @@ def get_openai_client(api_key: str | None = None):
 
 
 def get_anthropic_client(api_key: str | None = None):
-    """Creates an async Anthropic client wrapped with Instructor."""
+    """Creates an async Anthropic client wrapped with Instructor.
+
+    Uses Mode.ANTHROPIC_JSON so structured extraction does not force tool_choice,
+    allowing extended thinking mode to operate without 400 invalid_request_error.
+    """
     key = api_key or config.ANTHROPIC_API_KEY
-    return instructor.from_anthropic(AsyncAnthropic(api_key=key, timeout=TIMEOUT))
+    return instructor.from_anthropic(
+        AsyncAnthropic(api_key=key, timeout=TIMEOUT),
+        mode=instructor.Mode.ANTHROPIC_JSON,
+    )
 
 
 def get_deepseek_client(api_key: str | None = None):

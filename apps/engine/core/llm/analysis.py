@@ -547,12 +547,15 @@ async def analyze_with_provider(
                         for part in content:
                             if isinstance(part, dict) and "text" in part:
                                 flat_content += part["text"]
+                            elif isinstance(part, dict) and "thinking" in part:
+                                flat_content += f"\n[Thinking: {part['thinking']}]"
                             elif isinstance(part, dict) and "input" in part:
                                 flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
                             elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
                                 flat_content += f"\n[Tool Result: {part['content']}]"
-                        content = flat_content
-                    flattened.append({"role": m["role"], "content": str(content)})
+                        content = flat_content.strip()
+                    if content:
+                        flattened.append({"role": m["role"], "content": str(content)})
             messages = flattened
 
         # Build schema hint dynamically
@@ -582,19 +585,20 @@ async def analyze_with_provider(
             for msg in final_args["messages"]:
                 if isinstance(msg, dict) and msg.get("role") == "assistant":
                     msg["role"] = "model"
-            if final_args["messages"]:
-                last_msg = final_args["messages"][-1]
-                last_role = last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
-                if last_role in ("model", "assistant"):
-                    final_args["messages"].append(
-                        {
-                            "role": "user",
-                            "content": (
-                                "Based on the preceding evaluation, extract and structure the final trade decisions "
-                                "matching the schema exactly."
-                            ),
-                        }
-                    )
+
+        if provider in ("gemini", "anthropic") and final_args["messages"]:
+            last_msg = final_args["messages"][-1]
+            last_role = last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
+            if last_role in ("model", "assistant"):
+                final_args["messages"].append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Based on the preceding evaluation, extract and structure the final trade decisions "
+                            "matching the schema exactly."
+                        ),
+                    }
+                )
 
         # DeepSeek specific: Enable thinking mode during final extraction so the model uses its
         # full reasoning capacity to formulate the final trade decisions.
@@ -606,6 +610,15 @@ async def analyze_with_provider(
             if messages[0]["role"] == "system":
                 final_args["system"] = messages[0]["content"]
                 final_args["messages"] = messages[1:]
+            if provider == "anthropic":
+                final_args["thinking"] = {"type": "enabled", "budget_tokens": 2048}
+
+        if provider == "gemini":
+            from google.genai import types
+
+            if hasattr(types, "ThinkingConfig"):
+                final_args["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+
 
         # Instructor extraction with retry and JSON repair for validation errors
         wrapper = None

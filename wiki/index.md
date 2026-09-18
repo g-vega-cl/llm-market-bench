@@ -63,6 +63,7 @@
 
 ## Concepts
 
+- [[concepts/system-heavy-prompt]] — System-heavy and pull-based context injection design
 - [[concepts/thinking-agents]] — Auto-indexed page
 - [[concepts/honcho-dialectic-memory]] — Honcho persistent memory evaluation, multi-pass reconciliation patterns, and blueprint for chat gateway user modeling
 - [[concepts/triple-barrier-probabilities]] — Auto-indexed page

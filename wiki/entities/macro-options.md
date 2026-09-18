@@ -13,16 +13,20 @@ This component retrieves macro options metrics from external data sources, cache
 
 ## Key Features
 
-- Fetches macro options metrics via external APIs
-- Caches responses to avoid redundant network calls
-- Formats metrics into dense markdown tables
-- Handles empty and unexpected response formats
+- **Cross-Asset Coverage**: Fetches and aggregates derivatives positioning across key macro proxies (`SPY`, `QQQ`, `IWM`, `GLD`).
+- **Self-Healing Spot Price Resolution**: Operates on top of [[entities/massive-options]] self-healing spot resolution, ensuring underlying spot prices and bounded strike chains use live quotes or Polygon `/prev` close bars rather than synthetic fallbacks.
+- **Rate-Resilient Pacing**: Requests flow through a token-bucket rate limiter with individual ticker timeouts, avoiding 429 burst errors on Free Tier plans.
+- **Supabase Cache Integration**: Caches responses in `options_data_cache` with a 1-hour TTL, enabling sub-second cache hits for repeated queries.
+- **Dense Comparison Markdown**: Formats metrics (Put/Call ratios, Max Pain, ATM IV, 25-delta skew) into compact comparison tables for terminal summaries, newsletters, and predictors.
 
 ## Usage
 
-Used by the engine's analysis pipeline to enrich market context with macro-level options data. The formatted tables are included in reports and newsletters.
+Used by [[entities/generated-newsletters]] (`get_newsletter_options_context`) and [[entities/daily-market-predictor]] (`get_daily_market_context`) to inject verified derivatives positioning directly into model prompts.
 
 ## Related
 
 - [[entities/economic-releases]]
+- [[entities/massive-options]]
+- [[entities/generated-newsletters]]
+- [[entities/daily-market-predictor]]
 - [[entities/engine]]

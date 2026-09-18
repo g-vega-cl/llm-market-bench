@@ -185,7 +185,11 @@ async def get_newsletter_options_context(ticker: str = "SPY") -> str:
     # 2. Options Volatility Surface & Implied Move Cone
     try:
         vol_surface = await execute_options_vol_surface_tool(ticker=ticker)
-        if vol_surface and not vol_surface.startswith("Error"):
+        if (
+            vol_surface
+            and not vol_surface.startswith("Error")
+            and not vol_surface.startswith("*(Options volatility surface unavailable")
+        ):
             sections.append(vol_surface)
         elif vol_surface and vol_surface.startswith("Error"):
             logger.warning(f"Error fetching options vol surface for newsletter ({ticker}): {vol_surface}")

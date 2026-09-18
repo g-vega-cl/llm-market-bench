@@ -547,6 +547,39 @@ class MassiveOptionsClient:
         """Helper to get Supabase client."""
         return get_supabase_client()
 
+    async def get_spot_price(self, ticker: str) -> float | None:
+        """Resolve current or previous close spot price for underlying ticker via MDM or Polygon /prev endpoint."""
+        ticker = ticker.upper().strip()
+        # 1. Try MarketDataManager (live quote via FMP)
+        try:
+            from execution.market_data import MarketDataManager
+
+            mdm = MarketDataManager()
+            quote = await mdm.get_quote(ticker)
+            if quote and quote.price and float(quote.price) > 0:
+                return float(quote.price)
+        except Exception as e:
+            logger.debug(f"Could not resolve spot price for {ticker} from MDM: {e}")
+
+        # 2. Fallback to Polygon /v2/aggs/ticker/{ticker}/prev (free tier, MASSIVE_API_KEY)
+        if self.api_key:
+            try:
+                await self._limiter.acquire()
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.get(
+                        f"{self.base_url}/v2/aggs/ticker/{ticker}/prev",
+                        params={"apiKey": self.api_key},
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        results = data.get("results", [])
+                        if results and results[0].get("c"):
+                            return float(results[0]["c"])
+            except Exception as e:
+                logger.debug(f"Could not resolve spot price for {ticker} from Polygon /prev endpoint: {e}")
+
+        return None
+
     async def _fetch_free_tier_contracts(
         self,
         ticker: str,
@@ -558,19 +591,17 @@ class MassiveOptionsClient:
 
         ref_px = current_price
         if not ref_px or ref_px <= 0:
-            try:
-                from execution.market_data import MarketDataManager
+            ref_px = await self.get_spot_price(ticker)
 
-                mdm = MarketDataManager()
-                quote = await mdm.get_quote(ticker)
-                if quote and quote.price:
-                    ref_px = float(quote.price)
-            except Exception as e:
-                logger.debug(f"Could not resolve spot price for {ticker} in free tier fallback: {e}")
+        if not ref_px or ref_px <= 0:
+            logger.warning(
+                f"Cannot resolve spot price for {ticker}; aborting free tier options retrieval to prevent unconstrained strike selection."
+            )
+            return []
 
         # Step 1: Query contracts reference for CALLS and PUTS near spot
-        min_strike = ref_px * 0.96 if ref_px else None
-        max_strike = ref_px * 1.04 if ref_px else None
+        min_strike = ref_px * 0.96
+        max_strike = ref_px * 1.04
 
         ref_contracts = []
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -785,6 +816,10 @@ class MassiveOptionsClient:
                         now = datetime.datetime.now(datetime.UTC)
                         if (now - fetched_at).total_seconds() < self.cache_ttl_seconds:
                             metrics = row.get("metrics", {})
+                            if not metrics.get("underlying_price") or float(metrics.get("underlying_price") or 0) <= 0:
+                                resolved_px = current_price or await self.get_spot_price(ticker)
+                                if resolved_px:
+                                    metrics["underlying_price"] = resolved_px
                             if "as_of_timestamp" not in metrics or "staleness_note" not in metrics:
                                 sess, note, as_of_iso = get_options_market_session(fetched_at)
                                 metrics["as_of_timestamp"] = metrics.get("as_of_timestamp") or as_of_iso
@@ -805,15 +840,7 @@ class MassiveOptionsClient:
 
         # Ensure spot price is resolved if missing
         if not current_price or current_price <= 0:
-            try:
-                from execution.market_data import MarketDataManager
-
-                mdm = MarketDataManager()
-                quote = await mdm.get_quote(ticker)
-                if quote and quote.price:
-                    current_price = float(quote.price)
-            except Exception as e:
-                logger.debug(f"Could not resolve market quote for {ticker}: {e}")
+            current_price = await self.get_spot_price(ticker)
 
         # 3. Fetch fresh snapshot from API (with automatic Free Tier fallback)
         raw_data = await self._fetch_from_api(ticker, current_price=current_price)

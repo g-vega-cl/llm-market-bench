@@ -8,6 +8,7 @@ from analytics.options_surface import (
     calculate_close_to_close_realized_volatility,
     calculate_options_implied_daily_move,
     classify_iv_premium_regime,
+    get_options_vol_surface_report,
 )
 from analytics.yield_curve import (
     YieldCurveRegime,
@@ -232,3 +233,21 @@ async def test_execute_tool_dispatch_new_fsi_tools():
 
         thesis_res = await execute_tool("track_thesis_pillars", {"ticker": "SPY", "action": "get"})
         assert "SPY" in str(thesis_res)
+
+
+@pytest.mark.asyncio
+async def test_options_surface_no_dummy_fallback_when_spot_missing():
+    """Test get_options_vol_surface_report does NOT fallback to 100.0 or 15% IV when spot is missing."""
+    with (
+        patch("execution.market_data.MarketDataManager.get_quote", new_callable=AsyncMock, return_value=None),
+        patch("execution.market_data.MarketDataManager.provider") as mock_provider,
+        patch(
+            "execution.providers.massive.MassiveOptionsClient.get_options_snapshot", new_callable=AsyncMock
+        ) as mock_snap,
+    ):
+        mock_provider.get_history = AsyncMock(return_value=[])
+        mock_snap.return_value = {"status": "NO_DATA", "metrics": {}, "contracts": []}
+
+        report = await get_options_vol_surface_report("SPY")
+        assert report.get("spot_price") != 100.0
+        assert report.get("status") in ("NO_DATA", "ERROR")

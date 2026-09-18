@@ -195,6 +195,7 @@ async def test_generate_daily_newsletter_with_fred_macro_context():
     with (
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
         patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock) as mock_fred_dash,
+        patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
     ):
         mock_fred_dash.return_value = "=== Macro & Economic Context (FRED) ===\n- Fed Funds: 5.25%"

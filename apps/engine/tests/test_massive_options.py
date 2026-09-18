@@ -342,3 +342,36 @@ async def test_get_options_snapshot_auto_resolves_spot_price():
         # Check current_price was populated with resolved quote
         _, kwargs = mock_fetch.call_args
         assert kwargs.get("current_price") == 590.0
+
+
+@pytest.mark.asyncio
+async def test_get_spot_price_polygon_prev_fallback():
+    """Test get_spot_price falls back to Polygon /prev endpoint if MarketDataManager fails."""
+    client = MassiveOptionsClient(api_key="test_key")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"results": [{"c": 585.50, "v": 100000}]}
+
+    with (
+        patch("execution.market_data.MarketDataManager.get_quote", new_callable=AsyncMock, return_value=None),
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp) as mock_get,
+    ):
+        spot = await client.get_spot_price("SPY")
+        assert spot == 585.50
+        assert mock_get.called
+        assert "/v2/aggs/ticker/SPY/prev" in mock_get.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_free_tier_aborts_when_spot_unresolvable():
+    """Test _fetch_free_tier_contracts aborts cleanly if spot price cannot be resolved."""
+    client = MassiveOptionsClient(api_key="test_key")
+
+    with (
+        patch.object(client, "get_spot_price", new_callable=AsyncMock, return_value=None),
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
+    ):
+        contracts = await client._fetch_free_tier_contracts("SPY", current_price=None)
+        assert contracts == []
+        assert not mock_get.called

@@ -91,6 +91,7 @@ A foundational design principle of the options data integration is **zero editor
 3. **Daily S&P Market Predictor & Newsletter Integration**: In [[entities/daily-market-predictor]] and [[entities/generated-newsletters]], `get_macro_options_summary()` (via `apps/engine/analytics/macro_options.py`) aggregates derivatives positioning across key macro proxies (`SPY`, `QQQ`, `IWM`, `GLD`) into a single dense comparison table.
 4. **Rate Limit Resilience on Free Tier**: On accounts limited to 5 requests per minute, `MassiveOptionsClient` detects `403 Forbidden` on `/v3/snapshot/options` and sets `_snapshot_supported = False` at the class level, bypassing redundant 403 calls. All requests are sequentially paced through `_MASSIVE_LIMITER`, bounded by per-ticker timeouts, and cached in Supabase (`options_data_cache`) for 1 hour.
 5. **Autonomous Multi-Turn Trading Agents**: LLM trading agents and the [[entities/autoresearch]] loop retain full pull-based access to `get_options_sentiment` (#27) and `get_option_chain` (#28) in their toolbox.
+6. **Self-Healing Spot Price Resolution & Bounded Strike Guards**: `MassiveOptionsClient.get_spot_price()` falls back from live FMP market quotes to Polygon's free `/v2/aggs/ticker/{ticker}/prev` close endpoint. This ensures `_fetch_free_tier_contracts` always receives a verified spot reference and queries options contracts within $\pm 4\%$ of spot. If spot cannot be resolved, free tier fetching aborts cleanly rather than executing unconstrained strike queries that pull deep ITM artifacts ($420 strikes for SPY). Downstream volatility surface reporting in `apps/engine/analytics/options_surface.py` enforces honest `NO_DATA` handling rather than synthetic $100 spot price or 15% IV fallbacks.
 
 ---
 
@@ -109,9 +110,10 @@ Also accepts `POLYGON_API_KEY` as a backwards-compatible fallback alias.
 
 ## Related
 
-- [[entities/daily-market-predictor]] — Intraday S&P 500 predictor and weekly prompt autoresearch
-- [[entities/generated-newsletters]] — Daily morning and evening market newsletters
-- [[entities/tool-registry]] — Canonical tools definition registry
-- [[entities/autoresearch]] — Karpathy-style prompt improvement loop using options tools
-- [[entities/database]] — Supabase schema and caching layers
-- [[concepts/system-heavy-prompt]] — System-heavy and pull-based context injection design
+- [[entities/macro-options]]: Cross-asset derivatives positioning aggregation across SPY, QQQ, IWM, and GLD
+- [[entities/daily-market-predictor]]: Intraday S&P 500 predictor and weekly prompt autoresearch
+- [[entities/generated-newsletters]]: Daily morning and evening market newsletters
+- [[entities/tool-registry]]: Canonical tools definition registry
+- [[entities/autoresearch]]: Karpathy-style prompt improvement loop using options tools
+- [[entities/database]]: Supabase schema and caching layers
+- [[concepts/system-heavy-prompt]]: System-heavy and pull-based context injection design

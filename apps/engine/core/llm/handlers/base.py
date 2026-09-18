@@ -230,6 +230,11 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             include_financials=args.get("include_financials", True),
             include_institutional=args.get("include_institutional", False),
         )
+    elif name == "get_today_economic_releases":
+        return await tools.execute_get_today_economic_releases_tool(
+            target_date=args.get("target_date"),
+            country=args.get("country", "US"),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

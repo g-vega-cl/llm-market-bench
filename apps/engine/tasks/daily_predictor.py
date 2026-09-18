@@ -97,8 +97,8 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
     from core.llm.tools import (
         execute_fetch_daily_newsletter_tool,
         execute_get_global_macro_context_tool,
+        execute_get_macro_options_sentiment_tool,
         execute_get_market_feeling_tool,
-        execute_get_options_sentiment_tool,
         execute_get_volatility_index_details_tool,
         execute_market_health_barometer_tool,
     )
@@ -111,6 +111,16 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
         f"=== EXACT TEMPORAL CONTEXT ===\n{day_info}\n==============================",
     ]
     today_str = datetime.now(UTC).date().isoformat()
+
+    # 0. Today's Morning Economic Releases & Macro Indicators (CPI, PPI, Jobs, etc.)
+    try:
+        from core.economic_releases import get_today_economic_releases_summary
+
+        econ_summary = await get_today_economic_releases_summary()
+        if econ_summary:
+            context_lines.append(econ_summary)
+    except Exception as e:
+        logger.warning(f"Error fetching today's economic releases for daily predictor: {e}")
 
     # 1. Forward High-Impact Calendar Scenarios (Tomorrow & Next Week)
     try:
@@ -234,10 +244,15 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
             f"Error fetching technical indicators & pre-market quote via MarketDataManager for {ticker}: {e}"
         )
 
-    # 2. Options Derivatives Positioning & Volatility Skew (Massive Tool)
+    # 2. Options Derivatives Positioning & Cross-Asset Skew
     try:
-        options_str = await execute_get_options_sentiment_tool(ticker=ticker)
-        if options_str and not options_str.startswith("Error") and not options_str.startswith("No options"):
+        options_str = await execute_get_macro_options_sentiment_tool(primary_ticker=ticker)
+        if (
+            options_str
+            and not options_str.startswith("Error")
+            and not options_str.startswith("No options")
+            and not options_str.startswith("No macro options")
+        ):
             context_lines.append(f"Options Derivatives Positioning ({ticker}):\n{options_str}")
         elif options_str and options_str.startswith("Error"):
             logger.warning(f"Options derivatives retrieval returned error for {ticker}: {options_str}")

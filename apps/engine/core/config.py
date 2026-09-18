@@ -151,6 +151,9 @@ FRED_CACHE_TTL_HOURS = int(os.getenv("FRED_CACHE_TTL_HOURS", 12))
 MASSIVE_API_KEY = os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY", "")
 MASSIVE_BASE_URL = os.getenv("MASSIVE_BASE_URL", "https://api.polygon.io").rstrip("/")
 OPTIONS_CACHE_TTL_SECONDS = int(os.getenv("OPTIONS_CACHE_TTL_SECONDS", 3600))  # 1 hour default
+MACRO_OPTIONS_TICKERS: tuple[str, ...] = tuple(
+    t.strip().upper() for t in os.getenv("MACRO_OPTIONS_TICKERS", "SPY,QQQ,IWM,GLD").split(",") if t.strip()
+)
 FINANCIAL_PROVIDER = os.getenv("FINANCIAL_PROVIDER", "fmp")
 
 # --- Validation Guardrails ---

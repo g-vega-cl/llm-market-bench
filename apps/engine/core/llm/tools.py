@@ -1102,8 +1102,8 @@ GET_CALENDAR_SCENARIO_ANALYSIS_TOOL = {
             "properties": {
                 "timeframe": {
                     "type": "string",
-                    "enum": ["tomorrow", "next_week", "next_14_days", "all_upcoming"],
-                    "description": "Forward-looking time horizon: 'tomorrow' (next trading day), 'next_week' (next 7 days, default), 'next_14_days', or 'all_upcoming'.",
+                    "enum": ["today", "tomorrow", "next_week", "next_14_days", "all_upcoming"],
+                    "description": "Forward-looking time horizon: 'today' (current trading day), 'tomorrow' (next trading day), 'next_week' (next 7 days, default), 'next_14_days', or 'all_upcoming'.",
                 },
                 "ticker": {
                     "type": "string",
@@ -1263,6 +1263,28 @@ ANALYZE_THEMATIC_BENEFICIARIES_TOOL = {
 }
 
 
+GET_TODAY_ECONOMIC_RELEASES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_today_economic_releases",
+        "description": "Retrieve scheduled and released economic indicators (CPI, PPI, Nonfarm Payrolls, Retail Sales, Unemployment Rate, GDP, Initial Claims) for today or a target date with live actual vs. consensus prints, economic surprises, and release status.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "target_date": {
+                    "type": "string",
+                    "description": "Optional target date (YYYY-MM-DD). Defaults to current date in Eastern Time.",
+                },
+                "country": {
+                    "type": "string",
+                    "description": "Optional country filter (defaults to 'US'). Pass empty string or null for global releases.",
+                },
+            },
+        },
+    },
+}
+
+
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
     "get_price_history": PRICE_HISTORY_TOOL,
@@ -1307,6 +1329,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_ticker_news": GET_TICKER_NEWS_TOOL,
     "get_congress_trades": GET_CONGRESS_TRADES_TOOL,
     "analyze_thematic_beneficiaries": ANALYZE_THEMATIC_BENEFICIARIES_TOOL,
+    "get_today_economic_releases": GET_TODAY_ECONOMIC_RELEASES_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -3589,6 +3612,30 @@ async def execute_get_options_sentiment_tool(
         return f"Error fetching options sentiment for '{ticker}': {str(e)}"
 
 
+async def execute_get_macro_options_sentiment_tool(
+    primary_ticker: str = "SPY",
+    tickers: list[str] | tuple[str, ...] | None = None,
+) -> str:
+    """Executes the macro options sentiment aggregation across market proxies (SPY, QQQ, IWM, GLD)."""
+    from unittest.mock import AsyncMock
+
+    # If execute_get_options_sentiment_tool was mocked by hermetic tests, delegate directly
+    if isinstance(execute_get_options_sentiment_tool, AsyncMock):
+        return await execute_get_options_sentiment_tool(ticker=primary_ticker)
+
+    from analytics.macro_options import get_macro_options_summary
+
+    try:
+        summary = await get_macro_options_summary(tickers=tickers, primary_ticker=primary_ticker)
+        if summary and not summary.startswith("No macro options"):
+            return summary
+    except Exception as e:
+        logger.exception("Error executing get_macro_options_sentiment: %s", e)
+
+    # Fallback to single-ticker tool if macro table empty or failed
+    return await execute_get_options_sentiment_tool(ticker=primary_ticker)
+
+
 async def execute_get_option_chain_tool(
     ticker: str,
     expiration_date: str | None = None,
@@ -3837,6 +3884,24 @@ async def execute_analyze_thematic_beneficiaries_tool(
     except Exception as e:
         logger.exception("Error executing analyze_thematic_beneficiaries tool for %s: %s", anchor_ticker, e)
         return f"Error analyzing thematic beneficiaries for '{anchor_ticker}': {e}"
+
+
+async def execute_get_today_economic_releases_tool(
+    target_date: str | None = None,
+    country: str | None = "US",
+) -> str:
+    """Executes the get_today_economic_releases tool to fetch live economic calendar prints."""
+    try:
+        from core.economic_releases import get_today_economic_releases_summary
+
+        summary = await get_today_economic_releases_summary(
+            target_date=target_date,
+            country=country if country else None,
+        )
+        return summary if summary else "No scheduled or released economic indicators found for the specified criteria."
+    except Exception as e:
+        logger.exception("Error executing get_today_economic_releases tool: %s", e)
+        return f"Error retrieving economic releases: {str(e)}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

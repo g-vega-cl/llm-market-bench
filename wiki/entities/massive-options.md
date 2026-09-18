@@ -88,8 +88,9 @@ A foundational design principle of the options data integration is **zero editor
    - `As-Of Timestamp` (ISO UTC)
    - `Market Session` (`PRE_MARKET`, `REGULAR_HOURS`, `POST_MARKET`, `WEEKEND`)
    - `Staleness Note` describing settlement context (e.g. pre-market prior close settlement vs live trading hours).
-3. **Daily S&P Market Predictor Integration**: In [[entities/daily-market-predictor]], `get_daily_market_context(ticker="SPY")` automatically retrieves and injects the clean options derivatives positioning block into the pre-market reasoning context, equipping models and the prompt autoresearcher with options positioning signals.
-4. **Autonomous Multi-Turn Trading Agents**: LLM trading agents and the [[entities/autoresearch]] loop retain full pull-based access to `get_options_sentiment` (#27) and `get_option_chain` (#28) in their toolbox.
+3. **Daily S&P Market Predictor & Newsletter Integration**: In [[entities/daily-market-predictor]] and [[entities/generated-newsletters]], `get_macro_options_summary()` (via `apps/engine/analytics/macro_options.py`) aggregates derivatives positioning across key macro proxies (`SPY`, `QQQ`, `IWM`, `GLD`) into a single dense comparison table.
+4. **Rate Limit Resilience on Free Tier**: On accounts limited to 5 requests per minute, `MassiveOptionsClient` detects `403 Forbidden` on `/v3/snapshot/options` and sets `_snapshot_supported = False` at the class level, bypassing redundant 403 calls. All requests are sequentially paced through `_MASSIVE_LIMITER`, bounded by per-ticker timeouts, and cached in Supabase (`options_data_cache`) for 1 hour.
+5. **Autonomous Multi-Turn Trading Agents**: LLM trading agents and the [[entities/autoresearch]] loop retain full pull-based access to `get_options_sentiment` (#27) and `get_option_chain` (#28) in their toolbox.
 
 ---
 
@@ -101,6 +102,7 @@ In `apps/engine/.env`:
 MASSIVE_API_KEY=your_api_key_here
 MASSIVE_BASE_URL=https://api.polygon.io
 OPTIONS_CACHE_TTL_SECONDS=3600
+MACRO_OPTIONS_TICKERS=SPY,QQQ,IWM,GLD
 ```
 
 Also accepts `POLYGON_API_KEY` as a backwards-compatible fallback alias.
@@ -108,6 +110,7 @@ Also accepts `POLYGON_API_KEY` as a backwards-compatible fallback alias.
 ## Related
 
 - [[entities/daily-market-predictor]] — Intraday S&P 500 predictor and weekly prompt autoresearch
+- [[entities/generated-newsletters]] — Daily morning and evening market newsletters
 - [[entities/tool-registry]] — Canonical tools definition registry
 - [[entities/autoresearch]] — Karpathy-style prompt improvement loop using options tools
 - [[entities/database]] — Supabase schema and caching layers

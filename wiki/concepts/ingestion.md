@@ -18,11 +18,11 @@ Ingestion is the first phase of the daily pipeline. It fetches raw data from mul
 - **Daily Newsletter Generation**: A separate step (see [[entities/generated-newsletters]]) generates a digest newsletter using DeepSeek V4 Flash. It queries newsletters published within the last **12 hours** (based on the `date` column), not the `ingested_at` timestamp. This rolling window ensures overnight and early-morning editions are captured for the morning session.
 - **Lookback Window**: The 12-hour window is measured from the current Eastern Time to the `date` field of each snapshot. The switch from `ingested_at` to `date` improved alignment with actual publication times.
 
-## Economic Calendar
+## Economic Calendar & Macro Releases
 
-The economic calendar ingestion pipeline (`apps/engine/ingest/calendar.py`) runs semi-weekly via GitHub Actions (`.github/workflows/calendar.yml`) on Sunday and Wednesday at 00:00 UTC:
-- **Scraping**: Fetches upcoming macro events from Trading Economics using non-recursive top-level table cell parsing to capture 7 structured columns (`Time`, `Country`, `Event`, `Actual`, `Previous`, `Consensus`, and `Forecast`).
-- **Deterministic Tag Indexing**: Ingested events are formatted with numerical index tags (`[#N]`). DeepSeek Flash analyzes the batch to identify high-importance events ($\ge 8/10$) or calendar anomalies (Pre-ECB/Fed Drift, Pre-Holiday Effect, Payday/Turn-of-the-Month), setting `source_id = "[#N]"`.
+The economic calendar pipeline incorporates two complementary mechanisms:
+- **Semi-Weekly Forward Calendar Scraping (`apps/engine/ingest/calendar.py`)**: Runs via GitHub Actions (`.github/workflows/calendar.yml`) on Sunday and Wednesday at 00:00 UTC, scraping upcoming events from Trading Economics and saving high-importance future catalysts to Supabase `memories` (`memory_type = 'CALENDAR_EVENT'`).
+- **Live Morning Economic Releases (`apps/engine/core/economic_releases.py`)**: Queries Financial Modeling Prep (`/stable/economic-calendar`) for real-time indicator prints released at 8:30 AM ET and throughout the trading session (CPI, PPI, Nonfarm Payrolls, Retail Sales, Unemployment, GDP). Computes consensus surprise deltas (`actual - estimate`) and partitions events into `RELEASED` vs `PENDING` with a 30-minute in-memory cache (`ttl = 1800s`). Injected directly into `daily_predictor.py` and `newsletter_generator.py`, and available as canonical agent tool `get_today_economic_releases`.
 - **Target Date & Catalyst Storage**: Resolves event date and time deterministically in $O(1)$ from the source table, storing high-importance records in Supabase `memories` with `memory_type = 'CALENDAR_EVENT'`, `is_future_catalyst = true`, and `target_date = YYYY-MM-DD`.
 - **Frontend Integration**: Displayed on the Today dashboard in the **Horizon Watch** timeline (`FutureCatalysts.tsx`) with dynamic Critical/High badges and chronological sequencing.
 

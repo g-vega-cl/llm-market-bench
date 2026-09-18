@@ -535,6 +535,7 @@ class MassiveOptionsClient:
     """Client for Massive / Polygon Options API with rate-limiting, local Black-Scholes engine, and cache."""
 
     _memory_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+    _snapshot_supported: bool | None = None
 
     def __init__(self, api_key: str | None = None, base_url: str | None = None, cache_ttl_seconds: int | None = None):
         self.api_key = api_key or MASSIVE_API_KEY
@@ -713,6 +714,14 @@ class MassiveOptionsClient:
         if not self.api_key:
             raise ValueError("Massive/Polygon API key is not configured. Set MASSIVE_API_KEY in .env.")
 
+        # If known to be on Free Tier, bypass snapshot endpoint to avoid wasted 403 calls & tokens
+        if MassiveOptionsClient._snapshot_supported is False:
+            logger.debug(
+                f"Skipping snapshot endpoint for {ticker} (account confirmed Free Tier); using Free Tier pipeline."
+            )
+            results = await self._fetch_free_tier_contracts(ticker, current_price=current_price)
+            return {"status": "OK", "results": results}
+
         # Attempt Snapshot endpoint
         await self._limiter.acquire()
         url = f"{self.base_url}/v3/snapshot/options/{ticker.upper()}"
@@ -724,9 +733,11 @@ class MassiveOptionsClient:
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(url, params=params)
             if resp.status_code == 200:
+                MassiveOptionsClient._snapshot_supported = True
                 return resp.json()
 
             if resp.status_code == 403:
+                MassiveOptionsClient._snapshot_supported = False
                 logger.info(
                     f"Massive snapshot requires paid plan for {ticker}; activating Free Tier EOD + local Black-Scholes pipeline."
                 )

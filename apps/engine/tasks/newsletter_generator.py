@@ -37,13 +37,19 @@ async def _call_deepseek_flash(
     formatted_time: str,
     macro_context: str = "",
     options_context: str = "",
+    economic_releases_context: str = "",
 ) -> GeneratedNewsletterOutput:
-    """Invokes DeepSeek V4 Flash to synthesize ingested daily newsletters, FRED macro indicators, and options data into a proper newsletter."""
+    """Invokes DeepSeek V4 Flash to synthesize ingested daily newsletters, FRED macro indicators, options data, and live economic releases into a proper newsletter."""
     session_label = "Morning Market Open Briefing" if session == "open" else "Evening Market Close Briefing"
     now_date_str = datetime.now(ZoneInfo("America/New_York")).strftime("%B %d, %Y")
 
     if not chunks:
         # Fallback response when no newsletter snapshots exist for the session
+        econ_text = (
+            f"\n\n**Today's Economic Releases (Live):**\n{economic_releases_context}"
+            if economic_releases_context
+            else ""
+        )
         macro_text = f"\n\n**Key Economic Readings (FRED):**\n{macro_context}" if macro_context else ""
         options_text = f"\n\n**Key Options & Volatility Readings:**\n{options_context}" if options_context else ""
         return GeneratedNewsletterOutput(
@@ -59,7 +65,7 @@ async def _call_deepseek_flash(
                 f"**Creation Time:** {formatted_time}\n\n"
                 f"### 🌐 The Macro & Cross-Asset Narrative\n\n"
                 f"No raw financial newsletters were ingested during this session window. "
-                f"Major indices, benchmark Treasury yields, and currency pairs are holding steady as market participants await upcoming macroeconomic catalysts.{macro_text}{options_text}\n\n"
+                f"Major indices, benchmark Treasury yields, and currency pairs are holding steady as market participants await upcoming macroeconomic catalysts.{econ_text}{macro_text}{options_text}\n\n"
                 f"### 🔬 Sector & Earnings Spotlight\n\n"
                 f"- **Sector Rotation**: Broad market breadth remains balanced with defensive and cyclical sectors trading in narrow ranges.\n"
                 f"- **Earnings Radar**: Corporate earnings calendar and earnings call transcripts continue to guide fundamental expectations.\n\n"
@@ -96,7 +102,7 @@ async def _call_deepseek_flash(
         "3. **Bullet Points**: 4-5 high-impact key takeaways with emojis highlighting crucial market numbers and developments.\n"
         "4. **Content**: A complete, in-depth Markdown newsletter (~1,200-1,500 words, ~6 min read).\n"
         "   Must include the following structured section headings (`###`):\n"
-        "   - `### 🌐 The Macro & Cross-Asset Narrative`: Detailed synthesis of index action, Treasury yields (10Y/2Y), yield curve spreads, inflation (CPI/PCE), FX/US Dollar (DXY), commodities (Crude, Gold), and crypto.\n"
+        "   - `### 🌐 The Macro & Cross-Asset Narrative`: Detailed synthesis of today's released economic indicators (such as CPI, PPI, PCE, Jobs prints with actual vs consensus surprises and market reaction), index action, Treasury yields (10Y/2Y), yield curve spreads, inflation, FX/US Dollar (DXY), commodities (Crude, Gold), and crypto.\n"
         "   - `### 🔬 Sector & Earnings Spotlight`: Deep dive into sector rotation, mega-cap tech/AI trends, corporate earnings beats/misses, and company-specific catalysts.\n"
         "   - `### 📈 Market Internals, Sentiment & Flows`: Analysis of market breadth, volatility (VIX curve & term structure), institutional positioning, liquidity indicators, and options derivatives positioning (Put/Call ratios, Max Pain, 25-delta skew, and options-implied daily move cone).\n"
         "   - `### 💡 Trade Ideas & Scenarios to Watch`: Detailed actionable setups with catalyst, entry/triggers, key support/resistance, invalidation levels, and explicit Bull/Bear scenario branching.\n"
@@ -105,6 +111,11 @@ async def _call_deepseek_flash(
         "5. Tone must be professional, analytical, objective, and developer/investor friendly, delivering deep substance without fluff."
     )
 
+    economic_block = (
+        f"Today's Live Economic Data Releases (Actual vs Consensus):\n{economic_releases_context}\n\n"
+        if economic_releases_context
+        else ""
+    )
     macro_block = f"Official Macro & Economic Data (FRED Indicators):\n{macro_context}\n\n" if macro_context else ""
     options_block = (
         f"Official Options Derivatives & Volatility Structure:\n{options_context}\n\n" if options_context else ""
@@ -113,6 +124,7 @@ async def _call_deepseek_flash(
     user_prompt = (
         f"Session Window: {session.upper()} ({session_label})\n"
         f"Date & Time: {now_date_str} at {formatted_time}\n\n"
+        f"{economic_block}"
         f"{macro_block}"
         f"{options_block}"
         f"Ingested Newsletters ({len(chunks)} sources):\n"
@@ -148,20 +160,21 @@ async def _call_deepseek_flash(
 async def get_newsletter_options_context(ticker: str = "SPY") -> str:
     """Fetch structured options sentiment, vol surface, and VIX term structure for newsletter context."""
     from core.llm.tools import (
-        execute_get_options_sentiment_tool,
+        execute_get_macro_options_sentiment_tool,
         execute_get_volatility_index_details_tool,
         execute_options_vol_surface_tool,
     )
 
     sections = []
 
-    # 1. Options Derivatives Positioning (Put/Call, Skew, Max Pain)
+    # 1. Options Derivatives Positioning (Macro table covering SPY, QQQ, IWM, GLD)
     try:
-        options_sentiment = await execute_get_options_sentiment_tool(ticker=ticker)
+        options_sentiment = await execute_get_macro_options_sentiment_tool(primary_ticker=ticker)
         if (
             options_sentiment
             and not options_sentiment.startswith("Error")
             and not options_sentiment.startswith("No options")
+            and not options_sentiment.startswith("No macro options")
         ):
             sections.append(options_sentiment)
         elif options_sentiment and options_sentiment.startswith("Error"):
@@ -237,6 +250,15 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
     except Exception as e:
         logger.warning(f"Could not fetch FRED macro context for newsletter: {e}")
 
+    # Step 3.5: Fetch today's live economic data releases (e.g. 8:30 AM ET CPI/PPI/Jobs)
+    economic_releases_context = ""
+    try:
+        from core.economic_releases import get_today_economic_releases_summary
+
+        economic_releases_context = await get_today_economic_releases_summary()
+    except Exception as e:
+        logger.warning(f"Could not fetch today's economic releases for newsletter: {e}")
+
     # Step 4: Fetch options derivatives and volatility structure
     options_context = ""
     try:
@@ -251,6 +273,7 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
         formatted_time,
         macro_context=macro_context,
         options_context=options_context,
+        economic_releases_context=economic_releases_context,
     )
 
     # Insert into generated_newsletters table

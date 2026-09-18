@@ -145,7 +145,7 @@
   },
   {
     "name": "get_calendar_scenario_analysis",
-    "desc": "Upcoming calendar events and scenario analysis (tomorrow, next week, or forward window) with conditional trading plans, probabilities, and profit mechanisms"
+    "desc": "Upcoming calendar events and scenario analysis (today, tomorrow, next week, or forward window) with conditional trading plans, probabilities, and profit mechanisms"
   },
   {
     "name": "get_barrier_touch_probabilities",
@@ -162,6 +162,10 @@
   {
     "name": "analyze_thematic_beneficiaries",
     "desc": "Screens second-order winners and thematic beneficiaries via factor correlation, beta sensitivity, options positioning, and institutional co-ownership"
+  },
+  {
+    "name": "get_today_economic_releases",
+    "desc": "Live scheduled and released economic indicators (CPI, PPI, Jobs, Retail Sales) with actual vs consensus surprises"
   }
 ]
 

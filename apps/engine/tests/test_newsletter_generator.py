@@ -64,6 +64,7 @@ Markets opened on a bullish footing today, propelled by massive momentum in the 
 
     with (
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
     ):
         result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
@@ -101,6 +102,7 @@ async def test_generate_daily_newsletter_fallback_when_no_snapshots():
 
     with (
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
     ):
         result = await generate_daily_newsletter(session="close", sb_client=mock_sb)
@@ -147,6 +149,7 @@ async def test_generate_daily_newsletter_triggers_ingest_and_uses_12h_date_windo
     with (
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=fake_ingested_snapshots) as mock_ingest,
         patch("tasks.newsletter_generator.bulk_upsert_newsletter_snapshots") as mock_upsert,
+        patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
     ):
         result = await generate_daily_newsletter(session="open", sb_client=mock_sb)

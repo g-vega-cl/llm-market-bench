@@ -32,6 +32,7 @@ from core.llm.tools import (
     GET_SECTOR_FUNDAMENTALS_TOOL,
     GET_THEMATIC_FLOWS_TOOL,
     GET_TICKER_NEWS_TOOL,
+    GET_TODAY_ECONOMIC_RELEASES_TOOL,
     GET_TODAYS_NEWS_MENU_TOOL,
     GET_VERIFIER_REJECTIONS_TOOL,
     GET_VOLATILITY_INDEX_DETAILS_TOOL,
@@ -122,6 +123,7 @@ def test_tools_json_matches_engine_tool_definitions():
         GET_TICKER_NEWS_TOOL,
         GET_CONGRESS_TRADES_TOOL,
         ANALYZE_THEMATIC_BENEFICIARIES_TOOL,
+        GET_TODAY_ECONOMIC_RELEASES_TOOL,
     ]
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}
 

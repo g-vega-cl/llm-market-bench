@@ -32,7 +32,11 @@ def calculate_target_window(timeframe: str = "next_week", ref_date: date | None 
 
     tf = (timeframe or "next_week").lower().strip()
 
-    if tf == "tomorrow":
+    if tf == "today":
+        start = ref_date
+        end = ref_date
+        label = f"Today ({start.strftime('%A, %b %d, %Y')})"
+    elif tf == "tomorrow":
         start = ref_date + timedelta(days=1)
         end = start
         label = f"Tomorrow ({start.strftime('%A, %b %d, %Y')})"

@@ -6,6 +6,8 @@
 
 ## Entities
 
+- [[entities/macro-options]] — Macro options metrics fetching and markdown table formatting
+- [[entities/economic-releases]] — Live macroeconomic indicator releases from FMP with actual vs consensus surprises
 - [[entities/thematic-beneficiaries]] — Thematic beneficiary identification and markdown formatting tool
 - [[entities/sec-13f-client]] — SEC 13F filing client for EDGAR institutional holdings
 - [[entities/sec-13f-client]] — Auto-indexed page

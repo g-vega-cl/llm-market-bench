@@ -69,9 +69,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
 - [ ] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...
 - [ ] - Benchify : format better the newsletter section of: The Catalyst Radar & Key Levels.
-- [ ] - Benchify : audit if option data is being used for daily predictor and newsletter
 - [ ] - Benchify, if you were to show this up as a portfolio project. What would you improve. - Lighthouse, design, maybe audit data fetching. CDNs? It should be lighting fast. SSR?
-- [ ] - Benchify: even though CPI was released at 8:30 and predictor/newsletter at 9:15, we still didn't get/fetch the result of the CPI
+- [x] - Benchify: even though CPI was released at 8:30 and predictor/newsletter at 9:15, we still didn't get/fetch the result of the CPI
 - [ ] - Benchify: I don't like the "collapse" in mobile.in my theme portfolios
 - [ ] - Benchify: a tool that describes how the market/stock/spy moved during the day? Or one that brings you the daily prices?
 - [ ] - Benchify: audit that the "sector trend" and others portfolios are set up.

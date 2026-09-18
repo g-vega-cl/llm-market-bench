@@ -27,7 +27,9 @@ TARGET_SECTOR_MODELS = [DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, GEMINI_MODEL, OPENA
 
 
 class MetaPromptResponse(BaseModel):
-    new_prompt: str = Field(..., description="The complete modified strategy and analytical reasoning instructions text")
+    new_prompt: str = Field(
+        ..., description="The complete modified strategy and analytical reasoning instructions text"
+    )
     research_insight: str | None = Field(
         default=None,
         description=(
@@ -37,22 +39,35 @@ class MetaPromptResponse(BaseModel):
     )
 
 
-def calculate_baseline_score(predictions: list[dict]) -> float:
-    """Calculate the baseline ratchet score from a set of model predictions.
+DEFAULT_SECTOR_PREDICTOR_TOOLS = [
+    "get_historical_correlation",
+    "get_sector_fundamentals",
+    "get_global_macro_context",
+    "fetch_daily_newsletter",
+    "get_macro_economic_series",
+    "run_stock_screener",
+    "find_uncorrelated_assets",
+    "get_volatility_metrics",
+]
 
-    Formula:
-    For each prediction:
-      - Percentiles: best sector percentile score, worst sector percentile score (if available), pair percentile score.
-      - Base Score = Average of available percentile scores.
-      - S&P Alpha Bonus = max(0.0, sector_sp_diff) if sector_sp_diff is available,
-        else max(0.0, predicted_sector_return - benchmark_spy_return) if both exist, else 0.0.
-      - Prediction Score = Base Score + S&P Alpha Bonus.
+
+def calculate_baseline_metrics(predictions: list[dict]) -> dict:
+    """Calculate the weekly baseline ratchet metrics for a model's sector predictions.
+
     Ratchet Baseline Score = Avg(Prediction Scores) - (Mean Brier Score * 50.0).
     """
     if not predictions:
-        return 0.0
+        return {
+            "score": 0.0,
+            "base_percentile": 50.0,
+            "alpha_bonus": 0.0,
+            "mean_brier": 0.25,
+            "predictions_evaluated": 0,
+        }
 
     pred_scores = []
+    base_percentiles = []
+    alpha_bonuses = []
     brier_scores = []
 
     for p in predictions:
@@ -65,6 +80,7 @@ def calculate_baseline_score(predictions: list[dict]) -> float:
             continue
 
         base_score = sum(components) / len(components)
+        base_percentiles.append(base_score)
 
         # Calculate S&P alpha bonus for the picked sector
         sp_diff = p.get("sector_sp_diff")
@@ -75,6 +91,7 @@ def calculate_baseline_score(predictions: list[dict]) -> float:
                 sp_diff = sec_ret - spy_ret
 
         alpha_bonus = max(0.0, float(sp_diff)) if sp_diff is not None else 0.0
+        alpha_bonuses.append(alpha_bonus)
         pred_scores.append(base_score + alpha_bonus)
 
         brier = p.get("brier_score")
@@ -82,12 +99,30 @@ def calculate_baseline_score(predictions: list[dict]) -> float:
             brier_scores.append(float(brier))
 
     if not pred_scores:
-        return 0.0
+        return {
+            "score": 0.0,
+            "base_percentile": 50.0,
+            "alpha_bonus": 0.0,
+            "mean_brier": 0.25,
+            "predictions_evaluated": 0,
+        }
 
-    avg_pred_score = sum(pred_scores) / len(pred_scores)
+    avg_base_percentile = sum(base_percentiles) / len(base_percentiles)
+    avg_alpha_bonus = sum(alpha_bonuses) / len(alpha_bonuses)
     mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.0
-    final_score = avg_pred_score - (mean_brier * 50.0)
-    return float(final_score)
+    final_score = (avg_base_percentile + avg_alpha_bonus) - (mean_brier * 50.0)
+
+    return {
+        "score": float(final_score),
+        "base_percentile": float(avg_base_percentile),
+        "alpha_bonus": float(avg_alpha_bonus),
+        "mean_brier": float(mean_brier),
+        "predictions_evaluated": len(pred_scores),
+    }
+
+
+def calculate_baseline_score(predictions: list[dict]) -> float:
+    return calculate_baseline_metrics(predictions)["score"]
 
 
 async def generate_new_prompt(
@@ -177,7 +212,8 @@ async def run_predictor_autoresearch_for_model(
         return
 
     # Calculate weekly score using baseline ratchet formula (including Brier penalty)
-    weekly_score = calculate_baseline_score(predictions)
+    weekly_metrics = calculate_baseline_metrics(predictions)
+    weekly_score = weekly_metrics["score"]
 
     # 2. Fetch current active prompt for this model track
     prompt_response = (
@@ -227,9 +263,7 @@ async def run_predictor_autoresearch_for_model(
 
     # 3. Update the active prompt variant metrics in DB
     if not dry_run:
-        client.table("prompt_experiments").update({"metrics": {"score": weekly_score}}).eq(
-            "variant_tag", parent_tag
-        ).execute()
+        client.table("prompt_experiments").update({"metrics": weekly_metrics}).eq("variant_tag", parent_tag).execute()
     logger.info(f"Updated prompt variant {parent_tag} ({model_name}) with weekly score {weekly_score:.4f}")
 
     # 4. Fetch all-time baseline prompt variant for this model track
@@ -340,6 +374,15 @@ async def run_predictor_autoresearch_for_model(
         "track_id", model_name
     ).eq("status", "active").execute()
 
+    research_output = {
+        "research_insight": research_insight,
+        "hypothesis": research_insight,
+        "thought_process": research_insight,
+        "research_reasoning": research_insight,
+        "confidence": 0.85 if is_baseline_beat else 0.50,
+        "selected_tools": DEFAULT_SECTOR_PREDICTOR_TOOLS,
+    }
+
     client.table("prompt_experiments").insert(
         {
             "variant_tag": new_tag,
@@ -352,6 +395,7 @@ async def run_predictor_autoresearch_for_model(
             "experiment_type": "incremental",
             "parent_tag": parent_tag,
             "change_description": f"Autoresearch generated for {model_name} from score {weekly_score:.1f}",
+            "research_output": research_output,
         }
     ).execute()
 

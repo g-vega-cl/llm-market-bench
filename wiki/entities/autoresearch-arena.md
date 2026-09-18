@@ -14,22 +14,29 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 - **Experiment Details**: Deep-dive view with portfolio vs. SPY returns, max drawdown, change description, meta-researcher hypothesis, and the full prompt text.
 - **Segmented Trading Prompt Display**: Visually breaks down "The Trading Prompt" card into 3 distinct sections using `splitPromptSections`: Header (`[FROZEN / SYSTEM MANAGED]`), Mutable Strategy (`[MUTABLE / EVOLVED BY AUTORESEARCH]`), and Footer (`[FROZEN / SYSTEM MANAGED]`), making it immediately obvious which system rules are frozen and which strategies are mutated by autoresearch.
 - **Prompt Changes (Diff View)**: Interactive inline diff view displaying precise additions and deletions compared to the parent prompt. Diffs **only the mutable strategies section** (extracted via `splitPromptSections`) so the massive identical header/footer does not drown out real changes. Falls back to full-content diff if section markers are absent. Displays only changed lines by default with a toggle to show the full mutable diff. The subtitle reads *"mutable strategies section only"* to make the scope explicit.
-- **Daily Autoresearch Score**: Displays real-time daily evaluation of the prompt performance against benchmark parameters. Renders a premium active `LIVE TRACKING` card with a glowing status ring for pending prompts (showing progression for past/current days of the week, while future/unreached days are masked with `'N/A'`), or a complete week checkpoint sequence (Monday–Friday) showing the step-by-step score progression for completed runs. Supports interactive day-by-day score inspection: clicking on a weekday card opens a detailed audit breakdown exposing exact base math equations, formula derivations, and individual constituent model portfolios (e.g., Gemini 3.1 Flash Lite, DeepSeek V4 Pro) with their specific base and scaled actual/do-nothing returns. Displays the date badge (M/D) on each weekday card.
-
-- **Score Breakdown & Pending Card**: Displays a dynamic, live arithmetic breakdown of the Benchmark-Triad Weighted Model `0.4 × (Portfolio% - SPY%) + 0.4 × (Portfolio% - Do-Nothing%) + 0.2 × (Portfolio% - 10Y Bond%) - (max_drawdown% × 0.3)` (including annualized volatility) or a premium "Pending Performance" card with a glowing status ring for active prompts that are currently trading in the live market.
-- **Weekly Toolbox Configuration**: Visualizes the meta-researcher's dynamically chosen cognitive tools against the canonical tool registry (`packages/config/tools.json`), displaying enabled/total tools badges, evolution deltas (added/removed tools compared to the parent variant), and complete tool capabilities. Dynamically absorbs novel or unexpected tools to guarantee the enabled count never exceeds the total count.
-- **Dynamic State & N/A Support**: Renders neutral, stylized `'N/A'` badges and metrics tiles for pending/active prompts without polluting the UI with redundant zero-value placeholders.
-- **Server‑side Data Fetching**: Uses `createServerFn` and React Query to load `prompt_experiments` from Supabase (filtered by `prompt_name = 'CORE_ANALYSIS_SYSTEM_PROMPT'`) with 10‑minute stale time.
+- **Daily Autoresearch Score**: Displays real-time daily evaluation of prompt performance against benchmark parameters. Refactored into isolated vertical-slice sub-primitives (`DailyScoreDisplay.tsx` reduced from 982 LOC to 96 LOC):
+  - `DailyScoreOverview.tsx`: Headline ratchet score, baseline comparison badge, and week range.
+  - `DailyProgressionGrid.tsx`: Weekday checkpoint cards (Monday–Friday) with live tracking status ring and interactive day selection.
+  - `DailyAuditLedger.tsx`: Collapsible deep-dive math audit exposing exact constituent model returns (scaled actual vs do-nothing).
+  - `daily-score-math.ts`: Pure helper functions for compounding, daily ratchet scoring, and portfolio returns.
+  - `useActualReturns.ts`: Hermetic hook for fetching actual asset prices and compounding returns.
+- **Unified 3-Domain Transparency Standard ("Benchify Standard")**: Enforced across Portfolio Autoresearch (`/autoresearch`), Daily SPY Predictor (`/daily-predictions`), and Sector Predictor (`/ai-predictions`):
+  1. **Score & Math Audit**: Formula substitution bar, pillar tiles, and baseline delta (`ScoreBreakdown.tsx`, `DailyScoreBreakdown.tsx`, `SectorScoreBreakdown.tsx`).
+  2. **Cognitive Toolbox**: Dynamic tool registry inspection (`CognitiveToolboxCard.tsx`) displaying enabled/total tools badges, parent deltas, and capability tags.
+  3. **Modular Reasoning Blocks**: Active thematic prompt blocks (`PromptBlocksCard.tsx`).
+  4. **Meta-Researcher Rationale & Conviction**: Unified `ResearchRationaleCard.tsx` showing change summary, hypothesis, analytical thought process, confidence gauge, and durable track memory.
+  5. **Segmented Prompt Inspector**: Triple-band inspection (`splitPromptSections`) isolating frozen system headers and output schemas from mutable autoresearch analytical strategies.
+- **Sector Ratchet Score Audit**: `SectorScoreBreakdown.tsx` exposes the weekly multi-pillar formula:
+  $$\text{Score} = \text{Avg}(\text{Base Percentile} + \text{S\&P Alpha Bonus}) - (\text{Mean Brier} \times 50.0)$$
 
 ## Frontend-Backend Scoring Synchronization Contract
 
 > [!IMPORTANT]
-> **Scoring Symmetry Mandate**: The engine in `apps/engine/autoresearch/metrics.py` (and `apps/engine/tasks/daily_autoresearch.py`) is the canonical source of truth for evaluation math. The frontend does not currently compute scores dynamically from a single shared schema. Therefore, **if the backend scoring formula, weights, benchmarks, or penalties change, the corresponding frontend UI components and test suites MUST be updated in tandem**:
-> - Formula Reference Banner: `apps/web/src/features/autoresearch/components/ScoreCalculation.tsx`
-> - Detailed Math Audit: `apps/web/src/features/autoresearch/components/ScoreBreakdown.tsx`
-> - Day-by-Day Progression: `apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx`
-> - Daily Predictions Breakdown: `apps/web/src/features/daily-predictions/components/DailyScoreBreakdown.tsx`
-> - Engine Prompt Report: `apps/engine/autoresearch/evaluator.py`
+> **Scoring Symmetry Mandate**: The engine in `apps/engine/autoresearch/metrics.py`, `apps/engine/tasks/daily_autoresearch.py`, and `apps/engine/tasks/predictor_autoresearch.py` is the canonical source of truth for evaluation math. The frontend UI mirrors this with zero-frontend-compute transparency:
+> - Portfolio Autoresearch: `ScoreCalculation.tsx`, `ScoreBreakdown.tsx`, `DailyScoreDisplay.tsx`
+> - Daily Predictor Autoresearch: `DailyScoreBreakdown.tsx`
+> - Sector Predictor Autoresearch: `SectorScoreBreakdown.tsx`
+> - Engine Tasks: `daily_autoresearch.py`, `predictor_autoresearch.py`
 
 ## Implementation
 - **Route**: `apps/web/src/routes/autoresearch/index.tsx`

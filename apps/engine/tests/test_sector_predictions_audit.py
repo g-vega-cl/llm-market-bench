@@ -386,7 +386,7 @@ async def test_predictor_autoresearch_ratchet_success(mock_get_gemini):
         await run_predictor_autoresearch(target_models=["deepseek-v4-flash"])
 
     # Assert metrics update on active-tag
-    assert any(up[0] == "prompt_experiments" and up[1].get("metrics") == {"score": 85.0} for up in db_updates)
+    assert any(up[0] == "prompt_experiments" and up[1].get("metrics", {}).get("score") == 85.0 for up in db_updates)
     # Assert active-tag status updated to baseline (beats baseline 80)
     assert any(up[0] == "prompt_experiments" and up[1].get("status") == "baseline" for up in db_updates)
     # Assert other variants demoted to saved
@@ -495,7 +495,7 @@ async def test_predictor_autoresearch_ratchet_revert(mock_get_gemini):
         await run_predictor_autoresearch(target_models=["deepseek-v4-flash"])
 
     # Assert metrics update on active-tag
-    assert any(up[0] == "prompt_experiments" and up[1].get("metrics") == {"score": 70.0} for up in db_updates)
+    assert any(up[0] == "prompt_experiments" and up[1].get("metrics", {}).get("score") == 70.0 for up in db_updates)
     # Assert active-tag status updated to discarded (underperformed baseline 80)
     assert any(up[0] == "prompt_experiments" and up[1].get("status") == "discarded" for up in db_updates)
     # Assert insert contains parent_tag = 'baseline-tag' (reverted) and mutated content wrapped in sandwich

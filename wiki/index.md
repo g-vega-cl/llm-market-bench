@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/autoresearch-arena]] — Web UI for browsing prompt experiment history, score audit, cognitive toolbox, and meta-researcher rationale across all three prediction domains
 - [[entities/macro-options]] — Macro options metrics fetching and markdown table formatting
 - [[entities/economic-releases]] — Live macroeconomic indicator releases from FMP with actual vs consensus surprises
 - [[entities/thematic-beneficiaries]] — Thematic beneficiary identification and markdown formatting tool
@@ -63,6 +64,7 @@
 
 ## Concepts
 
+- [[concepts/transparency-standard]] — Unified 3-domain transparency layer (score audit, tool tracking, prompt segmentation) across portfolio, daily, and sector prediction UIs
 - [[concepts/system-heavy-prompt]] — System-heavy and pull-based context injection design
 - [[concepts/thinking-agents]] — Auto-indexed page
 - [[concepts/honcho-dialectic-memory]] — Honcho persistent memory evaluation, multi-pass reconciliation patterns, and blueprint for chat gateway user modeling

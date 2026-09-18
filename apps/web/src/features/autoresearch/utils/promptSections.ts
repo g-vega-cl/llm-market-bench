@@ -19,12 +19,17 @@ export function splitPromptSections(promptText: string): SplitPromptResult {
     if (footerStart === -1) {
         footerStart = promptText.indexOf('=== OUTPUT FORMAT: TRADING SIGNALS ===');
     }
+    if (footerStart === -1) {
+        footerStart = promptText.indexOf('=== REQUIRED OUTPUT FORMAT ===');
+    }
 
     // Identify start of Mutable Strategies (the only section autoresearch evolves)
     const mutableMarkers = [
         '=== REASONING RIGOR',
         '=== CALENDAR & SEASONAL',
         '=== SOPHISTICATED TRADING LOGIC',
+        '=== ANALYTICAL STRATEGY INSTRUCTIONS ===',
+        '=== INSTRUCTIONS ===',
     ];
 
     let mutableStart = -1;

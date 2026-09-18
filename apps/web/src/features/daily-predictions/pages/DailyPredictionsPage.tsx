@@ -1,8 +1,25 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { CognitiveToolboxCard } from '../../autoresearch/components/CognitiveToolboxCard';
+import { PromptBlocksCard } from '../../autoresearch/components/PromptBlocksCard';
+import { PromptChanges } from '../../autoresearch/components/PromptChanges';
+import { ResearchRationaleCard } from '../../autoresearch/components/ResearchRationaleCard';
+import { splitPromptSections } from '../../autoresearch/utils/promptSections';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import { DailyScoreBreakdown } from '../components/DailyScoreBreakdown';
+
+export const DEFAULT_DAILY_PREDICTOR_TOOLS = [
+    'fetch_daily_newsletter',
+    'get_calendar_scenario_analysis',
+    'get_global_macro_context',
+    'get_macro_options_sentiment',
+    'get_volatility_index_details',
+    'get_market_health_barometer',
+    'get_market_feeling',
+    'get_today_economic_releases',
+    'get_premarket_quote',
+];
 
 interface Props {
     initialPredictions: DailyPrediction[];
@@ -1182,6 +1199,10 @@ function AutoresearchHistoryArena({
         experiments[0] ||
         null;
 
+    const parentExperiment = selectedExperiment?.parent_tag
+        ? experiments.find((e) => e.variant_tag === selectedExperiment.parent_tag)
+        : null;
+
     if (experiments.length === 0) {
         return (
             <div
@@ -1295,51 +1316,117 @@ function AutoresearchHistoryArena({
                             predictions={predictions}
                         />
 
-                        {selectedExperiment.change_description && (
-                            <div
-                                style={{
-                                    background: '#f8fafc',
-                                    padding: '12px 16px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #e2e8f0',
-                                    fontSize: '13px',
-                                    color: '#334155',
-                                }}
-                            >
-                                <strong>Mutation Rationale:</strong>{' '}
-                                {selectedExperiment.change_description}
-                            </div>
-                        )}
+                        {/* Cognitive Toolbox Configuration */}
+                        <CognitiveToolboxCard
+                            selectedTools={
+                                (
+                                    selectedExperiment.research_output as {
+                                        selected_tools?: string[];
+                                    }
+                                )?.selected_tools || DEFAULT_DAILY_PREDICTOR_TOOLS
+                            }
+                            parentSelectedTools={
+                                parentExperiment
+                                    ? (
+                                          parentExperiment.research_output as {
+                                              selected_tools?: string[];
+                                          }
+                                      )?.selected_tools || DEFAULT_DAILY_PREDICTOR_TOOLS
+                                    : undefined
+                            }
+                            title="Daily Predictor Cognitive Toolbox"
+                            subtitle="Contextual data feeds and analytical tools provided to the daily predictor model."
+                        />
 
-                        <div>
-                            <div
-                                style={{
-                                    fontSize: '13px',
-                                    fontWeight: '700',
-                                    color: '#475569',
-                                    marginBottom: '6px',
-                                }}
-                            >
-                                SYSTEM PROMPT STRATEGY CONTENT:
-                            </div>
-                            <pre
-                                style={{
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-word',
-                                    fontSize: '12px',
-                                    background: '#0f172a',
-                                    color: '#f8fafc',
-                                    padding: '16px',
-                                    borderRadius: '8px',
-                                    lineHeight: '1.5',
-                                    maxHeight: '400px',
-                                    overflowY: 'auto',
-                                    margin: 0,
-                                }}
-                            >
-                                {selectedExperiment.prompt_content}
-                            </pre>
-                        </div>
+                        {/* Modular Reasoning Blocks */}
+                        <PromptBlocksCard
+                            selectedBlocks={
+                                (
+                                    selectedExperiment.research_output as {
+                                        selected_prompt_blocks?: string[];
+                                    }
+                                )?.selected_prompt_blocks
+                            }
+                            parentSelectedBlocks={
+                                parentExperiment
+                                    ? (
+                                          parentExperiment.research_output as {
+                                              selected_prompt_blocks?: string[];
+                                          }
+                                      )?.selected_prompt_blocks
+                                    : undefined
+                            }
+                        />
+
+                        {/* Meta-Researcher Rationale & Conviction */}
+                        <ResearchRationaleCard experiment={selectedExperiment} />
+
+                        {/* Prompt Evolution / Diff vs Parent */}
+                        <PromptChanges
+                            experiment={selectedExperiment}
+                            parentExperiment={parentExperiment}
+                        />
+
+                        {/* Segmented Prompt Inspector */}
+                        {(() => {
+                            const { header, mutable, footer, isSplit } = splitPromptSections(
+                                selectedExperiment.prompt_content,
+                            );
+
+                            if (!isSplit) {
+                                return (
+                                    <div className="p-6 bg-slate-900 text-slate-100 rounded-xl space-y-3">
+                                        <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                            The Predictor Prompt
+                                        </div>
+                                        <pre className="whitespace-pre-wrap font-mono text-xs max-h-96 overflow-y-auto">
+                                            {selectedExperiment.prompt_content}
+                                        </pre>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div className="space-y-4">
+                                    {header && (
+                                        <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                Frozen System Header (Rules & Zero-Mean Mandate)
+                                            </div>
+                                            <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                {header}
+                                            </pre>
+                                        </div>
+                                    )}
+
+                                    <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                                Mutable Analytical Strategies (Evolved by
+                                                Autoresearch)
+                                            </div>
+                                            <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono">
+                                                v{selectedExperiment.variant_tag}
+                                            </span>
+                                        </div>
+                                        <pre className="whitespace-pre-wrap font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto">
+                                            {mutable}
+                                        </pre>
+                                    </div>
+
+                                    {footer && (
+                                        <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                Frozen Output Format & Schema Constraints
+                                            </div>
+                                            <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                {footer}
+                                            </pre>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
             </div>

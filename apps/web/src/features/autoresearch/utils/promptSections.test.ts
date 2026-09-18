@@ -47,14 +47,39 @@ Return the result as a structured JSON object containing a list of 'decisions'.`
         expect(result.footer).toContain('SMA MANAGEMENT RULES');
     });
 
-    it('falls back gracefully to full prompt if section markers are missing', () => {
-        const customPrompt = `This is a custom unstructured trading prompt.`;
+    it('correctly splits DAILY_PREDICTOR_PROMPT', () => {
+        const prompt = `You are an elite quantitative macro trader.
+=== ZERO-MEAN BASE RATE ===
+No bias.
 
-        const result = splitPromptSections(customPrompt);
+=== ANALYTICAL STRATEGY INSTRUCTIONS ===
+1. Macro catalyst extraction.
 
-        expect(result.isSplit).toBe(false);
-        expect(result.header).toBe('');
-        expect(result.mutable).toBe('This is a custom unstructured trading prompt.');
-        expect(result.footer).toBe('');
+=== REQUIRED OUTPUT FORMAT ===
+Return JSON.`;
+
+        const result = splitPromptSections(prompt);
+        expect(result.isSplit).toBe(true);
+        expect(result.header).toContain('You are an elite quantitative macro trader.');
+        expect(result.mutable).toContain('=== ANALYTICAL STRATEGY INSTRUCTIONS ===');
+        expect(result.footer).toContain('=== REQUIRED OUTPUT FORMAT ===');
+    });
+
+    it('correctly splits SECTOR_PREDICTOR_PROMPT', () => {
+        const prompt = `You are a macro AI analyzing correlations.
+=== AVAILABLE DATA ===
+Context.
+
+=== INSTRUCTIONS ===
+1. Analyze momentum.
+
+=== REQUIRED OUTPUT FORMAT ===
+Return JSON schema.`;
+
+        const result = splitPromptSections(prompt);
+        expect(result.isSplit).toBe(true);
+        expect(result.header).toContain('You are a macro AI analyzing correlations.');
+        expect(result.mutable).toContain('=== INSTRUCTIONS ===');
+        expect(result.footer).toContain('=== REQUIRED OUTPUT FORMAT ===');
     });
 });

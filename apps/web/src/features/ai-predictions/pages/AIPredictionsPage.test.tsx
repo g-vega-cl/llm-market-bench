@@ -232,4 +232,84 @@ describe('AIPredictionsPage', () => {
         expect(screen.getAllByText('Gemini 3.5').length).toBeGreaterThan(0);
         expect(screen.getAllByText('OpenAI GPT-5.6').length).toBeGreaterThan(0);
     });
+
+    it('renders full transparency suite in Prompt Auto-Research tab', () => {
+        const enrichedExperiments: PromptExperiment[] = [
+            {
+                id: 'exp-2',
+                prompt_name: 'SECTOR_PREDICTOR_PROMPT',
+                variant_tag: 'v1.1',
+                experiment_type: 'incremental',
+                prompt_content: `=== CONSTRAINTS ===
+Header rules
+=== INSTRUCTIONS ===
+DeepSeek sector momentum strategy
+=== REQUIRED OUTPUT FORMAT ===
+Footer JSON schema`,
+                change_description: 'Evolved sector momentum heuristics',
+                metrics: {
+                    score: 87.5,
+                    base_percentile: 85.0,
+                    alpha_bonus: 5.0,
+                    mean_brier: 0.05,
+                    predictions_evaluated: 6,
+                },
+                status: 'active',
+                week_start: '2026-07-17',
+                week_end: '2026-07-24',
+                created_at: '2026-07-17T00:00:00Z',
+                parent_tag: 'v1.0',
+                research_output: {
+                    research_insight:
+                        'Semiconductor capital expenditure cycles lead industrial turns.',
+                    confidence: 0.85,
+                    selected_tools: [
+                        'get_historical_correlation',
+                        'get_sector_fundamentals',
+                        'get_global_macro_context',
+                    ],
+                },
+                is_backtest: false,
+                track_id: 'track_default',
+            },
+        ];
+
+        render(
+            <AIPredictionsPage
+                initialData={mockPredictions}
+                experiments={enrichedExperiments}
+                refreshFn={refreshFn}
+            />,
+        );
+
+        // Switch to Prompt Auto-Research tab
+        fireEvent.click(screen.getByRole('button', { name: /Prompt Auto-Research/i }));
+
+        // Check formula heading and ratchet score
+        expect(screen.getByText('Sector Ratchet Scoring Formula')).toBeInTheDocument();
+        expect(screen.getByText('Sector Ratchet Score & Math Audit')).toBeInTheDocument();
+        expect(screen.getByText('87.50')).toBeInTheDocument();
+
+        // Check 3 pillars
+        expect(screen.getByText('Relative Percentile Rank')).toBeInTheDocument();
+        expect(screen.getByText('S&P Alpha Bonus')).toBeInTheDocument();
+        expect(screen.getByText('Brier Calibration Penalty')).toBeInTheDocument();
+
+        // Check Research Rationale Card & Confidence Bar
+        expect(screen.getByText('Meta-Researcher Rationale & Conviction')).toBeInTheDocument();
+        expect(screen.getByText(/Semiconductor capital expenditure cycles/i)).toBeInTheDocument();
+        expect(screen.getByText('85%')).toBeInTheDocument();
+
+        // Check Cognitive Toolbox Card
+        expect(screen.getByText('Cognitive Toolbox Configuration')).toBeInTheDocument();
+        expect(screen.getByText('get_historical_correlation')).toBeInTheDocument();
+        expect(screen.getByText('get_sector_fundamentals')).toBeInTheDocument();
+
+        // Check Segmented Prompt Inspector
+        expect(screen.getByText('Frozen System Constraints (Header)')).toBeInTheDocument();
+        expect(
+            screen.getByText('Mutable Analytical Strategies (Evolved by Autoresearch)'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Frozen Output Schema (Footer)')).toBeInTheDocument();
+    });
 });

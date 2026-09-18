@@ -421,5 +421,9 @@ describe('DailyPredictionsPage', () => {
         expect(screen.getByText('Magnitude Capture (10%)')).toBeInTheDocument();
         expect(screen.getByText('Brier Penalty (50.0×)')).toBeInTheDocument();
         expect(screen.getByText(/FORMULA SUBSTITUTION:/)).toBeInTheDocument();
+
+        // Verify Cognitive Toolbox and Meta-Researcher Rationale
+        expect(screen.getByText('Daily Predictor Cognitive Toolbox')).toBeInTheDocument();
+        expect(screen.getByText('Meta-Researcher Rationale & Conviction')).toBeInTheDocument();
     });
 });

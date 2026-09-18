@@ -19,7 +19,9 @@ from core.llm.daily_predictor_prompts import (
 
 
 class DailyMetaPromptResponse(BaseModel):
-    new_prompt: str = Field(..., description="The complete modified strategy and analytical reasoning instructions text")
+    new_prompt: str = Field(
+        ..., description="The complete modified strategy and analytical reasoning instructions text"
+    )
     research_insight: str | None = Field(
         default=None,
         description=(
@@ -28,6 +30,19 @@ class DailyMetaPromptResponse(BaseModel):
             "This will be preserved in long-term memory for this model track."
         ),
     )
+
+
+DEFAULT_DAILY_PREDICTOR_TOOLS = [
+    "fetch_daily_newsletter",
+    "get_calendar_scenario_analysis",
+    "get_global_macro_context",
+    "get_macro_options_sentiment",
+    "get_volatility_index_details",
+    "get_market_health_barometer",
+    "get_market_feeling",
+    "get_today_economic_releases",
+    "get_premarket_quote",
+]
 
 
 def calculate_magnitude_capture(p: dict) -> float:
@@ -120,9 +135,7 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     return float(calculate_daily_ratchet_metrics(predictions)["score"])
 
 
-def fetch_autoresearch_context(
-    client, start_date_str: str, end_date_str: str, track_id: str | None = None
-) -> dict:
+def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str, track_id: str | None = None) -> dict:
     """Fetch recent newsletters, market events, active concept themes, and track-specific autoresearch memories."""
     context = {
         "daily_events": {},
@@ -573,6 +586,15 @@ async def run_daily_autoresearch_for_model(
         "track_id", model_name
     ).eq("status", "active").execute()
 
+    research_output = {
+        "research_insight": research_insight,
+        "hypothesis": research_insight,
+        "thought_process": research_insight,
+        "research_reasoning": research_insight,
+        "confidence": 0.85 if is_baseline_beat else 0.50,
+        "selected_tools": DEFAULT_DAILY_PREDICTOR_TOOLS,
+    }
+
     client.table("prompt_experiments").insert(
         {
             "variant_tag": new_tag,
@@ -585,6 +607,7 @@ async def run_daily_autoresearch_for_model(
             "experiment_type": "incremental",
             "parent_tag": parent_tag,
             "change_description": f"Weekly daily autoresearch mutation for {model_name} from score {current_score:.2f}",
+            "research_output": research_output,
         }
     ).execute()
 

@@ -1,7 +1,13 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { CognitiveToolboxCard } from '../../autoresearch/components/CognitiveToolboxCard';
+import { PromptBlocksCard } from '../../autoresearch/components/PromptBlocksCard';
+import { PromptChanges } from '../../autoresearch/components/PromptChanges';
+import { ResearchRationaleCard } from '../../autoresearch/components/ResearchRationaleCard';
+import { splitPromptSections } from '../../autoresearch/utils/promptSections';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
+import { DEFAULT_DAILY_PREDICTOR_TOOLS } from './DailyPredictionsPage';
 
 interface Props {
     initialPredictions: DailyPrediction[];
@@ -470,46 +476,142 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                         </span>
                                     </div>
 
-                                    <p
-                                        style={{
-                                            fontSize: '14px',
-                                            color: '#475569',
-                                            background: '#f8fafc',
-                                            padding: '12px',
-                                            borderRadius: '8px',
-                                            border: '1px solid #f1f5f9',
-                                        }}
-                                    >
-                                        <strong>Change Rationale:</strong>{' '}
-                                        {selectedExperiment.change_description ||
-                                            'Baseline daily prompt setup.'}
-                                    </p>
+                                    {(() => {
+                                        const parentExperiment = selectedExperiment.parent_tag
+                                            ? experiments.find(
+                                                  (e) =>
+                                                      e.variant_tag ===
+                                                      selectedExperiment.parent_tag,
+                                              )
+                                            : null;
 
-                                    <div style={{ marginTop: '16px' }}>
-                                        <div
-                                            style={{
-                                                fontSize: '12px',
-                                                fontWeight: '700',
-                                                color: '#64748b',
-                                                marginBottom: '6px',
-                                            }}
-                                        >
-                                            MUTABLE STRATEGY PROMPT INSTRUCTIONS
-                                        </div>
-                                        <pre
-                                            style={{
-                                                background: '#0f172a',
-                                                color: '#f8fafc',
-                                                padding: '16px',
-                                                borderRadius: '8px',
-                                                fontSize: '13px',
-                                                overflowX: 'auto',
-                                                whiteSpace: 'pre-wrap',
-                                            }}
-                                        >
-                                            {selectedExperiment.prompt_content}
-                                        </pre>
-                                    </div>
+                                        return (
+                                            <div className="space-y-6">
+                                                {/* Cognitive Toolbox */}
+                                                <CognitiveToolboxCard
+                                                    selectedTools={
+                                                        (
+                                                            selectedExperiment.research_output as {
+                                                                selected_tools?: string[];
+                                                            }
+                                                        )?.selected_tools ||
+                                                        DEFAULT_DAILY_PREDICTOR_TOOLS
+                                                    }
+                                                    parentSelectedTools={
+                                                        parentExperiment
+                                                            ? (
+                                                                  parentExperiment.research_output as {
+                                                                      selected_tools?: string[];
+                                                                  }
+                                                              )?.selected_tools ||
+                                                              DEFAULT_DAILY_PREDICTOR_TOOLS
+                                                            : undefined
+                                                    }
+                                                    title="Daily Predictor Cognitive Toolbox"
+                                                    subtitle="Contextual data feeds and analytical tools provided to the daily predictor model."
+                                                />
+
+                                                {/* Modular Reasoning Blocks */}
+                                                <PromptBlocksCard
+                                                    selectedBlocks={
+                                                        (
+                                                            selectedExperiment.research_output as {
+                                                                selected_prompt_blocks?: string[];
+                                                            }
+                                                        )?.selected_prompt_blocks
+                                                    }
+                                                    parentSelectedBlocks={
+                                                        parentExperiment
+                                                            ? (
+                                                                  parentExperiment.research_output as {
+                                                                      selected_prompt_blocks?: string[];
+                                                                  }
+                                                              )?.selected_prompt_blocks
+                                                            : undefined
+                                                    }
+                                                />
+
+                                                {/* Meta-Researcher Rationale & Conviction */}
+                                                <ResearchRationaleCard
+                                                    experiment={selectedExperiment}
+                                                />
+
+                                                {/* Prompt Changes Diff */}
+                                                <PromptChanges
+                                                    experiment={selectedExperiment}
+                                                    parentExperiment={parentExperiment}
+                                                />
+
+                                                {/* Segmented Prompt Inspector */}
+                                                {(() => {
+                                                    const { header, mutable, footer, isSplit } =
+                                                        splitPromptSections(
+                                                            selectedExperiment.prompt_content,
+                                                        );
+
+                                                    if (!isSplit) {
+                                                        return (
+                                                            <div className="p-6 bg-slate-900 text-slate-100 rounded-xl space-y-3">
+                                                                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                                                    The Predictor Prompt
+                                                                </div>
+                                                                <pre className="whitespace-pre-wrap font-mono text-xs max-h-96 overflow-y-auto">
+                                                                    {
+                                                                        selectedExperiment.prompt_content
+                                                                    }
+                                                                </pre>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <div className="space-y-4">
+                                                            {header && (
+                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+                                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                        Frozen System Header
+                                                                    </div>
+                                                                    <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                                        {header}
+                                                                    </pre>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                                                        Mutable Analytical
+                                                                        Strategies
+                                                                    </div>
+                                                                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono">
+                                                                        v
+                                                                        {
+                                                                            selectedExperiment.variant_tag
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                                <pre className="whitespace-pre-wrap font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto">
+                                                                    {mutable}
+                                                                </pre>
+                                                            </div>
+
+                                                            {footer && (
+                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+                                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                        Frozen Output Format &
+                                                                        Schema
+                                                                    </div>
+                                                                    <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                                        {footer}
+                                                                    </pre>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>

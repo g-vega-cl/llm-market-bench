@@ -12,7 +12,11 @@ import {
     TableRow,
 } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
-import { diffLines } from '~/features/autoresearch/utils/diff';
+import { CognitiveToolboxCard } from '~/features/autoresearch/components/CognitiveToolboxCard';
+import { PromptBlocksCard } from '~/features/autoresearch/components/PromptBlocksCard';
+import { PromptChanges } from '~/features/autoresearch/components/PromptChanges';
+import { ResearchRationaleCard } from '~/features/autoresearch/components/ResearchRationaleCard';
+import { splitPromptSections } from '~/features/autoresearch/utils/promptSections';
 import type {
     EvaluationAuditData,
     EvaluationAuditItem,
@@ -20,6 +24,18 @@ import type {
 } from '../api/fetch-predictions';
 import { AIPredictionChart } from '../components/AIPredictionChart';
 import { AIPredictionsTable } from '../components/AIPredictionsTable';
+import { SectorScoreBreakdown } from '../components/SectorScoreBreakdown';
+
+export const DEFAULT_SECTOR_PREDICTOR_TOOLS = [
+    'get_historical_correlation',
+    'get_sector_fundamentals',
+    'get_global_macro_context',
+    'fetch_daily_newsletter',
+    'get_macro_economic_series',
+    'run_stock_screener',
+    'find_uncorrelated_assets',
+    'get_volatility_metrics',
+];
 
 function formatStableDate(dateStr: string): string {
     if (!dateStr) return 'N/A';
@@ -523,6 +539,9 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
 
     // Auto-Research computations
     const baselineScore = useMemo(() => calculateBaselineScore(experimentsList), [experimentsList]);
+    const numericBaselineScore = useMemo(() => {
+        return baselineScore !== 'N/A' ? Number.parseFloat(baselineScore) : null;
+    }, [baselineScore]);
 
     const activeVariant = useMemo(() => findActiveVariant(experimentsList), [experimentsList]);
 
@@ -606,10 +625,12 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                 <PredictorAutoresearchTab
                     experimentsList={experimentsList}
                     baselineScore={baselineScore}
+                    numericBaselineScore={numericBaselineScore}
                     activeVariant={activeVariant}
                     selectedExperiment={selectedExperiment}
                     setSelectedExpId={setSelectedExpId}
                     parentExperiment={parentExperiment}
+                    predictions={data}
                 />
             )}
         </div>
@@ -1028,19 +1049,23 @@ function DataAuditBlock({ auditData }: { auditData: EvaluationAuditData }) {
 interface PredictorAutoresearchTabProps {
     experimentsList: PromptExperiment[];
     baselineScore: string;
+    numericBaselineScore: number | null;
     activeVariant: string;
     selectedExperiment: PromptExperiment | null;
     setSelectedExpId: (id: string | null) => void;
     parentExperiment: PromptExperiment | null;
+    predictions?: SectorPrediction[];
 }
 
 function PredictorAutoresearchTab({
     experimentsList,
     baselineScore,
+    numericBaselineScore,
     activeVariant,
     selectedExperiment,
     setSelectedExpId,
     parentExperiment,
+    predictions = [],
 }: PredictorAutoresearchTabProps) {
     return (
         <div className="space-y-8 animate-in fade-in duration-300">
@@ -1071,20 +1096,19 @@ function PredictorAutoresearchTab({
 
             <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
                 <SectionHeading className="text-slate-200 text-lg">
-                    Predictor Scoring Formula
+                    Sector Ratchet Scoring Formula
                 </SectionHeading>
                 <p className="text-slate-400 text-sm leading-relaxed">
-                    Every weekly prediction is evaluated against the actual performance of the
-                    sector ETF universe. The score is calculated as the average of the selected
-                    sector's percentile return score and the uncorrelated pair's percentile return
-                    score:
+                    Evaluates weekly sector calls across 11 S&P sectors, rewarding relative
+                    percentile ranking and benchmark outperformance while docking uncalibrated
+                    probability confidence:
                 </p>
                 <div className="py-4 px-6 bg-slate-900/60 border border-slate-700/50 rounded-xl flex flex-col items-center justify-center space-y-2">
                     <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        Weekly Predictor Score
+                        Ratchet Baseline Formula
                     </div>
-                    <div className="text-xl font-mono font-bold text-slate-200 text-center leading-relaxed">
-                        Average( Sector Percentile + Pair Percentile )
+                    <div className="text-base sm:text-lg font-mono font-bold text-slate-200 text-center leading-relaxed">
+                        Score = Base Percentile + S&amp;P Alpha Bonus − (Mean Brier × 50.0)
                     </div>
                 </div>
             </Card>
@@ -1137,8 +1161,60 @@ function PredictorAutoresearchTab({
                                 </span>
                             </div>
 
+                            {/* Sector Score Breakdown & Math Audit */}
+                            <SectorScoreBreakdown
+                                experiment={selectedExperiment}
+                                predictions={predictions}
+                                baselineScore={numericBaselineScore}
+                            />
+
+                            {/* Research Rationale, Confidence Gauge, and Hypothesis */}
+                            <ResearchRationaleCard experiment={selectedExperiment} />
+
+                            {/* Cognitive Tools Used by Model / Researcher */}
+                            <CognitiveToolboxCard
+                                selectedTools={
+                                    (
+                                        selectedExperiment.research_output as {
+                                            selected_tools?: string[];
+                                        }
+                                    )?.selected_tools || DEFAULT_SECTOR_PREDICTOR_TOOLS
+                                }
+                                parentSelectedTools={
+                                    parentExperiment
+                                        ? (
+                                              parentExperiment.research_output as {
+                                                  selected_tools?: string[];
+                                              }
+                                          )?.selected_tools || DEFAULT_SECTOR_PREDICTOR_TOOLS
+                                        : undefined
+                                }
+                                title="Cognitive Toolbox Configuration"
+                                subtitle="Contextual data feeds and analytical tools provided to the sector predictor model."
+                            />
+
+                            {/* Active Prompt Blocks */}
+                            <PromptBlocksCard
+                                selectedBlocks={
+                                    (
+                                        selectedExperiment.research_output as {
+                                            selected_prompt_blocks?: string[];
+                                        }
+                                    )?.selected_prompt_blocks
+                                }
+                                parentSelectedBlocks={
+                                    parentExperiment
+                                        ? (
+                                              parentExperiment.research_output as {
+                                                  selected_prompt_blocks?: string[];
+                                              }
+                                          )?.selected_prompt_blocks
+                                        : undefined
+                                }
+                            />
+
+                            {/* Metadata Row & Change Description */}
                             <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-6">
-                                {/* Metadata Row */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-900/40 rounded-xl border border-slate-800/50 text-xs">
                                     <div>
                                         <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
@@ -1201,45 +1277,76 @@ function PredictorAutoresearchTab({
                                         "
                                     </p>
                                 </div>
-
-                                {selectedExperiment.research_output?.hypothesis && (
-                                    <div className="space-y-2">
-                                        <SubHeading className="text-slate-300">
-                                            Hypothesis
-                                        </SubHeading>
-                                        <div className="p-4 bg-slate-900/60 rounded-lg text-sm text-slate-300 border border-slate-800">
-                                            {selectedExperiment.research_output.hypothesis}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selectedExperiment.research_output?.thought_process && (
-                                    <div className="space-y-2">
-                                        <SubHeading className="text-slate-300">
-                                            Meta-Researcher Logic
-                                        </SubHeading>
-                                        <div className="whitespace-pre-wrap text-sm text-slate-400 bg-slate-900/40 p-4 rounded-lg leading-relaxed border border-slate-800/50">
-                                            {selectedExperiment.research_output.thought_process}
-                                        </div>
-                                    </div>
-                                )}
                             </Card>
 
-                            <PredictorPromptChanges
+                            {/* Prompt Changes */}
+                            <PromptChanges
                                 experiment={selectedExperiment}
                                 parentExperiment={parentExperiment}
                             />
 
-                            <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
-                                <SectionHeading className="text-slate-200">
-                                    The Predictor Prompt
-                                </SectionHeading>
-                                <div className="relative group">
-                                    <pre className="p-4 bg-slate-950 text-slate-300 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-slate-850 max-h-[500px] overflow-y-auto">
-                                        {selectedExperiment.prompt_content}
-                                    </pre>
-                                </div>
-                            </Card>
+                            {/* Segmented Prompt Inspector */}
+                            {(() => {
+                                const { header, mutable, footer, isSplit } = splitPromptSections(
+                                    selectedExperiment.prompt_content,
+                                );
+
+                                if (!isSplit) {
+                                    return (
+                                        <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
+                                            <SectionHeading className="text-slate-200">
+                                                The Predictor Prompt
+                                            </SectionHeading>
+                                            <div className="relative group">
+                                                <pre className="p-4 bg-slate-950 text-slate-300 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-slate-850 max-h-[500px] overflow-y-auto">
+                                                    {selectedExperiment.prompt_content}
+                                                </pre>
+                                            </div>
+                                        </Card>
+                                    );
+                                }
+
+                                return (
+                                    <div className="space-y-4">
+                                        {header && (
+                                            <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    Frozen System Constraints (Header)
+                                                </div>
+                                                <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                    {header}
+                                                </pre>
+                                            </div>
+                                        )}
+
+                                        <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                                    Mutable Analytical Strategies (Evolved by
+                                                    Autoresearch)
+                                                </div>
+                                                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono">
+                                                    v{selectedExperiment.variant_tag}
+                                                </span>
+                                            </div>
+                                            <pre className="whitespace-pre-wrap font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto">
+                                                {mutable}
+                                            </pre>
+                                        </div>
+
+                                        {footer && (
+                                            <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    Frozen Output Schema (Footer)
+                                                </div>
+                                                <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                    {footer}
+                                                </pre>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     ) : (
                         <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-slate-800 rounded-3xl text-slate-500">
@@ -1334,114 +1441,4 @@ function PredictorStatusBadge({ status }: { status: string }) {
         default:
             return <Badge>{status}</Badge>;
     }
-}
-
-interface PredictorPromptChangesProps {
-    experiment: PromptExperiment;
-    parentExperiment: PromptExperiment | null;
-}
-
-function PredictorPromptChanges({ experiment, parentExperiment }: PredictorPromptChangesProps) {
-    const [showChangesOnly, setShowChangesOnly] = useState(true);
-
-    const diffResult = useMemo(() => {
-        if (!parentExperiment) return [];
-        return diffLines(parentExperiment.prompt_content, experiment.prompt_content);
-    }, [parentExperiment, experiment.prompt_content]);
-
-    const hasChanges = useMemo(() => {
-        return diffResult.some((item) => item.added || item.removed);
-    }, [diffResult]);
-
-    const filteredChanges = useMemo(() => {
-        if (!showChangesOnly) return diffResult;
-        return diffResult.filter((item) => item.added || item.removed);
-    }, [diffResult, showChangesOnly]);
-
-    if (!parentExperiment) {
-        const isBaseline = experiment.experiment_type === 'baseline';
-        return (
-            <Card className="p-6 bg-slate-800/10 border-dashed border-slate-800">
-                <div className="flex flex-col items-center justify-center text-center space-y-2 py-4">
-                    <span className="text-xl">🌱</span>
-                    <h3 className="font-bold text-slate-300">
-                        {isBaseline ? 'Initial baseline prompt' : 'No parent prompt'}
-                    </h3>
-                    <p className="text-slate-500 text-xs max-w-md">
-                        {isBaseline
-                            ? 'This is the starting point of the sector predictor auto-research loop. No previous variant is available to compare.'
-                            : 'This experiment does not have a registered parent variant to compare against.'}
-                    </p>
-                </div>
-            </Card>
-        );
-    }
-
-    return (
-        <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <SectionHeading className="text-slate-200">Prompt Changes</SectionHeading>
-                    <p className="text-xs text-slate-500">
-                        Comparing{' '}
-                        <span className="font-mono text-emerald-400">
-                            v{parentExperiment.variant_tag}
-                        </span>{' '}
-                        (old) →{' '}
-                        <span className="font-mono text-emerald-400">
-                            v{experiment.variant_tag}
-                        </span>{' '}
-                        (new)
-                    </p>
-                </div>
-
-                {hasChanges && (
-                    <button
-                        type="button"
-                        onClick={() => setShowChangesOnly(!showChangesOnly)}
-                        className="px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs rounded-md transition-colors"
-                    >
-                        {showChangesOnly ? 'Show Full Prompt Diff' : 'Show Changes Only'}
-                    </button>
-                )}
-            </div>
-
-            <div className="relative group">
-                <div className="relative font-mono text-[11px] leading-relaxed max-h-[350px] overflow-y-auto bg-slate-950 border border-slate-850 rounded-xl p-4 md:p-6 space-y-[2px]">
-                    {!hasChanges ? (
-                        <div className="text-center text-slate-500 py-6 text-xs">
-                            ✨ No prompt text changes detected between these variants.
-                        </div>
-                    ) : showChangesOnly && filteredChanges.length === 0 ? (
-                        <div className="text-center text-slate-500 py-6 text-xs">
-                            No added or removed lines to show.
-                        </div>
-                    ) : (
-                        filteredChanges.map((change, idx) => {
-                            let prefix = '  ';
-                            let classes = 'text-slate-500 px-2 py-0.5 opacity-60';
-
-                            if (change.added) {
-                                prefix = '+ ';
-                                classes =
-                                    'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500 px-2 py-0.5';
-                            } else if (change.removed) {
-                                prefix = '- ';
-                                classes =
-                                    'bg-rose-500/10 text-rose-400 border-l-2 border-rose-500 px-2 py-0.5 line-through decoration-rose-500/30';
-                            }
-
-                            return (
-                                // biome-ignore lint/suspicious/noArrayIndexKey: Static diff lines sequence
-                                <div key={idx} className={`${classes} whitespace-pre-wrap`}>
-                                    {prefix}
-                                    {change.value}
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-            </div>
-        </Card>
-    );
 }

@@ -1,11 +1,11 @@
 /// <reference types="vite/client" />
 
 import { Badge, Button, cn, GlobalBackground } from '@llm-market-bench/ui-design-system';
-import { PostHogProvider } from '@posthog/react';
+import { PostHogProvider, usePostHog } from '@posthog/react';
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { createServerFn } from '@tanstack/react-start';
-import type * as React from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
 import { NotFound } from '~/components/ui/NotFound';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
@@ -13,15 +13,21 @@ import { seo } from '~/lib/seo';
 import { getSupabaseServerClient } from '~/lib/supabase';
 import appCss from '../styles/app.css?url';
 
-const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
+export type AuthUser = {
+    id: string;
+    email: string;
+};
+
+const fetchUser = createServerFn({ method: 'GET' }).handler(async (): Promise<AuthUser | null> => {
     const supabase = getSupabaseServerClient();
     const { data, error: _error } = await supabase.auth.getUser();
 
-    if (!data.user?.email) {
+    if (!data.user?.id || !data.user?.email) {
         return null;
     }
 
     return {
+        id: data.user.id,
         email: data.user.email,
     };
 });
@@ -114,7 +120,32 @@ export function NavLink({ to, label, exact }: { to: string; label: string; exact
     );
 }
 
-export function RootDocument({ children }: { children: React.ReactNode }) {
+export function PostHogAuthSync({ user: userProp }: { user?: AuthUser | null } = {}) {
+    const routeContext = Route.useRouteContext();
+    const user = userProp !== undefined ? userProp : routeContext?.user;
+    const posthog = usePostHog();
+    const prevUserIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!posthog) return;
+
+        if (user?.id) {
+            if (posthog.get_distinct_id?.() !== user.id) {
+                posthog.identify?.(user.id, {
+                    email: user.email,
+                });
+            }
+            prevUserIdRef.current = user.id;
+        } else if (prevUserIdRef.current && !user) {
+            posthog.reset?.();
+            prevUserIdRef.current = null;
+        }
+    }, [user, posthog]);
+
+    return null;
+}
+
+export function RootDocument({ children }: { children: ReactNode }) {
     const { user } = Route.useRouteContext();
 
     return (
@@ -155,6 +186,7 @@ export function RootDocument({ children }: { children: React.ReactNode }) {
                         disable_surveys: true,
                     }}
                 >
+                    <PostHogAuthSync user={user} />
                     <nav
                         className={cn(
                             'flex flex-nowrap overflow-x-auto whitespace-nowrap items-center gap-x-6 px-6 py-4',

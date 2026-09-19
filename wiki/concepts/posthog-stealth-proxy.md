@@ -58,11 +58,22 @@ These crawlers run in headless **CefSharp** (.NET Chromium Embedded Framework) e
 - **Zero App Code Overhead**: Rather than bloating client bundles with custom interception code or risking email deliverability by blocking security crawlers at the WAF, the platform relies on PostHog's native **Error Tracking Suppression Rules**.
 - **Active Rule**: A suppression rule configured on `properties.$exception_message` drops incoming exceptions where the message contains `Object Not Found Matching Id` and `MethodName:update`.
 - **Remote Config Lifecycle (`posthog-js#2327`)**: PostHog SDK fetches suppression rules asynchronously from `/p/decide/`. Exceptions thrown in the earliest milliseconds before remote config resolves can occasionally be transmitted client-side before the server-side ingestion rule drops them.
-- **Non-Retroactivity**: Suppression rules only apply to future ingested events. Historical events captured before rule creation remain in ClickHouse and appear in weekly digests until the issue status is set to **Suppressed** or the retention window expires.
+- Non-Retroactivity: Suppression rules only apply to future ingested events. Historical events captured before rule creation remain in ClickHouse and appear in weekly digests until the issue status is set to Suppressed or the retention window expires.
+
+## Identity resolution and session lifecycle
+
+To accurately track conversion funnels without splitting user profiles or leaking sessions across shared devices, the application standardizes on a client sync lifecycle:
+
+- **Anonymous Tracking**: Unauthenticated visitors receive a device-scoped UUID from `posthog-js`, stored under `ph_<token>_posthog` cookies and `localStorage`. All initial pageviews and clicks are tracked under this anonymous distinct ID.
+- **Centralized Synchronization (`PostHogAuthSync`)**: In `apps/web/src/routes/__root.tsx`, the `PostHogAuthSync` component sits inside `PostHogProvider` and monitors the route context `user`. When a user authenticates via password, signup, or Google OAuth redirect, the component checks `posthog.get_distinct_id() !== user.id`. If different, it executes `posthog.identify(user.id, { email: user.email })`.
+- **Automatic Person Merging**: Calling `posthog.identify()` with the Supabase `user.id` (UUID) causes PostHog to issue an `$identify` event with `$anon_distinct_id` set to the previous visitor UUID. PostHog automatically merges the anonymous person record into the identified profile on ingestion.
+- **UUID over Email**: The application strictly avoids using raw email strings as primary distinct IDs to avoid profile fragmentation when emails change or differ in casing. Email is stored as a person property.
+- **Client Session Reset on Logout**: In `apps/web/src/routes/logout.tsx`, `LogoutComponent` calls `posthog.reset()` on the client before completing server-side signout. This generates a fresh anonymous distinct ID, clearing identified person attributes and preventing subsequent anonymous actions from corrupting the previous account history.
 
 ## Testing
 
-A Vitest unit test in `src/routes/-__root.test.tsx` mocks the PostHogProvider and verifies that `options.api_host` is set to `'/p'` when rendered on the client.
+- `src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, sets `disable_surveys: true`, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
+- `src/routes/logout.test.tsx` verifies that `LogoutComponent` triggers `posthog.reset()` before executing signout and navigation.
 
 ## Related
 
@@ -70,4 +81,3 @@ A Vitest unit test in `src/routes/-__root.test.tsx` mocks the PostHogProvider an
 - [[concepts/observability-standard]] — Traceback hardening and LLM audit tracking
 - [[concepts/performance-auditing-strategy]] — Deferred third-party SDK initialization and bundle budget rules
 - [[sources/web-deployment-source]] — Netlify deployment configuration
-

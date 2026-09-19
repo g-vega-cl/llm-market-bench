@@ -7,7 +7,7 @@ export const loginFn = createServerFn({ method: 'POST' })
     .inputValidator((d: { email: string; password: string }) => d)
     .handler(async ({ data }) => {
         const supabase = getSupabaseServerClient();
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
             email: data.email,
             password: data.password,
         });
@@ -18,6 +18,13 @@ export const loginFn = createServerFn({ method: 'POST' })
                 message: error.message,
             };
         }
+
+        return {
+            user: {
+                id: authData.user.id,
+                email: authData.user.email ?? data.email,
+            },
+        };
     });
 
 export const Route = createFileRoute('/_authed')({

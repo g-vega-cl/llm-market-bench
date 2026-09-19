@@ -6,12 +6,20 @@ import {
 } from '@tanstack/react-router';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { NavLink, navItems, RootDocument, Route } from './__root';
+import { NavLink, navItems, PostHogAuthSync, RootDocument, Route } from './__root';
 
 const mockPostHogProvider = vi.fn(({ children }) => <>{children}</>);
+const mockIdentify = vi.fn();
+const mockReset = vi.fn();
+const mockGetDistinctId = vi.fn();
 
 vi.mock('@posthog/react', () => ({
     PostHogProvider: (props: Record<string, unknown>) => mockPostHogProvider(props),
+    usePostHog: () => ({
+        identify: mockIdentify,
+        reset: mockReset,
+        get_distinct_id: mockGetDistinctId,
+    }),
 }));
 
 describe('Root layout navigation', () => {
@@ -151,5 +159,90 @@ describe('RootDocument Performance Optimizations', () => {
             (link) => link.getAttribute('media') === 'print',
         );
         expect(asyncFontLink).toBeTruthy();
+    });
+});
+
+describe('RootDocument PostHog identity synchronization', () => {
+    it('should identify authenticated user with UUID and email when distinct_id does not match', async () => {
+        mockIdentify.mockClear();
+        mockGetDistinctId.mockReturnValue('anon-uuid-999');
+
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({
+            user: { id: 'usr-123', email: 'investor@example.com' },
+        });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>App Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        await screen.findByText('App Content');
+
+        expect(mockIdentify).toHaveBeenCalledWith('usr-123', {
+            email: 'investor@example.com',
+        });
+    });
+
+    it('should not call posthog.identify if distinct_id already matches user id', async () => {
+        mockIdentify.mockClear();
+        mockGetDistinctId.mockReturnValue('usr-123');
+
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({
+            user: { id: 'usr-123', email: 'investor@example.com' },
+        });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>App Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        await screen.findByText('App Content');
+
+        expect(mockIdentify).not.toHaveBeenCalled();
+    });
+
+    it('should call posthog.reset when an authenticated user transitions to unauthenticated', () => {
+        mockReset.mockClear();
+        mockIdentify.mockClear();
+        mockGetDistinctId.mockReturnValue('anon-uuid-111');
+
+        const { rerender } = render(
+            <PostHogAuthSync user={{ id: 'usr-123', email: 'investor@example.com' }} />,
+        );
+
+        expect(mockIdentify).toHaveBeenCalledWith('usr-123', {
+            email: 'investor@example.com',
+        });
+
+        // User logs out / transitions to null
+        rerender(<PostHogAuthSync user={null} />);
+
+        expect(mockReset).toHaveBeenCalled();
     });
 });

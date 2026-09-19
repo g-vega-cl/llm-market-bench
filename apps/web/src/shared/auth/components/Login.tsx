@@ -7,7 +7,10 @@ import { signupFn } from '~/routes/signup';
 import { Auth } from './Auth';
 
 type LoginVariables = { email: string; password: string };
-type AuthResult = { error: true; message: string } | undefined;
+type AuthResult =
+    | { error: true; message: string }
+    | { user: { id: string; email: string } }
+    | undefined;
 
 export function Login() {
     const router = useRouter();
@@ -16,8 +19,10 @@ export function Login() {
     const loginMutation = useMutation<AuthResult, Error, LoginVariables>({
         mutationFn: (variables) => loginFn({ data: variables }),
         onSuccess: async (data, variables) => {
-            if (!data?.error) {
-                posthog.identify(variables.email);
+            if (!data || !('error' in data && data.error)) {
+                if (data && 'user' in data && data.user) {
+                    posthog.identify(data.user.id, { email: data.user.email });
+                }
                 posthog.capture('user_logged_in', { email: variables.email });
                 await router.invalidate();
                 router.navigate({ to: '/' });
@@ -43,14 +48,10 @@ export function Login() {
                 });
             }}
             afterSubmit={
-                loginMutation.data ? (
+                loginMutation.data && 'error' in loginMutation.data ? (
                     <>
-                        <div className="text-red-400">
-                            {(loginMutation.data as AuthResult)?.message}
-                        </div>
-                        {loginMutation.data?.error &&
-                        (loginMutation.data as AuthResult)?.message ===
-                            'Invalid login credentials' ? (
+                        <div className="text-red-400">{loginMutation.data.message}</div>
+                        {loginMutation.data.message === 'Invalid login credentials' ? (
                             <div>
                                 <Button
                                     variant="ghost"

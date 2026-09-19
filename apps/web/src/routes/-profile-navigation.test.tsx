@@ -12,6 +12,11 @@ const mockPostHogProvider = vi.fn(({ children }) => <>{children}</>);
 
 vi.mock('@posthog/react', () => ({
     PostHogProvider: (props: Record<string, unknown>) => mockPostHogProvider(props),
+    usePostHog: () => ({
+        identify: vi.fn(),
+        reset: vi.fn(),
+        get_distinct_id: vi.fn(),
+    }),
 }));
 
 describe('Profile Navigation & Route Migration TDD', () => {

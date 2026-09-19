@@ -682,6 +682,157 @@ class TestDoNothingReturn:
         assert details["gemini-p1"]["do_nothing_return_pct"] == pytest.approx(0.0)
 
     @pytest.mark.asyncio
+    async def test_do_nothing_held_positions_with_intraweek_trades(self, monkeypatch):
+        """Verify that an agent with held stock positions entering the week is evaluated using
+        the pre-week snapshot so that intra-week trades (e.g. Monday buys) do not distort starting cash.
+        """
+        from autoresearch import metrics
+        from execution.market_data import MarketDataManager
+
+        week_start = date(2026, 8, 10)  # Monday
+        week_end = date(2026, 8, 16)  # Sunday
+
+        async def fake_get_history(self_mdm, ticker, days=14, force_refresh=False):
+            return [{"price": 150.0, "fetched_at": "2026-08-14T20:00:00+00:00"}]
+
+        monkeypatch.setattr(MarketDataManager, "get_history", fake_get_history)
+
+        class FakeResponse:
+            def __init__(self, data):
+                self.data = data
+
+        class FakeQuery:
+            def __init__(self, table_name, data_map):
+                self.table_name = table_name
+                self.data_map = data_map
+                self.gte_filters = {}
+                self.lte_filters = {}
+                self.lt_filters = {}
+                self.eq_filters = {}
+
+            def select(self, *args, **kwargs):
+                return self
+
+            def in_(self, *args, **kwargs):
+                return self
+
+            def gte(self, col, val):
+                self.gte_filters[col] = val
+                return self
+
+            def lte(self, col, val):
+                self.lte_filters[col] = val
+                return self
+
+            def lt(self, col, val):
+                self.lt_filters[col] = val
+                return self
+
+            def eq(self, col, val):
+                self.eq_filters[col] = val
+                return self
+
+            def order(self, *args, **kwargs):
+                return self
+
+            def limit(self, *args, **kwargs):
+                return self
+
+            async def execute(self):
+                data = self.data_map.get(self.table_name, [])
+                filtered = []
+                for row in data:
+                    keep = True
+                    if self.eq_filters:
+                        for col, val in self.eq_filters.items():
+                            if row.get(col) != val:
+                                keep = False
+                    if self.table_name == "portfolio_performance" and row.get("date"):
+                        d = row["date"]
+                        if "date" in self.gte_filters and d < self.gte_filters["date"]:
+                            keep = False
+                        if "date" in self.lte_filters and d > self.lte_filters["date"]:
+                            keep = False
+                        if "date" in self.lt_filters and d >= self.lt_filters["date"]:
+                            keep = False
+                    if self.table_name == "trades" and row.get("executed_at"):
+                        ex = row["executed_at"]
+                        if "executed_at" in self.lt_filters and ex >= self.lt_filters["executed_at"]:
+                            keep = False
+                    if keep:
+                        filtered.append(row)
+                return FakeResponse(filtered)
+
+        class FakeClient:
+            def __init__(self, data_map):
+                self.data_map = data_map
+
+            def table(self, name):
+                return FakeQuery(name, self.data_map)
+
+        # Claude Haiku starts week with 10 shares AAPL ($150 = $1,500) and $8,500 cash = $10,000 equity.
+        # On Monday (2026-08-10), it buys $5,000 NVDA, reducing cash to $3,500.
+        # Monday EOD performance snapshot shows cash_balance=3500.0, total_equity=10000.0.
+        # AAPL end-of-week price remains $150.
+        # If doing nothing, equity remains $8,500 cash + $1,500 AAPL = $10,000 (0.0% return).
+        data_map = {
+            "portfolio_performance": [
+                {
+                    "portfolio_id": "p1",
+                    "total_equity": 10000.0,
+                    "cash_balance": 8500.0,
+                    "date": "2026-08-07",
+                    "portfolios": {"owner_id": "claude-haiku-4-5"},
+                },
+                {
+                    "portfolio_id": "p1",
+                    "total_equity": 10000.0,
+                    "cash_balance": 3500.0,
+                    "date": "2026-08-10",
+                    "portfolios": {"owner_id": "claude-haiku-4-5"},
+                },
+            ],
+            "trades": [
+                {
+                    "portfolio_id": "p1",
+                    "ticker": "AAPL",
+                    "signal": "BUY",
+                    "quantity": 10,
+                    "executed_at": "2026-08-05T10:00:00",
+                    "portfolios": {"owner_id": "claude-haiku-4-5"},
+                },
+                {
+                    "portfolio_id": "p1",
+                    "ticker": "NVDA",
+                    "signal": "BUY",
+                    "quantity": 50,
+                    "executed_at": "2026-08-10T14:00:00",
+                    "portfolios": {"owner_id": "claude-haiku-4-5"},
+                },
+            ],
+            "price_history": [
+                {
+                    "ticker": "AAPL",
+                    "price": 150.0,
+                    "fetched_at": "2026-08-14T20:00:00",
+                },
+            ],
+        }
+
+        fake_sb = FakeClient(data_map)
+
+        ret, details = await metrics._do_nothing_return(
+            fake_sb,
+            owner_ids=frozenset({"claude-haiku-4-5"}),
+            week_start=week_start,
+            week_end=week_end,
+        )
+
+        assert ret == pytest.approx(0.0)
+        assert "p1" in details
+        assert details["p1"]["do_nothing_return_pct"] == pytest.approx(0.0)
+
+    @pytest.mark.asyncio
     async def test_do_nothing_pre_populates_price_history(self, monkeypatch):
         """Verify that _do_nothing_return pre-populates price history using MarketDataManager."""
         from autoresearch import metrics

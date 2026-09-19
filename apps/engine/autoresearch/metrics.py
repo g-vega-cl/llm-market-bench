@@ -98,25 +98,44 @@ async def _do_nothing_return(
 
     owner_list = list(owner_ids)
 
-    # 1. Get initial performance (earliest snapshot in the week for each owner)
-    res_perf = (
+    # 1. Get initial performance (prefer latest snapshot strictly prior to week_start to avoid intra-week trade distortions)
+    res_pre = (
         sb_client.table("portfolio_performance")
         .select("portfolio_id, total_equity, cash_balance, date, portfolios!inner(owner_id)")
         .in_("portfolios.owner_id", owner_list)
-        .gte("date", week_start.isoformat())
-        .lte("date", week_end.isoformat())
-        .order("date")
+        .lt("date", week_start.isoformat())
+        .order("date", desc=True)
         .execute()
     )
-    rows_perf = (await res_perf).data or []
-    if not rows_perf:
-        return 0.0, {}
+    rows_pre = (await res_pre).data or []
 
     initial_states = {}
-    for row in rows_perf:
+    for row in rows_pre:
         pid = row["portfolio_id"]
         if pid not in initial_states:
             initial_states[pid] = row
+
+    # Fall back to earliest snapshot in the week for any portfolios missing a pre-week snapshot
+    missing_owners = set(owner_list) - {
+        r["portfolios"]["owner_id"]
+        for r in initial_states.values()
+        if r.get("portfolios") and "owner_id" in r["portfolios"]
+    }
+    if missing_owners:
+        res_perf = (
+            sb_client.table("portfolio_performance")
+            .select("portfolio_id, total_equity, cash_balance, date, portfolios!inner(owner_id)")
+            .in_("portfolios.owner_id", list(missing_owners))
+            .gte("date", week_start.isoformat())
+            .lte("date", week_end.isoformat())
+            .order("date")
+            .execute()
+        )
+        rows_perf = (await res_perf).data or []
+        for row in rows_perf:
+            pid = row["portfolio_id"]
+            if pid not in initial_states:
+                initial_states[pid] = row
 
     if not initial_states:
         return 0.0, {}

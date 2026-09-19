@@ -64,6 +64,7 @@
 
 ## Concepts
 
+- [[concepts/rls-enforcement-standard]] — Comprehensive RLS enforcement standard with migration test suite and CI integration
 - [[concepts/transparency-standard]] — Unified 3-domain transparency layer (score audit, tool tracking, prompt segmentation) across portfolio, daily, and sector prediction UIs
 - [[concepts/system-heavy-prompt]] — System-heavy and pull-based context injection design
 - [[concepts/thinking-agents]] — Auto-indexed page

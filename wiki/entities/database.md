@@ -27,6 +27,7 @@ The database is organized into several functional areas:
 - `memory_tags` — Tagged memory cards
 - `meta_prompt_experiments` — Auto-research prompt experiment logs
 - `newsletter_scrape_data` — Raw newsletter source scrapes
+- `options_data_cache` — Temporary cache for Massive/Polygon options snapshots and implied volatility metrics
 - `portfolio_snapshots` — Point-in-time portfolio state
 - `position_actions` — Delta-based position change queue (buy/sell/hold)
 - `sector_predictions` — Weekly sector ranking predictions
@@ -47,11 +48,12 @@ The database is organized into several functional areas:
 
 ## Row-Level Security (RLS)
 
-Applied to all user-facing tables. The `chat_memories` table uses four permissive policies (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) all scoped to `auth.uid() = user_id`.
+Applied to 100% of tables in the `public` schema without exception. All tables enforce RLS (`ALTER TABLE public.<table> ENABLE ROW LEVEL SECURITY;`) with explicit access policies, verified continuously in CI via `apps/engine/tests/test_migration_grants.py`. User-facing tables like `chat_memories` use user-isolated policies (`auth.uid() = user_id`), while benchmark cache tables provide public read and service-role write policies.
 
 ## Grant Convention
 
 Following [[concepts/supabase-grant-convention]], all tables exposed via the PostgREST Data API must have explicit `GRANT SELECT, INSERT, UPDATE, DELETE ON public.<table> TO authenticated;` statements. The `chat_memories` migration includes both authenticated and service_role grants.
+
 
 ## Migrations
 

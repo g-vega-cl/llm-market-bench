@@ -73,7 +73,15 @@ idempotent — `GRANT` statements are safe to re-run.
 
 ## Automated Enforcement
 
-This convention is strictly enforced via CI. The test `apps/engine/tests/test_migration_grants.py` automatically scans all migration files created after October 30, 2026 (`20261030`), and raises an error if it finds a `CREATE TABLE` command that lacks an explicit `GRANT` statement.
+This convention is strictly enforced via CI and the pre-commit hook. The test `apps/engine/tests/test_migration_grants.py` automatically scans all migration files and enforces four critical security invariants:
+1. **Per-file explicit grants (`test_new_tables_have_grants`)**: Every migration created after the cutoff date must define explicit `GRANT` statements for `service_role` and public roles (`anon, authenticated`).
+2. **Global RLS coverage (`test_all_active_tables_have_rls`)**: Every active table in the public schema must have `ALTER TABLE public.<table> ENABLE ROW LEVEL SECURITY;`.
+3. **Policy coverage (`test_all_active_tables_have_policies`)**: Every active table with RLS must define explicit access policies (`CREATE POLICY`).
+4. **Per-file RLS enforcement (`test_new_tables_have_rls_enabled_in_file`)**: Any new migration creating a table must enable RLS directly within the same migration file.
+
+### Incident History: `options_data_cache` (September 2026)
+Migration `20260901000000_create_options_data_cache.sql` included explicit `GRANT` statements but omitted RLS activation. Supabase's Security Advisor triggered an `rls_disabled_in_public` critical alert on 2026-09-13. The issue was resolved in `20260919150000_enable_rls_on_options_data_cache.sql`, and static analysis in `test_migration_grants.py` was extended to permanently prevent table creation without RLS.
+
 
 ## Verification
 

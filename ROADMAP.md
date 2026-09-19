@@ -76,9 +76,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: audit that the "sector trend" and others portfolios are set up.
 - [ ] - Benchify : daily predictor prompt diff
 - [ ] - Benchify : in the daily predictor. It shows as if the current new prompt had a score already
-- [ ] - Benchify : daily predictor doesn't show tools used in autoresearch
-- [ ] - Benchify : sector autoresearch doesn't show many things
-- [ ] - Benchify : audit the must show values in autoresearch. We must show the same things in all autoresearch, like score, how is it calculated, proper dates, easily see baselines, prompt difference.. tools used. Etc...
 - [ ] - Benchify audit sector predictor portfolio. Seems like it's wrong
 - [ ] - Benchify: daily autoresearcher "lesson learned"? Like, every day, when you check if you were right or wrong, also ask "why" and see if it's worth adding these insights as memories or as an special label for daily predictor
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
@@ -103,7 +100,5 @@ Decompose critical monolithic hotspots identified by churn forensics into isolat
   - Split prompt assembly, response parsing, and validation into separate vertical modules to eliminate patch search collisions and regression cascades.
 - [ ] **Refactor `apps/engine/main.py`** (949 LOC, 40.7% bug fix ratio, CRITICAL)
   - Decompose the monolithic CLI entry point into sub-command routers under `apps/engine/cli/` to keep entry points under 200 LOC.
-- [ ] **Refactor `apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx`** (912 LOC, 55.6% bug fix ratio, HIGH)
-  - Break metric calculations, ratchet comparisons, and breakdown charts into isolated UI primitives.
 - [ ] **Refactor `apps/engine/execution/market_data.py`** (749 LOC, 66.7% bug fix ratio, CRITICAL)
   - Separate data provider clients, price caching, and transform logic into modular units.

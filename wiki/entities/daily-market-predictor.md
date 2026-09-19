@@ -22,8 +22,9 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - **Non-Trading Day Purging**: If price data cannot be fetched and the target date was a non-trading day (weekend or market holiday), deletes the invalid prediction from `daily_predictions` to prevent indefinite retry loops.
    - Scopes today's 9:30 AM Open, High, Low, and 4:00 PM Close prices safely after market close by prioritizing timestamped Regular Trading Hours (`09:30:00 <= timestamp <= 16:00:00` ET) hourly bars (with automatic fallback to FMP `/historical-price-eod/full` EOD history). This guarantees zero extended-hours/post-market price contamination while immediately capturing afternoon price extremes.
    - Calculates **Directional Accuracy** (`is_correct`), **Intraday Target Hit Rate** (`intraday_hit`), **Intraday Direction Hit Rate** (`intraday_direction_hit`), and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
-   - `intraday_hit` evaluates whether the stock reached or surpassed the predicted target return percentage (`expected_return_pct`) at any point between Open and Close (e.g. hitting +0.35% intraday high even if it closed at -0.20%).
-   - **System Portfolio Execution**: Automatically triggers mechanical 100% equity day trading execution for each model's systematic portfolio (`sys-daily-spy-{model_name}`), logging trade records and updating portfolio equity/performance snapshots based on profit target hits or 3:30 PM time-based exits.
+   - **System Portfolio Execution**: Automatically triggers mechanical 100% equity day trading execution for both portfolio tracks:
+     - **Target-Exit Portfolios** (`sys-daily-spy-{model_name}`): 5 bps slippage, exits on intraday profit target hit or 3:30 PM time exit.
+     - **3:50 Close-Exit Portfolios** (`sys-daily-spy-close-{model_name}`): 2 bps slippage (0.02%), ignores intraday profit target hits and holds position until 3:50 PM session close.
 
 
 3. **Weekly Prompt Evolution & Performance Ratchet (Sunday 6:00 PM ET / 10:00 PM UTC)**:

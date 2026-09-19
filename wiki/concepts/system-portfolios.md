@@ -70,8 +70,21 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Allocation**: Venture power-law sizing (2% to 4% per stock) across 5 to 8 themes with multi-year retention and fundamental thesis death exits.
 - **Trigger**: Rebalanced monthly via `apps/engine/tasks/frontier_tech_task.py`. Detailed documentation in [[entities/frontier-tech-portfolio]].
 
+### 8. Daily S&P Close Trader (`sys-daily-spy-close-{model}`)
+- **Signal**: Daily 9:30 AM – 4:00 PM ET S&P 500 predictions (`UP` or `DOWN`) from `daily_predictions` table.
+- **Portfolios**: Dedicated system portfolio per model track (e.g. `sys-daily-spy-close-deepseek-v4-flash`, `sys-daily-spy-close-MiniMax-M3`).
+- **Target Asset**: `SPY`
+- **Position Sizing**: 100% of available cash/equity allocated per session.
+- **Execution Mechanics**:
+  - **Entry Price**: Open Price $\times (1 \pm 0.0002)$ (2 bps / 0.02% slippage reflecting SPY liquidity).
+  - **Target Hits Ignored**: Holds throughout the regular session without exiting on midday profit target touches.
+  - **Session Close Exit**: Position is closed at 3:50 PM ET market close price with 2 bps slippage.
+- **Idempotency Guardrails**: Re-evaluation runs (`--force`) clean up previous session trades and revert prior realized PnL before re-allocating.
+- **Trigger**: Executed alongside target-exit portfolios in `apps/engine/tasks/evaluate_daily_predictions.py`. Backfilled historically via `apps/engine/tasks/backfill_daily_close_portfolios.py`.
+
 ## Related
 - [[entities/frontier-tech-portfolio]]
 - [[entities/daily-market-predictor]]
 - [[entities/sector-predictor-arena]]
 - [[concepts/minimax-portfolio]]
+- [[entities/strategy-explainer]]

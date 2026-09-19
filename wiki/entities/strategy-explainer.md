@@ -15,7 +15,8 @@ React component (`StrategyExplainer.tsx`) that renders a collapsible strategy de
 - **`sys-sector-uncorr-7d`** — 7-Day Uncorrelated Sector Momentum (Weekly Rotation)
 - **`sys-sector-naive-momentum`** — 20-Day Unconstrained Momentum (Top 2 Winners Benchmark Control)
 - **`sys-sector-mean-reversion`** — 7-Day Sector Mean Reversion (Oversold Bounce)
-- **`sys-daily-spy-*`** — Daily S&P 500 Intraday Trader
+- **`sys-daily-spy-*`** — Daily S&P 500 Intraday Trader (Profit Target Exit)
+- **`sys-daily-spy-close-*`** — Daily S&P 500 Close Trader (3:50 PM Exit, 0.02% slippage)
 
 Returns `null` for non-system portfolios (e.g., individual LLM agents).
 

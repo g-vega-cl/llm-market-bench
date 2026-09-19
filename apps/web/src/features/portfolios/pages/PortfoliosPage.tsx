@@ -43,6 +43,19 @@ const SYSTEM_PORTFOLIO_SUBTITLES: Record<string, string> = {
     'sys-sector-mean-reversion': '7-Day Sector Mean Reversion (Oversold Bounce)',
 };
 
+export function getSystemPortfolioSubtitle(ownerId: string): string | undefined {
+    if (SYSTEM_PORTFOLIO_SUBTITLES[ownerId]) {
+        return SYSTEM_PORTFOLIO_SUBTITLES[ownerId];
+    }
+    if (ownerId.startsWith('sys-daily-spy-close-')) {
+        return 'Daily S&P 500 Close Trader (3:50 PM Exit)';
+    }
+    if (ownerId.startsWith('sys-daily-spy-')) {
+        return 'Daily S&P 500 Intraday Trader (Profit Target Exit)';
+    }
+    return undefined;
+}
+
 function PortfolioCard({
     portfolio,
     deprecated = false,
@@ -52,6 +65,7 @@ function PortfolioCard({
 }) {
     const track = getPortfolioTrack(portfolio.owner_id);
     const isSystem = portfolio.is_system ?? isSystemPortfolio(portfolio.owner_id);
+    const subtitle = getSystemPortfolioSubtitle(portfolio.owner_id);
 
     return (
         <Link
@@ -84,9 +98,9 @@ function PortfolioCard({
                     </Badge>
                 </div>
 
-                {SYSTEM_PORTFOLIO_SUBTITLES[portfolio.owner_id] && (
+                {subtitle && (
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3 font-medium">
-                        {SYSTEM_PORTFOLIO_SUBTITLES[portfolio.owner_id]}
+                        {subtitle}
                     </p>
                 )}
 

@@ -90,7 +90,7 @@
 - [[concepts/code-hotspots]] — Auto-indexed page
 - [[concepts/unslop-editing]] — Structured editing skill for removing AI pattern tells and injecting human voice
 - [[concepts/wayfinder]] — Planning methodology for decomposing large work into tracked decision tickets
-- [[concepts/system-portfolios]] — Auto-indexed page
+- [[concepts/system-portfolios]] — Mechanical and rule-based systematic trading strategies (sector L/S, benchmarks, daily SPY target & 3:50 close exits)
 - [[concepts/macroeconomic-data-fred]] — Auto-indexed page
 - [[concepts/magnitude-calibration]] — Magnitude capture ratio and postmortem diagnosis for daily S&P prediction prompt evolution
 - [[concepts/deepseek-web-search]] — Live web search tool integration for DeepSeek agents with DuckDuckGo/FMP hybrid backend

@@ -270,9 +270,12 @@ async def evaluate_daily_predictions(target_date: str | None = None, force_recal
             }
         ).eq("id", pred_id).execute()
 
-        # Trigger systematic daily SPY trader portfolio execution
+        # Trigger systematic daily SPY trader portfolio execution (target-exit and 3:50 close-exit)
         try:
-            from execution.system_portfolios import execute_system_daily_trade
+            from execution.daily_trading import (
+                execute_system_daily_close_trade,
+                execute_system_daily_trade,
+            )
 
             intraday_data = {
                 "open_price": open_p,
@@ -282,6 +285,7 @@ async def evaluate_daily_predictions(target_date: str | None = None, force_recal
                 "intraday_hit": intraday_hit,
             }
             await execute_system_daily_trade(prediction=pred, intraday_data=intraday_data)
+            await execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data)
         except Exception as e:
             logger.exception(f"Failed to execute system daily trade for prediction {pred_id}: {e}")
 

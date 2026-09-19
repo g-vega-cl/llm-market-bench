@@ -263,6 +263,34 @@ const DAILY_SPY_CONFIG: ExplainerConfig = {
     ],
 };
 
+const DAILY_SPY_CLOSE_CONFIG: ExplainerConfig = {
+    emoji: '🕒',
+    title: 'Daily S&P 500 Close Trader (3:50 PM Exit)',
+    badgeText: 'Hold-to-Close 100% Equity',
+    badgeColorScheme: 'warning',
+    subtitle:
+        'Systematic day trading on SPY executing at 9:30 AM ET open and holding until 3:50 PM ET close without intraday profit target exits.',
+    borderColor: 'border-amber-500/20',
+    bgColor: 'bg-amber-950/10',
+    pillars: [
+        {
+            title: '⏱️ 3:50 PM Close Exit',
+            description:
+                'Position is held until 3:50 PM session close, avoiding premature intraday profit taking and capturing full-session trend continuation.',
+        },
+        {
+            title: '📈 Full-Session Capture',
+            description:
+                'Disregards intraday price target touchpoints, riding entire morning and afternoon market trends to the closing bell.',
+        },
+        {
+            title: '⛽ 0.02% Liquid Friction',
+            description:
+                'Allocates 100% available cash per session with ultra-tight 0.02% (2 bps) slippage reflecting SPY deep market liquidity.',
+        },
+    ],
+};
+
 function ExplainerCard({ config }: { config: ExplainerConfig }) {
     const [isExpanded, setIsExpanded] = React.useState(true);
 
@@ -324,7 +352,11 @@ function ExplainerCard({ config }: { config: ExplainerConfig }) {
 export function StrategyExplainer({ ownerId }: StrategyExplainerProps) {
     const config =
         STRATEGY_CONFIGS[ownerId] ??
-        (ownerId.startsWith('sys-daily-spy-') ? DAILY_SPY_CONFIG : null);
+        (ownerId.startsWith('sys-daily-spy-close-')
+            ? DAILY_SPY_CLOSE_CONFIG
+            : ownerId.startsWith('sys-daily-spy-')
+              ? DAILY_SPY_CONFIG
+              : null);
 
     if (!config) {
         return null;

@@ -2,7 +2,7 @@ import type { Portfolio } from '@llm-market-bench/database';
 import { render, screen, waitFor } from '@testing-library/react';
 import type * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { PortfoliosPage } from './PortfoliosPage';
+import { getSystemPortfolioSubtitle, PortfoliosPage } from './PortfoliosPage';
 
 // Mock Tanstack Query's useSuspenseQuery and useQuery to return the data directly
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -135,5 +135,18 @@ describe('PortfoliosPage Card Heights & Layout', () => {
                 expect(metricsContainer?.className).toContain('mt-auto');
             }
         });
+    });
+
+    it('resolves correct system portfolio subtitles', () => {
+        expect(getSystemPortfolioSubtitle('sys-sector-ls-consensus')).toBe(
+            'Consensus Sector Long/Short Dispersion',
+        );
+        expect(getSystemPortfolioSubtitle('sys-daily-spy-deepseek-v4-flash')).toBe(
+            'Daily S&P 500 Intraday Trader (Profit Target Exit)',
+        );
+        expect(getSystemPortfolioSubtitle('sys-daily-spy-close-deepseek-v4-flash')).toBe(
+            'Daily S&P 500 Close Trader (3:50 PM Exit)',
+        );
+        expect(getSystemPortfolioSubtitle('custom-model')).toBeUndefined();
     });
 });

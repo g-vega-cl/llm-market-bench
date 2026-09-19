@@ -63,6 +63,19 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/Oversold Rebound/i)).toBeInTheDocument();
     });
 
+    it('renders daily SPY target exit explainer', () => {
+        render(<StrategyExplainer ownerId="sys-daily-spy-deepseek-v4-flash" />);
+        expect(screen.getByText('Daily S&P 500 Intraday Trader')).toBeInTheDocument();
+        expect(screen.getByText(/Profit Target Exit/i)).toBeInTheDocument();
+    });
+
+    it('renders daily SPY 3:50 close exit explainer', () => {
+        render(<StrategyExplainer ownerId="sys-daily-spy-close-deepseek-v4-flash" />);
+        expect(screen.getByText('Daily S&P 500 Close Trader (3:50 PM Exit)')).toBeInTheDocument();
+        expect(screen.getByText(/3:50 PM Close Exit/i)).toBeInTheDocument();
+        expect(screen.getByText(/0.02% Liquid Friction/i)).toBeInTheDocument();
+    });
+
     it('returns null for non-system portfolio', () => {
         const { container } = render(<StrategyExplainer ownerId="deepseek-v3" />);
         expect(container.firstChild).toBeNull();

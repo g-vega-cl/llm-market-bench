@@ -34,6 +34,23 @@ Located in `apps/engine/tasks/daily_autoresearch.py`. The `run_daily_autoresearc
   - `query_past_research_memories(track_id, limit)`: Callable tool allowing the portfolio meta-researcher to pull historical hypothesis records on demand.
   - For `track_claude` (the sole track executing skeptical verification), `researcher.py` provides the optional `inspect_verifier_rules_and_rejections` tool inside `run_tool_loop` (see [[concepts/verifier-bypass]]).
 
+## Portfolio Evaluation Math & Do-Nothing Benchmark
+
+Portfolio prompt variants are evaluated weekly across three composite benchmarks (Benchmark-Triad Weighted Model):
+
+$$\text{excess\_return} = 0.4 \times (\text{portfolio} - \text{SPY}) + 0.4 \times (\text{portfolio} - \text{Do-Nothing}) + 0.2 \times (\text{portfolio} - \text{Bond})$$
+$$\text{Score} = \text{excess\_return} - (\text{max\_drawdown} \times 0.3)$$
+
+- **Pre-Week Snapshot Mandate for Do-Nothing Return**:
+  - The "do-nothing return" measures how the portfolio would have performed if no trades were made during the evaluated week.
+  - To prevent intra-week/Monday trades from polluting starting cash and equity, `_do_nothing_return()` strictly retrieves the latest `portfolio_performance` snapshot prior to `week_start` (`date < week_start`).
+  - Aligning starting cash with pre-week positions (`executed_at < week_start`) prevents capital deployed on Monday purchases from disappearing from the cash balance without counting the acquired stocks.
+  - Newly initialized accounts without prior snapshots fall back to the earliest snapshot in the week (evaluating to 0.00% if entering with 100% cash).
+
+### Historical Audit Note (August 2026 Ratchet Lockout)
+
+Early August 2026 variants (`v20260809-221804` in `track_default` and `v20260816-221127` in `track_claude`) suffered from a temporal cash mismatch where Monday buys reduced cash balance (into negative margin) while the purchased assets were omitted from pre-week holdings. This produced phantom do-nothing returns of -119.8% and -71.1%, inflating variant scores to 15.217 and 16.8998. This locked the Karpathy ratchet, causing all subsequent experiments in late August and early September to be discarded. In September 2026, the engine was patched to enforce pre-week snapshots, and database rows in `prompt_experiments` were updated to their audited scores (0.3186 and 1.7449), unfreezing the ratchet.
+
 ## Related
 
 - [[concepts/auto-research-prompt-improver]]

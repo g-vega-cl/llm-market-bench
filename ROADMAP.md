@@ -86,7 +86,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money
 - [ ] - Benchify: any way of tracking which tools were used?
 - [x] - Benchify: daily portfolios but sell at 3:50ish, not when target is hit (added sys-daily-spy-close-* with 0.02% slippage).
-- [ ] - Benchify: Right now we have in trades a single newsletter attribution usually but with AI more than one newsletter could have been the reason of the trade or even not newsletters and other thoughts how can we improve attribution"1
+- [ ] - Benchify: Right now we have in trades a single newsletter attribution usually but with AI more than one newsletter could have been the reason of the trade or even not newsletters and other thoughts how can we improve attribution"
+- [ ] - Benchify: audit if "prompt from 0 is working"
+- [ ] - Benchify: make the "non AI" portfolios trade with alpaca and real time. No backfilling
 
 ## Hotspot Refactoring (Vertical Slice Islands)
 

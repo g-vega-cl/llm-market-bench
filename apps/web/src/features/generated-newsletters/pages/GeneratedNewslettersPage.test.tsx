@@ -86,4 +86,30 @@ describe('GeneratedNewslettersPage', () => {
         const boldText = screen.getByText('Bold Market Focus');
         expect(boldText.tagName).toBe('STRONG');
     });
+
+    it('renders bold markdown in bullet point key takeaways and executive summary', () => {
+        const markdownNewsletter: FormattedGeneratedNewsletter[] = [
+            {
+                ...mockNewsletters[0],
+                summary: 'Executive summary with **Fed rate hike** focus.',
+                bullet_points: ['🏭 **Manufacturing cracks**: US Production **-0.30% MoM** miss.'],
+            },
+        ];
+
+        render(<GeneratedNewslettersPage initialNewsletters={markdownNewsletter} />);
+
+        const boldTakeaway = screen.getByText('Manufacturing cracks');
+        expect(boldTakeaway.tagName).toBe('STRONG');
+
+        const boldMetric = screen.getByText('-0.30% MoM');
+        expect(boldMetric.tagName).toBe('STRONG');
+
+        expect(screen.queryByText(/\*\*Manufacturing cracks\*\*/)).not.toBeInTheDocument();
+
+        const boldSummaries = screen.getAllByText('Fed rate hike');
+        expect(boldSummaries.length).toBeGreaterThanOrEqual(1);
+        for (const boldSummary of boldSummaries) {
+            expect(boldSummary.tagName).toBe('STRONG');
+        }
+    });
 });

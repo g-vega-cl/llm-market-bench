@@ -7,7 +7,7 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { MarkdownContent } from '~/components/ui/MarkdownContent';
+import { InlineMarkdown, MarkdownContent } from '~/components/ui/MarkdownContent';
 import type { FormattedGeneratedNewsletter } from '../api/fetch-generated-newsletters';
 
 interface GeneratedNewslettersPageProps {
@@ -171,11 +171,11 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                         </div>
 
                                         <h4 className="text-sm font-bold text-zinc-900 dark:text-white line-clamp-2 leading-snug">
-                                            {newsletter.title}
+                                            <InlineMarkdown text={newsletter.title} />
                                         </h4>
 
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 font-light">
-                                            {newsletter.summary}
+                                            <InlineMarkdown text={newsletter.summary} />
                                         </p>
 
                                         <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
@@ -241,7 +241,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                 {/* Newsletter Title */}
                                 <div className="space-y-3">
                                     <h1 className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">
-                                        {activeNewsletter.title}
+                                        <InlineMarkdown text={activeNewsletter.title} />
                                     </h1>
                                 </div>
 
@@ -254,7 +254,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                         </span>
                                     </div>
                                     <p className="text-sm text-zinc-700 dark:text-zinc-200 font-medium leading-relaxed">
-                                        {activeNewsletter.summary}
+                                        <InlineMarkdown text={activeNewsletter.summary} />
                                     </p>
                                 </div>
 
@@ -273,7 +273,11 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                     <span className="text-electric-blue-500 font-bold mt-0.5">
                                                         •
                                                     </span>
-                                                    <span>{bullet}</span>
+                                                    <span className="flex-1">
+                                                        <InlineMarkdown
+                                                            text={bullet.replace(/^[-*•]\s+/, '')}
+                                                        />
+                                                    </span>
                                                 </li>
                                             ))}
                                         </ul>

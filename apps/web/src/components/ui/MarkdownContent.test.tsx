@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { MarkdownContent } from './MarkdownContent';
+import { InlineMarkdown, MarkdownContent } from './MarkdownContent';
 
 describe('MarkdownContent', () => {
     it('renders headings correctly', () => {
@@ -58,5 +58,64 @@ describe('MarkdownContent', () => {
         expect(screen.getByText('Ticker')).toBeInTheDocument();
         expect(screen.getByText('AAPL')).toBeInTheDocument();
         expect(screen.getByText('+1.5%')).toBeInTheDocument();
+    });
+
+    it('renders mixed blocks containing a bold lead-in followed by bullet list items', () => {
+        const mixedMarkdown = `**Critical levels:**
+- SPX: 7,600 pivot
+- 10Y: 5.05% resistance`;
+
+        render(<MarkdownContent content={mixedMarkdown} />);
+
+        const boldHeader = screen.getByText('Critical levels:');
+        expect(boldHeader.tagName).toBe('STRONG');
+
+        const bullet1 = screen.getByText('SPX: 7,600 pivot');
+        expect(bullet1.tagName).toBe('LI');
+
+        const bullet2 = screen.getByText('10Y: 5.05% resistance');
+        expect(bullet2.tagName).toBe('LI');
+    });
+
+    it('renders ordered lists with parentheses and bolding', () => {
+        const orderedMarkdown = `**1)** First trade setup
+**2)** Second trade setup`;
+
+        render(<MarkdownContent content={orderedMarkdown} />);
+
+        const item1 = screen.getByText('First trade setup');
+        expect(item1.tagName).toBe('LI');
+        const item2 = screen.getByText('Second trade setup');
+        expect(item2.tagName).toBe('LI');
+    });
+});
+
+describe('InlineMarkdown', () => {
+    it('renders double underscores as bold and single underscores as italic', () => {
+        render(
+            <div data-testid="container">
+                <InlineMarkdown text="This is __bold__ and _italic_ with ticker_symbol_name unchanged." />
+            </div>,
+        );
+
+        const bold = screen.getByText('bold');
+        expect(bold.tagName).toBe('STRONG');
+
+        const italic = screen.getByText('italic');
+        expect(italic.tagName).toBe('EM');
+
+        expect(screen.getByText(/with ticker_symbol_name unchanged\./)).toBeInTheDocument();
+    });
+
+    it('renders bold and italic combined', () => {
+        render(
+            <div data-testid="container">
+                <InlineMarkdown text="Prefix ***bold and italic*** suffix" />
+            </div>,
+        );
+
+        const strong = screen.getByText('bold and italic');
+        expect(strong.closest('strong')).toBeInTheDocument();
+        expect(strong.closest('em')).toBeInTheDocument();
     });
 });

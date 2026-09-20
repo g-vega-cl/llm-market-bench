@@ -1,6 +1,7 @@
 import type { NewsletterSnapshot } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
+import { parseInlineMarkdown } from '~/components/ui/MarkdownContent';
 
 interface NewsletterFeedProps {
     newsletters: (NewsletterSnapshot & { formattedTime?: string })[];
@@ -63,7 +64,7 @@ export function NewsletterFeed({
                             )}
                         </div>
                         <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-light italic">
-                            "{newsSummary}"
+                            "{parseInlineMarkdown(newsSummary)}"
                         </p>
 
                         <div className="mt-3 pt-3 border-t border-electric-blue-100/50 dark:border-electric-blue-900/20 flex items-center justify-between">

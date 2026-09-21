@@ -10,6 +10,7 @@ Runs the weekly auto-research cycle:
 Analogous to Karpathy's experiment loop in autoresearch.
 """
 
+import copy
 import logging
 import random
 from datetime import date
@@ -32,6 +33,11 @@ from .window import get_week_window
 logger = logging.getLogger("engine")
 
 SAFETY_MIN_TRADES = 2
+
+
+def roll_cold_start_dice(sides: int = 6) -> bool:
+    """Roll a random 1-in-N dice to determine whether to trigger a cold-start reset."""
+    return random.randint(1, sides) == 1
 
 
 def get_next_cold_start_interval(min_weeks: int = 2, max_weeks: int = 5) -> int:
@@ -81,7 +87,11 @@ async def _check_safety(
     return False, ""
 
 
-async def run(dry_run: bool = False, track_id: str = "track_default", cold_start: bool = False):
+async def run(
+    dry_run: bool = False,
+    track_id: str = "track_default",
+    cold_start: bool | None = None,
+):
     """Run the full auto-research cycle.
 
     Args:
@@ -89,7 +99,13 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
                  database or change the active prompt.
         track_id: ID of the track to optimize prompts for.
         cold_start: If True, generate fresh prompt ignoring past prompt context.
+                    If False, explicitly run incrementally without cold start.
+                    If None (default), automatically roll 1-in-6 stochastic dice.
     """
+    is_cold_start = roll_cold_start_dice() if cold_start is None else cold_start
+    if is_cold_start:
+        logger.info("COLD START: Stochastic reset triggered for %s (generating prompt from 0)", track_id)
+
     week_start, week_end = get_week_window()
 
     label = " DRY RUN" if dry_run else ""
@@ -123,9 +139,12 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
     logger.info("Gathering performance data...")
     try:
         try:
-            eval_res = await evaluate_week(week_start, week_end, track_id=track_id)
+            eval_res = await evaluate_week(week_start, week_end, track_id=track_id, cold_start=is_cold_start)
         except TypeError:
-            eval_res = await evaluate_week(week_start, week_end)
+            try:
+                eval_res = await evaluate_week(week_start, week_end, track_id=track_id)
+            except TypeError:
+                eval_res = await evaluate_week(week_start, week_end)
 
         if isinstance(eval_res, tuple) and len(eval_res) == 3:
             report, metrics, baseline_tag = eval_res
@@ -211,7 +230,7 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
             result = await run_research(
                 report,
                 current_prompt=current_prompt_mutable,
-                cold_start=cold_start,
+                cold_start=is_cold_start,
                 baseline_prompt=baseline_prompt_mutable,
                 track_id=track_id,
             )
@@ -220,12 +239,12 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
                 result = await run_research(
                     report,
                     current_prompt=current_prompt_mutable,
-                    cold_start=cold_start,
+                    cold_start=is_cold_start,
                     baseline_prompt=baseline_prompt_mutable,
                 )
             except TypeError:
                 try:
-                    result = await run_research(report, cold_start=cold_start)
+                    result = await run_research(report, cold_start=is_cold_start)
                 except TypeError:
                     result = await run_research(report)
     except Exception as e:
@@ -263,6 +282,11 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
 
     full_prompt_content = SYSTEM_PROMPT_CONSTRAINTS_HEADER + result.new_prompt_text + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
 
+    effective_exp_type = "radical" if is_cold_start else result.experiment_type
+    research_output_data = copy.deepcopy(result.model_dump())
+    if is_cold_start:
+        research_output_data["is_cold_start"] = True
+
     try:
         try:
             tag = await save_variant(
@@ -272,8 +296,8 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
                 week_end=next_week_end.isoformat(),
                 metrics={},
                 change_description=result.change_description,
-                experiment_type=result.experiment_type,
-                research_output=result.model_dump(),
+                experiment_type=effective_exp_type,
+                research_output=research_output_data,
                 parent_tag=parent_tag,
                 track_id=track_id,
             )
@@ -285,8 +309,8 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
                 week_end=next_week_end.isoformat(),
                 metrics={},
                 change_description=result.change_description,
-                experiment_type=result.experiment_type,
-                research_output=result.model_dump(),
+                experiment_type=effective_exp_type,
+                research_output=research_output_data,
                 parent_tag=parent_tag,
             )
         logger.info("New active prompt variant: %s", tag)
@@ -320,15 +344,28 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
         return
 
     logger.info("=== Auto-Research Cycle Complete ===")
-    logger.info("Next week's prompt: %s (%s)", tag, result.experiment_type)
-    logger.info("AUTORESEARCH_RESULT: SUCCESS | variant=%s | type=%s | score=%.4f", tag, result.experiment_type, score)
+    logger.info("Next week's prompt: %s (%s)", tag, effective_exp_type)
+    logger.info("AUTORESEARCH_RESULT: SUCCESS | variant=%s | type=%s | score=%.4f", tag, effective_exp_type, score)
 
 
-async def run_all(dry_run: bool = False, cold_start: bool = False):
+async def run_all(dry_run: bool = False, cold_start: bool | None = None):
     """Run the auto-research cycle across all configured tracks sequentially within the same event loop."""
     from core.config import AUTORESEARCH_TRACKS
 
     track_ids = list(AUTORESEARCH_TRACKS.keys()) if AUTORESEARCH_TRACKS else ["track_default"]
+    cold_start_triggered = False
     for t_id in track_ids:
         logger.info("Executing Auto-Research cycle for track: %s", t_id)
-        await run(dry_run=dry_run, track_id=t_id, cold_start=cold_start)
+        if cold_start is True:
+            t_cold = True
+        elif cold_start is False:
+            t_cold = False
+        else:
+            # Automated mode: roll 1-in-6 dice with max-1 guardrail
+            if not cold_start_triggered and roll_cold_start_dice():
+                t_cold = True
+                cold_start_triggered = True
+            else:
+                t_cold = False
+
+        await run(dry_run=dry_run, track_id=t_id, cold_start=t_cold)

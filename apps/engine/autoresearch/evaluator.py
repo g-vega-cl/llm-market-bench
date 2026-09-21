@@ -172,6 +172,7 @@ async def evaluate_week(
     week_start: date | None = None,
     week_end: date | None = None,
     track_id: str = "track_default",
+    cold_start: bool = False,
 ) -> tuple[str, dict, str | None]:
     """Gather all data for the past week and format the evaluation report.
 
@@ -336,19 +337,35 @@ async def evaluate_week(
         _format_rejection_section(rejection_stats),
         "",
         _format_variants(previous, baseline_score=baseline_score),
-        "",
-        "# Baseline Prompt (All-Time Best)",
-        "This is the mutable strategies and analysis section of the prompt that achieved the highest score so far. Use this as your foundation.",
-        "```",
-        baseline_prompt_mutable,
-        "```",
-        "",
-        "# Latest Experiment Prompt (Just Evaluated)",
-        "This is the mutable strategies and analysis section of the prompt that produced the score at the top of this report.",
-        "```",
-        current_prompt_mutable,
-        "```",
     ]
+
+    if cold_start:
+        report_parts.extend(
+            [
+                "",
+                "# COLD START RESET: Formulate Mutable Strategy From Scratch",
+                "This cycle is a COLD START RESET (1-in-6 stochastic exploration to escape local optima).",
+                "DO NOT anchor on or copy prior prompt strategies. Formulate a completely fresh, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch.",
+                "All system constraints (header rules, pricing mechanics, and structured JSON output format) remain FROZEN and managed automatically by the engine. You are writing ONLY the mutable strategy section.",
+            ]
+        )
+    else:
+        report_parts.extend(
+            [
+                "",
+                "# Baseline Prompt (All-Time Best)",
+                "This is the mutable strategies and analysis section of the prompt that achieved the highest score so far. Use this as your foundation.",
+                "```",
+                baseline_prompt_mutable,
+                "```",
+                "",
+                "# Latest Experiment Prompt (Just Evaluated)",
+                "This is the mutable strategies and analysis section of the prompt that produced the score at the top of this report.",
+                "```",
+                current_prompt_mutable,
+                "```",
+            ]
+        )
 
     if track_memories:
         report_parts.extend(

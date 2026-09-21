@@ -345,6 +345,7 @@ async def generate_new_daily_prompt(
     predictions: list[dict] | None = None,
     macro_context: dict | None = None,
     meta_researcher=None,
+    cold_start: bool = False,
 ) -> tuple[str, str | None]:
     """Generate a mutated strategy instruction prompt using DeepSeek Flash."""
     _, mutable_strategies, _ = split_daily_predictor_prompt(old_prompt)
@@ -354,6 +355,21 @@ async def generate_new_daily_prompt(
         if predictions
         else "No recent prediction postmortem available."
     )
+
+    if cold_start:
+        strategy_block = (
+            "=== COLD START RESET (STRATEGY FROM SCRATCH) ===\n"
+            "This cycle is a COLD START RESET (1-in-6 stochastic exploration to escape local optima).\n"
+            "DO NOT anchor on or adapt the prior strategy. Generate an entirely novel, high-conviction analytical strategy and reasoning rules for SPY daily movement from scratch.\n"
+            "Remember that system header rules and the required JSON output schema are FROZEN and automatically appended.\n"
+            "Output ONLY the raw new strategy instructions text."
+        )
+    else:
+        strategy_block = (
+            "CURRENT STRATEGY INSTRUCTIONS (MUTABLE SECTION ONLY):\n"
+            f"```text\n{mutable_strategies}\n```\n\n"
+            "Output ONLY the raw new strategy instructions text."
+        )
 
     meta_prompt = (
         "You are a Meta-Researcher AI optimizing an LLM prompt for predicting intraday S&P 500 (SPY) open-to-close price movement.\n\n"
@@ -369,9 +385,7 @@ async def generate_new_daily_prompt(
         "instruct the predictor to be more confident and aggressive in expected_return_pct magnitude (e.g. +0.50% to +1.20% instead of timid +0.20%).\n"
         "6. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
         "7. Provide a concise `research_insight` (1-2 sentences) summarizing the core lesson or causal rule learned from this week's results to persist in this track's institutional memory.\n\n"
-        "CURRENT STRATEGY INSTRUCTIONS (MUTABLE SECTION ONLY):\n"
-        f"```text\n{mutable_strategies}\n```\n\n"
-        "Output ONLY the raw new strategy instructions text."
+        f"{strategy_block}"
     )
 
     try:
@@ -415,8 +429,15 @@ async def run_daily_autoresearch_for_model(
     fourteen_days_ago,
     deepseek_meta,
     dry_run: bool = False,
+    cold_start: bool | None = None,
 ):
     """Run weekly prompt evolution and ratchet check for a single daily predictor model track."""
+    from autoresearch.runner import roll_cold_start_dice
+
+    is_cold_start = roll_cold_start_dice() if cold_start is None else cold_start
+    if is_cold_start:
+        logger.info(f"COLD START: Stochastic 1-in-6 dice triggered fresh SPY strategy from 0 for {model_name}")
+
     # 1. Fetch evaluated daily predictions for this model over the past 7 days (all available trading sessions)
     response = (
         client.table("daily_predictions")
@@ -542,6 +563,7 @@ async def run_daily_autoresearch_for_model(
         predictions=predictions,
         macro_context=macro_context,
         meta_researcher=deepseek_meta,
+        cold_start=is_cold_start,
     )
 
     # 7. Deploy new active prompt variant scoped to track_id, demoting prior active variants
@@ -596,7 +618,15 @@ async def run_daily_autoresearch_for_model(
         "research_reasoning": research_insight,
         "confidence": 0.85 if is_baseline_beat else 0.50,
         "selected_tools": DEFAULT_DAILY_PREDICTOR_TOOLS,
+        "is_cold_start": is_cold_start,
     }
+
+    exp_type = "radical" if is_cold_start else "incremental"
+    desc = (
+        f"Weekly daily autoresearch cold start (from 0) for {model_name}"
+        if is_cold_start
+        else f"Weekly daily autoresearch mutation for {model_name} from score {current_score:.2f}"
+    )
 
     client.table("prompt_experiments").insert(
         {
@@ -607,9 +637,9 @@ async def run_daily_autoresearch_for_model(
             "week_start": today.isoformat(),
             "week_end": week_end.isoformat(),
             "status": "active",
-            "experiment_type": "incremental",
+            "experiment_type": exp_type,
             "parent_tag": parent_tag,
-            "change_description": f"Weekly daily autoresearch mutation for {model_name} from score {current_score:.2f}",
+            "change_description": desc,
             "research_output": research_output,
         }
     ).execute()
@@ -617,7 +647,7 @@ async def run_daily_autoresearch_for_model(
     logger.info(f"Successfully mutated and deployed new daily predictor prompt variant for {model_name}: {new_tag}")
 
 
-async def run_daily_autoresearch(dry_run: bool = False):
+async def run_daily_autoresearch(dry_run: bool = False, cold_start: bool | None = None):
     """Run weekly prompt evolution and ratchet check independently for both predictor models on Sunday."""
     client = get_supabase_client()
     today = datetime.now(UTC).date()
@@ -627,8 +657,23 @@ async def run_daily_autoresearch(dry_run: bool = False):
     target_models = [DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL]
     deepseek_meta = get_deepseek_client()
 
+    from autoresearch.runner import roll_cold_start_dice
+
+    cold_start_triggered = False
     try:
         for model_name in target_models:
+            if cold_start is True:
+                m_cold = True
+            elif cold_start is False:
+                m_cold = False
+            else:
+                # Automated mode: roll 1-in-6 dice with max-1 guardrail
+                if not cold_start_triggered and roll_cold_start_dice():
+                    m_cold = True
+                    cold_start_triggered = True
+                else:
+                    m_cold = False
+
             await run_daily_autoresearch_for_model(
                 model_name=model_name,
                 client=client,
@@ -637,6 +682,7 @@ async def run_daily_autoresearch(dry_run: bool = False):
                 fourteen_days_ago=fourteen_days_ago,
                 deepseek_meta=deepseek_meta,
                 dry_run=dry_run,
+                cold_start=m_cold,
             )
     finally:
         await close_client(deepseek_meta, "deepseek")

@@ -1,36 +1,40 @@
 ---
-tags: [autoresearch, cold-start, optimization, exploration]
+tags: [autoresearch, cold-start, optimization, exploration, prompt-engineering]
 category: concept
 ---
 
 # Stochastic Cold-Start Reset
 
-The stochastic cold-start reset is a mechanism to prevent the auto-research loop from getting trapped in local optima. At randomized intervals (2–5 weeks), the meta-researcher is instructed to ignore all prior prompt history and generate a novel trading strategy from scratch.
+The stochastic cold-start reset prevents the autonomous research loop from converging on local optima during weekly prompt evolution. On every scheduled evolution run, each track rolls a 1-in-6 stochastic dice (`roll_cold_start_dice(sides=6)`). If the dice rolls 1, the meta-researcher discards prior strategy text and drafts a new hypothesis from scratch.
 
-## How It Works
+## Multi-Track Isolation & Guardrails
 
-Two helper functions in `apps/engine/autoresearch/runner.py` control the cadence:
+To prevent synchronized destabilization across models, batch runners (`run_all` in portfolio autoresearch, `run_daily_autoresearch` in daily predictor, and `run_predictor_autoresearch` in sector predictor) enforce a strict guardrail:
+- **Maximum 1 Cold Start Per Run**: Across any multi-track batch execution, at most 1 model track may trigger a stochastic cold start reset.
+- **Independent Ratchet History**: Each model track maintains its own all-time baseline and variant lineage. When a cold start variant beats the track baseline, it establishes a new baseline; if it underperforms, the track reverts cleanly to its previous best baseline.
 
-- **`get_next_cold_start_interval(min_weeks=2, max_weeks=5)`** — Returns a random integer in the given range, determining how many weeks until the next cold start.
-- **`should_trigger_cold_start(current_cycle, target_cycle)`** — Returns `True` when the current evaluation cycle meets or exceeds the target cycle.
+## Structural Constraints & Frozen Sections
 
-When triggered, `run_research()` is called with `cold_start=True`. This appends a `COLD START RESET` directive to the system prompt sent to the meta-researcher LLM:
+A cold start is never literally empty. As defined in [[concepts/prompt-section-splitting]], system prompts consist of three segments:
+1. **Frozen Engine Header**: System constraints, risk guardrails, pricing protocols, and context injection rules. Managed entirely by the engine and strictly frozen.
+2. **Mutable Autoresearch Body**: Analytical strategies, market playbooks, indicator interpretations, and conviction rules. This is the only section the meta-researcher can mutate.
+3. **Frozen Output Schema**: JSON schemas and formatting requirements. Enforced automatically by the engine.
 
-```
-=== COLD START RESET ===
-This cycle is a COLD START RESET to avoid local optima.
-Ignore the previous system prompt strategy.
-Generate a novel, high-conviction trading strategy prompt from scratch.
-```
+During a cold start reset:
+- The evaluation report strips the `# Baseline Prompt` and `# Latest Experiment Prompt` sections, replacing them with a directive instructing the LLM to invent an entirely novel strategy from scratch.
+- The LLM's raw output is sanitized through `split_prompt()`, `split_daily_predictor_prompt()`, or `split_predictor_prompt()` to ensure no duplicate header tags pollute the prompt store.
+- The experiment is recorded with `experiment_type="radical"` and `research_output["is_cold_start"] = True`.
 
-The meta-researcher then produces a fresh prompt unconstrained by prior incremental changes, enabling radical exploration of the prompt space.
+## Coverage Across Prediction Domains
 
-## Rationale
-
-Incremental prompt optimization (the default mode) risks converging on a locally optimal but globally mediocre strategy. Stochastic cold starts periodically force the system to explore entirely new regions of the prompt landscape, analogous to random restarts in hill-climbing algorithms.
+The stochastic cold start reset is active across all three automated prompt evolution loops:
+- **Portfolio Autoresearch (`apps/engine/autoresearch/runner.py`)**: Multi-asset trade generator prompt evolution.
+- **Daily SPY Predictor (`apps/engine/tasks/daily_autoresearch.py`)**: S&P 500 intraday movement and magnitude calibration prompts.
+- **Sector Rotation Predictor (`apps/engine/tasks/predictor_autoresearch.py`)**: Sector ETF leaderboard and uncorrelated pair prediction prompts.
 
 ## Related
 
-- [[entities/autoresearch]] — The auto-research engine module
-- [[concepts/multi-track-autoresearch]] — Isolated optimization tracks
-- [[concepts/auto-research-prompt-improver]] — Weekly autonomous prompt iteration
+- [[entities/autoresearch]] (The auto-research engine module)
+- [[concepts/multi-track-autoresearch]] (Parallel isolated optimization tracks)
+- [[concepts/prompt-section-splitting]] (Frozen headers, mutable bodies, and frozen JSON schemas)
+- [[concepts/auto-research-prompt-improver]] (Weekly autonomous prompt iteration)

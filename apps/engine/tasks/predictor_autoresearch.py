@@ -131,6 +131,7 @@ async def generate_new_prompt(
     meta_researcher,
     track_memories: str = "",
     model_name: str | None = None,
+    cold_start: bool = False,
 ) -> tuple[str, str | None]:
     """Generate a new prompt variant."""
     _, mutable_strategies, _ = split_predictor_prompt(old_prompt)
@@ -139,6 +140,21 @@ async def generate_new_prompt(
     if track_memories:
         track_label = model_name or "CURRENT TRACK"
         mem_block = f"\n### PRIOR AUTORESEARCH INSIGHTS & LESSONS (Track: {track_label}):\n{track_memories}\n"
+
+    if cold_start:
+        strategy_block = (
+            "=== COLD START RESET (STRATEGY FROM SCRATCH) ===\n"
+            "This cycle is a COLD START RESET (1-in-6 stochastic exploration to avoid local optima).\n"
+            "DO NOT anchor on or adapt the prior strategy. Generate entirely novel, high-conviction analytical reasoning and rotation rules from scratch.\n"
+            "Remember that system header rules and the required JSON output schema are FROZEN and automatically appended.\n"
+            "Output ONLY the new raw strategy instructions text."
+        )
+    else:
+        strategy_block = (
+            "CURRENT STRATEGY INSTRUCTIONS:\n"
+            f"```text\n{mutable_strategies}\n```\n\n"
+            "Output ONLY the new raw strategy instructions text."
+        )
 
     meta_prompt = (
         "You are a Meta-Researcher AI tasked with improving an LLM's system prompt "
@@ -151,9 +167,7 @@ async def generate_new_prompt(
         "the required output format is enforced automatically by the system.\n\n"
         "Provide a concise `research_insight` (1-2 sentences) summarizing the key sector rotation or correlation "
         "principle discovered from this evaluation cycle to persist in this track's institutional memory.\n\n"
-        "CURRENT STRATEGY INSTRUCTIONS:\n"
-        f"```text\n{mutable_strategies}\n```\n\n"
-        "Output ONLY the new raw strategy instructions text."
+        f"{strategy_block}"
     )
 
     try:
@@ -176,7 +190,8 @@ async def generate_new_prompt(
                 lines = lines[:-1]
             new_strategies = "\n".join(lines).strip()
 
-        assembled_prompt = SECTOR_PREDICTOR_CONSTRAINTS_HEADER + new_strategies + SECTOR_PREDICTOR_CONSTRAINTS_FOOTER
+        _, clean_strategies, _ = split_predictor_prompt(new_strategies)
+        assembled_prompt = SECTOR_PREDICTOR_CONSTRAINTS_HEADER + clean_strategies + SECTOR_PREDICTOR_CONSTRAINTS_FOOTER
         insight = getattr(resp, "research_insight", None)
         if insight:
             insight = insight.strip()
@@ -193,8 +208,17 @@ async def run_predictor_autoresearch_for_model(
     seven_days_ago,
     meta_researcher,
     dry_run: bool = False,
+    cold_start: bool | None = None,
 ):
     """Run weekly prompt evolution, track isolation, and ratchet check for a single sector predictor model."""
+    from autoresearch.runner import roll_cold_start_dice
+
+    is_cold_start = roll_cold_start_dice() if cold_start is None else cold_start
+    if is_cold_start:
+        logger.info(
+            f"COLD START: Stochastic 1-in-6 dice triggered fresh sector rotation strategy from 0 for {model_name}"
+        )
+
     # 1. Fetch evaluated predictions from the last week for this specific model
     response = (
         client.table("sector_predictions")
@@ -255,18 +279,19 @@ async def run_predictor_autoresearch_for_model(
         )
 
     if not prompt_response.data:
-        logger.warning(f"No active SECTOR_PREDICTOR_PROMPT found for {model_name}. Cannot run autoresearch.")
+        logger.warning(f"No active prompt found for {model_name} and seeding failed. Skipping autoresearch.")
         return
 
-    current_prompt = prompt_response.data[0]["prompt_content"]
     parent_tag = prompt_response.data[0]["variant_tag"]
+    current_prompt = prompt_response.data[0]["prompt_content"]
 
-    # 3. Update the active prompt variant metrics in DB
-    if not dry_run:
+    if dry_run:
+        logger.info(f"[DRY RUN] Would update metrics for {parent_tag}: {weekly_metrics}")
+    else:
         client.table("prompt_experiments").update({"metrics": weekly_metrics}).eq("variant_tag", parent_tag).execute()
     logger.info(f"Updated prompt variant {parent_tag} ({model_name}) with weekly score {weekly_score:.4f}")
 
-    # 4. Fetch all-time baseline prompt variant for this model track
+    # 4. Fetch all variants for ratchet check strictly within this model track
     all_variants = (
         client.table("prompt_experiments")
         .select("*")
@@ -328,6 +353,7 @@ async def run_predictor_autoresearch_for_model(
         meta_researcher,
         track_memories=track_memories,
         model_name=model_name,
+        cold_start=is_cold_start,
     )
 
     # 7. Insert new prompt and set status to active
@@ -381,7 +407,15 @@ async def run_predictor_autoresearch_for_model(
         "research_reasoning": research_insight,
         "confidence": 0.85 if is_baseline_beat else 0.50,
         "selected_tools": DEFAULT_SECTOR_PREDICTOR_TOOLS,
+        "is_cold_start": is_cold_start,
     }
+
+    exp_type = "radical" if is_cold_start else "incremental"
+    desc = (
+        f"Weekly sector autoresearch cold start (from 0) for {model_name}"
+        if is_cold_start
+        else f"Autoresearch generated for {model_name} from score {weekly_score:.1f}"
+    )
 
     client.table("prompt_experiments").insert(
         {
@@ -392,9 +426,9 @@ async def run_predictor_autoresearch_for_model(
             "week_start": today.isoformat(),
             "week_end": week_end.isoformat(),
             "status": "active",
-            "experiment_type": "incremental",
+            "experiment_type": exp_type,
             "parent_tag": parent_tag,
-            "change_description": f"Autoresearch generated for {model_name} from score {weekly_score:.1f}",
+            "change_description": desc,
             "research_output": research_output,
         }
     ).execute()
@@ -402,7 +436,11 @@ async def run_predictor_autoresearch_for_model(
     logger.info(f"Successfully generated and deployed new predictor prompt for {model_name}: {new_tag}")
 
 
-async def run_predictor_autoresearch(dry_run: bool = False, target_models: list[str] | None = None):
+async def run_predictor_autoresearch(
+    dry_run: bool = False,
+    target_models: list[str] | None = None,
+    cold_start: bool | None = None,
+):
     """Run weekly prompt evolution across all 4 sector predictor model tracks."""
     client = get_supabase_client()
 
@@ -413,8 +451,23 @@ async def run_predictor_autoresearch(dry_run: bool = False, target_models: list[
         target_models = TARGET_SECTOR_MODELS
 
     meta_researcher = get_gemini_client()
+    from autoresearch.runner import roll_cold_start_dice
+
+    cold_start_triggered = False
     try:
         for model_name in target_models:
+            if cold_start is True:
+                m_cold = True
+            elif cold_start is False:
+                m_cold = False
+            else:
+                # Automated mode: roll 1-in-6 dice with max-1 guardrail
+                if not cold_start_triggered and roll_cold_start_dice():
+                    m_cold = True
+                    cold_start_triggered = True
+                else:
+                    m_cold = False
+
             await run_predictor_autoresearch_for_model(
                 model_name=model_name,
                 client=client,
@@ -422,6 +475,7 @@ async def run_predictor_autoresearch(dry_run: bool = False, target_models: list[
                 seven_days_ago=seven_days_ago,
                 meta_researcher=meta_researcher,
                 dry_run=dry_run,
+                cold_start=m_cold,
             )
     finally:
         await close_client(meta_researcher, "gemini")

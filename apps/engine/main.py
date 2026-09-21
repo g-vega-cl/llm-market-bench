@@ -1111,10 +1111,11 @@ def main():
     elif args.command == COMMAND_AUTORESEARCH:
         from autoresearch.runner import run, run_all
 
+        forced_cold = True if args.cold_start else None
         if args.track_id == "all":
-            asyncio.run(run_all(dry_run=args.dry_run, cold_start=args.cold_start))
+            asyncio.run(run_all(dry_run=args.dry_run, cold_start=forced_cold))
         else:
-            asyncio.run(run(dry_run=args.dry_run, track_id=args.track_id, cold_start=args.cold_start))
+            asyncio.run(run(dry_run=args.dry_run, track_id=args.track_id, cold_start=forced_cold))
     elif args.command == COMMAND_BOOTSTRAP_AUTORESEARCH:
         from autoresearch.bootstrap import bootstrap
 
@@ -1135,7 +1136,8 @@ def main():
     elif args.command == COMMAND_DAILY_AUTORESEARCH:
         from tasks.daily_autoresearch import run_daily_autoresearch
 
-        asyncio.run(run_daily_autoresearch(dry_run=args.dry_run))
+        forced_cold = True if args.cold_start else None
+        asyncio.run(run_daily_autoresearch(dry_run=args.dry_run, cold_start=forced_cold))
     elif args.command == COMMAND_BACKTEST_DAILY_AUTORESEARCH:
         from tasks.backtest_daily_autoresearch import run_backtest_daily_autoresearch
 

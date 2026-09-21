@@ -135,9 +135,11 @@ async def run_research(
     if cold_start:
         system_program += (
             "\n\n=== COLD START RESET ===\n"
-            "This cycle is a COLD START RESET to avoid local optima. "
-            "Ignore the previous system prompt strategy. "
-            "Generate a novel, high-conviction trading strategy prompt from scratch."
+            "This cycle is a COLD START RESET (1-in-6 stochastic exploration to avoid local optima).\n"
+            "DO NOT anchor on or adapt the prior system prompt strategy.\n"
+            "Generate a novel, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch.\n"
+            "Remember that engine constraints, pricing rules, and the JSON output schema are FROZEN and managed automatically by the engine.\n"
+            "Output ONLY the new strategy and analysis section in new_prompt_text."
         )
 
     if track_id == "track_claude":
@@ -232,7 +234,6 @@ async def run_research(
 
             if hasattr(types, "ThinkingConfig"):
                 create_args["thinking_config"] = types.ThinkingConfig(thinking_budget=4096)
-
 
         wrapper = None
         last_error = None

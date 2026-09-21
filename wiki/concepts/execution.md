@@ -31,6 +31,13 @@ Regulation T margin requirements are enforced before trade settlement. The syste
 
 Trades are settled using the "Commit at the End" pattern to prevent phantom deductions. Orders are placed via Alpaca's API, and order status is synced asynchronously via [[concepts/alpaca-order-sync]].
 
+## Trade Attribution and Execution Tracing
+
+Rather than constraining attribution to a single nominal newsletter ID, the engine captures a factual execution trace in the decision's JSONB metadata:
+1. **Batch Ingest Context**: Captures all active newsletter chunk IDs, senders, and subjects present in the prompt context batch.
+2. **Tool Invocations**: Records every tool executed during analysis (`get_stock_quote`, `get_price_history`, `calculate_buy_quantity`, etc.) along with input arguments and target tickers.
+3. **Audit Trail**: Stored under `decisions.metadata->'execution_trace'`, preserved during `save_decision`, and surfaced in the web UI via `ExecutionTraceView` in both Today execution activity and Portfolio trades tables.
+
 ## Related
 
 - [[entities/engine]]

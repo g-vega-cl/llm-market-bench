@@ -4,7 +4,7 @@ This module defines the data models used for validating and structuring
 LLM responses, ensuring type safety throughout the pipeline.
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -78,6 +78,7 @@ class DecisionObject(BaseModel):
     original_index: int | None = Field(
         None, description="Stable sequence number preserving the model's original reasoning order"
     )
+    metadata: dict[str, Any] | None = Field(default=None, description="System metadata and execution trace")
 
     @field_validator("ticker")
     @classmethod

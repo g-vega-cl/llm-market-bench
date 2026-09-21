@@ -121,7 +121,7 @@ export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoni
     const tickers = Array.from(new Set(trades.map((t) => t.ticker)));
     const { data: decisions, error: decError } = await supabase
         .from('decisions')
-        .select('id, ticker, signal, reasoning, trade_id, created_at')
+        .select('id, ticker, signal, reasoning, trade_id, created_at, metadata')
         .in('ticker', tickers)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -159,11 +159,16 @@ export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoni
     return trades.map((trade) => {
         if (trade.decision_id) {
             const match = decisionsById.get(trade.decision_id);
-            if (match) return { ...trade, reasoning: match.reasoning };
+            if (match) return { ...trade, reasoning: match.reasoning, metadata: match.metadata };
         }
 
         const tradePointerMatch = decisionsByTradeId.get(trade.id);
-        if (tradePointerMatch) return { ...trade, reasoning: tradePointerMatch.reasoning };
+        if (tradePointerMatch)
+            return {
+                ...trade,
+                reasoning: tradePointerMatch.reasoning,
+                metadata: tradePointerMatch.metadata,
+            };
 
         const tradeTime = new Date(trade.executed_at).getTime();
         const tickerDecisions = decisionsByTicker.get(trade.ticker) || [];
@@ -179,7 +184,12 @@ export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoni
             }
         }
 
-        if (proximityMatch) return { ...trade, reasoning: proximityMatch.reasoning };
+        if (proximityMatch)
+            return {
+                ...trade,
+                reasoning: proximityMatch.reasoning,
+                metadata: proximityMatch.metadata,
+            };
 
         const fallbackMatch = tickerDecisions.length > 0 ? tickerDecisions[0] : null;
 
@@ -187,6 +197,7 @@ export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoni
             ...trade,
             reasoning:
                 fallbackMatch?.reasoning || 'Reasoning not linked to this specific trade record.',
+            metadata: fallbackMatch?.metadata || null,
         };
     });
 }

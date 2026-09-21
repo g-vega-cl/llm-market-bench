@@ -619,7 +619,6 @@ async def analyze_with_provider(
             if hasattr(types, "ThinkingConfig"):
                 final_args["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
 
-
         # Instructor extraction with retry and JSON repair for validation errors
         wrapper = None
         last_error = None
@@ -1042,6 +1041,13 @@ async def analyze_with_provider(
                     decision.reasoning = f"REJECTED_OWNERSHIP: Attempted to sell {decision.ticker} but ticker is not held. Original reasoning: {decision.reasoning[:200]}"
                 validated_decisions.append(decision)
             final_resp.decisions = validated_decisions
+
+        # Attach execution trace to decisions for factual attribution logging
+        if hasattr(final_resp, "decisions") and final_resp.decisions:
+            from attribution.trace import attach_trace_to_decisions, build_execution_trace
+
+            trace = build_execution_trace(chunks, unflattened_messages)
+            attach_trace_to_decisions(final_resp.decisions, trace)
 
         # Log completion
         await log_reasoning_trace(

@@ -108,6 +108,8 @@ export type PositionWithReasoning = PositionPnl & {
 
 export type TradeWithReasoning = Trade & {
     reasoning?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: Metadata is dynamic JSONB
+    metadata?: Record<string, any> | null;
 };
 
 export interface LLMLeaderboardRow {

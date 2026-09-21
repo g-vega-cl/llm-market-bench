@@ -98,6 +98,33 @@ def test_save_decision_with_trade_id(mock_supabase):
     assert payload["trade_id"] == trade_id
 
 
+def test_save_decision_with_execution_trace(mock_supabase):
+    """Test that execution_trace on decision.metadata or passed metadata is preserved in database payload."""
+    trace_data = {
+        "active_source_ids": ["src_1", "src_2"],
+        "newsletters": [{"source_id": "src_1", "sender": "Bloomberg", "subject": "Tech"}],
+        "tools_called": [{"tool": "get_stock_quote", "args": {"ticker": "AAPL"}, "ticker": "AAPL"}],
+        "captured_at": "2026-09-20T23:15:00Z",
+    }
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=85,
+        reasoning="Multi-source conviction",
+        ticker="AAPL",
+        source_id="src_1",
+        model_provider="openai",
+        model_name="gpt-4o",
+        metadata={"execution_trace": trace_data},
+    )
+
+    save_decision(mock_supabase, decision)
+
+    args, kwargs = mock_supabase.table().upsert.call_args
+    payload = args[0]
+    assert "execution_trace" in payload["metadata"]
+    assert payload["metadata"]["execution_trace"] == trace_data
+
+
 def test_save_decision_error(mock_supabase):
     """Test error handling when saving fails."""
     mock_supabase.table().upsert().execute.side_effect = Exception("DB Error")

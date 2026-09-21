@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/attribution-trace]] — Tool-call trace extraction and normalization for OpenAI/Anthropic formats
 - [[entities/autoresearch-arena]] — Web UI for browsing prompt experiment history, score audit, cognitive toolbox, and meta-researcher rationale across all three prediction domains
 - [[entities/macro-options]] — Macro options metrics fetching and markdown table formatting
 - [[entities/economic-releases]] — Live macroeconomic indicator releases from FMP with actual vs consensus surprises

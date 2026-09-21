@@ -120,6 +120,40 @@ describe('TradeActivity nested decision resolution', () => {
             ),
         ).toBeInTheDocument();
     });
+
+    it('renders execution trace when trade has metadata.execution_trace', () => {
+        const mockTrade = {
+            id: 'trade-trace-1',
+            executed_at: '2026-06-26T14:30:54Z',
+            signal: 'BUY',
+            ticker: 'NVDA',
+            price: 120.0,
+            metadata: {
+                execution_trace: {
+                    active_source_ids: ['src_1'],
+                    newsletters: [
+                        {
+                            source_id: 'src_1',
+                            sender: 'Bloomberg Markets',
+                            subject: 'Tech GPU Acceleration',
+                        },
+                    ],
+                    tools_called: [
+                        {
+                            tool: 'get_stock_quote',
+                            ticker: 'NVDA',
+                        },
+                    ],
+                },
+            },
+        };
+
+        render(<TradeActivity trades={[mockTrade]} decisions={[]} />);
+        fireEvent.click(screen.getByText('NVDA'));
+        expect(screen.getByText('Execution Provenance & Grounding')).toBeInTheDocument();
+        expect(screen.getByText('get_stock_quote: NVDA')).toBeInTheDocument();
+        expect(screen.getByText(/Tech GPU Acceleration/)).toBeInTheDocument();
+    });
 });
 
 describe('TradeActivity stats rendering', () => {

@@ -55,6 +55,7 @@ def save_decision(
         "limit_price": None,
         "status": status,
         "metadata": {
+            **(getattr(decision, "metadata", None) or {}),
             **(metadata or {}),
             "strategy_reasoning": getattr(decision, "strategy_reasoning", None),
             "advance_planning_notes": getattr(decision, "advance_planning_notes", None),

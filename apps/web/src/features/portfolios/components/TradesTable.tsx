@@ -10,6 +10,7 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { useState } from 'react';
+import { ExecutionTraceView } from '~/features/today/components/ExecutionTraceView';
 
 export type Trade = TradeWithReasoning;
 
@@ -185,6 +186,9 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                 {trade.reasoning}
                                             </p>
                                         </div>
+                                        <ExecutionTraceView
+                                            trace={trade.metadata?.execution_trace}
+                                        />
                                     </div>
                                 </TableCell>
                             </TableRow>

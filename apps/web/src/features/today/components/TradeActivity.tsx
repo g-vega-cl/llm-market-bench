@@ -1,6 +1,7 @@
 import { Badge, MetricTile, SectionHeading, StatPill } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { getAgentInfo } from '../lib/agent-info';
+import { ExecutionTraceView } from './ExecutionTraceView';
 
 interface TradeItem {
     id: string;
@@ -13,6 +14,8 @@ interface TradeItem {
     portfolios?: { owner_id?: string };
     decisions?: DecisionItem | DecisionItem[] | null;
     reasoning?: string | null;
+    // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+    metadata?: Record<string, any> | null;
     formattedTime?: string;
 }
 
@@ -42,6 +45,8 @@ type ActivityItem =
           reasoning: string;
           model_name?: string;
           confidence?: number;
+          // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+          metadata?: Record<string, any> | null;
       })
     | (DecisionItem & {
           type: 'REJECTION';
@@ -81,6 +86,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                         'No reasoning found for this execution.',
                     model_name: decision?.model_name || t.portfolios?.owner_id,
                     confidence: decision?.confidence_score,
+                    metadata: decision?.metadata || t.metadata,
                     formattedTime: t.formattedTime,
                 };
             }),
@@ -330,6 +336,11 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                 </p>
                                             </div>
                                         </div>
+
+                                        {/* Execution Provenance Trace */}
+                                        <ExecutionTraceView
+                                            trace={item.metadata?.execution_trace}
+                                        />
 
                                         {/* Trade Details for Executed Trades */}
                                         {item.type === 'TRADE' && (

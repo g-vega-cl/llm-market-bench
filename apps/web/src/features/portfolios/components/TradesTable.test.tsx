@@ -76,4 +76,43 @@ describe('TradesTable', () => {
         expect(table).toBeInTheDocument();
         expect(table?.className).toContain('min-w-[700px]');
     });
+
+    it('renders execution trace when trade has metadata.execution_trace', () => {
+        const tradeWithTrace: Trade = {
+            ...mockTrades[0],
+            id: 't-trace',
+            ticker: 'NVDA',
+            signal: 'BUY',
+            price: 115,
+            reasoning: 'AI demand thesis',
+            metadata: {
+                execution_trace: {
+                    active_source_ids: ['src_99'],
+                    newsletters: [
+                        {
+                            source_id: 'src_99',
+                            sender: 'Reuters Technology',
+                            subject: 'Chip Demand Update',
+                        },
+                    ],
+                    tools_called: [
+                        {
+                            tool: 'get_stock_quote',
+                            ticker: 'NVDA',
+                        },
+                    ],
+                },
+            },
+        };
+
+        render(<TradesTable trades={[tradeWithTrace]} />);
+        const row = screen.getByText('NVDA').closest('tr');
+        expect(row).toBeInTheDocument();
+        if (row) {
+            fireEvent.click(row);
+            expect(screen.getByText('Execution Provenance & Grounding')).toBeInTheDocument();
+            expect(screen.getByText('get_stock_quote: NVDA')).toBeInTheDocument();
+            expect(screen.getByText(/Chip Demand Update/)).toBeInTheDocument();
+        }
+    });
 });

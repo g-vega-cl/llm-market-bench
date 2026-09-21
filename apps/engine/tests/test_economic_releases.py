@@ -17,6 +17,17 @@ def test_calculate_target_window_today():
     assert "Today" in label
 
 
+@pytest.fixture(autouse=True)
+def setup_economic_releases(monkeypatch):
+    """Ensure FMP_API_KEY is configured with a dummy test key and cache is flushed."""
+    monkeypatch.setattr("core.economic_releases.FMP_API_KEY", "mock-fmp-key")
+    from core.economic_releases import _cache
+
+    _cache.clear()
+    yield
+    _cache.clear()
+
+
 @pytest.mark.asyncio
 async def test_fetch_economic_calendar_events_parsing():
     """Verify parsing of FMP economic calendar releases with released and pending items."""

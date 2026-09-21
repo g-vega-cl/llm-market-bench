@@ -10,6 +10,7 @@ Executes live Monday market-open entries and Friday market-close exits for:
 
 from datetime import UTC, date, datetime
 from typing import Any
+from uuid import uuid4
 
 from core.config import logger
 from core.db import get_supabase_client
@@ -92,8 +93,10 @@ async def execute_system_sector_entry(
             "total_cost": shares * entry_p,
             "executed_at": start_ts,
         }
+        trade_id = None
         if not dry_run:
-            client.table("trades").insert(trade_record).execute()
+            ins_res = client.table("trades").insert(trade_record).execute()
+            trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
 
             # Upsert active holding into portfolio_positions
             client.table("portfolio_positions").upsert(
@@ -106,7 +109,9 @@ async def execute_system_sector_entry(
                 },
                 on_conflict="portfolio_id,ticker",
             ).execute()
-        entered_trades.append({"ticker": ticker, "side": "LONG", "shares": shares, "entry_price": entry_p})
+        entered_trades.append(
+            {"ticker": ticker, "side": "LONG", "shares": shares, "entry_price": entry_p, "trade_id": trade_id}
+        )
 
     # 2. Short Legs Entry
     for ticker in short_sectors:
@@ -127,11 +132,45 @@ async def execute_system_sector_entry(
             "total_cost": shares * entry_p,
             "executed_at": start_ts,
         }
+        trade_id = None
         if not dry_run:
-            client.table("trades").insert(trade_record).execute()
+            ins_res = client.table("trades").insert(trade_record).execute()
+            trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
         # Note: DB constraint quantity_not_negative prevents negative positions in portfolio_positions.
         # Short legs are tracked directly via trades table.
-        entered_trades.append({"ticker": ticker, "side": "SHORT", "shares": shares, "entry_price": entry_p})
+        entered_trades.append(
+            {"ticker": ticker, "side": "SHORT", "shares": shares, "entry_price": entry_p, "trade_id": trade_id}
+        )
+
+    # Deduct cash for long leg purchases
+    total_long_spent = sum(t["shares"] * t["entry_price"] for t in entered_trades if t["side"] == "LONG")
+    remaining_cash = max(0.0, current_cash - total_long_spent)
+    if not dry_run:
+        client.table("portfolios").update(
+            {
+                "cash_balance": remaining_cash,
+                "total_equity": current_cash,
+                "last_updated_at": datetime.now(UTC).isoformat(),
+            }
+        ).eq("id", str(portfolio.id)).execute()
+
+        # Submit Alpaca orders for LONG legs only (Alpaca paper guardrail prevents shorting)
+        try:
+            from execution.alpaca_broker import AlpacaBroker
+
+            broker = AlpacaBroker()
+            for t in entered_trades:
+                if t["side"] == "LONG":
+                    await broker.submit_limit_order(
+                        trade_id=t.get("trade_id") or uuid4(),
+                        ticker=t["ticker"],
+                        quantity=t["shares"],
+                        signal="BUY",
+                        limit_price=round(t["entry_price"], 2),
+                        agent_id=SYS_SECTOR_LS_OWNER_ID,
+                    )
+        except Exception as exc:
+            logger.warning(f"Alpaca mirror error during sector entry: {exc}")
 
     logger.info(
         f"System Sector L/S entry executed for {SYS_SECTOR_LS_OWNER_ID} on {week_start_date} (dry_run={dry_run}): {entered_trades}"
@@ -197,8 +236,10 @@ async def execute_mechanical_sector_entry(
             "total_cost": shares * entry_p,
             "executed_at": start_ts,
         }
+        trade_id = None
         if not dry_run:
-            client.table("trades").insert(trade_record).execute()
+            ins_res = client.table("trades").insert(trade_record).execute()
+            trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
 
             client.table("portfolio_positions").upsert(
                 {
@@ -210,7 +251,36 @@ async def execute_mechanical_sector_entry(
                 },
                 on_conflict="portfolio_id,ticker",
             ).execute()
-        entered_trades.append({"ticker": ticker, "shares": shares, "entry_price": entry_p})
+        entered_trades.append(
+            {"ticker": ticker, "shares": shares, "entry_price": entry_p, "trade_id": trade_id}
+        )
+
+    total_spent = sum(t["shares"] * t["entry_price"] for t in entered_trades)
+    remaining_cash = max(0.0, current_cash - total_spent)
+    if not dry_run:
+        client.table("portfolios").update(
+            {
+                "cash_balance": remaining_cash,
+                "total_equity": current_cash,
+                "last_updated_at": datetime.now(UTC).isoformat(),
+            }
+        ).eq("id", str(portfolio.id)).execute()
+
+        try:
+            from execution.alpaca_broker import AlpacaBroker
+
+            broker = AlpacaBroker()
+            for t in entered_trades:
+                await broker.submit_limit_order(
+                    trade_id=t.get("trade_id") or uuid4(),
+                    ticker=t["ticker"],
+                    quantity=t["shares"],
+                    signal="BUY",
+                    limit_price=round(t["entry_price"], 2),
+                    agent_id=owner_id,
+                )
+        except Exception as exc:
+            logger.warning(f"Alpaca mirror error during mechanical entry for {owner_id}: {exc}")
 
     logger.info(
         f"Mechanical sector entry complete for {owner_id} on {week_start_date} (dry_run={dry_run}): {entered_trades}"
@@ -266,6 +336,8 @@ async def execute_system_sector_exit(
         return {"status": "skipped", "reason": "No open positions to exit"}
 
     total_realized_pnl = 0.0
+    total_long_proceeds = 0.0
+    total_short_pnl = 0.0
     exited_trades = []
 
     for entry in open_entries:
@@ -282,6 +354,8 @@ async def execute_system_sector_exit(
             exit_sig = "SELL"
             pnl = (exit_p - entry_p) * shares
             pnl_pct = ((exit_p / entry_p) - 1.0) * 100.0
+            proceeds = shares * exit_p
+            total_long_proceeds += proceeds
             if not dry_run:
                 # Clean up position
                 client.table("portfolio_positions").delete().match(
@@ -292,6 +366,7 @@ async def execute_system_sector_exit(
             exit_sig = "COVER"
             pnl = (entry_p - exit_p) * shares
             pnl_pct = ((entry_p - exit_p) / entry_p) * 100.0
+            total_short_pnl += pnl
 
         total_realized_pnl += pnl
 
@@ -306,11 +381,39 @@ async def execute_system_sector_exit(
             "realized_pnl_pct": pnl_pct,
             "executed_at": end_ts,
         }
+        exit_trade_id = None
         if not dry_run:
-            client.table("trades").insert(exit_record).execute()
+            ins_res = client.table("trades").insert(exit_record).execute()
+            exit_trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
+
+            # Mark the original entry trade as closed with realized_pnl
+            if entry.get("id"):
+                try:
+                    client.table("trades").update(
+                        {"realized_pnl": pnl, "realized_pnl_pct": pnl_pct}
+                    ).eq("id", entry["id"]).execute()
+                except Exception as exc:
+                    logger.warning(f"Could not mark entry trade {entry.get('id')} closed: {exc}")
+
+            if side == "BUY":
+                try:
+                    from execution.alpaca_broker import AlpacaBroker
+
+                    broker = AlpacaBroker()
+                    await broker.submit_limit_order(
+                        trade_id=exit_trade_id,
+                        ticker=ticker,
+                        quantity=shares,
+                        signal="SELL",
+                        limit_price=round(exit_p, 2),
+                        agent_id=SYS_SECTOR_LS_OWNER_ID,
+                    )
+                except Exception as exc:
+                    logger.warning(f"Alpaca mirror error during sector exit for {ticker}: {exc}")
+
         exited_trades.append({"ticker": ticker, "side": exit_sig, "pnl": pnl, "pnl_pct": pnl_pct})
 
-    new_cash = max(0.0, current_cash + total_realized_pnl)
+    new_cash = max(0.0, current_cash + total_long_proceeds + total_short_pnl)
     if not dry_run:
         client.table("portfolios").update(
             {
@@ -387,6 +490,7 @@ async def execute_mechanical_sector_exit(
         return {"status": "skipped", "reason": "No open positions to exit"}
 
     total_realized_pnl = 0.0
+    total_proceeds = 0.0
     exited_trades = []
 
     for entry in open_entries:
@@ -398,9 +502,11 @@ async def execute_mechanical_sector_exit(
             continue
 
         exit_p = p * (1.0 - slip_factor)
+        proceeds = shares * exit_p
         pnl = (exit_p - entry_p) * shares
         pnl_pct = ((exit_p / entry_p) - 1.0) * 100.0
         total_realized_pnl += pnl
+        total_proceeds += proceeds
 
         if not dry_run:
             client.table("portfolio_positions").delete().match(
@@ -413,15 +519,39 @@ async def execute_mechanical_sector_exit(
                 "signal": "SELL",
                 "quantity": shares,
                 "price": exit_p,
-                "total_cost": shares * exit_p,
+                "total_cost": proceeds,
                 "realized_pnl": pnl,
                 "realized_pnl_pct": pnl_pct,
                 "executed_at": end_ts,
             }
-            client.table("trades").insert(exit_record).execute()
+            ins_res = client.table("trades").insert(exit_record).execute()
+            exit_trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
+            if entry.get("id"):
+                try:
+                    client.table("trades").update(
+                        {"realized_pnl": pnl, "realized_pnl_pct": pnl_pct}
+                    ).eq("id", entry["id"]).execute()
+                except Exception as exc:
+                    logger.warning(f"Could not mark mechanical entry trade {entry.get('id')} closed: {exc}")
+
+            try:
+                from execution.alpaca_broker import AlpacaBroker
+
+                broker = AlpacaBroker()
+                await broker.submit_limit_order(
+                    trade_id=exit_trade_id,
+                    ticker=ticker,
+                    quantity=shares,
+                    signal="SELL",
+                    limit_price=round(exit_p, 2),
+                    agent_id=owner_id,
+                )
+            except Exception as exc:
+                logger.warning(f"Alpaca mirror error during mechanical exit for {owner_id}: {exc}")
+
         exited_trades.append({"ticker": ticker, "pnl": pnl, "pnl_pct": pnl_pct})
 
-    new_cash = max(0.0, current_cash + total_realized_pnl)
+    new_cash = max(0.0, current_cash + total_proceeds)
     if not dry_run:
         client.table("portfolios").update(
             {
@@ -538,6 +668,15 @@ async def run_sector_trade(
             logger.warning("No sector predictions found to execute live entry.")
             return {"status": "skipped", "reason": "No predictions found"}
 
+        # Scoping fix: filter strictly to the latest prediction_date to prevent mixing multi-week predictions
+        pred_dates = [p["prediction_date"] for p in predictions if p.get("prediction_date")]
+        if pred_dates:
+            latest_pred_date = max(pred_dates)
+            predictions = [p for p in predictions if p.get("prediction_date") == latest_pred_date]
+            logger.info(
+                f"Scoped sector predictions to latest cycle: {latest_pred_date} ({len(predictions)} model predictions)"
+            )
+
         # 2. Fetch latest correlation run for mechanical portfolios
         corr_run_res = (
             client.table("correlation_runs")
@@ -549,7 +688,7 @@ async def run_sector_trade(
         )
         corr_data = []
         universe = MECHANICAL_SECTOR_UNIVERSE
-        if corr_run_res.data:
+        if corr_run_res.data and isinstance(corr_run_res.data[0], dict) and "id" in corr_run_res.data[0]:
             run_id = corr_run_res.data[0]["id"]
             ref_tickers = corr_run_res.data[0].get("tickers") or universe
             universe = [t for t in MECHANICAL_SECTOR_UNIVERSE if t in ref_tickers] or universe
@@ -601,8 +740,25 @@ async def run_sector_trade(
         }
 
     elif action in ("exit", "close"):
-        # Fetch closing quotes for mechanical and consensus universe
-        quotes = await mdm.get_quotes(MECHANICAL_SECTOR_UNIVERSE, force_refresh=True)
+        # Dynamically collect all tickers that need closing quotes across consensus and mechanical portfolios
+        tickers_to_close = set(MECHANICAL_SECTOR_UNIVERSE)
+        for owner_id in [SYS_SECTOR_LS_OWNER_ID] + MECHANICAL_SECTOR_OWNER_IDS:
+            try:
+                p = await get_or_create_system_portfolio(owner_id)
+                tickers_to_close.update(p.positions.keys())
+                open_t_res = (
+                    client.table("trades")
+                    .select("ticker")
+                    .eq("portfolio_id", str(p.id))
+                    .is_("realized_pnl", "null")
+                    .execute()
+                )
+                if open_t_res.data:
+                    tickers_to_close.update(t["ticker"] for t in open_t_res.data if t.get("ticker"))
+            except Exception as e:
+                logger.warning(f"Could not load open tickers for {owner_id}: {e}")
+
+        quotes = await mdm.get_quotes(list(tickers_to_close), force_refresh=True)
         price_map = {t: float(q.price) for t, q in quotes.items() if q.price > 0}
 
         res_consensus = await execute_system_sector_exit(

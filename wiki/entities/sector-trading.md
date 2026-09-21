@@ -9,9 +9,11 @@ Live execution engine for 5 weekly sector strategy portfolios: long/short consen
 
 ## Architecture
 
-- **Live Entry (`execute_system_sector_entry`, `execute_mechanical_sector_entry`)**: Fetches latest predictions and correlation data, resolves sector tickers, performs idempotency checks, inserts `BUY`/`SHORT` trades into `trades` table, and upserts long positions into `portfolio_positions`.
-- **Live Exit (`execute_system_sector_exit`, `execute_mechanical_sector_exit`)**: Locates open entries, calculates realized PnL, inserts `SELL`/`COVER` trades, cleans up `portfolio_positions`, updates portfolio cash/equity/buying power, and writes daily `portfolio_performance` snapshots.
+- **Live Entry (`execute_system_sector_entry`, `execute_mechanical_sector_entry`)**: Fetches latest single-cycle predictions (`max(prediction_date)`) and correlation data, resolves sector tickers, deducts purchase cost from `cash_balance`, inserts `BUY`/`SHORT` trades into `trades` table, mirrors long `BUY` limit orders to Alpaca paper trading, and upserts active long holdings into `portfolio_positions`.
+- **Live Exit (`execute_system_sector_exit`, `execute_mechanical_sector_exit`)**: Locates open entries, calculates realized PnL, credits proceeds and realized PnL back to `cash_balance`, inserts `SELL`/`COVER` trades, mirrors long `SELL` limit orders to Alpaca, cleans up `portfolio_positions`, and records `portfolio_performance` snapshots.
 - **Orchestration (`run_sector_trade`)**: Central dispatcher handling `entry`, `exit`, and `status` actions. Fetches market data via `MarketDataManager`, resolves sector tickers from predictions and correlation data, and delegates to the appropriate entry/exit functions.
+- **Zero Backfilling**: Retroactive rebalancing during weekend evaluations in `evaluate_predictions.py` has been removed. All portfolios execute in real time on Mondays/Fridays and mirror to Alpaca without hindsight modifications.
+- **Alpaca Mirroring**: Long legs across systematic portfolios (`sys-sector-uncorr-20d`, `sys-sector-uncorr-7d`, `sys-sector-naive-momentum`, `sys-sector-mean-reversion`, and `sys-sector-ls-consensus`) mirror limit orders directly to Alpaca paper broker via `AlpacaBroker`.
 - **Idempotency**: Skips re-entry if trades already exist for the same portfolio + executed_at timestamp. Skips exit if exit trades already exist for the same ticker + cycle.
 - **Short Tracking**: Short positions are tracked via `trades` table (DB constraint `quantity_not_negative` prevents negative `portfolio_positions`). Open shorts are loaded separately during price updates to compute unrealized PnL.
 

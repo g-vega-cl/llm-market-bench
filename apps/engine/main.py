@@ -724,6 +724,8 @@ async def _stage_snapshots_and_pca(sb_client):
         mdm = MarketDataManager()
         all_tickers = set()
         active_portfolios = []
+        open_shorts_by_portfolio: dict[str, list[dict]] = {}
+
         for owner in owners:
             p = Portfolio(owner_id=owner)
             await p.initialize()
@@ -731,10 +733,41 @@ async def _stage_snapshots_and_pca(sb_client):
                 all_tickers.update(p.positions.keys())
                 active_portfolios.append(p)
 
+            # Handle open short positions (e.g. sys-sector-ls-consensus)
+            if owner == "sys-sector-ls-consensus" and p.id:
+                try:
+                    short_res = (
+                        sb_client.table("trades")
+                        .select("ticker, price, quantity")
+                        .eq("portfolio_id", str(p.id))
+                        .eq("signal", "SHORT")
+                        .is_("realized_pnl", "null")
+                        .execute()
+                    )
+                    shorts = short_res.data or []
+                    if shorts:
+                        open_shorts_by_portfolio[str(p.id)] = shorts
+                        all_tickers.update([s["ticker"] for s in shorts])
+                        if p not in active_portfolios:
+                            active_portfolios.append(p)
+                except Exception as ex:
+                    logger.warning(f"Could not load open shorts for {owner}: {ex}")
+
         if all_tickers:
             quotes = await mdm.get_quotes(list(all_tickers))
             price_map = {t: data.price for t, data in quotes.items()}
             for p in active_portfolios:
+                p.calculate_reg_t_metrics(price_map)
+                # Adjust for open shorts unrealized PnL if present
+                if p.id and str(p.id) in open_shorts_by_portfolio:
+                    shorts = open_shorts_by_portfolio[str(p.id)]
+                    short_unrealized = sum(
+                        (float(s["price"]) - price_map.get(s["ticker"], float(s["price"]))) * int(s["quantity"])
+                        for s in shorts
+                    )
+                    p.metrics.total_equity += short_unrealized
+                    p.metrics.excess_liquidity += short_unrealized
+
                 await p.record_performance_snapshot(price_map)
                 await p.save_metrics()
 
@@ -820,6 +853,20 @@ async def run_ingest(force: bool = False):
             await _stage_decision_processing(
                 decisions, macro_events, data, agg_ctx, uncrowded_ctx, sb_client, consensus_events
             )
+
+            # Systematic Weekly Sector Entry Hook (Monday Morning Market Open)
+            # Must run BEFORE snapshots and PCA so sector positions and cash adjustments are captured immediately.
+            try:
+                now_ny = datetime.now(ZoneInfo("America/New_York"))
+                # If Monday and morning session (before 11:00 AM ET)
+                if now_ny.weekday() == 0 and now_ny.hour < 11:
+                    logger.info("Monday morning detected — Checking systematic weekly sector portfolio entry...")
+                    from execution.sector_trading import run_sector_trade
+
+                    await run_sector_trade(action="entry")
+            except Exception:
+                logger.exception("Systematic weekly sector entry hook failed")
+
             await _stage_snapshots_and_pca(sb_client)
 
             # Market Feeling Analysis: Generate LLM-driven sentiment (after execution to include trades)
@@ -844,18 +891,6 @@ async def run_ingest(force: bool = False):
                 )
             except Exception:
                 logger.exception("Isolated LIN Renko Flow execution failed")
-
-            # Systematic Weekly Sector Entry Hook (Monday Morning Market Open)
-            try:
-                now_ny = datetime.now(ZoneInfo("America/New_York"))
-                # If Monday and morning session (before 11:00 AM ET)
-                if now_ny.weekday() == 0 and now_ny.hour < 11:
-                    logger.info("Monday morning detected — Checking systematic weekly sector portfolio entry...")
-                    from execution.sector_trading import run_sector_trade
-
-                    await run_sector_trade(action="entry")
-            except Exception:
-                logger.exception("Systematic weekly sector entry hook failed")
         finally:
             from execution.providers.factory import get_active_provider_class
 

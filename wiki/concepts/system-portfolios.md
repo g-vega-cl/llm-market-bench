@@ -20,7 +20,7 @@ System portfolios are automated, rule-based investment and trading strategies th
   - 50% of available equity is allocated equally across clean Short sectors.
 - **Execution Timing**: Entered at Monday Market Open (9:35 AM ET) and liquidated at Friday Market Close (4:05 PM ET).
 - **Execution Friction**: 5 bps (0.05%) slippage on entries and exits.
-- **Trigger**: Executed live via `apps/engine/execution/sector_trading.py` triggered by `.github/workflows/sector-trade.yml` and the Monday morning ingestion hook. Also reconciled retrospectively in `apps/engine/tasks/evaluate_predictions.py`. Supports `--force` flag for manual backfilling. State hydration is robust to `NULL` margin metrics via fallback coercion in `Portfolio.initialize()`.
+- **Trigger**: Executed live in real time via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) triggered by `.github/workflows/sector-trade.yml` and the Monday morning ingestion hook. Long legs mirror to Alpaca paper broker. Retroactive backfilling in `evaluate_predictions.py` has been eliminated to ensure verifiable, audit-grade live records. State hydration is robust to `NULL` margin metrics via fallback coercion in `Portfolio.initialize()`.
 
 ### 2. Daily S&P Intraday Trader (`sys-daily-spy-{model}`)
 - **Signal**: Daily 9:30 AM – 4:00 PM ET S&P 500 predictions (`UP` or `DOWN`, `expected_return_pct`, `confidence`) from `daily_predictions` table.
@@ -36,33 +36,33 @@ System portfolios are automated, rule-based investment and trading strategies th
 
 ### Idempotency & Timeframe Guardrails
 - **Strict 7-Day Window Scoping**: The sector predictor produces predictions across 4 horizons (`7d`, `30d`, `60d`, `90d`). Weekly system portfolios (`sys-sector-ls-consensus` and the 4 mechanical sector benchmarks) strictly filter on `timeframe == '7d'`, preventing longer-horizon monthly or quarterly prediction evaluations from falsely triggering weekly portfolio rebalances.
-- **Idempotent Rebalancing**: If `evaluate_predictions.py` or mechanical rebalances are executed with `--force`, any existing trades matching the window boundaries (`week_start_date` and `week_end_date`) are purged and their net PnL is subtracted before re-allocating, ensuring exact idempotency.
+- **Idempotent Real-Time Execution**: All sector entries and exits check existing cycle trade records by timestamp and cycle end date to prevent double entries or re-exits.
 
 ### 3. 20-Day Uncorrelated Sector Momentum (`sys-sector-uncorr-20d`)
 - **Signal**: Rolling 90-day correlation matrix + trailing 20-day (~1 month) sector returns from `correlation_data`.
 - **Selection Rule**: Identifies all sector ETF pairs with Pearson $|\rho| < 0.30$, selecting the pair with the highest average trailing return.
 - **Allocation**: 50% Asset A, 50% Asset B.
-- **Trigger**: Executed live via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) triggered by `.github/workflows/sector-trade.yml` and the Monday ingestion hook. Reconciled retrospectively via `apps/engine/tasks/evaluate_predictions.py`.
+- **Trigger**: Executed live in real time via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) with Alpaca limit order paper trading mirror.
 
 ### 4. 7-Day Uncorrelated Sector Momentum (`sys-sector-uncorr-7d`)
 - **Signal**: Rolling 90-day correlation matrix + trailing 7-day sector returns from Sunday `correlation_data` snapshot.
 - **Selection Rule**: Top uncorrelated pair ($|\rho| < 0.30$) by trailing 7-day return. Mirrors the *Uncorrelated Pairs with Positive Momentum* table.
 - **Allocation**: 50% Asset A, 50% Asset B.
-- **Trigger**: Executed live via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) triggered by `.github/workflows/sector-trade.yml` and the Monday ingestion hook. Reconciled retrospectively via `apps/engine/tasks/evaluate_predictions.py`.
+- **Trigger**: Executed live in real time via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) with Alpaca limit order paper trading mirror.
 
 ### 5. 20-Day Unconstrained Momentum Benchmark Control (`sys-sector-naive-momentum`)
 - **Signal**: Trailing 20-day sector returns from `correlation_data` (unconstrained by correlation).
 - **Selection Rule**: Top 2 highest-returning sector ETFs. Allows high-beta concentration (e.g. XLK + SMH).
 - **Role**: Serves as the quantitative control group to benchmark the drawdown reduction provided by the $|\rho| < 0.30$ filter.
 - **Allocation**: 50% Asset A, 50% Asset B.
-- **Trigger**: Executed live via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) triggered by `.github/workflows/sector-trade.yml` and the Monday ingestion hook. Reconciled retrospectively via `apps/engine/tasks/evaluate_predictions.py`.
+- **Trigger**: Executed live in real time via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) with Alpaca limit order paper trading mirror.
 
 ### 6. 7-Day Sector Mean Reversion (`sys-sector-mean-reversion`)
 - **Signal**: Trailing 7-day sector returns from `correlation_data`.
 - **Selection Rule**: Bottom 2 worst-performing sector ETFs (oversold bounce).
 - **Empirical Backtest**: +47.24% 1-year return, 1.87 Sharpe, -8.97% max drawdown, exploiting the weekly overreaction reversal anomaly.
 - **Allocation**: 50% Asset A, 50% Asset B.
-- **Trigger**: Executed live via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) triggered by `.github/workflows/sector-trade.yml` and the Monday ingestion hook. Reconciled retrospectively via `apps/engine/tasks/evaluate_predictions.py`.
+- **Trigger**: Executed live in real time via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) with Alpaca limit order paper trading mirror.
 
 ### 7. Frontier Technology Supercycle Strategy (`sys-frontier-tech`)
 - **Signal**: Monthly autonomous discovery of pre-explosion gestation themes scored against a 5-point supercycle rubric.

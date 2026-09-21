@@ -251,7 +251,7 @@ async def run_smid_compounder_task(
                 price=exec_p,
                 signal="SELL",
                 current_prices=current_prices,
-                skip_alpaca_mirror=True,
+                skip_alpaca_mirror=False,
             )
             logger.info(f"Executed SELL {shares} {ticker} @ {exec_p:.2f} (Reason: {sale['reason']})")
 
@@ -267,7 +267,7 @@ async def run_smid_compounder_task(
                 price=exec_p,
                 signal="BUY",
                 current_prices=current_prices,
-                skip_alpaca_mirror=True,
+                skip_alpaca_mirror=False,
             )
             logger.info(f"Executed BUY {shares} {ticker} @ {exec_p:.2f}")
 

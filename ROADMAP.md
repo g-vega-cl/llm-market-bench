@@ -76,7 +76,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: audit that the "sector trend" and others portfolios are set up.
 - [ ] - Benchify : daily predictor prompt diff
 - [ ] - Benchify : in the daily predictor. It shows as if the current new prompt had a score already
-- [ ] - Benchify audit sector predictor portfolio. Seems like it's wrong
+- [x] - Benchify audit sector predictor portfolio. Seems like it's wrong (Fixed multi-week stale prediction bleed, cash deduction, duplicate weekend backfilling, and Reg-T metrics recalculation).
 - [ ] - Benchify: daily autoresearcher "lesson learned"? Like, every day, when you check if you were right or wrong, also ask "why" and see if it's worth adding these insights as memories or as an special label for daily predictor
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
 - [ ] - Benchify: add a "this could be a trade or force in the future". Like, ABNB with world cup, or cybersecurity/infrastructure with AI, or some undervalued company going through a temporary rough patch.
@@ -88,7 +88,7 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: daily portfolios but sell at 3:50ish, not when target is hit (added sys-daily-spy-close-* with 0.02% slippage).
 - [x] - Benchify: Right now we have in trades a single newsletter attribution usually but with AI more than one newsletter could have been the reason of the trade or even not newsletters and other thoughts how can we improve attribution (implemented Option A hard execution trace capturing active newsletter batch and tool provenance in decisions metadata).
 - [ ] - Benchify: audit if "prompt from 0 is working"
-- [ ] - Benchify: make the "non AI" portfolios trade with alpaca and real time. No backfilling.
+- [x] - Benchify: make the "non AI" portfolios trade with alpaca and real time. No backfilling. (Sector entry/exit real-time execution wired to Alpaca limit orders, Sunday hindsight rebalances deleted, and SMID compounder mirroring enabled).
 - [ ] - Benchify: could jev work for my autoresearcher?
 
 The internet is verrry exciiite about a new AI model called Jev that was released earlier this week. It’s a frontier model from TypeSafe AI (a company founded by one of the creators of ChatGPT) that is 200x faster and 400x cheaper than other LLMs. The catch: it can’t generate text.

@@ -82,4 +82,60 @@ Return JSON schema.`;
         expect(result.mutable).toContain('=== INSTRUCTIONS ===');
         expect(result.footer).toContain('=== REQUIRED OUTPUT FORMAT ===');
     });
+
+    it('correctly splits DAILY_PREDICTOR_PROMPT with evolved strategy heading', () => {
+        const prompt = `You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
+Your goal is to predict whether today's 4:00 PM ET Close price will be higher (UP) or lower (DOWN) than today's 9:30 AM ET Open price.
+
+=== AVAILABLE MARKET CONTEXT ===
+1. Historical price action.
+2. Live pre-market quotes.
+
+=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+CRITICAL: Do NOT default to UP.
+Avoid positive-framing bias.
+
+=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===
+1. Evolved heuristic strategy here.
+
+=== REQUIRED OUTPUT FORMAT ===
+Return JSON.`;
+
+        const result = splitPromptSections(prompt);
+        expect(result.isSplit).toBe(true);
+        expect(result.header).toContain('You are an elite quantitative macro trader');
+        expect(result.header).toContain('ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE');
+        expect(result.mutable).toContain(
+            '=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===',
+        );
+        expect(result.footer).toContain('=== REQUIRED OUTPUT FORMAT ===');
+    });
+
+    it('correctly cleans up DAILY_PREDICTOR_PROMPT with duplicate headers', () => {
+        const prompt = `You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
+=== AVAILABLE MARKET CONTEXT ===
+Context 1.
+=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+Avoid positive-framing bias.
+
+You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
+=== AVAILABLE MARKET CONTEXT ===
+Context 2.
+=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+Avoid positive-framing bias.
+
+=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===
+1. Evolved heuristic strategy here.
+
+=== REQUIRED OUTPUT FORMAT ===
+Return JSON.`;
+
+        const result = splitPromptSections(prompt);
+        expect(result.isSplit).toBe(true);
+        expect(result.mutable).not.toContain('You are an elite quantitative macro trader');
+        expect(result.mutable).not.toContain('=== ZERO-MEAN BASE RATE');
+        expect(result.mutable).toContain(
+            '=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===',
+        );
+    });
 });

@@ -359,17 +359,17 @@ async def generate_new_daily_prompt(
         "You are a Meta-Researcher AI optimizing an LLM prompt for predicting intraday S&P 500 (SPY) open-to-close price movement.\n\n"
         f"The current prompt strategy achieved a ratchet score of {baseline_score:.2f}.\n\n"
         f"{postmortem_context}\n\n"
-        "### OBJECTIVES & MUTATION RULES:\n"
-        "1. Prioritize Directional Accuracy (55% weight) and Intraday Hit Rate (35% weight) first and foremost.\n"
-        "2. Learn from Cause & Effect: Analyze the correlation between recent market catalysts, newsletters, and prediction failures/successes. "
+        "### STRUCTURAL PROMPT SECTIONS & MUTATION RULES:\n"
+        "1. STRUCTURAL SECTIONS ARE FROZEN: System constraints (trader identity, available market context injection, zero-mean anti-bias mandate, and required JSON output format) are FROZEN and managed automatically by the engine.\n"
+        "2. Do NOT include system header rules, context definitions, zero-mean mandates, or JSON schemas in your output. You are modifying ONLY the analytical reasoning and strategy section.\n"
+        "3. Prioritize Directional Accuracy (55% weight) and Intraday Hit Rate (35% weight) first and foremost.\n"
+        "4. Learn from Cause & Effect: Analyze the correlation between recent market catalysts, newsletters, and prediction failures/successes. "
         "Incorporate concrete cause-and-effect reasoning heuristics (e.g., how SPY reacts to yield shifts, tech capex surges, or pre-market gap-downs).\n"
-        "3. Optimize Magnitude Calibration (10% weight): When high-impact catalysts or strong trend conditions align, "
+        "5. Optimize Magnitude Calibration (10% weight): When high-impact catalysts or strong trend conditions align, "
         "instruct the predictor to be more confident and aggressive in expected_return_pct magnitude (e.g. +0.50% to +1.20% instead of timid +0.20%).\n"
-        "4. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
-        "5. Rewrite ONLY the strategy / analytical reasoning section of the prompt. "
-        "Do NOT include output formatting rules or JSON schema definitions; the output structure is automatically enforced.\n"
-        "6. Provide a concise `research_insight` (1-2 sentences) summarizing the core lesson or causal rule learned from this week's results to persist in this track's institutional memory.\n\n"
-        "CURRENT STRATEGY INSTRUCTIONS:\n"
+        "6. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
+        "7. Provide a concise `research_insight` (1-2 sentences) summarizing the core lesson or causal rule learned from this week's results to persist in this track's institutional memory.\n\n"
+        "CURRENT STRATEGY INSTRUCTIONS (MUTABLE SECTION ONLY):\n"
         f"```text\n{mutable_strategies}\n```\n\n"
         "Output ONLY the raw new strategy instructions text."
     )
@@ -394,7 +394,10 @@ async def generate_new_daily_prompt(
                 lines = lines[:-1]
             new_strategies = "\n".join(lines).strip()
 
-        assembled_prompt = DAILY_PREDICTOR_CONSTRAINTS_HEADER + new_strategies + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+        # Sanitize new_strategies through split_daily_predictor_prompt to guarantee
+        # no structural headers or footers accidentally included by the LLM pollute assembled_prompt
+        _, clean_strategies, _ = split_daily_predictor_prompt(new_strategies)
+        assembled_prompt = DAILY_PREDICTOR_CONSTRAINTS_HEADER + clean_strategies + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
         insight = getattr(resp, "research_insight", None)
         if insight:
             insight = insight.strip()

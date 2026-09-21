@@ -1,4 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
+import { Badge } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { CognitiveToolboxCard } from '../../autoresearch/components/CognitiveToolboxCard';
@@ -1387,39 +1388,86 @@ function AutoresearchHistoryArena({
                             }
 
                             return (
-                                <div className="space-y-4">
+                                <div className="space-y-6">
                                     {header && (
-                                        <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                Frozen System Header (Rules & Zero-Mean Mandate)
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                                        🔒 1. Engine Constraints & Anti-Bias Mandate
+                                                    </span>
+                                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                                                        (Header)
+                                                    </span>
+                                                </div>
+                                                <Badge
+                                                    variant="solid"
+                                                    className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] uppercase"
+                                                >
+                                                    Frozen / System Managed
+                                                </Badge>
                                             </div>
-                                            <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                Unchangeable system rules (price injection rules,
+                                                tool requirements, zero-mean base rate mandate).
+                                                Autoresearch cannot edit this.
+                                            </p>
+                                            <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
                                                 {header}
                                             </pre>
                                         </div>
                                     )}
 
-                                    <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
+                                    <div className="space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                                                Mutable Analytical Strategies (Evolved by
-                                                Autoresearch)
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                                    ⚡ 2. Intraday Trading Strategy & Analysis Rules
+                                                </span>
+                                                <span className="text-[10px] text-emerald-500 font-mono font-semibold">
+                                                    (Evolved Target)
+                                                </span>
                                             </div>
-                                            <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono">
-                                                v{selectedExperiment.variant_tag}
-                                            </span>
+                                            <Badge
+                                                variant="solid"
+                                                className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] uppercase font-bold"
+                                            >
+                                                Mutable / Evolved by Autoresearch
+                                            </Badge>
                                         </div>
-                                        <pre className="whitespace-pre-wrap font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto">
+                                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                            Analytical heuristics, technical levels, and catalyst
+                                            transmission rules. This section is iteratively tested
+                                            and optimized by daily autoresearch.
+                                        </p>
+                                        <pre className="p-4 bg-zinc-950 text-zinc-200 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto">
                                             {mutable}
                                         </pre>
                                     </div>
 
                                     {footer && (
-                                        <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                Frozen Output Format & Schema Constraints
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                                        🔒 3. Risk Rules & Output JSON Schema
+                                                    </span>
+                                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                                                        (Footer)
+                                                    </span>
+                                                </div>
+                                                <Badge
+                                                    variant="solid"
+                                                    className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] uppercase"
+                                                >
+                                                    Frozen / System Managed
+                                                </Badge>
                                             </div>
-                                            <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                Mandatory structured JSON output schema and format
+                                                constraints. Autoresearch cannot edit this.
+                                            </p>
+                                            <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
                                                 {footer}
                                             </pre>
                                         </div>

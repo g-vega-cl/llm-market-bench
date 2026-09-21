@@ -3137,14 +3137,30 @@ async def execute_get_market_feeling_tool() -> str:
         if not feeling:
             return "No market feeling records found."
 
-        return (
-            f"=== LATEST MARKET FEELING ===\n"
-            f"Sentiment: {feeling.get('sentiment_label')} {feeling.get('sentiment_emoji')}\n"
-            f"Confidence: {feeling.get('confidence_score')}%\n"
-            f"Feelings: {feeling.get('feeling_text')}\n"
-            f"Causal Cues: {feeling.get('causal_cues')}\n"
-            f"Timestamp: {feeling.get('created_at')}"
-        )
+        lines = [
+            "=== LATEST MARKET FEELING ===",
+            f"Sentiment: {feeling.get('sentiment_label', 'Neutral')} {feeling.get('sentiment_emoji', '')}".strip(),
+        ]
+        if feeling.get("market_direction"):
+            lines.append(f"Direction: {feeling['market_direction']}")
+        if feeling.get("confidence_score") is not None:
+            lines.append(f"Confidence: {feeling['confidence_score']}%")
+        if feeling.get("why_explanation"):
+            lines.append(f"Rationale: {feeling['why_explanation']}")
+        elif feeling.get("feeling_text"):
+            lines.append(f"Feelings: {feeling['feeling_text']}")
+        if feeling.get("primary_concern"):
+            lines.append(f"Primary Concern: {feeling['primary_concern']}")
+        if feeling.get("secondary_concern"):
+            lines.append(f"Secondary Concern: {feeling['secondary_concern']}")
+        if feeling.get("news_summary"):
+            lines.append(f"News Context: {feeling['news_summary']}")
+        if feeling.get("causal_cues"):
+            lines.append(f"Causal Cues: {feeling['causal_cues']}")
+        if feeling.get("created_at"):
+            lines.append(f"Timestamp: {feeling['created_at']}")
+
+        return "\n".join(lines)
     except Exception as e:
         logger.exception(f"Error in execute_get_market_feeling_tool: {e}")
         return f"Error retrieving market feeling: {str(e)}"

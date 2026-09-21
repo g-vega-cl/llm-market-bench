@@ -75,21 +75,79 @@ def split_daily_predictor_prompt(prompt_text: str) -> tuple[str, str, str]:
     """Split DAILY_PREDICTOR_PROMPT into Header, Mutable Strategies, and Footer.
 
     Extracts the mutable strategy section and rebuilds it using
-    the clean, hardcoded header and footer definitions.
+    the clean, hardcoded header and footer definitions. Ensures legacy
+    or duplicated structural constraints (header/footer) are cleanly stripped.
     """
     header = DAILY_PREDICTOR_CONSTRAINTS_HEADER
     footer = DAILY_PREDICTOR_CONSTRAINTS_FOOTER
 
-    if prompt_text.startswith(header) and prompt_text.endswith(footer):
-        mutable = prompt_text[len(header) : -len(footer)]
-        return header, mutable, footer
+    if not prompt_text:
+        return header, "", footer
 
+    # 1. Isolate content before footer
     req_format_marker = "=== REQUIRED OUTPUT FORMAT ==="
     if req_format_marker in prompt_text:
         content_before_footer = prompt_text.split(req_format_marker)[0].strip()
-        if content_before_footer.startswith(header.strip()):
-            mutable = content_before_footer[len(header.strip()) :].strip()
-            return header, mutable, footer
-        return header, content_before_footer, footer
+    else:
+        content_before_footer = prompt_text.strip()
 
-    return header, prompt_text, footer
+    # 2. Strip all occurrences of frozen header / zero-mean mandate
+    end_mandate_marker = "Avoid positive-framing bias."
+    if end_mandate_marker in content_before_footer:
+        # Find the last occurrence to eliminate any duplicate headers
+        split_idx = content_before_footer.rfind(end_mandate_marker) + len(end_mandate_marker)
+        mutable = content_before_footer[split_idx:].strip()
+    elif "=== ZERO-MEAN BASE RATE" in content_before_footer:
+        # Fallback if wording slightly differs
+        last_zero_mean = content_before_footer.rfind("=== ZERO-MEAN BASE RATE")
+        next_double_nl = content_before_footer.find("\n\n", last_zero_mean)
+        if next_double_nl != -1:
+            mutable = content_before_footer[next_double_nl:].strip()
+        else:
+            mutable = content_before_footer.strip()
+    elif content_before_footer.startswith(header.strip()):
+        mutable = content_before_footer[len(header.strip()) :].strip()
+    else:
+        # Check if known strategy markers are present
+        strategy_markers = [
+            "=== ANALYTICAL STRATEGY INSTRUCTIONS ===",
+            "ANALYTICAL STRATEGY INSTRUCTIONS",
+            "=== REASONING RIGOR",
+            "=== RECENT-TAPE ACCOUNTABILITY",
+        ]
+        marker_idx = -1
+        for sm in strategy_markers:
+            idx = content_before_footer.find(sm)
+            if idx != -1 and (marker_idx == -1 or idx < marker_idx):
+                marker_idx = idx
+
+        mutable = (
+            content_before_footer[marker_idx:].strip()
+            if marker_idx != -1
+            else content_before_footer.strip()
+        )
+
+    # 3. Defensive sanity check: remove any leftover persona or context headers in mutable
+    if "You are an elite quantitative macro trader" in mutable:
+        lines = mutable.split("\n")
+        filtered_lines = []
+        skip = False
+        for line in lines:
+            if (
+                "You are an elite quantitative macro trader" in line
+                or "=== AVAILABLE MARKET CONTEXT ===" in line
+                or "=== ZERO-MEAN BASE RATE" in line
+            ):
+                skip = True
+                continue
+            if (
+                skip
+                and (line.startswith("===") or line.startswith("1.") or line.startswith("0."))
+                and not any(k in line for k in ["AVAILABLE MARKET CONTEXT", "ZERO-MEAN", "REQUIRED OUTPUT"])
+            ):
+                skip = False
+            if not skip:
+                filtered_lines.append(line)
+        mutable = "\n".join(filtered_lines).strip()
+
+    return header, mutable, footer

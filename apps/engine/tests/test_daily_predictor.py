@@ -26,6 +26,76 @@ def test_split_daily_predictor_prompt():
     assert f == DAILY_PREDICTOR_CONSTRAINTS_FOOTER
 
 
+def test_split_daily_predictor_prompt_duplicate_headers():
+    """Verify split_daily_predictor_prompt strips duplicate headers cleanly."""
+    legacy_header = """You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
+Your goal is to predict whether today's 4:00 PM ET Close price will be higher (UP) or lower (DOWN) than today's 9:30 AM ET Open price.
+
+=== AVAILABLE MARKET CONTEXT ===
+You are provided with:
+1. Historical price action & technical indicators.
+2. Live pre-market quotes & overnight gaps.
+3. AI Wall Street synthesized morning newsletter briefing.
+
+=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+CRITICAL: Do NOT default to UP due to long-term market drift.
+Avoid positive-framing bias.
+"""
+    mutable_content = "=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===\n1. Evolved strategy."
+    # Corrupted prompt with modern header + legacy header + mutable + footer
+    corrupted_prompt = (
+        DAILY_PREDICTOR_CONSTRAINTS_HEADER
+        + "\n"
+        + legacy_header
+        + "\n"
+        + mutable_content
+        + "\n\n"
+        + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    )
+
+    header, mutable, footer = split_daily_predictor_prompt(corrupted_prompt)
+    assert header == DAILY_PREDICTOR_CONSTRAINTS_HEADER
+    assert footer == DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    assert "You are an elite quantitative macro trader" not in mutable
+    assert "AVAILABLE MARKET CONTEXT" not in mutable
+    assert "ZERO-MEAN BASE RATE" not in mutable
+    assert "=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===" in mutable
+
+    # When re-assembled, header appears exactly once
+    assembled = header + mutable + footer
+    assert assembled.count("=== AVAILABLE MARKET CONTEXT ===") == 1
+    assert assembled.count("=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===") == 1
+
+
+def test_split_daily_predictor_prompt_legacy_header():
+    """Verify split_daily_predictor_prompt cleanly extracts mutable strategy when old 3-item header is used."""
+    legacy_header = """You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
+Your goal is to predict whether today's 4:00 PM ET Close price will be higher (UP) or lower (DOWN) than today's 9:30 AM ET Open price.
+
+=== AVAILABLE MARKET CONTEXT ===
+You are provided with:
+1. Historical price action & technical indicators.
+2. Live pre-market quotes & overnight gaps.
+3. AI Wall Street synthesized morning newsletter briefing.
+
+=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+CRITICAL: Do NOT default to UP due to long-term market drift.
+Avoid positive-framing bias.
+"""
+    legacy_prompt = (
+        legacy_header
+        + "\n=== SOPHISTICATED STRATEGY ===\n1. Macro rules.\n\n"
+        + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    )
+
+    header, mutable, footer = split_daily_predictor_prompt(legacy_prompt)
+    assert header == DAILY_PREDICTOR_CONSTRAINTS_HEADER
+    assert footer == DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    assert "You are an elite quantitative macro trader" not in mutable
+    assert "AVAILABLE MARKET CONTEXT" not in mutable
+    assert "=== SOPHISTICATED STRATEGY ===" in mutable
+
+
 def test_daily_predictor_prompt_symmetry():
     """Verify DAILY_PREDICTOR_PROMPT is strictly symmetric and counter-biases against always-UP predictions."""
     header, mutable, footer = split_daily_predictor_prompt(DAILY_PREDICTOR_PROMPT)

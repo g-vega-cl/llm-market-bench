@@ -6,8 +6,8 @@ export interface SplitPromptResult {
 }
 
 /**
- * Split a full CORE_ANALYSIS_SYSTEM_PROMPT into Header, Mutable Strategies, and Footer.
- * Mirrors the logic from apps/engine/core/llm/prompts.py:split_prompt
+ * Split a full CORE_ANALYSIS_SYSTEM_PROMPT or DAILY_PREDICTOR_PROMPT into Header, Mutable Strategies, and Footer.
+ * Mirrors the logic from apps/engine/core/llm/prompts.py:split_prompt and daily_predictor_prompts.py:split_daily_predictor_prompt
  */
 export function splitPromptSections(promptText: string): SplitPromptResult {
     if (!promptText) {
@@ -21,6 +21,40 @@ export function splitPromptSections(promptText: string): SplitPromptResult {
     }
     if (footerStart === -1) {
         footerStart = promptText.indexOf('=== REQUIRED OUTPUT FORMAT ===');
+    }
+
+    if (footerStart === -1) {
+        return {
+            header: '',
+            mutable: promptText.trim(),
+            footer: '',
+            isSplit: false,
+        };
+    }
+
+    // Daily Predictor prompts: Header ends after Zero-Mean Mandate
+    const lastMandateIdx = promptText.lastIndexOf('Avoid positive-framing bias.');
+    if (lastMandateIdx !== -1 && lastMandateIdx < footerStart) {
+        const firstMandateIdx = promptText.indexOf('Avoid positive-framing bias.');
+        const mandateLen = 'Avoid positive-framing bias.'.length;
+        const header = promptText.slice(0, firstMandateIdx + mandateLen).trim();
+        let mutable = promptText.slice(lastMandateIdx + mandateLen, footerStart).trim();
+        const footer = promptText.slice(footerStart).trim();
+
+        // Defensive cleanup of any leftover duplicate headers in mutable
+        mutable = mutable
+            .replace(
+                /You are an elite quantitative macro trader[\s\S]*?Avoid positive-framing bias\.\s*/g,
+                '',
+            )
+            .trim();
+
+        return {
+            header,
+            mutable,
+            footer,
+            isSplit: true,
+        };
     }
 
     // Identify start of Mutable Strategies (the only section autoresearch evolves)
@@ -40,7 +74,7 @@ export function splitPromptSections(promptText: string): SplitPromptResult {
         }
     }
 
-    if (mutableStart !== -1 && footerStart !== -1 && mutableStart < footerStart) {
+    if (mutableStart !== -1 && mutableStart < footerStart) {
         const header = promptText.slice(0, mutableStart).trim();
         const mutable = promptText.slice(mutableStart, footerStart).trim();
         const footer = promptText.slice(footerStart).trim();

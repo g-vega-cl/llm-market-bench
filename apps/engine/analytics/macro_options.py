@@ -15,7 +15,7 @@ DEFAULT_MACRO_OPTIONS_TICKERS: tuple[str, ...] = MACRO_OPTIONS_TICKERS
 
 async def fetch_macro_options_sentiment(
     tickers: list[str] | tuple[str, ...] | None = None,
-    timeout_per_ticker: float = 15.0,
+    timeout_per_ticker: float = 5.0,
 ) -> list[dict[str, Any]]:
     """Fetch options sentiment metrics for multiple macro tickers sequentially with timeout protection.
 
@@ -106,7 +106,7 @@ def format_macro_options_markdown_table(metrics_list: list[dict[str, Any]]) -> s
 async def get_macro_options_summary(
     tickers: list[str] | tuple[str, ...] | None = None,
     primary_ticker: str | None = None,
-    timeout_per_ticker: float = 15.0,
+    timeout_per_ticker: float = 5.0,
 ) -> str:
     """Orchestrate fetching and formatting cross-asset macro options sentiment.
 

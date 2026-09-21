@@ -208,6 +208,35 @@ async def test_execute_get_market_feeling_tool_success():
 
 
 @pytest.mark.asyncio
+async def test_execute_get_market_feeling_tool_production_schema():
+    """Verify execute_get_market_feeling_tool formats why_explanation, direction, concerns, and never outputs None."""
+    mock_feeling = {
+        "sentiment_label": "Defensively Cautious",
+        "sentiment_emoji": "🛡️",
+        "confidence_score": 68,
+        "market_direction": "BEARISH",
+        "why_explanation": "Trades reveal a clear BEAR_FLATTENER defensive rotation.",
+        "primary_concern": "Global central bank hawkishness.",
+        "secondary_concern": "Geopolitical fragmentation.",
+        "news_summary": "Central banks turned hawkish with Fed hiking.",
+        "created_at": "2026-09-21T14:02:34+00:00",
+    }
+
+    with patch("analysis.market_feeling.get_latest_market_feeling", return_value=mock_feeling):
+        result = await execute_get_market_feeling_tool()
+        assert "=== LATEST MARKET FEELING ===" in result
+        assert "Sentiment: Defensively Cautious 🛡️" in result
+        assert "Direction: BEARISH" in result
+        assert "Confidence: 68%" in result
+        assert "Rationale: Trades reveal a clear BEAR_FLATTENER defensive rotation." in result
+        assert "Primary Concern: Global central bank hawkishness." in result
+        assert "Secondary Concern: Geopolitical fragmentation." in result
+        assert "News Context: Central banks turned hawkish with Fed hiking." in result
+        assert "Feelings: None" not in result
+        assert "Causal Cues: None" not in result
+
+
+@pytest.mark.asyncio
 async def test_analyze_with_provider_pulls_tools():
     """Verify that analyze_with_provider parses active tools from database and runs the loop with override_tools."""
     from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS

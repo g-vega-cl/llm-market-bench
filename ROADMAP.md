@@ -88,7 +88,20 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: daily portfolios but sell at 3:50ish, not when target is hit (added sys-daily-spy-close-* with 0.02% slippage).
 - [ ] - Benchify: Right now we have in trades a single newsletter attribution usually but with AI more than one newsletter could have been the reason of the trade or even not newsletters and other thoughts how can we improve attribution"
 - [ ] - Benchify: audit if "prompt from 0 is working"
-- [ ] - Benchify: make the "non AI" portfolios trade with alpaca and real time. No backfilling
+- [ ] - Benchify: make the "non AI" portfolios trade with alpaca and real time. No backfilling.
+- [ ] - Benchify: could jev work for my autoresearcher?
+
+The internet is verrry exciiite about a new AI model called Jev that was released earlier this week. It’s a frontier model from TypeSafe AI (a company founded by one of the creators of ChatGPT) that is 200x faster and 400x cheaper than other LLMs. The catch: it can’t generate text.
+
+That’s right, Jev is not an LLM. The best way to describe it is that it is a general-purpose classifier. It’s designed for speed, making decisions in parallel instead of generating text token by token. You give it a question, a set of answers, and it gives you the probability that each answer is correct in about 40ms - without the giant wall of text.
+
+Here are some of the patterns that are starting to emerge:
+
+Speculative Fanout: Ask multiple questions in a single query and get all of them answered in parallel. For example: triage a support ticket and assess its type, severity, frustration level etc.
+
+Confidence Gated Routing: Jev can generate confidence scores that can be used to route to different actions. If you are highly confident you can take the action directly, or if you have low confidence, you can add a user prompt to clarify.
+
+Composite Scoring: Give Jev a rubric, and it can give a composite score to all
 
 ## Hotspot Refactoring (Vertical Slice Islands)
 

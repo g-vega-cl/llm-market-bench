@@ -122,6 +122,64 @@ describe('RootDocument PostHog configuration', () => {
         ][0] as { options?: { disable_surveys?: boolean } };
         expect(props.options?.disable_surveys).toBe(true);
     });
+
+    it('should initialize PostHogProvider with before_send handler that transforms CefSharp errors to warnings', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Test Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({
+            initialEntries: ['/'],
+        });
+
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+        await screen.findByText('Test Content');
+
+        expect(mockPostHogProvider).toHaveBeenCalled();
+        const props = mockPostHogProvider.mock.calls[
+            mockPostHogProvider.mock.calls.length - 1
+        ][0] as {
+            options?: {
+                before_send?: (event: unknown) => {
+                    properties?: {
+                        $exception_level?: string;
+                        $scanner_detected?: boolean;
+                    };
+                } | null;
+            };
+        };
+        expect(props.options?.before_send).toBeDefined();
+
+        const transformed = props.options?.before_send?.({
+            uuid: 'test',
+            event: '$exception',
+            properties: {
+                $exception_level: 'error',
+                $exception_list: [
+                    {
+                        type: 'UnhandledRejection',
+                        value: 'Non-Error promise rejection captured with value: Object Not Found Matching Id:3, MethodName:update, ParamCount:4',
+                    },
+                ],
+            },
+        });
+
+        expect(transformed?.properties?.$exception_level).toBe('warning');
+        expect(transformed?.properties?.$scanner_detected).toBe(true);
+    });
 });
 
 describe('RootDocument Performance Optimizations', () => {

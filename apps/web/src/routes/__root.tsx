@@ -11,7 +11,26 @@ import { NotFound } from '~/components/ui/NotFound';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
 import { seo } from '~/lib/seo';
 import { getSupabaseServerClient } from '~/lib/supabase';
+import { posthogBeforeSend } from '~/utils/posthog-filter';
 import appCss from '../styles/app.css?url';
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('unhandledrejection', (event) => {
+        const reason = event?.reason;
+        const text = typeof reason === 'string' ? reason : (reason?.message ?? '');
+        if (
+            typeof text === 'string' &&
+            text.includes('Object Not Found Matching Id') &&
+            text.includes('MethodName:')
+        ) {
+            event.preventDefault();
+            console.warn(
+                '[PostHog] Suppressed CefSharp scanner rejection (handled as warning):',
+                text,
+            );
+        }
+    });
+}
 
 export type AuthUser = {
     id: string;
@@ -184,6 +203,7 @@ export function RootDocument({ children }: { children: ReactNode }) {
                         debug: import.meta.env.DEV,
                         disable_session_recording: true,
                         disable_surveys: true,
+                        before_send: posthogBeforeSend,
                     }}
                 >
                     <PostHogAuthSync user={user} />

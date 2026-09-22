@@ -35,7 +35,7 @@ The registry includes, among others:
 - Prediction market tools (`search_prediction_markets`, `get_prediction_market_odds`)
 - Macro & volatility tools (`get_global_macro_context`, `get_volatility_index_details`, `get_macro_economic_series`, `get_thematic_flows`, `add_thematic_flow`, `get_options_sentiment`, `get_option_chain`)
 - Quantitative FSI tools (`get_yield_curve_regime`, `get_options_vol_surface`, `track_thesis_pillars`, `get_catalyst_radar`)
-- Audit & compliance tools (`audit_financial_valuation`, `get_verifier_rejections`)
+- Audit & compliance tools (`audit_financial_valuation`, `get_verifier_rejections`, `call_warren_buffett`)
 
 ## Related
 

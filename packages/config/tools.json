@@ -166,6 +166,10 @@
   {
     "name": "get_today_economic_releases",
     "desc": "Live scheduled and released economic indicators (CPI, PPI, Jobs, Retail Sales) with actual vs consensus surprises"
+  },
+  {
+    "name": "call_warren_buffett",
+    "desc": "Consult the Oracle of Omaha for value investing analysis, margin of safety, moat quality, debt sanity, and the Munger Inversion test"
   }
 ]
 

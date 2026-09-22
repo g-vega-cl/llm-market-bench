@@ -235,6 +235,12 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             target_date=args.get("target_date"),
             country=args.get("country", "US"),
         )
+    elif name == "call_warren_buffett":
+        return await tools.execute_call_warren_buffett_tool(
+            ticker=args.get("ticker"),
+            action=args.get("action"),
+            proposed_thesis=args.get("proposed_thesis"),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

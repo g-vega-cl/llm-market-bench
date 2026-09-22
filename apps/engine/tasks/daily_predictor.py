@@ -240,6 +240,25 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
                 sma_20 = sum(recent_prices) / len(recent_prices)
                 context_lines.append(f"20-Day Simple Moving Average (SMA20): ${sma_20:.2f}")
 
+        # Prior Session Intraday Movement Profile (OHLC, True Intraday Return, CLV, Archetype)
+        try:
+            from analytics.intraday_profile import get_intraday_movement_report
+
+            intra_rep = await get_intraday_movement_report(
+                ticker=ticker,
+                date_str="latest_completed",
+                include_hourly_tape=False,
+            )
+            if (
+                intra_rep
+                and intra_rep.get("markdown")
+                and not intra_rep["markdown"].startswith("Error")
+                and not intra_rep["markdown"].startswith("No intraday")
+            ):
+                context_lines.append(intra_rep["markdown"])
+        except Exception as e:
+            logger.debug(f"Could not retrieve prior intraday movement profile for {ticker}: {e}")
+
     except Exception as e:
         logger.warning(
             f"Error fetching technical indicators & pre-market quote via MarketDataManager for {ticker}: {e}"

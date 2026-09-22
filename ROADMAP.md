@@ -70,12 +70,13 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...
 - [ ] - Benchify : format better the newsletter section of: The Catalyst Radar & Key Levels.
 - [ ] - Benchify, if you were to show this up as a portfolio project. What would you improve. - Lighthouse, design, maybe audit data fetching. CDNs? It should be lighting fast. SSR?
-- [ ] - Benchify: a tool that describes how the market/stock/spy moved during the day? Or one that brings you the daily prices?
+- [x] - Benchify: a tool that describes how the market/stock/spy moved during the day? Or one that brings you the daily prices? — Deterministic quant profile & hourly tape matrix (`get_intraday_movement_profile` in `apps/engine/analytics/intraday_profile.py`, zero tokens spent).
 - [ ] - Benchify: audit that the "sector trend" and others portfolios are set up.
 - [ ] - Benchify : daily predictor prompt diff
 - [ ] - Benchify : in the daily predictor. It shows as if the current new prompt had a score already
 - [ ] - Benchify: daily autoresearcher "lesson learned"? Like, every day, when you check if you were right or wrong, also ask "why" and see if it's worth adding these insights as memories or as an special label for daily predictor
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
+- [ ] - Benchify: Once a dedicated real-time/intraday news stream or intraday newsletter pipeline is available, augment `get_intraday_movement_profile` with Approach 2 (phase-segmented news/narrative catalyst correlation linking price pivots to breaking news).
 - [ ] - Benchify: add a "this could be a trade or force in the future". Like, ABNB with world cup, or cybersecurity/infrastructure with AI, or some undervalued company going through a temporary rough patch.
 - [ ] - Benchify: prompt tool question, "how did markets react the last time XYZ happened?"
 - [ ] - Benchify : find weekly /daily/monthly gainers and ask: why didn't we predict this?

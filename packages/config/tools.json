@@ -170,6 +170,10 @@
   {
     "name": "call_warren_buffett",
     "desc": "Consult the Oracle of Omaha for value investing analysis, margin of safety, moat quality, debt sanity, and the Munger Inversion test"
+  },
+  {
+    "name": "get_intraday_movement_profile",
+    "desc": "Deterministic quantitative profile and hourly price-action tape matrix of a stock's regular trading session (09:30-16:00 ET)"
   }
 ]
 

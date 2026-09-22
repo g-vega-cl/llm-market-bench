@@ -95,6 +95,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 41. **analyze_thematic_beneficiaries**: Evaluates second-order winners and thematic beneficiaries via factor correlation, empirical beta, quarterly CapEx and revenue transmission tracking, and options positioning.
 42. **get_today_economic_releases**: Retrieves scheduled and released economic indicators (CPI, PPI, Jobs, Retail Sales, Unemployment, GDP) for today or target date with actual vs consensus surprises and release status.
 43. **call_warren_buffett**: Consults the Oracle of Omaha for value investing analysis, margin of safety, economic moat (ROIC/ROE), debt sanity ('swimming naked' check), and the Munger Inversion test ('Would a stupid person do this?').
+44. **get_intraday_movement_profile**: Evaluates deterministic quantitative profile (OHLC, True Intraday Return, VWAP, CLV, Initial Balance breakout, and session archetype) and hourly price-action tape matrix for regular trading sessions (09:30-16:00 ET).
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 

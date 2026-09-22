@@ -241,6 +241,12 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             action=args.get("action"),
             proposed_thesis=args.get("proposed_thesis"),
         )
+    elif name == "get_intraday_movement_profile":
+        return await tools.execute_get_intraday_movement_profile_tool(
+            ticker=args.get("ticker", "SPY"),
+            date=args.get("date"),
+            include_hourly_tape=args.get("include_hourly_tape", True),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

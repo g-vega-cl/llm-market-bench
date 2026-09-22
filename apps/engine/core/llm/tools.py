@@ -1315,6 +1315,40 @@ CALL_WARREN_BUFFETT_TOOL = {
     },
 }
 
+GET_INTRADAY_MOVEMENT_PROFILE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_intraday_movement_profile",
+        "description": (
+            "Deterministic quantitative profile and hourly price-action tape matrix of a stock's regular "
+            "trading session (09:30-16:00 ET). Analyzes Initial Balance (IB 09:30-10:30 ET) breakout, VWAP, "
+            "Close Location Value (CLV in [-1.0, +1.0]), session range vs ATR, and classifies session archetype "
+            "(TREND_DAY_UP, TREND_DAY_DOWN, MORNING_DIP_AND_RIP, GAP_AND_CRAP, RANGE_BOUND_CHURN)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "Stock or ETF ticker symbol (e.g. 'SPY', 'QQQ', 'NVDA'). Defaults to 'SPY'.",
+                },
+                "date": {
+                    "type": "string",
+                    "description": (
+                        "Target date to analyze in ISO format ('YYYY-MM-DD') or 'latest_completed' / 'yesterday'. "
+                        "Defaults to 'latest_completed'."
+                    ),
+                },
+                "include_hourly_tape": {
+                    "type": "boolean",
+                    "description": "If true, includes the hourly progression tape matrix with ASCII range brackets. Defaults to true.",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1362,6 +1396,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "analyze_thematic_beneficiaries": ANALYZE_THEMATIC_BENEFICIARIES_TOOL,
     "get_today_economic_releases": GET_TODAY_ECONOMIC_RELEASES_TOOL,
     "call_warren_buffett": CALL_WARREN_BUFFETT_TOOL,
+    "get_intraday_movement_profile": GET_INTRADAY_MOVEMENT_PROFILE_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -4222,6 +4257,27 @@ async def execute_call_warren_buffett_tool(
     except Exception as e:
         logger.exception("Error executing call_warren_buffett tool: %s", e)
         return f"Error executing call_warren_buffett: {str(e)}"
+
+
+async def execute_get_intraday_movement_profile_tool(
+    ticker: str = "SPY",
+    date: str | None = None,
+    include_hourly_tape: bool = True,
+) -> str:
+    """Executes the get_intraday_movement_profile tool."""
+    try:
+        from analytics.intraday_profile import get_intraday_movement_report
+
+        target_date = date or "latest_completed"
+        report = await get_intraday_movement_report(
+            ticker=ticker or "SPY",
+            date_str=target_date,
+            include_hourly_tape=include_hourly_tape,
+        )
+        return report.get("markdown", f"No intraday profile available for {ticker}.")
+    except Exception as e:
+        logger.exception("Error executing get_intraday_movement_profile tool for %s: %s", ticker, e)
+        return f"Error executing get_intraday_movement_profile: {str(e)}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

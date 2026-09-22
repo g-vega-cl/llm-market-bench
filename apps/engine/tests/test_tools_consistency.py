@@ -19,6 +19,7 @@ from core.llm.tools import (
     GET_EARNINGS_HISTORY_TOOL,
     GET_EARNINGS_REVISIONS_TOOL,
     GET_GLOBAL_MACRO_CONTEXT_TOOL,
+    GET_INTRADAY_MOVEMENT_PROFILE_TOOL,
     GET_KEY_METRICS_TOOL,
     GET_MACRO_ECONOMIC_SERIES_TOOL,
     GET_MARKET_FEELING_TOOL,
@@ -126,6 +127,7 @@ def test_tools_json_matches_engine_tool_definitions():
         ANALYZE_THEMATIC_BENEFICIARIES_TOOL,
         GET_TODAY_ECONOMIC_RELEASES_TOOL,
         CALL_WARREN_BUFFETT_TOOL,
+        GET_INTRADAY_MOVEMENT_PROFILE_TOOL,
     ]
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}
 

@@ -1,5 +1,5 @@
 import { Badge, Card } from '@llm-market-bench/ui-design-system';
-import * as React from 'react';
+import type * as React from 'react';
 
 interface StrategyExplainerProps {
     ownerId: string;
@@ -292,59 +292,44 @@ const DAILY_SPY_CLOSE_CONFIG: ExplainerConfig = {
 };
 
 function ExplainerCard({ config }: { config: ExplainerConfig }) {
-    const [isExpanded, setIsExpanded] = React.useState(true);
-
     return (
         <Card
             variant="glass"
             padding="md"
             className={`border ${config.borderColor} ${config.bgColor}`}
         >
-            <button
-                type="button"
-                className="w-full flex items-center justify-between text-left select-none cursor-pointer"
-                onClick={() => setIsExpanded(!isExpanded)}
-            >
-                <div className="flex items-center gap-2.5">
-                    <span className="text-xl">{config.emoji}</span>
-                    <div>
-                        <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                            {config.title}
-                            <Badge variant="glass" size="xs" colorScheme={config.badgeColorScheme}>
-                                {config.badgeText}
-                            </Badge>
-                        </h3>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                            {config.subtitle}
-                        </p>
-                    </div>
+            <div className="flex items-center gap-2.5">
+                <span className="text-xl">{config.emoji}</span>
+                <div>
+                    <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                        {config.title}
+                        <Badge variant="glass" size="xs" colorScheme={config.badgeColorScheme}>
+                            {config.badgeText}
+                        </Badge>
+                    </h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{config.subtitle}</p>
                 </div>
-                <span className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded">
-                    {isExpanded ? 'Collapse ▲' : 'Details ▼'}
-                </span>
-            </button>
+            </div>
 
-            {isExpanded && (
-                <div
-                    className={`mt-4 pt-4 border-t border-zinc-200/20 dark:border-zinc-800 grid ${
-                        config.gridColsClass ?? 'grid-cols-1 md:grid-cols-3'
-                    } gap-4 text-xs`}
-                >
-                    {config.pillars.map((p) => (
-                        <div
-                            key={p.title}
-                            className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50"
-                        >
-                            <span className="font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
-                                {p.title}
-                            </span>
-                            <div className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                {p.description}
-                            </div>
+            <div
+                className={`mt-4 pt-4 border-t border-zinc-200/20 dark:border-zinc-800 grid ${
+                    config.gridColsClass ?? 'grid-cols-1 md:grid-cols-3'
+                } gap-4 text-xs`}
+            >
+                {config.pillars.map((p) => (
+                    <div
+                        key={p.title}
+                        className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50"
+                    >
+                        <span className="font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
+                            {p.title}
+                        </span>
+                        <div className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                            {p.description}
                         </div>
-                    ))}
-                </div>
-            )}
+                    </div>
+                ))}
+            </div>
         </Card>
     );
 }

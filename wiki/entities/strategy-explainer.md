@@ -1,28 +1,40 @@
 ---
-tags: [web, portfolio, ui, strategy]
+tags: [portfolio, strategy, ui, system-portfolios]
 category: entity
 ---
 
 # Strategy Explainer
 
-React component (`StrategyExplainer.tsx`) that renders a collapsible strategy description card on the portfolio detail page. Displays the thesis, entry rules, exit discipline, and academic grounding for system portfolios.
+Permanently expanded strategy description card for system portfolios. Displays the investment thesis, methodology pillars, and key references for each system portfolio strategy.
 
-## Supported Strategies
+## Behavior
 
-- **`sys-smid-quality-compounder`** — Small/Mid-Cap Quality Compounder with Zero-Ceiling Invariant
-- **`sys-sector-ls-consensus`** — Weekly Sector Long/Short Consensus Strategy
-- **`sys-sector-uncorr-20d`** — 20-Day Uncorrelated Sector Momentum (Low-Beta Barbell)
-- **`sys-sector-uncorr-7d`** — 7-Day Uncorrelated Sector Momentum (Weekly Rotation)
-- **`sys-sector-naive-momentum`** — 20-Day Unconstrained Momentum (Top 2 Winners Benchmark Control)
-- **`sys-sector-mean-reversion`** — 7-Day Sector Mean Reversion (Oversold Bounce)
-- **`sys-daily-spy-*`** — Daily S&P 500 Intraday Trader (Profit Target Exit)
-- **`sys-daily-spy-close-*`** — Daily S&P 500 Close Trader (3:50 PM Exit, 0.02% slippage)
+- **Always expanded** — The detail panel with pillar descriptions is always visible. There is no collapse/expand toggle or button.
+- Previously, this component was collapsible; it was changed to permanently expanded to improve information accessibility on mobile and reduce interaction friction.
 
-Returns `null` for non-system portfolios (e.g., individual LLM agents).
+## Usage
+
+Used in portfolio detail pages to explain the rationale behind each system portfolio strategy:
+
+- `sys-smid-quality-compounder` — Small/Mid-Cap Quality Compounder (Asness et al.)
+- `sys-sector-ls-consensus` — Sector Long/Short Consensus
+- `sys-frontier-tech-supercycle` — Frontier Tech Supercycle (small-cap guardrails)
+- `sys-daily-spy-close-target` — Daily SPY Close Price Target
+- `sys-daily-spy-target` — Daily SPY Open-to-Close Target
+
+See `StrategyExplainerConfig` definitions in the component source for the full list.
+
+## Rendering
+
+Each explainer renders:
+- Emoji + title + badge + subtitle header (always visible)
+- Grid of pillar cards (always visible), each containing a title and description
+- Pillar grid responds to configurable column layout (`gridColsClass`, default `grid-cols-1 md:grid-cols-3`)
 
 ## Related
 
-- [[entities/web-app]] — TanStack Start dashboard
-- [[entities/smid-compounder]] — The SMID quality compounder system portfolio
-- [[concepts/system-portfolios]] — Mechanical and quantitative benchmark strategies
-- [[entities/sector-predictor-arena]] — Weekly sector ETF predictions and live rebalancing
+- [[entities/smid-compounder]] — System portfolio using this explainer
+- [[entities/frontier-tech-portfolio]] — System portfolio using this explainer
+- [[entities/sector-trading]] — Sector L/S system portfolio
+- [[concepts/system-portfolios]] — Mechanical and rule-based systematic trading strategies
+- [[concepts/zero-frontend-compute]] — All heavy computation pre-materialized; this component is pure presentational

@@ -70,7 +70,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...
 - [ ] - Benchify : format better the newsletter section of: The Catalyst Radar & Key Levels.
 - [ ] - Benchify, if you were to show this up as a portfolio project. What would you improve. - Lighthouse, design, maybe audit data fetching. CDNs? It should be lighting fast. SSR?
-- [ ] - Benchify: I don't like the "collapse" in mobile.in my theme portfolios
+- [x] - Benchify: I don't like the "collapse" in mobile.in my theme portfolios
 - [ ] - Benchify: a tool that describes how the market/stock/spy moved during the day? Or one that brings you the daily prices?
 - [ ] - Benchify: audit that the "sector trend" and others portfolios are set up.
 - [ ] - Benchify : daily predictor prompt diff
@@ -78,7 +78,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: daily autoresearcher "lesson learned"? Like, every day, when you check if you were right or wrong, also ask "why" and see if it's worth adding these insights as memories or as an special label for daily predictor
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
 - [ ] - Benchify: add a "this could be a trade or force in the future". Like, ABNB with world cup, or cybersecurity/infrastructure with AI, or some undervalued company going through a temporary rough patch.
-- [x] - Benchify: add "buffet sayings" tool? Like buy low sell high, buy when others are scared, etc....? — Implemented unified single tool 'call_warren_buffett' integrating value metrics, moat evaluation (ROIC/ROE), debt sanity ('swimming naked' check), S&P equity risk premium (ERP), Munger Inversion challenges, and dynamic context-tailored aphorisms without context bloat.
 - [ ] - Benchify: prompt tool question, "how did markets react the last time XYZ happened?"
 - [ ] - Benchify : find weekly /daily/monthly gainers and ask: why didn't we predict this?
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money

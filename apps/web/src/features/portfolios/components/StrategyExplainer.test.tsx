@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { StrategyExplainer } from './StrategyExplainer';
 
@@ -14,23 +14,16 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/Strict Exit Discipline/i)).toBeInTheDocument();
     });
 
-    it('collapses and expands the details panel when clicked', () => {
+    it('renders details panel permanently without a collapse toggle or button', () => {
         render(<StrategyExplainer ownerId="sys-smid-quality-compounder" />);
 
-        // Initially expanded
+        // Pillars are permanently visible
         expect(screen.getByText(/Asness et al/i)).toBeInTheDocument();
 
-        // Click header to collapse
-        const header = screen.getByRole('button');
-        fireEvent.click(header);
-
-        expect(screen.queryByText(/Asness et al/i)).not.toBeInTheDocument();
-        expect(screen.getByText('Details ▼')).toBeInTheDocument();
-
-        // Click again to re-expand
-        fireEvent.click(header);
-        expect(screen.getByText(/Asness et al/i)).toBeInTheDocument();
-        expect(screen.getByText('Collapse ▲')).toBeInTheDocument();
+        // No collapse or expand button should exist
+        expect(screen.queryByText(/Collapse/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Details/i)).not.toBeInTheDocument();
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
     it('renders sector long short explainer for sys-sector-ls-consensus', () => {

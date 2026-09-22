@@ -4,8 +4,8 @@ on:
   schedule:
     # Monday 13:35 UTC (9:35 AM EDT) & 14:35 UTC (9:35 AM EST) - Market Open Entry
     - cron: '35 13,14 * * 1'
-    # Friday 20:05 UTC (4:05 PM EDT) & 21:05 UTC (4:05 PM EST) - Market Close Exit
-    - cron: '5 20,21 * * 5'
+    # Friday 19:30 UTC (3:30 PM EDT) & 20:30 UTC (3:30 PM EST) - Friday Market Exit
+    - cron: '30 19,20 * * 5'
   workflow_dispatch:
     inputs:
       action:
@@ -62,7 +62,7 @@ jobs:
               if weekday == 0 and 9 <= hour <= 10:
                   action = "entry"
                   skip = "false"
-              elif weekday == 4 and 16 <= hour <= 17:
+              elif weekday == 4 and 15 <= hour <= 16:
                   action = "exit"
                   skip = "false"
               else:

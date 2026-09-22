@@ -69,8 +69,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
 - [ ] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...
 - [ ] - Benchify : format better the newsletter section of: The Catalyst Radar & Key Levels.
-- [ ] - Benchify, if you were to show this up as a portfolio project. What would you improve. - Lighthouse, design, maybe audit data fetching. CDNs? It should be lighting fast. SSR?
-- [ ] - Benchify: audit that the "sector trend" and others portfolios are set up.
+- [x] - Benchify: audit that the "sector trend" and others portfolios are set up.
+    - Verified all 5 weekly sector portfolios (`sys-sector-ls-consensus`, `sys-sector-uncorr-20d`, `sys-sector-uncorr-7d`, `sys-sector-naive-momentum`, `sys-sector-mean-reversion`) and system portfolios in Supabase.
+    - Audited weekly cadence: Monday 9:35 AM ET market open entry (`sector-trade.yml` and Monday ingest hook) and Friday 3:30 PM ET market session exit.
+    - Audited Alpaca paper mirror: reordered exit sequence so `portfolio_positions` is cleaned up after `submit_limit_order` to prevent starving the Supabase fallback.
+    - Audited zero backfill: verified `evaluate_predictions.py` only updates `sector_predictions` table without touching portfolio ledgers.
 - [ ] - Benchify : daily predictor prompt diff
 - [ ] - Benchify : in the daily predictor. It shows as if the current new prompt had a score already
 - [ ] - Benchify: daily autoresearcher "lesson learned"? Like, every day, when you check if you were right or wrong, also ask "why" and see if it's worth adding these insights as memories or as an special label for daily predictor

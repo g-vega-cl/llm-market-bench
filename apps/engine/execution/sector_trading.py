@@ -251,9 +251,7 @@ async def execute_mechanical_sector_entry(
                 },
                 on_conflict="portfolio_id,ticker",
             ).execute()
-        entered_trades.append(
-            {"ticker": ticker, "shares": shares, "entry_price": entry_p, "trade_id": trade_id}
-        )
+        entered_trades.append({"ticker": ticker, "shares": shares, "entry_price": entry_p, "trade_id": trade_id})
 
     total_spent = sum(t["shares"] * t["entry_price"] for t in entered_trades)
     remaining_cash = max(0.0, current_cash - total_spent)
@@ -356,11 +354,6 @@ async def execute_system_sector_exit(
             pnl_pct = ((exit_p / entry_p) - 1.0) * 100.0
             proceeds = shares * exit_p
             total_long_proceeds += proceeds
-            if not dry_run:
-                # Clean up position
-                client.table("portfolio_positions").delete().match(
-                    {"portfolio_id": str(portfolio.id), "ticker": ticker}
-                ).execute()
         else:  # SHORT
             exit_p = p * (1.0 + slip_factor)
             exit_sig = "COVER"
@@ -389,9 +382,9 @@ async def execute_system_sector_exit(
             # Mark the original entry trade as closed with realized_pnl
             if entry.get("id"):
                 try:
-                    client.table("trades").update(
-                        {"realized_pnl": pnl, "realized_pnl_pct": pnl_pct}
-                    ).eq("id", entry["id"]).execute()
+                    client.table("trades").update({"realized_pnl": pnl, "realized_pnl_pct": pnl_pct}).eq(
+                        "id", entry["id"]
+                    ).execute()
                 except Exception as exc:
                     logger.warning(f"Could not mark entry trade {entry.get('id')} closed: {exc}")
 
@@ -410,6 +403,12 @@ async def execute_system_sector_exit(
                     )
                 except Exception as exc:
                     logger.warning(f"Alpaca mirror error during sector exit for {ticker}: {exc}")
+
+                # Clean up position in portfolio_positions AFTER Alpaca limit order submission
+                # (ensures _get_supabase_position fallback finds the position if Alpaca reports 0 shares)
+                client.table("portfolio_positions").delete().match(
+                    {"portfolio_id": str(portfolio.id), "ticker": ticker}
+                ).execute()
 
         exited_trades.append({"ticker": ticker, "side": exit_sig, "pnl": pnl, "pnl_pct": pnl_pct})
 
@@ -509,10 +508,6 @@ async def execute_mechanical_sector_exit(
         total_proceeds += proceeds
 
         if not dry_run:
-            client.table("portfolio_positions").delete().match(
-                {"portfolio_id": str(portfolio.id), "ticker": ticker}
-            ).execute()
-
             exit_record = {
                 "portfolio_id": str(portfolio.id),
                 "ticker": ticker,
@@ -528,9 +523,9 @@ async def execute_mechanical_sector_exit(
             exit_trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
             if entry.get("id"):
                 try:
-                    client.table("trades").update(
-                        {"realized_pnl": pnl, "realized_pnl_pct": pnl_pct}
-                    ).eq("id", entry["id"]).execute()
+                    client.table("trades").update({"realized_pnl": pnl, "realized_pnl_pct": pnl_pct}).eq(
+                        "id", entry["id"]
+                    ).execute()
                 except Exception as exc:
                     logger.warning(f"Could not mark mechanical entry trade {entry.get('id')} closed: {exc}")
 
@@ -548,6 +543,12 @@ async def execute_mechanical_sector_exit(
                 )
             except Exception as exc:
                 logger.warning(f"Alpaca mirror error during mechanical exit for {owner_id}: {exc}")
+
+            # Clean up position in portfolio_positions AFTER Alpaca limit order submission
+            # (ensures _get_supabase_position fallback finds the position if Alpaca reports 0 shares)
+            client.table("portfolio_positions").delete().match(
+                {"portfolio_id": str(portfolio.id), "ticker": ticker}
+            ).execute()
 
         exited_trades.append({"ticker": ticker, "pnl": pnl, "pnl_pct": pnl_pct})
 

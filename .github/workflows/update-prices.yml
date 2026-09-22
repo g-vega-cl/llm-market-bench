@@ -42,5 +42,9 @@ jobs:
           FALLBACK_FINANCIAL_PROVIDER: ${{ vars.FALLBACK_FINANCIAL_PROVIDER || secrets.FALLBACK_FINANCIAL_PROVIDER }}
           SECOND_FALLBACK_FINANCIAL_PROVIDER: ${{ vars.SECOND_FALLBACK_FINANCIAL_PROVIDER || secrets.SECOND_FALLBACK_FINANCIAL_PROVIDER }}
           MARKET_DATA_RETRIES: ${{ vars.MARKET_DATA_RETRIES || secrets.MARKET_DATA_RETRIES || 2 }}
+
+          # Alpaca Paper Trading Mirror
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
         run: |
           python scripts/update_prices.py

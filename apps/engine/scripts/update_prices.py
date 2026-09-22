@@ -75,6 +75,22 @@ async def update_prices():
         logger.info("Market is currently CLOSED. Skipping price update to save resources.")
         return
 
+    # 0b. Friday Afternoon Sector Exit Hook (Failsafe for 3:30 PM / 4:00 PM ET runs)
+    # Must run BEFORE loading portfolios so liquidated cash and cleared positions are loaded fresh.
+    try:
+        from zoneinfo import ZoneInfo
+
+        now_et = datetime.now(ZoneInfo("America/New_York"))
+        if now_et.weekday() == 4 and (now_et.hour > 15 or (now_et.hour == 15 and now_et.minute >= 25)):
+            logger.info(
+                "Friday afternoon detected in price update — Checking systematic weekly sector portfolio exit..."
+            )
+            from execution.sector_trading import run_sector_trade
+
+            await run_sector_trade(action="exit")
+    except Exception:
+        logger.exception("Friday sector exit hook in update_prices failed")
+
     # 1. Get all active portfolios
     def fetch_portfolios():
         return sb_client.table("portfolios").select("owner_id").execute()

@@ -39,6 +39,15 @@ def test_update_prices_workflow_schedule():
         f"Expected 0,30 13-21 * * 1-5 in cron triggers, found: {cron_triggers}"
     )
 
+    jobs = config.get("jobs", {})
+    job = jobs.get("update-prices", {})
+    steps = job.get("steps", [])
+    run_step = next((s for s in steps if "update_prices.py" in s.get("run", "")), None)
+    assert run_step is not None
+    step_env = run_step.get("env", {})
+    assert "ALPACA_API_KEY" in step_env
+    assert "ALPACA_SECRET_KEY" in step_env
+
 
 def test_daily_predictor_workflow_schedule():
     """Verify daily-predictor.yml has native Sunday 10 PM UTC schedule for autoresearch."""
@@ -241,7 +250,7 @@ def test_sector_trade_workflow_schedule_and_env():
     cron_triggers = [t.get("cron") for t in schedule if isinstance(t, dict) and "cron" in t]
 
     assert "35 13,14 * * 1" in cron_triggers, f"Expected Monday 9:35 AM trigger in {cron_triggers}"
-    assert "5 20,21 * * 5" in cron_triggers, f"Expected Friday 4:05 PM trigger in {cron_triggers}"
+    assert "30 19,20 * * 5" in cron_triggers, f"Expected Friday 3:30 PM trigger in {cron_triggers}"
 
     jobs = config.get("jobs", {})
     trade_job = jobs.get("trade-sectors", {})
@@ -253,3 +262,5 @@ def test_sector_trade_workflow_schedule_and_env():
     assert "FMP_API_KEY" in step_env
     assert "SUPABASE_PROJECT_URL" in step_env
     assert "SUPABASE_SERVICE_ROLE_KEY" in step_env
+    assert "ALPACA_API_KEY" in step_env
+    assert "ALPACA_SECRET_KEY" in step_env

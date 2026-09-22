@@ -18,9 +18,9 @@ System portfolios are automated, rule-based investment and trading strategies th
   - **Conflict Netting**: If any sector ETF appears in both the predicted best and predicted worst sets, it is dropped from both sides to eliminate contradictory exposures.
   - 50% of available equity is allocated equally across clean Long sectors.
   - 50% of available equity is allocated equally across clean Short sectors.
-- **Execution Timing**: Entered at Monday Market Open (9:35 AM ET) and liquidated at Friday Market Close (4:05 PM ET).
+- **Execution Timing**: Entered at Monday Market Open (9:35 AM ET) and liquidated Friday before market close (3:30 PM ET).
 - **Execution Friction**: 5 bps (0.05%) slippage on entries and exits.
-- **Trigger**: Executed live in real time via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 4:05 PM ET exit) triggered by `.github/workflows/sector-trade.yml` and the Monday morning ingestion hook. Long legs mirror to Alpaca paper broker. Retroactive backfilling in `evaluate_predictions.py` has been eliminated to ensure verifiable, audit-grade live records. State hydration is robust to `NULL` margin metrics via fallback coercion in `Portfolio.initialize()`.
+- **Trigger**: Executed live in real time via `apps/engine/execution/sector_trading.py` (Monday 9:35 AM ET entry, Friday 3:30 PM ET exit) triggered by `.github/workflows/sector-trade.yml` and the Monday morning ingestion hook. Long legs mirror to Alpaca paper broker. Retroactive backfilling in `evaluate_predictions.py` has been eliminated to ensure verifiable, audit-grade live records. State hydration is robust to `NULL` margin metrics via fallback coercion in `Portfolio.initialize()`.
 
 ### 2. Daily S&P Intraday Trader (`sys-daily-spy-{model}`)
 - **Signal**: Daily 9:30 AM – 4:00 PM ET S&P 500 predictions (`UP` or `DOWN`, `expected_return_pct`, `confidence`) from `daily_predictions` table.

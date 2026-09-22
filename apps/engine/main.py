@@ -7,7 +7,7 @@ including newsletter ingestion, database snapshotting, and LLM analysis.
 import argparse
 import asyncio
 from collections import defaultdict
-from datetime import UTC
+from datetime import UTC, datetime
 
 from analysis.analyze import analyze_chunks
 from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
@@ -779,7 +779,6 @@ async def run_ingest(force: bool = False):
     """Runs the full ingestion and analysis pipeline."""
     import io
     import logging
-    from datetime import datetime
 
     log_capture = io.StringIO()
     handler = logging.StreamHandler(log_capture)
@@ -867,6 +866,19 @@ async def run_ingest(force: bool = False):
             except Exception:
                 logger.exception("Systematic weekly sector entry hook failed")
 
+            # Systematic Weekly Sector Exit Hook (Friday Afternoon Market Close)
+            # Must run BEFORE snapshots and PCA so liquidated cash and realized PnL are captured immediately.
+            try:
+                now_ny = datetime.now(ZoneInfo("America/New_York"))
+                # If Friday and afternoon session (at or after 3:00 PM ET)
+                if now_ny.weekday() == 4 and now_ny.hour >= 15:
+                    logger.info("Friday afternoon detected — Checking systematic weekly sector portfolio exit...")
+                    from execution.sector_trading import run_sector_trade
+
+                    await run_sector_trade(action="exit")
+            except Exception:
+                logger.exception("Systematic weekly sector exit hook failed")
+
             await _stage_snapshots_and_pca(sb_client)
 
             # Market Feeling Analysis: Generate LLM-driven sentiment (after execution to include trades)
@@ -911,7 +923,6 @@ async def run_weekend_ingest():
     """Weekend read-only pipeline: news ingestion + market feeling update."""
     import io
     import logging
-    from datetime import datetime
 
     log_capture = io.StringIO()
     handler = logging.StreamHandler(log_capture)

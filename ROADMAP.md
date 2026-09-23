@@ -82,7 +82,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: add a "this could be a trade or force in the future". Like, ABNB with world cup, or cybersecurity/infrastructure with AI, or some undervalued company going through a temporary rough patch.
 - [ ] - Benchify: prompt tool question, "how did markets react the last time XYZ happened?"
 - [ ] - Benchify : find weekly /daily/monthly gainers and ask: why didn't we predict this?
-- [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money
+- [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.
+- [ ] - General: Make a "my style" coder that is AI-detection proof.
+- [ ] - Benchify: jev as daily predictor
 - [ ] - Benchify: could jev work for my autoresearcher?
 
 The internet is verrry exciiite about a new AI model called Jev that was released earlier this week. It’s a frontier model from TypeSafe AI (a company founded by one of the creators of ChatGPT) that is 200x faster and 400x cheaper than other LLMs. The catch: it can’t generate text.

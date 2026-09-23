@@ -78,6 +78,11 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
     - **Zero arbitrary values**: Never use square-bracket Tailwind escapes (such as `w-[230px]` or `bg-[#1a2b3c]`). Use established theme spacing, typography, and token classes.
     - **Prefer default system props**: Always use built-in props (`colorScheme`, `variant`, `size`, `radius`) to achieve styling rather than ad-hoc custom `className` utility overrides.
     - **Unified high-contrast dark theme**: The application standardizes on a single theme ("Bloomberg Terminal meets Wired"). Never introduce light/dark toggles, custom theme switches, or `dark:` conditional classes. See `[[entities/design-system]]`.
+12. **File-Based Python Execution (Zero Inline `-c` Multiline Scripts) (MANDATORY)**:
+    - **No Inline Python Execution**: NEVER execute multiline or complex Python code via `python3 -c "..."` or `./apps/engine/.venv/bin/python3 -c "..."`. This trips Antigravity's `RequiresExactMatch` security gate and fails grant validation on embedded newlines.
+    - **Script-First**: Write temporary, diagnostic, or exploration scripts to a file first (e.g. in the conversation scratch directory `<appDataDir>/brain/<conversation-id>/scratch/<name>.py`, or in `.scratch/<name>.py`).
+    - **Canonical Execution**: Run via `./apps/engine/.venv/bin/python3 <path/to/script.py>`, which cleanly matches allowlisted prefix grants. See [`.agents/rules/python-execution.md`](file:///home/cv/Documents/Code/llm-market-bench/.agents/rules/python-execution.md).
+
 
 
 

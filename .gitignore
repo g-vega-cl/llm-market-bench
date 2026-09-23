@@ -36,3 +36,7 @@ git-history/
 # Wrangler
 .wrangler/
 
+# Scratch & Temporary Scripts
+.scratch/
+apps/engine/scratch/
+

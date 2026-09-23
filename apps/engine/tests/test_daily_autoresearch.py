@@ -381,3 +381,106 @@ def test_default_daily_predictor_tools():
     assert "get_market_feeling" in DEFAULT_DAILY_PREDICTOR_TOOLS
     assert "get_premarket_quote" in DEFAULT_DAILY_PREDICTOR_TOOLS
     assert len(DEFAULT_DAILY_PREDICTOR_TOOLS) == 9
+
+
+@pytest.mark.asyncio
+async def test_run_daily_autoresearch_track_filters_out_backtest_predictions():
+    from datetime import UTC, datetime, timedelta
+
+    from tasks.daily_autoresearch import run_daily_autoresearch_for_model
+
+    mock_supabase = MagicMock()
+    eval_predictions = [
+        {
+            "id": "pred-live-1",
+            "is_correct": True,
+            "intraday_hit": True,
+            "brier_score": 0.04,
+            "target_date": "2026-08-30",
+            "prompt_variant_tag": "daily-active-1",
+            "model_name": "deepseek-v4-flash",
+            "status": "evaluated",
+        },
+        {
+            "id": "pred-backtest-1",
+            "is_correct": False,
+            "intraday_hit": False,
+            "brier_score": 0.64,
+            "target_date": "2026-08-30",
+            "prompt_variant_tag": "daily-pred-backtest-12345678",
+            "model_name": "deepseek-v4-flash",
+            "status": "evaluated",
+        },
+    ]
+
+    active_prompt = [
+        {
+            "id": "exp-1",
+            "variant_tag": "daily-active-1",
+            "prompt_name": "DAILY_PREDICTOR_PROMPT",
+            "prompt_content": "Active prompt content",
+            "status": "active",
+            "track_id": "deepseek-v4-flash",
+        }
+    ]
+
+    mock_table = MagicMock()
+    updated_metrics = []
+
+    def mock_table_select(table_name):
+        mock_chain = MagicMock()
+        mock_chain.select.return_value = mock_chain
+        mock_chain.eq.return_value = mock_chain
+        mock_chain.gte.return_value = mock_chain
+        mock_chain.lte.return_value = mock_chain
+        mock_chain.in_.return_value = mock_chain
+        mock_chain.neq.return_value = mock_chain
+        mock_chain.order.return_value = mock_chain
+        mock_chain.limit.return_value = mock_chain
+
+        if table_name == "daily_predictions":
+            mock_chain.execute.return_value.data = eval_predictions
+        elif table_name == "prompt_experiments":
+            mock_chain.execute.return_value.data = active_prompt
+
+            def record_update(payload):
+                if "metrics" in payload:
+                    updated_metrics.append(payload["metrics"])
+                return mock_chain
+
+            mock_chain.update.side_effect = record_update
+            mock_chain.insert = mock_table.insert
+        else:
+            mock_chain.execute.return_value.data = []
+        return mock_chain
+
+    mock_supabase.table.side_effect = mock_table_select
+
+    mock_llm = MagicMock()
+    mock_llm.chat.completions.create.return_value = MagicMock(new_prompt="Mutated strategy instructions")
+
+    today = datetime.now(UTC).date()
+    seven_days_ago = today - timedelta(days=7)
+    fourteen_days_ago = today - timedelta(days=14)
+
+    with (
+        patch("tasks.daily_autoresearch.get_deepseek_client", return_value=mock_llm),
+        patch("tasks.daily_autoresearch.close_client", new_callable=AsyncMock),
+        patch("tasks.daily_autoresearch.fetch_autoresearch_context", return_value={}),
+        patch("memory.store.add_memory"),
+    ):
+        await run_daily_autoresearch_for_model(
+            model_name="deepseek-v4-flash",
+            client=mock_supabase,
+            today=today,
+            seven_days_ago=seven_days_ago,
+            fourteen_days_ago=fourteen_days_ago,
+            deepseek_meta=mock_llm,
+            dry_run=False,
+            cold_start=False,
+        )
+
+    # Ratchet metrics must only evaluate the 1 live prediction, omitting the backtest prediction
+    assert len(updated_metrics) > 0
+    assert updated_metrics[0]["predictions_evaluated"] == 1
+    assert updated_metrics[0]["correct_count"] == 1

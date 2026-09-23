@@ -449,7 +449,11 @@ async def run_daily_autoresearch_for_model(
         .execute()
     )
 
-    predictions = response.data
+    predictions = [
+        p
+        for p in (response.data or [])
+        if not (p.get("prompt_variant_tag") and "backtest" in p["prompt_variant_tag"].lower())
+    ]
     if not predictions:
         logger.info(f"No evaluated daily predictions found for {model_name} in the past week. Skipping autoresearch.")
         return

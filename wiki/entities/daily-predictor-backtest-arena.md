@@ -41,9 +41,11 @@ $$
 - **Magnitude Capture %** (10% weight): Percentage of the actual move captured on correct predictions that hit target ($\min(1.0, |\text{expected}|/\max(|\text{peak}|, |\text{close}|)) \times 100$).
 - **Brier penalty**: Mean Brier score multiplied by 50, subtracted from the weighted sum.
 
-## Web UI
+## Web UI & Production Isolation
 
-The `/daily-predictions` page displays a metrics dashboard, a dual-view toggle between Predictions Log and Autoresearch & Benchmark History, and expandable prediction rows with responsive mobile-first stacked lineage browsing. The `/daily-predictions-backtest` route provides the temporal sandbox interface for browsing simulated historical prompt variants with matching responsive layout adaptation.
+The `/daily-predictions` page displays the live daily predictor dashboard, where simulated backtest predictions (`prompt_variant_tag` containing `backtest`) are strictly excluded to preserve the integrity of live directional accuracy percentages and prediction counts.
+
+The `/daily-predictions-backtest` route serves as the dedicated Backtest Arena, querying historical simulated predictions via `fetchDailyPredictorBacktestPredictions` and simulated prompt experiments via `fetchDailyPredictorBacktestExperiments` with responsive lineage browsing and score breakdowns.
 
 ## Related
 

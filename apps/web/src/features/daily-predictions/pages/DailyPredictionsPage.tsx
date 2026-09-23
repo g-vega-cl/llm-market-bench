@@ -1489,11 +1489,16 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
     const [viewMode, setViewMode] = useState<'predictions' | 'autoresearch'>('predictions');
     const [selectedExpId, setSelectedExpId] = useState<string | null>(null);
 
+    // Filter out simulated backtest predictions from live daily predictor view
+    const livePredictions = predictions.filter(
+        (p) => !p.prompt_variant_tag?.toLowerCase().includes('backtest'),
+    );
+
     // Identify dynamic or configured models
     const activeModelCfg =
         PREDICTOR_MODELS.find((m) => m.id === selectedModelId) || PREDICTOR_MODELS[0];
 
-    const modelPredictions = predictions.filter((p) => activeModelCfg.matches(p.model_name));
+    const modelPredictions = livePredictions.filter((p) => activeModelCfg.matches(p.model_name));
     const modelExperiments = promptExperiments.filter((e) =>
         e.track_id ? activeModelCfg.matches(e.track_id) : true,
     );
@@ -1548,7 +1553,9 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
             >
                 <div style={{ display: 'flex', gap: '8px' }}>
                     {PREDICTOR_MODELS.map((model) => {
-                        const count = predictions.filter((p) => model.matches(p.model_name)).length;
+                        const count = livePredictions.filter((p) =>
+                            model.matches(p.model_name),
+                        ).length;
                         const isSelected = activeModelCfg.id === model.id;
                         return (
                             <button

@@ -40,13 +40,15 @@ export async function fetchDailyPredictions(): Promise<DailyPrediction[]> {
     const { data, error } = await supabase
         .from('daily_predictions')
         .select('*')
+        .or('prompt_variant_tag.is.null,prompt_variant_tag.not.ilike.%backtest%')
         .order('created_at', { ascending: false });
 
     if (error) {
         throw new Error(error.message);
     }
 
-    return (data || []) as DailyPrediction[];
+    const predictions = (data || []) as DailyPrediction[];
+    return predictions.filter((p) => !p.prompt_variant_tag?.toLowerCase().includes('backtest'));
 }
 
 export async function fetchDailyPredictorExperiments(): Promise<PromptExperiment[]> {

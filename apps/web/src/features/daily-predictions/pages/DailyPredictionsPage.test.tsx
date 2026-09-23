@@ -426,4 +426,76 @@ describe('DailyPredictionsPage', () => {
         expect(screen.getByText('Daily Predictor Cognitive Toolbox')).toBeInTheDocument();
         expect(screen.getByText('Meta-Researcher Rationale & Conviction')).toBeInTheDocument();
     });
+
+    it('excludes backtest predictions from DeepSeek prediction stats and table', () => {
+        const mixedPredictions: DailyPrediction[] = [
+            {
+                id: 'daily-pred-deepseek-live',
+                prediction_date: '2026-08-03',
+                target_date: '2026-08-03',
+                ticker: 'SPY',
+                model_name: 'deepseek-v4-flash',
+                prompt_variant_tag: 'daily-pred-live-v1',
+                predicted_direction: 'UP',
+                confidence: 80.0,
+                expected_return_pct: 0.45,
+                rationale: 'Live market momentum.',
+                catalysts: ['Catalyst 1'],
+                open_price: 450.0,
+                high_price: 456.0,
+                low_price: 449.0,
+                close_price: 455.0,
+                actual_direction: 'UP',
+                is_correct: true,
+                intraday_hit: true,
+                intraday_direction_hit: true,
+                brier_score: 0.04,
+                status: 'evaluated',
+                created_at: '2026-08-03T08:00:00Z',
+                updated_at: '2026-08-03T16:15:00Z',
+            },
+            {
+                id: 'daily-pred-deepseek-backtest',
+                prediction_date: '2026-05-01',
+                target_date: '2026-05-01',
+                ticker: 'SPY',
+                model_name: 'deepseek-v4-flash',
+                prompt_variant_tag: 'daily-pred-backtest-12345678',
+                predicted_direction: 'DOWN',
+                confidence: 60.0,
+                expected_return_pct: -0.5,
+                rationale: 'Simulated historical backtest run.',
+                catalysts: ['Backtest Catalyst'],
+                open_price: 400.0,
+                high_price: 405.0,
+                low_price: 398.0,
+                close_price: 402.0,
+                actual_direction: 'UP',
+                is_correct: false,
+                intraday_hit: false,
+                intraday_direction_hit: false,
+                brier_score: 0.36,
+                status: 'evaluated',
+                created_at: '2026-05-01T08:00:00Z',
+                updated_at: '2026-05-01T16:15:00Z',
+            },
+        ];
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mixedPredictions}
+                experiments={mockExperiments}
+            />,
+        );
+
+        // Stats should only consider the live prediction: 100.0% (1/1 correct), not 50.0% (1/2 correct)
+        expect(screen.getAllByText('100.0%').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('1 / 1 correct')).toBeInTheDocument();
+        expect(screen.getByText('DeepSeek Flash (1)')).toBeInTheDocument();
+
+        // Backtest row should not be rendered
+        expect(screen.queryByText('daily-pred-backtest-12345678')).not.toBeInTheDocument();
+        expect(screen.queryByText('Simulated historical backtest run.')).not.toBeInTheDocument();
+        expect(screen.getByText('Live market momentum.')).toBeInTheDocument();
+    });
 });

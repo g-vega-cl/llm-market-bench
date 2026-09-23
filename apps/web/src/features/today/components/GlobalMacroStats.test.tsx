@@ -75,7 +75,7 @@ const mockMacroStats: MacroStat[] = [
         hasHistory: true,
     },
     {
-        ticker: 'VIXY',
+        ticker: '^VIX',
         name: 'Volatility Index',
         category: 'Market',
         price: 13.2,
@@ -128,7 +128,7 @@ describe('GlobalMacroStats Component', () => {
         expect(screen.getByText('EWJ')).toBeInTheDocument();
         expect(screen.getByText('GLD')).toBeInTheDocument();
         expect(screen.getByText('USO')).toBeInTheDocument();
-        expect(screen.getByText('VIXY')).toBeInTheDocument();
+        expect(screen.getByText('^VIX')).toBeInTheDocument();
 
         // BTCUSD (Crypto) and IEF (Bonds & Treasury Yields) are NOT in the active "Market" grid list
         expect(screen.queryByText('BTCUSD')).not.toBeInTheDocument();

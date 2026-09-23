@@ -89,7 +89,7 @@
   },
   {
     "name": "get_volatility_index_details",
-    "desc": "VIX ETF term structure, percentile tracking, and volatility regime"
+    "desc": "Cboe Spot VIX (^VIX) regime tracking and VIX futures ETF term structure"
   },
   {
     "name": "get_verifier_rejections",

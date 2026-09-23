@@ -24,13 +24,13 @@ every LLM agent's context before trading decisions.
 | International | EWJ (Japan), EWY (South Korea), VGK (Europe), MCHI (China), EEM (EM), EWU (UK), EWC (Canada), INDA (India) | 8 |
 | Commodities | GLD (Gold), SLV (Silver), CPER (Copper), USO (Oil), UNG (Natural Gas) | 5 |
 | Fixed Income | IEF (7-10yr Treasury), TLT (20+yr Treasury), TIP (TIPS/Inflation) | 3 |
-| FX & Risk | UUP (USD Index), VIXY (Volatility) | 2 |
+| FX & Risk | UUP (USD Index), ^VIX (Volatility) | 2 |
 | Crypto | BTCUSD (Bitcoin) | 1 |
 
 ## Design Constraints
 
-- **FMP-compatible only**: All tickers must work with Financial Modeling Prep API (no Yahoo-style `^VIX`, `DX-Y.NYB`)
-- **ETF proxies**: Indices are tracked via ETFs (e.g., VIXY for VIX, UUP for DXY, IEF/TLT for yields)
+- **FMP-compatible**: All tickers work with Financial Modeling Prep API, using the canonical index symbol `^VIX` for the Cboe Volatility Index.
+- **Indices & ETF proxies**: Indices like VIX use canonical `^VIX`; rates and currencies are tracked via ETFs (`UUP` for DXY, `IEF`/`TLT` for yields).
 - **Unique tickers only**: No duplicates across categories; batch fetch deduplicates implicitly
 
 ## Frontend Integration & Yield Rules
@@ -56,14 +56,15 @@ This is executed automatically on a scheduled **GitHub Action workflow** (`.gith
 
 For pull-based agents (e.g., candidate variants managed by the auto-researcher), the macro context is not automatically injected in the user prompt. Instead, the agent can call two specific tools to retrieve macro and volatility states:
 - **`get_global_macro_context`**: Fetches the raw global macro environment status for all 23 economic indicators, interest rates, commodities, and volatility regime classifications from the database cache.
-- **`get_volatility_index_details`**: Performs high-fidelity calculations specifically for VIX proxy ETFs (`VIXY` and `VIXM`) over a lookback window (default: 90 trading days). Computes annualized realized volatility, VIXY price percentile ranks, moving average crossover trends, volatility curve state (Contango vs. Backwardation structure proxy), and rolling 30-day Pearson correlation with `SPY`.
+- **`get_volatility_index_details`**: Performs high-fidelity calculations anchoring spot volatility to the canonical Cboe Volatility Index (`^VIX`) while isolating VIX proxy ETFs (`VIXY` and `VIXM`) strictly for futures curve structure (Contango vs. Backwardation) and roll decay awareness. Computes spot VIX percentiles, moving average trends, and rolling 30-day Pearson correlation with `SPY` without contango drag distortions.
 
 *Decoupling Note:* Core instructions previously appended to the raw macro text block (encouraging risk-on/risk-off analysis and advising against betting against macro trends) have been decoupled from the database data generator and moved directly into the static prompt templates (`ANALYSIS_USER_PROMPT_TEMPLATE` in `prompts.py`), keeping the tool outputs clean and raw.
 
 ## History
 
+- **2026-09-23**: Decoupled canonical Spot VIX (`^VIX`) from VIX futures ETFs (`VIXY`). Replaced `VIXY` with `^VIX` in the Global Macro Tracker and Today page dashboard to eliminate false complacency signals caused by futures contango roll decay. Refactored `get_volatility_index_details` tool to compute spot volatility levels and percentiles from `^VIX` while reserving `VIXY`/`VIXM` strictly for term structure and roll drag warnings.
 - **2026-08-27**: Fixed intraday macro percentage returns lag where `update_prices.py` computed percentage changes comparing yesterday against two days prior when EOD data had not yet closed. Refactored `compute_ticker_macro_metrics` to batch-fetch live quotes and compare live price vs previous close when EOD history lag occurs, and updated `_save_batch_to_cache` in `market_data.py` to persist `today_pct_change`.
-- **2026-08-27**: Enhanced Today page default "Market" price shower to render a comprehensive cross-asset indicator mix (`SPY`, `QQQ`, `TLT`, `VGK`, `EWJ`, `GLD`, `USO`, `VIXY`), providing instant visibility into equity benchmarks, bond yields, international markets, gold, crude oil, and VIX volatility directly on initial load.
+- **2026-08-27**: Enhanced Today page default "Market" price shower to render a comprehensive cross-asset indicator mix (`SPY`, `QQQ`, `TLT`, `VGK`, `EWJ`, `GLD`, `USO`, `^VIX`), providing instant visibility into equity benchmarks, bond yields, international markets, gold, crude oil, and VIX volatility directly on initial load.
 - **2026-08-21**: Clarified macro regime baseline output to explicitly specify `(PRIOR SESSION CLOSE)` and `[...% prior close]` to eliminate LLM confusion during pre-market inference. Expanded Daily Predictor's live pre-market multi-asset quoting loop to include international proxies (`EWJ`, `VGK`), yield proxies (`TLT`, `IEF`), and currency (`UUP`) alongside `SPY`, `QQQ`, `DIA`, `IWM`, `GLD`, and `USO`.
 
 - **2026-07-22**: Decoupled prompt instructions from core tracker data block. Implemented and registered `get_global_macro_context` and `get_volatility_index_details` tools for pull-based auto-researcher agents.

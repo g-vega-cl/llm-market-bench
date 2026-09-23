@@ -37,7 +37,7 @@ MACRO_TICKERS = {
     },
     "FX & Risk": {
         "UUP": "US Dollar Index",
-        "VIXY": "Volatility Index",
+        "^VIX": "Volatility Index",
     },
     "Crypto": {
         "BTCUSD": "Bitcoin",

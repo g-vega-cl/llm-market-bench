@@ -59,7 +59,9 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "1. Implied Move Bounding: Invoke `get_options_vol_surface` to inspect the 1-sigma options-implied daily move cone. "
             "Do NOT project intraday price targets exceeding this cone without extreme multi-signal catalyst confirmation.\n"
             "2. IV Premium Regime Awareness: When IV Premium is RICH (IV > RV20), respect mean-reversion pullbacks and avoid buying extended breakout tops. "
-            "When CHEAP, anticipate aggressive expansion moves."
+            "When CHEAP, anticipate aggressive expansion moves.\n"
+            "3. Spot VIX vs Futures Drag: Query `get_volatility_index_details` for spot Cboe VIX levels (^VIX). "
+            "Never mistake falling VIXY/VIXM futures ETF prices for market complacency, as futures ETFs suffer structural contango roll decay."
         ),
     },
     "macro_regime_routing": {

@@ -11,7 +11,7 @@ export const MACRO_TICKERS = {
         EWJ: 'Japan',
         GLD: 'Gold',
         USO: 'Oil (WTI)',
-        VIXY: 'Volatility Index',
+        '^VIX': 'Volatility Index',
     },
     Equities: {
         SPY: 'S&P 500',
@@ -43,7 +43,7 @@ export const MACRO_TICKERS = {
     },
     'FX & Risk': {
         UUP: 'US Dollar Index',
-        VIXY: 'Volatility Index',
+        '^VIX': 'Volatility Index',
     },
     Crypto: {
         BTCUSD: 'Bitcoin',

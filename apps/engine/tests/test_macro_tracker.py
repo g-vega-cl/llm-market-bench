@@ -52,12 +52,12 @@ class TestMacroTickers:
         assert "TIP" in fi_tickers, "Expected TIP (TIPS ETF)"
 
     def test_fx_risk_tickers_use_fmp_compatible_symbols(self):
-        """Verify FX & Risk tickers are FMP-compatible ETFs."""
+        """Verify FX & Risk tickers use valid symbols (^VIX and UUP)."""
         assert "FX & Risk" in MACRO_TICKERS
         fx_tickers = MACRO_TICKERS["FX & Risk"]
 
         assert "UUP" in fx_tickers, "Expected UUP (Dollar ETF)"
-        assert "VIXY" in fx_tickers, "Expected VIXY (VIX ETF)"
+        assert "^VIX" in fx_tickers, "Expected ^VIX (Cboe Volatility Index)"
 
     def test_crypto_tickers_exist(self):
         """Verify crypto tickers are defined."""
@@ -66,13 +66,14 @@ class TestMacroTickers:
         assert "BTCUSD" in crypto_tickers
 
     def test_no_yahoo_style_tickers(self):
-        """Verify no Yahoo Finance-style tickers (with ^ or -Y.) are present."""
+        """Verify no unsupported Yahoo Finance-style tickers (e.g. DX-Y.NYB, ^TNX), allowing canonical ^VIX."""
         all_tickers = []
         for category_dict in MACRO_TICKERS.values():
             all_tickers.extend(category_dict.keys())
 
         for ticker in all_tickers:
-            assert not ticker.startswith("^"), f"Yahoo-style ticker {ticker} found (starts with ^)"
+            if ticker != "^VIX":
+                assert not ticker.startswith("^"), f"Unsupported index ticker {ticker} found (starts with ^)"
             assert "-Y." not in ticker, f"Yahoo-style ticker {ticker} found (contains -Y.)"
 
     def test_total_ticker_count(self):
@@ -177,7 +178,7 @@ class TestGetGlobalMacroContext:
         assert "SPY" in tickers_passed
         assert "IEF" in tickers_passed
         assert "UUP" in tickers_passed
-        assert "VIXY" in tickers_passed
+        assert "^VIX" in tickers_passed
 
     @pytest.mark.asyncio
     async def test_instruction_appears_at_end(self):
@@ -288,12 +289,15 @@ class TestMacroTrackerFixedIncome:
         assert "TLT" in fi_tickers
         assert "TIP" in fi_tickers
         assert "UUP" in fx_tickers
-        assert "VIXY" in fx_tickers
+        assert "^VIX" in fx_tickers
 
         all_tickers = []
         for category in MACRO_TICKERS.values():
             all_tickers.extend(category.keys())
 
         for ticker in all_tickers:
-            # Allow alphanumeric tickers (BTCUSD) alongside alphabetic ones
-            assert ticker.isalnum(), f"Ticker {ticker} should be alphanumeric"
+            # Allow alphanumeric tickers (BTCUSD) and canonical index ticker (^VIX)
+            if ticker == "^VIX":
+                assert ticker.startswith("^") and ticker[1:].isalnum()
+            else:
+                assert ticker.isalnum(), f"Ticker {ticker} should be alphanumeric"

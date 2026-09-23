@@ -110,7 +110,7 @@ describe('MACRO_TICKERS config', () => {
         // WTI Crude Oil
         expect(marketTickers).toContain('USO');
         // VIX Volatility
-        expect(marketTickers).toContain('VIXY');
+        expect(marketTickers).toContain('^VIX');
     });
 
     it('deduplicates MACRO_TICKERS_LIST across categories', async () => {

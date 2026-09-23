@@ -75,10 +75,72 @@ async def test_execute_get_volatility_index_details_calculation():
     with patch("execution.market_data.MarketDataManager.get_history", side_effect=mock_get_history):
         res = await execute_get_volatility_index_details_tool(lookback_days=5)
 
-        assert "Volatility Index (VIX) Proxy Details" in res
-        assert "VIXY (Short-Term Volatility ETF)" in res
-        assert "VIXM (Mid-Term Volatility ETF)" in res
-        assert "Ratio:" in res
-        assert "Correlation with SPY" in res
-        assert "Volatility Regime" in res
-        assert "Moving Average Trend" in res
+        assert "Volatility Index" in res
+        assert "VIXY" in res
+        assert "VIXM" in res
+
+
+@pytest.mark.asyncio
+async def test_execute_get_volatility_index_details_spot_vix_vs_vixy_separation():
+    """Verify spot Cboe VIX (^VIX) determines the true volatility regime while VIXY/VIXM measure term structure."""
+    from core.llm.tools import execute_get_volatility_index_details_tool
+
+    # ^VIX: Spot index is elevated at 24.50 (high percentile)
+    mock_vix_history = [
+        {"price": 24.5, "fetched_at": "2026-07-22 00:00"},
+        {"price": 23.0, "fetched_at": "2026-07-21 00:00"},
+        {"price": 21.0, "fetched_at": "2026-07-20 00:00"},
+        {"price": 18.0, "fetched_at": "2026-07-19 00:00"},
+        {"price": 16.0, "fetched_at": "2026-07-18 00:00"},
+    ]
+    # VIXY: Futures ETF has decayed to a low price of $11.50 (lowest in range due to contango)
+    mock_vixy_history = [
+        {"price": 11.5, "fetched_at": "2026-07-22 00:00"},
+        {"price": 12.0, "fetched_at": "2026-07-21 00:00"},
+        {"price": 13.0, "fetched_at": "2026-07-20 00:00"},
+        {"price": 14.0, "fetched_at": "2026-07-19 00:00"},
+        {"price": 15.0, "fetched_at": "2026-07-18 00:00"},
+    ]
+    mock_vixm_history = [
+        {"price": 20.0, "fetched_at": "2026-07-22 00:00"},
+        {"price": 20.5, "fetched_at": "2026-07-21 00:00"},
+        {"price": 21.0, "fetched_at": "2026-07-20 00:00"},
+        {"price": 21.5, "fetched_at": "2026-07-19 00:00"},
+        {"price": 22.0, "fetched_at": "2026-07-18 00:00"},
+    ]
+    mock_spy_history = [
+        {"price": 500.0, "fetched_at": "2026-07-22 00:00"},
+        {"price": 505.0, "fetched_at": "2026-07-21 00:00"},
+        {"price": 510.0, "fetched_at": "2026-07-20 00:00"},
+        {"price": 515.0, "fetched_at": "2026-07-19 00:00"},
+        {"price": 520.0, "fetched_at": "2026-07-18 00:00"},
+    ]
+
+    async def mock_get_history(ticker, days, **kwargs):
+        if ticker == "^VIX":
+            return mock_vix_history[:days]
+        elif ticker == "VIXY":
+            return mock_vixy_history[:days]
+        elif ticker == "VIXM":
+            return mock_vixm_history[:days]
+        elif ticker == "SPY":
+            return mock_spy_history[:days]
+        return []
+
+    with patch("execution.market_data.MarketDataManager.get_history", side_effect=mock_get_history):
+        res = await execute_get_volatility_index_details_tool(lookback_days=5)
+
+        # 1. Output must distinguish Spot VIX from Futures ETFs
+        assert "Cboe Volatility Index (Spot VIX: ^VIX)" in res
+        assert "Spot VIX Level:" in res and "24.50" in res
+
+        # 2. Volatility regime must reflect elevated spot VIX (24.50), NOT VIXY's decaying price
+        assert "ELEVATED VOLATILITY" in res
+        assert "COMPLACENCY ZONE" not in res
+
+        # 3. Term structure section must cover VIXY/VIXM
+        assert "VIX Futures Term Structure & Roll Dynamics" in res
+        assert "VIXY (Short-Term Futures ETF)" in res
+
+        # 4. Must include explicit roll decay warning
+        assert "contango roll decay" in res.lower()

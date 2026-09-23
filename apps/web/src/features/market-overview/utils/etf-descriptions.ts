@@ -79,6 +79,7 @@ export const etfDescriptions: Record<string, string> = {
     ETHUSD: 'Ethereum to USD',
 
     // Volatility
-    VIXY: 'ProShares VIX Short-Term Futures ETF',
-    VIXM: 'ProShares VIX Mid-Term Futures ETF',
+    '^VIX': 'Cboe Volatility Index (Spot VIX)',
+    VIXY: 'ProShares VIX Short-Term Futures ETF (Contango Roll Decay Risk)',
+    VIXM: 'ProShares VIX Mid-Term Futures ETF (Futures Roll Risk)',
 };

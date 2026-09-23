@@ -23,6 +23,7 @@ export interface DailyPrediction {
     intraday_direction_hit?: boolean | null;
     brier_score: number | null;
     status: 'pending' | 'evaluated';
+    market_context?: string | null;
     created_at: string;
     updated_at: string;
 }

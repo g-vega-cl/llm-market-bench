@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/market-context-viewer]] — Collapsible pre-market context viewer and copy tool for daily prediction auditability
 - [[entities/intraday-profile]] — Deterministic quantitative session profile and hourly price-action tape matrix for regular trading hours
 - [[entities/attribution-trace]] — Tool-call trace extraction and normalization for OpenAI/Anthropic formats
 - [[entities/autoresearch-arena]] — Web UI for browsing prompt experiment history, score audit, cognitive toolbox, and meta-researcher rationale across all three prediction domains

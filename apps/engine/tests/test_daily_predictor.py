@@ -647,3 +647,67 @@ async def test_run_daily_prediction_runs_when_force_flag_passed():
     ):
         results = await run_daily_prediction(ticker="SPY", force=True)
         assert len(results) == 2
+
+
+@pytest.mark.asyncio
+async def test_run_daily_prediction_persists_market_context():
+    """Reproduction test: Verify run_daily_prediction persists full market_context to Supabase."""
+    mock_mdm = MagicMock()
+    mock_mdm.is_trading_day = AsyncMock(return_value=True)
+
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
+        {"variant_tag": "daily-pred-tag1", "prompt_content": DAILY_PREDICTOR_PROMPT}
+    ]
+    upserted_rows = []
+
+    def capture_upsert(row, on_conflict=None):
+        upserted_rows.append(row)
+        m = MagicMock()
+        m.execute.return_value = MagicMock(data=[{"id": "pred-1"}])
+        return m
+
+    mock_supabase.table.return_value.upsert.side_effect = capture_upsert
+
+    mock_deepseek = MagicMock()
+    mock_deepseek.chat.completions.create.return_value = DailyPredictionOutput(
+        predicted_direction="UP",
+        confidence=70.0,
+        expected_return_pct=0.30,
+        rationale="Test rationale.",
+        catalysts=["Catalyst 1"],
+    )
+
+    mock_minimax = AsyncMock()
+    mock_minimax.chat_with_json_response = AsyncMock(
+        return_value={
+            "predicted_direction": "UP",
+            "confidence": 65.0,
+            "expected_return_pct": 0.25,
+            "rationale": "Test rationale.",
+            "catalysts": ["Catalyst 1"],
+        }
+    )
+    mock_minimax.close = AsyncMock()
+
+    mock_context_str = "=== MOCK MARKET CONTEXT FOR TESTING ==="
+
+    with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch("tasks.daily_predictor.get_daily_market_context", new_callable=AsyncMock, return_value=mock_context_str),
+        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
+        patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
+        patch("tasks.daily_predictor.close_client", new_callable=AsyncMock),
+    ):
+        results = await run_daily_prediction(ticker="SPY", force=True)
+        assert len(results) == 2
+        for r in results:
+            assert "market_context" in r
+            assert r["market_context"] == mock_context_str
+
+        assert len(upserted_rows) == 2
+        for row in upserted_rows:
+            assert "market_context" in row
+            assert row["market_context"] == mock_context_str
+

@@ -67,13 +67,14 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - If a pre-market `daily-predictor` run is triggered or delayed after **9:30 AM EDT (13:30 UTC)**, the step automatically logs a warning and exits cleanly without recording stale intraday predictions.
 
 
-## Database Schema
-
-- `public.daily_predictions`: Stores predictions, actual Open/High/Low/Close prices, EOD correctness (`is_correct`), intraday target hit (`intraday_hit`), intraday direction hit (`intraday_direction_hit`), and Brier scores.
+## Database Schema & Model Training Telemetry
+ 
+- `public.daily_predictions`: Stores predictions, actual Open/High/Low/Close prices, EOD correctness (`is_correct`), intraday target hit (`intraday_hit`), intraday direction hit (`intraday_direction_hit`), Brier scores, and the complete pre-market input features text (`market_context`) passed into the model.
 - `public.prompt_experiments`: Tracks `DAILY_PREDICTOR_PROMPT` variants, statuses, and performance metrics.
-
+- **Dataset Exporter**: `apps/engine/scripts/export_daily_predictor_dataset.py` formats historical predictions and compiled market contexts directly into SFT (`train.jsonl`) or DPO preference pairs for model fine-tuning and offline evaluation.
+ 
 ## Related
-
+ 
 - [[concepts/system-portfolios]] — mechanical sector long/short and daily SPY portfolios
 - [[entities/sector-predictor-arena]] — Sector predictor arena comparison
 - [[entities/autoresearch]] — Portfolio auto-research subsystem

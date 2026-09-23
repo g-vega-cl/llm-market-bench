@@ -9,6 +9,7 @@ import { ResearchRationaleCard } from '../../autoresearch/components/ResearchRat
 import { splitPromptSections } from '../../autoresearch/utils/promptSections';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import { DailyScoreBreakdown } from '../components/DailyScoreBreakdown';
+import { MarketContextViewer } from '../components/MarketContextViewer';
 
 export const DEFAULT_DAILY_PREDICTOR_TOOLS = [
     'fetch_daily_newsletter',
@@ -571,6 +572,9 @@ function PredictionExpandedDetail({
                             <strong>Model:</strong> {p.model_name}
                         </div>
                     </div>
+
+                    {/* Market Context Passed to Predictor */}
+                    <MarketContextViewer context={p.market_context} />
 
                     {/* System Prompt Used */}
                     <div>

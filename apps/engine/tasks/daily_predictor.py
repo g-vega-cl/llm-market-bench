@@ -429,6 +429,7 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                     "rationale": rationale,
                     "catalysts": catalysts,
                     "status": "pending",
+                    "market_context": context,
                 }
 
                 client.table("daily_predictions").upsert(

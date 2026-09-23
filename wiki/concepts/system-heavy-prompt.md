@@ -13,6 +13,8 @@ Keeps prompts within context limits, reduces token waste, and improves response 
 
 ## Relationship to Other Pages
 
-- [[entities/daily-market-predictor]] — uses pull-based context injection
+- [[entities/pipeline]] — uses interactive pull-based tool loops where trading agents query market APIs on demand
+- [[entities/daily-market-predictor]] — utilizes deterministic push-based context injection, pre-compiling all macro, options, and gap metrics into `market_context` for model inference and training auditability
+- [[entities/tool-registry]] — canonical registry of pull-based agent tools
 - [[concepts/rag-strategy]] — tiered context injection
 - [[concepts/tool-first-agency]] — model-driven tool use

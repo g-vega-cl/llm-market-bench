@@ -1,6 +1,6 @@
 """Tests for FSI Analytical Tools: Yield Curve Regimes, Options Vol Surface, and Thesis Ledger."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -251,3 +251,79 @@ async def test_options_surface_no_dummy_fallback_when_spot_missing():
         report = await get_options_vol_surface_report("SPY")
         assert report.get("spot_price") != 100.0
         assert report.get("status") in ("NO_DATA", "ERROR")
+
+
+@pytest.mark.asyncio
+async def test_options_surface_anchors_spy_to_vix():
+    """Test get_options_vol_surface_report anchors SPY ATM IV to the canonical 30-day VIX index."""
+    mock_spot_quote = MagicMock()
+    mock_spot_quote.price = 771.51
+
+    mock_vix_quote = MagicMock()
+    mock_vix_quote.price = 14.28
+
+    async def mock_get_quote(ticker: str):
+        if ticker == "^VIX":
+            return mock_vix_quote
+        if ticker == "SPY":
+            return mock_spot_quote
+        return None
+
+    # 21 closes producing ~10.51% realized vol
+    mock_closes = [
+        {"price": 771.51},
+        {"price": 773.38},
+        {"price": 773.50},
+        {"price": 761.69},
+        {"price": 762.60},
+        {"price": 754.05},
+        {"price": 757.39},
+        {"price": 760.88},
+        {"price": 764.29},
+        {"price": 757.83},
+        {"price": 762.40},
+        {"price": 765.96},
+        {"price": 770.19},
+        {"price": 773.17},
+        {"price": 765.16},
+        {"price": 761.78},
+        {"price": 767.05},
+        {"price": 769.35},
+        {"price": 771.10},
+        {"price": 766.08},
+        {"price": 765.91},
+    ]
+
+    with (
+        patch("execution.market_data.MarketDataManager.get_quote", side_effect=mock_get_quote),
+        patch(
+            "execution.providers.massive.MassiveOptionsClient.get_spot_price",
+            new_callable=AsyncMock,
+            return_value=771.51,
+        ),
+        patch("execution.market_data.MarketDataManager.provider") as mock_provider,
+        patch(
+            "execution.providers.massive.MassiveOptionsClient.get_options_snapshot", new_callable=AsyncMock
+        ) as mock_snap,
+    ):
+        mock_provider.get_history = AsyncMock(return_value=mock_closes)
+        mock_snap.return_value = {
+            "status": "OK",
+            "metrics": {
+                "underlying_price": 771.51,
+                "atm_implied_volatility": 0.0984,  # Flawed chain IV
+                "max_pain": 770.0,
+                "volatility_skew_25d_diff_pct": 1.5,
+            },
+            "contracts": [],
+        }
+
+        report = await get_options_vol_surface_report("SPY")
+        assert report["status"] == "OK"
+        assert report["spot_price"] == 771.51
+        # ATM IV must be anchored to VIX (0.1428), overriding flawed 0.0984 chain IV
+        assert report["atm_iv"] == 0.1428
+        assert report["iv_source"] == "VIX"
+        assert report["vol_regime"] == "RICH"
+        assert "30-Day VIX" in report["markdown"]
+        assert "14.28%" in report["markdown"]

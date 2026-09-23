@@ -87,11 +87,12 @@ def format_options_vol_surface_markdown(data: dict[str, Any]) -> str:
 
     skew_str = f"{skew:+.2f}%" if skew is not None else "N/A (Free Tier ATM focus)"
     max_pain_str = f"${max_pain:.2f}" if max_pain is not None else "N/A"
+    iv_label = "ATM Implied Volatility (30-Day VIX)" if data.get("iv_source") == "VIX" else "ATM Implied Volatility"
 
     return (
         f"### ⚡ Options Volatility Surface & Implied Move: {ticker}\n\n"
         f"- **Spot Price**: `${spot:.2f}`\n"
-        f"- **ATM Implied Volatility**: `{atm_iv * 100:.2f}%`\n"
+        f"- **{iv_label}**: `{atm_iv * 100:.2f}%`\n"
         f"- **20-Day Realized Volatility**: `{rv_20d * 100:.2f}%`\n"
         f"- **Implied Volatility Premium (IV - RV)**: `{iv_premium:+.2f}%` (**`{regime}`**)\n"
         f"- **Options-Implied Daily Move**: `±{move_pct:.2f}%` (`±${move_pts:.2f}`)\n"
@@ -115,8 +116,8 @@ async def get_options_vol_surface_report(ticker: str = "SPY") -> dict[str, Any]:
     # 1. Resolve spot price
     spot_price = await massive_client.get_spot_price(ticker)
 
-    # 2. Fetch options snapshot with resolved spot price
-    options_snap = await massive_client.get_options_snapshot(ticker, current_price=spot_price)
+    # 2. Fetch options snapshot with resolved spot price (targeting min_dte=7 for stable volatility surface)
+    options_snap = await massive_client.get_options_snapshot(ticker, current_price=spot_price, min_dte=7)
     metrics = options_snap.get("metrics", {})
     if not spot_price or spot_price <= 0:
         spot_price = float(metrics.get("underlying_price") or 0.0)
@@ -157,8 +158,23 @@ async def get_options_vol_surface_report(ticker: str = "SPY") -> dict[str, Any]:
 
     rv_20d_calc = calculate_close_to_close_realized_volatility(closes)
 
-    raw_atm_iv = metrics.get("atm_implied_volatility")
-    atm_iv = float(raw_atm_iv) if raw_atm_iv is not None and float(raw_atm_iv) > 0 else (rv_20d_calc or 0.0)
+    iv_source = "CHAIN"
+    atm_iv = 0.0
+
+    # For SPY, anchor ATM implied vol to the canonical 30-day Cboe Volatility Index (^VIX)
+    if ticker == "SPY":
+        try:
+            vix_quote = await mdm.get_quote("^VIX")
+            if vix_quote and getattr(vix_quote, "price", None) and float(vix_quote.price) > 0:
+                atm_iv = round(float(vix_quote.price) / 100.0, 4)
+                iv_source = "VIX"
+        except Exception as e:
+            logger.debug(f"Could not fetch ^VIX quote for SPY implied vol: {e}")
+
+    if iv_source != "VIX":
+        raw_atm_iv = metrics.get("atm_implied_volatility")
+        atm_iv = float(raw_atm_iv) if raw_atm_iv is not None and float(raw_atm_iv) > 0 else (rv_20d_calc or 0.0)
+
     rv_20d = rv_20d_calc if rv_20d_calc is not None else (atm_iv * 0.85 if atm_iv > 0 else 0.0)
 
     skew_25d = metrics.get("volatility_skew_25d_diff_pct")
@@ -179,6 +195,7 @@ async def get_options_vol_surface_report(ticker: str = "SPY") -> dict[str, Any]:
         "ticker": ticker,
         "spot_price": spot_price,
         "atm_iv": atm_iv,
+        "iv_source": iv_source,
         "realized_vol_20d": rv_20d,
         "iv_premium_pct": iv_premium_pct,
         "vol_regime": regime,

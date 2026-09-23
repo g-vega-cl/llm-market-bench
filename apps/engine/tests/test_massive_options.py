@@ -272,20 +272,23 @@ async def test_free_tier_fallback_queries_calls_and_puts_near_spot():
     """Test that free tier fallback queries both calls and puts near the spot price and computes realistic IV and P/C ratios."""
     client = MassiveOptionsClient(api_key="test_key")
 
+    today = datetime.datetime.now(datetime.UTC).date()
+    exp_date = (today + datetime.timedelta(days=14)).isoformat()
+
     mock_calls = [
         {
-            "ticker": "O:SPY260902C00200000",
+            "ticker": f"O:SPY{exp_date.replace('-', '')[2:]}C00200000",
             "contract_type": "call",
             "strike_price": 200.0,
-            "expiration_date": "2026-09-02",
+            "expiration_date": exp_date,
         }
     ]
     mock_puts = [
         {
-            "ticker": "O:SPY260902P00200000",
+            "ticker": f"O:SPY{exp_date.replace('-', '')[2:]}P00200000",
             "contract_type": "put",
             "strike_price": 200.0,
-            "expiration_date": "2026-09-02",
+            "expiration_date": exp_date,
         }
     ]
 
@@ -317,6 +320,71 @@ async def test_free_tier_fallback_queries_calls_and_puts_near_spot():
         assert metrics["atm_implied_volatility"] is not None
         # Must be realistic (between 5% and 100%) and NOT 500%
         assert 0.05 <= metrics["atm_implied_volatility"] <= 1.0
+
+
+@pytest.mark.asyncio
+async def test_free_tier_fallback_filters_expired_and_synchronizes_settlement():
+    """Test that free tier fallback skips same-day expired contracts and uses bar date for DTE."""
+    client = MassiveOptionsClient(api_key="test_key")
+
+    today = datetime.datetime.now(datetime.UTC).date()
+    exp_today = today.isoformat()
+    exp_future = (today + datetime.timedelta(days=14)).isoformat()
+
+    # Yesterday's timestamp for bar
+    yesterday_ts = int((datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=1)).timestamp() * 1000)
+
+    mock_calls = [
+        {
+            "ticker": "O:SPY_TODAY_CALL",
+            "contract_type": "call",
+            "strike_price": 200.0,
+            "expiration_date": exp_today,
+        },
+        {
+            "ticker": "O:SPY_FUTURE_CALL",
+            "contract_type": "call",
+            "strike_price": 200.0,
+            "expiration_date": exp_future,
+        },
+    ]
+    mock_puts = [
+        {
+            "ticker": "O:SPY_TODAY_PUT",
+            "contract_type": "put",
+            "strike_price": 200.0,
+            "expiration_date": exp_today,
+        },
+        {
+            "ticker": "O:SPY_FUTURE_PUT",
+            "contract_type": "put",
+            "strike_price": 200.0,
+            "expiration_date": exp_future,
+        },
+    ]
+
+    async def mock_get(url, params=None):
+        resp = MagicMock()
+        resp.status_code = 200
+        if "reference/options/contracts" in url:
+            if params and params.get("contract_type") == "call":
+                resp.json.return_value = {"results": mock_calls}
+            else:
+                resp.json.return_value = {"results": mock_puts}
+        elif "aggs/ticker" in url:
+            c_val = 2.50
+            resp.json.return_value = {
+                "results": [{"c": c_val, "v": 1000, "o": c_val, "h": c_val, "l": c_val, "t": yesterday_ts}]
+            }
+        return resp
+
+    with patch("httpx.AsyncClient.get", side_effect=mock_get):
+        # target_min_dte=7 should select exp_future and ignore exp_today
+        contracts = await client._fetch_free_tier_contracts("SPY", current_price=200.0, min_dte=7)
+        assert len(contracts) > 0
+        expirations = {c["details"]["expiration_date"] for c in contracts}
+        assert exp_today not in expirations
+        assert exp_future in expirations
 
 
 @pytest.mark.asyncio

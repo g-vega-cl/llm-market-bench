@@ -18,6 +18,7 @@ This component retrieves macro options metrics from external data sources, cache
 - **Rate-Resilient Pacing**: Requests flow through a token-bucket rate limiter with individual ticker timeouts, avoiding 429 burst errors on Free Tier plans.
 - **Supabase Cache Integration**: Caches responses in `options_data_cache` with a 1-hour TTL, enabling sub-second cache hits for repeated queries.
 - **Dense Comparison Markdown**: Formats metrics (Put/Call ratios, Max Pain, ATM IV, 25-delta skew) into compact comparison tables for terminal summaries, newsletters, and predictors.
+- **Anchored Volatility Surface & Move Cones**: Integrates with `options_surface.py` to anchor SPY ATM implied volatility to the 30-day Cboe VIX index while using synchronized multi-day contracts (DTE >= 7) for underlying volatility cones, preventing post-market 0DTE pricing artifacts.
 
 ## Usage
 

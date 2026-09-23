@@ -584,10 +584,26 @@ class MassiveOptionsClient:
         self,
         ticker: str,
         current_price: float | None = None,
+        min_dte: int | None = None,
     ) -> list[dict[str, Any]]:
         """Fallback for Free Tier accounts: fetches contracts reference for calls and puts near spot + EOD bars, then calculates IV & Greeks locally."""
         today = datetime.datetime.now(datetime.UTC).date()
         today_str = today.isoformat()
+
+        # Determine if session is post-market or weekend
+        now_et = datetime.datetime.now(datetime.UTC).astimezone(datetime.timezone(datetime.timedelta(hours=-4)))
+        is_post_market = now_et.hour >= 16 or now_et.weekday() >= 5
+
+        # If min_dte is not explicitly set, ensure post-market never selects today's expired contracts
+        if min_dte is not None:
+            effective_min_dte = min_dte
+        elif is_post_market:
+            effective_min_dte = 1
+        else:
+            effective_min_dte = 0
+
+        earliest_exp = today + datetime.timedelta(days=effective_min_dte)
+        earliest_exp_str = earliest_exp.isoformat()
 
         ref_px = current_price
         if not ref_px or ref_px <= 0:
@@ -611,7 +627,7 @@ class MassiveOptionsClient:
                 params = {
                     "underlying_ticker": ticker.upper(),
                     "contract_type": c_type,
-                    "expiration_date.gte": today_str,
+                    "expiration_date.gte": earliest_exp_str,
                     "limit": 50,
                     "apiKey": self.api_key,
                 }
@@ -638,8 +654,14 @@ class MassiveOptionsClient:
             if not ref_contracts:
                 return []
 
-            # Step 2: Target nearest 1-2 active expirations
-            exp_dates = sorted({c["expiration_date"] for c in ref_contracts if "expiration_date" in c})
+            # Step 2: Target nearest active expiration satisfying earliest_exp_str
+            exp_dates = sorted(
+                {
+                    c["expiration_date"]
+                    for c in ref_contracts
+                    if "expiration_date" in c and c["expiration_date"] >= earliest_exp_str
+                }
+            )
             target_exps = exp_dates[:1] if exp_dates else []
 
             active_refs = [c for c in ref_contracts if c.get("expiration_date") in target_exps]
@@ -687,7 +709,12 @@ class MassiveOptionsClient:
 
                 # Step 4: Compute local Black-Scholes IV and Greeks
                 exp_date = datetime.date.fromisoformat(exp_date_str)
-                dte = max(1, (exp_date - today).days)
+                bar_t = bar.get("t")
+                if bar_t and isinstance(bar_t, (int, float)):
+                    bar_date = datetime.datetime.fromtimestamp(bar_t / 1000, datetime.UTC).date()
+                    dte = max(1, (exp_date - bar_date).days)
+                else:
+                    dte = max(1, (exp_date - today).days)
                 t_years = dte / 365.0
 
                 iv = None
@@ -740,7 +767,12 @@ class MassiveOptionsClient:
 
             return results
 
-    async def _fetch_from_api(self, ticker: str, current_price: float | None = None) -> dict[str, Any]:
+    async def _fetch_from_api(
+        self,
+        ticker: str,
+        current_price: float | None = None,
+        min_dte: int | None = None,
+    ) -> dict[str, Any]:
         """Fetch options data, gracefully falling back to Free Tier pipeline on 403 NOT_AUTHORIZED."""
         if not self.api_key:
             raise ValueError("Massive/Polygon API key is not configured. Set MASSIVE_API_KEY in .env.")
@@ -750,7 +782,7 @@ class MassiveOptionsClient:
             logger.debug(
                 f"Skipping snapshot endpoint for {ticker} (account confirmed Free Tier); using Free Tier pipeline."
             )
-            results = await self._fetch_free_tier_contracts(ticker, current_price=current_price)
+            results = await self._fetch_free_tier_contracts(ticker, current_price=current_price, min_dte=min_dte)
             return {"status": "OK", "results": results}
 
         # Attempt Snapshot endpoint
@@ -772,7 +804,7 @@ class MassiveOptionsClient:
                 logger.info(
                     f"Massive snapshot requires paid plan for {ticker}; activating Free Tier EOD + local Black-Scholes pipeline."
                 )
-                results = await self._fetch_free_tier_contracts(ticker, current_price=current_price)
+                results = await self._fetch_free_tier_contracts(ticker, current_price=current_price, min_dte=min_dte)
                 return {"status": "OK", "results": results}
 
             if resp.status_code == 429:
@@ -791,6 +823,7 @@ class MassiveOptionsClient:
         ticker: str,
         current_price: float | None = None,
         force_refresh: bool = False,
+        min_dte: int | None = None,
     ) -> dict[str, Any]:
         """Retrieve options snapshot from Supabase cache, in-memory cache, or Massive API, computing metrics."""
         ticker = ticker.upper().strip()
@@ -843,7 +876,7 @@ class MassiveOptionsClient:
             current_price = await self.get_spot_price(ticker)
 
         # 3. Fetch fresh snapshot from API (with automatic Free Tier fallback)
-        raw_data = await self._fetch_from_api(ticker, current_price=current_price)
+        raw_data = await self._fetch_from_api(ticker, current_price=current_price, min_dte=min_dte)
         results = raw_data.get("results", [])
         if not results:
             return {

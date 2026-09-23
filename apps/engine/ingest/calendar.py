@@ -16,6 +16,36 @@ from core.llm.clients import get_deepseek_client
 from core.models import DecisionsResponse
 from memory.store import add_memory
 
+ALLOWED_CALENDAR_COUNTRIES: set[str] = {
+    "united states",
+    "us",
+    "usa",
+    "canada",
+    "euro area",
+    "eurozone",
+    "germany",
+    "france",
+    "united kingdom",
+    "uk",
+    "italy",
+    "spain",
+    "switzerland",
+    "netherlands",
+    "china",
+    "india",
+    "japan",
+    "south korea",
+    "korea",
+    "global",
+}
+
+
+def is_critical_country(country: str | None) -> bool:
+    """Returns True if the country is among the top 10 global economies or systemic global macro."""
+    if not country:
+        return False
+    return country.strip().lower() in ALLOWED_CALENDAR_COUNTRIES
+
 
 class CalendarPipeline:
     """Pipeline for fetching and processing economic calendar data."""
@@ -121,18 +151,23 @@ class CalendarPipeline:
 
         return events
 
+    def filter_events(self, events: list[dict]) -> list[dict]:
+        """Filters events to only include critical global economies and systemic macro."""
+        return [e for e in events if is_critical_country(e.get("country"))]
+
     async def run(self):
         """Executes the calendar ingestion pipeline."""
         logger.info("Starting Economic Calendar Ingestion...")
 
         html = self.fetch_html()
-        events = self.parse_events(html)
+        raw_events = self.parse_events(html)
+        events = self.filter_events(raw_events)
 
         if not events:
-            logger.warning("No events parsed from calendar.")
+            logger.warning("No critical economy events parsed from calendar.")
             return 0
 
-        logger.info(f"Parsed {len(events)} events. Sending to DeepSeek for relevance analysis...")
+        logger.info(f"Parsed {len(events)} critical events. Sending to DeepSeek for relevance analysis...")
 
         # DeepSeek to identify high-importance events
         events_text = "\n".join(
@@ -146,13 +181,13 @@ class CalendarPipeline:
         prompt = f"""Analyze the following economic calendar events and identify the most RELEVANT ones 
         (Importance Score >= 8) or those that match specific CALENDAR STRATEGIES.
         
-        Focus on:
-        1. Central Bank decisions (Fed, ECB, BoJ, etc.) - LABEL THESE AS "CENTRAL_BANK"
-        2. Key inflation data (CPI, PCE) - LABEL THESE AS "INFLATION"
-        3. Employment reports (NFP)
-        4. GDP releases
-        5. Geopolitical summits or major policy shifts.
-        6. Major Market Holidays - LABEL THESE AS "HOLIDAY"
+        Focus strictly on events that move US equity markets (S&P 500, Sector ETFs, Treasuries, Tech/Commodities):
+        1. Central Bank decisions from major economies ONLY (Federal Reserve, ECB, BoJ, BoE, PBOC) - LABEL THESE AS "CENTRAL_BANK"
+        2. Key inflation data (US CPI, Core CPI, PPI, PCE, Eurozone CPI) - LABEL THESE AS "INFLATION"
+        3. Employment reports (US NFP, Jobless Claims, Unemployment) - LABEL THESE AS "EMPLOYMENT"
+        4. GDP releases from top economies (US, Euro Area, China, Japan, Germany) - LABEL THESE AS "GDP"
+        5. Geopolitical summits (G7, G20, OPEC/OPEC+ oil production quotas, bilateral US trade talks) - LABEL THESE AS "GEOPOLITICAL"
+        6. Major Market Holidays (US NYSE/Nasdaq holidays) - LABEL THESE AS "HOLIDAY"
 
         STRATEGY MATCHING:
         - If an event is a Central Bank meeting, it aligns with 'Pre-ECB/Fed Drift'.

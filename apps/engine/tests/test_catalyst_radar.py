@@ -61,6 +61,26 @@ def test_calculate_date_offset_stages():
     assert label == "expired"
 
 
+def test_clean_catalyst_title_prefix_stripping():
+    """Verify that strategy/category prefixes (GEOPOLITICAL:, INFLATION:, etc.) are cleanly stripped."""
+    from analysis.catalyst_radar import clean_catalyst_title
+
+    raw1 = "[CALENDAR EVENT] (N/A) 2026-09-24: GEOPOLITICAL: US President Trump and President Xi Summit | Impact: HIGH | Date: 2026-09-24"
+    assert clean_catalyst_title(raw1) == "US President Trump and President Xi Summit"
+
+    raw2 = "[CALENDAR EVENT] (02:00 PM) 2026-09-25: INFLATION: US Michigan 5 Year Inflation: Long-term inflation expectation | Impact: NEUTRAL"
+    assert clean_catalyst_title(raw2) == "US Michigan 5 Year Inflation"
+
+    raw3 = "[CALENDAR EVENT] (01:00 PM) 2026-09-23: South Africa Interest Rate Decision (CENTRAL_BANK): Central bank decision"
+    assert clean_catalyst_title(raw3) == "South Africa Interest Rate Decision"
+
+    raw4 = "[CALENDAR EVENT] (08:30 AM) 2026-09-24: EMPLOYMENT: US Initial Jobless Claims: Weekly claims report"
+    assert clean_catalyst_title(raw4) == "US Initial Jobless Claims"
+
+    raw5 = "[CALENDAR EVENT] (12:30 PM) 2026-09-29: GDP: Canada GDP MoM JUL: Monthly GDP"
+    assert clean_catalyst_title(raw5) == "Canada GDP MoM JUL"
+
+
 def test_match_concepts_to_catalysts():
     """Verify vector similarity matching, velocity thresholding, and digestion inclusion."""
     ref_date = date(2026, 9, 9)

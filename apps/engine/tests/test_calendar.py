@@ -28,23 +28,23 @@ REALISTIC_TE_HTML = """
     <tr>
         <th colspan="6">Wednesday September 02 2026</th>
     </tr>
-    <tr data-url="/australia/gdp-growth" data-id="401396" data-country="australia" data-category="gdp growth rate" data-event="gdp growth rate qoq" data-symbol="AUNAGDPC">
+    <tr data-url="/japan/gdp-growth" data-id="401396" data-country="japan" data-category="gdp growth rate" data-event="gdp growth rate qoq" data-symbol="JPNAGDPC">
         <td class="2026-09-02" style="white-space: nowrap;">
             <span class="event-0 calendar-date-3">01:30 AM</span>
         </td>
         <td class="calendar-item" style="white-space: nowrap">
             <table style="padding: 0px;">
                 <tr>
-                    <td style="padding-left: 5px;"><div class="flag flag-au" title="Australia"></div></td>
-                    <td class="calendar-iso" style="padding-left: 5px;" title="Australia">AU</td>
+                    <td style="padding-left: 5px;"><div class="flag flag-jp" title="Japan"></div></td>
+                    <td class="calendar-iso" style="padding-left: 5px;" title="Japan">JP</td>
                 </tr>
             </table>
         </td>
         <td style="max-width: 250px; overflow-x: hidden;">
-            <a class="calendar-event" href="/australia/gdp-growth">GDP Growth Rate QoQ</a> <span class="calendar-reference">Q2</span>
+            <a class="calendar-event" href="/japan/gdp-growth">GDP Growth Rate QoQ</a> <span class="calendar-reference">Q2</span>
         </td>
         <td class="calendar-item calendar-item-positive">
-            <a href="/australia/gdp-growth"><span id="actual">0.4%</span></a>
+            <a href="/japan/gdp-growth"><span id="actual">0.4%</span></a>
         </td>
         <td class="calendar-item calendar-item-positive">
             <span id="previous">0.3%</span>
@@ -92,12 +92,59 @@ def test_parse_events_realistic_nested_html(pipeline):
     assert len(events) == 1
     assert events[0]["date"] == "2026-09-02"
     assert events[0]["time"] == "01:30 AM"
-    assert events[0]["country"] == "Australia"
+    assert events[0]["country"] == "Japan"
     assert "GDP Growth Rate QoQ" in events[0]["event"]
     assert events[0]["actual"] == "0.4%"
     assert events[0]["previous"] == "0.3%"
     assert events[0]["consensus"] == "0.3%"
     assert events[0]["forecast"] == "0.2%"
+
+
+def test_critical_country_filtering():
+    """Verify that only top-10 global economies and systemic macro countries are retained."""
+    from ingest.calendar import is_critical_country
+
+    # Allowed major economies / markets
+    assert is_critical_country("United States") is True
+    assert is_critical_country("US") is True
+    assert is_critical_country("USA") is True
+    assert is_critical_country("Canada") is True
+    assert is_critical_country("Euro Area") is True
+    assert is_critical_country("Germany") is True
+    assert is_critical_country("France") is True
+    assert is_critical_country("United Kingdom") is True
+    assert is_critical_country("UK") is True
+    assert is_critical_country("China") is True
+    assert is_critical_country("India") is True
+    assert is_critical_country("Japan") is True
+    assert is_critical_country("South Korea") is True
+    assert is_critical_country("Korea") is True
+    assert is_critical_country("Global") is True
+
+    # Excluded non-critical economies
+    assert is_critical_country("South Africa") is False
+    assert is_critical_country("Indonesia") is False
+    assert is_critical_country("Turkey") is False
+    assert is_critical_country("Mexico") is False
+    assert is_critical_country("Brazil") is False
+    assert is_critical_country("Colombia") is False
+    assert is_critical_country("Australia") is False
+    assert is_critical_country("Russia") is False
+    assert is_critical_country("") is False
+    assert is_critical_country(None) is False
+
+
+def test_pipeline_filter_events(pipeline):
+    """Verify filter_events drops non-critical countries."""
+    events = [
+        {"country": "South Africa", "event": "Interest Rate Decision"},
+        {"country": "United States", "event": "FOMC Rate Decision"},
+        {"country": "Indonesia", "event": "Interest Rate Decision"},
+        {"country": "Japan", "event": "BoJ Rate Decision"},
+    ]
+    filtered = pipeline.filter_events(events)
+    assert len(filtered) == 2
+    assert [e["country"] for e in filtered] == ["United States", "Japan"]
 
 
 @pytest.mark.asyncio
@@ -111,10 +158,10 @@ async def test_run_calendar_pipeline_deterministic_source_id(pipeline):
         mock_res = DecisionsResponse(
             macro_events=[
                 MacroEvent(
-                    event_name="Australian GDP Growth Print",
+                    event_name="Japan GDP Growth Print",
                     impact="BULLISH",
                     importance_score=9,
-                    reasoning="Australian growth beat expectations.",
+                    reasoning="Japan growth beat expectations.",
                     target_date="2026-09-02",
                     confidence=95,
                     source_id="[#0]",
@@ -137,7 +184,7 @@ async def test_run_calendar_pipeline_deterministic_source_id(pipeline):
         assert "2026-09-02" in kwargs["content"]
         assert kwargs["metadata"]["is_future_catalyst"] is True
         assert kwargs["metadata"]["event_time"] == "01:30 AM"
-        assert kwargs["metadata"]["country"] == "Australia"
+        assert kwargs["metadata"]["country"] == "Japan"
 
 
 @pytest.mark.asyncio

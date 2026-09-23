@@ -79,6 +79,11 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
     return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+const CATEGORY_PREFIX_RE =
+    /^(?:CENTRAL_BANK|INFLATION|EMPLOYMENT|GEOPOLITICAL|HOLIDAY|GDP|ToM\/PMI|EARNINGS)\s*:\s*/i;
+const CATEGORY_SUFFIX_RE =
+    /\s*\((?:CENTRAL_BANK|INFLATION|EMPLOYMENT|GEOPOLITICAL|HOLIDAY|GDP|ToM\/PMI|EARNINGS)\)\s*$/i;
+
 export function cleanCatalystTitle(content: string): string {
     let title = content.replace(/^\[CALENDAR EVENT\]\s*/i, '');
     title = title.replace(/^\([^)]*\)\s*/, '');
@@ -86,12 +91,17 @@ export function cleanCatalystTitle(content: string): string {
     if (title.includes('|')) {
         title = title.split('|')[0].trim();
     }
+    title = title.replace(CATEGORY_PREFIX_RE, '').trim();
     if (title.includes(':')) {
         const parts = title.split(':');
-        if (parts[0].trim().length > 3) {
-            title = parts[0].trim();
+        const headline = parts[0].trim();
+        if (CATEGORY_PREFIX_RE.test(`${headline}:`)) {
+            title = parts.slice(1).join(':').trim();
+        } else if (headline.length > 3) {
+            title = headline;
         }
     }
+    title = title.replace(CATEGORY_SUFFIX_RE, '').trim();
     return title.trim() || content.trim();
 }
 
@@ -106,13 +116,16 @@ export interface RadarRow {
     related_tickers?: string[] | unknown;
 }
 
-export function mapCatalystsToConcepts(
-    concepts: Concept[],
+export function calculateCompositeMatchScore(similarity: number, deltaDays: number): number {
+    const absDays = Math.abs(deltaDays);
+    const timeFactor = Math.max(0.4, 1.0 - 0.03 * Math.min(absDays, 14));
+    return similarity * timeFactor;
+}
+
+export function buildCatalystMap(
     radarRows: RadarRow[],
     now: Date = new Date(),
-): Concept[] {
-    if (!radarRows.length) return concepts;
-
+): Map<string, ConceptCatalyst> {
     const catalystMap = new Map<string, ConceptCatalyst>();
     for (const row of radarRows) {
         const dateOffset = calculateDateOffset(row.target_date, now);
@@ -120,9 +133,18 @@ export function mapCatalystsToConcepts(
             continue;
         }
 
+        const sim = Number(row.similarity) || 0;
+        const candidateScore = calculateCompositeMatchScore(sim, dateOffset.deltaDays);
+
         const existing = catalystMap.get(row.concept_id);
-        if (existing && Math.abs(existing.days_to_event) <= Math.abs(dateOffset.deltaDays)) {
-            continue;
+        if (existing) {
+            const existingScore = calculateCompositeMatchScore(
+                existing.similarity,
+                existing.days_to_event,
+            );
+            if (existingScore >= candidateScore) {
+                continue;
+            }
         }
 
         const tickers = Array.isArray(row.related_tickers) ? (row.related_tickers as string[]) : [];
@@ -140,7 +162,17 @@ export function mapCatalystsToConcepts(
             related_tickers: tickers,
         });
     }
+    return catalystMap;
+}
 
+export function mapCatalystsToConcepts(
+    concepts: Concept[],
+    radarRows: RadarRow[],
+    now: Date = new Date(),
+): Concept[] {
+    if (!radarRows.length) return concepts;
+
+    const catalystMap = buildCatalystMap(radarRows, now);
     for (const concept of concepts) {
         const cat = catalystMap.get(concept.id);
         if (cat) {

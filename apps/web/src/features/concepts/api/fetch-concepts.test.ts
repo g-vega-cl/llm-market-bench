@@ -83,6 +83,24 @@ describe('fetch-concepts utilities', () => {
                 cleanCatalystTitle('2026-09-11: Oracle Earnings Cloud Guidance | Impact: HIGH'),
             ).toBe('Oracle Earnings Cloud Guidance');
         });
+
+        it('strips strategy prefixes like GEOPOLITICAL:, INFLATION:, CENTRAL_BANK:, etc.', () => {
+            expect(
+                cleanCatalystTitle(
+                    '[CALENDAR EVENT] (N/A) 2026-09-24: GEOPOLITICAL: US President Trump and President Xi Summit | Impact: HIGH | Date: 2026-09-24',
+                ),
+            ).toBe('US President Trump and President Xi Summit');
+            expect(
+                cleanCatalystTitle(
+                    '[CALENDAR EVENT] (02:00 PM) 2026-09-25: INFLATION: US Michigan 5 Year Inflation: Long-term inflation expectation | Impact: NEUTRAL',
+                ),
+            ).toBe('US Michigan 5 Year Inflation');
+            expect(
+                cleanCatalystTitle(
+                    '[CALENDAR EVENT] (01:00 PM) 2026-09-23: South Africa Interest Rate Decision (CENTRAL_BANK): Central bank decision',
+                ),
+            ).toBe('South Africa Interest Rate Decision');
+        });
     });
 
     describe('parseVector', () => {
@@ -143,6 +161,49 @@ describe('fetch-concepts utilities', () => {
             expect(concepts[0].catalyst?.related_tickers).toEqual(['TSM', 'NVDA']);
 
             expect(concepts[1].catalyst).toBeUndefined();
+        });
+
+        it('does not allow low-similarity Day-0 catalysts to overwrite high-similarity future catalysts', () => {
+            const concepts: Concept[] = [
+                {
+                    id: 'c1',
+                    concept_name: 'Federal Reserve Rate Hike',
+                    mention_count: 10,
+                    velocity_score: 5.0,
+                    first_mention_at: '2026-09-01',
+                    last_mention_at: '2026-09-09',
+                    pca_x: 0.1,
+                    pca_y: 0.2,
+                },
+            ];
+
+            const radarRows = [
+                // Day 0 catalyst with low similarity (0.42)
+                {
+                    concept_id: 'c1',
+                    catalyst_id: 'm_sa',
+                    catalyst_title: 'South Africa Interest Rate Decision',
+                    target_date: '2026-09-09',
+                    impact: 'NEUTRAL',
+                    similarity: 0.42,
+                },
+                // Tomorrow catalyst with high similarity (0.88)
+                {
+                    concept_id: 'c1',
+                    catalyst_id: 'm_fomc',
+                    catalyst_title: 'September FOMC Rate Decision',
+                    target_date: '2026-09-10',
+                    impact: 'HAWKISH',
+                    similarity: 0.88,
+                },
+            ];
+
+            const refDate = new Date('2026-09-09T12:00:00Z');
+            mapCatalystsToConcepts(concepts, radarRows, refDate);
+
+            expect(concepts[0].catalyst).toBeDefined();
+            expect(concepts[0].catalyst?.catalyst_title).toBe('September FOMC Rate Decision');
+            expect(concepts[0].catalyst?.catalyst_id).toBe('m_fomc');
         });
     });
 });

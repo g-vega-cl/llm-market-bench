@@ -129,8 +129,18 @@ def cosine_similarity(vec_a: Any, vec_b: Any) -> float:
     return dot / (math.sqrt(norm_a) * math.sqrt(norm_b))
 
 
+CATEGORY_PREFIX_RE = re.compile(
+    r"^(?:CENTRAL_BANK|INFLATION|EMPLOYMENT|GEOPOLITICAL|HOLIDAY|GDP|ToM/PMI|EARNINGS)\s*:\s*",
+    flags=re.IGNORECASE,
+)
+CATEGORY_SUFFIX_RE = re.compile(
+    r"\s*\((?:CENTRAL_BANK|INFLATION|EMPLOYMENT|GEOPOLITICAL|HOLIDAY|GDP|ToM/PMI|EARNINGS)\)\s*$",
+    flags=re.IGNORECASE,
+)
+
+
 def clean_catalyst_title(content: str) -> str:
-    """Strips [CALENDAR EVENT] prefix, time tags, and extracts concise title."""
+    """Strips [CALENDAR EVENT] prefix, time tags, strategy labels, and extracts concise title."""
     title = re.sub(r"^\[CALENDAR EVENT\]\s*", "", content, flags=re.IGNORECASE)
     title = re.sub(r"^\([^)]*\)\s*", "", title)
     # If date was prepended like "2026-09-11: ", strip it
@@ -138,11 +148,18 @@ def clean_catalyst_title(content: str) -> str:
     # If impact / date suffix exists, split by pipe and take the first part
     if "|" in title:
         title = title.split("|")[0].strip()
+    # Strip leading strategy label prefix (e.g. "GEOPOLITICAL: ", "INFLATION: ")
+    title = CATEGORY_PREFIX_RE.sub("", title).strip()
     # Extract event headline if separated by colon from body description
     if ":" in title:
         parts = title.split(":", 1)
-        if len(parts[0].strip()) > 3:
-            title = parts[0].strip()
+        headline = parts[0].strip()
+        if CATEGORY_PREFIX_RE.match(headline + ":"):
+            title = parts[1].strip()
+        elif len(headline) > 3:
+            title = headline
+    # Strip trailing strategy label suffix (e.g. " (CENTRAL_BANK)")
+    title = CATEGORY_SUFFIX_RE.sub("", title).strip()
     return title.strip() or content.strip()
 
 
@@ -237,7 +254,7 @@ def compute_and_store_catalyst_radar(
     sb_client: Any | None = None,
     days_ahead: int = 30,
     min_velocity: float = 1.0,
-    min_similarity: float = 0.35,
+    min_similarity: float = 0.55,
     ref_date: date | None = None,
 ) -> int:
     """Pre-computes vector collisions between concepts and calendar triggers, saving to catalyst_radar table."""

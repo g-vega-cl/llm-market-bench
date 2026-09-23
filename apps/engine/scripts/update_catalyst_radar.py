@@ -34,8 +34,8 @@ def main():
     parser.add_argument(
         "--min-similarity",
         type=float,
-        default=0.35,
-        help="Minimum cosine similarity threshold (default: 0.35).",
+        default=0.55,
+        help="Minimum cosine similarity threshold (default: 0.55).",
     )
     parser.add_argument(
         "--dry-run",

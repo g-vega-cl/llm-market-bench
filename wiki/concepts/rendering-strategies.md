@@ -29,9 +29,10 @@ This is the primary pattern for chronological feeds (`/reasoning`, `/memories`) 
 
 #### Implementation Standard
 1. **Server Loader**: Constrains the database fetch to an aggressive limit (typically 5 items).
-2. **Client Fetcher**: Runs the query with the full limit (typically 50 items).
-3. **Query Factory configuration**: Uses `staleTime: 0` (or `staleTime: 1000 * 30` depending on latency requirements) to mark the server-rendered payload as immediately stale in the browser cache.
-4. **Hydration Phase**: On mount, React hydrates the DOM using the server's 5 items (FCP is instant, CLS is avoided). Immediately after hydration, the query client fires the background request for 50 items, expanding the UI seamlessly.
+2. **Client Fetcher**: Runs the query with expanded bounds (for example, 50 items for general feeds or 200 items for full-day execution ledgers).
+3. **Query Factory configuration**: When a positive `staleTime` (such as 2 minutes) is used to prevent aggressive polling on focus, set `initialDataUpdatedAt: 0` in `useSuspenseQuery` or `useQuery`. This forces TanStack Query to treat the initial server payload as immediately stale on mount, firing the expansion fetch in the background.
+4. **Hydration Phase**: On mount, React hydrates the DOM using the server's 5 items (FCP is instant, CLS is avoided). Immediately after hydration, the query client fires the background request, expanding the UI seamlessly.
+5. **Feed-specific bounds**: In composite dashboard loaders (such as `fetchTodayData`), pass independent limits (such as `tradesLimit: 200`) so critical execution histories expand to the full day while markdown and memory feeds remain bounded.
 
 #### Case Study: Focus Node "Neighborhood" SSR (`/memories/chain/$memoryId`)
 For recursive parent/descendant event chains, loading the entire hierarchical tree on the server blocks edge execution.

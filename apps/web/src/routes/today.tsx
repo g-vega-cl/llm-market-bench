@@ -4,13 +4,13 @@ import { fetchTodayData } from '~/features/today/api/fetch-today-data';
 import { TodayPage } from '~/features/today/pages/TodayPage';
 
 const getTodayData = createServerFn({ method: 'GET' })
-    .inputValidator((d: { limit?: number } | undefined) => d)
+    .inputValidator((d: { limit?: number; tradesLimit?: number } | undefined) => d)
     .handler(async ({ data }) => {
-        return fetchTodayData(data?.limit ?? 50);
+        return fetchTodayData(data?.limit ?? 50, data?.tradesLimit);
     });
 
 export const Route = createFileRoute('/today')({
-    loader: async () => await getTodayData({ data: { limit: 5 } }),
+    loader: async () => await getTodayData({ data: { limit: 5, tradesLimit: 5 } }),
     component: RouteComponent,
 });
 
@@ -21,7 +21,7 @@ function RouteComponent() {
     return (
         <TodayPage
             initialData={initialData}
-            fetchFn={() => getTodayDataFn({ data: { limit: 50 } })}
+            fetchFn={() => getTodayDataFn({ data: { limit: 50, tradesLimit: 200 } })}
         />
     );
 }

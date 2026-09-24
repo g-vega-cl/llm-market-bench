@@ -51,6 +51,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
     const { data } = useSuspenseQuery({
         ...todayQueries.data({ fetchFn }),
         initialData,
+        initialDataUpdatedAt: 0,
         refetchInterval: 1000 * 60 * 5, // Auto-refetch every 5 minutes
     });
 

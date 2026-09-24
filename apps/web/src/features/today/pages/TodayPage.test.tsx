@@ -147,4 +147,103 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         // Verify it displays the specific date and time passed to the synthesis card
         expect(screen.getByText('Thursday, May 28, 2026 • 10:45 AM ET')).toBeInTheDocument();
     });
+
+    it('triggers background hydration fetch to expand trades from initial 5 to whole day', async () => {
+        const initialTrades = [
+            {
+                id: 't1',
+                ticker: 'SPY',
+                signal: 'BUY',
+                price: 500,
+                executed_at: '2026-05-29T14:00:00Z',
+                portfolios: { owner_id: 'Claude' },
+                formattedTime: '10:00 AM',
+            },
+            {
+                id: 't2',
+                ticker: 'QQQ',
+                signal: 'SELL',
+                price: 400,
+                executed_at: '2026-05-29T14:01:00Z',
+                portfolios: { owner_id: 'Claude' },
+                formattedTime: '10:01 AM',
+            },
+            {
+                id: 't3',
+                ticker: 'AAPL',
+                signal: 'BUY',
+                price: 180,
+                executed_at: '2026-05-29T14:02:00Z',
+                portfolios: { owner_id: 'Claude' },
+                formattedTime: '10:02 AM',
+            },
+            {
+                id: 't4',
+                ticker: 'MSFT',
+                signal: 'BUY',
+                price: 410,
+                executed_at: '2026-05-29T14:03:00Z',
+                portfolios: { owner_id: 'Claude' },
+                formattedTime: '10:03 AM',
+            },
+            {
+                id: 't5',
+                ticker: 'NVDA',
+                signal: 'SELL',
+                price: 900,
+                executed_at: '2026-05-29T14:04:00Z',
+                portfolios: { owner_id: 'Claude' },
+                formattedTime: '10:04 AM',
+            },
+        ];
+        const expandedTrades = [
+            ...initialTrades,
+            {
+                id: 't6',
+                ticker: 'GOOGL',
+                signal: 'BUY',
+                price: 170,
+                executed_at: '2026-05-29T13:30:00Z',
+                portfolios: { owner_id: 'Claude' },
+                formattedTime: '09:30 AM',
+            },
+            {
+                id: 't7',
+                ticker: 'AMZN',
+                signal: 'BUY',
+                price: 185,
+                executed_at: '2026-05-29T13:30:00Z',
+                portfolios: { owner_id: 'Claude' },
+                formattedTime: '09:30 AM',
+            },
+        ];
+
+        const initialPayload = {
+            ...emptyTodayData,
+            trades: initialTrades,
+        } as unknown as TodayData;
+
+        const expandedPayload = {
+            ...emptyTodayData,
+            trades: expandedTrades,
+        } as unknown as TodayData;
+
+        const fetchFn = vi.fn().mockResolvedValue(expandedPayload);
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <TodayPage initialData={initialPayload} fetchFn={fetchFn} />
+            </QueryClientProvider>,
+        );
+
+        // Initially renders initial 5 trades
+        expect(screen.getByText('NVDA')).toBeInTheDocument();
+
+        // Background refetch should be called immediately on mount due to initialDataUpdatedAt: 0
+        expect(fetchFn).toHaveBeenCalledTimes(1);
+
+        // After fetchFn resolves, expanded trades like GOOGL become visible
+        expect(await screen.findByText('GOOGL')).toBeInTheDocument();
+        expect(screen.getByText('AMZN')).toBeInTheDocument();
+    });
 });

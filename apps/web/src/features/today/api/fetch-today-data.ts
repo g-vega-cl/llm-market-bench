@@ -98,12 +98,14 @@ export function buildHistoryGroup(
 
 let cachedTodayData: TodayData | null = null;
 let cachedLimit = 0;
+let cachedTradesLimit = 0;
 let lastFetchTime = 0;
 const CACHE_TTL = 30000; // 30 seconds
 
 export function clearTodayDataCache() {
     cachedTodayData = null;
     cachedLimit = 0;
+    cachedTradesLimit = 0;
     lastFetchTime = 0;
 }
 
@@ -146,10 +148,17 @@ function extractDate(content: string): string | null {
     return match ? match[1] : null;
 }
 
-export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
+export async function fetchTodayData(limit: number = 50, tradesLimit?: number): Promise<TodayData> {
+    const effectiveTradesLimit = tradesLimit !== undefined ? tradesLimit : limit;
+
     const nowTime = Date.now();
     // Do not use in-memory cache if we are asking for more items than previously cached
-    if (cachedTodayData && nowTime - lastFetchTime < CACHE_TTL && limit <= cachedLimit) {
+    if (
+        cachedTodayData &&
+        nowTime - lastFetchTime < CACHE_TTL &&
+        limit <= cachedLimit &&
+        effectiveTradesLimit <= cachedTradesLimit
+    ) {
         return cachedTodayData;
     }
 
@@ -180,7 +189,7 @@ export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
             .select('*, portfolios(owner_id), decisions(*)')
             .gte('executed_at', startOfDay)
             .order('executed_at', { ascending: false })
-            .limit(limit),
+            .limit(effectiveTradesLimit),
         supabase
             .from('decisions')
             .select('*')
@@ -324,6 +333,7 @@ export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
 
     cachedTodayData = result;
     cachedLimit = limit;
+    cachedTradesLimit = effectiveTradesLimit;
     lastFetchTime = nowTime;
 
     return result;

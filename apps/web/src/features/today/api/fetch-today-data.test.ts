@@ -306,4 +306,33 @@ describe('fetchTodayData zero-load TDD checks', () => {
         await fetchTodayData();
         expect(selectQueries.trades).toBe('*, portfolios(owner_id), decisions(*)');
     });
+
+    it('allows tradesLimit to specifically control the trades query limit independently of the general feed limit', async () => {
+        const queryLimits: Record<string, number> = {};
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation((l) => {
+                    queryLimits[table] = l;
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                in: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        // When fetching with general limit 50 and tradesLimit 200:
+        await fetchTodayData(50, 200);
+
+        expect(queryLimits.trades).toBe(200);
+        expect(queryLimits.newsletter_snapshots).toBe(50);
+        expect(queryLimits.decisions).toBe(50);
+        expect(queryLimits.memories).toBe(50);
+    });
 });

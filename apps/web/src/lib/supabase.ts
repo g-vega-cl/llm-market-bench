@@ -11,15 +11,23 @@ export function getSupabaseServerClient() {
     return createServerClient(supabaseUrl, supabaseAnonKey, {
         cookies: {
             getAll() {
-                return Object.entries(getCookies()).map(([name, value]) => ({
-                    name,
-                    value,
-                }));
+                try {
+                    return Object.entries(getCookies()).map(([name, value]) => ({
+                        name,
+                        value,
+                    }));
+                } catch {
+                    return [];
+                }
             },
             setAll(cookies: { name: string; value: string; options?: Record<string, unknown> }[]) {
-                cookies.forEach((cookie) => {
-                    setCookie(cookie.name, cookie.value, cookie.options);
-                });
+                try {
+                    cookies.forEach((cookie) => {
+                        setCookie(cookie.name, cookie.value, cookie.options);
+                    });
+                } catch {
+                    // Outside active HTTP request context
+                }
             },
         },
     });

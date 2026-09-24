@@ -1,6 +1,8 @@
 import re
+import time
 
 from core.llm import tools
+from core.tool_audit import async_record_tool_audit
 
 
 def _is_valid_ticker(ticker: str) -> bool:
@@ -38,7 +40,17 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
     elif name == "get_position_pnl":
         return await tools.execute_position_pnl_tool(args["ticker"], owner_id=model_name)
     elif name == "get_volatility_metrics":
-        return await tools.execute_volatility_metrics_tool(args["ticker"], args.get("days", 14))
+        start_t = time.perf_counter()
+        result = await tools.execute_volatility_metrics_tool(args["ticker"], args.get("days", 14))
+        duration_ms = int((time.perf_counter() - start_t) * 1000)
+        async_record_tool_audit(
+            tool_name="get_volatility_metrics",
+            tool_args=args,
+            tool_result=result,
+            duration_ms=duration_ms,
+            model_name=model_name,
+        )
+        return result
     elif name == "get_sector_alternatives":
         return await tools.execute_sector_alternatives_tool(args["ticker"])
     elif name == "calculate_buy_quantity":

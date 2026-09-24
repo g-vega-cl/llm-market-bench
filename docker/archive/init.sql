@@ -33,8 +33,27 @@ CREATE INDEX IF NOT EXISTS idx_reasoning_logs_task_type ON public.llm_reasoning_
 CREATE INDEX IF NOT EXISTS idx_reasoning_logs_created_at ON public.llm_reasoning_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_reasoning_logs_metadata_source_id ON public.llm_reasoning_logs USING gin (metadata);
 
+-- Create Tool Execution Logs table
+CREATE TABLE IF NOT EXISTS public.tool_execution_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tool_name TEXT NOT NULL,
+    model_name TEXT,
+    tool_args JSONB NOT NULL DEFAULT '{}'::jsonb,
+    tool_result TEXT,
+    duration_ms INTEGER,
+    status TEXT DEFAULT 'success',
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Indices for tool execution queries
+CREATE INDEX IF NOT EXISTS idx_tool_logs_tool_name ON public.tool_execution_logs(tool_name);
+CREATE INDEX IF NOT EXISTS idx_tool_logs_created_at ON public.tool_execution_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_tool_logs_model_name ON public.tool_execution_logs(model_name);
+
 -- Grant table access
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, postgres;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, postgres;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, postgres;
+

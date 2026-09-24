@@ -4,6 +4,12 @@ A living document of features and improvements in progress or planned for the pl
 
 ## Active Development
 
+- [ ] **Local Tool Audit Logging (Zero Supabase Quota Impact)**
+  - [x] Ingress & Schema: PostgREST `public.tool_execution_logs` on port 3001 exposed via Cloudflare Tunnel (`https://benchify-archive-db.clvg.uk`).
+  - [x] Phase 1: `get_volatility_metrics` (Async background logging, 1 MB safety truncation, zero Supabase overlap).
+  - [ ] Phase 2: Valuation and screening tools (`audit_financial_valuation`, `get_sector_alternatives`, `find_uncorrelated_assets`, `run_stock_screener`).
+  - [ ] Phase 3: Research and grounding tools (`web_search`, `get_ticker_news`, `search_prediction_markets`, `get_prediction_market_odds`).
+  - [ ] Phase 4: Daily Predictor macro suite (`get_calendar_scenario_analysis`, `get_macro_options_sentiment`, `get_today_economic_releases`, `get_global_macro_context`, `get_volatility_index_details`) if offloading `daily_predictions.market_context` from Supabase to preserve quota.
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [x] **Find trading papers not just investing** - But low sell high?

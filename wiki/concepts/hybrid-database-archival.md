@@ -44,6 +44,8 @@ Supabase serves as the hot, low-latency transactional database for live trading 
 - Managed via `docker/archive/docker-compose.yml` with persistent storage on local disk (`/mnt/docker-data`).
 - Runs `ankane/pgvector` on port 5433 for direct local SQL connections.
 - Runs `postgrest/postgrest` on port 3001 to expose a native HTTP REST API matching Supabase's API format.
+- Exposes `tool_execution_logs` for non-blocking audit logging of analytical tool calls (`get_volatility_metrics`, etc.) without consuming Supabase storage quota.
+
 
 ### 3. Remote Ingress via Cloudflare Tunnel
 - Exposes the local PostgREST instance via Cloudflare Tunnel at `https://benchify-archive-db.clvg.uk`.

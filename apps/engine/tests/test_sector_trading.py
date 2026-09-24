@@ -431,5 +431,6 @@ async def test_run_sector_trade_status():
 
     assert res["status"] == "success"
     assert res["action"] == "status"
-    assert len(res["portfolios"]) == 5
-
+    assert len(res["portfolios"]) == 7
+    assert "sys-sector-ls-30d" in res["portfolios"]
+    assert "sys-sector-ls-90d" in res["portfolios"]

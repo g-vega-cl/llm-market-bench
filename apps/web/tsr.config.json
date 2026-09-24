@@ -1,0 +1,5 @@
+{
+    "$schema": "https://json.schemastore.org/tsr-config.json",
+    "routeFileIgnorePrefix": "-",
+    "routeFileIgnorePattern": "\\.((test|spec)\\.(js|jsx|ts|tsx))$"
+}

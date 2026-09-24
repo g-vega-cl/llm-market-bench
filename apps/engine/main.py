@@ -733,8 +733,8 @@ async def _stage_snapshots_and_pca(sb_client):
                 all_tickers.update(p.positions.keys())
                 active_portfolios.append(p)
 
-            # Handle open short positions (e.g. sys-sector-ls-consensus)
-            if owner == "sys-sector-ls-consensus" and p.id:
+            # Handle open short positions (e.g. sys-sector-ls-consensus, sys-sector-ls-30d, sys-sector-ls-90d)
+            if owner.startswith("sys-sector-ls-") and p.id:
                 try:
                     short_res = (
                         sb_client.table("trades")

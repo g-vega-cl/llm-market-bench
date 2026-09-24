@@ -32,6 +32,13 @@ from execution.daily_trading import (
 from execution.portfolio import Portfolio
 
 SYS_SECTOR_LS_OWNER_ID = "sys-sector-ls-consensus"
+SYS_SECTOR_LS_30D_OWNER_ID = "sys-sector-ls-30d"
+SYS_SECTOR_LS_90D_OWNER_ID = "sys-sector-ls-90d"
+ALL_SECTOR_LS_OWNER_IDS = [
+    SYS_SECTOR_LS_OWNER_ID,
+    SYS_SECTOR_LS_30D_OWNER_ID,
+    SYS_SECTOR_LS_90D_OWNER_ID,
+]
 SYS_SECTOR_UNCORR_20D_OWNER_ID = "sys-sector-uncorr-20d"
 SYS_SECTOR_UNCORR_7D_OWNER_ID = "sys-sector-uncorr-7d"
 SYS_SECTOR_NAIVE_MOM_OWNER_ID = "sys-sector-naive-momentum"
@@ -122,6 +129,11 @@ def resolve_sector_predictions(predictions: list[dict]) -> tuple[list[str], list
     clean_shorts = sorted(list(short_set - conflicts))
 
     return clean_longs, clean_shorts
+
+
+def resolve_horizon_predictions(predictions: list[dict], timeframe: str) -> list[dict]:
+    """Filter predictions to only those matching the specified forecast horizon timeframe."""
+    return [p for p in predictions if (p.get("timeframe") or "").strip().lower() == timeframe.strip().lower()]
 
 
 def resolve_mechanical_sectors(
@@ -248,8 +260,9 @@ async def execute_system_sector_rebalance(
     predictions: list[dict],
     price_map: dict[str, dict[str, float]],
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    owner_id: str = SYS_SECTOR_LS_OWNER_ID,
 ) -> dict[str, Any]:
-    """Execute weekly rebalance for the sector long/short portfolio (50% long, 50% short)."""
+    """Execute rebalance for a sector long/short portfolio (50% long, 50% short)."""
     if week_start_date < SYS_SECTOR_START_DATE:
         logger.info(
             f"Skipping sector rebalance for window starting {week_start_date} (before portfolio start date {SYS_SECTOR_START_DATE})"
@@ -262,10 +275,10 @@ async def execute_system_sector_rebalance(
     long_sectors, short_sectors = resolve_sector_predictions(predictions)
 
     if not long_sectors and not short_sectors:
-        logger.warning("No clean sectors available for weekly rebalancing.")
+        logger.warning(f"No clean sectors available for rebalancing {owner_id}.")
         return {"status": "skipped", "reason": "No valid sectors"}
 
-    portfolio = await get_or_create_system_portfolio(SYS_SECTOR_LS_OWNER_ID)
+    portfolio = await get_or_create_system_portfolio(owner_id)
     current_cash = portfolio.cash_balance
     slip_factor = slippage_bps / 10000.0
 
@@ -288,7 +301,7 @@ async def execute_system_sector_rebalance(
         for t in existing_trades:
             client.table("trades").delete().eq("id", t["id"]).execute()
         logger.info(
-            f"Idempotency cleanup: Removed {len(existing_trades)} existing trades for {SYS_SECTOR_LS_OWNER_ID} ({week_start_date} to {week_end_date}), reverted PnL: ${prev_pnl:,.2f}"
+            f"Idempotency cleanup: Removed {len(existing_trades)} existing trades for {owner_id} ({week_start_date} to {week_end_date}), reverted PnL: ${prev_pnl:,.2f}"
         )
 
     long_budget = (current_cash * 0.5) if (long_sectors and short_sectors) else (current_cash if long_sectors else 0.0)
@@ -324,6 +337,8 @@ async def execute_system_sector_rebalance(
             "quantity": shares,
             "price": entry_p,
             "total_cost": shares * entry_p,
+            "realized_pnl": 0.0,
+            "realized_pnl_pct": 0.0,
             "executed_at": f"{week_start_date}T13:30:00Z",
         }
         client.table("trades").insert(entry_trade).execute()
@@ -365,6 +380,8 @@ async def execute_system_sector_rebalance(
             "quantity": shares,
             "price": entry_p,
             "total_cost": shares * entry_p,
+            "realized_pnl": 0.0,
+            "realized_pnl_pct": 0.0,
             "executed_at": f"{week_start_date}T13:30:00Z",
         }
         client.table("trades").insert(entry_trade).execute()
@@ -411,7 +428,7 @@ async def execute_system_sector_rebalance(
     ).execute()
 
     logger.info(
-        f"System Sector L/S Rebalance complete for {week_end_date}: PnL: ${total_realized_pnl:,.2f}, New Equity: ${new_cash:,.2f}"
+        f"System Sector L/S Rebalance complete for {owner_id} ({week_end_date}): PnL: ${total_realized_pnl:,.2f}, New Equity: ${new_cash:,.2f}"
     )
 
     return {
@@ -500,6 +517,8 @@ async def execute_mechanical_sector_rebalance(
             "quantity": shares,
             "price": entry_p,
             "total_cost": shares * entry_p,
+            "realized_pnl": 0.0,
+            "realized_pnl_pct": 0.0,
             "executed_at": f"{week_start_date}T13:30:00Z",
         }
         client.table("trades").insert(entry_trade).execute()

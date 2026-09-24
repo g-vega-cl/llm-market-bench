@@ -1,12 +1,4 @@
-"""Live Weekly Sector Portfolio Execution Engine.
-
-Executes live Monday market-open entries and Friday market-close exits for:
-1. sys-sector-ls-consensus: Weekly Sector Long/Short Consensus Strategy.
-2. sys-sector-uncorr-20d: 20-Day Uncorrelated Sector Momentum.
-3. sys-sector-uncorr-7d: 7-Day Uncorrelated Sector Momentum.
-4. sys-sector-naive-momentum: 20-Day Unconstrained Momentum Benchmark Control.
-5. sys-sector-mean-reversion: 7-Day Sector Mean Reversion.
-"""
+"""Live Weekly & Horizon Sector Portfolio Execution Engine."""
 
 from datetime import UTC, date, datetime
 from typing import Any
@@ -14,7 +6,9 @@ from uuid import uuid4
 
 from core.config import logger
 from core.db import get_supabase_client
+from execution.sector_horizon_trading import execute_horizon_sector_entries, execute_horizon_sector_exits
 from execution.system_portfolios import (
+    ALL_SECTOR_LS_OWNER_IDS,
     DEFAULT_SLIPPAGE_BPS,
     MECHANICAL_SECTOR_OWNER_IDS,
     MECHANICAL_SECTOR_UNIVERSE,
@@ -31,21 +25,19 @@ async def execute_system_sector_entry(
     predictions: list[dict],
     price_map: dict[str, float],
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    owner_id: str = SYS_SECTOR_LS_OWNER_ID,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """Execute Monday market open entry for the consensus sector long/short portfolio."""
     if week_start_date < SYS_SECTOR_START_DATE:
-        logger.info(
-            f"Skipping sector entry for window starting {week_start_date} (before portfolio start date {SYS_SECTOR_START_DATE})"
-        )
         return {"status": "skipped", "reason": f"Before start date {SYS_SECTOR_START_DATE}"}
 
     long_sectors, short_sectors = resolve_sector_predictions(predictions)
     if not long_sectors and not short_sectors:
-        logger.warning("No clean sectors available for weekly entry.")
+        logger.warning(f"No clean sectors available for {owner_id} entry.")
         return {"status": "skipped", "reason": "No valid sectors"}
 
-    portfolio = await get_or_create_system_portfolio(SYS_SECTOR_LS_OWNER_ID)
+    portfolio = await get_or_create_system_portfolio(owner_id)
     current_cash = portfolio.cash_balance
     slip_factor = slippage_bps / 10000.0
     client = get_supabase_client()
@@ -61,7 +53,7 @@ async def execute_system_sector_entry(
         .execute()
     )
     if existing_res.data:
-        logger.info(f"Entry trades already exist for {SYS_SECTOR_LS_OWNER_ID} at {start_ts}. Skipping re-entry.")
+        logger.info(f"Entry trades already exist for {owner_id} at {start_ts}. Skipping re-entry.")
         return {"status": "skipped", "reason": "Already entered for this cycle", "trades": existing_res.data}
 
     long_budget = (current_cash * 0.5) if (long_sectors and short_sectors) else (current_cash if long_sectors else 0.0)
@@ -150,6 +142,8 @@ async def execute_system_sector_entry(
             {
                 "cash_balance": remaining_cash,
                 "total_equity": current_cash,
+                "buying_power": current_cash * 4,
+                "excess_liquidity": current_cash,
                 "last_updated_at": datetime.now(UTC).isoformat(),
             }
         ).eq("id", str(portfolio.id)).execute()
@@ -167,18 +161,18 @@ async def execute_system_sector_entry(
                         quantity=t["shares"],
                         signal="BUY",
                         limit_price=round(t["entry_price"], 2),
-                        agent_id=SYS_SECTOR_LS_OWNER_ID,
+                        agent_id=owner_id,
                     )
         except Exception as exc:
             logger.warning(f"Alpaca mirror error during sector entry: {exc}")
 
     logger.info(
-        f"System Sector L/S entry executed for {SYS_SECTOR_LS_OWNER_ID} on {week_start_date} (dry_run={dry_run}): {entered_trades}"
+        f"System Sector L/S entry executed for {owner_id} on {week_start_date} (dry_run={dry_run}): {entered_trades}"
     )
     return {
         "status": "success",
         "dry_run": dry_run,
-        "owner_id": SYS_SECTOR_LS_OWNER_ID,
+        "owner_id": owner_id,
         "long_sectors": long_sectors,
         "short_sectors": short_sectors,
         "trades": entered_trades,
@@ -260,6 +254,8 @@ async def execute_mechanical_sector_entry(
             {
                 "cash_balance": remaining_cash,
                 "total_equity": current_cash,
+                "buying_power": current_cash * 4,
+                "excess_liquidity": current_cash,
                 "last_updated_at": datetime.now(UTC).isoformat(),
             }
         ).eq("id", str(portfolio.id)).execute()
@@ -296,10 +292,11 @@ async def execute_system_sector_exit(
     week_end_date: str,
     price_map: dict[str, float],
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    owner_id: str = SYS_SECTOR_LS_OWNER_ID,
     dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Execute Friday market close exit for the consensus sector long/short portfolio."""
-    portfolio = await get_or_create_system_portfolio(SYS_SECTOR_LS_OWNER_ID)
+    """Execute market close exit for the consensus sector long/short portfolio."""
+    portfolio = await get_or_create_system_portfolio(owner_id)
     current_cash = portfolio.cash_balance
     slip_factor = slippage_bps / 10000.0
     client = get_supabase_client()
@@ -330,7 +327,7 @@ async def execute_system_sector_exit(
     ]
 
     if not open_entries:
-        logger.info(f"No open entries to exit for {SYS_SECTOR_LS_OWNER_ID} on {week_end_date}.")
+        logger.info(f"No open entries to exit for {owner_id} on {week_end_date}.")
         return {"status": "skipped", "reason": "No open positions to exit"}
 
     total_realized_pnl = 0.0
@@ -399,13 +396,12 @@ async def execute_system_sector_exit(
                         quantity=shares,
                         signal="SELL",
                         limit_price=round(exit_p, 2),
-                        agent_id=SYS_SECTOR_LS_OWNER_ID,
+                        agent_id=owner_id,
                     )
                 except Exception as exc:
                     logger.warning(f"Alpaca mirror error during sector exit for {ticker}: {exc}")
 
-                # Clean up position in portfolio_positions AFTER Alpaca limit order submission
-                # (ensures _get_supabase_position fallback finds the position if Alpaca reports 0 shares)
+                # Clean up position in portfolio_positions after Alpaca limit order submission
                 client.table("portfolio_positions").delete().match(
                     {"portfolio_id": str(portfolio.id), "ticker": ticker}
                 ).execute()
@@ -439,12 +435,12 @@ async def execute_system_sector_exit(
         ).execute()
 
     logger.info(
-        f"System Sector L/S Exit complete for {week_end_date} (dry_run={dry_run}): PnL: ${total_realized_pnl:,.2f}, New Equity: ${new_cash:,.2f}"
+        f"System Sector L/S Exit complete for {owner_id} ({week_end_date}) (dry_run={dry_run}): PnL: ${total_realized_pnl:,.2f}, New Equity: ${new_cash:,.2f}"
     )
     return {
         "status": "success",
         "dry_run": dry_run,
-        "owner_id": SYS_SECTOR_LS_OWNER_ID,
+        "owner_id": owner_id,
         "total_realized_pnl": total_realized_pnl,
         "new_equity": new_cash,
         "trades": exited_trades,
@@ -544,8 +540,7 @@ async def execute_mechanical_sector_exit(
             except Exception as exc:
                 logger.warning(f"Alpaca mirror error during mechanical exit for {owner_id}: {exc}")
 
-            # Clean up position in portfolio_positions AFTER Alpaca limit order submission
-            # (ensures _get_supabase_position fallback finds the position if Alpaca reports 0 shares)
+            # Clean up position in portfolio_positions after Alpaca limit order submission
             client.table("portfolio_positions").delete().match(
                 {"portfolio_id": str(portfolio.id), "ticker": ticker}
             ).execute()
@@ -592,8 +587,8 @@ async def execute_mechanical_sector_exit(
 
 
 async def get_sector_portfolios_status() -> dict[str, Any]:
-    """Retrieve current positions, cash, and performance for all 5 weekly sector portfolios."""
-    owner_ids = [SYS_SECTOR_LS_OWNER_ID] + MECHANICAL_SECTOR_OWNER_IDS
+    """Retrieve current positions, cash, and performance for all sector portfolios."""
+    owner_ids = ALL_SECTOR_LS_OWNER_IDS + MECHANICAL_SECTOR_OWNER_IDS
     client = get_supabase_client()
     status_summary = {}
 
@@ -732,18 +727,26 @@ async def run_sector_trade(
                 )
                 mech_results[owner_id] = res_mech
 
+        # 6. Execute horizon entries (30d and 90d)
+        res_horizons = await execute_horizon_sector_entries(
+            today_str=today_str,
+            price_map=price_map,
+            dry_run=dry_run,
+        )
+
         return {
             "status": "success",
             "action": "entry",
             "dry_run": dry_run,
             "consensus": res_consensus,
             "mechanical": mech_results,
+            "horizons": res_horizons,
         }
 
     elif action in ("exit", "close"):
         # Dynamically collect all tickers that need closing quotes across consensus and mechanical portfolios
         tickers_to_close = set(MECHANICAL_SECTOR_UNIVERSE)
-        for owner_id in [SYS_SECTOR_LS_OWNER_ID] + MECHANICAL_SECTOR_OWNER_IDS:
+        for owner_id in ALL_SECTOR_LS_OWNER_IDS + MECHANICAL_SECTOR_OWNER_IDS:
             try:
                 p = await get_or_create_system_portfolio(owner_id)
                 tickers_to_close.update(p.positions.keys())
@@ -761,13 +764,11 @@ async def run_sector_trade(
 
         quotes = await mdm.get_quotes(list(tickers_to_close), force_refresh=True)
         price_map = {t: float(q.price) for t, q in quotes.items() if q.price > 0}
-
         res_consensus = await execute_system_sector_exit(
             week_end_date=today_str,
             price_map=price_map,
             dry_run=dry_run,
         )
-
         mech_results = {}
         for owner_id in MECHANICAL_SECTOR_OWNER_IDS:
             res_mech = await execute_mechanical_sector_exit(
@@ -778,12 +779,19 @@ async def run_sector_trade(
             )
             mech_results[owner_id] = res_mech
 
+        res_horizons = await execute_horizon_sector_exits(
+            today_str=today_str,
+            price_map=price_map,
+            dry_run=dry_run,
+        )
+
         return {
             "status": "success",
             "action": "exit",
             "dry_run": dry_run,
             "consensus": res_consensus,
             "mechanical": mech_results,
+            "horizons": res_horizons,
         }
 
     else:

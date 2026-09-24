@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/sector-horizon-trading]] — Systematic 30-day and 90-day sector long/short horizon execution engine
 - [[entities/tool-audit]] — Non-blocking background tool execution audit logging to analytical archive database
 - [[entities/market-context-viewer]] — Collapsible pre-market context viewer and copy tool for daily prediction auditability
 - [[entities/intraday-profile]] — Deterministic quantitative session profile and hourly price-action tape matrix for regular trading hours

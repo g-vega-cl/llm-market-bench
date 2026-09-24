@@ -32,6 +32,20 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/Conflict Netting/i)).toBeInTheDocument();
     });
 
+    it('renders 30d sector long short explainer for sys-sector-ls-30d', () => {
+        render(<StrategyExplainer ownerId="sys-sector-ls-30d" />);
+        expect(screen.getByText('30-Day Sector Long/Short Consensus Strategy')).toBeInTheDocument();
+        expect(screen.getByText(/Monthly Horizon/i)).toBeInTheDocument();
+        expect(screen.getByText(/Conflict Cancellation/i)).toBeInTheDocument();
+    });
+
+    it('renders 90d sector long short explainer for sys-sector-ls-90d', () => {
+        render(<StrategyExplainer ownerId="sys-sector-ls-90d" />);
+        expect(screen.getByText('90-Day Sector Long/Short Consensus Strategy')).toBeInTheDocument();
+        expect(screen.getByText(/Quarterly Horizon/i)).toBeInTheDocument();
+        expect(screen.getByText(/Factor Neutral Netting/i)).toBeInTheDocument();
+    });
+
     it('renders 20d uncorrelated sector momentum explainer', () => {
         render(<StrategyExplainer ownerId="sys-sector-uncorr-20d" />);
         expect(screen.getByText('20-Day Uncorrelated Sector Momentum')).toBeInTheDocument();

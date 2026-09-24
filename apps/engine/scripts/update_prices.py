@@ -81,15 +81,20 @@ async def update_prices():
         from zoneinfo import ZoneInfo
 
         now_et = datetime.now(ZoneInfo("America/New_York"))
-        if now_et.weekday() == 4 and (now_et.hour > 15 or (now_et.hour == 15 and now_et.minute >= 25)):
-            logger.info(
-                "Friday afternoon detected in price update — Checking systematic weekly sector portfolio exit..."
-            )
-            from execution.sector_trading import run_sector_trade
+        if now_et.hour > 15 or (now_et.hour == 15 and now_et.minute >= 25):
+            if now_et.weekday() == 4:
+                logger.info(
+                    "Friday afternoon detected in price update — Checking systematic weekly sector portfolio exit..."
+                )
+                from execution.sector_trading import run_sector_trade
 
-            await run_sector_trade(action="exit")
+                await run_sector_trade(action="exit")
+            elif now_et.weekday() in (0, 1, 2, 3):
+                from execution.sector_horizon_trading import execute_horizon_sector_exits
+
+                await execute_horizon_sector_exits(today_str=now_et.date().isoformat(), price_map={})
     except Exception:
-        logger.exception("Friday sector exit hook in update_prices failed")
+        logger.exception("Sector exit hook in update_prices failed")
 
     # 1. Get all active portfolios
     def fetch_portfolios():
@@ -130,7 +135,7 @@ async def update_prices():
         try:
             p = await initialize_with_retry(owner)
             all_tickers.update(p.positions.keys())
-            if owner == "sys-sector-ls-consensus" and p.id:
+            if owner.startswith("sys-sector-ls-") and p.id:
                 try:
                     short_res = (
                         sb_client.table("trades")

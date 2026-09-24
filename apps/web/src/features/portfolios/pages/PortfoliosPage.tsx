@@ -37,6 +37,8 @@ interface PortfoliosPageProps {
 const SYSTEM_PORTFOLIO_SUBTITLES: Record<string, string> = {
     'sys-smid-quality-compounder': 'Quality & Momentum Small-to-Large Compounder (Zero-Ceiling)',
     'sys-sector-ls-consensus': 'Consensus Sector Long/Short Dispersion',
+    'sys-sector-ls-30d': '30-Day Consensus Sector Long/Short Dispersion',
+    'sys-sector-ls-90d': '90-Day Consensus Sector Long/Short Dispersion',
     'sys-sector-uncorr-20d': '20-Day Uncorrelated Sector Momentum (Low-Beta Barbell)',
     'sys-sector-uncorr-7d': '7-Day Uncorrelated Sector Momentum (Weekly Rotation)',
     'sys-sector-naive-momentum': '20-Day Unconstrained Momentum (Top 2 Winners)',

@@ -126,6 +126,60 @@ const STRATEGY_CONFIGS: Record<string, ExplainerConfig> = {
             },
         ],
     },
+    'sys-sector-ls-30d': {
+        emoji: '📅',
+        title: '30-Day Sector Long/Short Consensus Strategy',
+        badgeText: 'Monthly Horizon',
+        badgeColorScheme: 'info',
+        subtitle:
+            'Systematic multi-week sector allocation holding 50% long in consensus 30d top sectors and 50% short in 30d worst sectors.',
+        borderColor: 'border-cyan-500/20',
+        bgColor: 'bg-cyan-950/10',
+        pillars: [
+            {
+                title: '📊 30-Day Multi-Model Consensus',
+                description:
+                    'Synthesizes 30-day forward sector ETF projections across DeepSeek, MiniMax, Gemini, and GPT inference arenas.',
+            },
+            {
+                title: '⚔️ Conflict Cancellation',
+                description:
+                    'Tickers predicted simultaneously as both top and bottom performers across models are neutralized to avoid contradictory exposure.',
+            },
+            {
+                title: '⏱️ Discrete 30-Day Holding',
+                description:
+                    'Positions are held across the full 30-day forecast window, capturing medium-term macroeconomic shifts and momentum drift.',
+            },
+        ],
+    },
+    'sys-sector-ls-90d': {
+        emoji: '🏛️',
+        title: '90-Day Sector Long/Short Consensus Strategy',
+        badgeText: 'Quarterly Horizon',
+        badgeColorScheme: 'accent',
+        subtitle:
+            'Quarterly macroeconomic sector dispersion strategy holding 50% long and 50% short across 90-day multi-model consensus predictions.',
+        borderColor: 'border-indigo-500/20',
+        bgColor: 'bg-indigo-950/10',
+        pillars: [
+            {
+                title: '📈 Quarterly Macro Consensus',
+                description:
+                    'Aggregates 90-day forward outlooks from multi-model sector predictors, identifying structural quarterly sector rotations.',
+            },
+            {
+                title: '⚔️ Factor Neutral Netting',
+                description:
+                    'Eliminates cross-model disagreements by dropping disputed sectors from both long and short buckets.',
+            },
+            {
+                title: '⏱️ 90-Day Holding Horizon',
+                description:
+                    'Holds positions across the complete 90-day cycle to isolate multi-month earnings and monetary policy dispersion.',
+            },
+        ],
+    },
     'sys-sector-uncorr-20d': {
         emoji: '🛡️',
         title: '20-Day Uncorrelated Sector Momentum',

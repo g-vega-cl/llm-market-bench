@@ -20,6 +20,12 @@ from analysis.gainers_postmortem import (
 )
 
 
+@pytest.fixture(autouse=True)
+def mock_fmp_api_key(monkeypatch):
+    """Ensure FMP_API_KEY is hermetically mocked for all postmortem tests."""
+    monkeypatch.setattr("analysis.gainers_postmortem.FMP_API_KEY", "mock-fmp-key")
+
+
 @pytest.mark.asyncio
 async def test_fetch_top_gainers_daily_filters_penny_stocks():
     """Verify daily gainers endpoint filters out stocks under $2.00."""
@@ -90,6 +96,40 @@ async def test_fetch_recent_ticker_news():
         headlines = await fetch_recent_ticker_news("AMD", limit=2)
         assert len(headlines) == 2
         assert "AMD announces new AI chips" in headlines[0]
+
+
+@pytest.mark.asyncio
+async def test_fetch_top_gainers_missing_fmp_api_key(monkeypatch):
+    """Verify empty list returned when FMP_API_KEY is unset."""
+    monkeypatch.setattr("analysis.gainers_postmortem.FMP_API_KEY", "")
+    gainers = await fetch_top_gainers(timeframe="daily", limit=5)
+    assert gainers == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_recent_ticker_news_missing_fmp_api_key(monkeypatch):
+    """Verify empty list returned when FMP_API_KEY is unset."""
+    monkeypatch.setattr("analysis.gainers_postmortem.FMP_API_KEY", "")
+    headlines = await fetch_recent_ticker_news("AMD", limit=2)
+    assert headlines == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_top_gainers_explicit_api_key():
+    """Verify explicit api_key argument overrides environment."""
+    mock_data = [
+        {"symbol": "GOOD", "price": 15.20, "changesPercentage": 45.0, "volume": 1500000},
+    ]
+    with patch("httpx.AsyncClient.get") as mock_get:
+        mock_resp = MagicMock(status_code=200, json=MagicMock(return_value=mock_data))
+        mock_get.return_value = mock_resp
+
+        gainers = await fetch_top_gainers(timeframe="daily", limit=1, api_key="custom-key")
+        assert len(gainers) == 1
+        assert gainers[0].symbol == "GOOD"
+        mock_get.assert_called_once()
+        call_kwargs = mock_get.call_args.kwargs
+        assert call_kwargs["params"]["apikey"] == "custom-key"
 
 
 @pytest.mark.asyncio

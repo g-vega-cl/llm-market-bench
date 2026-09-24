@@ -11,6 +11,8 @@ if not os.getenv("SUPABASE_PROJECT_URL"):
     os.environ["SUPABASE_PROJECT_URL"] = "https://mock.supabase.co"
 if not os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
     os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "mock-key"
+if not os.getenv("FMP_API_KEY"):
+    os.environ["FMP_API_KEY"] = "mock-fmp-key"
 
 
 import socket

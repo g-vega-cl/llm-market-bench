@@ -68,10 +68,14 @@ def get_diagnosis_openai_client():
 
 
 async def fetch_top_gainers(
-    timeframe: str = "daily", limit: int = 5, client: httpx.AsyncClient | None = None
+    timeframe: str = "daily",
+    limit: int = 5,
+    client: httpx.AsyncClient | None = None,
+    api_key: str | None = None,
 ) -> list[GainerItem]:
     """Fetch top market gainers across daily, weekly (5D), or monthly (1M) horizons."""
-    if not FMP_API_KEY:
+    effective_key = api_key or FMP_API_KEY
+    if not effective_key:
         logger.warning("FMP_API_KEY missing, skipping gainers fetch.")
         return []
 
@@ -83,7 +87,7 @@ async def fetch_top_gainers(
     try:
         tf = timeframe.lower()
         if tf in ("daily", "1d"):
-            resp = await client.get(f"{FMP_BASE_URL}/biggest-gainers", params={"apikey": FMP_API_KEY})
+            resp = await client.get(f"{FMP_BASE_URL}/biggest-gainers", params={"apikey": effective_key})
             if resp.status_code != 200:
                 logger.warning(f"FMP biggest-gainers returned status {resp.status_code}")
                 return []
@@ -111,7 +115,7 @@ async def fetch_top_gainers(
                 "marketCapMoreThan": 2000000000,
                 "isActivelyTrading": "true",
                 "limit": 40,
-                "apikey": FMP_API_KEY,
+                "apikey": effective_key,
             },
         )
         if resp_screener.status_code != 200:
@@ -124,7 +128,7 @@ async def fetch_top_gainers(
 
         resp_pc = await client.get(
             f"{FMP_BASE_URL}/stock-price-change",
-            params={"symbol": ",".join(all_symbols[:45]), "apikey": FMP_API_KEY},
+            params={"symbol": ",".join(all_symbols[:45]), "apikey": effective_key},
         )
         if resp_pc.status_code != 200:
             logger.warning(f"FMP stock-price-change returned status {resp_pc.status_code}")
@@ -160,9 +164,15 @@ async def fetch_top_gainers(
             await client.aclose()
 
 
-async def fetch_recent_ticker_news(ticker: str, limit: int = 3, client: httpx.AsyncClient | None = None) -> list[str]:
+async def fetch_recent_ticker_news(
+    ticker: str,
+    limit: int = 3,
+    client: httpx.AsyncClient | None = None,
+    api_key: str | None = None,
+) -> list[str]:
     """Fetch recent headlines for target ticker to provide catalyst context."""
-    if not FMP_API_KEY:
+    effective_key = api_key or FMP_API_KEY
+    if not effective_key:
         return []
 
     should_close = False
@@ -173,7 +183,7 @@ async def fetch_recent_ticker_news(ticker: str, limit: int = 3, client: httpx.As
     try:
         resp = await client.get(
             f"{FMP_BASE_URL}/news/stock",
-            params={"symbols": ticker.upper(), "limit": limit, "apikey": FMP_API_KEY},
+            params={"symbols": ticker.upper(), "limit": limit, "apikey": effective_key},
         )
         if resp.status_code != 200:
             return []

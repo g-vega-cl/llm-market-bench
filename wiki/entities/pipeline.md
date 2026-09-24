@@ -87,6 +87,7 @@ The pipeline closes the loop by auditing historical results and updating system 
 *   Contrarian Agent: Checks crowded trades and issues counter-positioning.
 *   Cause & Effect Analysis: Audits retrospective price impact of AI trading signals.
 *   Market Feeling: Runs sentiment analysis after execution to capture the daily market vibe.
+*   Missed Gainers Post-Mortem: Audits top daily, weekly, and monthly market winners against internal predictions using `gpt-5.6-luna` with thinking, generating actionable lessons for missed breakouts (see [[entities/gainers-postmortem]]).
 *   Isolated Single-Stock Execution: Executes the [[entities/lin-renko-agent]] pipeline on its dedicated `$10,000` isolated ledger.
 
 ## Auto-Research Sub-Pipeline
@@ -98,6 +99,7 @@ Weekly (Sunday 6:00 PM ET / 10:00 PM UTC), the pipeline runs `daily-autoresearch
 
 ## Related
 
+- [[entities/gainers-postmortem]]
 - [[concepts/consensus]]
 - [[concepts/ingestion]]
 - [[concepts/catalyst-radar]]

@@ -31,6 +31,7 @@ from core.config import (
     COMMAND_DAILY_PREDICTOR,
     COMMAND_EVALUATE_DAILY_PREDICTIONS,
     COMMAND_FRONTIER_TECH,
+    COMMAND_GAINERS_POSTMORTEM,
     COMMAND_GENERATE_NEWSLETTER,
     COMMAND_GOVERNMENT,
     COMMAND_INGEST,
@@ -1026,6 +1027,7 @@ def main():
             COMMAND_AUDIT_ALPACA,
             COMMAND_FRONTIER_TECH,
             COMMAND_SECTOR_TRADE,
+            COMMAND_GAINERS_POSTMORTEM,
         ],
         help="Action to perform",
     )
@@ -1089,6 +1091,24 @@ def main():
         type=float,
         default=0.03,
         help="Target position weight for portfolio tasks (default: 0.03)",
+    )
+    parser.add_argument(
+        "--timeframe",
+        type=str,
+        default="all",
+        choices=["daily", "weekly", "monthly", "all"],
+        help="Target timeframe for gainers post-mortem (daily, weekly, monthly, all)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=3,
+        help="Number of top gainers to audit per timeframe (default: 3)",
+    )
+    parser.add_argument(
+        "--no-save-memory",
+        action="store_true",
+        help="Skip saving post-mortem results into Supabase memories table",
     )
 
     args = parser.parse_args()
@@ -1187,6 +1207,16 @@ def main():
                 action=args.action,
                 target_date_str=args.target_date,
                 dry_run=args.dry_run,
+            )
+        )
+    elif args.command == COMMAND_GAINERS_POSTMORTEM:
+        from analysis.gainers_postmortem import run_gainers_postmortem
+
+        asyncio.run(
+            run_gainers_postmortem(
+                timeframe=args.timeframe,
+                limit=args.limit,
+                save_memory=not args.no_save_memory,
             )
         )
 

@@ -139,6 +139,7 @@ To verify the origins and context behind a promoted memory (e.g. why an LLM prio
 
 ## Related
 
+- [[entities/gainers-postmortem]]
 - [[entities/pipeline]]
 - [[entities/database]]
 - [[concepts/rag-strategy]]

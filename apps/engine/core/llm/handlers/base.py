@@ -259,6 +259,13 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             date=args.get("date"),
             include_hourly_tape=args.get("include_hourly_tape", True),
         )
+    elif name == "research_historical_market_analog":
+        return await tools.execute_research_historical_market_analog_tool(
+            situation=args.get("situation", ""),
+            focus_assets=args.get("focus_assets"),
+            horizon=args.get("horizon", "1m"),
+            model_name=model_name,
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

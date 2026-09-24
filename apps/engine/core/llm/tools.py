@@ -1349,6 +1349,38 @@ GET_INTRADAY_MOVEMENT_PROFILE_TOOL = {
     },
 }
 
+RESEARCH_HISTORICAL_MARKET_ANALOG_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "research_historical_market_analog",
+        "description": (
+            "Research historical market precedent episodes, cross-asset reaction tapes (stocks, bonds, gold, crypto, dollar), "
+            "and actionable profit playbooks. Uses ChatGPT Luna with thinking to identify the most structurally similar "
+            "historical analog episode, pulls empirical historical price performance across major benchmarks, and synthesizes "
+            "key macro divergences, asymmetric long/short expressions, and falsification triggers."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "situation": {
+                    "type": "string",
+                    "description": "Natural language description of current market setup or catalyst (e.g. 'Bond prices rising sharply amidst Middle East tensions').",
+                },
+                "focus_assets": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional list of specific tickers to measure alongside core macro benchmarks.",
+                },
+                "horizon": {
+                    "type": "string",
+                    "description": "Reaction horizon to evaluate (e.g. '1w', '1m', '3m'). Defaults to '1m'.",
+                },
+            },
+            "required": ["situation"],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1397,6 +1429,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_today_economic_releases": GET_TODAY_ECONOMIC_RELEASES_TOOL,
     "call_warren_buffett": CALL_WARREN_BUFFETT_TOOL,
     "get_intraday_movement_profile": GET_INTRADAY_MOVEMENT_PROFILE_TOOL,
+    "research_historical_market_analog": RESEARCH_HISTORICAL_MARKET_ANALOG_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -4304,6 +4337,27 @@ async def execute_get_intraday_movement_profile_tool(
     except Exception as e:
         logger.exception("Error executing get_intraday_movement_profile tool for %s: %s", ticker, e)
         return f"Error executing get_intraday_movement_profile: {str(e)}"
+
+
+async def execute_research_historical_market_analog_tool(
+    situation: str,
+    focus_assets: list[str] | None = None,
+    horizon: str = "1m",
+    model_name: str | None = None,
+) -> str:
+    """Executes the research_historical_market_analog tool."""
+    try:
+        from analysis.historical_analogs import research_historical_market_analog
+
+        return await research_historical_market_analog(
+            situation=situation,
+            focus_assets=focus_assets,
+            horizon=horizon or "1m",
+            model_name=model_name,
+        )
+    except Exception as e:
+        logger.exception("Error executing research_historical_market_analog tool: %s", e)
+        return f"Error executing research_historical_market_analog: {str(e)}"
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

@@ -134,6 +134,7 @@ COMMAND_AUDIT_ALPACA = "audit-alpaca"
 COMMAND_FRONTIER_TECH = "frontier-tech"
 COMMAND_SECTOR_TRADE = "sector-trade"
 COMMAND_GAINERS_POSTMORTEM = "gainers-postmortem"
+COMMAND_HISTORICAL_ANALOG = "analog"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

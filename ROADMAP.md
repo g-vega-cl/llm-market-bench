@@ -85,7 +85,12 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
 - [ ] - Benchify: Once a dedicated real-time/intraday news stream or intraday newsletter pipeline is available, augment `get_intraday_movement_profile` with Approach 2 (phase-segmented news/narrative catalyst correlation linking price pivots to breaking news).
 - [ ] - Benchify: add a "this could be a trade or force in the future". Like, ABNB with world cup, or cybersecurity/infrastructure with AI, or some undervalued company going through a temporary rough patch.
-- [ ] - Benchify: prompt tool question, "how did markets react the last time XYZ happened?"
+- [x] - Benchify: prompt tool question, "how did markets react the last time XYZ happened?"
+    - Implemented `research_historical_market_analog` tool in `apps/engine/analysis/historical_analogs.py` with ChatGPT Luna (`gpt-5.6-luna`) thinking mode (`reasoning_effort="medium"`).
+    - Hybrid architecture: extracts historical episode & dates, pulls empirical price return tapes for macro benchmarks (`SPY`, `QQQ`, `TLT`, `IEF`, `GLD`, `USO`, `UUP`, `BTCUSD`) and focus assets, and synthesizes 4-pillar playbook (Precedent, Tape, Divergences, Playbook).
+    - Persists to Supabase `memories` table under `memory_type="HISTORICAL_ANALOG"` for vector RAG reuse.
+    - Registered in `packages/config/tools.json`, `apps/engine/core/llm/tools.py`, `apps/engine/core/llm/handlers/base.py`, `apps/engine/autoresearch/program.md`, and added reasoning block in `apps/engine/autoresearch/prompt_blocks.py`.
+    - Added CLI command `python main.py analog --situation "..."` and verified end-to-end via `apps/engine/scripts/dry_run_historical_analogs.py`.
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
 - [ ] - Benchify: jev as daily predictor

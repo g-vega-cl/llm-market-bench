@@ -34,6 +34,7 @@ from core.config import (
     COMMAND_GAINERS_POSTMORTEM,
     COMMAND_GENERATE_NEWSLETTER,
     COMMAND_GOVERNMENT,
+    COMMAND_HISTORICAL_ANALOG,
     COMMAND_INGEST,
     COMMAND_LIN_RENKO,
     COMMAND_POST_ANALYSIS,
@@ -1028,6 +1029,7 @@ def main():
             COMMAND_FRONTIER_TECH,
             COMMAND_SECTOR_TRADE,
             COMMAND_GAINERS_POSTMORTEM,
+            COMMAND_HISTORICAL_ANALOG,
         ],
         help="Action to perform",
     )
@@ -1109,6 +1111,25 @@ def main():
         "--no-save-memory",
         action="store_true",
         help="Skip saving post-mortem results into Supabase memories table",
+    )
+    parser.add_argument(
+        "--situation",
+        "--query",
+        type=str,
+        default=None,
+        help="Market situation or query for historical analog research",
+    )
+    parser.add_argument(
+        "--assets",
+        type=str,
+        default=None,
+        help="Comma-separated focus assets (e.g. TLT,GLD,BTCUSD)",
+    )
+    parser.add_argument(
+        "--horizon",
+        type=str,
+        default="1m",
+        help="Reaction horizon for historical analog (default: 1m)",
     )
 
     args = parser.parse_args()
@@ -1219,6 +1240,21 @@ def main():
                 save_memory=not args.no_save_memory,
             )
         )
+    elif args.command == COMMAND_HISTORICAL_ANALOG:
+        from analysis.historical_analogs import research_historical_market_analog
+
+        situation_text = args.situation or "Unusual market movements across global asset classes"
+        focus_list = [a.strip() for a in args.assets.split(",")] if args.assets else None
+
+        async def _run_analog_cli():
+            result = await research_historical_market_analog(
+                situation=situation_text,
+                focus_assets=focus_list,
+                horizon=args.horizon,
+            )
+            print(result)
+
+        asyncio.run(_run_analog_cli())
 
 
 if __name__ == "__main__":

@@ -33,7 +33,7 @@ The registry includes, among others:
 - Screening & analysis tools (`run_stock_screener`, `find_uncorrelated_assets`, `get_key_metrics`, `search_related_tickers`, `analyze_thematic_beneficiaries`)
 - Earnings Alpha & PEAD tools (`get_pead_candidates`, `get_earnings_revisions`, `get_sector_bellwethers`, `get_earnings_history`)
 - Prediction market tools (`search_prediction_markets`, `get_prediction_market_odds`)
-- Macro & volatility tools (`get_global_macro_context`, `get_volatility_index_details`, `get_macro_economic_series`, `get_thematic_flows`, `add_thematic_flow`, `get_options_sentiment`, `get_option_chain`)
+- Macro & volatility tools (`get_global_macro_context`, `get_volatility_index_details`, `get_macro_economic_series`, `get_thematic_flows`, `add_thematic_flow`, `get_options_sentiment`, `get_option_chain`, `research_historical_market_analog`)
 - Quantitative FSI tools (`get_yield_curve_regime`, `get_options_vol_surface`, `track_thesis_pillars`, `get_catalyst_radar`, `get_intraday_movement_profile`)
 - Audit & compliance tools (`audit_financial_valuation`, `get_verifier_rejections`, `call_warren_buffett`)
 

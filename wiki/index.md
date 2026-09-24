@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/historical-analogs]] — Precedent-identification + empirical price-tape engine behind `research_historical_market_analog`
 - [[entities/gainers-postmortem]] — Adversarial missed gainers audit pipeline using GPT-5.6 Luna with thinking
 - [[entities/sector-horizon-trading]] — Systematic 30-day and 90-day sector long/short horizon execution engine
 - [[entities/tool-audit]] — Non-blocking background tool execution audit logging to analytical archive database
@@ -70,6 +71,8 @@
 
 ## Concepts
 
+- [[concepts/historical-market-analogs]] — Hybrid LLM-precedent + verified-return benchmarking for macro analog playbooks
+- [[concepts/historical-market-analogs]] — Auto-indexed page
 - [[concepts/python-execution-protocol]] — Mandatory file-based Python execution protocol (no inline `-c`) enforced by Antigravity security grants
 - [[concepts/rls-enforcement-standard]] — Comprehensive RLS enforcement standard with migration test suite and CI integration
 - [[concepts/transparency-standard]] — Unified 3-domain transparency layer (score audit, tool tracking, prompt segmentation) across portfolio, daily, and sector prediction UIs

@@ -111,6 +111,15 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "2. Noise Filter: Distinguish between promotional commentary and concrete material catalysts (earnings surprises, M&A, regulatory rulings, contract awards) before committing capital."
         ),
     },
+    "historical_analog_benchmarking": {
+        "title": "HISTORICAL ANALOG BENCHMARKING (Precedent & Cross-Asset Reaction Check)",
+        "content": (
+            "=== DISCIPLINE: HISTORICAL ANALOG BENCHMARKING ===\n"
+            "1. Historical Questioning: When encountering macro shifts, geopolitical escalations, rate spikes, or unusual cross-asset moves, actively ask: 'How did markets react the last time XYZ happened? What rallied, what crashed, and how did it resolve?'\n"
+            '2. Precedent Pull: Invoke `research_historical_market_analog(situation="...", horizon="1m")` to retrieve verified historical episodes, empirical price reaction tapes across major benchmarks (SPY, TLT, GLD, BTC, DXY), and today\'s key structural divergences.\n'
+            "3. Asymmetric Expression: Use the empirical tape and playbook to formulate long/short trade pairs and respect the falsification triggers before executing."
+        ),
+    },
 }
 
 

@@ -150,6 +150,7 @@
 - [[concepts/market-feeling]] — LLM-driven daily and weekend market sentiment analysis grounded in newsletters, S&P 500 barometer, prediction markets, and ticker price swings
 - [[concepts/temporal-sandboxing]] — Point-in-time database client wrapping, local cache redirection, and Alpaca order simulation
 - [[concepts/vertical-slice-islands]] — Self-contained modular architecture, size limits, and test colocation
+- [[concepts/volume-context]] — how EOD volume is persisted in price_history and surfaced for RVOL-based execution reasoning
 
 
 

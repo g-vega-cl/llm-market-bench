@@ -57,7 +57,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
 - [ ] -  Benchify: an autoresearch autoresearcher?
 - [ ] - Benchify: a bond trader?
-- [ ] - Benchify : do we get volume alongside price? Volume deviations?
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: follow the crowd strategy? Like using options and volume data?
 - [ ] - Benchify: train small model?

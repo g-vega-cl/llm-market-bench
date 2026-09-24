@@ -769,7 +769,7 @@ class MarketDataManager:
             try:
                 res = (
                     self.client.table("price_history")
-                    .select("price, open, high, low, close, fetched_at")
+                    .select("price, open, high, low, close, volume, fetched_at")
                     .eq("ticker", ticker)
                     .order("fetched_at", desc=True)
                     .limit(days)
@@ -787,6 +787,7 @@ class MarketDataManager:
                                 "high": float(row["high"]) if row.get("high") is not None else None,
                                 "low": float(row["low"]) if row.get("low") is not None else None,
                                 "close": float(row["close"]) if row.get("close") is not None else None,
+                                "volume": int(row["volume"]) if row.get("volume") is not None else None,
                                 "fetched_at": row["fetched_at"],
                             }
                             for row in res.data
@@ -828,6 +829,8 @@ class MarketDataManager:
                         payload["close"] = float(entry["close"])
                     elif entry.get("price") is not None:
                         payload["close"] = float(entry["price"])  # price == close for EOD bars
+                    if entry.get("volume") is not None:
+                        payload["volume"] = int(entry["volume"])
                     payloads.append(payload)
 
                 if payloads:

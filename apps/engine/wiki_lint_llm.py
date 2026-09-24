@@ -298,7 +298,8 @@ def main():
     parser.add_argument("--days", type=int, default=7, help="Number of days of git history to audit (default: 7)")
     args = parser.parse_args()
 
-    model = args.model or os.getenv("WIKI_LINT_MODEL") or "deepseek/deepseek-v4-flash"
+    model = args.model or os.getenv("WIKI_LINT_MODEL") or "~deepseek/deepseek-flash-latest"
+    free_model = os.getenv("WIKI_LINT_FREE_MODEL") or "openrouter/free"
     api_key = os.getenv("OPENROUTER_API_KEY")
 
     if not api_key:
@@ -336,12 +337,17 @@ def main():
 
     try:
         result = call_openrouter(content, model, api_key, commits_summary=commits_summary)
-    except requests.RequestException as e:
-        logger.error(f"OpenRouter API error: {e}")
-        sys.exit(1)
-    except json.JSONDecodeError:
-        logger.error("Failed to parse LLM response after multiple strategies")
-        sys.exit(1)
+    except (requests.RequestException, json.JSONDecodeError) as e:
+        if model != free_model:
+            logger.warning(f"OpenRouter primary model ({model}) failed: {e}. Trying free backup ({free_model})...")
+            try:
+                result = call_openrouter(content, free_model, api_key, commits_summary=commits_summary)
+            except Exception as backup_err:
+                logger.error(f"OpenRouter backup model ({free_model}) also failed: {backup_err}")
+                sys.exit(1)
+        else:
+            logger.error(f"OpenRouter API error: {e}")
+            sys.exit(1)
     except Exception:
         logger.exception("Unexpected error during wiki lint")
         sys.exit(1)

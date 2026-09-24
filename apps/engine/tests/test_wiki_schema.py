@@ -143,7 +143,8 @@ def test_main_calls_apply_page_deletions(tmp_path, monkeypatch, result):
 
 
 def test_auto_wiki_default_model():
-    """auto_wiki default model must be deepseek/deepseek-v4-flash."""
+    """auto_wiki default model must be ~deepseek/deepseek-flash-latest."""
     import apps.engine.auto_wiki as aw
 
-    assert aw.DEFAULT_MODEL == "deepseek/deepseek-v4-flash"
+    assert aw.DEFAULT_MODEL == "~deepseek/deepseek-flash-latest"
+

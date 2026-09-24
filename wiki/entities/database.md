@@ -33,6 +33,24 @@ The database is organized into several functional areas:
 - `sector_predictions` — Weekly sector ranking predictions
 - `trades` — Executed trade records with attribution
 
+### Market Data Cache Tables
+
+These two tables form the market data persistence layer used by `MarketDataManager` (`execution/market_data.py`):
+
+- **`price_history`** — EOD (end-of-day) price bars per ticker, persisted after every provider fetch and used as the warm-cache source for history requests. Schema:
+  - `ticker TEXT NOT NULL`
+  - `price NUMERIC NOT NULL` — closing price (mirrors `close`)
+  - `market_cap NUMERIC NOT NULL`
+  - `open NUMERIC`, `high NUMERIC`, `low NUMERIC`, `close NUMERIC` — OHLC (added Aug 2026)
+  - `volume BIGINT` — daily share volume (added Sep 2026, migration `20260924000000`)
+  - `fetched_at TIMESTAMPTZ` — unique constraint with `ticker` (dedup key)
+  - RLS enabled; service-role write, public read. Unique constraint: `(ticker, fetched_at)`.
+
+- **`market_data_cache`** — Live intraday quote snapshot (TTL-based). Stores `ticker`, `price`, `market_cap`, `today_pct_change`, `fetched_at`. Evicted after `MARKET_DATA_CACHE_TTL_SECONDS` (default 300 s). Does **not** store volume; volume context is computed from `price_history`.
+
+> [!IMPORTANT]
+> `price_history.volume` must be populated on every provider fetch. If it is absent, `compute_volume_context` in `core/llm/tools.py` silently returns `"insufficient volume data"` for all warm-cache reads, breaking RVOL and percentile-rank signals for volatility metrics and the stock screener tool.
+
 ### Additional Tables
 - `sector_predictions_calibration` — Calibration data for sector prediction scores
 - `snp500_stocks` — S&P 500 constituent list and metadata

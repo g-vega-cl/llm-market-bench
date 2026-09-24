@@ -63,6 +63,15 @@ The `analysis/ticker_news.py` module fetches structured financial headlines, pub
 
 The `apps/engine/tools/congress_tools.py` module and `apps/engine/scripts/update_congress_trades.py` pipeline ingest, normalize, and cache STOCK Act personal financial disclosures from the US Senate and House of Representatives. Agents query these transactions via the `get_congress_trades` pull tool to inspect politician buying and selling, trade amounts, and filing dates.
 
+### Market Data Manager & Volume Context
+
+`execution/market_data.py` — `MarketDataManager` — is the central cache-aware market data layer:
+
+- **Two-tier cache**: live quote snapshots go to `market_data_cache` (TTL 300 s); EOD history bars go to `price_history` (reused across sessions).
+- **`get_history(ticker, days)`**: checks `price_history` first (requires ≥ 70% of requested days, validated for staleness via `_validate_date_coverage`). Falls back to the configured provider (FMP by default) and batch-upserts the result.
+- **Volume persistence contract**: the `price_history` persist path writes `volume BIGINT` alongside OHLC. The cache-read path selects and returns `volume` in every history dict. Any break in this chain causes `compute_volume_context` to degrade silently.
+- **`compute_volume_context(history)`** (`core/llm/tools.py`): computes a human-readable RVOL ratio (`latest / N-day avg`) and percentile rank from the `volume` field in the history list. Used by `execute_volatility_metrics_tool` and `execute_stock_screener_tool` to surface volume deviation signals to the agent.
+
 ## Related
 
 - [[entities/frontier-tech-portfolio]]

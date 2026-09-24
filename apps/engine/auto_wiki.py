@@ -37,7 +37,8 @@ WIKI_DIR = REPO_ROOT / "wiki"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
-DEFAULT_MODEL = "deepseek/deepseek-v4-flash"
+DEFAULT_MODEL = "~deepseek/deepseek-flash-latest"
+DEFAULT_FREE_BACKUP_MODEL = "openrouter/free"
 DEFAULT_OLLAMA_MODEL = "gemma4:31b"
 
 
@@ -113,10 +114,18 @@ def filter_diff(diff_content: str) -> str:
 def collect_wiki_context() -> str:
     """Read scaffold wiki files for LLM context (not the full wiki)."""
     parts = []
-    for fname in ("SCHEMA.md", "overview.md", "index.md"):
+    for fname in ("SCHEMA.md", "overview.md"):
         path = WIKI_DIR / fname
         if path.is_file():
             parts.append(f"=== wiki/{fname} ===\n\n{path.read_text()}\n")
+    # Include only the heading lines of index.md to save context tokens.
+    # The full page listing below already tells the LLM what exists.
+    index_path = WIKI_DIR / "index.md"
+    if index_path.is_file():
+        headings = [
+            line for line in index_path.read_text().splitlines() if line.startswith("#")
+        ]
+        parts.append("=== wiki/index.md (headings only) ===\n\n" + "\n".join(headings) + "\n")
     # List existing pages
     pages = []
     for f in sorted(WIKI_DIR.rglob("*.md")):
@@ -146,6 +155,7 @@ def collect_wiki_context() -> str:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return "\n".join(parts)
+
 
 
 SYSTEM_PROMPT = """You are a wiki documentation agent for the "LLM Market Bench" project —
@@ -227,7 +237,10 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
+        "reasoning": {
+            "max_tokens": 2048,
+        },
         "response_format": {"type": "json_object"},
     }
 
@@ -240,7 +253,14 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
 
     resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=120)
     resp.raise_for_status()
-    return _parse_llm_response(resp.json()["choices"][0]["message"]["content"])
+    content = resp.json()["choices"][0]["message"]["content"]
+    if content is None:
+        finish_reason = resp.json()["choices"][0].get("finish_reason", "unknown")
+        raise RuntimeError(
+            f"OpenRouter returned null content (finish_reason={finish_reason!r}). "
+            "Model may have refused or been rate-limited."
+        )
+    return _parse_llm_response(content)
 
 
 def get_available_ollama_models() -> list[str]:
@@ -303,34 +323,47 @@ def call_ollama(prompt: str, model: str) -> dict:
         else:
             raise requests.RequestException(f"model '{resolved_model}' not found.")
     resp.raise_for_status()
-    return _parse_llm_response(resp.json()["message"]["content"])
+    content = resp.json()["message"]["content"]
+    if content is None:
+        raise RuntimeError("Ollama returned null content. Model may have failed or timed out.")
+    return _parse_llm_response(content)
 
 
 def _parse_llm_response(raw: str) -> dict:
     raw = raw.strip()
 
-    # Try to find JSON block via regex if it's wrapped in markdown
-    json_match = re.search(r"(\{.*\})", raw, re.DOTALL)
-    if json_match:
-        raw = json_match.group(1)
-
+    # 1. Direct parse attempt
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # If it's still failing (likely truncated), try a manual repair for common truncation
-        if raw.endswith('"'):
-            raw += "}"
-        elif not raw.endswith("}"):
-            # Attempt to use raw_decode to get what we can
-            decoder = json.JSONDecoder()
-            try:
-                result, _ = decoder.raw_decode(raw)
-                return result
-            except (json.JSONDecodeError, ValueError):
-                pass
+        pass
 
-        # Final fallback: re-try original
-        return json.loads(raw)
+    # 2. Extract markdown fenced code blocks: ```json ... ```
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
+    if fence_match:
+        try:
+            return json.loads(fence_match.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Use raw_decode starting from first '{' (handles trailing text / extra data)
+    start_idx = raw.find("{")
+    if start_idx != -1:
+        decoder = json.JSONDecoder()
+        try:
+            result, _ = decoder.raw_decode(raw[start_idx:])
+            return result
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        # 4. Attempt manual repair for common truncation
+        trimmed = raw[start_idx:]
+        if trimmed.endswith('"') or not trimmed.endswith("}"):
+            trimmed += "}"
+        return json.loads(trimmed)
+
+    return json.loads(raw)
+
 
 
 # write_log_entry deprecated
@@ -473,6 +506,11 @@ def main():
         help=f"OpenRouter model (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
+        "--free-model",
+        default=os.getenv("WIKI_DOC_FREE_MODEL", DEFAULT_FREE_BACKUP_MODEL),
+        help=f"OpenRouter free backup model (default: {DEFAULT_FREE_BACKUP_MODEL})",
+    )
+    parser.add_argument(
         "--ollama-model",
         default=os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
         help=f"Ollama fallback model (default: {DEFAULT_OLLAMA_MODEL})",
@@ -514,31 +552,46 @@ def main():
     api_key = get_api_key()
     result = None
 
-    # Try OpenRouter first
+    # Tier 1: Try Primary OpenRouter model
     if api_key:
         model = args.model
         print(f"  [auto-wiki] using OpenRouter model: {model}", file=sys.stderr)
         try:
             result = call_openrouter(prompt, model, api_key)
         except requests.RequestException as e:
-            print(f"  [auto-wiki] OpenRouter error: {e}", file=sys.stderr)
-            print("  [auto-wiki] falling back to ollama...", file=sys.stderr)
-        except json.JSONDecodeError as e:
-            print(f"  [auto-wiki] failed to parse OpenRouter response: {e}", file=sys.stderr)
-            print("  [auto-wiki] falling back to ollama...", file=sys.stderr)
+            print(f"  [auto-wiki] OpenRouter error ({model}): {e}", file=sys.stderr)
+        except (json.JSONDecodeError, RuntimeError) as e:
+            print(f"  [auto-wiki] OpenRouter response error ({model}): {e}", file=sys.stderr)
+
+        # Tier 2: Try OpenRouter Free backup model before local Ollama
+        if result is None and args.free_model and args.free_model != model:
+            print(
+                f"  [auto-wiki] primary model failed, falling back to OpenRouter free backup ({args.free_model})...",
+                file=sys.stderr,
+            )
+            try:
+                result = call_openrouter(prompt, args.free_model, api_key)
+                print(f"  [auto-wiki] OpenRouter free backup ({args.free_model}) succeeded", file=sys.stderr)
+            except requests.RequestException as e:
+                print(f"  [auto-wiki] OpenRouter free backup error ({args.free_model}): {e}", file=sys.stderr)
+            except (json.JSONDecodeError, RuntimeError) as e:
+                print(
+                    f"  [auto-wiki] OpenRouter free backup response error ({args.free_model}): {e}",
+                    file=sys.stderr,
+                )
     else:
         print("  [auto-wiki] no OPENROUTER_API_KEY found (env or keychain)", file=sys.stderr)
-        print("  [auto-wiki] trying ollama...", file=sys.stderr)
 
-    # Fallback to ollama
+    # Tier 3: Fallback to local Ollama as last resort
     if result is None:
+        print(f"  [auto-wiki] falling back to local Ollama ({args.ollama_model}) as last resort...", file=sys.stderr)
         try:
             result = call_ollama(prompt, args.ollama_model)
             print(f"  [auto-wiki] ollama ({args.ollama_model}) succeeded", file=sys.stderr)
         except (requests.RequestException, json.JSONDecodeError) as e:
             print(f"  [auto-wiki] ollama error: {e}", file=sys.stderr)
             print(
-                "  [auto-wiki] ERROR: No LLM (OpenRouter or Ollama) configured or available. Documentation is required.",
+                "  [auto-wiki] ERROR: All LLM tiers (OpenRouter primary, OpenRouter free, and local Ollama) failed. Documentation is required.",
                 file=sys.stderr,
             )
             sys.exit(1)  # BLOCK the commit

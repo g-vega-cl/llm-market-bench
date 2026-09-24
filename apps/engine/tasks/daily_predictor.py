@@ -3,24 +3,108 @@ import os
 import sys
 from datetime import UTC, datetime, timedelta
 
+import httpx
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.config import DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, logger
+from core.config import (
+    DEEPSEEK_FLASH_MODEL,
+    JEV_MODEL,
+    MINIMAX_MODEL,
+    OPENROUTER_API_KEY,
+    logger,
+)
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_deepseek_client
 from core.llm.daily_predictor_prompts import (
     DAILY_PREDICTOR_PROMPT,
+    JEV_DEFAULT_CRITERIA,
+    JEV_PREDICTOR_INSTRUCTIONS,
+    JEV_PREDICTOR_QUESTION_KEY,
+    JEV_PREDICTOR_QUESTION_TYPE,
     DailyPredictionOutput,
+    format_jev_prompt_content,
+    parse_jev_prompt_content,
     split_daily_predictor_prompt,
 )
 from core.llm.minimax import MiniMaxClient
 
 
+async def predict_daily_with_jev(
+    context: str,
+    criteria: dict[str, str] | None = None,
+    ticker: str = "SPY",
+    model_name: str = JEV_MODEL,
+) -> dict:
+    """Execute intraday decision prediction using Jev on OpenRouter Decisions API."""
+    key = OPENROUTER_API_KEY
+    if not key:
+        raise ValueError("OPENROUTER_API_KEY is not set. Cannot run Jev prediction.")
+
+    crit = criteria or JEV_DEFAULT_CRITERIA
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model_name,
+        "state": {
+            "ticker": ticker.upper(),
+            "market_context": context,
+        },
+        "questions": {
+            JEV_PREDICTOR_QUESTION_KEY: {
+                "type": JEV_PREDICTOR_QUESTION_TYPE,
+                "instructions": JEV_PREDICTOR_INSTRUCTIONS,
+                "criteria": {
+                    "UP": crit.get("UP", JEV_DEFAULT_CRITERIA["UP"]),
+                    "DOWN": crit.get("DOWN", JEV_DEFAULT_CRITERIA["DOWN"]),
+                },
+            }
+        },
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post("https://openrouter.ai/api/alpha/decisions", headers=headers, json=payload)
+        if resp.status_code != 200:
+            raise RuntimeError(f"OpenRouter Decisions API error {resp.status_code}: {resp.text}")
+        data = resp.json()
+
+    answers = data.get("answers", {})
+    dir_ans = answers.get(JEV_PREDICTOR_QUESTION_KEY, {})
+    choice = str(dir_ans.get("choice", "UP")).upper()
+    probabilities = dir_ans.get("probabilities", {})
+    prob = float(probabilities.get(choice, dir_ans.get("confidence", 0.5)))
+    confidence = round(prob * 100.0, 1) if prob <= 1.0 else round(prob, 1)
+
+    rationale = (
+        f"Jev System One decision: {choice} (P={prob:.2f}, "
+        f"confidence={dir_ans.get('confidence', 0):.2f}, "
+        f"distribution={probabilities})"
+    )
+
+    return {
+        "predicted_direction": choice,
+        "confidence": confidence,
+        "expected_return_pct": 0.0,
+        "rationale": rationale,
+        "catalysts": [],
+    }
+
+
 async def seed_daily_predictor_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> tuple[str, str]:
-    """Seed the Auto-Researcher optimized prompt as the active live baseline for a specific model in Supabase."""
+    """Seed the prompt/criteria as the active live baseline for a specific model in Supabase."""
     client = get_supabase_client()
     today = datetime.now(UTC).date()
     tag = f"daily-pred-seeded-{model_name}"
+
+    is_jev = "jev" in model_name.lower()
+    prompt_content = format_jev_prompt_content(JEV_DEFAULT_CRITERIA) if is_jev else DAILY_PREDICTOR_PROMPT
+    change_desc = (
+        f"Seeded baseline decision criteria for {model_name}."
+        if is_jev
+        else f"Seeded symmetric zero-mean anti-bias predictor prompt for {model_name}."
+    )
 
     try:
         # Demote previous active/baseline live predictor prompts for this track to saved
@@ -33,22 +117,22 @@ async def seed_daily_predictor_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) ->
             {
                 "variant_tag": tag,
                 "prompt_name": "DAILY_PREDICTOR_PROMPT",
-                "prompt_content": DAILY_PREDICTOR_PROMPT,
+                "prompt_content": prompt_content,
                 "track_id": model_name,
                 "week_start": today.isoformat(),
                 "week_end": (today + timedelta(days=7)).isoformat(),
                 "status": "active",
                 "experiment_type": "baseline",
-                "change_description": f"Seeded symmetric zero-mean anti-bias predictor prompt for {model_name}.",
+                "change_description": change_desc,
             }
         ).execute()
 
         logger.info(f"Successfully seeded and deployed live active prompt variant for {model_name}: {tag}")
-        return tag, DAILY_PREDICTOR_PROMPT
+        return tag, prompt_content
     except Exception as e:
         logger.error(f"Error seeding daily predictor prompt for {model_name}: {e}")
 
-    return tag, DAILY_PREDICTOR_PROMPT
+    return tag, prompt_content
 
 
 async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> tuple[str, str]:
@@ -89,7 +173,10 @@ async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> t
     except Exception as e:
         logger.error(f"Error fetching active daily predictor prompt for {model_name}: {e}")
 
-    return f"fallback-daily-{model_name}", DAILY_PREDICTOR_PROMPT
+    default_content = (
+        format_jev_prompt_content(JEV_DEFAULT_CRITERIA) if "jev" in model_name.lower() else DAILY_PREDICTOR_PROMPT
+    )
+    return f"fallback-daily-{model_name}", default_content
 
 
 async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close: bool = False) -> str:
@@ -340,6 +427,7 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
     models = [
         {"name": DEEPSEEK_FLASH_MODEL, "type": "instructor", "provider": "deepseek"},
         {"name": MINIMAX_MODEL, "type": "minimax", "provider": "minimax"},
+        {"name": JEV_MODEL, "type": "jev", "provider": "openrouter"},
     ]
 
     results = []
@@ -349,8 +437,11 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
         m_type = model_cfg["type"]
         provider = model_cfg["provider"]
         prompt_tag, raw_prompt_content = await fetch_active_daily_prompt(model_name=model_name)
-        header, mutable, footer = split_daily_predictor_prompt(raw_prompt_content)
-        prompt_content = header + mutable + footer
+        if m_type != "jev":
+            header, mutable, footer = split_daily_predictor_prompt(raw_prompt_content)
+            prompt_content = header + mutable + footer
+        else:
+            prompt_content = raw_prompt_content
 
         success = False
         for attempt in range(3):
@@ -416,6 +507,20 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                         catalysts = parsed_json.get("catalysts", [])
                     finally:
                         await minimax_client.close()
+
+                elif m_type == "jev":
+                    crit = parse_jev_prompt_content(raw_prompt_content)
+                    jev_res = await predict_daily_with_jev(
+                        context=context,
+                        criteria=crit,
+                        ticker=ticker,
+                        model_name=model_name,
+                    )
+                    pred_dir = jev_res["predicted_direction"]
+                    confidence = float(jev_res["confidence"])
+                    expected_return_pct = float(jev_res["expected_return_pct"])
+                    rationale = jev_res["rationale"]
+                    catalysts = jev_res["catalysts"]
 
                 prediction_row = {
                     "prediction_date": today.isoformat(),

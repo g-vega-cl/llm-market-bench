@@ -6,6 +6,7 @@
   "DEEPSEEK_MODEL": "deepseek-v4-flash",
   "DEEPSEEK_FLASH_MODEL": "deepseek-v4-flash",
   "MINIMAX_MODEL": "MiniMax-M3",
+  "JEV_MODEL": "~typesafe/jev-latest",
   "AUTORESEARCH_EXPERIMENT_OWNER_IDS": [
     "gemini-3.5-flash-lite",
     "MiniMax-M3",

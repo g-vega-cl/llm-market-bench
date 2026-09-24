@@ -83,9 +83,7 @@ CRITICAL: Do NOT default to UP due to long-term market drift.
 Avoid positive-framing bias.
 """
     legacy_prompt = (
-        legacy_header
-        + "\n=== SOPHISTICATED STRATEGY ===\n1. Macro rules.\n\n"
-        + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+        legacy_header + "\n=== SOPHISTICATED STRATEGY ===\n1. Macro rules.\n\n" + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
     )
 
     header, mutable, footer = split_daily_predictor_prompt(legacy_prompt)
@@ -710,4 +708,3 @@ async def test_run_daily_prediction_persists_market_context():
         for row in upserted_rows:
             assert "market_context" in row
             assert row["market_context"] == mock_context_str
-

@@ -748,6 +748,11 @@ const PREDICTOR_MODELS: ModelConfig[] = [
         label: 'MiniMax M3',
         matches: (m: string) => m.toLowerCase().includes('minimax'),
     },
+    {
+        id: '~typesafe/jev-latest',
+        label: 'Jev (TypeSafe)',
+        matches: (m: string) => m.toLowerCase().includes('jev'),
+    },
 ];
 
 interface AutoresearchMilestonesProps {

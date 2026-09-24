@@ -35,6 +35,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # --- Model Selection ---
 # Loaded from the shared packages/config/models.json — the single source of truth.
@@ -50,6 +51,7 @@ GEMINI_EMBEDDING_MODEL: str = _models["GEMINI_EMBEDDING_MODEL"]
 DEEPSEEK_MODEL: str = _models["DEEPSEEK_MODEL"]
 DEEPSEEK_FLASH_MODEL: str = _models["DEEPSEEK_FLASH_MODEL"]
 MINIMAX_MODEL: str = _models["MINIMAX_MODEL"]
+JEV_MODEL: str = _models.get("JEV_MODEL", "~typesafe/jev-latest")
 AUTORESEARCH_EXPERIMENT_OWNER_IDS: list[str] = _models.get("AUTORESEARCH_EXPERIMENT_OWNER_IDS", [])
 AUTORESEARCH_TRACKS: dict[str, list[str]] = _models.get("AUTORESEARCH_TRACKS", {})
 ACTIVE_OWNER_IDS: list[str] = list(_models.values())

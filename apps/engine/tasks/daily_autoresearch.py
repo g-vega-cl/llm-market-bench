@@ -8,12 +8,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pydantic import BaseModel, Field
 
-from core.config import DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, logger
+from core.config import (
+    DEEPSEEK_FLASH_MODEL,
+    JEV_MODEL,
+    MINIMAX_MODEL,
+    OPENAI_MODEL,
+    logger,
+)
 from core.db import get_supabase_client
-from core.llm.clients import close_client, get_deepseek_client
+from core.llm.clients import close_client, get_deepseek_client, get_openai_client
 from core.llm.daily_predictor_prompts import (
     DAILY_PREDICTOR_CONSTRAINTS_FOOTER,
     DAILY_PREDICTOR_CONSTRAINTS_HEADER,
+    JEV_PREDICTOR_INSTRUCTIONS,
+    format_jev_prompt_content,
+    parse_jev_prompt_content,
     split_daily_predictor_prompt,
 )
 
@@ -28,6 +37,25 @@ class DailyMetaPromptResponse(BaseModel):
             "A concise, durable strategic takeaway or lesson learned from this week's prediction results "
             "(e.g. how specific macro catalysts, gap-ups, or VIX levels affected SPY accuracy and magnitude calibration). "
             "This will be preserved in long-term memory for this model track."
+        ),
+    )
+
+
+class JevMetaCriteriaResponse(BaseModel):
+    criteria_up: str = Field(
+        ...,
+        description="The mutated criteria text defining when the market will close HIGHER (UP). Focus on specific technical, catalyst, or macro conditions.",
+    )
+    criteria_down: str = Field(
+        ...,
+        description="The mutated criteria text defining when the market will close LOWER (DOWN). Focus on specific technical, catalyst, or macro conditions.",
+    )
+    research_insight: str | None = Field(
+        default=None,
+        description=(
+            "A concise, durable strategic takeaway or lesson learned from this week's prediction results "
+            "(e.g. how specific macro catalysts, gap-ups, or VIX levels affected Jev's classification accuracy). "
+            "This will be preserved in long-term memory for the Jev model track."
         ),
     )
 
@@ -421,6 +449,76 @@ async def generate_new_daily_prompt(
         return old_prompt, None
 
 
+async def generate_new_jev_criteria(
+    old_prompt_content: str,
+    predictions: list[dict],
+    macro_context: dict,
+    baseline_score: float,
+    openai_meta,
+    cold_start: bool = False,
+) -> tuple[str, str | None]:
+    """Generate mutated UP and DOWN criteria for Jev using OpenAI Luna (gpt-5.6-luna)."""
+    current_criteria = parse_jev_prompt_content(old_prompt_content)
+
+    postmortem_context = (
+        compute_magnitude_postmortem_summary(predictions, macro_context=macro_context)
+        if predictions
+        else "No recent prediction postmortem available."
+    )
+
+    if cold_start:
+        criteria_block = (
+            "=== COLD START RESET (CRITERIA FROM SCRATCH) ===\n"
+            "This cycle is a COLD START RESET (1-in-6 stochastic exploration).\n"
+            "DO NOT anchor on prior criteria. Generate entirely fresh, high-conviction classification rules "
+            "for UP (bullish session) and DOWN (bearish session) from scratch."
+        )
+    else:
+        criteria_block = (
+            "CURRENT JEV CLASSIFICATION CRITERIA:\n"
+            f"UP Criteria: {current_criteria.get('UP', '')}\n"
+            f"DOWN Criteria: {current_criteria.get('DOWN', '')}\n"
+        )
+
+    meta_prompt = (
+        f"You are a Meta-Researcher AI optimizing the decision criteria for Jev, a fast System One probability classifier.\n"
+        f"Jev answers the question: '{JEV_PREDICTOR_INSTRUCTIONS}'\n"
+        f"It classifies market state into 'UP' or 'DOWN' and outputs probabilities.\n\n"
+        f"The current criteria achieved a ratchet score of {baseline_score:.2f}.\n\n"
+        f"{postmortem_context}\n\n"
+        "### CRITICAL STRUCTURAL BOUNDARIES:\n"
+        "1. Question structure, choices ('UP', 'DOWN'), and instructions are FROZEN.\n"
+        "2. You are modifying ONLY `criteria_up` and `criteria_down`.\n"
+        "3. Keep each criteria concise, specific, and actionable (2-4 sentences describing technical VWAP behavior, catalyst follow-through, yield moves, or overnight gap dynamics).\n"
+        "4. Both criteria MUST be symmetric and balanced. Avoid bullish drift.\n"
+        "5. Provide a concise `research_insight` (1-2 sentences) summarizing what misled Jev this week.\n\n"
+        f"{criteria_block}"
+    )
+
+    try:
+        resp_awaitable = openai_meta.chat.completions.create(
+            model=OPENAI_MODEL,
+            response_model=JevMetaCriteriaResponse,
+            messages=[{"role": "user", "content": meta_prompt}],
+        )
+        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+            resp = await resp_awaitable
+        else:
+            resp = resp_awaitable
+
+        new_crit = {
+            "UP": resp.criteria_up.strip(),
+            "DOWN": resp.criteria_down.strip(),
+        }
+        insight = getattr(resp, "research_insight", None)
+        if insight:
+            insight = insight.strip()
+        return format_jev_prompt_content(new_crit), insight
+    except Exception as e:
+        logger.error(f"Error generating new Jev criteria with OpenAI Luna: {e}")
+        return old_prompt_content, None
+
+
 async def run_daily_autoresearch_for_model(
     model_name: str,
     client,
@@ -428,6 +526,7 @@ async def run_daily_autoresearch_for_model(
     seven_days_ago,
     fourteen_days_ago,
     deepseek_meta,
+    openai_meta=None,
     dry_run: bool = False,
     cold_start: bool | None = None,
 ):
@@ -560,15 +659,26 @@ async def run_daily_autoresearch_for_model(
         client, fourteen_days_ago.isoformat(), today.isoformat(), track_id=model_name
     )
 
-    # 6. Mutate prompt using DeepSeek Flash with enriched context
-    new_prompt, research_insight = await generate_new_daily_prompt(
-        old_prompt=current_prompt,
-        baseline_score=current_score,
-        predictions=predictions,
-        macro_context=macro_context,
-        meta_researcher=deepseek_meta,
-        cold_start=is_cold_start,
-    )
+    # 6. Mutate prompt using DeepSeek Flash or OpenAI Luna for Jev
+    is_jev = "jev" in model_name.lower()
+    if is_jev:
+        new_prompt, research_insight = await generate_new_jev_criteria(
+            old_prompt_content=current_prompt,
+            baseline_score=current_score,
+            predictions=predictions,
+            macro_context=macro_context,
+            openai_meta=openai_meta,
+            cold_start=is_cold_start,
+        )
+    else:
+        new_prompt, research_insight = await generate_new_daily_prompt(
+            old_prompt=current_prompt,
+            baseline_score=current_score,
+            predictions=predictions,
+            macro_context=macro_context,
+            meta_researcher=deepseek_meta,
+            cold_start=is_cold_start,
+        )
 
     # 7. Deploy new active prompt variant scoped to track_id, demoting prior active variants
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"
@@ -621,7 +731,7 @@ async def run_daily_autoresearch_for_model(
         "thought_process": research_insight,
         "research_reasoning": research_insight,
         "confidence": 0.85 if is_baseline_beat else 0.50,
-        "selected_tools": DEFAULT_DAILY_PREDICTOR_TOOLS,
+        "selected_tools": ["openrouter_decisions"] if is_jev else DEFAULT_DAILY_PREDICTOR_TOOLS,
         "is_cold_start": is_cold_start,
     }
 
@@ -652,14 +762,15 @@ async def run_daily_autoresearch_for_model(
 
 
 async def run_daily_autoresearch(dry_run: bool = False, cold_start: bool | None = None):
-    """Run weekly prompt evolution and ratchet check independently for both predictor models on Sunday."""
+    """Run weekly prompt evolution and ratchet check independently for all predictor models on Sunday."""
     client = get_supabase_client()
     today = datetime.now(UTC).date()
     seven_days_ago = today - timedelta(days=7)
     fourteen_days_ago = today - timedelta(days=14)
 
-    target_models = [DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL]
+    target_models = [DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, JEV_MODEL]
     deepseek_meta = get_deepseek_client()
+    openai_meta = get_openai_client()
 
     from autoresearch.runner import roll_cold_start_dice
 
@@ -685,11 +796,13 @@ async def run_daily_autoresearch(dry_run: bool = False, cold_start: bool | None 
                 seven_days_ago=seven_days_ago,
                 fourteen_days_ago=fourteen_days_ago,
                 deepseek_meta=deepseek_meta,
+                openai_meta=openai_meta,
                 dry_run=dry_run,
                 cold_start=m_cold,
             )
     finally:
         await close_client(deepseek_meta, "deepseek")
+        await close_client(openai_meta, "openai")
 
 
 if __name__ == "__main__":

@@ -121,11 +121,7 @@ def split_daily_predictor_prompt(prompt_text: str) -> tuple[str, str, str]:
             if idx != -1 and (marker_idx == -1 or idx < marker_idx):
                 marker_idx = idx
 
-        mutable = (
-            content_before_footer[marker_idx:].strip()
-            if marker_idx != -1
-            else content_before_footer.strip()
-        )
+        mutable = content_before_footer[marker_idx:].strip() if marker_idx != -1 else content_before_footer.strip()
 
     # 3. Defensive sanity check: remove any leftover persona or context headers in mutable
     if "You are an elite quantitative macro trader" in mutable:
@@ -151,3 +147,48 @@ def split_daily_predictor_prompt(prompt_text: str) -> tuple[str, str, str]:
         mutable = "\n".join(filtered_lines).strip()
 
     return header, mutable, footer
+
+
+# Jev Decision Model Configuration (System One via OpenRouter)
+JEV_PREDICTOR_QUESTION_KEY = "direction"
+JEV_PREDICTOR_QUESTION_TYPE = "choice"
+JEV_PREDICTOR_INSTRUCTIONS = (
+    "Predict whether SPY will close HIGHER (UP) or LOWER (DOWN) at 4:00 PM ET compared to the 9:30 AM ET Open price."
+)
+JEV_DEFAULT_CRITERIA = {
+    "UP": (
+        "Close price >= Open price. Bullish intraday session: price holds above VWAP, "
+        "positive overnight momentum continuation, falling bond yields, or strong bullish macro catalysts."
+    ),
+    "DOWN": (
+        "Close price < Open price. Bearish intraday session: price rejects VWAP, "
+        "gap-fill exhaustion, surging bond yields, high VIX, or negative macro catalysts."
+    ),
+}
+
+
+def format_jev_prompt_content(criteria: dict[str, str]) -> str:
+    """Format Jev criteria dictionary into JSON text for prompt_experiments storage."""
+    import json
+
+    clean_criteria = {
+        "UP": criteria.get("UP", JEV_DEFAULT_CRITERIA["UP"]).strip(),
+        "DOWN": criteria.get("DOWN", JEV_DEFAULT_CRITERIA["DOWN"]).strip(),
+    }
+    return json.dumps(clean_criteria, indent=2)
+
+
+def parse_jev_prompt_content(prompt_content: str | None) -> dict[str, str]:
+    """Parse criteria dictionary from prompt_experiments prompt_content string."""
+    import json
+
+    if not prompt_content:
+        return dict(JEV_DEFAULT_CRITERIA)
+    try:
+        data = json.loads(prompt_content)
+        if isinstance(data, dict) and "UP" in data and "DOWN" in data:
+            return {"UP": str(data["UP"]).strip(), "DOWN": str(data["DOWN"]).strip()}
+    except Exception:
+        pass
+
+    return dict(JEV_DEFAULT_CRITERIA)

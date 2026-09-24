@@ -1,5 +1,5 @@
 ---
-tags: [predictor, daily, intraday, sp500, autoresearch, deepseek, minimax]
+tags: [predictor, daily, intraday, sp500, autoresearch, deepseek, minimax, jev]
 category: entity
 ---
 
@@ -12,8 +12,8 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 1. **Pre-Market Inference (9:20 AM ET)**:
    - Command: `python main.py daily-predictor [--ticker SPY] [--force]`
    - **Trading Day and Holiday Validation**: Checks `MarketDataManager.is_trading_day()` against FMP exchange holidays (with rule-based fallback for US federal market holidays). Automatically exits without logging predictions on weekends or exchange holidays such as Labor Day, unless bypassed with `--force`.
-   - **Pure Model Arena**: Runs **DeepSeek Flash** (`deepseek-v4-flash` via Instructor) and **MiniMax-M3** (`MiniMax-M3` via MiniMax JSON client with explicit JSON schema footer, 8,192 token ceiling, and YAML fallback parser) in an isolated model arena, logging predictions independently for each model without reasoning cross-contamination.
-    - Context: Synthesizes today's live morning economic releases (CPI, PPI, Jobs, Retail Sales prints with actual vs consensus surprises and release status via `get_today_economic_releases_summary()`), forward high-impact calendar scenarios (via `execute_get_calendar_scenario_analysis_tool(timeframe="tomorrow")`), dual AI Wall Street newsletter briefings (prior session `close` executive summary & key takeaways via `execute_fetch_daily_newsletter_tool(session="close", include_full_content=False)` plus today's full pre-market `open` briefing via `execute_fetch_daily_newsletter_tool(session="open", include_full_content=True)`), live pre-market price quotes & overnight gap metrics (via FMP `/quote` and `MarketDataManager.get_premarket_quote` across US indices `SPY`, `QQQ`, `DIA`, `IWM`, international proxies `EWJ`, `VGK`, Treasury yield proxies `TLT`, `IEF`, and commodities/FX `GLD`, `USO`, `UUP`), prior session regular trading hours intraday movement profile (OHLC, True Intraday Return %, CLV, Initial Balance breakout, and session archetype via `get_intraday_movement_report()`), technical indicators (SMA20, 5-day return), cross-asset macro options derivatives positioning & volatility skew (via `execute_get_macro_options_sentiment_tool(primary_ticker="SPY")` covering `SPY`, `QQQ`, `IWM`, and `GLD` with timestamp & session staleness metadata), and canonical tools context (`execute_get_global_macro_context_tool`, `execute_get_volatility_index_details_tool`, `execute_market_health_barometer_tool`, `execute_get_market_feeling_tool`).
+   - **Pure Model Arena**: Runs **DeepSeek Flash** (`deepseek-v4-flash` via Instructor), **MiniMax-M3** (`MiniMax-M3` via MiniMax JSON client with explicit JSON schema footer), and **Jev** (`~typesafe/jev-latest` via OpenRouter Decisions API) in an isolated model arena, logging predictions independently for each model without reasoning cross-contamination.
+     - Context: Synthesizes today's live morning economic releases (CPI, PPI, Jobs, Retail Sales prints with actual vs consensus surprises and release status via `get_today_economic_releases_summary()`), forward high-impact calendar scenarios (via `execute_get_calendar_scenario_analysis_tool(timeframe="tomorrow")`), dual AI Wall Street newsletter briefings (prior session `close` executive summary & key takeaways via `execute_fetch_daily_newsletter_tool(session="close", include_full_content=False)` plus today's full pre-market `open` briefing via `execute_fetch_daily_newsletter_tool(session="open", include_full_content=True)`), live pre-market price quotes & overnight gap metrics (via FMP `/quote` and `MarketDataManager.get_premarket_quote` across US indices `SPY`, `QQQ`, `DIA`, `IWM`, international proxies `EWJ`, `VGK`, Treasury yield proxies `TLT`, `IEF`, and commodities/FX `GLD`, `USO`, `UUP`), prior session regular trading hours intraday movement profile (OHLC, True Intraday Return %, CLV, Initial Balance breakout, and session archetype via `get_intraday_movement_report()`), technical indicators (SMA20, 5-day return), cross-asset macro options derivatives positioning & volatility skew (via `execute_get_macro_options_sentiment_tool(primary_ticker="SPY")` covering `SPY`, `QQQ`, `IWM`, and `GLD` with timestamp & session staleness metadata), and canonical tools context (`execute_get_global_macro_context_tool`, `execute_get_volatility_index_details_tool`, `execute_market_health_barometer_tool`, `execute_get_market_feeling_tool`).
    - **Zero-Mean Anti-Bias Mandate**: System prompt enforces a zero-mean distribution baseline (~50/50 UP vs DOWN) to eliminate pre-trained LLM long-term market drift bias. Requires strictly symmetric evaluation of bearish breakdown signals (VWAP resistance, RSI > 70 overbought exhaustion, yield surges) alongside bullish momentum signals.
 
 2. **Post-Market Evaluation (5:15 PM EDT / 4:15 PM EST)**:
@@ -29,18 +29,18 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 
 3. **Weekly Prompt Evolution & Performance Ratchet (Sunday 6:00 PM ET / 10:00 PM UTC)**:
    - Command: `python main.py daily-autoresearch`
-   - **Independent Multi-Model Tracks**: Evaluates recent predictions over the prior 7 days (all available trading sessions) and evolves system prompt variants independently for each participating model (`deepseek-v4-flash` and `MiniMax-M3`), strictly scoped by `track_id` in `prompt_experiments`. Models never share or cross-pollinate prompt strategies or baselines.
+   - **Independent Multi-Model Tracks**: Evaluates recent predictions over the prior 7 days (all available trading sessions) and evolves system prompt variants independently for each participating model (`deepseek-v4-flash`, `MiniMax-M3`, and `~typesafe/jev-latest`), strictly scoped by `track_id` in `prompt_experiments`. Models never share or cross-pollinate prompt strategies or baselines.
    - **Single Active Variant Enforcement**: Deploying a new active variant for a model track automatically demotes all prior `active` variants for that `track_id` to `saved`, guaranteeing a single live active strategy per model track.
    - Combined Multi-Factor Ratchet Score formula:
      $$\text{Ratchet Score} = (0.55 \times \text{close\_accuracy\_pct}) + (0.35 \times \text{intraday\_hit\_pct}) + (0.10 \times \text{magnitude\_capture\_pct}) - (\text{mean\_brier} \times 50.0)$$
    - **Granular Metrics Persistence**: Persists full score factor breakdowns in `prompt_experiments.metrics` (`close_accuracy_pct`, `intraday_hit_pct`, `magnitude_capture_pct`, `mean_brier`, `predictions_evaluated`, `correct_count`, `intraday_hit_count`) for transparent audits.
    - **Magnitude Calibration Postmortem & Catalyst Enrichment**: Evaluates whether timid targets were set on large breakout/trend days ($\text{capture} = \min(1.0, |\text{expected\_return}| / \max(|\text{peak}|, |\text{close}|)) \times 100$, awarded only on successful target hits). The meta-researcher receives a detailed postmortem breakdown diagnosing timid sizing vs overshooting errors cross-referenced with 14 days of ingested newsletters, market events, and active thematic concepts from `concept_metrics` to evolve analytical catalyst recognition rules without compromising baseline target hit reliability.
    - Applies ratchet logic per model: if a model's recent 7-day performance beats its historical baseline, establishes a new baseline; if lower, reverts to baseline prompt content for mutation.
-   - Mutates mutable strategy section using DeepSeek Flash meta-researcher per model track.
+   - **Specialized Meta-Researchers**: Uses DeepSeek Flash (`deepseek-v4-flash`) to evolve strategy prompts for DeepSeek and MiniMax, and OpenAI Luna (`gpt-5.6-luna`) to evolve classification criteria (`criteria_up` and `criteria_down`) for Jev.
    - **Backtest Isolation**: Evaluated prediction queries explicitly filter out records with `backtest` in `prompt_variant_tag`, preventing simulated historical backtests from affecting live weekly prompt mutations or ratchet scores.
 
 4. **Web Frontend (`/daily-predictions`)**:
-   - **Independent Model Tabs**: Dedicated navigation tabs for **DeepSeek Flash** and **MiniMax M3** (with dynamic prediction counts). Selecting a tab isolates overview metrics, latest hero forecast, prediction log table, and autoresearch history strictly to that model.
+   - **Independent Model Tabs**: Dedicated navigation tabs for **DeepSeek Flash**, **MiniMax M3**, and **Jev (TypeSafe)** (with dynamic prediction counts). Selecting a tab isolates overview metrics, latest hero forecast, prediction log table, and autoresearch history strictly to that model.
    - **Strict Live Forecast Isolation**: `fetchDailyPredictions` and `/daily-predictions` filter out simulated backtest predictions (`prompt_variant_tag` containing `backtest`). Directional accuracy, intraday target hit rates, Brier calibration, and tab prediction counts strictly evaluate live 9:15 AM ET forecasts without dilution from historical backtests.
    - **Dual Sub-Views**: Seamless toggle switch between **Predictions Log** (live forecasts, hero card, and evaluated accuracy table) and **Autoresearch & Benchmark History** (ratchet score progression, baseline threshold milestones, and prompt mutation lineage).
    - **Strict Track-Isolated Active Resolution**: In the Autoresearch view, shows active ratchet score, all-time best baseline score, score progression deltas ($\pm\Delta$ vs parent baseline), and an interactive master-detail variant browser with full mutated system prompt strategy text and mutation rationales. Prompt resolution strictly operates on the selected model's lineage, defaulting directly to inspecting the current active variant. Includes a dedicated **Current Active Prompt** milestone card and **`🟢 Active Runtime: <variant_tag>`** banner with explicit visual lineage status badges (`🟢 ACTIVE`, `🏆 BASELINE`, `❌ DISCARDED`, `📦 SAVED`) ensuring discarded mutations and fallback active variants are immediately obvious. Features a responsive mobile-first layout that cleanly stacks the variant lineage selector above the prompt details inspector on mobile/tablet viewports and displays side-by-side on desktop (`lg:`).
@@ -59,7 +59,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - Decoupled from intraday trading workflows: `daily-autoresearch` runs weekly (Sunday 6:00 PM ET / 10:00 PM UTC) directly via native GitHub Actions schedule (`0 22 * * SUN` in `daily-predictor.yml`).
 
 2. **Runner Environment & API Key Injection**:
-   - `.github/workflows/daily-predictor.yml` provisions secrets for financial data (`FMP_API_KEY`, `FRED_API_KEY`, `MASSIVE_API_KEY`), database access (`SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`), and all participating models (`DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`).
+   - `.github/workflows/daily-predictor.yml` provisions secrets for financial data (`FMP_API_KEY`, `FRED_API_KEY`, `MASSIVE_API_KEY`), database access (`SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`), and all participating models (`DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`).
 
 3. **Market-Open and Schedule Guardrails**:
    - Implemented in `.github/workflows/daily-predictor.yml`.
@@ -75,7 +75,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
  
 ## Related
  
-- [[concepts/system-portfolios]] — mechanical sector long/short and daily SPY portfolios
-- [[entities/sector-predictor-arena]] — Sector predictor arena comparison
-- [[entities/autoresearch]] — Portfolio auto-research subsystem
-- [[entities/database]] — Core database schema and prompt tracking tables
+- [[concepts/system-portfolios]], mechanical sector long/short and daily SPY portfolios
+- [[entities/sector-predictor-arena]], Sector predictor arena comparison
+- [[entities/autoresearch]], Portfolio auto-research subsystem
+- [[entities/database]], Core database schema and prompt tracking tables

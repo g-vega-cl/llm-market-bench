@@ -202,15 +202,26 @@ async def test_run_daily_autoresearch_ratchet():
     mock_llm = MagicMock()
     mock_llm.chat.completions.create.return_value = MagicMock(new_prompt="Mutated intraday strategy instructions")
 
+    mock_openai = MagicMock()
+    mock_openai.chat.completions.create = AsyncMock(
+        return_value=MagicMock(
+            criteria_up="Mutated UP rule",
+            criteria_down="Mutated DOWN rule",
+            research_insight="Mutated Jev insight",
+        )
+    )
+
     with (
         patch("tasks.daily_autoresearch.get_supabase_client", return_value=mock_supabase),
         patch("tasks.daily_autoresearch.get_deepseek_client", return_value=mock_llm),
+        patch("tasks.daily_autoresearch.get_openai_client", return_value=mock_openai),
         patch("tasks.daily_autoresearch.close_client", new_callable=AsyncMock),
+        patch("memory.store.add_memory", return_value="mem-123"),
     ):
         await run_daily_autoresearch()
         assert mock_table.insert.called
-        # Should insert for both models
-        assert mock_table.insert.call_count >= 2
+        # Should insert for all models (DeepSeek, MiniMax, Jev)
+        assert mock_table.insert.call_count >= 3
 
 
 def test_fetch_autoresearch_context():
@@ -355,10 +366,21 @@ async def test_run_daily_autoresearch_weekly_lookbacks():
 
     mock_supabase.table.side_effect = mock_table_select
 
+    mock_openai = MagicMock()
+    mock_openai.chat.completions.create = AsyncMock(
+        return_value=MagicMock(
+            criteria_up="Mutated UP rule",
+            criteria_down="Mutated DOWN rule",
+            research_insight="Mutated Jev insight",
+        )
+    )
+
     with (
         patch("tasks.daily_autoresearch.get_supabase_client", return_value=mock_supabase),
         patch("tasks.daily_autoresearch.get_deepseek_client", return_value=mock_llm),
+        patch("tasks.daily_autoresearch.get_openai_client", return_value=mock_openai),
         patch("tasks.daily_autoresearch.close_client", new_callable=AsyncMock),
+        patch("memory.store.add_memory", return_value="mem-123"),
     ):
         await run_daily_autoresearch()
 

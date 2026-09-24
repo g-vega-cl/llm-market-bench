@@ -71,6 +71,7 @@
 
 ## Concepts
 
+- [[concepts/jev-decisions-model]] — TypeSafe Jev System One classifier via the OpenRouter Decisions API with evolvable UP/DOWN criteria
 - [[concepts/historical-market-analogs]] — Hybrid LLM-precedent + verified-return benchmarking for macro analog playbooks
 - [[concepts/historical-market-analogs]] — Auto-indexed page
 - [[concepts/python-execution-protocol]] — Mandatory file-based Python execution protocol (no inline `-c`) enforced by Antigravity security grants

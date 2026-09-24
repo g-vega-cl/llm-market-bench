@@ -72,6 +72,31 @@ describe('DailyPredictionsPage', () => {
             created_at: '2026-08-03T08:00:00Z',
             updated_at: '2026-08-03T16:15:00Z',
         },
+        {
+            id: 'daily-pred-jev-1',
+            prediction_date: '2026-08-03',
+            target_date: '2026-08-03',
+            ticker: 'SPY',
+            model_name: '~typesafe/jev-latest',
+            prompt_variant_tag: 'daily-jev-v1',
+            predicted_direction: 'UP',
+            confidence: 74.0,
+            expected_return_pct: 0.0,
+            rationale: 'Jev System One decision: UP (P=0.74).',
+            catalysts: [],
+            open_price: 450.0,
+            high_price: 456.0,
+            low_price: 449.0,
+            close_price: 455.0,
+            actual_direction: 'UP',
+            is_correct: true,
+            intraday_hit: true,
+            intraday_direction_hit: true,
+            brier_score: 0.0676,
+            status: 'evaluated',
+            created_at: '2026-08-03T08:00:00Z',
+            updated_at: '2026-08-03T16:15:00Z',
+        },
     ];
 
     const mockExperiments: PromptExperiment[] = [
@@ -108,6 +133,24 @@ describe('DailyPredictionsPage', () => {
             research_output: null,
             is_backtest: false,
             track_id: 'MiniMax-M3',
+        },
+        {
+            id: 'exp-daily-3',
+            prompt_name: 'DAILY_PREDICTOR_PROMPT',
+            variant_tag: 'daily-jev-v1',
+            experiment_type: 'baseline',
+            prompt_content:
+                '{\n  "UP": "Close >= Open. Bullish intraday signals.",\n  "DOWN": "Close < Open. Bearish intraday signals."\n}',
+            change_description: 'Initial Jev decision criteria.',
+            metrics: { score: 68.0 },
+            status: 'active',
+            week_start: '2026-08-03',
+            week_end: '2026-08-10',
+            created_at: '2026-08-03T00:00:00Z',
+            parent_tag: null,
+            research_output: null,
+            is_backtest: false,
+            track_id: '~typesafe/jev-latest',
         },
     ];
 
@@ -171,6 +214,29 @@ describe('DailyPredictionsPage', () => {
         // DeepSeek rationale not shown on MiniMax tab
         expect(
             screen.queryByText(/Overnight futures momentum and strong earnings catalysts/i),
+        ).not.toBeInTheDocument();
+    });
+
+    it('switches to Jev tab and isolates Jev predictions, metrics, and criteria', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={mockExperiments}
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: /Jev \(TypeSafe\)/i })).toBeInTheDocument();
+        const jevTabBtn = screen.getByRole('button', { name: /Jev \(TypeSafe\)/i });
+        fireEvent.click(jevTabBtn);
+
+        // Jev prediction shown in hero and table
+        expect(screen.getByText('▲ UP')).toBeInTheDocument();
+        expect(screen.getByText('74% Confidence')).toBeInTheDocument();
+        expect(screen.getByText(/Jev System One decision: UP/i)).toBeInTheDocument();
+
+        // MiniMax rationale not shown on Jev tab
+        expect(
+            screen.queryByText(/Overextended technical indicators and upcoming CPI data/i),
         ).not.toBeInTheDocument();
     });
 

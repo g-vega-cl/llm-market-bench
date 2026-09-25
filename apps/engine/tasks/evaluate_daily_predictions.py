@@ -296,6 +296,16 @@ async def evaluate_daily_predictions(target_date: str | None = None, force_recal
             f"Correct: {is_correct}, IntradayHit: {intraday_hit}, Brier: {brier_score:.4f}"
         )
 
+    if evaluated_count > 0:
+        try:
+            from analysis.daily_postmortem import run_daily_postmortem
+
+            eval_target_date = target_date or (pending[0]["target_date"] if pending else None)
+            logger.info(f"Triggering daily post-mortem audit with GPT-5.6 Luna for {eval_target_date}...")
+            await run_daily_postmortem(target_date=eval_target_date, force=force_recalc)
+        except Exception as e:
+            logger.exception(f"Failed to execute daily post-mortem for target date {target_date}: {e}")
+
     return evaluated_count
 
 

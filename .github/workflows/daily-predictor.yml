@@ -15,6 +15,7 @@ on:
           - 'daily-predictor'
           - 'evaluate-daily-predictions'
           - 'daily-autoresearch'
+          - 'daily-postmortem'
 
 jobs:
   run-daily-predictor:

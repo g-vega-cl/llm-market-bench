@@ -385,3 +385,17 @@ def test_main_evaluate_daily_predictions_cli():
     ):
         main()
         mock_eval.assert_awaited_once_with(target_date="2026-09-01", force_recalc=True)
+
+
+def test_main_daily_postmortem_cli():
+    """Verify CLI argument parsing for daily-postmortem with target-date and force flags."""
+    import sys
+
+    from main import main
+
+    with (
+        patch.object(sys, "argv", ["main.py", "daily-postmortem", "--target-date", "2026-09-24", "--force"]),
+        patch("analysis.daily_postmortem.run_daily_postmortem", new_callable=AsyncMock) as mock_postmortem,
+    ):
+        main()
+        mock_postmortem.assert_awaited_once_with(target_date="2026-09-24", force=True)

@@ -138,6 +138,7 @@ COMMAND_SECTOR_TRADE = "sector-trade"
 COMMAND_GAINERS_POSTMORTEM = "gainers-postmortem"
 COMMAND_HISTORICAL_ANALOG = "analog"
 COMMAND_FUTURE_FORCES = "future-forces"
+COMMAND_DAILY_POSTMORTEM = "daily-postmortem"
 
 
 # --- Content Constants ---

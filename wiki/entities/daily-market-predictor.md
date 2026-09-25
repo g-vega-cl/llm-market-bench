@@ -25,6 +25,15 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - **System Portfolio Execution**: Automatically triggers mechanical 100% equity day trading execution for both portfolio tracks:
      - **Target-Exit Portfolios** (`sys-daily-spy-{model_name}`): 5 bps slippage, exits on intraday profit target hit or 3:30 PM time exit.
      - **3:50 Close-Exit Portfolios** (`sys-daily-spy-close-{model_name}`): 2 bps slippage (0.02%), ignores intraday profit target hits and holds position until 3:50 PM session close.
+   - **Daily Post-Mortem Island (`analysis/daily_postmortem.py`)**:
+     - Command: `python main.py daily-postmortem [--target-date YYYY-MM-DD] [--force]`
+     - Triggered automatically upon completion of `evaluate_daily_predictions` when predictions are evaluated.
+     - Conducted by **OpenAI Luna (`gpt-5.6-luna`)** with `instructor.Mode.JSON` and active reasoning (`reasoning_effort="medium"`).
+     - Strict Anti-Hallucination Grounding: Dual-bookended between morning rationale/catalysts, verified 7-bar RTH hourly price tape, and the official 5:00 PM ET evening market close brief (`generated_newsletters`).
+     - Closed Root-Cause Taxonomy: Categorizes outcomes into `ACCURATE_CAPTURE`, `TIMID_MAGNITUDE`, `OVERSHOT_TARGET`, `CATALYST_INVERSION`, `INTRADAY_REVERSAL`, `RANGEBOUND_CHOP`, or `UNFORESEEN_SHOCK`.
+     - Persists directly on `daily_predictions` (`postmortem_category`, `postmortem_flawed_assumption`, `postmortem_lesson`, `was_predictable`, `postmortem_evaluated_at`).
+     - If predictable and actionable (`was_predictable=True` and category != `ACCURATE_CAPTURE`), saves a memory in `memories` under `AUTORESEARCH_INSIGHT` (`scope='daily_predictor'`, `track_id=model_name`).
+     - Feeds directly into Sunday `daily-autoresearch` via `compute_magnitude_postmortem_summary()`, allowing the weekly prompt evolution loop to compound verified causal lessons without daily recency bias.
 
 
 3. **Weekly Prompt Evolution & Performance Ratchet (Sunday 6:00 PM ET / 10:00 PM UTC)**:

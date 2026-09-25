@@ -274,6 +274,7 @@ def compute_magnitude_postmortem_summary(
 
     timid_cases = []
     overshot_cases = []
+    luna_postmortems = []
 
     for p in predictions:
         date_str = str(p.get("target_date") or p.get("prediction_date") or "N/A")[:10]
@@ -300,8 +301,15 @@ def compute_magnitude_postmortem_summary(
             else:
                 peak_pct = close_pct
 
-        diagnosis = "Normal"
         actual_move = max(abs(peak_pct), abs(close_pct))
+
+        # Check for verified GPT-5.6 Luna post-mortem
+        pm_cat = p.get("postmortem_category")
+        pm_lesson = p.get("postmortem_lesson")
+        pm_flaw = p.get("postmortem_flawed_assumption")
+        if pm_lesson and pm_cat:
+            flaw_str = f" (Flawed assumption: {pm_flaw})" if pm_flaw and pm_flaw != "None" else ""
+            luna_postmortems.append(f"- **{date_str} [{pm_cat}]**: {pm_lesson}{flaw_str}")
 
         # Build day's catalyst summary
         day_news = daily_events.get(date_str, {}).get("newsletters", [])
@@ -309,7 +317,9 @@ def compute_magnitude_postmortem_summary(
         all_day_catalysts = day_news + day_evts
         catalyst_snippet = "; ".join(all_day_catalysts[:2]) if all_day_catalysts else "None recorded"
 
-        if is_correct and intraday_hit:
+        if pm_cat:
+            diagnosis = pm_cat
+        elif is_correct and intraday_hit:
             if actual_move >= 0.60 and capture < 40.0:
                 diagnosis = "Timid / Underestimated"
                 timid_cases.append(
@@ -335,6 +345,10 @@ def compute_magnitude_postmortem_summary(
         if has_catalysts:
             row += f" {catalyst_snippet} |"
         lines.append(row)
+
+    if luna_postmortems:
+        lines.append("\n#### VERIFIED DAILY POST-MORTEMS & FAILURE DIAGNOSES (GPT-5.6 LUNA):")
+        lines.extend(luna_postmortems)
 
     lines.append("\n#### Magnitude Calibration Diagnosis:")
     if timid_cases:

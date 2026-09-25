@@ -63,6 +63,10 @@ def format_sft_sample(row: dict[str, Any], prompt_content: str | None = None) ->
             "close_price": row.get("close_price"),
             "actual_direction": row.get("actual_direction"),
             "brier_score": row.get("brier_score"),
+            "postmortem_category": row.get("postmortem_category"),
+            "postmortem_flawed_assumption": row.get("postmortem_flawed_assumption"),
+            "postmortem_lesson": row.get("postmortem_lesson"),
+            "was_predictable": row.get("was_predictable"),
         },
     }
 
@@ -155,6 +159,8 @@ def export_predictor_dataset(
                         "ticker": ticker,
                         "chosen_model": chosen.get("model_name"),
                         "rejected_model": rejected.get("model_name"),
+                        "rejected_postmortem_category": rejected.get("postmortem_category"),
+                        "rejected_postmortem_lesson": rejected.get("postmortem_lesson"),
                     }
                     f.write(json.dumps(dpo_sample) + "\n")
                     count += 1

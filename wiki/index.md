@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/daily-postmortem]] — GPT-5.6 Luna post-close audit of daily SPY predictions with a closed root-cause taxonomy
 - [[entities/future-forces-portfolio]] — Auto-indexed page
 - [[entities/historical-analogs]] — Precedent-identification + empirical price-tape engine behind `research_historical_market_analog`
 - [[entities/gainers-postmortem]] — Adversarial missed gainers audit pipeline using GPT-5.6 Luna with thinking
@@ -72,6 +73,7 @@
 
 ## Concepts
 
+- [[concepts/daily-postmortem-taxonomy]] — closed set of prediction failure modes feeding weekly autoresearch
 - [[concepts/future-forces]] — Auto-indexed page
 - [[concepts/fluent-responsive-design]] — Auto-indexed page
 - [[concepts/jev-decisions-model]] — TypeSafe Jev System One classifier via the OpenRouter Decisions API with evolvable UP/DOWN criteria

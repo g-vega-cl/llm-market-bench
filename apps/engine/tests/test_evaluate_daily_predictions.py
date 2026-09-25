@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -73,6 +73,32 @@ async def test_evaluate_daily_predictions_success():
         evaluated_count = await evaluate_daily_predictions()
         assert evaluated_count == 1
         mock_supabase.table.return_value.update.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_evaluate_daily_predictions_triggers_postmortem():
+    mock_supabase = MagicMock()
+    pending_data = [
+        {
+            "id": "pred-uuid-1",
+            "target_date": "2026-08-03",
+            "ticker": "SPY",
+            "predicted_direction": "UP",
+            "confidence": 75.0,
+            "expected_return_pct": 0.35,
+            "status": "pending",
+        }
+    ]
+    mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = pending_data
+
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.evaluate_daily_predictions.fetch_intraday_prices", return_value=(450.0, 452.0, 448.0, 455.0)),
+        patch("analysis.daily_postmortem.run_daily_postmortem", new_callable=AsyncMock) as mock_postmortem,
+    ):
+        evaluated_count = await evaluate_daily_predictions(target_date="2026-08-03", force_recalc=True)
+        assert evaluated_count == 1
+        mock_postmortem.assert_called_once_with(target_date="2026-08-03", force=True)
 
 
 @pytest.mark.asyncio

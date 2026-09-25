@@ -317,6 +317,35 @@ def test_compute_magnitude_postmortem_summary_with_macro():
     assert "AI Infrastructure Surge" in summary
 
 
+def test_compute_magnitude_postmortem_summary_with_luna_postmortems():
+    from tasks.daily_autoresearch import compute_magnitude_postmortem_summary
+
+    predictions = [
+        {
+            "target_date": "2026-09-24",
+            "predicted_direction": "DOWN",
+            "expected_return_pct": -0.40,
+            "open_price": 764.0,
+            "high_price": 768.0,
+            "low_price": 763.5,
+            "close_price": 767.5,
+            "is_correct": False,
+            "intraday_hit": False,
+            "brier_score": 0.49,
+            "postmortem_category": "CATALYST_INVERSION",
+            "postmortem_lesson": "Semiconductor momentum overrules bond yield breakout.",
+            "postmortem_flawed_assumption": "Assumed yields would drag tech equities",
+            "was_predictable": True,
+        }
+    ]
+
+    summary = compute_magnitude_postmortem_summary(predictions)
+    assert "CATALYST_INVERSION" in summary
+    assert "VERIFIED DAILY POST-MORTEMS & FAILURE DIAGNOSES (GPT-5.6 LUNA)" in summary
+    assert "Semiconductor momentum overrules bond yield breakout" in summary
+    assert "Flawed assumption: Assumed yields would drag tech equities" in summary
+
+
 @pytest.mark.asyncio
 async def test_run_daily_autoresearch_weekly_lookbacks():
     mock_supabase = MagicMock()

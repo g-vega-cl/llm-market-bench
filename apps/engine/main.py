@@ -28,6 +28,7 @@ from core.config import (
     COMMAND_CAUSE_AND_EFFECT,
     COMMAND_CLEANUP,
     COMMAND_DAILY_AUTORESEARCH,
+    COMMAND_DAILY_POSTMORTEM,
     COMMAND_DAILY_PREDICTOR,
     COMMAND_EVALUATE_DAILY_PREDICTIONS,
     COMMAND_FRONTIER_TECH,
@@ -1022,6 +1023,7 @@ def main():
             COMMAND_DAILY_PREDICTOR,
             COMMAND_EVALUATE_DAILY_PREDICTIONS,
             COMMAND_DAILY_AUTORESEARCH,
+            COMMAND_DAILY_POSTMORTEM,
             COMMAND_BACKTEST_DAILY_AUTORESEARCH,
             COMMAND_SEED_DAILY_PREDICTOR,
             COMMAND_GENERATE_NEWSLETTER,
@@ -1198,6 +1200,10 @@ def main():
 
         forced_cold = True if args.cold_start else None
         asyncio.run(run_daily_autoresearch(dry_run=args.dry_run, cold_start=forced_cold))
+    elif args.command == COMMAND_DAILY_POSTMORTEM:
+        from analysis.daily_postmortem import run_daily_postmortem
+
+        asyncio.run(run_daily_postmortem(target_date=args.target_date, force=args.force))
     elif args.command == COMMAND_BACKTEST_DAILY_AUTORESEARCH:
         from tasks.backtest_daily_autoresearch import run_backtest_daily_autoresearch
 

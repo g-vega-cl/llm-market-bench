@@ -45,17 +45,17 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
             : null;
 
     return (
-        <Card className="p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <Card className="p-5 space-y-6 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-4">
                 <SectionHeading>Meta-Researcher Rationale & Conviction</SectionHeading>
                 {confidence !== null && <ConvictionGauge confidence={confidence} />}
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0">
                 {/* Change Summary */}
                 <div className="space-y-2">
                     <SubHeading>Change Summary</SubHeading>
-                    <p className="text-zinc-600 dark:text-zinc-400 italic text-sm">
+                    <p className="text-zinc-600 dark:text-zinc-400 italic text-sm break-words">
                         "{experiment.change_description || 'No description provided.'}"
                     </p>
                     <Badge variant={experiment.experiment_type === 'baseline' ? 'solid' : 'soft'}>
@@ -67,7 +67,7 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
                 {hypothesis && (
                     <div className="space-y-2">
                         <SubHeading>Hypothesis</SubHeading>
-                        <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-sm text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800">
+                        <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-sm text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 break-words">
                             {hypothesis}
                         </div>
                     </div>
@@ -77,7 +77,7 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
                 {reasoning && (
                     <div className="space-y-2">
                         <SubHeading>Meta-Researcher Analytical Reasoning</SubHeading>
-                        <div className="whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 font-sans">
+                        <div className="whitespace-pre-wrap break-words text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 font-sans">
                             {reasoning}
                         </div>
                     </div>
@@ -85,7 +85,7 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
 
                 {/* Durable Institutional Memory / Insight */}
                 {insight && (
-                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
+                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2 break-words">
                         <div className="flex items-center gap-2">
                             <span className="text-emerald-500 text-sm">💾</span>
                             <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">

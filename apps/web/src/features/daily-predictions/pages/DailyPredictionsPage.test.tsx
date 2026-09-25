@@ -317,7 +317,7 @@ describe('DailyPredictionsPage', () => {
         expect(screen.getAllByText('55.00').length).toBeGreaterThanOrEqual(1);
     });
 
-    it('renders Autoresearch Prompt Lineage & Benchmarks with responsive mobile-first stacked layout classes', () => {
+    it('renders Autoresearch Prompt Lineage & Benchmarks with fluent flex-wrap layout classes without forced breakpoints', () => {
         render(
             <DailyPredictionsPage
                 initialPredictions={mockPredictions}
@@ -329,17 +329,18 @@ describe('DailyPredictionsPage', () => {
         fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
 
         const lineageHeading = screen.getByText('Autoresearch Prompt Lineage & Benchmarks');
-        const gridContainer = (lineageHeading.parentElement?.nextElementSibling ||
+        const flexContainer = (lineageHeading.parentElement?.nextElementSibling ||
             lineageHeading.nextElementSibling) as HTMLElement;
-        expect(gridContainer).not.toBeNull();
-        expect(gridContainer.className).toContain('grid-cols-1');
-        expect(gridContainer.className).toContain('lg:grid-cols-[minmax(280px,340px)_1fr]');
+        expect(flexContainer).not.toBeNull();
+        expect(flexContainer.className).toContain('flex');
+        expect(flexContainer.className).toContain('flex-wrap');
+        expect(flexContainer.className).not.toContain('lg:');
 
-        const sidebar = gridContainer.firstElementChild as HTMLElement;
+        const sidebar = flexContainer.firstElementChild as HTMLElement;
         expect(sidebar).not.toBeNull();
-        expect(sidebar.className).toContain('border-b');
-        expect(sidebar.className).toContain('lg:border-b-0');
-        expect(sidebar.className).toContain('lg:border-r');
+        expect(sidebar.className).toContain('basis-72');
+        expect(sidebar.className).toContain('flex-1');
+        expect(sidebar.className).not.toContain('lg:');
     });
 
     it('maintains strict model track prompt isolation and never falls back across models', () => {
@@ -563,5 +564,59 @@ describe('DailyPredictionsPage', () => {
         expect(screen.queryByText('daily-pred-backtest-12345678')).not.toBeInTheDocument();
         expect(screen.queryByText('Simulated historical backtest run.')).not.toBeInTheDocument();
         expect(screen.getByText('Live market momentum.')).toBeInTheDocument();
+    });
+
+    it('enforces overflow prevention classes on autoresearch arena detail column and prompt inspector', () => {
+        const splitExperiment: PromptExperiment = {
+            id: 'exp-split-1',
+            prompt_name: 'DAILY_PREDICTOR_PROMPT',
+            variant_tag: 'daily-pred-deepseek-split',
+            experiment_type: 'incremental',
+            prompt_content: `You are an elite quantitative macro trader.
+=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+Evaluate DOWN signals with equal weight. Avoid positive-framing bias.
+
+=== ANALYTICAL STRATEGY INSTRUCTIONS ===
+1. MACRO CATALYST EXTRACTION: Parse all news.
+
+=== REQUIRED OUTPUT FORMAT ===
+You MUST return a valid JSON object.`,
+            change_description: 'Segmented prompt test.',
+            metrics: { score: 65.0 },
+            status: 'active',
+            week_start: '2026-08-20',
+            week_end: '2026-08-24',
+            created_at: '2026-08-20T00:00:00Z',
+            parent_tag: null,
+            research_output: {
+                selected_tools: ['get_calendar_scenario_analysis', 'get_macro_options_sentiment'],
+            },
+            is_backtest: false,
+            track_id: 'deepseek-v4-flash',
+        };
+
+        const { container } = render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={[splitExperiment]}
+            />,
+        );
+
+        // Switch to Autoresearch view
+        fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
+
+        // Detail column must be part of fluid flex-wrap layout and have min-w-0
+        const detailColumn = container.querySelector('.flex-wrap > div:last-child') as HTMLElement;
+        expect(detailColumn).not.toBeNull();
+        expect(detailColumn.className).toContain('min-w-0');
+        expect(detailColumn.className).toContain('basis-96');
+
+        // All prompt pre tags must have whitespace-pre-wrap and break-words
+        const preElements = container.querySelectorAll('pre');
+        expect(preElements.length).toBeGreaterThanOrEqual(3);
+        for (const pre of preElements) {
+            expect(pre.className).toContain('whitespace-pre-wrap');
+            expect(pre.className).toContain('break-words');
+        }
     });
 });

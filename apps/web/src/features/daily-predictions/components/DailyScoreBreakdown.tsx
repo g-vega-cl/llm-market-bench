@@ -239,6 +239,8 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                 border: '1px solid #e2e8f0',
                 padding: '18px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                minWidth: 0,
+                overflow: 'hidden',
             }}
         >
             {/* Header */}
@@ -252,9 +254,10 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                     marginBottom: '14px',
                     borderBottom: '1px solid #f1f5f9',
                     paddingBottom: '12px',
+                    minWidth: 0,
                 }}
             >
-                <div>
+                <div style={{ minWidth: 0 }}>
                     <div
                         style={{
                             fontSize: '14px',
@@ -263,12 +266,20 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
+                            flexWrap: 'wrap',
                         }}
                     >
                         <span>🧮</span>
                         <span>Daily Ratchet Score Calculation & Breakdown</span>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                    <div
+                        style={{
+                            fontSize: '12px',
+                            color: '#64748b',
+                            marginTop: '2px',
+                            wordBreak: 'break-word',
+                        }}
+                    >
                         Evaluated across {metrics.predictionsEvaluated} prediction
                         {metrics.predictionsEvaluated === 1 ? '' : 's'}
                         {experiment.week_start
@@ -279,7 +290,7 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                     </div>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div
                         style={{
                             fontSize: '11px',
@@ -315,6 +326,8 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                     fontFamily: 'monospace',
                     color: '#334155',
                     lineHeight: '1.6',
+                    minWidth: 0,
+                    overflowX: 'auto',
                 }}
             >
                 <div
@@ -327,7 +340,7 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                 >
                     FORMULA SUBSTITUTION:
                 </div>
-                <div style={{ wordBreak: 'break-all' }}>
+                <div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                     <span style={{ color: '#2563eb' }}>
                         (0.55 × {metrics.closeAccuracyPct.toFixed(1)}%)
                     </span>
@@ -356,9 +369,10 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
             <div
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr))',
                     gap: '12px',
                     marginBottom: '14px',
+                    minWidth: 0,
                 }}
             >
                 {/* Close Accuracy */}
@@ -368,9 +382,18 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                         background: '#f0fdf4',
                         borderRadius: '8px',
                         border: '1px solid #bbf7d0',
+                        minWidth: 0,
+                        overflow: 'hidden',
                     }}
                 >
-                    <div style={{ fontSize: '11px', color: '#166534', fontWeight: '700' }}>
+                    <div
+                        style={{
+                            fontSize: '11px',
+                            color: '#166534',
+                            fontWeight: '700',
+                            wordBreak: 'break-word',
+                        }}
+                    >
                         EOD Directional Acc (55%)
                     </div>
                     <div
@@ -405,9 +428,18 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                         background: '#f0fdfa',
                         borderRadius: '8px',
                         border: '1px solid #99f6e4',
+                        minWidth: 0,
+                        overflow: 'hidden',
                     }}
                 >
-                    <div style={{ fontSize: '11px', color: '#115e59', fontWeight: '700' }}>
+                    <div
+                        style={{
+                            fontSize: '11px',
+                            color: '#115e59',
+                            fontWeight: '700',
+                            wordBreak: 'break-word',
+                        }}
+                    >
                         Intraday Target Hit (35%)
                     </div>
                     <div
@@ -442,9 +474,18 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                         background: '#faf5ff',
                         borderRadius: '8px',
                         border: '1px solid #e9d5ff',
+                        minWidth: 0,
+                        overflow: 'hidden',
                     }}
                 >
-                    <div style={{ fontSize: '11px', color: '#6b21a8', fontWeight: '700' }}>
+                    <div
+                        style={{
+                            fontSize: '11px',
+                            color: '#6b21a8',
+                            fontWeight: '700',
+                            wordBreak: 'break-word',
+                        }}
+                    >
                         Magnitude Capture (10%)
                     </div>
                     <div
@@ -479,9 +520,18 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                         background: '#fef2f2',
                         borderRadius: '8px',
                         border: '1px solid #fecaca',
+                        minWidth: 0,
+                        overflow: 'hidden',
                     }}
                 >
-                    <div style={{ fontSize: '11px', color: '#991b1b', fontWeight: '700' }}>
+                    <div
+                        style={{
+                            fontSize: '11px',
+                            color: '#991b1b',
+                            fontWeight: '700',
+                            wordBreak: 'break-word',
+                        }}
+                    >
                         Brier Penalty (50.0×)
                     </div>
                     <div

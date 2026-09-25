@@ -52,7 +52,7 @@ function DailyMetricsOverview({
         <div
             style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 12rem), 1fr))',
                 gap: '16px',
                 marginBottom: '24px',
             }}
@@ -843,6 +843,8 @@ function MilestoneCard({
                 background: '#f8fafc',
                 borderRadius: '12px',
                 border: '1px solid #e2e8f0',
+                minWidth: 0,
+                overflow: 'hidden',
             }}
         >
             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>{title}</div>
@@ -852,6 +854,8 @@ function MilestoneCard({
                     fontWeight: '700',
                     color: valueColor,
                     marginTop: '4px',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
                 }}
             >
                 {value}
@@ -914,9 +918,10 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
         <div
             style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 12rem), 1fr))',
                 gap: '16px',
                 marginBottom: '24px',
+                minWidth: 0,
             }}
         >
             <MilestoneCard
@@ -928,6 +933,7 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
                             alignItems: 'center',
                             gap: '8px',
                             flexWrap: 'wrap',
+                            minWidth: 0,
                         }}
                     >
                         <span
@@ -948,6 +954,7 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
                                 borderRadius: '4px',
                                 background: activeBadge.bg,
                                 color: activeBadge.color,
+                                flexShrink: 0,
                             }}
                         >
                             {activeBadge.text}
@@ -973,7 +980,7 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
                 value={deltaText}
                 subtitle={activeSubtitle}
                 valueColor={deltaColor}
-                fontSize="24px"
+                fontSize="20px"
             />
             <MilestoneCard
                 title="Mutated Variants Tracked"
@@ -1020,14 +1027,12 @@ function VariantSidebarItem({
         <button
             type="button"
             onClick={onSelect}
+            className="w-full text-left cursor-pointer transition-all duration-150 min-w-0"
             style={{
                 padding: '12px',
                 borderRadius: '8px',
                 border: borderStyle,
                 background: bgStyle,
-                textAlign: 'left',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
             }}
         >
             <div
@@ -1057,6 +1062,7 @@ function VariantSidebarItem({
                             background: isScorePositive ? '#dcfce7' : '#fee2e2',
                             padding: '2px 6px',
                             borderRadius: '4px',
+                            flexShrink: 0,
                         }}
                     >
                         {score.toFixed(1)}
@@ -1107,7 +1113,7 @@ function SelectedVariantHeader({
     const statusBadge = getSidebarStatusBadge(experiment.status, isActiveVariant);
 
     return (
-        <div>
+        <div className="min-w-0">
             <div
                 style={{
                     display: 'flex',
@@ -1116,6 +1122,7 @@ function SelectedVariantHeader({
                     flexWrap: 'wrap',
                     gap: '8px',
                     marginBottom: '8px',
+                    minWidth: 0,
                 }}
             >
                 <h3
@@ -1124,6 +1131,7 @@ function SelectedVariantHeader({
                         fontWeight: '700',
                         color: '#0f172a',
                         margin: 0,
+                        wordBreak: 'break-all',
                     }}
                 >
                     {experiment.variant_tag}
@@ -1166,6 +1174,7 @@ function SelectedVariantHeader({
                     color: '#64748b',
                     flexWrap: 'wrap',
                     marginTop: '8px',
+                    minWidth: 0,
                 }}
             >
                 <div>
@@ -1175,7 +1184,7 @@ function SelectedVariantHeader({
                         : 'Pending'}
                 </div>
                 {experiment.parent_tag && (
-                    <div>
+                    <div style={{ wordBreak: 'break-all' }}>
                         <strong>Parent Variant:</strong> <code>{experiment.parent_tag}</code>
                     </div>
                 )}
@@ -1233,7 +1242,7 @@ function AutoresearchHistoryArena({
 
     return (
         <div
-            className="p-4 sm:p-6"
+            className="p-5 min-w-0 w-full overflow-hidden"
             style={{
                 background: '#ffffff',
                 borderRadius: '12px',
@@ -1284,9 +1293,9 @@ function AutoresearchHistoryArena({
                 )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-6 mt-4">
+            <div className="flex flex-wrap gap-6 mt-4 items-start min-w-0 w-full">
                 {/* Variant List Sidebar */}
-                <div className="border-b lg:border-b-0 lg:border-r border-slate-100 pb-6 lg:pb-0 lg:pr-4">
+                <div className="w-full flex-1 basis-72 min-w-0">
                     <div
                         style={{
                             fontSize: '12px',
@@ -1299,7 +1308,7 @@ function AutoresearchHistoryArena({
                     >
                         Experiment Lineage
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div className="flex flex-col gap-2 max-h-96 overflow-y-auto pr-1 min-w-0">
                         {experiments.map((exp) => (
                             <VariantSidebarItem
                                 key={exp.id}
@@ -1314,7 +1323,7 @@ function AutoresearchHistoryArena({
 
                 {/* Variant Details & Prompt Inspector */}
                 {selectedExperiment && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className="w-full flex-[3] basis-96 min-w-0 flex flex-col gap-4">
                         <SelectedVariantHeader
                             experiment={selectedExperiment}
                             isActiveVariant={selectedExperiment.variant_tag === activePromptTag}
@@ -1385,11 +1394,11 @@ function AutoresearchHistoryArena({
 
                             if (!isSplit) {
                                 return (
-                                    <div className="p-6 bg-slate-900 text-slate-100 rounded-xl space-y-3">
+                                    <div className="p-6 bg-slate-900 text-slate-100 rounded-xl space-y-3 min-w-0">
                                         <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
                                             The Predictor Prompt
                                         </div>
-                                        <pre className="whitespace-pre-wrap font-mono text-xs max-h-96 overflow-y-auto">
+                                        <pre className="whitespace-pre-wrap break-words font-mono text-xs max-h-96 overflow-y-auto">
                                             {selectedExperiment.prompt_content}
                                         </pre>
                                     </div>
@@ -1397,9 +1406,9 @@ function AutoresearchHistoryArena({
                             }
 
                             return (
-                                <div className="space-y-6">
+                                <div className="space-y-6 min-w-0">
                                     {header && (
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 min-w-0">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
@@ -1421,13 +1430,13 @@ function AutoresearchHistoryArena({
                                                 tool requirements, zero-mean base rate mandate).
                                                 Autoresearch cannot edit this.
                                             </p>
-                                            <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
+                                            <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words">
                                                 {header}
                                             </pre>
                                         </div>
                                     )}
 
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 min-w-0">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
@@ -1449,13 +1458,13 @@ function AutoresearchHistoryArena({
                                             transmission rules. This section is iteratively tested
                                             and optimized by daily autoresearch.
                                         </p>
-                                        <pre className="p-4 bg-zinc-950 text-zinc-200 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto">
+                                        <pre className="p-4 bg-zinc-950 text-zinc-200 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words">
                                             {mutable}
                                         </pre>
                                     </div>
 
                                     {footer && (
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 min-w-0">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
@@ -1476,7 +1485,7 @@ function AutoresearchHistoryArena({
                                                 Mandatory structured JSON output schema and format
                                                 constraints. Autoresearch cannot edit this.
                                             </p>
-                                            <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
+                                            <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words">
                                                 {footer}
                                             </pre>
                                         </div>
@@ -1520,10 +1529,9 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
 
     return (
         <div
+            className="w-full max-w-7xl mx-auto min-w-0 overflow-x-hidden"
             style={{
                 padding: '24px',
-                maxWidth: '1200px',
-                margin: '0 auto',
                 fontFamily: 'system-ui, sans-serif',
             }}
         >

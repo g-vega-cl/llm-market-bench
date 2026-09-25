@@ -185,7 +185,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
             <div
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 13rem), 1fr))',
                     gap: '16px',
                     marginBottom: '32px',
                 }}
@@ -389,9 +389,9 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                         No prompt experiments recorded in backtest database.
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+                    <div className="flex flex-wrap gap-6 mt-4 items-start min-w-0 w-full">
                         {/* Variant List Sidebar */}
-                        <div className="border-b lg:border-b-0 lg:border-r border-slate-100 pb-6 lg:pb-0 lg:pr-4">
+                        <div className="w-full flex-1 basis-72 min-w-0">
                             <div
                                 style={{
                                     fontSize: '12px',
@@ -402,7 +402,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                             >
                                 VARIANT LINEAGE
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div className="flex flex-col gap-2 max-h-96 overflow-y-auto pr-1 min-w-0">
                                 {experiments.map((exp) => {
                                     const isSelected = exp.id === selectedExperiment?.id;
                                     return (
@@ -410,6 +410,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                             type="button"
                                             key={exp.id}
                                             onClick={() => setSelectedExpId(exp.id)}
+                                            className="w-full text-left cursor-pointer min-w-0"
                                             style={{
                                                 padding: '12px',
                                                 borderRadius: '8px',
@@ -417,8 +418,6 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                                     ? '1px solid #6366f1'
                                                     : '1px solid #e2e8f0',
                                                 background: isSelected ? '#eef2ff' : '#ffffff',
-                                                textAlign: 'left',
-                                                cursor: 'pointer',
                                             }}
                                         >
                                             <div
@@ -426,6 +425,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                                     fontWeight: '700',
                                                     fontSize: '13px',
                                                     color: isSelected ? '#4338ca' : '#0f172a',
+                                                    wordBreak: 'break-all',
                                                 }}
                                             >
                                                 {exp.variant_tag}
@@ -447,15 +447,18 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                         </div>
 
                         {/* Variant Details */}
-                        <div>
+                        <div className="w-full flex-[3] basis-96 min-w-0 flex flex-col gap-6">
                             {selectedExperiment && (
-                                <div>
+                                <div className="min-w-0">
                                     <div
                                         style={{
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
                                             marginBottom: '12px',
+                                            flexWrap: 'wrap',
+                                            gap: '8px',
+                                            minWidth: 0,
                                         }}
                                     >
                                         <h3
@@ -464,6 +467,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                                 fontWeight: '700',
                                                 color: '#0f172a',
                                                 margin: 0,
+                                                wordBreak: 'break-all',
                                             }}
                                         >
                                             Variant: {selectedExperiment.variant_tag}
@@ -486,7 +490,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                             : null;
 
                                         return (
-                                            <div className="space-y-6">
+                                            <div className="space-y-6 min-w-0">
                                                 {/* Cognitive Toolbox */}
                                                 <CognitiveToolboxCard
                                                     selectedTools={
@@ -551,11 +555,11 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
 
                                                     if (!isSplit) {
                                                         return (
-                                                            <div className="p-6 bg-slate-900 text-slate-100 rounded-xl space-y-3">
+                                                            <div className="p-6 bg-slate-900 text-slate-100 rounded-xl space-y-3 min-w-0">
                                                                 <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
                                                                     The Predictor Prompt
                                                                 </div>
-                                                                <pre className="whitespace-pre-wrap font-mono text-xs max-h-96 overflow-y-auto">
+                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs max-h-96 overflow-y-auto">
                                                                     {
                                                                         selectedExperiment.prompt_content
                                                                     }
@@ -565,19 +569,19 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                                     }
 
                                                     return (
-                                                        <div className="space-y-4">
+                                                        <div className="space-y-4 min-w-0">
                                                             {header && (
-                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2 min-w-0">
                                                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                                                         Frozen System Header
                                                                     </div>
-                                                                    <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
                                                                         {header}
                                                                     </pre>
                                                                 </div>
                                                             )}
 
-                                                            <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
+                                                            <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2 min-w-0">
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
                                                                         Mutable Analytical
@@ -590,18 +594,18 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                                                         }
                                                                     </span>
                                                                 </div>
-                                                                <pre className="whitespace-pre-wrap font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto">
+                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto">
                                                                     {mutable}
                                                                 </pre>
                                                             </div>
 
                                                             {footer && (
-                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
+                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2 min-w-0">
                                                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                                                         Frozen Output Format &
                                                                         Schema
                                                                     </div>
-                                                                    <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
                                                                         {footer}
                                                                     </pre>
                                                                 </div>

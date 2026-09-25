@@ -23,4 +23,21 @@ describe('CognitiveToolboxCard', () => {
         expect(screen.getByText('get_portfolio_ledger')).toBeInTheDocument();
         expect(screen.getByText('+ get_portfolio_ledger')).toBeInTheDocument();
     });
+
+    it('applies break-all and overflow prevention classes to long tool names', () => {
+        const { container } = render(
+            <CognitiveToolboxCard
+                selectedTools={['get_calendar_scenario_analysis']}
+                parentSelectedTools={[]}
+            />,
+        );
+
+        const toolNameSpan = screen.getByText('get_calendar_scenario_analysis');
+        expect(toolNameSpan.className).toContain('break-all');
+
+        const card = container.querySelector('.rounded-xl.border') as HTMLElement;
+        expect(card).not.toBeNull();
+        expect(card.className).toContain('min-w-0');
+        expect(card.className).toContain('overflow-hidden');
+    });
 });

@@ -38,7 +38,7 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
 
     return (
         <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                         Market Context (Model Input)
@@ -68,7 +68,7 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
             </div>
 
             {isOpen ? (
-                <pre className="whitespace-pre-wrap font-mono text-xs max-h-96 overflow-y-auto bg-slate-950 border border-slate-800 text-slate-300 p-4 rounded-lg select-text leading-relaxed">
+                <pre className="whitespace-pre-wrap break-words font-mono text-xs max-h-96 overflow-y-auto bg-slate-950 border border-slate-800 text-slate-300 p-4 rounded-lg select-text leading-relaxed">
                     {context}
                 </pre>
             ) : (

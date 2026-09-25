@@ -15,13 +15,21 @@ Provides full auditability of the ratchet score computation directly in the Auto
 
 - **Formula Substitution Bar**: Shows the live arithmetic formula with color-coded factors and computed intermediate values.
 - **4 Weighted Pillar Metric Tiles**:
-  - EOD Directional Accuracy (55%) — green tile with correct/total count
-  - Intraday Target Hit Rate (35%) — teal tile with targets hit/total count
-  - Magnitude Capture Ratio (10%) — purple tile with breakout capture ratio
-  - Brier Calibration Penalty (50.0×) — red tile with confidence calibration error
+  - EOD Directional Accuracy (55%), green tile with correct/total count
+  - Intraday Target Hit Rate (35%), teal tile with targets hit/total count
+  - Magnitude Capture Ratio (10%), purple tile with breakout capture ratio
+  - Brier Calibration Penalty (50.0×), red tile with confidence calibration error
 - **Low Sample Window Notice**: Automatically displayed when $N < 5$, explaining the sensitivity of short evaluation windows.
 - **Collapsible Scoring Guide**: Explains the methodology behind each of the four factors.
 - **Fallback Resolution**: If the experiment has enriched metrics (`close_accuracy_pct`, `intraday_hit_pct`, etc.), uses them directly. Otherwise, computes metrics from the provided `DailyPrediction[]` array, or falls back to a minimal score-only display.
+
+## Fluent Layout and Overflow Prevention
+
+`DailyScoreBreakdown` renders inside nested detail panes that share horizontal space with sidebars. To maintain fluent responsiveness without explicit breakpoints or raw pixel dimensions:
+- Outer container enforces `minWidth: 0, overflow: 'hidden'`.
+- Pillar grid steps intrinsically with `repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr))` rather than explicit viewport breakpoints or fixed pixel widths.
+- Factor cards apply `minWidth: 0, overflow: 'hidden'` to preserve internal text boundaries.
+- Formula substitution bars apply `wordBreak: 'break-word'`, `overflowWrap: 'anywhere'`, and `overflowX: 'auto'` so long equation strings wrap cleanly without forcing parent card expansion.
 
 ## Usage
 
@@ -34,7 +42,7 @@ Provides full auditability of the ratchet score computation directly in the Auto
 
 ## Related
 
-- [[entities/daily-market-predictor]] — The parent feature that hosts this component
-- [[concepts/magnitude-calibration]] — The magnitude capture ratio concept
-- [[concepts/brier-score]] — The Brier score calibration metric
-- [[concepts/intraday-hit-metrics]] — Intraday target hit evaluation
+- [[entities/daily-market-predictor]], The parent feature that hosts this component
+- [[concepts/magnitude-calibration]], The magnitude capture ratio concept
+- [[concepts/brier-score]], The Brier score calibration metric
+- [[concepts/intraday-hit-metrics]], Intraday target hit evaluation

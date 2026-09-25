@@ -71,6 +71,7 @@
 
 ## Concepts
 
+- [[concepts/fluent-responsive-design]] — Auto-indexed page
 - [[concepts/jev-decisions-model]] — TypeSafe Jev System One classifier via the OpenRouter Decisions API with evolvable UP/DOWN criteria
 - [[concepts/historical-market-analogs]] — Hybrid LLM-precedent + verified-return benchmarking for macro analog playbooks
 - [[concepts/historical-market-analogs]] — Auto-indexed page

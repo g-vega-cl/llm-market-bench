@@ -78,8 +78,8 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
     }
 
     return (
-        <Card className="p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <Card className="p-5 space-y-6 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1">
                     <SectionHeading>Prompt Changes</SectionHeading>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -108,8 +108,8 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
                 )}
             </div>
 
-            <div className="relative group">
-                <div className="relative font-mono text-[11px] leading-relaxed max-h-[400px] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 md:p-6 space-y-[2px]">
+            <div className="relative group min-w-0">
+                <div className="relative font-mono text-[11px] leading-relaxed max-h-[400px] overflow-y-auto overflow-x-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 md:p-6 space-y-[2px] min-w-0">
                     {!hasChanges ? (
                         <div className="text-center text-zinc-500 dark:text-zinc-400 py-8 text-sm">
                             ✨ No prompt text changes detected between these variants.
@@ -123,8 +123,11 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
                             const { prefix, classes } = getLineStyle(change.added, change.removed);
 
                             return (
-                                // biome-ignore lint/suspicious/noArrayIndexKey: Static diff lines sequence
-                                <div key={idx} className={`${classes} whitespace-pre-wrap`}>
+                                <div
+                                    // biome-ignore lint/suspicious/noArrayIndexKey: Static diff lines sequence
+                                    key={idx}
+                                    className={`${classes} whitespace-pre-wrap break-words break-all`}
+                                >
                                     {prefix}
                                     {change.value}
                                 </div>

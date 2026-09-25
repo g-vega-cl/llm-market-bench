@@ -68,10 +68,12 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 2. **Typecheck Gate**: Any update to `@llm-market-bench/ui-design-system` requires running `pnpm run typecheck` across `apps/web` to ensure no downstream breaking changes or missing props.
 3. **Closed Variant Props**: Components must accept only design-system-defined variants and color schemes. Do not override background colors, borders, or text sizing with ad-hoc `className` utilities.
 4. **Mandatory State Coverage**: Any new primitive or pattern component must account for empty, loading, error, and long-text overflow states.
+5. **Fluent Responsive Layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72`/`basis-96`, and `repeat(auto-fit, minmax(min(100%, 15rem), 1fr))`). See [[concepts/fluent-responsive-design]].
 
 ## Related
 
 - [[entities/web-app]] — The dashboard that consumes this design system
+- [[concepts/fluent-responsive-design]] — Principles of fluid and reactive layout architecture
 - [[concepts/type-safety]] — All components are strictly typed without `any`
 - [[sources/web-design-system-source]] — Original design spec
 

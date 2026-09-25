@@ -619,4 +619,44 @@ You MUST return a valid JSON object.`,
             expect(pre.className).toContain('break-words');
         }
     });
+
+    it('displays Pending and Pending Evaluation for new active prompt without score, and renders evaluation placeholder', () => {
+        const pendingActiveExperiment: PromptExperiment = {
+            id: 'exp-deepseek-pending',
+            prompt_name: 'DAILY_PREDICTOR_PROMPT',
+            variant_tag: 'daily-pred-deepseek-v4-flash-new',
+            experiment_type: 'incremental',
+            prompt_content: 'New prompt content.',
+            change_description: 'Active mutation awaiting evaluation.',
+            metrics: null,
+            status: 'active',
+            week_start: '2026-09-20',
+            week_end: '2026-09-27',
+            created_at: '2026-09-20T00:00:00Z',
+            parent_tag: 'daily-pred-deepseek-v4-flash-parent',
+            research_output: null,
+            is_backtest: false,
+            track_id: 'deepseek-v4-flash',
+        };
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={[pendingActiveExperiment]}
+            />,
+        );
+
+        // Switch to Autoresearch view
+        fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
+
+        // Milestone cards and header must show Pending and Pending Evaluation
+        expect(screen.getAllByText('Pending').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getByText('Pending Evaluation')).toBeInTheDocument();
+
+        // DailyScoreBreakdown must show the active placeholder, not a calculated score
+        expect(screen.getByText('Live Variant Evaluation In Progress')).toBeInTheDocument();
+        expect(
+            screen.queryByText('Daily Ratchet Score Calculation & Breakdown'),
+        ).not.toBeInTheDocument();
+    });
 });

@@ -865,7 +865,8 @@ function MilestoneCard({
     );
 }
 
-function formatDeltaText(delta: number | null): string {
+function formatDeltaText(delta: number | null, isEvaluating = false): string {
+    if (isEvaluating) return 'Pending Evaluation';
     if (delta === null) return 'Baseline Initialized';
     const sign = delta > 0 ? '▲ +' : delta < 0 ? '▼ ' : '';
     return `${sign}${delta.toFixed(2)} vs Parent`;
@@ -902,12 +903,14 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
     const { activeExp, activeScore, bestBaselineScore, delta, isBaselineAnchor } =
         computeExperimentMilestones(experiments);
 
-    const deltaColor = getDeltaColor(delta);
-    const deltaText = formatDeltaText(delta);
+    const isEvaluating = activeExp?.status === 'active' && activeScore === null;
+    const deltaColor = isEvaluating ? '#64748b' : getDeltaColor(delta);
+    const deltaText = formatDeltaText(delta, isEvaluating);
 
     const isScorePositive = activeScore !== null && Number(activeScore) > 0;
-    const activeScoreColor = isScorePositive ? '#16a34a' : '#0f172a';
-    const activeScoreDisplay = activeScore !== null ? Number(activeScore).toFixed(2) : 'N/A';
+    const activeScoreColor = isScorePositive ? '#16a34a' : isEvaluating ? '#64748b' : '#0f172a';
+    const activeScoreDisplay =
+        activeScore !== null ? Number(activeScore).toFixed(2) : isEvaluating ? 'Pending' : 'N/A';
     const bestBaselineDisplay = bestBaselineScore !== null ? bestBaselineScore.toFixed(2) : 'N/A';
 
     const activeTagDisplay = activeExp?.variant_tag || 'daily-pred-baseline';

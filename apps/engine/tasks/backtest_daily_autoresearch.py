@@ -579,6 +579,30 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
             f"Score = {current_ratchet_score:.2f} (from {len(rows)} evaluated predictions)"
         )
 
+        # 1. Update evaluated parent prompt with completed week metrics
+        parent_update_payload = {
+            "variant_tag": active_tag,
+            "metrics": current_metrics,
+            "status": "saved",
+        }
+        sync_to_supabase("prompt_experiments", parent_update_payload)
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE prompt_experiments
+            SET metrics = ?, status = 'saved'
+            WHERE variant_tag = ?
+            """,
+            (
+                json.dumps(current_metrics),
+                active_tag,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
         logger.info("Triggering DeepSeek Flash Meta-Researcher mutation...")
         new_prompt = await generate_new_daily_prompt_backtest(
             old_prompt=active_prompt,
@@ -589,6 +613,7 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
         new_tag = f"daily-pred-backtest-{uuid.uuid4().hex[:8]}"
         exp_id = str(uuid.uuid4())
 
+        # 2. Deploy new active prompt variant awaiting evaluation (metrics is None)
         exp_record = {
             "id": exp_id,
             "variant_tag": new_tag,
@@ -598,9 +623,9 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
             "week_end": week_end.date().isoformat(),
             "status": "active",
             "experiment_type": "incremental",
-            "metrics": current_metrics,
+            "metrics": None,
             "parent_tag": active_tag,
-            "change_description": f"Backtest mutation week {week_idx + 1} score {current_ratchet_score:.2f}",
+            "change_description": f"Backtest mutation week {week_idx + 1} from parent score {current_ratchet_score:.2f}",
             "is_backtest": True,
         }
         sync_to_supabase("prompt_experiments", exp_record)
@@ -612,7 +637,7 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
             INSERT INTO prompt_experiments (
                 id, variant_tag, prompt_name, prompt_content, week_start, week_end,
                 status, experiment_type, metrics, parent_tag, change_description, is_backtest, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'active', 'incremental', ?, ?, ?, 1, datetime('now'))
+            ) VALUES (?, ?, ?, ?, ?, ?, 'active', 'incremental', NULL, ?, ?, 1, datetime('now'))
             """,
             (
                 exp_id,
@@ -621,9 +646,8 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
                 new_prompt,
                 week_start.date().isoformat(),
                 week_end.date().isoformat(),
-                json.dumps({"score": current_ratchet_score, "predictions": len(rows)}),
                 active_tag,
-                f"Backtest mutation week {week_idx + 1} score {current_ratchet_score:.2f}",
+                f"Backtest mutation week {week_idx + 1} from parent score {current_ratchet_score:.2f}",
             ),
         )
         conn.commit()

@@ -73,6 +73,7 @@
 
 ## Concepts
 
+- [[concepts/prompt-experiment-lifecycle]] — active vs. evaluated states, ratchet flow, and the pending-evaluation UI placeholder
 - [[concepts/daily-postmortem-taxonomy]] — closed set of prediction failure modes feeding weekly autoresearch
 - [[concepts/future-forces]] — Auto-indexed page
 - [[concepts/fluent-responsive-design]] — Auto-indexed page

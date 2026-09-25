@@ -107,7 +107,9 @@ function computeMetricsFromSample(
 
 function isPredictionInExperiment(p: DailyPrediction, experiment: PromptExperiment): boolean {
     if (p.status !== 'evaluated') return false;
-    if (p.prompt_variant_tag && p.prompt_variant_tag === experiment.variant_tag) return true;
+    if (p.prompt_variant_tag) {
+        return p.prompt_variant_tag === experiment.variant_tag;
+    }
 
     if (
         experiment.track_id &&
@@ -170,13 +172,8 @@ export function resolveRatchetMetrics(
 
     if (predictions && predictions.length > 0) {
         const matching = predictions.filter((p) => isPredictionInExperiment(p, experiment));
-        const sample =
-            matching.length > 0
-                ? matching
-                : predictions.filter((p) => p.status === 'evaluated').slice(0, 5);
-
-        if (sample.length > 0) {
-            return computeMetricsFromSample(sample, rawMetrics?.score);
+        if (matching.length > 0) {
+            return computeMetricsFromSample(matching, rawMetrics?.score);
         }
     }
 
@@ -205,11 +202,72 @@ export function resolveRatchetMetrics(
     return null;
 }
 
+function ActiveDailyExperimentPlaceholder({ variantTag }: { variantTag: string }) {
+    return (
+        <div
+            style={{
+                background: '#ffffff',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                padding: '24px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            }}
+        >
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '8px',
+                }}
+            >
+                <span style={{ fontSize: '18px' }}>⏳</span>
+                <span
+                    style={{
+                        fontSize: '15px',
+                        fontWeight: '700',
+                        color: '#0f172a',
+                    }}
+                >
+                    Live Variant Evaluation In Progress
+                </span>
+                <span
+                    style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: '#dcfce7',
+                        color: '#15803d',
+                    }}
+                >
+                    🟢 ACTIVE
+                </span>
+            </div>
+            <p
+                style={{
+                    fontSize: '13px',
+                    color: '#64748b',
+                    margin: 0,
+                    lineHeight: '1.5',
+                }}
+            >
+                This mutated prompt variant (<code>{variantTag}</code>) is currently active and
+                undergoing live daily evaluation. Score calculation and pillar breakdown will be
+                computed automatically as trading sessions conclude and predictions are evaluated.
+            </p>
+        </div>
+    );
+}
+
 export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreakdownProps) {
     const [showGuide, setShowGuide] = useState(false);
     const metrics = resolveRatchetMetrics(experiment, predictions);
 
     if (!metrics) {
+        if (experiment.status === 'active') {
+            return <ActiveDailyExperimentPlaceholder variantTag={experiment.variant_tag} />;
+        }
         return (
             <div
                 style={{

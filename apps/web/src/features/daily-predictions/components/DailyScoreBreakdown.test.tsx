@@ -196,4 +196,59 @@ describe('DailyScoreBreakdown', () => {
         const exp = { id: 'empty' } as PromptExperiment;
         expect(resolveRatchetMetrics(exp)).toBeNull();
     });
+
+    it('returns null and renders evaluation placeholder for new active prompt with no matching evaluated predictions', () => {
+        const newActiveExperiment = {
+            id: 'exp-new-active',
+            variant_tag: 'daily-pred-deepseek-v4-flash-new',
+            status: 'active',
+            metrics: null,
+        } as unknown as PromptExperiment;
+
+        const unrelatedPredictions: DailyPrediction[] = [
+            {
+                id: 'p1',
+                status: 'evaluated',
+                prompt_variant_tag: 'daily-pred-old-tag',
+                predicted_direction: 'UP',
+                expected_return_pct: 0.2,
+                open_price: 500,
+                high_price: 505,
+                close_price: 504,
+                is_correct: true,
+                intraday_hit: true,
+                brier_score: 0.04,
+            } as unknown as DailyPrediction,
+            {
+                id: 'p2',
+                status: 'evaluated',
+                prompt_variant_tag: 'daily-pred-old-tag',
+                predicted_direction: 'UP',
+                expected_return_pct: 0.8,
+                open_price: 500,
+                high_price: 505,
+                close_price: 504,
+                is_correct: true,
+                intraday_hit: true,
+                brier_score: 0.09,
+            } as unknown as DailyPrediction,
+        ];
+
+        // resolveRatchetMetrics must NOT use unrelated predictions
+        expect(resolveRatchetMetrics(newActiveExperiment, unrelatedPredictions)).toBeNull();
+
+        // DailyScoreBreakdown must render placeholder and NOT show formula substitution or score
+        render(
+            <DailyScoreBreakdown
+                experiment={newActiveExperiment}
+                predictions={unrelatedPredictions}
+            />,
+        );
+
+        expect(screen.getByText('Live Variant Evaluation In Progress')).toBeInTheDocument();
+        expect(
+            screen.queryByText('Daily Ratchet Score Calculation & Breakdown'),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText('FORMULA SUBSTITUTION:')).not.toBeInTheDocument();
+    });
 });

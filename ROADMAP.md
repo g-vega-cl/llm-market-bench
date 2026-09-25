@@ -76,7 +76,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify : format better the newsletter section of: The Catalyst Radar & Key Levels.
 - [ ] - Benchify : daily predictor prompt diff
 - [ ] - Benchify : in the daily predictor. It shows as if the current new prompt had a score already
-- [ ] - Benchify: daily autoresearcher "lesson learned"? Like, every day, when you check if you were right or wrong, also ask "why" and see if it's worth adding these insights as memories or as an special label for daily predictor
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
 - [ ] - Benchify: Once a dedicated real-time/intraday news stream or intraday newsletter pipeline is available, augment `get_intraday_movement_profile` with Approach 2 (phase-segmented news/narrative catalyst correlation linking price pivots to breaking news).
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.

@@ -52,11 +52,13 @@ When testing locally (using either a local Supabase CLI instance or a remote dev
 
 ### Production Deployment Setup
 
-When deploying to the live Netlify site:
+When deploying to production:
 
-1.  **Site URL**: `https://benchify.netlify.app`
+1.  **Site URL**: `https://www.benchify.dev`
 2.  **Additional Redirect URLs**:
-    - `https://benchify.netlify.app/auth/callback`
+    - `https://www.benchify.dev/auth/callback`
+    - `https://benchify.dev/auth/callback`
+    - `https://benchify.netlify.app/auth/callback` (legacy fallback)
     - `http://localhost:3000/auth/callback` (keeps local dev working on the same project if shared)
 
 ## Related

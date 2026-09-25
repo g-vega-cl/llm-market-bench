@@ -164,7 +164,7 @@ For a detailed step-by-step walkthrough, see **[Pipeline & Data Flow](./wiki/ent
 
 ### Interactive Dashboard
 
-**Live URL**: [benchify.netlify.app](https://benchify.netlify.app)
+**Live URL**: [benchify.dev](https://benchify.dev)
 
 - **TODAY Dashboard**: High-level narrative of daily events, AI consensus, and trade executions
 - **Horizon Watch**: Future catalysts with multi-outcome scenario analysis and trading plans
@@ -255,7 +255,7 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 
 ## Live Dashboard
 
-Visit [benchify.netlify.app](https://benchify.netlify.app) to explore:
+Visit [benchify.dev](https://benchify.dev) to explore:
 
 - Real-time agent portfolios and performance
 - Daily trade executions with full reasoning traces

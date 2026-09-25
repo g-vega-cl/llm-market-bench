@@ -184,7 +184,7 @@ To check performance, Core Web Vitals, accessibility, and SEO across the entire 
 
 ```bash
 # Run a quick, zero-install audit against a production or preview URL
-npx unlighthouse --site https://benchify.netlify.app/
+npx unlighthouse --site https://benchify.dev/
 ```
 Unlighthouse will automatically crawl the sitemap, run Lighthouse in parallel across discovered routes, and launch a local visual dashboard at `http://localhost:5678/` detailing specific opportunities.
 

@@ -153,4 +153,3 @@ def async_record_tool_audit(
     except RuntimeError:
         # No running event loop in thread; drop safely
         logger.debug("No active event loop to schedule async tool audit for %s", tool_name)
-

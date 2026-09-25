@@ -122,9 +122,7 @@ def collect_wiki_context() -> str:
     # The full page listing below already tells the LLM what exists.
     index_path = WIKI_DIR / "index.md"
     if index_path.is_file():
-        headings = [
-            line for line in index_path.read_text().splitlines() if line.startswith("#")
-        ]
+        headings = [line for line in index_path.read_text().splitlines() if line.startswith("#")]
         parts.append("=== wiki/index.md (headings only) ===\n\n" + "\n".join(headings) + "\n")
     # List existing pages
     pages = []
@@ -155,7 +153,6 @@ def collect_wiki_context() -> str:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return "\n".join(parts)
-
 
 
 SYSTEM_PROMPT = """You are a wiki documentation agent for the "LLM Market Bench" project —
@@ -363,7 +360,6 @@ def _parse_llm_response(raw: str) -> dict:
         return json.loads(trimmed)
 
     return json.loads(raw)
-
 
 
 # write_log_entry deprecated

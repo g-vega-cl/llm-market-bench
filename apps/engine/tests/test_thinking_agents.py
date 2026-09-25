@@ -187,7 +187,6 @@ async def test_sector_predictor_enables_thinking_for_deepseek():
     assert gemini_call["thinking_config"].thinking_budget == 2048
 
 
-
 @pytest.mark.asyncio
 async def test_autoresearcher_enables_thinking_for_deepseek():
     """Verify that researcher.run_research passes extra_body with thinking enabled for DeepSeek."""
@@ -381,7 +380,11 @@ async def test_verification_enables_thinking_for_anthropic_and_gemini():
         patch.dict("core.llm.clients.CLIENT_FACTORIES", {"anthropic": lambda: mock_anthropic}),
         patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock),
         patch("core.llm.verification.log_reasoning_trace", new_callable=AsyncMock),
-        patch("execution.market_data.MarketDataManager.get_quote", new_callable=AsyncMock, return_value=MagicMock(price=150.0, exists=True)),
+        patch(
+            "execution.market_data.MarketDataManager.get_quote",
+            new_callable=AsyncMock,
+            return_value=MagicMock(price=150.0, exists=True),
+        ),
         patch("core.llm.verification.retrieve_for_decision", return_value=""),
     ):
         await verify_trading_decision(decision, portfolio_context="", aggregated_context="")
@@ -414,7 +417,11 @@ async def test_verification_enables_thinking_for_anthropic_and_gemini():
         patch.dict("core.llm.clients.CLIENT_FACTORIES", {"gemini": lambda: mock_gemini}),
         patch("core.llm.handlers.gemini.run_tool_loop", new_callable=AsyncMock),
         patch("core.llm.verification.log_reasoning_trace", new_callable=AsyncMock),
-        patch("execution.market_data.MarketDataManager.get_quote", new_callable=AsyncMock, return_value=MagicMock(price=150.0, exists=True)),
+        patch(
+            "execution.market_data.MarketDataManager.get_quote",
+            new_callable=AsyncMock,
+            return_value=MagicMock(price=150.0, exists=True),
+        ),
         patch("core.llm.verification.retrieve_for_decision", return_value=""),
     ):
         await verify_trading_decision(decision_gemini, portfolio_context="", aggregated_context="")
@@ -468,6 +475,3 @@ async def test_autoresearcher_enables_thinking_for_anthropic_and_gemini():
         assert len(captured) == 2
         assert captured[1].get("thinking_config") is not None
         assert captured[1]["thinking_config"].thinking_budget == 4096
-
-
-

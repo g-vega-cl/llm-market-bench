@@ -340,5 +340,3 @@ async def test_run_congress_update_script():
         res = await run_congress_update(symbol="NVDA")
         assert res == 1
         mock_upsert.assert_called_once()
-
-

@@ -18,6 +18,7 @@ from core.llm.tools import (
     GET_CONGRESS_TRADES_TOOL,
     GET_EARNINGS_HISTORY_TOOL,
     GET_EARNINGS_REVISIONS_TOOL,
+    GET_FUTURE_FORCES_TOOL,
     GET_GLOBAL_MACRO_CONTEXT_TOOL,
     GET_INTRADAY_MOVEMENT_PROFILE_TOOL,
     GET_KEY_METRICS_TOOL,
@@ -41,6 +42,7 @@ from core.llm.tools import (
     GET_YIELD_CURVE_REGIME_TOOL,
     POSITION_PNL_TOOL,
     PRICE_HISTORY_TOOL,
+    RESEARCH_FUTURE_FORCE_TOOL,
     RESEARCH_HISTORICAL_MARKET_ANALOG_TOOL,
     RUN_STOCK_SCREENER_TOOL,
     SEARCH_PAST_MEMORIES_TOOL,
@@ -130,7 +132,10 @@ def test_tools_json_matches_engine_tool_definitions():
         CALL_WARREN_BUFFETT_TOOL,
         GET_INTRADAY_MOVEMENT_PROFILE_TOOL,
         RESEARCH_HISTORICAL_MARKET_ANALOG_TOOL,
+        GET_FUTURE_FORCES_TOOL,
+        RESEARCH_FUTURE_FORCE_TOOL,
     ]
+
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}
 
     for item in tools_data:

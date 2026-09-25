@@ -1381,6 +1381,99 @@ RESEARCH_HISTORICAL_MARKET_ANALOG_TOOL = {
     },
 }
 
+GET_FUTURE_FORCES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_future_forces",
+        "description": (
+            "Retrieve active multi-horizon market forces (2 to 24 months), catalyst milestones, "
+            "and falsification criteria across 7 canonical archetypes (geopolitical chokepoints, "
+            "government agendas, sleeping giants, latent distribution turn-ons, AI threat surface toll roads, "
+            "clinical TAM explosions, and mega-events)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "archetype": {
+                    "type": "string",
+                    "description": (
+                        "Optional filter by archetype: 'geopolitical_chokepoint', 'government_agenda', "
+                        "'sleeping_giant', 'distribution_turnon', 'secular_tollroad', 'tam_explosion', "
+                        "'mega_event', 'deep_value_turnaround'."
+                    ),
+                },
+                "max_horizon_months": {
+                    "type": "integer",
+                    "description": "Optional upper ceiling for horizon in months (e.g. 3, 6, 12, 24). Defaults to 24.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of active forces to return (default: 5).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+RESEARCH_FUTURE_FORCE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "research_future_force",
+        "description": (
+            "Stress-tests a forward-looking catalyst or thematic thesis using OpenAI Luna (with thinking). "
+            "Audits whether the move is already priced in, verifies the economic transmission mechanism to GAAP EPS, "
+            "and formalizes testable falsification criteria (Thesis Death)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "force_title": {
+                    "type": "string",
+                    "description": "Short, descriptive title of the force (e.g. 'Hormuz Tanker Squeeze', 'World Cup Travel Squeeze').",
+                },
+                "archetype": {
+                    "type": "string",
+                    "description": "Archetype: 'geopolitical_chokepoint', 'government_agenda', 'sleeping_giant', 'distribution_turnon', 'secular_tollroad', 'tam_explosion', 'mega_event', 'deep_value_turnaround'.",
+                },
+                "tickers": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Primary beneficiary or expression tickers (e.g. ['FRO', 'STNG'] or ['ABNB']).",
+                },
+                "thesis": {
+                    "type": "string",
+                    "description": "Causal thesis explaining why this move is underappreciated by the market.",
+                },
+                "catalyst_event": {
+                    "type": "string",
+                    "description": "Upcoming milestone or event that forces market recognition.",
+                },
+                "horizon_months": {
+                    "type": "integer",
+                    "description": "Estimated timeframe in months (must be between 2 and 24). Defaults to 3.",
+                },
+                "invalidation_triggers": {
+                    "type": "string",
+                    "description": "Explicit falsification conditions that would immediately kill the thesis.",
+                },
+                "transmission_mechanism": {
+                    "type": "string",
+                    "description": "Financial mechanism converting the force into GAAP EPS or multiple re-rating.",
+                },
+            },
+            "required": [
+                "force_title",
+                "archetype",
+                "thesis",
+                "catalyst_event",
+                "invalidation_triggers",
+                "transmission_mechanism",
+            ],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1430,6 +1523,8 @@ CANONICAL_TOOLS_REGISTRY = {
     "call_warren_buffett": CALL_WARREN_BUFFETT_TOOL,
     "get_intraday_movement_profile": GET_INTRADAY_MOVEMENT_PROFILE_TOOL,
     "research_historical_market_analog": RESEARCH_HISTORICAL_MARKET_ANALOG_TOOL,
+    "get_future_forces": GET_FUTURE_FORCES_TOOL,
+    "research_future_force": RESEARCH_FUTURE_FORCE_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -4358,6 +4453,44 @@ async def execute_research_historical_market_analog_tool(
     except Exception as e:
         logger.exception("Error executing research_historical_market_analog tool: %s", e)
         return f"Error executing research_historical_market_analog: {str(e)}"
+
+
+async def execute_get_future_forces_tool(
+    archetype: str | None = None,
+    max_horizon_months: int = 24,
+    limit: int = 5,
+) -> str:
+    """Executes the get_future_forces tool."""
+    from analytics.future_forces import execute_get_future_forces_tool as _get_forces
+
+    return await _get_forces(archetype=archetype, max_horizon_months=max_horizon_months, limit=limit)
+
+
+async def execute_research_future_force_tool(
+    force_title: str,
+    archetype: str,
+    thesis: str,
+    catalyst_event: str,
+    invalidation_triggers: str,
+    transmission_mechanism: str,
+    tickers: list[str] | None = None,
+    horizon_months: int = 3,
+    model_name: str | None = None,
+) -> str:
+    """Executes the research_future_force tool."""
+    from analytics.future_forces import execute_research_future_force_tool as _res_force
+
+    return await _res_force(
+        force_title=force_title,
+        archetype=archetype,
+        thesis=thesis,
+        catalyst_event=catalyst_event,
+        invalidation_triggers=invalidation_triggers,
+        transmission_mechanism=transmission_mechanism,
+        tickers=tickers,
+        horizon_months=horizon_months,
+        model_name=model_name,
+    )
 
 
 async def execute_tool(name: str, args: dict[str, Any], model_name: str = "") -> str:

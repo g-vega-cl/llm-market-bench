@@ -3,6 +3,7 @@ import { createServerFn, useServerFn } from '@tanstack/react-start';
 import {
     fetchBenchmarkHistory,
     fetchFrontierThemes,
+    fetchFutureForces,
     fetchPerformanceHistory,
     fetchPortfolioById,
     fetchPositions,
@@ -13,15 +14,16 @@ import { PortfolioDetailPage } from '~/features/portfolios/pages/PortfolioDetail
 const getPortfolioData = createServerFn({ method: 'GET' })
     .inputValidator((d: string) => d)
     .handler(async ({ data: portfolioId }: { data: string }) => {
-        const [portfolio, positions, history, trades, themes] = await Promise.all([
+        const [portfolio, positions, history, trades, themes, forces] = await Promise.all([
             fetchPortfolioById(portfolioId),
             fetchPositions(portfolioId),
             fetchPerformanceHistory(portfolioId),
             fetchTrades(portfolioId),
             fetchFrontierThemes(portfolioId),
+            fetchFutureForces(portfolioId),
         ]);
 
-        return { portfolio, positions, history, trades, themes };
+        return { portfolio, positions, history, trades, themes, forces };
     });
 
 const getBenchmarkData = createServerFn({ method: 'GET' })

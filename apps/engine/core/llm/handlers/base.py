@@ -266,6 +266,24 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             horizon=args.get("horizon", "1m"),
             model_name=model_name,
         )
+    elif name == "get_future_forces":
+        return await tools.execute_get_future_forces_tool(
+            archetype=args.get("archetype"),
+            max_horizon_months=args.get("max_horizon_months", 24),
+            limit=args.get("limit", 5),
+        )
+    elif name == "research_future_force":
+        return await tools.execute_research_future_force_tool(
+            force_title=args.get("force_title", ""),
+            archetype=args.get("archetype", "secular_tollroad"),
+            thesis=args.get("thesis", ""),
+            catalyst_event=args.get("catalyst_event", ""),
+            invalidation_triggers=args.get("invalidation_triggers", ""),
+            transmission_mechanism=args.get("transmission_mechanism", ""),
+            tickers=args.get("tickers"),
+            horizon_months=args.get("horizon_months", 3),
+            model_name=model_name,
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

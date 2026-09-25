@@ -218,7 +218,6 @@ async def run_sector_predictions():
                             create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": 2048}
                             create_kwargs["max_tokens"] = 4000
 
-
                         resp_awaitable = client_inst.chat.completions.create(**create_kwargs)
                         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
                             resp = await resp_awaitable

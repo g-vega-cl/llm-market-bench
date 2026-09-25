@@ -1,0 +1,92 @@
+name: Future Forces & Forward Catalysts Strategy
+
+on:
+  schedule:
+    # 1. Sunday 20:00 UTC (4:00 PM EDT) & 21:00 UTC (4:00 PM EST) - Weekend Research & Thesis Discovery
+    - cron: '0 20,21 * * 0'
+    # 2. Mon-Fri 13:35 UTC (9:35 AM EDT) & 14:35 UTC (9:35 AM EST) - Market Open Rebalance & Liquidation Flush
+    - cron: '35 13,14 * * 1-5'
+    # 3. Mon-Fri 20:15 UTC (4:15 PM EDT) & 21:15 UTC (4:15 PM EST) - Post-Market Sentinel Audit
+    - cron: '15 20,21 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Execution mode (auto, sentinel, rebalance, all)'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - sentinel
+          - rebalance
+          - all
+      target_weight:
+        description: 'Target position weight per force (e.g. 0.08 = 8%)'
+        required: false
+        default: '0.08'
+        type: string
+      dry_run:
+        description: 'Dry run (simulate without modifying database or broker)'
+        required: false
+        default: false
+        type: boolean
+      force_market:
+        description: 'Force market check bypass (for off-hours testing)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  run-future-forces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: apps/engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python3 -m venv venv
+          ./venv/bin/pip install -r requirements.txt
+
+      - name: Execute Future Forces Task
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          POLYGON_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+
+        run: |
+          DRY_RUN_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          FORCE_MARKET_FLAG=""
+          if [ "${{ inputs.force_market }}" = "true" ]; then
+            FORCE_MARKET_FLAG="--force-market"
+          fi
+
+          MODE_VAL="${{ inputs.mode || 'auto' }}"
+          WEIGHT_VAL="${{ inputs.target_weight || '0.08' }}"
+
+          PYTHONPATH=. ./venv/bin/python3 main.py future-forces --mode "$MODE_VAL" --target-weight "$WEIGHT_VAL" $DRY_RUN_FLAG $FORCE_MARKET_FLAG

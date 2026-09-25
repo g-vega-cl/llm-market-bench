@@ -225,7 +225,12 @@ async def test_sector_autoresearch_loops_all_4_models_and_persists_memories():
     mock_table.insert.return_value = mock_table
 
     predictions = [
-        {"sector_percentile_score": 85.0, "worst_sector_percentile_score": 90.0, "pair_percentile_score": 80.0, "brier_score": 0.05}
+        {
+            "sector_percentile_score": 85.0,
+            "worst_sector_percentile_score": 90.0,
+            "pair_percentile_score": 80.0,
+            "brier_score": 0.05,
+        }
     ]
     active_prompt = [
         {"variant_tag": "sector-old", "prompt_content": "Header\nStrategy\nFooter", "metrics": {"score": 70.0}}
@@ -300,7 +305,11 @@ async def test_portfolio_autoresearch_persists_track_memory():
     with (
         patch("autoresearch.runner._check_safety", new_callable=AsyncMock, return_value=(False, "")),
         patch("autoresearch.runner.evaluate_week", new_callable=AsyncMock, return_value=mock_eval),
-        patch("autoresearch.runner.get_active_variant", new_callable=AsyncMock, return_value={"variant_tag": "old", "prompt_content": "prompt"}),
+        patch(
+            "autoresearch.runner.get_active_variant",
+            new_callable=AsyncMock,
+            return_value={"variant_tag": "old", "prompt_content": "prompt"},
+        ),
         patch("autoresearch.runner.get_baseline_metrics", new_callable=AsyncMock, return_value={"score": 1.0}),
         patch("autoresearch.prompt_store.get_all_time_baseline", new_callable=AsyncMock, return_value=None),
         patch("autoresearch.runner.update_variant_metrics", new_callable=AsyncMock),
@@ -330,4 +339,3 @@ async def test_query_past_research_memories_tool():
     with patch("memory.store.retrieve_autoresearch_memories", return_value=""):
         res = await query_past_research_memories(track_id="track_openai")
         assert "No past autoresearch insight memories found" in res
-

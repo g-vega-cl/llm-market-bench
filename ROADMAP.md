@@ -79,18 +79,14 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: daily autoresearcher "lesson learned"? Like, every day, when you check if you were right or wrong, also ask "why" and see if it's worth adding these insights as memories or as an special label for daily predictor
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
 - [ ] - Benchify: Once a dedicated real-time/intraday news stream or intraday newsletter pipeline is available, augment `get_intraday_movement_profile` with Approach 2 (phase-segmented news/narrative catalyst correlation linking price pivots to breaking news).
-- [ ] - Benchify: add a "this could be a trade or force in the future". Like, ABNB with world cup, or cybersecurity/infrastructure with AI, or some undervalued company going through a temporary rough patch.
+- [x] - Benchify: add a "this could be a trade or force in the future". Like, ABNB with world cup, or cybersecurity/infrastructure with AI, or some undervalued company going through a temporary rough patch (`sys-future-forces`, `get_future_forces`, `research_future_force`, `gpt-5.6-luna` sentinel invalidation, and web cards).
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.
+
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
     - same with text
-- [ ] - Benchify: jev as daily predictor
+- [ ] - Benchify: see real time daily moves for system portfolios, not only when they are evaluated after? Audit
+- [ ] - Benchify: set up Laya alongside JEV?
 - [ ] - Benchify: could jev work for my autoresearcher?
-
-The internet is verrry exciiite about a new AI model called Jev that was released earlier this week. It’s a frontier model from TypeSafe AI (a company founded by one of the creators of ChatGPT) that is 200x faster and 400x cheaper than other LLMs. The catch: it can’t generate text.
-
-That’s right, Jev is not an LLM. The best way to describe it is that it is a general-purpose classifier. It’s designed for speed, making decisions in parallel instead of generating text token by token. You give it a question, a set of answers, and it gives you the probability that each answer is correct in about 40ms - without the giant wall of text.
-
-Here are some of the patterns that are starting to emerge:
 
 Speculative Fanout: Ask multiple questions in a single query and get all of them answered in parallel. For example: triage a support ticket and assess its type, severity, frustration level etc.
 

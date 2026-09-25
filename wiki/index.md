@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/future-forces-portfolio]] — Auto-indexed page
 - [[entities/historical-analogs]] — Precedent-identification + empirical price-tape engine behind `research_historical_market_analog`
 - [[entities/gainers-postmortem]] — Adversarial missed gainers audit pipeline using GPT-5.6 Luna with thinking
 - [[entities/sector-horizon-trading]] — Systematic 30-day and 90-day sector long/short horizon execution engine
@@ -71,6 +72,7 @@
 
 ## Concepts
 
+- [[concepts/future-forces]] — Auto-indexed page
 - [[concepts/fluent-responsive-design]] — Auto-indexed page
 - [[concepts/jev-decisions-model]] — TypeSafe Jev System One classifier via the OpenRouter Decisions API with evolvable UP/DOWN criteria
 - [[concepts/historical-market-analogs]] — Hybrid LLM-precedent + verified-return benchmarking for macro analog playbooks

@@ -419,3 +419,46 @@ export async function fetchFrontierThemes(portfolioId: string): Promise<Frontier
         return [];
     }
 }
+
+export interface FutureForce {
+    id: string;
+    portfolio_id?: string;
+    force_title: string;
+    archetype: string;
+    thesis: string;
+    catalyst_event: string;
+    horizon_months: number;
+    target_date?: string | null;
+    invalidation_triggers: string;
+    transmission_mechanism?: string | null;
+    tickers: string[];
+    conviction_score: number;
+    status: string;
+    invalidation_reason?: string | null;
+    audited_at?: string | null;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export async function fetchFutureForces(portfolioId?: string): Promise<FutureForce[]> {
+    const supabase = getSupabaseServerClient();
+    try {
+        let query = supabase
+            .from('future_forces')
+            .select('*')
+            .in('status', ['active', 'pending_liquidation']);
+
+        if (portfolioId) {
+            query = query.eq('portfolio_id', portfolioId);
+        }
+
+        const { data, error } = await query.order('conviction_score', { ascending: false });
+
+        if (error) {
+            return [];
+        }
+        return (data as FutureForce[]) || [];
+    } catch {
+        return [];
+    }
+}

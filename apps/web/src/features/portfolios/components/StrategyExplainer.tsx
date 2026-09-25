@@ -21,6 +21,39 @@ interface ExplainerConfig {
 }
 
 const STRATEGY_CONFIGS: Record<string, ExplainerConfig> = {
+    'sys-future-forces': {
+        emoji: '🔮',
+        title: 'Multi-Horizon Thematic Forces & Forward Catalysts',
+        badgeText: '2 to 24 Months Horizon',
+        badgeColorScheme: 'accent',
+        subtitle:
+            'Autonomous thematic portfolio exploiting unpriced forces across geopolitics, government agendas, AI attack surfaces, and sleeper moats.',
+        borderColor: 'border-purple-500/20',
+        bgColor: 'bg-purple-950/10',
+        gridColsClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+        pillars: [
+            {
+                title: '🌐 7 Canonical Archetypes',
+                description:
+                    'Captures geopolitical chokepoints (Hormuz/Iran oil), government priorities (DoD/Replicator defense mass), sleeping giants (Google valuation reconnection), AI attack surface toll roads (CRWD/NET), and mega-events (2026 World Cup).',
+            },
+            {
+                title: '⏳ 2 to 24 Month Floor',
+                description:
+                    'Minimum 60-day horizon filters out intraday/weekly headline chop, giving corporate earnings cycles, statutory appropriations, and real-world supply bottlenecks time to reflect in fundamentals.',
+            },
+            {
+                title: '🛑 Adversarial Luna Sentinel',
+                description:
+                    'Daily headline monitoring powered by OpenAI Luna (gpt-5.6-luna) with thinking. If explicit thesis invalidation criteria are satisfied, positions are flagged for immediate liquidation.',
+            },
+            {
+                title: '⚡ Live Market Hours & Alpaca Audit',
+                description:
+                    'Zero out-of-market fills and zero retroactive backfilling. Liquidations occur strictly during regular market hours (9:30–16:00 ET) and mirror to Alpaca paper broker for third-party verification.',
+            },
+        ],
+    },
     'sys-smid-quality-compounder': {
         emoji: '🌱',
         title: 'Small/Mid-Cap Quality Compounder Strategy',

@@ -163,10 +163,14 @@ async def upsert_congress_trades_to_db(trades: list[dict]) -> int:
     records = list(deduped.values())
     try:
         sb = get_supabase_client()
-        resp = sb.table("congress_trades").upsert(
-            records,
-            on_conflict="chamber,representative_name,symbol,transaction_date,transaction_type,amount_range",
-        ).execute()
+        resp = (
+            sb.table("congress_trades")
+            .upsert(
+                records,
+                on_conflict="chamber,representative_name,symbol,transaction_date,transaction_type,amount_range",
+            )
+            .execute()
+        )
         return len(resp.data or [])
     except Exception as e:
         logger.warning(f"Failed to upsert Congress trades to Supabase: {e}")
@@ -244,12 +248,8 @@ async def handle_get_congress_trades(
         target = f"for {symbol.upper()}" if symbol else "in the specified window"
         return f"No recent Congress trading disclosures found {target} within the last {days} days."
 
-    total_bought_est = sum(
-        t.get("amount_est_midpoint", 0.0) for t in trades if t.get("transaction_type") == "purchase"
-    )
-    total_sold_est = sum(
-        t.get("amount_est_midpoint", 0.0) for t in trades if t.get("transaction_type") == "sale"
-    )
+    total_bought_est = sum(t.get("amount_est_midpoint", 0.0) for t in trades if t.get("transaction_type") == "purchase")
+    total_sold_est = sum(t.get("amount_est_midpoint", 0.0) for t in trades if t.get("transaction_type") == "sale")
 
     lines = [
         f"### Congress Trading Disclosures (Past {days} Days)",

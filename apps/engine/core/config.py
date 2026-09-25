@@ -137,6 +137,8 @@ COMMAND_FRONTIER_TECH = "frontier-tech"
 COMMAND_SECTOR_TRADE = "sector-trade"
 COMMAND_GAINERS_POSTMORTEM = "gainers-postmortem"
 COMMAND_HISTORICAL_ANALOG = "analog"
+COMMAND_FUTURE_FORCES = "future-forces"
+
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

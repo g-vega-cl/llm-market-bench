@@ -14,9 +14,10 @@ import {
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
-import type { BenchmarkDataPoint, FrontierTheme } from '../api/fetch-portfolios';
+import type { BenchmarkDataPoint, FrontierTheme, FutureForce } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { FrontierThemeCards } from '../components/FrontierThemeCards';
+import { FutureForceCards } from '../components/FutureForceCards';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { PositionsTable } from '../components/PositionsTable';
 import { StrategyExplainer } from '../components/StrategyExplainer';
@@ -30,6 +31,7 @@ interface PortfolioDetailData {
     history: PortfolioPerformance[];
     trades: TradeWithReasoning[];
     themes?: FrontierTheme[];
+    forces?: FutureForce[];
 }
 
 interface PortfolioDetailPageProps {
@@ -58,7 +60,7 @@ export function PortfolioDetailPage({
         initialData,
     });
 
-    const { portfolio, positions, history, trades, themes } = data;
+    const { portfolio, positions, history, trades, themes, forces } = data;
 
     const hasHistory = history && history.length > 0;
     const startDate = hasHistory ? history[0].date : '';
@@ -149,6 +151,11 @@ export function PortfolioDetailPage({
                     {/* Frontier Themes (sys-frontier-tech) */}
                     {themes && themes.length > 0 && (
                         <FrontierThemeCards themes={themes} positions={positions} />
+                    )}
+
+                    {/* Future Forces (sys-future-forces) */}
+                    {forces && forces.length > 0 && (
+                        <FutureForceCards forces={forces} positions={positions} />
                     )}
 
                     {/* Positions Table */}

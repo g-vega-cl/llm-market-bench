@@ -178,6 +178,15 @@
   {
     "name": "research_historical_market_analog",
     "desc": "Researches historical market precedent episodes, cross-asset reaction tapes (stocks, bonds, gold, crypto, dollar), and actionable profit playbooks"
+  },
+  {
+    "name": "get_future_forces",
+    "desc": "Retrieve active multi-horizon market forces (2-24 months), catalyst milestones, and falsification criteria"
+  },
+  {
+    "name": "research_future_force",
+    "desc": "Stress-test a forward catalyst or thematic thesis using OpenAI Luna with thinking against priced-in expectations and falsification criteria"
   }
 ]
+
 

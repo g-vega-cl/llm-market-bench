@@ -83,6 +83,17 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/0.02% Liquid Friction/i)).toBeInTheDocument();
     });
 
+    it('renders future forces explainer for sys-future-forces', () => {
+        render(<StrategyExplainer ownerId="sys-future-forces" />);
+        expect(
+            screen.getByText('Multi-Horizon Thematic Forces & Forward Catalysts'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('2 to 24 Months Horizon')).toBeInTheDocument();
+        expect(screen.getByText(/7 Canonical Archetypes/i)).toBeInTheDocument();
+        expect(screen.getByText(/Adversarial Luna Sentinel/i)).toBeInTheDocument();
+        expect(screen.getByText(/Live Market Hours & Alpaca Audit/i)).toBeInTheDocument();
+    });
+
     it('returns null for non-system portfolio', () => {
         const { container } = render(<StrategyExplainer ownerId="deepseek-v3" />);
         expect(container.firstChild).toBeNull();

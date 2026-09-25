@@ -26,9 +26,7 @@ async def run_congress_update(symbol: str | None = None) -> int:
     house_trades = await fetch_congress_trades_from_fmp(chamber="house", symbol=symbol)
 
     combined = senate_trades + house_trades
-    logger.info(
-        f"Fetched {len(senate_trades)} Senate trades and {len(house_trades)} House trades."
-    )
+    logger.info(f"Fetched {len(senate_trades)} Senate trades and {len(house_trades)} House trades.")
 
     if not combined:
         logger.warning("No Congress trades retrieved.")

@@ -186,7 +186,6 @@ async def run_tool_loop(
             if hasattr(types, "ThinkingConfig"):
                 config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
 
-
             if enable_google_search:
                 # Gemini 3 requires this flag to mix built-in tools (google_search) with
                 # client-side function calling. Enabling it locks tool mode to VALIDATED

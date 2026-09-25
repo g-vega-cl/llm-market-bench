@@ -35,6 +35,7 @@ interface PortfoliosPageProps {
 }
 
 const SYSTEM_PORTFOLIO_SUBTITLES: Record<string, string> = {
+    'sys-future-forces': 'Multi-Horizon Thematic Forces & Catalysts (2–24 Months)',
     'sys-smid-quality-compounder': 'Quality & Momentum Small-to-Large Compounder (Zero-Ceiling)',
     'sys-sector-ls-consensus': 'Consensus Sector Long/Short Dispersion',
     'sys-sector-ls-30d': '30-Day Consensus Sector Long/Short Dispersion',

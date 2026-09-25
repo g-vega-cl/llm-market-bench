@@ -96,9 +96,20 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Idempotency Guardrails**: Re-evaluation runs (`--force`) clean up previous session trades and revert prior realized PnL before re-allocating.
 - **Trigger**: Executed alongside target-exit portfolios in `apps/engine/tasks/evaluate_daily_predictions.py`. Backfilled historically via `apps/engine/tasks/backfill_daily_close_portfolios.py`.
 
+### 11. Multi-Horizon Thematic Forces Strategy (`sys-future-forces`)
+- **Signal**: Multi-horizon (2 to 24 months) thematic forces across 7 canonical archetypes (geopolitical chokepoints, government defense priorities, sleeping giants, latent distribution turn-ons, AI threat surface toll roads, clinical TAM explosions, and mega-events).
+- **Selection Rule**: Liquid US equities expressing unpriced catalysts with verified transmission to GAAP EPS and explicit falsification triggers.
+- **Allocation & Sizing**: 10 to 15 balanced holdings (6% to 10% weight each) with minimum 60-day holding horizon.
+- **Risk Management & Invalidation Sentinel**: Daily headline monitoring via OpenAI Luna (`gpt-5.6-luna`) with thinking. If explicit thesis invalidation criteria are satisfied, positions are immediately liquidated during regular market hours (or queued as `pending_liquidation` for the next market open).
+- **Execution & Auditability**: Liquidations and entries execute strictly between 09:30 and 16:00 ET via `apps/engine/execution/future_forces.py` and mirror in real time to the Alpaca paper broker API with zero retroactive backfilling.
+- **Trigger**: Monthly rebalance and daily sentinel audit via `apps/engine/tasks/future_forces_task.py`. Detailed documentation in [[entities/future-forces-portfolio]] and [[concepts/future-forces]].
+
 ## Related
+- [[entities/future-forces-portfolio]]
+- [[concepts/future-forces]]
 - [[entities/frontier-tech-portfolio]]
 - [[entities/daily-market-predictor]]
 - [[entities/sector-predictor-arena]]
 - [[concepts/minimax-portfolio]]
 - [[entities/strategy-explainer]]
+

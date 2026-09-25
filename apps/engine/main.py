@@ -31,6 +31,7 @@ from core.config import (
     COMMAND_DAILY_PREDICTOR,
     COMMAND_EVALUATE_DAILY_PREDICTIONS,
     COMMAND_FRONTIER_TECH,
+    COMMAND_FUTURE_FORCES,
     COMMAND_GAINERS_POSTMORTEM,
     COMMAND_GENERATE_NEWSLETTER,
     COMMAND_GOVERNMENT,
@@ -1027,6 +1028,7 @@ def main():
             COMMAND_LIN_RENKO,
             COMMAND_AUDIT_ALPACA,
             COMMAND_FRONTIER_TECH,
+            COMMAND_FUTURE_FORCES,
             COMMAND_SECTOR_TRADE,
             COMMAND_GAINERS_POSTMORTEM,
             COMMAND_HISTORICAL_ANALOG,
@@ -1085,9 +1087,15 @@ def main():
         "--mode",
         type=str,
         default="auto",
-        choices=["auto", "rebalance", "health_check", "bootstrap"],
+        choices=["auto", "rebalance", "health_check", "bootstrap", "sentinel", "all"],
         help="Execution mode for tasks (default: auto)",
     )
+    parser.add_argument(
+        "--force-market",
+        action="store_true",
+        help="Bypass market hours check for scheduled tasks (for testing/simulations)",
+    )
+
     parser.add_argument(
         "--target-weight",
         type=float,
@@ -1220,6 +1228,18 @@ def main():
                 target_weight=args.target_weight,
             )
         )
+    elif args.command == COMMAND_FUTURE_FORCES:
+        from tasks.future_forces_task import run_future_forces_task
+
+        asyncio.run(
+            run_future_forces_task(
+                mode=args.mode,
+                dry_run=args.dry_run,
+                force_market=args.force_market,
+                target_weight=args.target_weight,
+            )
+        )
+
     elif args.command == COMMAND_SECTOR_TRADE:
         from execution.sector_trading import run_sector_trade
 

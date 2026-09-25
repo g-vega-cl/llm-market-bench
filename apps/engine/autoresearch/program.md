@@ -97,8 +97,11 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 43. **call_warren_buffett**: Consults the Oracle of Omaha for value investing analysis, margin of safety, economic moat (ROIC/ROE), debt sanity ('swimming naked' check), and the Munger Inversion test ('Would a stupid person do this?').
 44. **get_intraday_movement_profile**: Evaluates deterministic quantitative profile (OHLC, True Intraday Return, VWAP, CLV, Initial Balance breakout, and session archetype) and hourly price-action tape matrix for regular trading sessions (09:30-16:00 ET).
 45. **research_historical_market_analog**: Researches historical market precedent episodes, cross-asset reaction tapes (stocks, bonds, gold, crypto, dollar), and actionable profit playbooks using ChatGPT Luna with thinking.
+46. **get_future_forces**: Fetches vetted multi-horizon secular forces, catalytic milestones (2 to 24 months), beneficiary tickers, and explicit invalidation triggers from the `sys-future-forces` registry.
+47. **research_future_force**: Conducts deep-dive adversarial analysis on a candidate future force, market trend, geopolitical chokepoint, or sleeping giant using OpenAI Luna (`gpt-5.6-luna`) with extended thinking.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
+
 
 ## Toolbox: Modular Trading Discipline & Reasoning Blocks
 You can dynamically toggle structured trading discipline and reasoning blocks in `selected_prompt_blocks`. The system automatically injects these pre-crafted blocks into the trading prompt. You remain 100% free to edit or write custom strategy text in `new_prompt_text` on top of these blocks:

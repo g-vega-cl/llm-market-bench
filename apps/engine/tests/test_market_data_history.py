@@ -110,7 +110,6 @@ async def test_market_data_manager_get_history_fallback_batch_upsert():
     assert args[0][0]["price"] == 150.0
 
 
-
 @pytest.mark.asyncio
 async def test_get_history_cache_hit_includes_volume():
     """Cache-hit path must pass volume through to callers.

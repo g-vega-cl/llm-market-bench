@@ -11,6 +11,7 @@ export interface HomePageData {
         totalEquity: number;
         isActive: boolean;
         isAutoResearch: boolean;
+        isSystem?: boolean;
     }[];
     benchmark: { todayPct: number; weekPct: number };
     feeling: {
@@ -53,10 +54,18 @@ function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][num
                         <span className="flex items-center gap-1">
                             <span
                                 className={`h-1.5 w-1.5 md:h-2 md:w-2 rounded-full ${
-                                    portfolio.isAutoResearch ? 'bg-purple-400' : 'bg-slate-400'
+                                    portfolio.isSystem
+                                        ? 'bg-amber-400'
+                                        : portfolio.isAutoResearch
+                                          ? 'bg-purple-400'
+                                          : 'bg-slate-400'
                                 }`}
                             />
-                            {portfolio.isAutoResearch ? 'Auto-Res' : 'Manual'}
+                            {portfolio.isSystem
+                                ? 'System'
+                                : portfolio.isAutoResearch
+                                  ? 'Auto-Res'
+                                  : 'Manual'}
                         </span>
                     </div>
                 </div>

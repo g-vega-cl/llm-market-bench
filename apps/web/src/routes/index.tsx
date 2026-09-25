@@ -7,7 +7,7 @@ import {
     fetchAllActivePortfolioPerformance,
     fetchBenchmarkHistory,
 } from '~/features/portfolios/api/fetch-portfolios';
-import { isAutoresearchPortfolio } from '~/features/portfolios/lib/config';
+import { isAutoresearchPortfolio, isSystemPortfolio } from '~/features/portfolios/lib/config';
 import { fetchLatestMarketFeeling } from '~/features/today/api/fetch-today-data';
 import { formatEasternTime } from '~/utils/date';
 
@@ -60,6 +60,7 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
                 totalEquity,
                 isActive: true,
                 isAutoResearch: isAutoresearchPortfolio(p.ownerId),
+                isSystem: isSystemPortfolio(p.ownerId),
             };
         });
 

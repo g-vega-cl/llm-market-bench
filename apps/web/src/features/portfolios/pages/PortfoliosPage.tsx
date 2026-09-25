@@ -61,9 +61,11 @@ export function getSystemPortfolioSubtitle(ownerId: string): string | undefined 
 
 function PortfolioCard({
     portfolio,
+    todayPct,
     deprecated = false,
 }: {
     portfolio: PortfolioWithActive;
+    todayPct?: number;
     deprecated?: boolean;
 }) {
     const track = getPortfolioTrack(portfolio.owner_id);
@@ -91,14 +93,26 @@ function PortfolioCard({
                     >
                         {portfolio.owner_id.replace(/-/g, ' ')}
                     </h3>
-                    <Badge
-                        variant="glass"
-                        size="sm"
-                        colorScheme={deprecated ? 'neutral' : 'success'}
-                        showDot={!deprecated}
-                    >
-                        {deprecated ? 'Retired' : 'Active'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        {todayPct !== undefined && !deprecated && (
+                            <Badge
+                                variant="glass"
+                                size="sm"
+                                colorScheme={todayPct >= 0 ? 'success' : 'danger'}
+                            >
+                                {todayPct >= 0 ? '+' : ''}
+                                {todayPct.toFixed(2)}%
+                            </Badge>
+                        )}
+                        <Badge
+                            variant="glass"
+                            size="sm"
+                            colorScheme={deprecated ? 'neutral' : 'success'}
+                            showDot={!deprecated}
+                        >
+                            {deprecated ? 'Retired' : 'Active'}
+                        </Badge>
+                    </div>
                 </div>
 
                 {subtitle && (
@@ -223,6 +237,21 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
         return { portfolios, benchmarkData };
     }, [comparisonData, timeframe]);
 
+    const todayPctMap = React.useMemo(() => {
+        const map = new Map<string, number>();
+        if (!comparisonData?.portfolios) return map;
+        for (const p of comparisonData.portfolios) {
+            if (p.performance.length >= 2) {
+                const len = p.performance.length;
+                const last = p.performance[len - 1].totalEquity;
+                const prev = p.performance[len - 2].totalEquity;
+                const pct = prev > 0 ? ((last - prev) / prev) * 100 : 0;
+                map.set(p.portfolioId, pct);
+            }
+        }
+        return map;
+    }, [comparisonData]);
+
     const active = data?.filter((p) => p.is_active !== false) ?? [];
     const deprecated = data?.filter((p) => p.is_active === false) ?? [];
 
@@ -242,7 +271,11 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                 <section className="mb-16">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {active.map((portfolio) => (
-                            <PortfolioCard key={portfolio.id} portfolio={portfolio} />
+                            <PortfolioCard
+                                key={portfolio.id}
+                                portfolio={portfolio}
+                                todayPct={todayPctMap.get(portfolio.id)}
+                            />
                         ))}
                     </div>
                 </section>

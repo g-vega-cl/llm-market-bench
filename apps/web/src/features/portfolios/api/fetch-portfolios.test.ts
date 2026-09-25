@@ -178,6 +178,54 @@ test('fetchAllActivePortfolioPerformance does not restrict older portfolios when
     expect(newPortfolio?.performance).toHaveLength(1);
 });
 
+test('fetchAllActivePortfolioPerformance includes system portfolios starting with sys-', async () => {
+    const mockPortfolios = [
+        { id: 'old-id', owner_id: 'gemini-3.5-flash-lite', total_equity: 10000 },
+        { id: 'sys-id', owner_id: 'sys-daily-spy-deepseek-v4-flash', total_equity: 9815 },
+        { id: 'retired-id', owner_id: 'retired-model', total_equity: 5000 },
+    ];
+    const mockPerformance = [
+        { portfolio_id: 'old-id', date: '2026-06-15', total_equity: 10000 },
+        { portfolio_id: 'sys-id', date: '2026-06-15', total_equity: 9815 },
+    ];
+
+    // biome-ignore lint/suspicious/noExplicitAny: mock client needs to be typed as any
+    const mockClient: any = {
+        from: vi.fn((table) => {
+            if (table === 'portfolios') {
+                return {
+                    select: vi.fn(() => ({
+                        order: vi.fn(() => Promise.resolve({ data: mockPortfolios, error: null })),
+                    })),
+                };
+            }
+            if (table === 'portfolio_performance') {
+                return {
+                    select: vi.fn(() => ({
+                        in: vi.fn(() => ({
+                            order: vi.fn(() =>
+                                Promise.resolve({ data: mockPerformance, error: null }),
+                            ),
+                        })),
+                    })),
+                };
+            }
+            return mockClient;
+        }),
+    };
+    mockSupabaseClient = mockClient;
+
+    const mockDate = new Date('2026-06-15T12:00:00Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(mockDate);
+
+    const result = await fetchAllActivePortfolioPerformance(7);
+
+    vi.useRealTimers();
+
+    expect(result.portfolios.some((p) => p.portfolioId === 'sys-id')).toBe(true);
+});
+
 test('fetchBenchmarkHistory paginates multiple pages when data length is equal to limit', async () => {
     const page1Data: PriceHistoryRecord[] = Array.from({ length: 1000 }, (_, i) => ({
         ticker: 'SPY',

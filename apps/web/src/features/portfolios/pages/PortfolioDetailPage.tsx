@@ -62,6 +62,14 @@ export function PortfolioDetailPage({
 
     const { portfolio, positions, history, trades, themes, forces } = data;
 
+    const todayPct = React.useMemo(() => {
+        if (!history || history.length < 2) return null;
+        const len = history.length;
+        const last = Number(history[len - 1].total_equity);
+        const prev = Number(history[len - 2].total_equity);
+        return prev > 0 ? ((last - prev) / prev) * 100 : 0;
+    }, [history]);
+
     const hasHistory = history && history.length > 0;
     const startDate = hasHistory ? history[0].date : '';
     const endDate = hasHistory ? history[history.length - 1].date : '';
@@ -112,6 +120,13 @@ export function PortfolioDetailPage({
                             label="Total Equity"
                             value={`$${Number(portfolio.total_equity || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
+                        {todayPct !== null && (
+                            <MetricTile
+                                icon={todayPct >= 0 ? '📈' : '📉'}
+                                label="Daily Move"
+                                value={`${todayPct >= 0 ? '+' : ''}${todayPct.toFixed(2)}%`}
+                            />
+                        )}
                         <MetricTile
                             icon="💵"
                             label="Cash"

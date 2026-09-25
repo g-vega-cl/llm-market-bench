@@ -230,4 +230,57 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
         // Verify that no extra network request was triggered (fetch count remains 1)
         expect(mockComparisonFetch).toHaveBeenCalledTimes(1);
     });
+
+    it('should render daily move badge on portfolio cards when comparison performance data has daily change', async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const mockPortfolios = [
+            {
+                id: 'p1',
+                owner_id: 'agent-1',
+                total_equity: 101500,
+                cash_balance: 50000,
+                buying_power: 100000,
+                is_active: true,
+                is_autoresearch: true,
+                created_at: `${today}T12:00:00.000Z`,
+                updated_at: `${today}T12:00:00.000Z`,
+            },
+        ];
+
+        const mockComparisonFetch = vi.fn().mockResolvedValue({
+            portfolios: [
+                {
+                    portfolioId: 'p1',
+                    ownerId: 'agent-1',
+                    performance: [
+                        { date: yesterday, value: 0, totalEquity: 100000 },
+                        { date: today, value: 1.5, totalEquity: 101500 },
+                    ],
+                },
+            ],
+            startDate: yesterday,
+            endDate: today,
+            benchmarkData: {},
+        });
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <PortfoliosPage
+                    initialData={
+                        mockPortfolios as unknown as Parameters<
+                            typeof PortfoliosPage
+                        >[0]['initialData']
+                    }
+                    fetchFn={vi.fn()}
+                    comparisonFetchFn={mockComparisonFetch}
+                />
+            </QueryClientProvider>,
+        );
+
+        await waitFor(() => {
+            // (101500 - 100000) / 100000 * 100 = +1.50%
+            expect(screen.getByText('+1.50%')).toBeDefined();
+        });
+    });
 });

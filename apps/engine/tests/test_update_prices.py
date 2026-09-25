@@ -2,7 +2,9 @@
 Tests for scripts.update_prices.py script, specifically the benchmark history fetching functionality.
 """
 
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -40,10 +42,15 @@ class TestAsyncSleepOptimization:
     @patch("scripts.update_prices.is_transient_supabase_error", return_value=True)
     async def test_update_prices_fetch_portfolios_uses_async_sleep(self, mock_is_transient, mock_sleep):
         """Should await asyncio.sleep if fetching portfolios fails."""
+        mock_morning = datetime(2026, 9, 23, 10, 0, 0, tzinfo=ZoneInfo("America/New_York"))
         with (
             patch("scripts.update_prices.get_supabase_client") as mock_get_client,
             patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls,
+            patch("scripts.update_prices.datetime") as mock_dt,
+            patch("execution.sector_trading.run_sector_trade", new_callable=AsyncMock),
+            patch("execution.sector_horizon_trading.execute_horizon_sector_exits", new_callable=AsyncMock),
         ):
+            mock_dt.now.return_value = mock_morning
             mock_mdm = mock_mdm_cls.return_value
             mock_mdm.is_market_open = AsyncMock(return_value=True)
 
@@ -57,6 +64,51 @@ class TestAsyncSleepOptimization:
 
             assert mock_sleep.call_count == 1
             mock_sleep.assert_called_with(1)  # wait_time = 2 ** (1 - 1) = 1
+
+    @pytest.mark.asyncio
+    async def test_update_prices_triggers_friday_afternoon_sector_exit(self):
+        """Should invoke run_sector_trade(action='exit') on Friday at or after 3:25 PM ET."""
+        friday_afternoon = datetime(2026, 9, 25, 15, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("scripts.update_prices.get_supabase_client") as mock_get_client,
+            patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls,
+            patch("scripts.update_prices.datetime") as mock_dt,
+            patch("execution.sector_trading.run_sector_trade", new_callable=AsyncMock) as mock_exit,
+        ):
+            mock_dt.now.return_value = friday_afternoon
+            mock_mdm = mock_mdm_cls.return_value
+            mock_mdm.is_market_open = AsyncMock(return_value=True)
+
+            mock_client = mock_get_client.return_value
+            mock_client.table.return_value.select.return_value.execute.return_value = MagicMock(data=[])
+
+            await update_prices()
+
+            mock_exit.assert_awaited_once_with(action="exit")
+
+    @pytest.mark.asyncio
+    async def test_update_prices_triggers_weekday_afternoon_horizon_exit(self):
+        """Should invoke execute_horizon_sector_exits on Mon-Thu at or after 3:25 PM ET."""
+        thursday_afternoon = datetime(2026, 9, 24, 15, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("scripts.update_prices.get_supabase_client") as mock_get_client,
+            patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls,
+            patch("scripts.update_prices.datetime") as mock_dt,
+            patch(
+                "execution.sector_horizon_trading.execute_horizon_sector_exits",
+                new_callable=AsyncMock,
+            ) as mock_horizon_exit,
+        ):
+            mock_dt.now.return_value = thursday_afternoon
+            mock_mdm = mock_mdm_cls.return_value
+            mock_mdm.is_market_open = AsyncMock(return_value=True)
+
+            mock_client = mock_get_client.return_value
+            mock_client.table.return_value.select.return_value.execute.return_value = MagicMock(data=[])
+
+            await update_prices()
+
+            mock_horizon_exit.assert_awaited_once_with(today_str="2026-09-24", price_map={})
 
 
 class TestBenchmarkConstants:

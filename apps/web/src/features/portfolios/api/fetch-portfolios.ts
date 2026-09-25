@@ -242,7 +242,9 @@ export async function fetchAllActivePortfolioPerformance(maxDays: number = 90): 
     if (portfoliosError) throw portfoliosError;
 
     const activeIds = new Set(getActiveOwnerIds());
-    const activePortfolios = portfolios.filter((p) => activeIds.has(normalizeOwnerId(p.owner_id)));
+    const activePortfolios = portfolios.filter(
+        (p) => isSystemPortfolio(p.owner_id) || activeIds.has(normalizeOwnerId(p.owner_id)),
+    );
 
     if (activePortfolios.length === 0) {
         return { portfolios: [], startDate: '', endDate: '' };

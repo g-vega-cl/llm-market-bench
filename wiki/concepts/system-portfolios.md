@@ -104,6 +104,15 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Execution & Auditability**: Liquidations and entries execute strictly between 09:30 and 16:00 ET via `apps/engine/execution/future_forces.py` and mirror in real time to the Alpaca paper broker API with zero retroactive backfilling.
 - **Trigger**: Monthly rebalance and daily sentinel audit via `apps/engine/tasks/future_forces_task.py`. Detailed documentation in [[entities/future-forces-portfolio]] and [[concepts/future-forces]].
 
+## Daily performance tracking and web visibility
+
+System portfolios record daily closing performance snapshots in the `public.portfolio_performance` table on the same cadence as LLM portfolios.
+
+- **Unified performance fetching**: `fetchAllActivePortfolioPerformance` in `apps/web/src/features/portfolios/api/fetch-portfolios.ts` includes both active LLM model portfolios and active system portfolios (`isSystemPortfolio(owner_id)`).
+- **Homepage leaderboard**: The homepage (`apps/web/src/routes/index.tsx` and `apps/web/src/features/home/pages/HomePage.tsx`) renders active system portfolios with a dedicated amber `System` badge and computes their 1-day (`todayPct`) and 7-day (`weekPct`) percentage moves.
+- **Performance comparison chart**: The comparison line chart on `/portfolios` plots normalized percentage trajectories for all system portfolios across 7d, 30d, 90d, and all available history with benchmark overlay.
+- **Card and detail metrics**: Each `PortfolioCard` on `/portfolios` displays a daily percentage move badge (`+X.XX%` in emerald or `-X.XX%` in red) next to the status badge, and `PortfolioDetailPage` renders a Daily Move metric tile in the header card comparing the two most recent daily closing snapshots.
+
 ## Related
 - [[entities/future-forces-portfolio]]
 - [[concepts/future-forces]]

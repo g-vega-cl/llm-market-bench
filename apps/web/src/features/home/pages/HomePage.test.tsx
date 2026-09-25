@@ -171,6 +171,34 @@ describe('HomePage Dashboard', () => {
         if (llamaRow) expect(within(llamaRow).getByText('Manual')).toBeDefined();
     });
 
+    it('marks system portfolios with an amber dot and System label', () => {
+        const dataWithSystem: HomePageData = {
+            ...baseData,
+            portfolios: [
+                ...baseData.portfolios,
+                {
+                    name: 'Sys Daily Spy Deepseek V4 Flash',
+                    todayPct: 0.52,
+                    weekPct: 1.15,
+                    totalEquity: 10052.0,
+                    isActive: true,
+                    isAutoResearch: false,
+                    isSystem: true,
+                },
+            ],
+        };
+        render(<HomePage data={dataWithSystem} />);
+
+        const dashboard = screen.getByTestId('dashboard');
+        const sysRow = within(dashboard).getByText('Sys Daily Spy Deepseek V4 Flash').closest('tr');
+        expect(sysRow).toBeDefined();
+        if (sysRow) {
+            expect(within(sysRow).getByText('System')).toBeDefined();
+            expect(within(sysRow).getByText('+0.52%')).toBeDefined();
+            expect(within(sysRow).getByText('+1.15% wk')).toBeDefined();
+        }
+    });
+
     it('applies desktop responsive styling classes for layout, fonts, and table padding', () => {
         render(<HomePage data={baseData} />);
 

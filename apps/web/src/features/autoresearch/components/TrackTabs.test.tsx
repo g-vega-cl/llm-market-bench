@@ -91,4 +91,32 @@ describe('TrackTabs', () => {
         expect(KNOWN_TRACKS).toContain('track_claude');
         expect(KNOWN_TRACKS).toContain('track_openai');
     });
+
+    it('renders a "From 0" badge on tracks whose active experiment is cold-start', () => {
+        const coldExperiments = [
+            {
+                ...mockExperiments[0],
+                track_id: 'track_default',
+                status: 'active',
+                research_output: { is_cold_start: false },
+            },
+            {
+                ...mockExperiments[1],
+                track_id: 'track_claude',
+                status: 'active',
+                research_output: { is_cold_start: true },
+            },
+        ] as unknown as PromptExperiment[];
+
+        render(
+            <TrackTabs
+                experiments={coldExperiments}
+                activeTrack="track_default"
+                onSelectTrack={vi.fn()}
+            />,
+        );
+
+        // Claude tab must show "From 0" badge
+        expect(screen.getByText('From 0')).toBeInTheDocument();
+    });
 });

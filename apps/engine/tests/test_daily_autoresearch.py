@@ -360,11 +360,11 @@ async def test_run_daily_autoresearch_weekly_lookbacks():
         mock_chain.eq.return_value = mock_chain
 
         def mock_gte(column, val):
-            called_query_ranges[f"{table_name}_{column}_gte"] = val
+            called_query_ranges.setdefault(f"{table_name}_{column}_gte", []).append(val)
             return mock_chain
 
         def mock_lte(column, val):
-            called_query_ranges[f"{table_name}_{column}_lte"] = val
+            called_query_ranges.setdefault(f"{table_name}_{column}_lte", []).append(val)
             return mock_chain
 
         mock_chain.gte.side_effect = mock_gte
@@ -413,15 +413,18 @@ async def test_run_daily_autoresearch_weekly_lookbacks():
     ):
         await run_daily_autoresearch()
 
-    # Predictions query should be 7 days back
+    # Predictions query should cover both 7-day ratchet evaluation and 28-day multi-week context
     from datetime import UTC, datetime, timedelta
 
     today = datetime.now(UTC).date()
     seven_days_ago = (today - timedelta(days=7)).isoformat()
-    fourteen_days_ago = (today - timedelta(days=14)).isoformat()
+    twenty_eight_days_ago = (today - timedelta(days=28)).isoformat()
 
-    assert called_query_ranges.get("daily_predictions_target_date_gte") == seven_days_ago
-    assert called_query_ranges.get("newsletter_snapshots_date_gte") == f"{fourteen_days_ago}T00:00:00Z"
+    pred_gte_queries = called_query_ranges.get("daily_predictions_target_date_gte", [])
+    assert seven_days_ago in pred_gte_queries, "Expected 7-day ratchet evaluation query"
+    assert twenty_eight_days_ago in pred_gte_queries, "Expected 28-day multi-week prediction context query"
+    assert called_query_ranges.get("newsletter_snapshots_date_gte", [None])[-1] == f"{twenty_eight_days_ago}T00:00:00Z"
+
 
 
 def test_default_daily_predictor_tools():

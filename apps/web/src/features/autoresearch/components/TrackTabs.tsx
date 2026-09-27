@@ -1,5 +1,6 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Badge } from '@llm-market-bench/ui-design-system';
+import { isTrackColdStart } from '../utils/coldStart';
 
 /**
  * Canonical list of autoresearch tracks mirroring packages/config/models.json AUTORESEARCH_TRACKS.
@@ -40,6 +41,7 @@ export function TrackTabs({ experiments, activeTrack, onSelectTrack }: TrackTabs
             {availableTracks.map((tid) => {
                 const isActive = activeTrack === tid;
                 const count = counts[tid] || 0;
+                const isCold = isTrackColdStart(tid, experiments);
 
                 return (
                     <button
@@ -53,6 +55,11 @@ export function TrackTabs({ experiments, activeTrack, onSelectTrack }: TrackTabs
                         }`}
                     >
                         <span>{formatTrackLabel(tid)}</span>
+                        {isCold && (
+                            <Badge variant="soft" colorScheme="warning" size="xs">
+                                From 0
+                            </Badge>
+                        )}
                         <Badge
                             variant={isActive ? 'solid' : 'soft'}
                             colorScheme={isActive ? 'accent' : 'neutral'}

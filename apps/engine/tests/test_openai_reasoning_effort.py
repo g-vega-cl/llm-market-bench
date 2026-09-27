@@ -219,3 +219,39 @@ async def test_prompt_store_handles_missing_track_without_406():
         )
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_openai_jev_autoresearch_injects_reasoning_effort_none():
+    """Verify generate_new_jev_criteria passes reasoning_effort='none' for OpenAI Luna."""
+    from tasks.daily_autoresearch import JevMetaCriteriaResponse, generate_new_jev_criteria
+
+    mock_client = MagicMock()
+    recorded_kwargs = []
+
+    async def mock_create(**kwargs):
+        recorded_kwargs.append(kwargs)
+        return JevMetaCriteriaResponse(
+            criteria_up="Bullish VWAP continuation",
+            criteria_down="Bearish VWAP rejection",
+            research_insight="Test insight",
+        )
+
+    mock_client.chat.completions.create = mock_create
+
+    content, insight = await generate_new_jev_criteria(
+        old_prompt_content='{"UP": "Old up", "DOWN": "Old down"}',
+        predictions=[],
+        macro_context={},
+        baseline_score=10.0,
+        openai_meta=mock_client,
+        cold_start=False,
+    )
+
+    assert "Bullish VWAP continuation" in content
+    assert insight == "Test insight"
+    assert len(recorded_kwargs) > 0
+    assert recorded_kwargs[0].get("reasoning_effort") == "none", (
+        f"Expected reasoning_effort='none' in kwargs, got {recorded_kwargs[0]}"
+    )
+

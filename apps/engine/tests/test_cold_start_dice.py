@@ -72,6 +72,7 @@ async def test_evaluate_week_cold_start_omits_prior_strategy_text():
         assert "Active Strategy Text" not in report_cold
         assert "COLD START RESET" in report_cold
         assert "FROZEN" in report_cold
+        assert "Multi-Week Context (Past 4 Weeks)" in report_cold
         assert baseline_tag == "v_baseline_123"
 
 
@@ -126,24 +127,23 @@ async def test_runner_cold_start_preserves_frozen_sections():
 
 
 @pytest.mark.asyncio
-async def test_runner_run_all_max_one_cold_start_guardrail():
-    """Verify run_all permits at most one track to trigger cold start in a single run when automated."""
+async def test_runner_run_all_independent_dice_roll_per_track():
+    """Verify run_all rolls dice independently for each track without a max-1 restriction."""
     with (
         patch("core.config.AUTORESEARCH_TRACKS", {"track_default": [], "track_claude": [], "track_openai": []}),
         patch("autoresearch.runner.run", new_callable=AsyncMock) as mock_run,
-        patch("autoresearch.runner.roll_cold_start_dice", return_value=True),
+        patch("autoresearch.runner.roll_cold_start_dice", side_effect=[True, False, True]),
     ):
-        # Automated run: cold_start=None triggers dice with max-1 guardrail
+        # Automated run: each track rolls its own dice independently
         await runner.run_all(dry_run=True)
 
-        # Track 1 got cold_start=True; tracks 2 and 3 should have received cold_start=False
         assert mock_run.call_count == 3
         calls = mock_run.call_args_list
         assert calls[0].kwargs.get("cold_start") is True
         assert calls[1].kwargs.get("cold_start") is False
-        assert calls[2].kwargs.get("cold_start") is False
+        assert calls[2].kwargs.get("cold_start") is True
 
-        # Explicit run with cold_start=False bypasses dice completely
+        # Explicit run with cold_start=False sets cold_start=False for all tracks
         mock_run.reset_mock()
         await runner.run_all(dry_run=True, cold_start=False)
         assert mock_run.call_count == 3
@@ -151,6 +151,48 @@ async def test_runner_run_all_max_one_cold_start_guardrail():
         assert calls_disabled[0].kwargs.get("cold_start") is False
         assert calls_disabled[1].kwargs.get("cold_start") is False
         assert calls_disabled[2].kwargs.get("cold_start") is False
+
+        # Explicit run with cold_start=True sets cold_start=True for all tracks
+        mock_run.reset_mock()
+        await runner.run_all(dry_run=True, cold_start=True)
+        assert mock_run.call_count == 3
+        calls_enabled = mock_run.call_args_list
+        assert calls_enabled[0].kwargs.get("cold_start") is True
+        assert calls_enabled[1].kwargs.get("cold_start") is True
+        assert calls_enabled[2].kwargs.get("cold_start") is True
+
+
+@pytest.mark.asyncio
+async def test_daily_and_sector_autoresearch_independent_dice_rolls():
+    """Verify daily and sector autoresearch roll dice independently per model track."""
+    with (
+        patch("tasks.daily_autoresearch.get_supabase_client"),
+        patch("tasks.daily_autoresearch.get_deepseek_client"),
+        patch("tasks.daily_autoresearch.get_openai_client"),
+        patch("tasks.daily_autoresearch.run_daily_autoresearch_for_model", new_callable=AsyncMock) as mock_daily,
+        patch("autoresearch.runner.roll_cold_start_dice", side_effect=[True, False, True]),
+    ):
+        await daily_autoresearch.run_daily_autoresearch(dry_run=True)
+        assert mock_daily.call_count == 3
+        daily_calls = mock_daily.call_args_list
+        assert daily_calls[0].kwargs.get("cold_start") is True
+        assert daily_calls[1].kwargs.get("cold_start") is False
+        assert daily_calls[2].kwargs.get("cold_start") is True
+
+    with (
+        patch("tasks.predictor_autoresearch.get_supabase_client"),
+        patch("tasks.predictor_autoresearch.get_gemini_client"),
+        patch("tasks.predictor_autoresearch.run_predictor_autoresearch_for_model", new_callable=AsyncMock) as mock_sec,
+        patch("autoresearch.runner.roll_cold_start_dice", side_effect=[False, True, False, True]),
+    ):
+        await predictor_autoresearch.run_predictor_autoresearch(dry_run=True)
+        assert mock_sec.call_count == 4
+        sec_calls = mock_sec.call_args_list
+        assert sec_calls[0].kwargs.get("cold_start") is False
+        assert sec_calls[1].kwargs.get("cold_start") is True
+        assert sec_calls[2].kwargs.get("cold_start") is False
+        assert sec_calls[3].kwargs.get("cold_start") is True
+
 
 
 @pytest.mark.asyncio
@@ -225,3 +267,51 @@ async def test_sector_autoresearch_cold_start_preserves_frozen_sections():
     assert assembled_prompt.endswith(predictor_prompts.SECTOR_PREDICTOR_CONSTRAINTS_FOOTER)
     assert "New Sector Rotation Rules From 0" in assembled_prompt
     assert insight == "Tech vs Utilities divergence indicates growth regime"
+
+
+@pytest.mark.asyncio
+async def test_sector_autoresearch_passes_multi_week_predictions_and_context():
+    """Verify generate_new_prompt includes multi-week prediction stats and macro context in meta prompt."""
+    old_prompt = (
+        f"{predictor_prompts.SECTOR_PREDICTOR_CONSTRAINTS_HEADER}"
+        "Current Sector Strategy"
+        f"{predictor_prompts.SECTOR_PREDICTOR_CONSTRAINTS_FOOTER}"
+    )
+
+    mock_meta_response = MagicMock()
+    mock_meta_response.new_prompt = "Evolved Multi-Week Sector Strategy"
+    mock_meta_response.research_insight = "Semi-conductors lead recovery"
+
+    mock_llm = MagicMock()
+    mock_llm.chat.completions.create = AsyncMock(return_value=mock_meta_response)
+
+    multi_preds = [
+        {"is_correct": True, "target_date": "2026-09-01"},
+        {"is_correct": False, "target_date": "2026-09-02"},
+        {"is_correct": True, "target_date": "2026-09-03"},
+    ]
+    macro_context = {
+        "daily_events": {
+            "2026-09-03": {"newsletters": ["Morning Brief: Tech rally"], "events": []}
+        }
+    }
+
+    assembled, insight = await predictor_autoresearch.generate_new_prompt(
+        old_prompt=old_prompt,
+        baseline_score=65.0,
+        meta_researcher=mock_llm,
+        cold_start=True,
+        multi_week_predictions=multi_preds,
+        macro_context=macro_context,
+    )
+
+    call_args = mock_llm.chat.completions.create.call_args
+    meta_prompt_sent = call_args.kwargs["messages"][0]["content"]
+
+    assert "MULTI-WEEK SECTOR PERFORMANCE (Past 4 Weeks)" in meta_prompt_sent
+    assert "Total Evaluated Predictions: 3" in meta_prompt_sent
+    assert "RECENT MACRO & NEWSLETTER CONTEXT" in meta_prompt_sent
+    assert "Morning Brief: Tech rally" in meta_prompt_sent
+    assert "Evolved Multi-Week Sector Strategy" in assembled
+    assert insight == "Semi-conductors lead recovery"
+

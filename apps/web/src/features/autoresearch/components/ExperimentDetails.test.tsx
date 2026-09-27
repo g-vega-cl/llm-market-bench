@@ -73,4 +73,18 @@ describe('ExperimentDetails Toolbox Configuration', () => {
         expect(screen.getByText(`2 / ${toolsConfig.length + 1} Tools Enabled`)).toBeInTheDocument();
         expect(screen.getByText('future_hypothetical_quantum_tool')).toBeInTheDocument();
     });
+
+    it('renders "From 0" badge next to track label when experiment is cold start', () => {
+        const coldExp: PromptExperiment = {
+            ...baseExperiment,
+            research_output: {
+                ...baseExperiment.research_output,
+                is_cold_start: true,
+            },
+        };
+
+        render(<ExperimentDetails experiment={coldExp} />);
+
+        expect(screen.getByText('From 0')).toBeInTheDocument();
+    });
 });

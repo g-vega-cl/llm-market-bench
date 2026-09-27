@@ -8,6 +8,7 @@ import {
     TableHeader,
     TableRow,
 } from '@llm-market-bench/ui-design-system';
+import { isExperimentColdStart } from '../utils/coldStart';
 import { formatTrackLabel } from './TrackTabs';
 
 interface ExperimentListProps {
@@ -94,14 +95,26 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                 </div>
                             </TableCell>
                             <TableCell>
-                                <Badge
-                                    colorScheme="accent"
-                                    variant="soft"
-                                    className="text-[10px] whitespace-nowrap"
-                                >
-                                    {formatTrackLabel(exp.track_id)}
-                                </Badge>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <Badge
+                                        colorScheme="accent"
+                                        variant="soft"
+                                        className="text-[10px] whitespace-nowrap"
+                                    >
+                                        {formatTrackLabel(exp.track_id)}
+                                    </Badge>
+                                    {isExperimentColdStart(exp) && (
+                                        <Badge
+                                            colorScheme="warning"
+                                            variant="soft"
+                                            className="text-[10px] whitespace-nowrap"
+                                        >
+                                            From 0
+                                        </Badge>
+                                    )}
+                                </div>
                             </TableCell>
+
                             <TableCell>
                                 <Badge
                                     variant={exp.experiment_type === 'baseline' ? 'solid' : 'soft'}

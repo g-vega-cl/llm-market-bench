@@ -514,6 +514,7 @@ async def generate_new_jev_criteria(
             model=OPENAI_MODEL,
             response_model=JevMetaCriteriaResponse,
             messages=[{"role": "user", "content": meta_prompt}],
+            reasoning_effort="none",
         )
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
             resp = await resp_awaitable
@@ -538,14 +539,18 @@ async def run_daily_autoresearch_for_model(
     client,
     today,
     seven_days_ago,
-    fourteen_days_ago,
-    deepseek_meta,
+    fourteen_days_ago=None,
+    deepseek_meta=None,
     openai_meta=None,
     dry_run: bool = False,
     cold_start: bool | None = None,
+    twenty_eight_days_ago=None,
 ):
     """Run weekly prompt evolution and ratchet check for a single daily predictor model track."""
     from autoresearch.runner import roll_cold_start_dice
+
+    if twenty_eight_days_ago is None:
+        twenty_eight_days_ago = today - timedelta(days=28)
 
     is_cold_start = roll_cold_start_dice() if cold_start is None else cold_start
     if is_cold_start:
@@ -571,8 +576,25 @@ async def run_daily_autoresearch_for_model(
         logger.info(f"No evaluated daily predictions found for {model_name} in the past week. Skipping autoresearch.")
         return
 
+    # Fetch 4-week (28-day) evaluated predictions for postmortem and prompt context
+    multi_week_response = (
+        client.table("daily_predictions")
+        .select("*")
+        .eq("status", "evaluated")
+        .eq("model_name", model_name)
+        .gte("target_date", twenty_eight_days_ago.isoformat())
+        .lte("target_date", today.isoformat())
+        .execute()
+    )
+    multi_week_predictions = [
+        p
+        for p in (multi_week_response.data or [])
+        if not (p.get("prompt_variant_tag") and "backtest" in p["prompt_variant_tag"].lower())
+    ]
+
     current_metrics = calculate_daily_ratchet_metrics(predictions)
     current_score = current_metrics["score"]
+
 
     # 2. Fetch active prompt variant for this model track
     prompt_response = (
@@ -668,18 +690,19 @@ async def run_daily_autoresearch_for_model(
         if not dry_run:
             client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
 
-    # 5. Fetch 14-day rich macro, newsletter, and concepts context
+    # 5. Fetch 28-day rich macro, newsletter, and concepts context
     macro_context = fetch_autoresearch_context(
-        client, fourteen_days_ago.isoformat(), today.isoformat(), track_id=model_name
+        client, twenty_eight_days_ago.isoformat(), today.isoformat(), track_id=model_name
     )
 
     # 6. Mutate prompt using DeepSeek Flash or OpenAI Luna for Jev
     is_jev = "jev" in model_name.lower()
+    candidate_predictions = multi_week_predictions if multi_week_predictions else predictions
     if is_jev:
         new_prompt, research_insight = await generate_new_jev_criteria(
             old_prompt_content=current_prompt,
             baseline_score=current_score,
-            predictions=predictions,
+            predictions=candidate_predictions,
             macro_context=macro_context,
             openai_meta=openai_meta,
             cold_start=is_cold_start,
@@ -688,11 +711,12 @@ async def run_daily_autoresearch_for_model(
         new_prompt, research_insight = await generate_new_daily_prompt(
             old_prompt=current_prompt,
             baseline_score=current_score,
-            predictions=predictions,
+            predictions=candidate_predictions,
             macro_context=macro_context,
             meta_researcher=deepseek_meta,
             cold_start=is_cold_start,
         )
+
 
     # 7. Deploy new active prompt variant scoped to track_id, demoting prior active variants
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"
@@ -781,6 +805,7 @@ async def run_daily_autoresearch(dry_run: bool = False, cold_start: bool | None 
     today = datetime.now(UTC).date()
     seven_days_ago = today - timedelta(days=7)
     fourteen_days_ago = today - timedelta(days=14)
+    twenty_eight_days_ago = today - timedelta(days=28)
 
     target_models = [DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, JEV_MODEL]
     deepseek_meta = get_deepseek_client()
@@ -788,7 +813,6 @@ async def run_daily_autoresearch(dry_run: bool = False, cold_start: bool | None 
 
     from autoresearch.runner import roll_cold_start_dice
 
-    cold_start_triggered = False
     try:
         for model_name in target_models:
             if cold_start is True:
@@ -796,12 +820,7 @@ async def run_daily_autoresearch(dry_run: bool = False, cold_start: bool | None 
             elif cold_start is False:
                 m_cold = False
             else:
-                # Automated mode: roll 1-in-6 dice with max-1 guardrail
-                if not cold_start_triggered and roll_cold_start_dice():
-                    m_cold = True
-                    cold_start_triggered = True
-                else:
-                    m_cold = False
+                m_cold = roll_cold_start_dice()
 
             await run_daily_autoresearch_for_model(
                 model_name=model_name,
@@ -813,7 +832,9 @@ async def run_daily_autoresearch(dry_run: bool = False, cold_start: bool | None 
                 openai_meta=openai_meta,
                 dry_run=dry_run,
                 cold_start=m_cold,
+                twenty_eight_days_ago=twenty_eight_days_ago,
             )
+
     finally:
         await close_client(deepseek_meta, "deepseek")
         await close_client(openai_meta, "openai")

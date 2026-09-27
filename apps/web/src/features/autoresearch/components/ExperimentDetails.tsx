@@ -1,5 +1,6 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Badge, Card, MetricTile, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { isExperimentColdStart } from '../utils/coldStart';
 import { splitPromptSections } from '../utils/promptSections';
 import { BacktestTradesAudit } from './BacktestTradesAudit';
 import { CognitiveToolboxCard } from './CognitiveToolboxCard';
@@ -21,6 +22,7 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
     const researchOutput = experiment.research_output || {};
 
     const trackLabel = formatTrackLabel(experiment.track_id);
+    const isCold = isExperimentColdStart(experiment);
 
     const excessReturnVal =
         metrics.excess_return !== undefined && metrics.excess_return !== null
@@ -45,7 +47,13 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                     <Badge colorScheme="accent" variant="soft" className="text-xs font-bold">
                         {trackLabel}
                     </Badge>
+                    {isCold && (
+                        <Badge colorScheme="warning" variant="soft" size="sm">
+                            From 0
+                        </Badge>
+                    )}
                 </div>
+
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                         Experiment Type:

@@ -27,4 +27,25 @@ describe('ExperimentList', () => {
         // stably regardless of locale or timezone offset.
         expect(screen.getByText('May 18, 2026 - May 24, 2026')).toBeInTheDocument();
     });
+
+    it('renders "From 0" badge on cold-start experiments', () => {
+        const mockExperiments = [
+            {
+                id: 'exp-1',
+                variant_tag: 'v1.0',
+                experiment_type: 'radical',
+                week_start: '2026-05-18',
+                week_end: '2026-05-24',
+                metrics: { score: 1.5 },
+                status: 'active',
+                research_output: { is_cold_start: true },
+            },
+        ] as unknown as PromptExperiment[];
+
+        render(
+            <ExperimentList experiments={mockExperiments} onSelect={() => {}} selectedId="exp-1" />,
+        );
+
+        expect(screen.getByText('From 0')).toBeInTheDocument();
+    });
 });

@@ -121,7 +121,7 @@
 - [[concepts/intraday-hit-metrics]] — Two-dimensional evaluation for daily predictions measuring intraday price target achievement
 - [[concepts/thematic-rotation]] — Adjacent trade pattern, stranded-asset pivot, and AI intra-cycle rotation sequence (infra → hyperscalers)
 - [[concepts/verifier-bypass]] — Configurable model-level bypass of the skeptical verification agent stage
-- [[concepts/stochastic-cold-start]] — Randomized cold-start resets (2–5 week intervals) to escape local optima in prompt optimization
+- [[concepts/stochastic-cold-start]] — Independent 1-in-6 stochastic cold-start resets with 4-week lookback context to escape local optima
 - [[concepts/multi-track-autoresearch]] — Parallel isolated prompt optimization tracks for distinct portfolio groups
 - [[concepts/prompt-section-splitting]] — Visual decomposition of the trading prompt into frozen and mutable sections for the autoresearch arena
 - [[concepts/git-history-tracking]] — Git history as the authoritative chronological record, replacing wiki log.md

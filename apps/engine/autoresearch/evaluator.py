@@ -282,7 +282,7 @@ async def evaluate_week(
                 m = {}
         baseline_score = m.get("score")
 
-    # Fetch trade rejection metrics and verifier feedback
+    # Fetch trade rejection metrics and verifier feedback for evaluated week
     rejection_stats = await fetch_trade_rejections(
         sb_client,
         week_start,
@@ -290,6 +290,29 @@ async def evaluate_week(
         owner_ids=target_owner_ids,
     )
     score_result["rejection_stats"] = rejection_stats
+
+    # Fetch 4-week multi-week performance context and trade rejections
+    from datetime import timedelta
+
+    multi_week_start = week_end - timedelta(days=28)
+    multi_week_metrics = await compute_wall_street_metrics(
+        target_owner_ids,
+        multi_week_start,
+        week_end,
+    )
+    multi_week_rejections = await fetch_trade_rejections(
+        sb_client,
+        multi_week_start,
+        week_end,
+        owner_ids=target_owner_ids,
+    )
+    mw_total = multi_week_rejections.get("total_decisions", 0)
+    mw_val = multi_week_rejections.get("validated_count", 0)
+    mw_rej = multi_week_rejections.get("rejected_count", 0)
+    mw_rate = multi_week_rejections.get("rejection_rate_pct", 0.0)
+    mw_ret = multi_week_metrics.get("total_return_pct", 0)
+    mw_dd = multi_week_metrics.get("max_drawdown", 0) * 100
+    mw_vol = multi_week_metrics.get("volatility", 0) * 100
 
     # Build minimal report.
     baseline_line = ""
@@ -329,6 +352,10 @@ async def evaluate_week(
         f"{0.4 * (portfolio_ret - spy_return_pct):.2f} + {0.4 * (portfolio_ret - score_result['do_nothing_return_pct']):.2f} + {0.2 * (portfolio_ret - bond_return_pct):.2f} - {max_drawdown * 0.3:.2f} = "
         f"{score_result['score']}",
         "",
+        "# Multi-Week Context (Past 4 Weeks)",
+        f"4-Week Return: {mw_ret:+.2f}% | Max Drawdown: -{mw_dd:.2f}% | Volatility: {mw_vol:.2f}%",
+        f"4-Week Trade Decisions: Total {mw_total} | Validated: {mw_val} | Rejected: {mw_rej} ({mw_rate:.2f}% rejection rate)",
+        "",
         "# Control Reference",
         f"Control agents (OpenAI + Claude on baseline): "
         f"{ctrl_metrics.get('total_return_pct', 0):+.2f}% return, "
@@ -345,10 +372,11 @@ async def evaluate_week(
                 "",
                 "# COLD START RESET: Formulate Mutable Strategy From Scratch",
                 "This cycle is a COLD START RESET (1-in-6 stochastic exploration to escape local optima).",
-                "DO NOT anchor on or copy prior prompt strategies. Formulate a completely fresh, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch.",
+                "DO NOT anchor on or copy prior prompt strategies. Formulate a completely fresh, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch using the multi-week performance context and empirical execution postmortems provided above.",
                 "All system constraints (header rules, pricing mechanics, and structured JSON output format) remain FROZEN and managed automatically by the engine. You are writing ONLY the mutable strategy section.",
             ]
         )
+
     else:
         report_parts.extend(
             [

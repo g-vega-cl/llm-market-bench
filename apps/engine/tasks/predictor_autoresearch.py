@@ -132,6 +132,8 @@ async def generate_new_prompt(
     track_memories: str = "",
     model_name: str | None = None,
     cold_start: bool = False,
+    multi_week_predictions: list[dict] | None = None,
+    macro_context: dict | None = None,
 ) -> tuple[str, str | None]:
     """Generate a new prompt variant."""
     _, mutable_strategies, _ = split_predictor_prompt(old_prompt)
@@ -141,11 +143,29 @@ async def generate_new_prompt(
         track_label = model_name or "CURRENT TRACK"
         mem_block = f"\n### PRIOR AUTORESEARCH INSIGHTS & LESSONS (Track: {track_label}):\n{track_memories}\n"
 
+    mw_block = ""
+    if multi_week_predictions:
+        mw_total = len(multi_week_predictions)
+        mw_correct = sum(1 for p in multi_week_predictions if p.get("is_correct"))
+        mw_acc = (mw_correct / mw_total * 100) if mw_total > 0 else 0.0
+        mw_block = f"\n### MULTI-WEEK SECTOR PERFORMANCE (Past 4 Weeks):\nTotal Evaluated Predictions: {mw_total} | Directional Hits: {mw_correct} ({mw_acc:.1f}% accuracy)\n"
+
+    context_block = ""
+    if macro_context and macro_context.get("daily_events"):
+        recent_events = []
+        for d, day_data in list(macro_context["daily_events"].items())[:5]:
+            news = day_data.get("newsletters", [])
+            ev = day_data.get("events", [])
+            if news or ev:
+                recent_events.append(f"- {d}: {'; '.join(news[:2] + ev[:2])}")
+        if recent_events:
+            context_block = "\n### RECENT MACRO & NEWSLETTER CONTEXT:\n" + "\n".join(recent_events) + "\n"
+
     if cold_start:
         strategy_block = (
             "=== COLD START RESET (STRATEGY FROM SCRATCH) ===\n"
             "This cycle is a COLD START RESET (1-in-6 stochastic exploration to avoid local optima).\n"
-            "DO NOT anchor on or adapt the prior strategy. Generate entirely novel, high-conviction analytical reasoning and rotation rules from scratch.\n"
+            "DO NOT anchor on or adapt the prior strategy. Generate entirely novel, high-conviction analytical reasoning and rotation rules from scratch using the 4-week sector performance trends and market context.\n"
             "Remember that system header rules and the required JSON output schema are FROZEN and automatically appended.\n"
             "Output ONLY the new raw strategy instructions text."
         )
@@ -160,7 +180,9 @@ async def generate_new_prompt(
         "You are a Meta-Researcher AI tasked with improving an LLM's system prompt "
         "for predicting the best performing market sectors and uncorrelated pairs.\n\n"
         f"The current prompt strategy achieved a percentile score of {baseline_score:.1f}/100.0.\n"
-        f"{mem_block}\n"
+        f"{mem_block}"
+        f"{mw_block}"
+        f"{context_block}\n"
         "Your goal is to rewrite ONLY the strategy / analytical reasoning section of the prompt "
         "to be more effective, focusing on deeper logic, macro quantitative signals, and better data extraction. "
         "Do NOT include any output formatting instructions or JSON schemas in your output; "
@@ -173,6 +195,7 @@ async def generate_new_prompt(
     try:
         resp_awaitable = meta_researcher.chat.completions.create(
             model="gemini-3.5-flash-lite",
+
             response_model=MetaPromptResponse,
             messages=[{"role": "user", "content": meta_prompt}],
         )
@@ -209,9 +232,13 @@ async def run_predictor_autoresearch_for_model(
     meta_researcher,
     dry_run: bool = False,
     cold_start: bool | None = None,
+    twenty_eight_days_ago=None,
 ):
     """Run weekly prompt evolution, track isolation, and ratchet check for a single sector predictor model."""
     from autoresearch.runner import roll_cold_start_dice
+
+    if twenty_eight_days_ago is None:
+        twenty_eight_days_ago = today - timedelta(days=28)
 
     is_cold_start = roll_cold_start_dice() if cold_start is None else cold_start
     if is_cold_start:
@@ -235,9 +262,22 @@ async def run_predictor_autoresearch_for_model(
         logger.info(f"No evaluated sector predictions found for {model_name} in the last week. Skipping autoresearch.")
         return
 
+    # Fetch 4-week (28-day) evaluated predictions for sector postmortems
+    multi_response = (
+        client.table("sector_predictions")
+        .select("*")
+        .eq("status", "evaluated")
+        .eq("model_name", model_name)
+        .gte("target_date", twenty_eight_days_ago.isoformat())
+        .lte("target_date", today.isoformat())
+        .execute()
+    )
+    multi_week_predictions = multi_response.data or []
+
     # Calculate weekly score using baseline ratchet formula (including Brier penalty)
     weekly_metrics = calculate_baseline_metrics(predictions)
     weekly_score = weekly_metrics["score"]
+
 
     # 2. Fetch current active prompt for this model track
     prompt_response = (
@@ -337,7 +377,7 @@ async def run_predictor_autoresearch_for_model(
                 "prompt_name", "SECTOR_PREDICTOR_PROMPT"
             ).eq("track_id", model_name).neq("variant_tag", parent_tag).execute()
 
-    # 5. Fetch isolated memories for this sector track
+    # 5. Fetch isolated memories and macro context for this sector track
     track_memories = ""
     try:
         from memory.store import retrieve_autoresearch_memories
@@ -345,6 +385,16 @@ async def run_predictor_autoresearch_for_model(
         track_memories = retrieve_autoresearch_memories(track_id=model_name, scope="sector_predictor", limit=5)
     except Exception as e:
         logger.warning(f"Error fetching autoresearch memories for {model_name}: {e}")
+
+    macro_context = None
+    try:
+        from tasks.daily_autoresearch import fetch_autoresearch_context
+
+        macro_context = fetch_autoresearch_context(
+            client, twenty_eight_days_ago.isoformat(), today.isoformat(), track_id=model_name
+        )
+    except Exception as e:
+        logger.warning(f"Error fetching macro context for sector autoresearch: {e}")
 
     # 6. Generate new prompt mutated from (post-revert) current_prompt
     new_prompt, research_insight = await generate_new_prompt(
@@ -354,7 +404,10 @@ async def run_predictor_autoresearch_for_model(
         track_memories=track_memories,
         model_name=model_name,
         cold_start=is_cold_start,
+        multi_week_predictions=multi_week_predictions,
+        macro_context=macro_context,
     )
+
 
     # 7. Insert new prompt and set status to active
     new_tag = f"sector-pred-{model_name}-{uuid.uuid4().hex[:8]}"
@@ -446,6 +499,7 @@ async def run_predictor_autoresearch(
 
     today = datetime.now(UTC).date()
     seven_days_ago = today - timedelta(days=7)
+    twenty_eight_days_ago = today - timedelta(days=28)
 
     if target_models is None:
         target_models = TARGET_SECTOR_MODELS
@@ -453,7 +507,6 @@ async def run_predictor_autoresearch(
     meta_researcher = get_gemini_client()
     from autoresearch.runner import roll_cold_start_dice
 
-    cold_start_triggered = False
     try:
         for model_name in target_models:
             if cold_start is True:
@@ -461,12 +514,7 @@ async def run_predictor_autoresearch(
             elif cold_start is False:
                 m_cold = False
             else:
-                # Automated mode: roll 1-in-6 dice with max-1 guardrail
-                if not cold_start_triggered and roll_cold_start_dice():
-                    m_cold = True
-                    cold_start_triggered = True
-                else:
-                    m_cold = False
+                m_cold = roll_cold_start_dice()
 
             await run_predictor_autoresearch_for_model(
                 model_name=model_name,
@@ -476,7 +524,9 @@ async def run_predictor_autoresearch(
                 meta_researcher=meta_researcher,
                 dry_run=dry_run,
                 cold_start=m_cold,
+                twenty_eight_days_ago=twenty_eight_days_ago,
             )
+
     finally:
         await close_client(meta_researcher, "gemini")
 

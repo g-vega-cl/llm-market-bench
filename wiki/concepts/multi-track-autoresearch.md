@@ -18,6 +18,8 @@ Each track maintains its own independent prompt lineage, baseline, ratchet score
 - **Single active variant per track**: Deploying a new active variant automatically demotes all prior `active` variants for that `track_id` to `saved`, guaranteeing exactly one live strategy per model track.
 - **Ratchet comparison scoped to track**: Baseline score comparison and ratchet promotion operate only within the same `track_id`.
 - **Track-Isolated Memories (`AUTORESEARCH_INSIGHT`)**: During optimization cycles, meta-researchers synthesize succinct hypotheses and postmortems (`research_insight`). These are recorded in `memories` with `metadata.track_id` and `metadata.scope`.
+- **Independent Stochastic Cold-Start**: During weekly evolution, each track rolls the 1-in-6 stochastic dice (`roll_cold_start_dice(sides=6)`) independently. One track can reset "from 0" based on 4 weeks of empirical history while another executes an incremental mutation (see [[concepts/stochastic-cold-start]]).
+- **Multi-Week Lookback Horizon (28 Days)**: Prompt synthesis and postmortem analysis across all tracks ingest a 28-day window of market events and predictions, while the weekly ratchet score remains strictly evaluated over the 7-day active week.
 - **Context Protection & Conditional Decay**: Baseline-winning insights (`is_baseline_beat=True` or `importance_score >= 8`) never decay (0% decay rate). Exploratory or non-winning insights decay at a 50% half-life per 30 days. Retrievals are capped at `limit=5` to prevent context bloat.
 
 ## Frontend Enforcement

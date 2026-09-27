@@ -6,7 +6,9 @@ import { CognitiveToolboxCard } from '../../autoresearch/components/CognitiveToo
 import { PromptBlocksCard } from '../../autoresearch/components/PromptBlocksCard';
 import { PromptChanges } from '../../autoresearch/components/PromptChanges';
 import { ResearchRationaleCard } from '../../autoresearch/components/ResearchRationaleCard';
+import { isExperimentColdStart } from '../../autoresearch/utils/coldStart';
 import { splitPromptSections } from '../../autoresearch/utils/promptSections';
+
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import { DailyScoreBreakdown } from '../components/DailyScoreBreakdown';
 import { MarketContextViewer } from '../components/MarketContextViewer';
@@ -1101,6 +1103,11 @@ function VariantSidebarItem({
                 >
                     {exp.experiment_type || 'incremental'}
                 </span>
+                {isExperimentColdStart(exp) && (
+                    <Badge colorScheme="warning" variant="soft" size="xs">
+                        From 0
+                    </Badge>
+                )}
             </div>
         </button>
     );
@@ -1140,6 +1147,11 @@ function SelectedVariantHeader({
                     {experiment.variant_tag}
                 </h3>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {isExperimentColdStart(experiment) && (
+                        <Badge colorScheme="warning" variant="soft" size="xs">
+                            From 0
+                        </Badge>
+                    )}
                     {isActiveVariant && (
                         <span
                             style={{
@@ -1154,6 +1166,7 @@ function SelectedVariantHeader({
                             🟢 CURRENT ACTIVE
                         </span>
                     )}
+
                     <span
                         style={{
                             padding: '4px 10px',

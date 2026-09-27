@@ -16,6 +16,7 @@ import { CognitiveToolboxCard } from '~/features/autoresearch/components/Cogniti
 import { PromptBlocksCard } from '~/features/autoresearch/components/PromptBlocksCard';
 import { PromptChanges } from '~/features/autoresearch/components/PromptChanges';
 import { ResearchRationaleCard } from '~/features/autoresearch/components/ResearchRationaleCard';
+import { isExperimentColdStart } from '~/features/autoresearch/utils/coldStart';
 import { splitPromptSections } from '~/features/autoresearch/utils/promptSections';
 import type {
     EvaluationAuditData,
@@ -1220,15 +1221,27 @@ function PredictorAutoresearchTab({
                                         <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
                                             Experiment Type
                                         </div>
-                                        <Badge
-                                            variant={
-                                                selectedExperiment.experiment_type === 'baseline'
-                                                    ? 'solid'
-                                                    : 'soft'
-                                            }
-                                        >
-                                            {selectedExperiment.experiment_type}
-                                        </Badge>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <Badge
+                                                variant={
+                                                    selectedExperiment.experiment_type ===
+                                                    'baseline'
+                                                        ? 'solid'
+                                                        : 'soft'
+                                                }
+                                            >
+                                                {selectedExperiment.experiment_type}
+                                            </Badge>
+                                            {isExperimentColdStart(selectedExperiment) && (
+                                                <Badge
+                                                    variant="soft"
+                                                    colorScheme="warning"
+                                                    size="xs"
+                                                >
+                                                    From 0
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
                                     <div>
                                         <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
@@ -1379,9 +1392,16 @@ function PredictorExperimentRow({ exp, isSelected, onSelect }: PredictorExperime
                 {exp.variant_tag}
             </TableCell>
             <TableCell>
-                <Badge variant={exp.experiment_type === 'baseline' ? 'solid' : 'soft'}>
-                    {exp.experiment_type}
-                </Badge>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant={exp.experiment_type === 'baseline' ? 'solid' : 'soft'}>
+                        {exp.experiment_type}
+                    </Badge>
+                    {isExperimentColdStart(exp) && (
+                        <Badge variant="soft" colorScheme="warning" size="xs">
+                            From 0
+                        </Badge>
+                    )}
+                </div>
             </TableCell>
             <TableCell
                 className={`font-bold ${

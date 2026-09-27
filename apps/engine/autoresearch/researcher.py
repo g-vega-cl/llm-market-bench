@@ -123,7 +123,7 @@ async def run_research(
     try:
         from autoresearch.tools import query_trade_postmortems
 
-        db_context = await query_trade_postmortems(track_id=track_id, limit=5)
+        db_context = await query_trade_postmortems(track_id=track_id, limit=20)
         if db_context:
             report += f"\n\n{db_context}"
     except Exception as e:
@@ -137,7 +137,7 @@ async def run_research(
             "\n\n=== COLD START RESET ===\n"
             "This cycle is a COLD START RESET (1-in-6 stochastic exploration to avoid local optima).\n"
             "DO NOT anchor on or adapt the prior system prompt strategy.\n"
-            "Generate a novel, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch.\n"
+            "Generate a novel, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch using the multi-week performance context and trade postmortems.\n"
             "Remember that engine constraints, pricing rules, and the JSON output schema are FROZEN and managed automatically by the engine.\n"
             "Output ONLY the new strategy and analysis section in new_prompt_text."
         )

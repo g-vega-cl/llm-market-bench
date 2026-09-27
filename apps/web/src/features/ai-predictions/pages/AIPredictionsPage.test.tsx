@@ -312,4 +312,54 @@ Footer JSON schema`,
         ).toBeInTheDocument();
         expect(screen.getByText('Frozen Output Schema (Footer)')).toBeInTheDocument();
     });
+
+    it('renders "From 0" badge for cold-start experiments in autoresearch tab', () => {
+        const refreshFn = vi.fn();
+        const coldStartExperiments: PromptExperiment[] = [
+            {
+                id: 'exp-cold-1',
+                prompt_name: 'SECTOR_PREDICTOR_PROMPT',
+                variant_tag: 'v2.0-cold',
+                experiment_type: 'radical',
+                prompt_content:
+                    '=== CONSTRAINTS ===\nRules\n=== INSTRUCTIONS ===\nCold start strategy\n=== REQUIRED OUTPUT FORMAT ===\nSchema',
+                change_description: 'Cold-start prompt generation from 0',
+                metrics: {
+                    score: 91.0,
+                    base_percentile: 88.0,
+                    alpha_bonus: 4.0,
+                    mean_brier: 0.04,
+                    predictions_evaluated: 6,
+                },
+                status: 'active',
+                week_start: '2026-07-24',
+                week_end: '2026-07-31',
+                created_at: '2026-07-24T00:00:00Z',
+                parent_tag: null,
+                research_output: {
+                    is_cold_start: true,
+                    research_insight: 'Clean sheet macro architecture.',
+                    confidence: 0.9,
+                    selected_tools: ['get_historical_correlation'],
+                },
+                is_backtest: false,
+                track_id: 'track_default',
+            },
+        ];
+
+        render(
+            <AIPredictionsPage
+                initialData={mockPredictions}
+                experiments={coldStartExperiments}
+                refreshFn={refreshFn}
+            />,
+        );
+
+        // Switch to Prompt Auto-Research tab
+        fireEvent.click(screen.getByRole('button', { name: /Prompt Auto-Research/i }));
+
+        // Both in table row and details pane
+        const fromZeroBadges = screen.getAllByText('From 0');
+        expect(fromZeroBadges.length).toBeGreaterThanOrEqual(1);
+    });
 });

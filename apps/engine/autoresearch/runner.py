@@ -353,7 +353,6 @@ async def run_all(dry_run: bool = False, cold_start: bool | None = None):
     from core.config import AUTORESEARCH_TRACKS
 
     track_ids = list(AUTORESEARCH_TRACKS.keys()) if AUTORESEARCH_TRACKS else ["track_default"]
-    cold_start_triggered = False
     for t_id in track_ids:
         logger.info("Executing Auto-Research cycle for track: %s", t_id)
         if cold_start is True:
@@ -361,11 +360,6 @@ async def run_all(dry_run: bool = False, cold_start: bool | None = None):
         elif cold_start is False:
             t_cold = False
         else:
-            # Automated mode: roll 1-in-6 dice with max-1 guardrail
-            if not cold_start_triggered and roll_cold_start_dice():
-                t_cold = True
-                cold_start_triggered = True
-            else:
-                t_cold = False
+            t_cold = roll_cold_start_dice()
 
         await run(dry_run=dry_run, track_id=t_id, cold_start=t_cold)

@@ -7,11 +7,26 @@ category: concept
 
 The stochastic cold-start reset prevents the autonomous research loop from converging on local optima during weekly prompt evolution. On every scheduled evolution run, each track rolls a 1-in-6 stochastic dice (`roll_cold_start_dice(sides=6)`). If the dice rolls 1, the meta-researcher discards prior strategy text and drafts a new hypothesis from scratch.
 
-## Multi-Track Isolation & Guardrails
+## Multi-Track Isolation & Independent Dice Rolls
 
-To prevent synchronized destabilization across models, batch runners (`run_all` in portfolio autoresearch, `run_daily_autoresearch` in daily predictor, and `run_predictor_autoresearch` in sector predictor) enforce a strict guardrail:
-- **Maximum 1 Cold Start Per Run**: Across any multi-track batch execution, at most 1 model track may trigger a stochastic cold start reset.
+To allow heterogeneous evolutionary trajectories across models:
+- **Independent Per-Track Dice Rolls**: Every scheduled run rolls the 1-in-6 dice for each model track independently. In any given run, some tracks may reset "from 0" while others continue standard incremental evolutions. CLI `--cold-start` flags also support forcing a single track or all tracks.
 - **Independent Ratchet History**: Each model track maintains its own all-time baseline and variant lineage. When a cold start variant beats the track baseline, it establishes a new baseline; if it underperforms, the track reverts cleanly to its previous best baseline.
+
+## Multi-Week Lookback Horizon (4 Weeks / 28 Days)
+
+Clean-sheet strategy generation requires broad empirical evidence rather than hyper-optimizing to a single week's market regime. All autoresearch loops ingest a standardized 4-week (28-day) context window:
+- **Dual Lookback Architecture**: The weekly ratchet score evaluation remains strictly evaluated over the 7-day deployment week to judge whether the prompt delivered alpha. However, prompt mutation, postmortem summaries, trade rejection audits, and newsletter context receive 28 days of history.
+- **Rich Empirical Signals**: Evaluators compile 4 weeks of Wall Street metrics, empirical trades, magnitude calibration errors, and newsletter macro themes to inform the new prompt hypothesis.
+
+## Visual Transparency ("From 0" Badge)
+
+Whenever a variant is generated from scratch:
+- The experiment record sets `research_output["is_cold_start"] = True` and `experiment_type="radical"`.
+- The web UI displays a `From 0` badge (`variant="soft"`, `colorScheme="warning"`, `size="xs"` / `size="sm"`) across all presentation layers:
+  - **Track Tabs**: Visible on the track tab when its currently active variant was generated from 0.
+  - **Experiment Tables**: Rendered alongside the experiment type or track badge in portfolio, daily prediction, and sector predictor experiment lists.
+  - **Variant Detail Headers**: Displayed in the variant inspection drawer and experiment details cards.
 
 ## Structural Constraints & Frozen Sections
 

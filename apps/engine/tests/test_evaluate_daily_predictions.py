@@ -349,3 +349,36 @@ async def test_evaluate_daily_predictions_skips_active_session_before_market_clo
         assert evaluated_count == 0
         mock_fetch.assert_not_called()
         mock_supabase.table.return_value.update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_evaluate_daily_predictions_skips_target_trade_for_jev():
+    """Verify that evaluate_daily_predictions invokes close trade for Jev but skips target-exit trade."""
+    mock_supabase = MagicMock()
+    pending_data = [
+        {
+            "id": "pred-jev-1",
+            "model_name": "~typesafe/jev-latest",
+            "target_date": "2026-08-03",
+            "ticker": "SPY",
+            "predicted_direction": "UP",
+            "confidence": 75.0,
+            "expected_return_pct": 0.0,
+            "status": "pending",
+        }
+    ]
+    mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = pending_data
+
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.evaluate_daily_predictions.fetch_intraday_prices", return_value=(450.0, 452.0, 448.0, 455.0)),
+        patch("execution.daily_trading.execute_system_daily_trade", new_callable=AsyncMock) as mock_target_trade,
+        patch("execution.daily_trading.execute_system_daily_close_trade", new_callable=AsyncMock) as mock_close_trade,
+        patch("analysis.daily_postmortem.run_daily_postmortem", new_callable=AsyncMock),
+    ):
+        evaluated_count = await evaluate_daily_predictions(target_date="2026-08-03", force_recalc=True)
+        assert evaluated_count == 1
+        # Target trade should not be executed for Jev
+        mock_target_trade.assert_not_called()
+        # Close trade should be executed
+        mock_close_trade.assert_called_once()

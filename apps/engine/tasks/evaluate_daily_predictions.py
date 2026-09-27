@@ -284,7 +284,12 @@ async def evaluate_daily_predictions(target_date: str | None = None, force_recal
                 "close_price": close_p,
                 "intraday_hit": intraday_hit,
             }
-            await execute_system_daily_trade(prediction=pred, intraday_data=intraday_data)
+            # Only execute target-exit trade if the model provides an explicit profit target percentage.
+            # Models like Jev that only classify direction without magnitude/percentage do not participate in target-exit portfolios.
+            pred_model = str(pred.get("model_name", "")).lower()
+            target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
+            if "jev" not in pred_model and target_pct > 0.0:
+                await execute_system_daily_trade(prediction=pred, intraday_data=intraday_data)
             await execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data)
         except Exception as e:
             logger.exception(f"Failed to execute system daily trade for prediction {pred_id}: {e}")

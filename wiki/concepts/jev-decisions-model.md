@@ -31,7 +31,13 @@ Criteria are serialized to JSON via `format_jev_prompt_content()` and recovered 
 3. Parses `answers.direction` → `choice`, `confidence`, and `probabilities`, normalizing to a 0–100 confidence.
 4. Returns a standard prediction record (`predicted_direction`, `confidence`, `expected_return_pct=0.0`, `rationale`, `catalysts=[]`) so it slots into the same arena logging and evaluation pipeline as the other models.
 
-Because Jev returns a classification only, `expected_return_pct` is always `0.0` — magnitude capture is by design not part of its output.
+Because Jev returns a classification only, `expected_return_pct` is always `0.0`. Magnitude capture is not part of its output.
+
+## Systematic portfolio execution
+
+Because Jev is a direction-only classifier without a percentage target:
+- **Close-exit portfolio (`sys-daily-spy-close-~typesafe/jev-latest`)**: Jev participates in the 3:50 PM session close trader. This strategy trades directional bias (`UP` or `DOWN`) and exits at session close with 2 bps slippage.
+- **Target-exit portfolio exclusion (`sys-daily-spy-`)**: Jev is excluded from the intraday target-exit portfolio. Target-exit trading requires a positive expected return percentage. Running a target exit on a 0% return target produces immediate exits at open and incurs unnecessary friction.
 
 ## Autoresearch Integration
 

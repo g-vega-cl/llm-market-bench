@@ -265,6 +265,20 @@ async def execute_system_daily_trade(
     get_or_create_system_portfolio_fn: Callable | None = None,
 ) -> dict[str, Any]:
     """Execute original target-exit daily trade on SPY (sys-daily-spy-{model})."""
+    model_name = str(prediction.get("model_name", "unknown"))
+    expected_ret_raw = prediction.get("expected_return_pct")
+    expected_return_pct = abs(float(expected_ret_raw)) if expected_ret_raw is not None else 0.0
+
+    if "jev" in model_name.lower() or expected_return_pct <= 0.0:
+        logger.info(
+            f"Skipping target-exit daily trade for {model_name}: "
+            f"Direction-only classifier models with 0% target do not participate in target-exit portfolios."
+        )
+        return {
+            "status": "skipped",
+            "reason": "Target-exit strategy requires a positive profit target percentage",
+        }
+
     return await execute_daily_spy_trade(
         prediction=prediction,
         intraday_data=intraday_data,

@@ -1,6 +1,6 @@
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -320,3 +320,51 @@ async def test_execute_system_daily_trade_target_flow():
     # Profit target exit: exit price = 760 * (1 + 0.004) = 763.04
     assert res["execution"]["exit_price"] == pytest.approx(763.04)
     assert res["execution"]["realized_pnl"] > 0
+
+
+@pytest.mark.asyncio
+async def test_execute_system_daily_trade_skips_jev_and_zero_target():
+    """Verify execute_system_daily_trade skips direction-only models like Jev and 0% return targets."""
+    jev_pred = {
+        "id": str(uuid4()),
+        "model_name": "~typesafe/jev-latest",
+        "target_date": "2026-09-18",
+        "ticker": "SPY",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.0,
+    }
+    intraday = {
+        "open_price": 760.00,
+        "high_price": 765.00,
+        "low_price": 758.00,
+        "close_price": 759.00,
+    }
+
+    mock_port_getter = AsyncMock()
+
+    # 1. Jev model with 0.0% expected return
+    res_jev = await execute_system_daily_trade(
+        jev_pred,
+        intraday,
+        get_or_create_system_portfolio_fn=mock_port_getter,
+    )
+    assert res_jev["status"] == "skipped"
+    assert "target" in res_jev["reason"].lower()
+    mock_port_getter.assert_not_called()
+
+    # 2. General model with 0.0% or None expected return
+    zero_pred = {
+        "id": str(uuid4()),
+        "model_name": "deepseek-v4-flash",
+        "target_date": "2026-09-18",
+        "ticker": "SPY",
+        "predicted_direction": "DOWN",
+        "expected_return_pct": 0.0,
+    }
+    res_zero = await execute_system_daily_trade(
+        zero_pred,
+        intraday,
+        get_or_create_system_portfolio_fn=mock_port_getter,
+    )
+    assert res_zero["status"] == "skipped"
+    mock_port_getter.assert_not_called()

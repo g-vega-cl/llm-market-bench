@@ -38,7 +38,7 @@ System portfolios are automated, rule-based investment and trading strategies th
 
 ### 4. Daily S&P Intraday Trader (`sys-daily-spy-{model}`)
 - **Signal**: Daily 9:30 AM – 4:00 PM ET S&P 500 predictions (`UP` or `DOWN`, `expected_return_pct`, `confidence`) from `daily_predictions` table.
-- **Portfolios**: One dedicated system portfolio per model track (e.g. `sys-daily-spy-deepseek-v4-flash`, `sys-daily-spy-minimax-m3`).
+- **Portfolios**: One dedicated system portfolio per model track with an explicit, non-zero profit target percentage (e.g. `sys-daily-spy-deepseek-v4-flash`, `sys-daily-spy-minimax-m3`). Direction-only classifiers without a profit target percentage (such as Jev) are excluded.
 - **Target Asset**: `SPY`
 - **Position Sizing**: 100% of available cash/equity allocated per session.
 - **Execution Mechanics**:

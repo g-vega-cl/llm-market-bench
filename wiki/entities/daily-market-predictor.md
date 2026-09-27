@@ -23,8 +23,8 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - Scopes today's 9:30 AM Open, High, Low, and 4:00 PM Close prices safely after market close by prioritizing timestamped Regular Trading Hours (`09:30:00 <= timestamp <= 16:00:00` ET) hourly bars (with automatic fallback to FMP `/historical-price-eod/full` EOD history). This guarantees zero extended-hours/post-market price contamination while immediately capturing afternoon price extremes.
    - Calculates **Directional Accuracy** (`is_correct`), **Intraday Target Hit Rate** (`intraday_hit`), **Intraday Direction Hit Rate** (`intraday_direction_hit`), and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
    - **System Portfolio Execution**: Automatically triggers mechanical 100% equity day trading execution for both portfolio tracks:
-     - **Target-Exit Portfolios** (`sys-daily-spy-{model_name}`): 5 bps slippage, exits on intraday profit target hit or 3:30 PM time exit.
-     - **3:50 Close-Exit Portfolios** (`sys-daily-spy-close-{model_name}`): 2 bps slippage (0.02%), ignores intraday profit target hits and holds position until 3:50 PM session close.
+     - **Target-Exit Portfolios** (`sys-daily-spy-{model_name}`): 5 bps slippage, exits on intraday profit target hit or 3:30 PM time exit. Requires a non-zero expected return percentage (direction-only models like Jev are excluded).
+     - **3:50 Close-Exit Portfolios** (`sys-daily-spy-close-{model_name}`): 2 bps slippage (0.02%), ignores intraday profit target hits and holds position until 3:50 PM session close (all models including Jev participate).
    - **Daily Post-Mortem Island (`analysis/daily_postmortem.py`)**:
      - Command: `python main.py daily-postmortem [--target-date YYYY-MM-DD] [--force]`
      - Triggered automatically upon completion of `evaluate_daily_predictions` when predictions are evaluated.

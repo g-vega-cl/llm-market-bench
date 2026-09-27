@@ -106,4 +106,34 @@ describe('PositionsTable', () => {
         expect(table).toBeInTheDocument();
         expect(table?.className).toContain('min-w-[800px]');
     });
+
+    it('displays exact bought time in expanded row when trades are provided', () => {
+        const mockBuyTrades = [
+            {
+                id: 't-aapl',
+                portfolio_id: 'p1',
+                ticker: 'AAPL',
+                signal: 'BUY',
+                quantity: 10,
+                price: 150,
+                total_cost: 1500,
+                executed_at: '2026-01-01T12:00:00Z',
+                alpaca_status: 'FILLED',
+                alpaca_order_id: null,
+                alpaca_submitted_at: null,
+                alpaca_filled_at: null,
+                realized_pnl: null,
+                realized_pnl_pct: null,
+                decision_id: null,
+                reasoning: 'Momentum entry.',
+            },
+        ];
+
+        render(<PositionsTable positions={mockPositions} trades={mockBuyTrades} />);
+        const aaplRow = screen.getByTestId('position-row-AAPL');
+        fireEvent.click(aaplRow);
+
+        expect(screen.getByText(/Bought:/i)).toBeInTheDocument();
+        expect(screen.getByText(/7:00:00 AM ET/)).toBeInTheDocument();
+    });
 });

@@ -1,5 +1,6 @@
-import type { PositionWithReasoning } from '@llm-market-bench/database';
+import type { PositionWithReasoning, TradeWithReasoning } from '@llm-market-bench/database';
 import {
+    Badge,
     Table,
     TableBody,
     TableCell,
@@ -9,6 +10,7 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { useState } from 'react';
+import { formatEasternDateTimeWithYear, formatEasternExactTime } from '~/utils/date';
 import type { FrontierTheme } from '../api/fetch-portfolios';
 
 export type Position = PositionWithReasoning;
@@ -16,12 +18,13 @@ export type Position = PositionWithReasoning;
 interface PositionsTableProps {
     positions: Position[];
     themes?: FrontierTheme[];
+    trades?: TradeWithReasoning[];
 }
 
 type SortKey = 'invested' | 'portfolio_pct' | 'pnl_usd' | 'pnl_pct';
 type SortDirection = 'asc' | 'desc';
 
-export function PositionsTable({ positions, themes }: PositionsTableProps) {
+export function PositionsTable({ positions, themes, trades }: PositionsTableProps) {
     const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
     const [sortKey, setSortKey] = useState<SortKey | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -31,6 +34,18 @@ export function PositionsTable({ positions, themes }: PositionsTableProps) {
         (sum, pos) => sum + (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0),
         0,
     );
+
+    const tickerToBuyTradeMap = React.useMemo(() => {
+        const map = new Map<string, TradeWithReasoning>();
+        if (trades) {
+            for (const t of trades) {
+                if (t.signal?.toUpperCase() === 'BUY' && !map.has(t.ticker.toUpperCase())) {
+                    map.set(t.ticker.toUpperCase(), t);
+                }
+            }
+        }
+        return map;
+    }, [trades]);
 
     const tickerToThemeMap = React.useMemo(() => {
         const map = new Map<string, string>();
@@ -245,6 +260,34 @@ export function PositionsTable({ positions, themes }: PositionsTableProps) {
                             >
                                 <TableCell colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
                                     <div className="flex flex-col gap-4">
+                                        {pos.ticker &&
+                                            tickerToBuyTradeMap.has(pos.ticker.toUpperCase()) && (
+                                                <div className="flex flex-wrap items-center gap-2 text-xs border-b border-zinc-800 pb-3">
+                                                    <span className="text-zinc-400 font-medium">
+                                                        Bought:
+                                                    </span>
+                                                    <Badge
+                                                        variant="outline"
+                                                        colorScheme="neutral"
+                                                        size="sm"
+                                                        radius="md"
+                                                        className="font-mono text-zinc-200"
+                                                    >
+                                                        {formatEasternDateTimeWithYear(
+                                                            tickerToBuyTradeMap.get(
+                                                                pos.ticker.toUpperCase(),
+                                                            )?.executed_at,
+                                                        )}{' '}
+                                                        (
+                                                        {formatEasternExactTime(
+                                                            tickerToBuyTradeMap.get(
+                                                                pos.ticker.toUpperCase(),
+                                                            )?.executed_at,
+                                                        )}
+                                                        )
+                                                    </Badge>
+                                                </div>
+                                            )}
                                         <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">
                                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                                             Thinking Process

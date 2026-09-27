@@ -155,3 +155,49 @@ export function formatEasternDateTimeWithYear(dateStr: string | null | undefined
         return 'Pending';
     }
 }
+
+/**
+ * Formats a timestamp into a space-normalized exact Eastern Time string with seconds:
+ * e.g. "10:45:00 AM ET"
+ */
+export function formatEasternExactTime(dateStr: string | null | undefined): string {
+    if (!dateStr) return 'Unknown';
+    try {
+        const date = new Date(dateStr);
+        if (Number.isNaN(date.getTime())) return 'Unknown';
+
+        const timeStr = date.toLocaleTimeString('en-US', {
+            timeZone: 'America/New_York',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+        });
+
+        return normalizeWhitespace(`${timeStr} ET`);
+    } catch {
+        return 'Unknown';
+    }
+}
+
+/**
+ * Formats a timestamp into a space-normalized short Eastern Date with year:
+ * e.g. "May 29, 2026"
+ */
+export function formatEasternShortDateWithYear(dateStr: string | null | undefined): string {
+    if (!dateStr) return 'Unknown';
+    try {
+        const date = new Date(dateStr);
+        if (Number.isNaN(date.getTime())) return 'Unknown';
+
+        const dateStrFormatted = date.toLocaleDateString('en-US', {
+            timeZone: 'America/New_York',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+
+        return normalizeWhitespace(dateStrFormatted);
+    } catch {
+        return 'Unknown';
+    }
+}

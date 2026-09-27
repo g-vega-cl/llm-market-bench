@@ -83,7 +83,6 @@ A living document of features and improvements in progress or planned for the pl
     - same with text
 - [ ] - Benchify: see real time daily moves for system portfolios, not only when they are evaluated after? Audit
 - [ ] - Benchify: set up Laya alongside JEV?
-- [ ] - Benchify: autoresearcher from 0 should take info of many weeks. (Actually, all autoresearchers should take info of many weeks)
 - [ ] -Benchify: remove daily hit from Jev autoresearch it messes the score, also give it less importance in general scores.
 - [ ] - Benchify: where is the daily thoughts reasoning for daily predictor?
 - [ ] - Benchify: could jev work for my autoresearcher?

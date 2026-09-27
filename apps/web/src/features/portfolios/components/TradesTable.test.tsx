@@ -66,6 +66,25 @@ describe('TradesTable', () => {
         }
     });
 
+    it('renders exact execution time and date in the table column and cells', () => {
+        render(<TradesTable trades={mockTrades} />);
+        expect(screen.getByText('Executed At')).toBeInTheDocument();
+        expect(screen.getByText('Jan 1, 2026')).toBeInTheDocument();
+        const timeElements = screen.getAllByText('7:00:00 AM ET');
+        expect(timeElements.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('displays exact execution and filled timestamps in the expanded trade view', () => {
+        render(<TradesTable trades={mockTrades} />);
+        const aaplRow = screen.getByText('AAPL').closest('tr');
+        expect(aaplRow).toBeInTheDocument();
+        if (aaplRow) {
+            fireEvent.click(aaplRow);
+            expect(screen.getByText(/Alpaca Filled:/i)).toBeInTheDocument();
+            expect(screen.getByText(/7:05:00 AM ET/)).toBeInTheDocument();
+        }
+    });
+
     it('applies the min-width to the inner table rather than the container', () => {
         const { container } = render(<TradesTable trades={mockTrades} />);
         const outerWrapper = container.firstChild as HTMLElement;

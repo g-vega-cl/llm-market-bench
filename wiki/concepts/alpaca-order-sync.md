@@ -103,4 +103,4 @@ The reconciliation tool audits an agent's simulated Supabase portfolio against A
 - `.github/workflows/sync-alpaca.yml` — Daily cron trigger
 - `supabase/migrations/20260423000000_add_alpaca_columns_to_trades.sql` — Schema (original alpaca columns)
 - `supabase/migrations/20260514000000_add_alpaca_filled_at_to_trades.sql` — Schema (alpaca_filled_at)
-- `apps/web/src/features/portfolios/components/TradesTable.tsx` — Frontend badge display
+- `apps/web/src/features/portfolios/components/TradesTable.tsx` — Frontend trade execution table and audit trail with exact timestamps (executed_at and alpaca_filled_at)

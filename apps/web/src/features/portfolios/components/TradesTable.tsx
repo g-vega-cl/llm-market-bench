@@ -11,6 +11,11 @@ import {
 import * as React from 'react';
 import { useState } from 'react';
 import { ExecutionTraceView } from '~/features/today/components/ExecutionTraceView';
+import {
+    formatEasternDateTimeWithYear,
+    formatEasternExactTime,
+    formatEasternShortDateWithYear,
+} from '~/utils/date';
 
 export type Trade = TradeWithReasoning;
 
@@ -25,7 +30,7 @@ export function TradesTable({ trades }: TradesTableProps) {
         <Table className="min-w-[700px]">
             <TableHeader>
                 <TableRow isHoverable={false}>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Executed At</TableHead>
                     <TableHead>Ticker</TableHead>
                     <TableHead>Signal</TableHead>
                     <TableHead>Alpaca</TableHead>
@@ -42,12 +47,19 @@ export function TradesTable({ trades }: TradesTableProps) {
                             className="cursor-pointer group"
                             onClick={() => setExpandedId(expandedId === trade.id ? null : trade.id)}
                         >
-                            <TableCell className="text-zinc-500 dark:text-zinc-400 text-sm">
-                                {trade.executed_at
-                                    ? new Date(trade.executed_at).toLocaleDateString('en-US', {
-                                          timeZone: 'America/New_York',
-                                      })
-                                    : '-'}
+                            <TableCell className="text-zinc-500 dark:text-zinc-400 text-sm whitespace-nowrap">
+                                {trade.executed_at ? (
+                                    <div className="flex flex-col">
+                                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                                            {formatEasternShortDateWithYear(trade.executed_at)}
+                                        </span>
+                                        <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
+                                            {formatEasternExactTime(trade.executed_at)}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    '-'
+                                )}
                             </TableCell>
                             <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
                                 <div className="flex items-center gap-2">
@@ -177,6 +189,67 @@ export function TradesTable({ trades }: TradesTableProps) {
                             >
                                 <TableCell colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
                                     <div className="flex flex-col gap-4">
+                                        <div className="flex flex-wrap items-center gap-4 text-xs border-b border-zinc-800 pb-3">
+                                            {trade.executed_at && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-zinc-400 font-medium">
+                                                        Executed:
+                                                    </span>
+                                                    <Badge
+                                                        variant="outline"
+                                                        colorScheme="neutral"
+                                                        size="sm"
+                                                        radius="md"
+                                                        className="font-mono text-zinc-200"
+                                                    >
+                                                        {formatEasternDateTimeWithYear(
+                                                            trade.executed_at,
+                                                        )}{' '}
+                                                        ({formatEasternExactTime(trade.executed_at)}
+                                                        )
+                                                    </Badge>
+                                                </div>
+                                            )}
+                                            {trade.alpaca_filled_at && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-zinc-400 font-medium">
+                                                        Alpaca Filled:
+                                                    </span>
+                                                    <Badge
+                                                        variant="soft"
+                                                        colorScheme="success"
+                                                        size="sm"
+                                                        radius="md"
+                                                        className="font-mono"
+                                                    >
+                                                        {formatEasternDateTimeWithYear(
+                                                            trade.alpaca_filled_at,
+                                                        )}{' '}
+                                                        (
+                                                        {formatEasternExactTime(
+                                                            trade.alpaca_filled_at,
+                                                        )}
+                                                        )
+                                                    </Badge>
+                                                </div>
+                                            )}
+                                            {trade.alpaca_order_id && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-zinc-400 font-medium">
+                                                        Order ID:
+                                                    </span>
+                                                    <Badge
+                                                        variant="outline"
+                                                        colorScheme="neutral"
+                                                        size="sm"
+                                                        radius="md"
+                                                        className="font-mono text-zinc-300"
+                                                    >
+                                                        {trade.alpaca_order_id}
+                                                    </Badge>
+                                                </div>
+                                            )}
+                                        </div>
                                         <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">
                                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                                             Thinking Process

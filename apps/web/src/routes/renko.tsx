@@ -422,7 +422,7 @@ export function RenkoAgentPageView({
                 {/* Active Positions Table */}
                 <section>
                     <SectionHeading gradient="electric">Active Positions</SectionHeading>
-                    <PositionsTable positions={positions} />
+                    <PositionsTable positions={positions} trades={trades} />
                 </section>
 
                 {/* Recent Trades Table */}

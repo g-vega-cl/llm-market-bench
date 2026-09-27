@@ -176,7 +176,7 @@ export function PortfolioDetailPage({
                     {/* Positions Table */}
                     <section>
                         <SectionHeading gradient="electric">Current Positions</SectionHeading>
-                        <PositionsTable positions={positions} themes={themes} />
+                        <PositionsTable positions={positions} themes={themes} trades={trades} />
                     </section>
 
                     {/* Recent Trades Table */}

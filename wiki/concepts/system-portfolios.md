@@ -103,6 +103,18 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Risk Management & Invalidation Sentinel**: Daily headline monitoring via OpenAI Luna (`gpt-5.6-luna`) with thinking. If explicit thesis invalidation criteria are satisfied, positions are immediately liquidated during regular market hours (or queued as `pending_liquidation` for the next market open).
 - **Execution & Auditability**: Liquidations and entries execute strictly between 09:30 and 16:00 ET via `apps/engine/execution/future_forces.py` and mirror in real time to the Alpaca paper broker API with zero retroactive backfilling.
 - **Trigger**: Monthly rebalance and daily sentinel audit via `apps/engine/tasks/future_forces_task.py`. Detailed documentation in [[entities/future-forces-portfolio]] and [[concepts/future-forces]].
+## LLM & Autoresearch Inspection Tool (`get_system_portfolios`)
+
+Mechanical system portfolios serve as objective control baselines for autonomous trading agents and prompt autoresearchers. The `get_system_portfolios` tool exposes current holdings, entry prices, unrealized PnL, trailing returns, and underlying quantitative regime signals:
+
+- **Parameters**: `category` (`'all'`, `'mean_reversion'`, `'momentum'`, `'sector_ls'`, `'daily_spy'`, `'thematic'`), `include_positions` (boolean), `lookback_days` (default 7).
+- **Signals exposed**:
+  - `mean_reversion`: Trailing 7-day oversold bounce candidates from `sys-sector-mean-reversion`.
+  - `momentum`: Trailing 20-day trend leaders from `sys-sector-naive-momentum` and uncorrelated momentum pairs from `sys-sector-uncorr-*`.
+  - `sector_ls`: Systematic multi-horizon consensus long/short baskets (`sys-sector-ls-*`).
+  - `daily_spy`: Systematic intraday SPY target-exit and session-close results.
+  - `thematic`: Forward secular force and frontier technology holdings.
+- **Agency integration**: Available in `packages/config/tools.json` for trading agents to call dynamically, and via `query_system_portfolios_audit()` in `apps/engine/autoresearch/tools.py` for meta-researchers to benchmark prompt mutations against mechanical controls.
 
 ## Daily performance tracking and web visibility
 

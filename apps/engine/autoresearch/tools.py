@@ -179,3 +179,22 @@ async def query_past_research_memories(track_id: str = "track_default", limit: i
     except Exception as e:
         logger.exception("Error querying past research memories for autoresearcher: %s", e)
         return f"Error querying past research memories: {str(e)}"
+
+
+async def query_system_portfolios_audit(category: str = "all", lookback_days: int = 7) -> str:
+    """Audit mechanical system portfolios (mean reversion, momentum, consensus L/S) for autoresearchers.
+
+    Args:
+        category: 'all', 'mean_reversion', 'momentum', 'sector_ls', 'daily_spy', or 'thematic'.
+        lookback_days: Trailing window to evaluate mechanical baseline performance.
+
+    Returns:
+        Formatted summary string of system portfolios, active positions, and benchmark returns.
+    """
+    from core.llm.tools import execute_get_system_portfolios_tool
+
+    return await execute_get_system_portfolios_tool(
+        category=category,
+        include_positions=True,
+        lookback_days=lookback_days,
+    )

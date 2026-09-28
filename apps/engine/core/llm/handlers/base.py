@@ -284,6 +284,12 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
             horizon_months=args.get("horizon_months", 3),
             model_name=model_name,
         )
+    elif name == "get_system_portfolios":
+        return await tools.execute_get_system_portfolios_tool(
+            category=args.get("category", "all"),
+            include_positions=args.get("include_positions", True),
+            lookback_days=args.get("lookback_days", 7),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

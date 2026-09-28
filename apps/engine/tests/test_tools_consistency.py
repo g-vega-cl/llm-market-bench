@@ -33,6 +33,7 @@ from core.llm.tools import (
     GET_PREDICTION_MARKET_ODDS_TOOL,
     GET_SECTOR_BELLWETHERS_TOOL,
     GET_SECTOR_FUNDAMENTALS_TOOL,
+    GET_SYSTEM_PORTFOLIOS_TOOL,
     GET_THEMATIC_FLOWS_TOOL,
     GET_TICKER_NEWS_TOOL,
     GET_TODAY_ECONOMIC_RELEASES_TOOL,
@@ -134,6 +135,7 @@ def test_tools_json_matches_engine_tool_definitions():
         RESEARCH_HISTORICAL_MARKET_ANALOG_TOOL,
         GET_FUTURE_FORCES_TOOL,
         RESEARCH_FUTURE_FORCE_TOOL,
+        GET_SYSTEM_PORTFOLIOS_TOOL,
     ]
 
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}

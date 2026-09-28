@@ -1474,6 +1474,33 @@ RESEARCH_FUTURE_FORCE_TOOL = {
     },
 }
 
+GET_SYSTEM_PORTFOLIOS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_system_portfolios",
+        "description": "Inspect mechanical system portfolios (mean reversion, momentum trends, sector long/short, intraday SPY) for positions, signals, and benchmark returns.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": ["all", "mean_reversion", "momentum", "sector_ls", "daily_spy", "thematic"],
+                    "description": "Strategy filter: 'all', 'mean_reversion' (7d oversold bounce), 'momentum' (20d unconstrained and uncorrelated trend), 'sector_ls' (consensus long/short), 'daily_spy' (intraday SPY target/close), or 'thematic' (future forces & frontier tech). Defaults to 'all'.",
+                },
+                "include_positions": {
+                    "type": "boolean",
+                    "description": "Whether to include detailed stock/ETF holdings, entry prices, and unrealized PnL. Defaults to true.",
+                },
+                "lookback_days": {
+                    "type": "integer",
+                    "description": "Trailing window in days to evaluate portfolio return and equity drift. Defaults to 7.",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1525,6 +1552,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "research_historical_market_analog": RESEARCH_HISTORICAL_MARKET_ANALOG_TOOL,
     "get_future_forces": GET_FUTURE_FORCES_TOOL,
     "research_future_force": RESEARCH_FUTURE_FORCE_TOOL,
+    "get_system_portfolios": GET_SYSTEM_PORTFOLIOS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }
@@ -4490,6 +4518,23 @@ async def execute_research_future_force_tool(
         tickers=tickers,
         horizon_months=horizon_months,
         model_name=model_name,
+    )
+
+
+async def execute_get_system_portfolios_tool(
+    category: str = "all",
+    include_positions: bool = True,
+    lookback_days: int = 7,
+) -> str:
+    """Executes the get_system_portfolios tool."""
+    from analytics.system_portfolios_report import (
+        execute_get_system_portfolios_tool as _sys_port_report,
+    )
+
+    return await _sys_port_report(
+        category=category,
+        include_positions=include_positions,
+        lookback_days=lookback_days,
     )
 
 

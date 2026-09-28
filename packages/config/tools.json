@@ -186,6 +186,10 @@
   {
     "name": "research_future_force",
     "desc": "Stress-test a forward catalyst or thematic thesis using OpenAI Luna with thinking against priced-in expectations and falsification criteria"
+  },
+  {
+    "name": "get_system_portfolios",
+    "desc": "Inspect mechanical system portfolios (mean reversion, momentum trends, sector long/short, intraday SPY) for positions, signals, and benchmark returns"
   }
 ]
 

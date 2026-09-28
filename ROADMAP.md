@@ -72,7 +72,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Find if you can do a "MAx pain" strategy
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
 - [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
-- [ ] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...
+- [x] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...
+    - Implemented `get_system_portfolios` tool in `core/llm/tools.py` and `analytics/system_portfolios_report.py`. Exposes positions, unrealized PnL, trailing returns, and quantitative signals (7d oversold mean reversion bounce, 20d momentum trend continuation, consensus sector L/S, intraday SPY) to trading agents and autoresearch without prompt context bloat.
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
 - [ ] - Benchify: Once a dedicated real-time/intraday news stream or intraday newsletter pipeline is available, augment `get_intraday_movement_profile` with Approach 2 (phase-segmented news/narrative catalyst correlation linking price pivots to breaking news).
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.

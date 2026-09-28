@@ -87,7 +87,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: where is the daily thoughts reasoning for daily predictor?
 - [ ] - Benchify: posthog setup recordings?
 - [ ] - Benchify: AI sector predictor autoresearch is really hard to figure out because many LLMs have autoresearch in the same tab?
-- [ ] - Benchify: it's Sunday (day 0) yet my autoresearcher already has a negative running score in my portfolios like default track.
 - [ ] - Benchify: what if a lesson contradicts another lesson?
 - [ ] - Benchify: today page global macro regime, show last updated
 - [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios

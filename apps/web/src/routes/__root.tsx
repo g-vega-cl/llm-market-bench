@@ -201,7 +201,10 @@ export function RootDocument({ children }: { children: ReactNode }) {
                         defaults: '2025-05-24',
                         capture_exceptions: true,
                         debug: import.meta.env.DEV,
-                        disable_session_recording: true,
+                        session_recording: {
+                            maskAllInputs: true,
+                            maskTextSelector: '[data-ph-mask]',
+                        },
                         disable_surveys: true,
                         before_send: posthogBeforeSend,
                     }}

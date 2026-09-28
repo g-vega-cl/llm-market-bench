@@ -123,6 +123,50 @@ describe('RootDocument PostHog configuration', () => {
         expect(props.options?.disable_surveys).toBe(true);
     });
 
+    it('should initialize PostHogProvider with session recording enabled and privacy masking configured', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Test Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({
+            initialEntries: ['/'],
+        });
+
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+        await screen.findByText('Test Content');
+
+        expect(mockPostHogProvider).toHaveBeenCalled();
+        const props = mockPostHogProvider.mock.calls[
+            mockPostHogProvider.mock.calls.length - 1
+        ][0] as {
+            options?: {
+                disable_session_recording?: boolean;
+                session_recording?: {
+                    maskAllInputs?: boolean;
+                    maskTextSelector?: string;
+                };
+            };
+        };
+        expect(props.options?.disable_session_recording).toBeUndefined();
+        expect(props.options?.session_recording).toEqual({
+            maskAllInputs: true,
+            maskTextSelector: '[data-ph-mask]',
+        });
+    });
+
     it('should initialize PostHogProvider with before_send handler that transforms CefSharp errors to warnings', async () => {
         vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
 

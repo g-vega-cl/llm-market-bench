@@ -36,11 +36,10 @@ Server-side tracking (`posthog-server.ts`) connects directly to `https://us.i.po
 
 ## Client Loading Optimization
 
-To slash client-side bundle size, eliminate unneeded third-party network activity, and prevent render-blocking on the critical paint path, the application uses deferred SDK initialization:
 - **Deferred Declarative Initialization**: Initializing PostHog via the declarative component wrapper `<PostHogProvider apiKey={...} options={{ ... }}>` inside `__root.tsx` ensures the SDK is lazy-loaded out of the critical rendering path. As documented in [[concepts/performance-auditing-strategy]], top-level synchronous initialization was avoided because it bundled `posthog-js` into `main.js` and caused Lighthouse unused JavaScript penalties.
 - **SSR & Hydration Safety**: The provider dynamically manages client-side activation without emitting tracking script tags in the initial server-rendered HTML payloads, protecting FCP and LCP scores.
-- **Pruned Features**: Session recording and surveys are explicitly disabled (`disable_session_recording: true`, `disable_surveys: true`) to strip the download of `posthog-recorder.js` (~49 KiB) and survey chunks.
-- **Proxy Caching Override Awareness**: Dynamic feature scripts (like `dead-clicks-autocapture.js?v=1.434.17`) are fetched via the same-origin `/p/static/*` rewrite proxy. Because Netlify forwards the upstream headers of the proxied destination, the custom `Cache-Control` header defined in `netlify.toml` is overridden by PostHog's asset CDN headers, resulting in a short 4-hour Cache TTL.
+- **Session Recording & Privacy Masking**: Session recording is enabled with strict client-side privacy controls (`session_recording: { maskAllInputs: true, maskTextSelector: '[data-ph-mask]' }`). The recording chunk (`recorder.js`) is loaded lazily via the same-origin asset rewrite proxy (`/p/static/*`) without blocking initial paint. Surveys remain disabled (`disable_surveys: true`) to strip unused survey code.
+- **Proxy Caching Override Awareness**: Dynamic feature scripts (like `dead-clicks-autocapture.js?v=1.434.17`) and recording assets are fetched via the same-origin `/p/static/*` rewrite proxy. Because Netlify forwards the upstream headers of the proxied destination, the custom `Cache-Control` header defined in `netlify.toml` is overridden by PostHog's asset CDN headers, resulting in a short 4-hour Cache TTL.
 
 ## Error Tracking & Security Scanner Suppression
 
@@ -73,7 +72,7 @@ To accurately track conversion funnels without splitting user profiles or leakin
 ## Testing
 
 - `src/utils/posthog-filter.test.ts` verifies detection of CefSharp unhandled rejections across `$exception_list`, `$exception_values`, and `$exception_message`, confirming that scanner errors are downgraded to warning severity while legitimate errors and analytics events pass unchanged.
-- `src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, sets `disable_surveys: true`, configures `before_send: posthogBeforeSend`, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
+- `src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, enables session recording with privacy masking, sets `disable_surveys: true`, configures `before_send: posthogBeforeSend`, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
 - `src/routes/logout.test.tsx` verifies that `LogoutComponent` triggers `posthog.reset()` before executing signout and navigation.
 
 ## Related

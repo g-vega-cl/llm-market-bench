@@ -85,6 +85,13 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: set up Laya alongside JEV?
 - [ ] -Benchify: remove daily hit from Jev autoresearch it messes the score, also give it less importance in general scores.
 - [ ] - Benchify: where is the daily thoughts reasoning for daily predictor?
+- [ ] - Benchify: posthog setup recordings?
+- [ ] - Benchify: AI sector predictor autoresearch is really hard to figure out because many LLMs have autoresearch in the same tab?
+- [ ] - Benchify: it's Sunday (day 0) yet my autoresearcher already has a negative running score in my portfolios like default track.
+- [ ] - Benchify: what if a lesson contradicts another lesson?
+- [ ] - Benchify: today page global macro regime, show last updated
+- [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios
+- [ ] - Benchify: Sys daily spy why didn't it trade at the beginning of the day? Should it?
 - [ ] - Benchify: could jev work for my autoresearcher?
 
 Speculative Fanout: Ask multiple questions in a single query and get all of them answered in parallel. For example: triage a support ticket and assess its type, severity, frustration level etc.

@@ -73,8 +73,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
 - [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
 - [ ] - Benchify: tool that can show the system portfolios to the daily predictor, portfolios, and autoresearch? Maybe it can grasp patterns like mean revertion, trends, continuity, etc...
-- [ ] - Benchify : format better the newsletter section of: The Catalyst Radar & Key Levels.
-- [ ] - Benchify : daily predictor prompt diff
 - [ ] - Benchify : intraday news? Like more intraday newsletters but with market moving news events?
 - [ ] - Benchify: Once a dedicated real-time/intraday news stream or intraday newsletter pipeline is available, augment `get_intraday_movement_profile` with Approach 2 (phase-segmented news/narrative catalyst correlation linking price pivots to breaking news).
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.
@@ -85,7 +83,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: set up Laya alongside JEV?
 - [ ] -Benchify: remove daily hit from Jev autoresearch it messes the score, also give it less importance in general scores.
 - [ ] - Benchify: where is the daily thoughts reasoning for daily predictor?
-- [ ] - Benchify: posthog setup recordings?
 - [ ] - Benchify: AI sector predictor autoresearch is really hard to figure out because many LLMs have autoresearch in the same tab?
 - [ ] - Benchify: what if a lesson contradicts another lesson?
 - [ ] - Benchify: today page global macro regime, show last updated

@@ -47,13 +47,23 @@ describe('daily-score-math', () => {
             expect(getSpyReturn({}, true, 3.4)).toBe(3.4);
         });
 
-        it('falls back to defaults when metrics and actuals are missing', () => {
-            expect(getPortfolioReturn({}, true, null)).toBe(1.45);
+        it('falls back to zero with isPending when metrics and actuals are missing (Benchify Standard)', () => {
+            expect(getPortfolioReturn({}, true, null)).toBe(0);
             expect(getPortfolioReturn({}, false, null)).toBe(0);
-            expect(getSpyReturn({}, true, null)).toBe(0.85);
+            expect(getSpyReturn({}, true, null)).toBe(0);
             expect(getSpyReturn({}, false, null)).toBe(0);
-            expect(getDoNothingReturn({}, true)).toBe(1.1);
+            expect(getDoNothingReturn({}, true)).toBe(0);
             expect(getDoNothingReturn({}, false)).toBe(0);
+        });
+    });
+
+    describe('calculateDailyMetrics with active pending state', () => {
+        it('flags isPending when active experiment has no closed actual returns', () => {
+            const result = calculateDailyMetrics({}, true, null, null);
+            expect(result.isPending).toBe(true);
+            expect(result.dailyScore).toBe(0);
+            expect(result.dailyExcessReturn).toBe(0);
+            expect(result.dailyDrawdownPenalty).toBe(0);
         });
     });
 
@@ -90,6 +100,19 @@ describe('daily-score-math', () => {
             expect(checkpoints[4].day).toBe('Friday');
             expect(checkpoints[4].score).toBeCloseTo(10.0, 3);
             expect(checkpoints[0].isFuture).toBe(false);
+        });
+
+        it('marks Monday as isInProgress when active and pending on Day 1', () => {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            const checkpoints = getCheckpoints(0, 0, todayStr, true, true);
+            expect(checkpoints[0].isInProgress).toBe(true);
+            expect(checkpoints[0].isFuture).toBe(false);
+            expect(checkpoints[1].isFuture).toBe(true);
         });
     });
 

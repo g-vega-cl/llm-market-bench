@@ -1,3 +1,4 @@
+import modelsConfig from '@repo/config/models.json';
 import { useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '~/lib/supabase-client';
 import {
@@ -11,16 +12,23 @@ export async function fetchPortfolioPerformanceData(
     portfolioIds: string[],
     weekStart: string,
     weekEnd: string,
+    ownerIds?: string[],
 ) {
-    if (portfolioIds.length === 0) return null;
+    if (portfolioIds.length === 0 && (!ownerIds || ownerIds.length === 0)) return null;
     const supabase = getSupabaseBrowserClient();
-    const { data, error } = await supabase
+    let query = supabase
         .from('portfolio_performance')
         .select('portfolio_id, total_equity, date, portfolios!inner(owner_id)')
-        .in('portfolio_id', portfolioIds)
         .gte('date', weekStart)
-        .lte('date', weekEnd)
-        .order('date', { ascending: true });
+        .lte('date', weekEnd);
+
+    if (portfolioIds.length > 0) {
+        query = query.in('portfolio_id', portfolioIds);
+    } else if (ownerIds && ownerIds.length > 0) {
+        query = query.in('portfolios.owner_id', ownerIds);
+    }
+
+    const { data, error } = await query.order('date', { ascending: true });
 
     if (error) {
         throw error;
@@ -33,10 +41,11 @@ export async function fetchActiveWeekData(
     weekStart: string,
     weekEnd: string,
     isActive: boolean,
+    ownerIds?: string[],
 ) {
     const supabase = getSupabaseBrowserClient();
     return Promise.all([
-        fetchPortfolioPerformanceData(portfolioIds, weekStart, weekEnd),
+        fetchPortfolioPerformanceData(portfolioIds, weekStart, weekEnd, ownerIds),
         isActive
             ? supabase
                   .from('price_history')
@@ -80,6 +89,7 @@ export function useActualReturns(
     weekEnd?: string | null,
     portfolioDetails?: Record<string, PortfolioDetail> | null,
     isActive?: boolean,
+    trackId?: string | null,
 ) {
     const [actualReturns, setActualReturns] = useState<ActualReturns | null>(null);
     const [actualSpyReturn, setActualSpyReturn] = useState<number | null>(null);
@@ -89,6 +99,10 @@ export function useActualReturns(
         if (!weekStart || !weekEnd) return;
         const details = portfolioDetails || {};
         const portfolioIds = Object.keys(details);
+        const tracks =
+            (modelsConfig as { AUTORESEARCH_TRACKS?: Record<string, string[]> })
+                .AUTORESEARCH_TRACKS || {};
+        const ownerIds = portfolioIds.length === 0 ? tracks[trackId || 'track_default'] || [] : [];
 
         let isMounted = true;
         setIsLoadingActuals(true);
@@ -99,7 +113,8 @@ export function useActualReturns(
                     portfolioIds,
                     weekStart,
                     weekEnd,
-                    !!isActive,
+                    Boolean(isActive),
+                    ownerIds,
                 );
 
                 processSpyResponse(spyRes, isMounted, setActualSpyReturn);
@@ -117,7 +132,7 @@ export function useActualReturns(
         return () => {
             isMounted = false;
         };
-    }, [weekStart, weekEnd, portfolioDetails, isActive]);
+    }, [weekStart, weekEnd, portfolioDetails, isActive, trackId]);
 
     return { actualReturns, actualSpyReturn, isLoadingActuals };
 }

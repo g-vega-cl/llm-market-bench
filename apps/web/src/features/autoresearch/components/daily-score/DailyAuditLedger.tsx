@@ -25,6 +25,7 @@ interface DailyAuditLedgerProps {
     portfolioDetails?: Record<string, PortfolioDetail>;
     actualReturns?: ActualReturns | null;
     isLoadingActuals?: boolean;
+    isPending?: boolean;
     onClose: () => void;
 }
 
@@ -92,11 +93,13 @@ function PortfolioReturnSection({
     multiplier,
     actualReturns,
     isLoadingActuals,
+    isPending,
 }: {
     portfolioReturn: number;
     multiplier: number;
     actualReturns?: ActualReturns | null;
     isLoadingActuals?: boolean;
+    isPending?: boolean;
 }) {
     return (
         <div className="space-y-1.5 border-b border-zinc-900/60 pb-3">
@@ -130,6 +133,11 @@ function PortfolioReturnSection({
                 <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-500 animate-pulse">
                     Loading individual actual portfolio returns...
                 </div>
+            ) : isPending ? (
+                <div className="pl-3 border-l-2 border-amber-800/60 text-[10px] text-amber-400/80 italic">
+                    Trading session in progress — returns will accumulate upon daily market closing
+                    settlement (4:00 PM ET).
+                </div>
             ) : (
                 <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-600 italic">
                     No constituent portfolio actuals available (live/simulated).
@@ -143,10 +151,12 @@ function DoNothingSection({
     doNothingReturn,
     multiplier,
     portfolioDetails,
+    isPending,
 }: {
     doNothingReturn: number;
     multiplier: number;
     portfolioDetails?: Record<string, PortfolioDetail>;
+    isPending?: boolean;
 }) {
     const details = (portfolioDetails || {}) as Record<string, PortfolioDetail>;
     const detailEntries = Object.entries(details);
@@ -171,7 +181,9 @@ function DoNothingSection({
             </div>
             {detailEntries.length === 0 ? (
                 <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-600 italic">
-                    No constituent do-nothing details available (live/simulated).
+                    {isPending
+                        ? 'Active variant: starting positions will be audited at the close of the trading period.'
+                        : 'No constituent do-nothing details available (live/simulated).'}
                 </div>
             ) : (
                 <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-500 space-y-1.5">
@@ -220,6 +232,7 @@ export function DailyAuditLedger({
     portfolioDetails,
     actualReturns,
     isLoadingActuals,
+    isPending = false,
     onClose,
 }: DailyAuditLedgerProps) {
     return (
@@ -314,12 +327,14 @@ export function DailyAuditLedger({
                     multiplier={multiplier}
                     actualReturns={actualReturns}
                     isLoadingActuals={isLoadingActuals}
+                    isPending={isPending}
                 />
 
                 <DoNothingSection
                     doNothingReturn={doNothingReturn}
                     multiplier={multiplier}
                     portfolioDetails={portfolioDetails}
+                    isPending={isPending}
                 />
 
                 {/* 4. Opportunity Cost */}

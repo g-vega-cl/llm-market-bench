@@ -9,30 +9,67 @@ interface CheckpointCardProps {
     onSelect: () => void;
 }
 
-export function CheckpointCard({ cp, idx, isActive, isSelected, onSelect }: CheckpointCardProps) {
-    let buttonClass = 'p-3 rounded-xl border transition-all duration-300 w-full text-left';
-
+function getCardClass(cp: Checkpoint, idx: number, isActive: boolean, isSelected: boolean): string {
     if (cp.isFuture) {
-        buttonClass +=
-            ' bg-zinc-950/20 border-zinc-900/50 opacity-40 select-none cursor-not-allowed';
-    } else if (isSelected) {
-        if (cp.score >= 0) {
-            buttonClass +=
-                ' bg-emerald-950/20 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer';
-        } else {
-            buttonClass +=
-                ' bg-rose-950/20 border-rose-500/60 shadow-[0_0_12px_rgba(239,68,68,0.15)] cursor-pointer';
-        }
-    } else if (idx === 4 && isActive) {
-        buttonClass +=
-            ' bg-zinc-800/40 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.05)] cursor-pointer hover:border-zinc-700';
-    } else {
-        buttonClass +=
-            ' bg-zinc-950/40 border-zinc-850 hover:border-zinc-700 cursor-pointer hover:bg-zinc-900/20';
+        return 'bg-zinc-950/20 border-zinc-900/50 opacity-40 select-none cursor-not-allowed';
     }
+    if (cp.isInProgress) {
+        return 'bg-amber-950/20 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.1)] cursor-pointer hover:border-amber-400/60';
+    }
+    if (isSelected) {
+        return cp.score >= 0
+            ? 'bg-emerald-950/20 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer'
+            : 'bg-rose-950/20 border-rose-500/60 shadow-[0_0_12px_rgba(239,68,68,0.15)] cursor-pointer';
+    }
+    if (idx === 4 && isActive) {
+        return 'bg-zinc-800/40 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.05)] cursor-pointer hover:border-zinc-700';
+    }
+    return 'bg-zinc-950/40 border-zinc-850 hover:border-zinc-700 cursor-pointer hover:bg-zinc-900/20';
+}
 
+function CheckpointBody({ cp }: { cp: Checkpoint }) {
+    if (cp.isFuture) {
+        return (
+            <>
+                <div className="text-xs font-mono font-bold mt-1 text-zinc-500">N/A</div>
+                <div className="text-[8px] text-zinc-500 font-mono mt-0.5">P: N/A</div>
+            </>
+        );
+    }
+    if (cp.isInProgress) {
+        return (
+            <>
+                <div className="text-xs font-mono font-bold mt-1 text-amber-400 animate-pulse">
+                    Pending
+                </div>
+                <div className="text-[8px] text-zinc-400 font-mono mt-0.5">In Progress</div>
+            </>
+        );
+    }
     return (
-        <button type="button" disabled={cp.isFuture} onClick={onSelect} className={buttonClass}>
+        <>
+            <div
+                className={`text-xs font-mono font-bold mt-1 ${cp.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+            >
+                {cp.score >= 0 ? '+' : ''}
+                {cp.score.toFixed(3)}
+            </div>
+            <div className="text-[8px] text-zinc-400 font-mono mt-0.5">
+                P: {cp.portfolio.toFixed(2)}%
+            </div>
+        </>
+    );
+}
+
+export function CheckpointCard({ cp, idx, isActive, isSelected, onSelect }: CheckpointCardProps) {
+    const cardClass = getCardClass(cp, idx, isActive, isSelected);
+    return (
+        <button
+            type="button"
+            disabled={cp.isFuture}
+            onClick={onSelect}
+            className={`p-3 rounded-xl border transition-all duration-300 w-full text-left ${cardClass}`}
+        >
             <div className="flex items-center justify-between gap-1 w-full">
                 <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
                     {cp.day.substring(0, 3)}
@@ -43,24 +80,7 @@ export function CheckpointCard({ cp, idx, isActive, isSelected, onSelect }: Chec
                     </div>
                 )}
             </div>
-            {cp.isFuture ? (
-                <>
-                    <div className="text-xs font-mono font-bold mt-1 text-zinc-500">N/A</div>
-                    <div className="text-[8px] text-zinc-500 font-mono mt-0.5">P: N/A</div>
-                </>
-            ) : (
-                <>
-                    <div
-                        className={`text-xs font-mono font-bold mt-1 ${cp.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
-                    >
-                        {cp.score >= 0 ? '+' : ''}
-                        {cp.score.toFixed(3)}
-                    </div>
-                    <div className="text-[8px] text-zinc-400 font-mono mt-0.5">
-                        P: {cp.portfolio.toFixed(2)}%
-                    </div>
-                </>
-            )}
+            <CheckpointBody cp={cp} />
         </button>
     );
 }

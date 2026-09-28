@@ -73,6 +73,7 @@
 
 ## Concepts
 
+- [[concepts/pending-settlement-state]] — how the daily score represents an active-but-unsettled experiment with zero-default fallbacks
 - [[concepts/daily-move]] — day-over-day percentage change in total equity, shown on portfolio cards and the detail page
 - [[concepts/daily-move]] — Auto-indexed page
 - [[concepts/prompt-experiment-lifecycle]] — active vs. evaluated states, ratchet flow, and the pending-evaluation UI placeholder

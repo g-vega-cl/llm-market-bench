@@ -26,6 +26,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
         experiment.week_end,
         metrics.portfolio_details as Record<string, PortfolioDetail>,
         isActive,
+        experiment.track_id,
     );
 
     const {
@@ -37,6 +38,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
         dailyExcessReturn,
         dailyDrawdownPenalty,
         dailyScore,
+        isPending,
     } = calculateDailyMetrics(metrics, isActive, actualSpyReturn, actualReturns);
 
     const checkpoints = getCheckpoints(
@@ -44,6 +46,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
         portfolioReturn,
         experiment.week_start,
         isActive,
+        isPending,
     );
 
     const selectedCp = checkpoints.find((cp) => cp.day === selectedDayName);
@@ -56,6 +59,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
 
             <DailyScoreOverview
                 isActive={isActive}
+                isPending={isPending}
                 dailyScore={dailyScore}
                 dailyExcessReturn={dailyExcessReturn}
                 opportunityCost={opportunityCost}
@@ -79,7 +83,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
                     portfolioReturn={portfolioReturn}
                     spyReturn={spyReturn}
                     doNothingReturn={doNothingReturn}
-                    bondReturn={metrics.bond_return_pct ?? 0.05}
+                    bondReturn={metrics.bond_return_pct ?? 0}
                     maxDrawdown={maxDrawdown}
                     dailyExcessReturn={dailyExcessReturn}
                     opportunityCost={opportunityCost}
@@ -88,6 +92,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
                     portfolioDetails={metrics.portfolio_details as Record<string, PortfolioDetail>}
                     actualReturns={actualReturns}
                     isLoadingActuals={isLoadingActuals}
+                    isPending={isPending}
                     onClose={() => setSelectedDayName(null)}
                 />
             )}

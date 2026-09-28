@@ -4,28 +4,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DailyScoreDisplay } from './DailyScoreDisplay';
 
-let lastTable = '';
-const mockSupabaseClient = {
-    from: vi.fn().mockImplementation((table) => {
-        lastTable = table;
-        return mockSupabaseClient;
-    }),
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    in: vi.fn().mockReturnThis(),
-    gte: vi.fn().mockReturnThis(),
-    lte: vi.fn().mockReturnThis(),
-    order: vi.fn().mockImplementation(() => {
-        if (lastTable === 'price_history') {
-            return Promise.resolve({
+function createQueryBuilder(table: string) {
+    const getResult = () => {
+        if (table === 'price_history') {
+            return {
                 data: [
                     { fetched_at: '2026-06-01T00:00:00Z', price: 100.0 },
                     { fetched_at: '2026-06-05T00:00:00Z', price: 105.0 },
                 ],
                 error: null,
-            });
+            };
         }
-        return Promise.resolve({
+        return {
             data: [
                 {
                     portfolio_id: 'gemini-portfolio-id',
@@ -53,8 +43,22 @@ const mockSupabaseClient = {
                 },
             ],
             error: null,
-        });
-    }),
+        };
+    };
+
+    const builder: Record<string, unknown> = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        lte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockImplementation(() => Promise.resolve(getResult())),
+    };
+    return builder;
+}
+
+const mockSupabaseClient = {
+    from: vi.fn().mockImplementation((table: string) => createQueryBuilder(table)),
 };
 
 vi.mock('~/lib/supabase-client', () => ({
@@ -349,8 +353,8 @@ describe('DailyScoreDisplay', () => {
         // 1. Portfolio Return: average of gemini (2.0%) and deepseek (-2.0%) is 0.0%
         // Under Wednesday (multiplier 0.55), scaled portfolio return should be 0.0000%
         // Base portfolio return should be 0.0000%
-        const basePortfolioText = await screen.findByText(/Base: 0.0000%/);
-        expect(basePortfolioText).toBeInTheDocument();
+        const basePortfolioTexts = await screen.findAllByText(/Base: 0.0000%/);
+        expect(basePortfolioTexts.length).toBeGreaterThan(0);
 
         // 2. SPY return: from 100 to 105 is 5.0%
         // Scaled SPY return for Wednesday (multiplier 0.55): 5.0% * 0.55 = 2.7500%

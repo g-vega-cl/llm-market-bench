@@ -36,6 +36,7 @@ export interface DailyMetrics {
     dailyExcessReturn: number;
     dailyDrawdownPenalty: number;
     dailyScore: number;
+    isPending?: boolean;
 }
 
 export interface Checkpoint {
@@ -43,6 +44,7 @@ export interface Checkpoint {
     score: number;
     portfolio: number;
     isFuture: boolean;
+    isInProgress?: boolean;
     dateStr?: string;
 }
 
@@ -80,7 +82,7 @@ export function getPortfolioReturn(
         const rets = Object.values(actualReturns).map((r) => r.actualReturn);
         return rets.reduce((sum, val) => sum + val, 0) / rets.length;
     }
-    return isActive ? 1.45 : 0;
+    return 0;
 }
 
 export function getSpyReturn(
@@ -95,12 +97,12 @@ export function getSpyReturn(
     if (spyReturn !== null && spyReturn !== undefined) {
         return spyReturn;
     }
-    return isActive ? 0.85 : 0;
+    return 0;
 }
 
 export function getDoNothingReturn(
     metrics: Record<string, number | null | undefined>,
-    isActive: boolean,
+    _isActive?: boolean,
 ): number {
     const doNothingReturn = metrics.do_nothing_return_pct;
     if (doNothingReturn !== null && doNothingReturn !== undefined) {
@@ -112,7 +114,7 @@ export function getDoNothingReturn(
         const dnReturns = detailEntries.map((d) => d.do_nothing_return_pct ?? 0);
         return dnReturns.reduce((sum, val) => sum + val, 0) / dnReturns.length;
     }
-    return isActive ? 1.1 : 0;
+    return 0;
 }
 
 export function calculateDailyMetrics(
@@ -124,10 +126,33 @@ export function calculateDailyMetrics(
     const portfolioReturn = getPortfolioReturn(metrics, isActive, actualReturns);
     const spyReturn = getSpyReturn(metrics, isActive, actualSpyReturn);
     const doNothingReturn = getDoNothingReturn(metrics, isActive);
-    const bondReturn = metrics.bond_return_pct ?? (isActive ? 0.05 : 0);
+    const bondReturn = metrics.bond_return_pct ?? 0;
+
+    const hasActualPortfolio = Boolean(actualReturns && Object.keys(actualReturns).length > 0);
+    const hasActualSpy = actualSpyReturn !== null;
+    const hasExplicitReturn =
+        metrics.portfolio_return_pct !== null && metrics.portfolio_return_pct !== undefined;
+    const hasExplicitScore = metrics.score !== null && metrics.score !== undefined;
+
+    const isPending =
+        isActive && !hasActualPortfolio && !hasActualSpy && !hasExplicitReturn && !hasExplicitScore;
+
+    if (isPending) {
+        return {
+            portfolioReturn: 0,
+            spyReturn: 0,
+            doNothingReturn: 0,
+            opportunityCost: 0,
+            maxDrawdown: 0,
+            dailyExcessReturn: 0,
+            dailyDrawdownPenalty: 0,
+            dailyScore: 0,
+            isPending: true,
+        };
+    }
 
     const opportunityCost = metrics.opportunity_cost_penalty ?? portfolioReturn - bondReturn;
-    const maxDrawdown = metrics.max_drawdown ?? (isActive ? 1.25 : 0);
+    const maxDrawdown = metrics.max_drawdown ?? 0;
 
     const excessVsSpy = portfolioReturn - spyReturn;
     const excessVsDoNothing = portfolioReturn - doNothingReturn;
@@ -146,6 +171,7 @@ export function calculateDailyMetrics(
         dailyExcessReturn,
         dailyDrawdownPenalty,
         dailyScore,
+        isPending: false,
     };
 }
 
@@ -154,6 +180,7 @@ export function getCheckpoints(
     portfolioReturn: number,
     weekStartStr?: string,
     isActive?: boolean,
+    isPending?: boolean,
 ): Checkpoint[] {
     const days = [
         { name: 'Monday', multiplier: 0.15 },
@@ -175,13 +202,18 @@ export function getCheckpoints(
 
     return days.map((d, idx) => {
         let isFuture = false;
+        let isInProgress = false;
         let dateStr = '';
         if (startDate) {
             const checkpointDate = new Date(startDate);
             checkpointDate.setDate(startDate.getDate() + idx);
             checkpointDate.setHours(0, 0, 0, 0);
             if (isActive) {
-                isFuture = checkpointDate > today;
+                if (checkpointDate > today) {
+                    isFuture = true;
+                } else if (checkpointDate.getTime() === today.getTime() && isPending) {
+                    isInProgress = true;
+                }
             }
             dateStr = `${checkpointDate.getMonth() + 1}/${checkpointDate.getDate()}`;
         }
@@ -191,6 +223,7 @@ export function getCheckpoints(
             score: dailyScore * d.multiplier,
             portfolio: portfolioReturn * d.multiplier,
             isFuture,
+            isInProgress,
             dateStr,
         };
     });

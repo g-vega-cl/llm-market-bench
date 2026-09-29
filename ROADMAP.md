@@ -83,8 +83,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: AI sector predictor autoresearch is really hard to figure out because many LLMs have autoresearch in the same tab?
 - [ ] - Benchify: today page global macro regime, show last updated
 - [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios
-- [x] - Benchify: Sys daily spy why didn't it trade at the beginning of the day? Should it? (Implemented live MOO entry & 3:30 PM close exit)
-- [x] - Benchify: sys sector uncorr 7d alpaca errors (Guarded SELL against phantom shorts when Alpaca holds 0 shares; prevented 403 collisions on subsequent BUYs; added clean SHORT/COVER signal handling).
 - [ ] - Benchify: update today page 
 - [ ] - Benchify: could jev work for my autoresearcher?
 

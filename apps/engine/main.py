@@ -54,15 +54,31 @@ from ingest.government import run_government_pipeline
 from ingest.newsletter import ingest_newsletters
 
 
-async def _stage_ingest_and_snapshot():
+async def _stage_ingest_and_snapshot(dry_run: bool = False):
     """Stage 1: Ingest newsletters and save snapshots."""
     logger.info("Starting Newsletter Ingestion...")
     data = await ingest_newsletters()
 
     sb_client = get_supabase_client()
+    if not data and dry_run and sb_client:
+        logger.info(
+            "[DRY RUN] No new incoming newsletters; attempting to load recent snapshots from Supabase for dry run..."
+        )
+        try:
+            res = sb_client.table("newsletter_snapshots").select("*").order("received_at", desc=True).limit(5).execute()
+            if res.data:
+                data = res.data
+                logger.info(f"[DRY RUN] Loaded {len(data)} recent newsletter snapshots for simulation.")
+        except Exception as e:
+            logger.warning(f"[DRY RUN] Failed to load recent snapshots: {e}")
+
     if not data:
         logger.warning("No new newsletters found to ingest. Skipping snapshotting and analysis.")
         return None, sb_client
+
+    if dry_run:
+        logger.info(f"[DRY RUN] Skipping database snapshot upserts for {len(data)} items.")
+        return data, sb_client
 
     logger.info("Starting Database Snapshotting...")
 
@@ -84,13 +100,17 @@ async def _stage_ingest_and_snapshot():
     return data, sb_client
 
 
-async def _stage_dust_cleanup(sb_client):
+async def _stage_dust_cleanup(sb_client, dry_run: bool = False):
     """Stage 1.5: Clean dust positions from all active portfolios BEFORE LLM analysis.
 
     This ensures LLMs never see "dust" positions (<10% of portfolio equity)
     when making allocation decisions. Runs regardless of whether newsletter data exists,
     as it's a safety net for accumulated dust from any source.
     """
+    if dry_run:
+        logger.info("[DRY RUN] Skipping pre-analysis dust cleanup portfolio modifications.")
+        return
+
     from analysis.analyze import MODELS
     from execution.market_data import MarketDataManager
 
@@ -163,10 +183,29 @@ async def _stage_analysis_and_consensus(data, sb_client):
 
 
 async def _process_single_decision(
-    d, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
+    d,
+    aggregated_context,
+    uncrowded_context,
+    sb_client,
+    semaphore,
+    portfolio_locks,
+    counters,
+    dry_run: bool = False,
 ):
     """Processes a single trading decision with concurrency controls."""
     async with semaphore:
+
+        def _record_decision(client, decision, status, metadata=None, trade_id=None, decision_id=None):
+            if dry_run:
+                logger.info(
+                    f"[DRY RUN][{getattr(decision, 'model_name', 'unknown')}][{decision.ticker}] "
+                    f"Simulated attribution (Status: {status})"
+                )
+                return {"id": "dry_run_decision_id"}
+            return save_decision(
+                client, decision, status=status, metadata=metadata, trade_id=trade_id, decision_id=decision_id
+            )
+
         try:
             # --- Pre-Market Validation ---
             d.ticker = d.ticker.upper()
@@ -174,7 +213,7 @@ async def _process_single_decision(
 
             if validation.status != ValidationStatus.PASSED:
                 logger.warning(f"[{d.ticker}] REJECTED (Market Guardrails): {validation.reason}")
-                save_decision(sb_client, d, status=validation.status.value, metadata={"reason": validation.reason})
+                _record_decision(sb_client, d, status=validation.status.value, metadata={"reason": validation.reason})
                 async with counters["lock"]:
                     counters["rejected"] += 1
                 return False
@@ -209,7 +248,7 @@ async def _process_single_decision(
                         # Hard ownership stop for SELL
                         if d.signal.upper() == "SELL" and d.ticker not in portfolio.positions:
                             logger.warning(f"[MiniMax][{d.ticker}] REJECTED (Ownership): SELL for unheld ticker.")
-                            save_decision(
+                            _record_decision(
                                 sb_client,
                                 d,
                                 status="REJECTED_OWNERSHIP",
@@ -267,7 +306,7 @@ async def _process_single_decision(
 
                         else:  # SELL
                             if d.ticker not in portfolio.positions:
-                                save_decision(
+                                _record_decision(
                                     sb_client,
                                     d,
                                     status="REJECTED_OWNERSHIP",
@@ -296,7 +335,7 @@ async def _process_single_decision(
                         )
                         if not validation_res.passed:
                             logger.warning(f"[MiniMax][{d.ticker}] REJECTED (Margin): {validation_res.reason}")
-                            save_decision(
+                            _record_decision(
                                 sb_client,
                                 d,
                                 status="REJECTED_MARGIN",
@@ -307,51 +346,63 @@ async def _process_single_decision(
                             return False
 
                         # Atomic EXECUTE
-                        decision_row = save_decision(
-                            sb_client, d, status="VALIDATED", metadata={"info": "MiniMax market order"}
-                        )
-                        decision_id = decision_row.get("id")
-                        if not decision_id:
-                            logger.error(f"[MiniMax][{d.ticker}] Pre-save returned no decision ID — aborting trade")
-                            return False
-
-                        trade_id = await portfolio.execute_trade(
-                            d.ticker,
-                            qty,
-                            exec_price,
-                            d.signal,
-                            decision_id=decision_id,
-                            current_prices=fresh_p_map,
-                            skip_alpaca_mirror=True,
-                        )
-
-                        if trade_id:
-                            status = "EXECUTED"
+                        if dry_run:
+                            trade_id = None
+                            status = "EXECUTED_DRY_RUN"
+                            decision_id = "dry_run_decision_id"
                             meta = {
-                                "trade_id": str(trade_id),
-                                "info": f"[MiniMax] Market order {d.signal} {qty} @ ${exec_price:.2f}",
+                                "trade_id": "dry_run",
+                                "info": f"[DRY RUN][MiniMax] Market order {d.signal} {qty} @ ${exec_price:.2f}",
                             }
-                            # Alpaca mirror limit matches the executed buffered price
-                            alpaca_limit = exec_price
-                            import asyncio as _asyncio
-
-                            from execution.alpaca_broker import AlpacaBroker
-
-                            _asyncio.create_task(
-                                AlpacaBroker().submit_limit_order(
-                                    trade_id=trade_id,
-                                    ticker=d.ticker,
-                                    quantity=qty,
-                                    signal=d.signal,
-                                    limit_price=alpaca_limit,
-                                    agent_id=d.model_name,
-                                )
+                            logger.info(
+                                f"[DRY RUN][MiniMax][{d.ticker}] Would execute market order: {d.signal} {qty} @ ${exec_price:.2f}"
                             )
                         else:
-                            status = "ERROR_EXECUTION"
-                            meta = {"info": "MiniMax execution failed"}
+                            decision_row = _record_decision(
+                                sb_client, d, status="VALIDATED", metadata={"info": "MiniMax market order"}
+                            )
+                            decision_id = decision_row.get("id")
+                            if not decision_id:
+                                logger.error(f"[MiniMax][{d.ticker}] Pre-save returned no decision ID — aborting trade")
+                                return False
 
-                        save_decision(
+                            trade_id = await portfolio.execute_trade(
+                                d.ticker,
+                                qty,
+                                exec_price,
+                                d.signal,
+                                decision_id=decision_id,
+                                current_prices=fresh_p_map,
+                                skip_alpaca_mirror=True,
+                            )
+
+                            if trade_id:
+                                status = "EXECUTED"
+                                meta = {
+                                    "trade_id": str(trade_id),
+                                    "info": f"[MiniMax] Market order {d.signal} {qty} @ ${exec_price:.2f}",
+                                }
+                                # Alpaca mirror limit matches the executed buffered price
+                                alpaca_limit = exec_price
+                                import asyncio as _asyncio
+
+                                from execution.alpaca_broker import AlpacaBroker
+
+                                _asyncio.create_task(
+                                    AlpacaBroker().submit_limit_order(
+                                        trade_id=trade_id,
+                                        ticker=d.ticker,
+                                        quantity=qty,
+                                        signal=d.signal,
+                                        limit_price=alpaca_limit,
+                                        agent_id=d.model_name,
+                                    )
+                                )
+                            else:
+                                status = "ERROR_EXECUTION"
+                                meta = {"info": "MiniMax execution failed"}
+
+                        _record_decision(
                             sb_client,
                             d,
                             status=status,
@@ -371,7 +422,7 @@ async def _process_single_decision(
                         if d.signal.upper() == "SELL":
                             if d.ticker not in portfolio.positions:
                                 logger.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
-                                save_decision(
+                                _record_decision(
                                     sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."}
                                 )
                                 async with counters["lock"]:
@@ -379,7 +430,7 @@ async def _process_single_decision(
                                 return False
                             if not getattr(d, "sell_tool_called", False):
                                 logger.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
-                                save_decision(
+                                _record_decision(
                                     sb_client,
                                     d,
                                     status="REJECTED_TOOL_USAGE",
@@ -440,7 +491,7 @@ async def _process_single_decision(
                                 logger.warning(
                                     f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}"
                                 )
-                                save_decision(
+                                _record_decision(
                                     sb_client,
                                     d,
                                     status="REJECTED_VERIFICATION",
@@ -462,7 +513,7 @@ async def _process_single_decision(
                         overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
                         if overlap_reason:
                             logger.warning(f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason}")
-                            save_decision(
+                            _record_decision(
                                 sb_client,
                                 d,
                                 status=ValidationStatus.REJECTED_REDUNDANCY.value,
@@ -492,7 +543,7 @@ async def _process_single_decision(
                                 if drift > 0.02:
                                     reason = f"Stale quote: market moved {drift:.1%} since analysis (analysis: ${injected_price:.2f}, current: ${exec_price:.2f})"
                                     logger.warning(f"[{d.ticker}] REJECTED (Stale Quote): {reason}")
-                                    save_decision(
+                                    _record_decision(
                                         sb_client, d, status="REJECTED_STALE_QUOTE", metadata={"reason": reason}
                                     )
                                     async with counters["lock"]:
@@ -527,7 +578,7 @@ async def _process_single_decision(
 
                         elif d.signal.upper() == "SELL":
                             if d.ticker not in portfolio.positions:
-                                save_decision(
+                                _record_decision(
                                     sb_client,
                                     d,
                                     status="REJECTED_OWNERSHIP",
@@ -552,7 +603,7 @@ async def _process_single_decision(
                                     f"[{d.ticker}] REJECTED (Verification): Status is ADJUSTED_ALLOCATION "
                                     f"but adjusted_quantity is invalid ({verification.adjusted_quantity})."
                                 )
-                                save_decision(
+                                _record_decision(
                                     sb_client,
                                     d,
                                     status="REJECTED_VERIFICATION",
@@ -578,7 +629,7 @@ async def _process_single_decision(
                         )
                         if not validation_res.passed:
                             logger.warning(f"[{d.ticker}] REJECTED (Margin JIT): {validation_res.reason}")
-                            save_decision(
+                            _record_decision(
                                 sb_client, d, status="REJECTED_MARGIN", metadata={"reason": validation_res.reason}
                             )
                             async with counters["lock"]:
@@ -586,30 +637,47 @@ async def _process_single_decision(
                             return False
 
                         # 5. Atomic EXECUTE
-                        # Attribution Locking (Step 13 PRE-STEP)
-                        # We pre-save to get the ID for the trade link
-                        decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
-                        decision_id = decision_row.get("id")
-                        if not decision_id:
-                            logger.error(f"[{d.ticker}] Pre-save returned no decision ID — aborting trade")
-                            return False
-
-                        trade_id = await portfolio.execute_trade(
-                            d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map
-                        )
-
-                        if trade_id:
-                            status = "EXECUTED"
+                        if dry_run:
+                            trade_id = None
+                            status = "EXECUTED_DRY_RUN"
+                            decision_id = "dry_run_decision_id"
                             meta.update(
-                                {"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"}
+                                {
+                                    "trade_id": "dry_run",
+                                    "info": f"[DRY RUN] Executed {d.signal} {qty} @ ${exec_price:.2f}",
+                                }
+                            )
+                            logger.info(
+                                f"[DRY RUN][{d.ticker}] Would execute: {d.signal} {qty} @ ${exec_price:.2f} for {d.model_name}"
                             )
                         else:
-                            status = "ERROR_EXECUTION"
-                            meta.update({"info": "Execution Failed"})
+                            # Attribution Locking (Step 13 PRE-STEP)
+                            # We pre-save to get the ID for the trade link
+                            decision_row = _record_decision(sb_client, d, status="VALIDATED", metadata=meta)
+                            decision_id = decision_row.get("id")
+                            if not decision_id:
+                                logger.error(f"[{d.ticker}] Pre-save returned no decision ID — aborting trade")
+                                return False
+
+                            trade_id = await portfolio.execute_trade(
+                                d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map
+                            )
+
+                            if trade_id:
+                                status = "EXECUTED"
+                                meta.update(
+                                    {
+                                        "trade_id": str(trade_id),
+                                        "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}",
+                                    }
+                                )
+                            else:
+                                status = "ERROR_EXECUTION"
+                                meta.update({"info": "Execution Failed"})
 
                         # IMPORTANT: save_decision is idempotent based on (source_id, ticker, signal, model_provider, model_name)
                         # We call this INSIDE the lock to ensure attribution record is final before next trade starts
-                        save_decision(
+                        _record_decision(
                             sb_client,
                             d,
                             status=status,
@@ -623,7 +691,7 @@ async def _process_single_decision(
                 else:
                     # Not a BUY/SELL (e.g. HOLD or non-actionable)
                     # We still save attribution but it doesn't need JIT refresh logic
-                    save_decision(sb_client, d, status=status, metadata=meta)
+                    _record_decision(sb_client, d, status=status, metadata=meta)
                     logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
                     async with counters["lock"]:
                         counters["saved"] += 1
@@ -642,6 +710,7 @@ async def _stage_decision_processing(
     uncrowded_context,
     sb_client,
     consensus_events: list | None = None,
+    dry_run: bool = False,
 ):
     """Stage 3: Decision attribution, validation, and execution with concurrency.
 
@@ -694,10 +763,17 @@ async def _stage_decision_processing(
     counters = {"saved": 0, "rejected": 0, "lock": asyncio.Lock()}
 
     # --- Execute primary decisions ---
-    logger.info(f"Executing {len(decisions)} primary decisions...")
+    logger.info(f"Executing {len(decisions)} primary decisions (dry_run={dry_run})...")
     primary_tasks = [
         _process_single_decision(
-            d, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
+            d,
+            aggregated_context,
+            uncrowded_context,
+            sb_client,
+            semaphore,
+            portfolio_locks,
+            counters,
+            dry_run=dry_run,
         )
         for d in decisions
     ]
@@ -711,13 +787,17 @@ async def _stage_decision_processing(
     logger.info(f"Processing complete: {counters['saved']} saved, {counters['rejected']} rejected.")
 
 
-async def _stage_snapshots_and_pca(sb_client):
+async def _stage_snapshots_and_pca(sb_client, dry_run: bool = False):
     """Stage 4: Performance snapshots and PCA updates.
 
     Only snapshots portfolios that hold actual positions — empty cash-only
     portfolios don't change between runs and don't need daily snapshots.
     Uses batch get_quotes() for efficient parallel market data fetching.
     """
+    if dry_run:
+        logger.info("[DRY RUN] Skipping portfolio daily performance snapshots and PCA updates.")
+        return
+
     logger.info("Starting Daily Performance Snapshot...")
     port_res = sb_client.table("portfolios").select("owner_id").execute()
     owners = [p["owner_id"] for p in port_res.data] if port_res.data else []
@@ -779,7 +859,7 @@ async def _stage_snapshots_and_pca(sb_client):
     update_pca_coordinates(sb_client)
 
 
-async def run_ingest(force: bool = False):
+async def run_ingest(force: bool = False, dry_run: bool = False):
     """Runs the full ingestion and analysis pipeline."""
     import io
     import logging
@@ -807,7 +887,9 @@ async def run_ingest(force: bool = False):
     try:
         from core.utils import is_market_open_with_logging
 
-        if not await is_market_open_with_logging(force):
+        if dry_run:
+            logger.info("[DRY RUN] Ingestion running in simulation mode. Bypassing market-hours check.")
+        elif not await is_market_open_with_logging(force):
             log_blob = log_capture.getvalue()
             if log_blob:
                 try:
@@ -828,13 +910,13 @@ async def run_ingest(force: bool = False):
         sb_client = get_supabase_client()
 
         # Pre-Analysis Dust Cleanup: Ensure no dust positions exist before LLMs analyze
-        await _stage_dust_cleanup(sb_client)
+        await _stage_dust_cleanup(sb_client, dry_run=dry_run)
 
-        data, sb_client = await _stage_ingest_and_snapshot()
+        data, sb_client = await _stage_ingest_and_snapshot(dry_run=dry_run)
         sb_client = sb_client or get_supabase_client()
         if not data:
             log_blob = log_capture.getvalue()
-            if log_blob:
+            if log_blob and not dry_run:
                 try:
                     sb_client.table("ingestion_logs").insert(
                         {
@@ -854,36 +936,44 @@ async def run_ingest(force: bool = False):
 
             consensus_events = get_last_consensus_events()
             await _stage_decision_processing(
-                decisions, macro_events, data, agg_ctx, uncrowded_ctx, sb_client, consensus_events
+                decisions,
+                macro_events,
+                data,
+                agg_ctx,
+                uncrowded_ctx,
+                sb_client,
+                consensus_events,
+                dry_run=dry_run,
             )
 
-            # Systematic Weekly Sector Entry Hook (Monday Morning Market Open)
-            # Must run BEFORE snapshots and PCA so sector positions and cash adjustments are captured immediately.
-            try:
-                now_ny = datetime.now(ZoneInfo("America/New_York"))
-                # If Monday and morning session (before 11:00 AM ET)
-                if now_ny.weekday() == 0 and now_ny.hour < 11:
-                    logger.info("Monday morning detected — Checking systematic weekly sector portfolio entry...")
-                    from execution.sector_trading import run_sector_trade
+            if not dry_run:
+                # Systematic Weekly Sector Entry Hook (Monday Morning Market Open)
+                # Must run BEFORE snapshots and PCA so sector positions and cash adjustments are captured immediately.
+                try:
+                    now_ny = datetime.now(ZoneInfo("America/New_York"))
+                    # If Monday and morning session (before 11:00 AM ET)
+                    if now_ny.weekday() == 0 and now_ny.hour < 11:
+                        logger.info("Monday morning detected — Checking systematic weekly sector portfolio entry...")
+                        from execution.sector_trading import run_sector_trade
 
-                    await run_sector_trade(action="entry")
-            except Exception:
-                logger.exception("Systematic weekly sector entry hook failed")
+                        await run_sector_trade(action="entry")
+                except Exception:
+                    logger.exception("Systematic weekly sector entry hook failed")
 
-            # Systematic Weekly Sector Exit Hook (Friday Afternoon Market Close)
-            # Must run BEFORE snapshots and PCA so liquidated cash and realized PnL are captured immediately.
-            try:
-                now_ny = datetime.now(ZoneInfo("America/New_York"))
-                # If Friday and afternoon session (at or after 3:00 PM ET)
-                if now_ny.weekday() == 4 and now_ny.hour >= 15:
-                    logger.info("Friday afternoon detected — Checking systematic weekly sector portfolio exit...")
-                    from execution.sector_trading import run_sector_trade
+                # Systematic Weekly Sector Exit Hook (Friday Afternoon Market Close)
+                # Must run BEFORE snapshots and PCA so liquidated cash and realized PnL are captured immediately.
+                try:
+                    now_ny = datetime.now(ZoneInfo("America/New_York"))
+                    # If Friday and afternoon session (at or after 3:00 PM ET)
+                    if now_ny.weekday() == 4 and now_ny.hour >= 15:
+                        logger.info("Friday afternoon detected — Checking systematic weekly sector portfolio exit...")
+                        from execution.sector_trading import run_sector_trade
 
-                    await run_sector_trade(action="exit")
-            except Exception:
-                logger.exception("Systematic weekly sector exit hook failed")
+                        await run_sector_trade(action="exit")
+                except Exception:
+                    logger.exception("Systematic weekly sector exit hook failed")
 
-            await _stage_snapshots_and_pca(sb_client)
+            await _stage_snapshots_and_pca(sb_client, dry_run=dry_run)
 
             # Market Feeling Analysis: Generate LLM-driven sentiment (after execution to include trades)
             logger.info("Starting Market Feeling Analysis with MiniMax...")
@@ -895,30 +985,39 @@ async def run_ingest(force: bool = False):
             else:
                 logger.warning("Market feeling analysis did not produce a result.")
 
-            # Isolated LIN Single-Stock Flow (Post-Consensus Pipeline Hook)
-            try:
-                logger.info("Starting Isolated LIN Renko Flow...")
-                from tasks.lin_renko_task import run_lin_renko_flow
+            if not dry_run:
+                # Isolated LIN Single-Stock Flow (Post-Consensus Pipeline Hook)
+                try:
+                    logger.info("Starting Isolated LIN Renko Flow...")
+                    from tasks.lin_renko_task import run_lin_renko_flow
 
-                lin_result = await run_lin_renko_flow()
-                logger.info(
-                    f"Isolated LIN Renko Flow completed (Decision: {lin_result.get('decision', {}).get('decision')}, "
-                    f"Trade Executed: {lin_result.get('trade_executed')})."
-                )
-            except Exception:
-                logger.exception("Isolated LIN Renko Flow execution failed")
+                    lin_result = await run_lin_renko_flow()
+                    logger.info(
+                        f"Isolated LIN Renko Flow completed (Decision: {lin_result.get('decision', {}).get('decision')}, "
+                        f"Trade Executed: {lin_result.get('trade_executed')})."
+                    )
+                except Exception:
+                    logger.exception("Isolated LIN Renko Flow execution failed")
         finally:
             from execution.providers.factory import get_active_provider_class
 
             await get_active_provider_class().disconnect_all()
 
         log_blob = log_capture.getvalue()
-        try:
-            sb_client.table("ingestion_logs").insert(
-                {"run_id": run_id, "run_date": str(run_date), "run_number": run_number, "log_blob": log_blob[:1000000]}
-            ).execute()
-        except Exception as e:
-            logger.error(f"Failed to save ingestion log: {e}")
+        if not dry_run:
+            try:
+                sb_client.table("ingestion_logs").insert(
+                    {
+                        "run_id": run_id,
+                        "run_date": str(run_date),
+                        "run_number": run_number,
+                        "log_blob": log_blob[:1000000],
+                    }
+                ).execute()
+            except Exception as e:
+                logger.error(f"Failed to save ingestion log: {e}")
+        else:
+            logger.info(f"[DRY RUN] Simulation complete for run_id {run_id}. Log capture size: {len(log_blob)} chars.")
     finally:
         logger.removeHandler(handler)
 
@@ -1145,7 +1244,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == COMMAND_INGEST:
-        asyncio.run(run_ingest(force=args.force))
+        asyncio.run(run_ingest(force=args.force, dry_run=args.dry_run))
     elif args.command == COMMAND_WEEKEND_INGEST:
         asyncio.run(run_weekend_ingest())
     elif args.command == COMMAND_POST_ANALYSIS:

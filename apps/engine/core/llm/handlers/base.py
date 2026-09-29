@@ -1,8 +1,11 @@
+import logging
 import re
 import time
 
 from core.llm import tools
 from core.tool_audit import async_record_tool_audit
+
+logger = logging.getLogger("engine.tool_audit")
 
 
 def _is_valid_ticker(ticker: str) -> bool:
@@ -13,51 +16,107 @@ def _is_valid_ticker(ticker: str) -> bool:
     return bool(re.match(r"^[A-Z0-9.\-]{1,5}$", ticker_clean))
 
 
+def _get_ticker(args: dict) -> str:
+    """Extract and sanitize ticker argument, supporting 'ticker' and 'symbol' keys."""
+    if not isinstance(args, dict):
+        return ""
+    val = args.get("ticker") or args.get("symbol") or ""
+    return str(val).strip().upper()
+
+
 async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
-    """Dispatches tool execution to the correct tool implementation.
+    """Executes a tool with defensive parameter checking, timing audit, and error boundary.
 
     Args:
         name: Name of the tool to execute.
         args: Arguments dictionary for the tool.
-        model_name: Name of the model (used as owner_id for some tools).
+        model_name: Name of the model initiating the tool call.
         **kwargs: Optional additional context (e.g. track_id).
 
     Returns:
         The tool's result as a string.
     """
-    if args and "ticker" in args:
-        ticker = args["ticker"]
-        if not _is_valid_ticker(ticker):
-            return (
-                f"Error: '{ticker}' is not a valid stock ticker. "
-                "Tickers must be 1 to 5 alphanumeric characters (A-Z, 0-9) and can optionally contain a single period or hyphen."
-            )
+    start_t = time.perf_counter()
+    status = "success"
+    try:
+        result = await _dispatch_tool(name, args, model_name, **kwargs)
+    except Exception as exc:
+        status = "error"
+        logger.exception("Error executing tool %s: %s", name, exc)
+        result = f"Error executing {name}: {exc}"
+
+    duration_ms = int((time.perf_counter() - start_t) * 1000)
+    ticker_str = _get_ticker(args) if isinstance(args, dict) else ""
+    ticker_tag = f" ({ticker_str})" if ticker_str else ""
+
+    if duration_ms >= 5000:
+        logger.warning(
+            "[tool_audit] Slow tool: %s%s took %dms (%.2fs)",
+            name,
+            ticker_tag,
+            duration_ms,
+            duration_ms / 1000.0,
+        )
+    else:
+        logger.info("[tool_audit] %s%s completed in %dms", name, ticker_tag, duration_ms)
+
+    async_record_tool_audit(
+        tool_name=name,
+        tool_args=args,
+        tool_result=result,
+        duration_ms=duration_ms,
+        model_name=model_name,
+        status=status,
+    )
+    return result
+
+
+async def _dispatch_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
+    """Dispatches tool execution to the correct tool implementation."""
+    ticker = _get_ticker(args)
+    if ticker and not _is_valid_ticker(ticker):
+        return (
+            f"Error: '{ticker}' is not a valid stock ticker. "
+            "Tickers must be 1 to 5 alphanumeric characters (A-Z, 0-9) and can optionally contain a single period or hyphen."
+        )
+
+    # Ticker-required tools validation
+    ticker_required_tools = {
+        "get_stock_quote",
+        "get_price_history",
+        "get_position_pnl",
+        "get_volatility_metrics",
+        "get_sector_alternatives",
+        "calculate_buy_quantity",
+        "calculate_sell_quantity",
+        "get_key_metrics",
+        "get_earnings_history",
+        "get_earnings_revisions",
+        "audit_financial_valuation",
+        "get_options_sentiment",
+        "get_option_chain",
+        "track_thesis_pillars",
+        "get_barrier_touch_probabilities",
+        "get_ticker_news",
+    }
+    if name in ticker_required_tools and not ticker:
+        return f"Error: Missing required 'ticker' argument for {name}."
 
     if name == "get_stock_quote":
-        return await tools.execute_stock_tool(args["ticker"])
+        return await tools.execute_stock_tool(ticker)
     elif name == "get_price_history":
-        return await tools.execute_price_history_tool(args["ticker"], args.get("days", 7))
+        return await tools.execute_price_history_tool(ticker, args.get("days", 7))
     elif name == "get_position_pnl":
-        return await tools.execute_position_pnl_tool(args["ticker"], owner_id=model_name)
+        return await tools.execute_position_pnl_tool(ticker, owner_id=model_name)
     elif name == "get_volatility_metrics":
-        start_t = time.perf_counter()
-        result = await tools.execute_volatility_metrics_tool(args["ticker"], args.get("days", 14))
-        duration_ms = int((time.perf_counter() - start_t) * 1000)
-        async_record_tool_audit(
-            tool_name="get_volatility_metrics",
-            tool_args=args,
-            tool_result=result,
-            duration_ms=duration_ms,
-            model_name=model_name,
-        )
-        return result
+        return await tools.execute_volatility_metrics_tool(ticker, args.get("days", 14))
     elif name == "get_sector_alternatives":
-        return await tools.execute_sector_alternatives_tool(args["ticker"])
+        return await tools.execute_sector_alternatives_tool(ticker)
     elif name == "calculate_buy_quantity":
-        return await tools.execute_buy_quantity_tool(args["ticker"], owner_id=model_name, percentage=args["percentage"])
+        return await tools.execute_buy_quantity_tool(ticker, owner_id=model_name, percentage=args.get("percentage", 20))
     elif name == "calculate_sell_quantity":
         return await tools.execute_sell_quantity_tool(
-            args["ticker"], owner_id=model_name, percentage=args["percentage"]
+            ticker, owner_id=model_name, percentage=args.get("percentage", 100)
         )
     elif name == "search_related_tickers":
         return await tools.execute_search_related_tickers_tool(args["theme"])
@@ -71,7 +130,7 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
         )
     elif name == "get_key_metrics":
         return await tools.execute_key_metrics_tool(
-            args["ticker"],
+            ticker,
             period=args.get("period", "annual"),
             limit=args.get("limit", 2),
         )
@@ -85,7 +144,7 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
         )
     elif name == "get_earnings_history":
         return await tools.execute_earnings_history_tool(
-            args["ticker"],
+            ticker,
             limit=args.get("limit", 8),
         )
     elif name == "get_pead_candidates":
@@ -96,34 +155,34 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
         )
     elif name == "get_earnings_revisions":
         return await tools.execute_earnings_revisions_tool(
-            args["ticker"],
+            ticker,
         )
     elif name == "get_sector_bellwethers":
         return await tools.execute_sector_bellwethers_tool(
-            args["sector"],
+            args.get("sector", ""),
         )
     elif name == "search_prediction_markets":
         return await tools.execute_search_prediction_markets_tool(
-            args["query"],
+            args.get("query", ""),
             platform=args.get("platform"),
         )
     elif name == "get_prediction_market_odds":
         return await tools.execute_get_prediction_market_odds_tool(
-            args["market_id"],
-            platform=args["platform"],
+            args.get("market_id", ""),
+            platform=args.get("platform", "polymarket"),
         )
     elif name == "audit_financial_valuation":
         return await tools.execute_financial_valuation_tool(
-            ticker=args["ticker"],
+            ticker=ticker,
             growth_rate=args.get("growth_rate"),
             discount_rate=args.get("discount_rate"),
             terminal_growth=args.get("terminal_growth", 0.025),
         )
     elif name == "fetch_newsletter_content":
-        return await tools.execute_fetch_newsletter_content_tool(args["source_ids"])
+        return await tools.execute_fetch_newsletter_content_tool(args.get("source_ids", []))
     elif name == "search_past_memories":
         return await tools.execute_search_past_memories_tool(
-            args["query"], limit=args.get("limit", 5), model_name=model_name
+            args.get("query", ""), limit=args.get("limit", 5), model_name=model_name
         )
     elif name == "get_portfolio_ledger":
         return await tools.execute_get_portfolio_ledger_tool(owner_id=model_name)
@@ -137,38 +196,38 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
         return await tools.execute_get_volatility_index_details_tool(args.get("lookback_days", 90))
     elif name == "get_verifier_rejections":
         return await tools.execute_get_verifier_rejections_tool(
-            ticker=args.get("ticker"), limit=args.get("limit", 5), model_name=model_name
+            ticker=ticker or args.get("ticker"), limit=args.get("limit", 5), model_name=model_name
         )
     elif name == "inspect_verifier_rules_and_rejections":
         track_id = kwargs.get("track_id") or args.get("track_id", "track_claude")
         return await tools.execute_inspect_verifier_rules_tool(
             limit=args.get("limit", 5),
-            ticker=args.get("ticker"),
+            ticker=ticker or args.get("ticker"),
             track_id=track_id,
         )
     elif name == "get_thematic_flows":
         return await tools.execute_get_thematic_flows_tool(limit=args.get("limit", 5))
     elif name == "add_thematic_flow":
         return await tools.execute_add_thematic_flow_tool(
-            content=args["content"],
+            content=args.get("content", ""),
             importance_score=args.get("importance_score", 8),
             category=args.get("category"),
         )
     elif name == "get_macro_economic_series":
         return await tools.execute_macro_economic_series_tool(
-            args["series_id_or_alias"],
+            args.get("series_id_or_alias", ""),
             lookback_periods=args.get("lookback_periods", 12),
             units=args.get("units", "lin"),
             frequency=args.get("frequency"),
         )
     elif name == "get_options_sentiment":
         return await tools.execute_get_options_sentiment_tool(
-            ticker=args["ticker"],
+            ticker=ticker,
             expiration_date=args.get("expiration_date"),
         )
     elif name == "get_option_chain":
         return await tools.execute_get_option_chain_tool(
-            ticker=args["ticker"],
+            ticker=ticker,
             expiration_date=args.get("expiration_date"),
             contract_type=args.get("contract_type", "all"),
             strike_range_pct=args.get("strike_range_pct", 10.0),
@@ -179,11 +238,11 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
         return await tools.execute_yield_curve_regime_tool()
     elif name == "get_options_vol_surface":
         return await tools.execute_options_vol_surface_tool(
-            ticker=args.get("ticker", "SPY"),
+            ticker=ticker or "SPY",
         )
     elif name == "track_thesis_pillars":
         return await tools.execute_track_thesis_pillars_tool(
-            ticker=args["ticker"],
+            ticker=ticker,
             action=args.get("action", "get"),
             thesis_statement=args.get("thesis_statement"),
             pillars=args.get("pillars"),
@@ -204,14 +263,14 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
     elif name == "get_calendar_scenario_analysis":
         return await tools.execute_get_calendar_scenario_analysis_tool(
             timeframe=args.get("timeframe", "next_week"),
-            ticker=args.get("ticker"),
+            ticker=ticker or args.get("ticker"),
             min_importance=args.get("min_importance", 5),
             detail=args.get("detail", True),
             include_historical_memories=args.get("include_historical_memories", True),
         )
     elif name == "get_barrier_touch_probabilities":
         return await tools.execute_barrier_touch_probabilities_tool(
-            ticker=args["ticker"],
+            ticker=ticker,
             target_pct=args.get("target_pct"),
             stop_pct=args.get("stop_pct"),
             horizon_bars=args.get("horizon_bars", 5),
@@ -219,7 +278,7 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
         )
     elif name == "get_ticker_news":
         return await tools.execute_get_ticker_news_tool(
-            ticker=args["ticker"],
+            ticker=ticker,
             limit=args.get("limit", 5),
         )
     elif name == "get_congress_trades":

@@ -22,7 +22,7 @@ Non-blocking background audit logging for LLM tool execution. Records every tool
 
 ## Integration
 
-Used in `core/llm/handlers/base.py` for the `get_volatility_metrics` tool (Phase 1). Plans to extend to valuation, screening, research, and daily predictor tools (Phases 2–4).
+Used in `core/llm/handlers/base.py` wrapping `execute_tool` for all tools. Every tool execution measures wall-clock duration in milliseconds, emits a warning log when `duration_ms >= 5000` (`[tool_audit] Slow tool: ...`), logs standard completions, and non-blockingly dispatches records to `public.tool_execution_logs` via `async_record_tool_audit`.
 
 ## Related
 

@@ -9,12 +9,12 @@ Full daily pipeline from ingestion to feedback. The pipeline runs on a cron sche
 
 ## Phase 1: Ingestion & Normalization
 *   **Icon**: 📰
-*   **Badge**: 3x Daily Trigger: US Market Hours
-*   **Tags**: [FMP Cache, Gmail Ingestion, Ingestion]
+*   **Badge**: 3x Daily Trigger: US Market Hours (45m Workflow Timeout)
+*   **Tags**: [FMP Cache, Gmail Ingestion, Ingestion, Dry Run]
 
-Cloudflare Worker edge dispatcher fires the pipeline during US market hours (3 times daily: 9:35 AM ET, 11:35 AM ET, and 3:30 PM ET) to parse newsletter inputs.
+Cloudflare Worker edge dispatcher fires the pipeline during US market hours (3 times daily: 9:35 AM ET, 11:35 AM ET, and 3:30 PM ET) to parse newsletter inputs. GitHub Actions workflow runs with a 45-minute timeout window to accommodate heavy multi-model options chains and consensus synthesis.
 
-*   Newsletter Ingestion: Scrapes newsletters from Gmail via SSL IMAP using a Google App Password (preferred) or OAuth 2.0 REST API (fallback), parsing email content and retrying transient errors.
+*   Newsletter Ingestion: Scrapes newsletters from Gmail via SSL IMAP using a Google App Password (preferred) or OAuth 2.0 REST API (fallback), parsing email content and retrying transient errors. When running in `--dry-run` mode outside live delivery windows, falls back to recent Supabase newsletter snapshots to drive offline simulations.
 *   De-Advertisement: Gemini Flash filters out ads, noise, and sponsor blocks from incoming text.
 
 ## Phase 2: Pre-Analysis Setup
@@ -23,20 +23,21 @@ Cloudflare Worker edge dispatcher fires the pipeline during US market hours (3 t
 *   **Tags**: [Market Hours, Macro Tracker, Dust Cleanup]
 
 Before LLM analysis, the engine validates market status and cleans up stale states.
-*   FMP-Verified Market Hours: Checks NYSE/NASDAQ status with 5-minute TTL caching to verify they are open.
-*   Dust Cleanup: Cleans dust positions (<10% equity) before analysis to prevent model confusion; writes liquidation trade ledger entries with `reasoning` in `trades` table.
+*   FMP-Verified Market Hours: Checks NYSE/NASDAQ status with 5-minute TTL caching to verify they are open (bypassed when `--dry-run` or `--force` is specified).
+*   Dust Cleanup: Cleans dust positions (<10% equity) before analysis to prevent model confusion; writes liquidation trade ledger entries with `reasoning` in `trades` table (skipped in dry-run mode).
 *   Global Macro Snapshot: Quotes 16 key assets for Risk-On/Risk-Off macro baseline.
 *   Light Context Injection: Injects top-5 trending concepts, anomalies, and historical memories.
 
 ## Phase 3: Macro Event Extraction & Consensus
 *   **Icon**: 🧩
 *   **Badge**: Pass 1: Semantic Grouping
-*   **Tags**: [MacroEventsResponse, pgvector, Cosine Clustering]
+*   **Tags**: [MacroEventsResponse, pgvector, Cosine Clustering, Semaphore Concurrency]
 
 The first pass of LLM analysis extracts and clusters macroeconomic events.
 *   Asynchronous Chunk Batching: Splits newsletter content into parallel batches of 20 chunks.
 *   Semantic Grouping: Embeds and clusters events via pgvector cosine similarity (threshold `0.75`), protected by `1.2s` call-interval throttling and 4-attempt exponential backoff.
 *   Weighted Consensus: Promotes events based on cumulative model weight and voting (threshold `2.0`; weights explicit for all 6 models per `core/config.py:MODEL_WEIGHTS`, including `MiniMax-M3` — fixed 2026-08-27).
+*   Concurrent Group Promotion: Synthesizes and promotes qualifying event groups concurrently using `asyncio.Semaphore(3)`, dramatically accelerating consensus during heavy event volume without triggering provider rate limits.
 *   Temporal Deduplication: Discards duplicate events within a recency window — dedup now `0.90` via `MEMORY_DEDUP_THRESHOLD`, decoupled from grouping `0.75` (fix 2026-08-27 for ID-collision bug `4685e74f`/`b2174ca9`).
 *   Pre-Discovery Early Dedup: Checks for duplicates before launching `DiscoveryAgent`, skipping redundant asset searches and reusing vector embeddings (fix 2026-09-01).
 *   Two-Stage Adversarial Debate (`gpt-5.6-luna`): Stage 1 (Red-Team Challenger) stress-tests the event against counter-theses and pre-mortem failure modes; Stage 2 (Arbiter) synthesizes hedged scenarios, actionable FMP trading plans, and persists `metadata.debate`.
@@ -45,10 +46,13 @@ The first pass of LLM analysis extracts and clusters macroeconomic events.
 ## Phase 4: Trading Decisions
 *   **Icon**: 🤖
 *   **Badge**: Pass 2: Trading Strategy
-*   **Tags**: [TradingDecisionsResponse, PromptFactory, DiscoveryAgent]
+*   **Tags**: [TradingDecisionsResponse, PromptFactory, DiscoveryAgent, Tool Auditing]
 
 The second pass receives newsletter summaries, portfolio context, and the synthesized macro events.
 *   Parallel LLM Analysis: OpenAI, Claude, Gemini, DeepSeek, and MiniMax analyze context in parallel to propose trades.
+*   Universal Tool Auditing: Wraps every tool execution with wall-clock timing, emits warning logs (`[tool_audit] Slow tool:`) for calls exceeding $5000\text{ms}$, and non-blockingly streams duration metrics to the PostgreSQL analytical archive database.
+*   Defensive Tool Dispatch: Safely resolves both `"ticker"` and `"symbol"` keys, gracefully rejecting missing tickers instead of crashing batches with `KeyError`.
+*   FMP Tier Caching: Automatically detects and caches 402/403 subscription restrictions on quarterly key metrics, defaulting subsequent ticker lookups to annual data without making redundant failing calls.
 *   PromptFactory: Builds semantically identical instructions for model comparability.
 *   DiscoveryAgent: Loops up to 3 steps to identify investable assets based on macro consensus.
 *   DeepSeek Thinking Mode: Preserves Chain-of-Thought reasoning for deep analysis.

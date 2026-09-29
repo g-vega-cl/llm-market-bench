@@ -2,12 +2,21 @@ name: Ingestion & Consensus
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run simulation mode (no orders placed or database mutations)'
+        type: boolean
+        default: false
+      force:
+        description: 'Force execution even outside market hours'
+        type: boolean
+        default: false
 
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     defaults:
       run:
@@ -61,4 +70,14 @@ jobs:
 
           # Note: LLM model names are hardcoded in apps/engine/core/config.py
         run: |
-          python main.py ingest
+          FORCE_FLAG=""
+          if [ "${{ inputs.force }}" = "true" ]; then
+            FORCE_FLAG="--force"
+          fi
+
+          DRY_RUN_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          python main.py ingest $FORCE_FLAG $DRY_RUN_FLAG

@@ -4,6 +4,7 @@ This module implements the logic to compare macro events from multiple LLM model
 and promote them to the global timeline (long-term memory) if consensus is reached.
 """
 
+import asyncio
 import logging
 from collections import defaultdict
 from typing import Any
@@ -453,12 +454,9 @@ async def process_consensus(
 
     groups = _group_events_semantically(events, embeddings, sim_threshold)
 
-    consensus_reached = []
-
-    # 3. Check each group for consensus
+    # 3. Identify all groups meeting the consensus threshold
+    qualifying_groups = []
     for occurrences in groups:
-        # Calculate cumulative weight for the group to check against threshold
-        # We need to track which specific model (owner_id) we've already counted for weight
         models_seen_for_weight = set()
         cumulative_weight = 0.0
         for occ in occurrences:
@@ -468,15 +466,31 @@ async def process_consensus(
                 models_seen_for_weight.add(occ.model_name)
 
         if cumulative_weight >= threshold:
+            qualifying_groups.append((occurrences, cumulative_weight))
+
+    sem = asyncio.Semaphore(3)
+
+    async def _promote_with_semaphore(occurrences, cumulative_weight):
+        async with sem:
             representative_name = occurrences[0].event_name
             unique_models = set(f"{occ.model_provider}_{occ.model_name}" for occ in occurrences)
             logger.info(
                 f"Consensus reached on semantic event group: '{representative_name}' "
                 f"(Models: {len(unique_models)}, Weight: {cumulative_weight:.2f})"
             )
-            res = await _synthesize_and_promote_group(occurrences, discovery_service, sim_threshold)
-            if res:
-                consensus_reached.append(res)
+            return await _synthesize_and_promote_group(occurrences, discovery_service, sim_threshold)
+
+    results = await asyncio.gather(
+        *[_promote_with_semaphore(occ, wt) for occ, wt in qualifying_groups],
+        return_exceptions=True,
+    )
+
+    consensus_reached = []
+    for r in results:
+        if isinstance(r, Exception):
+            logger.exception("Error synthesizing consensus event group: %s", r)
+        elif r:
+            consensus_reached.append(r)
 
     global _last_consensus_events
     _last_consensus_events = consensus_reached

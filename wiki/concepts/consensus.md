@@ -39,8 +39,8 @@ Candidate parallels from individual model observations are collected and passed 
 The structured historical parallel is stored in `metadata.historical_parallel` when the event is promoted to long-term memory. The memory content string includes a formatted tag like `[Historical Parallel: 2024 Red Sea Tanker Disruptions (Jan - Mar 2024)]`.
 
 ### 5. Event Promotion
-
-Events meeting importance and confidence thresholds are promoted to long-term memory with full metadata, including the structured historical parallel, scenarios, and discovered assets.
+ 
+Events meeting importance and confidence thresholds are promoted to long-term memory with full metadata, including the structured historical parallel, scenarios, and discovered assets. To avoid sequential bottlenecks during high-event volume days, candidate groups are processed concurrently using `asyncio.gather` bounded by `asyncio.Semaphore(3)` with isolated error boundaries.
 
 ## Related
 

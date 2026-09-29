@@ -20,6 +20,7 @@ class FMPProvider(FinancialProvider):
 
     BASE_URL = "https://financialmodelingprep.com/stable"
     _last_call_time = 0.0  # Shared across all instances to throttle globally
+    _quarterly_metrics_supported: bool | None = None
     _db_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".hourly_price_cache.db"
     )
@@ -319,12 +320,16 @@ class FMPProvider(FinancialProvider):
         if not self.api_key:
             return []
 
+        effective_period = period
+        if period == "quarter" and FMPProvider._quarterly_metrics_supported is False:
+            effective_period = "annual"
+
         try:
             async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 # Build params with symbol instead of ticker path for stable API
                 params = {
                     "symbol": ticker,
-                    "period": period,
+                    "period": effective_period,
                     "limit": limit,
                     "apikey": self.api_key,
                 }
@@ -336,7 +341,11 @@ class FMPProvider(FinancialProvider):
                 metrics_resp, ratios_resp = await asyncio.gather(metrics_task, ratios_task)
 
                 # Fallback to annual if quarterly is not supported (e.g. 402/403 or non-200)
-                if period == "quarter" and (metrics_resp.status_code != 200 or ratios_resp.status_code != 200):
+                if effective_period == "quarter" and (
+                    metrics_resp.status_code != 200 or ratios_resp.status_code != 200
+                ):
+                    if metrics_resp.status_code in (402, 403) or ratios_resp.status_code in (402, 403):
+                        FMPProvider._quarterly_metrics_supported = False
                     logger.warning(
                         f"FMP quarterly metrics not available for {ticker} (status {metrics_resp.status_code}/{ratios_resp.status_code}). "
                         "Retrying with period='annual'..."
@@ -345,6 +354,10 @@ class FMPProvider(FinancialProvider):
                     metrics_task = client.get(f"{self.BASE_URL}/key-metrics", params=params)
                     ratios_task = client.get(f"{self.BASE_URL}/ratios", params=params)
                     metrics_resp, ratios_resp = await asyncio.gather(metrics_task, ratios_task)
+                elif (
+                    effective_period == "quarter" and metrics_resp.status_code == 200 and ratios_resp.status_code == 200
+                ):
+                    FMPProvider._quarterly_metrics_supported = True
 
                 # If both attempts failed (e.g. 402 on both quarterly and annual), return empty
                 if metrics_resp.status_code != 200 or ratios_resp.status_code != 200:

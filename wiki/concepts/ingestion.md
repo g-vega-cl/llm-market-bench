@@ -37,13 +37,19 @@ The prompt focuses strictly on events that move US equity markets (S&P 500, sect
 
 Events with Importance Score >= 8 or matching a CALENDAR STRATEGY (`Pre-ECB/Fed Drift`, etc.) are persisted as memories flagged `is_future_catalyst: true`, feeding [[concepts/catalyst-radar]]. Titles are normalized later by the radar's title cleaner (see [[concepts/catalyst-radar]]).
 
-## Government Tracking
+## Dry-Run Mode & After-Hours Simulation
 
-Government policy and incentive data is tracked for high-impact policy shifts that can generate market-moving catalysts.
+The ingestion pipeline supports an end-to-end dry-run simulation mode via the `--dry-run` CLI flag (or workflow dispatch input in `.github/workflows/ingest.yml`). This enables developers and automated health checks to verify the full multi-model extraction, consensus, and decision pipeline outside regular US market hours:
+
+- **Market Hours Bypass**: Bypasses the `is_market_open()` gate to allow execution during evening, weekend, or holiday hours.
+- **Snapshot Fallback**: If no Gmail newsletters have arrived for the current trading day, the pipeline automatically falls back to the most recent record in `newsletter_snapshots` from Supabase to provide realistic market inputs.
+- **Zero-Mutation Guardrails**: Dust cleanup liquidations, portfolio ledger updates (`Portfolio.execute_trade`), and Alpaca limit order submissions are bypassed with simulated logs.
+- **Mock Decision Attribution**: Signal attribution calls route through `_record_decision` returning mock decision IDs, verifying signal processing end-to-end without mutating the production `decisions` table.
 
 ## Related
 
 - [[concepts/catalyst-radar]]
 - [[entities/pipeline]]
 - [[entities/engine]]
+- [[entities/tool-audit]]
 - [[entities/fetch-daily-newsletter-tool]]

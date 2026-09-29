@@ -73,6 +73,8 @@
 
 ## Concepts
 
+- [[concepts/defensive-tool-dispatch]] — resilient tool-argument resolution, validation, and error boundary around every LLM tool call
+- [[concepts/dry-run-simulation]] — end-to-end simulation mode for the ingest pipeline with no orders or DB mutations
 - [[concepts/pending-settlement-state]] — how the daily score represents an active-but-unsettled experiment with zero-default fallbacks
 - [[concepts/daily-move]] — day-over-day percentage change in total equity, shown on portfolio cards and the detail page
 - [[concepts/daily-move]] — Auto-indexed page

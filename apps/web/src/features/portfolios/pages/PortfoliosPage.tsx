@@ -11,6 +11,7 @@ import {
 import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
+import { formatEasternDateTime } from '~/utils/date';
 import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PortfolioComparisonChart } from '../components/PortfolioComparisonChart';
@@ -59,9 +60,20 @@ export function getSystemPortfolioSubtitle(ownerId: string): string | undefined 
     return undefined;
 }
 
+function PortfolioLastUpdated({ timestamp }: { timestamp?: string | null }) {
+    if (!timestamp) return null;
+    return (
+        <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+            <span>Last updated</span>
+            <span className="font-mono text-zinc-400">{formatEasternDateTime(timestamp)}</span>
+        </div>
+    );
+}
+
 function PortfolioCard({
     portfolio,
     todayPct,
+
     deprecated = false,
 }: {
     portfolio: PortfolioWithActive;
@@ -163,6 +175,8 @@ function PortfolioCard({
                             value={`$${Number(portfolio.buying_power || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </div>
+
+                    <PortfolioLastUpdated timestamp={portfolio.last_updated_at} />
                 </div>
             </Card>
         </Link>

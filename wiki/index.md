@@ -73,6 +73,7 @@
 
 ## Concepts
 
+- [[concepts/laya-decisions-model]] — Auto-indexed page
 - [[concepts/daily-spy-live-trading]] — live intraday MOO entry, target limit, and close-exit lifecycle for daily SPY systematic portfolios
 - [[concepts/defensive-tool-dispatch]] — resilient tool-argument resolution, validation, and error boundary around every LLM tool call
 - [[concepts/dry-run-simulation]] — end-to-end simulation mode for the ingest pipeline with no orders or DB mutations

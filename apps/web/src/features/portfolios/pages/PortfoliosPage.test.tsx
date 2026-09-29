@@ -149,4 +149,33 @@ describe('PortfoliosPage Card Heights & Layout', () => {
         );
         expect(getSystemPortfolioSubtitle('custom-model')).toBeUndefined();
     });
+
+    it('renders "Last updated" text when last_updated_at is present on the portfolio', async () => {
+        const portfoliosWithTimestamp = [
+            {
+                ...mockPortfolios[0],
+                last_updated_at: '2026-09-29T19:56:32.000Z',
+            },
+        ] as unknown as (Portfolio & { is_active: boolean; is_autoresearch: boolean })[];
+
+        const fetchFn = vi.fn().mockResolvedValue(portfoliosWithTimestamp);
+        const comparisonFetchFn = vi.fn().mockResolvedValue({
+            portfolios: [],
+            startDate: '',
+            endDate: '',
+            benchmarkData: {},
+        });
+
+        render(
+            <PortfoliosPage
+                initialData={portfoliosWithTimestamp}
+                fetchFn={fetchFn}
+                comparisonFetchFn={comparisonFetchFn}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
+        });
+    });
 });

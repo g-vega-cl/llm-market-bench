@@ -45,7 +45,10 @@ Each active portfolio card shows a compact badge with the same percentage — a
 `success` color scheme for gains, `danger` for losses. Retired portfolios do not
 show the badge. The values are pulled from the comparison performance dataset
 (`fetchAllActivePortfolioPerformance`) and indexed by portfolio id, so cards do
-not need to fetch history individually.
+not need to fetch history individually. Below the cash and buying power metrics,
+each card renders a subtle `Last updated` footer indicating the exact Eastern Time
+timestamp of the portfolio's latest valuation.
+
 
 ## Related
 

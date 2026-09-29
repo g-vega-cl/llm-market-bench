@@ -151,4 +151,28 @@ describe('PortfolioDetailPage Daily Move', () => {
         // (9850 - 10000) / 10000 * 100 = -1.50%
         expect(screen.getByText('-1.50%')).toBeDefined();
     });
+
+    it('renders the "Last updated" indicator when last_updated_at is present', () => {
+        const initialData = {
+            portfolio: {
+                ...mockPortfolio,
+                last_updated_at: '2026-09-29T19:56:32.000Z',
+            },
+            positions: [],
+            history: mockHistory,
+            trades: [],
+        };
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <PortfolioDetailPage
+                    initialData={initialData}
+                    fetchFn={vi.fn().mockResolvedValue(initialData)}
+                    benchmarkFetchFn={vi.fn().mockResolvedValue({})}
+                />
+            </QueryClientProvider>,
+        );
+
+        expect(screen.getByText(/Last updated:/i)).toBeDefined();
+    });
 });

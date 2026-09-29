@@ -14,6 +14,7 @@ import {
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import { formatEasternDateTime } from '~/utils/date';
 import type { BenchmarkDataPoint, FrontierTheme, FutureForce } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { FrontierThemeCards } from '../components/FrontierThemeCards';
@@ -42,6 +43,15 @@ interface PortfolioDetailPageProps {
         startDate: string,
         endDate: string,
     ) => Promise<Record<string, BenchmarkDataPoint[]>>;
+}
+
+function PortfolioLastUpdatedText({ timestamp }: { timestamp?: string | null }) {
+    if (!timestamp) return null;
+    return (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-mono">
+            Last updated: {formatEasternDateTime(timestamp)}
+        </p>
+    );
 }
 
 export function PortfolioDetailPage({
@@ -113,7 +123,9 @@ export function PortfolioDetailPage({
                         <p className="text-zinc-500 text-sm md:text-lg">
                             Portfolio analysis and performance timeline.
                         </p>
+                        <PortfolioLastUpdatedText timestamp={portfolio.last_updated_at} />
                     </div>
+
                     <Card padding="md" className="flex gap-4 md:gap-8">
                         <MetricTile
                             icon="💰"

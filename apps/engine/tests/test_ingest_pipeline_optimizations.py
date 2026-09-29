@@ -121,6 +121,7 @@ async def test_process_consensus_parallelizes_group_synthesis():
     with (
         patch("analysis.consensus._get_event_embeddings", new_callable=AsyncMock) as mock_emb,
         patch("analysis.consensus._synthesize_and_promote_group", side_effect=mock_synthesize),
+        patch("analysis.consensus.DiscoveryService"),
     ):
         mock_emb.return_value = [[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]]
 
@@ -137,31 +138,34 @@ async def test_fmp_provider_caches_quarterly_tier_restriction():
     provider.api_key = "mock_key"
     FMPProvider._quarterly_metrics_supported = None  # Reset state
 
-    quarter_resp = MagicMock(status_code=402)
-    annual_resp = MagicMock(status_code=200)
-    annual_resp.json.return_value = [{"symbol": "XLV", "peRatio": 18.5, "date": "2026-01-01"}]
+    try:
+        quarter_resp = MagicMock(status_code=402)
+        annual_resp = MagicMock(status_code=200)
+        annual_resp.json.return_value = [{"symbol": "XLV", "peRatio": 18.5, "date": "2026-01-01"}]
 
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        # First ticker (XLV): quarterly fails with 402, retries annual
-        mock_get.side_effect = [
-            quarter_resp,  # key-metrics quarter
-            quarter_resp,  # ratios quarter
-            annual_resp,  # key-metrics annual
-            annual_resp,  # ratios annual
-            annual_resp,  # key-metrics annual for 2nd ticker
-            annual_resp,  # ratios annual for 2nd ticker
-        ]
+        with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+            # First ticker (XLV): quarterly fails with 402, retries annual
+            mock_get.side_effect = [
+                quarter_resp,  # key-metrics quarter
+                quarter_resp,  # ratios quarter
+                annual_resp,  # key-metrics annual
+                annual_resp,  # ratios annual
+                annual_resp,  # key-metrics annual for 2nd ticker
+                annual_resp,  # ratios annual for 2nd ticker
+            ]
 
-        metrics1 = await provider.get_key_metrics("XLV", period="quarter", limit=1)
-        assert len(metrics1) == 1
-        assert FMPProvider._quarterly_metrics_supported is False
-        assert mock_get.call_count == 4
+            metrics1 = await provider.get_key_metrics("XLV", period="quarter", limit=1)
+            assert len(metrics1) == 1
+            assert FMPProvider._quarterly_metrics_supported is False
+            assert mock_get.call_count == 4
 
-        # Second ticker (UUP): should directly request annual, bypassing the 2 failed quarterly requests
-        metrics2 = await provider.get_key_metrics("UUP", period="quarter", limit=1)
-        assert len(metrics2) == 1
-        # Call count should increase by only 2 (for annual), not 4
-        assert mock_get.call_count == 6
+            # Second ticker (UUP): should directly request annual, bypassing the 2 failed quarterly requests
+            metrics2 = await provider.get_key_metrics("UUP", period="quarter", limit=1)
+            assert len(metrics2) == 1
+            # Call count should increase by only 2 (for annual), not 4
+            assert mock_get.call_count == 6
+    finally:
+        FMPProvider._quarterly_metrics_supported = None
 
 
 @pytest.mark.asyncio

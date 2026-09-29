@@ -1,24 +1,42 @@
 """Shared pytest fixtures for main.py tests."""
 
 import os
+import socket
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 # Set dummy environment variables BEFORE imports happen during test collection
-# This prevents get_supabase_client() from raising ValueError at import/init time
-if not os.getenv("SUPABASE_PROJECT_URL"):
-    os.environ["SUPABASE_PROJECT_URL"] = "https://mock.supabase.co"
-if not os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
-    os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "mock-key"
-if not os.getenv("FMP_API_KEY"):
-    os.environ["FMP_API_KEY"] = "mock-fmp-key"
-
-
-import socket
+# This prevents get_supabase_client() and LLM client constructors from raising
+# credential errors at import/init time in hermetic CI environments
+_DUMMY_ENV_VARS = {
+    "SUPABASE_PROJECT_URL": "https://mock.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY": "mock-key",
+    "FMP_API_KEY": "mock-fmp-key",
+    "OPENAI_API_KEY": "mock-openai-key",
+    "ANTHROPIC_API_KEY": "mock-anthropic-key",
+    "GEMINI_API_KEY": "mock-gemini-key",
+    "DEEPSEEK_API_KEY": "mock-deepseek-key",
+    "MINIMAX_API_KEY": "mock-minimax-key",
+    "OPENROUTER_API_KEY": "mock-openrouter-key",
+    "FRED_API_KEY": "mock-fred-key",
+}
+for _env_name, _default_val in _DUMMY_ENV_VARS.items():
+    if not os.getenv(_env_name):
+        os.environ[_env_name] = _default_val
 
 _real_socket_connect = socket.socket.connect
 _real_getaddrinfo = socket.getaddrinfo
+
+
+@pytest.fixture(autouse=True)
+def reset_fmp_provider_cache():
+    """Reset FMPProvider class cache between tests to avoid cross-test state leakage."""
+    from execution.providers.fmp import FMPProvider
+
+    FMPProvider._quarterly_metrics_supported = None
+    yield
+    FMPProvider._quarterly_metrics_supported = None
 
 
 @pytest.fixture(autouse=True, scope="session")

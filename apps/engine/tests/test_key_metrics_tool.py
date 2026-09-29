@@ -142,6 +142,7 @@ async def test_execute_tool_dispatches_get_key_metrics():
 @pytest.mark.asyncio
 async def test_fmp_provider_get_key_metrics_fallback_to_annual():
     """Test that get_key_metrics falls back to annual if quarterly returns a client error (e.g. 402/403)."""
+    FMPProvider._quarterly_metrics_supported = None
     provider = FMPProvider()
     provider.api_key = "test_api_key"
 

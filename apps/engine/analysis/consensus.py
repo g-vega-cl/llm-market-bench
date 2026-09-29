@@ -422,7 +422,10 @@ async def _synthesize_and_promote_group(
 
 
 async def process_consensus(
-    events: list[MacroEvent], threshold: float = 2.0, sim_threshold: float = 0.75
+    events: list[MacroEvent],
+    threshold: float = 2.0,
+    sim_threshold: float = 0.75,
+    discovery_service: DiscoveryService | None = None,
 ) -> list[dict]:
     """Process a list of macro events and identify consensus using semantic grouping,
     deduplication, weighted voting, and LLM synthesis.
@@ -432,6 +435,7 @@ async def process_consensus(
         threshold: Minimum cumulative weight of different models that must identify
             the same event for it to be promoted.
         sim_threshold: Cosine similarity threshold for semantic grouping.
+        discovery_service: Optional DiscoveryService instance to use for asset discovery.
 
     Returns:
         List of consensus events that were promoted to memory.
@@ -439,7 +443,8 @@ async def process_consensus(
     if not events:
         return []
 
-    discovery_service = DiscoveryService()
+    if discovery_service is None:
+        discovery_service = DiscoveryService()
 
     # 1. Batch generate embeddings for all event names
     embeddings = await _get_event_embeddings([e.event_name for e in events])

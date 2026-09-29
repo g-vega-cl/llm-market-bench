@@ -10,6 +10,8 @@ import { isExperimentColdStart } from '../../autoresearch/utils/coldStart';
 import { splitPromptSections } from '../../autoresearch/utils/promptSections';
 
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
+import { DailyLessonsLedgerCard } from '../components/DailyLessonsLedgerCard';
+import { DailyPostMortemCard } from '../components/DailyPostMortemCard';
 import { DailyScoreBreakdown } from '../components/DailyScoreBreakdown';
 import { MarketContextViewer } from '../components/MarketContextViewer';
 
@@ -574,6 +576,9 @@ function PredictionExpandedDetail({
                             <strong>Model:</strong> {p.model_name}
                         </div>
                     </div>
+
+                    {/* Post-Market Post-Mortem & Causal Lessons (GPT-5.6 Luna) */}
+                    <DailyPostMortemCard prediction={p} />
 
                     {/* Market Context Passed to Predictor */}
                     <MarketContextViewer context={p.market_context} />
@@ -1395,6 +1400,9 @@ function AutoresearchHistoryArena({
 
                         {/* Meta-Researcher Rationale & Conviction */}
                         <ResearchRationaleCard experiment={selectedExperiment} />
+
+                        {/* Daily Causal Lessons & Post-Mortems Feeding Prompt Evolution */}
+                        <DailyLessonsLedgerCard predictions={predictions} />
 
                         {/* Prompt Evolution / Diff vs Parent */}
                         <PromptChanges

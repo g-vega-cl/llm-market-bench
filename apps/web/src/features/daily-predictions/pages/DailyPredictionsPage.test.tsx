@@ -659,4 +659,87 @@ You MUST return a valid JSON object.`,
             screen.queryByText('Daily Ratchet Score Calculation & Breakdown'),
         ).not.toBeInTheDocument();
     });
+
+    it('renders DailyPostMortemCard when expanding an evaluated prediction that has post-mortem diagnosis', () => {
+        const predictionWithPostMortem: DailyPrediction = {
+            ...mockPredictions[0],
+            id: 'pred-pm-expanded',
+            postmortem_category: 'ACCURATE_CAPTURE',
+            postmortem_flawed_assumption: 'None',
+            postmortem_lesson:
+                'When geopolitical risk aligns before open, confirm with first-hour price tape.',
+            was_predictable: true,
+            postmortem_evaluated_at: '2026-08-03T17:15:00Z',
+        };
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={[predictionWithPostMortem]}
+                experiments={[]}
+            />,
+        );
+
+        // Click to expand row
+        const expandButtons = screen.getAllByRole('button', { name: /view/i });
+        fireEvent.click(expandButtons[0]);
+
+        // Post-mortem card must be visible
+        expect(screen.getByText('Post-Market Evaluation (GPT-5.6 Luna)')).toBeInTheDocument();
+        expect(screen.getByText('ACCURATE CAPTURE')).toBeInTheDocument();
+        expect(screen.getByText('PREDICTABLE PRE-MARKET')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'When geopolitical risk aligns before open, confirm with first-hour price tape.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('renders DailyLessonsLedgerCard with recent post-mortem lessons in Autoresearch view', () => {
+        const predictionWithLesson: DailyPrediction = {
+            ...mockPredictions[0],
+            id: 'pred-pm-ledger',
+            target_date: '2026-08-03',
+            postmortem_category: 'INTRADAY_REVERSAL',
+            postmortem_flawed_assumption: 'Assumed relief bid would fade.',
+            postmortem_lesson: 'Do not fade major relief bids purely on rate headwinds.',
+            was_predictable: true,
+            postmortem_evaluated_at: '2026-08-03T17:15:00Z',
+        };
+
+        const activeExp: PromptExperiment = {
+            id: 'exp-deepseek-active',
+            prompt_name: 'DAILY_PREDICTOR_PROMPT',
+            variant_tag: 'daily-active-1',
+            experiment_type: 'baseline',
+            prompt_content: 'Active prompt.',
+            change_description: 'Baseline prompt.',
+            metrics: { score: 55.0 },
+            status: 'active',
+            week_start: '2026-08-03',
+            week_end: '2026-08-10',
+            created_at: '2026-08-03T00:00:00Z',
+            parent_tag: null,
+            research_output: null,
+            is_backtest: false,
+            track_id: 'deepseek-v4-flash',
+        };
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={[predictionWithLesson]}
+                experiments={[activeExp]}
+            />,
+        );
+
+        // Switch to Autoresearch view
+        fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
+
+        // DailyLessonsLedgerCard must render the lessons section and details
+        expect(screen.getByText('Daily Causal Lessons & Post-Mortems')).toBeInTheDocument();
+        expect(screen.getByText('INTRADAY REVERSAL')).toBeInTheDocument();
+        expect(
+            screen.getByText('Do not fade major relief bids purely on rate headwinds.'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Assumed relief bid would fade.')).toBeInTheDocument();
+    });
 });

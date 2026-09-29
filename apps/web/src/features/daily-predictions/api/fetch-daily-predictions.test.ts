@@ -62,6 +62,32 @@ describe('fetch-daily-predictions', () => {
         expect(result.map((r) => r.id)).toEqual(['1', '3']);
     });
 
+    it('fetchDailyPredictions preserves postmortem diagnosis and lesson fields', async () => {
+        const mockData = [
+            {
+                id: 'pred-postmortem-1',
+                prompt_variant_tag: 'daily-pred-live-1',
+                model_name: 'deepseek-v4-flash',
+                status: 'evaluated',
+                postmortem_category: 'ACCURATE_CAPTURE',
+                postmortem_flawed_assumption: 'None',
+                postmortem_lesson:
+                    'When broad market weakness aligns with higher yields, retain directional signal.',
+                was_predictable: true,
+                postmortem_evaluated_at: '2026-09-28T17:15:00Z',
+            },
+        ];
+        mockChain.order.mockResolvedValueOnce({ data: mockData, error: null });
+
+        const result = await fetchDailyPredictions();
+
+        expect(result).toHaveLength(1);
+        expect(result[0].postmortem_category).toBe('ACCURATE_CAPTURE');
+        expect(result[0].postmortem_lesson).toContain('When broad market weakness aligns');
+        expect(result[0].was_predictable).toBe(true);
+        expect(result[0].postmortem_evaluated_at).toBe('2026-09-28T17:15:00Z');
+    });
+
     it('fetchDailyPredictorExperiments queries non-backtest prompt experiments', async () => {
         const mockExperiments = [{ id: 'exp-1', is_backtest: false }];
         mockChain.order.mockResolvedValueOnce({ data: mockExperiments, error: null });

@@ -24,6 +24,11 @@ export interface DailyPrediction {
     brier_score: number | null;
     status: 'pending' | 'evaluated';
     market_context?: string | null;
+    postmortem_category?: string | null;
+    postmortem_flawed_assumption?: string | null;
+    postmortem_lesson?: string | null;
+    was_predictable?: boolean | null;
+    postmortem_evaluated_at?: string | null;
     created_at: string;
     updated_at: string;
 }

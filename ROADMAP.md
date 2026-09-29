@@ -80,7 +80,7 @@ A living document of features and improvements in progress or planned for the pl
     - same with text
 - [ ] - Benchify: see real time daily moves for system portfolios, not only when they are evaluated after? Audit
 - [ ] - Benchify: set up Laya alongside JEV?
-- [ ] - Benchify: where is the daily thoughts reasoning for daily predictor?
+- [x] - Benchify: where is the daily thoughts reasoning for daily predictor? (Surfaced GPT-5.6 Luna post-mortem diagnoses, flawed morning assumptions, and actionable lessons in PredictionRow audit cards and Autoresearch DailyLessonsLedgerCard).
 - [ ] - Benchify: AI sector predictor autoresearch is really hard to figure out because many LLMs have autoresearch in the same tab?
 - [ ] - Benchify: today page global macro regime, show last updated
 - [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios

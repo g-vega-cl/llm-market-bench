@@ -215,13 +215,12 @@ class TestSubmitLimitOrder:
 @pytest.mark.asyncio
 class TestSellGuardrails:
     async def test_sell_skipped_when_no_alpaca_position(self, mock_trading_client):
-        """SELL order is skipped when Alpaca holds 0 shares and Supabase also shows 0."""
+        """SELL order is skipped when Alpaca holds 0 shares."""
         broker = AlpacaBroker()
         broker._client = mock_trading_client
 
         with (
             patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos,
-            patch.object(broker, "_get_supabase_position", return_value=0) as mock_sup,
             patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update,
         ):
             trade_id = uuid4()
@@ -235,18 +234,17 @@ class TestSellGuardrails:
             )
 
             mock_pos.assert_called_once_with("TSLA")
-            mock_sup.assert_called_once_with("TSLA", "test")
             mock_trading_client.submit_order.assert_not_called()
             mock_update.assert_awaited_once_with(trade_id, None, "SKIPPED_NO_POSITION")
 
-    async def test_sell_proceeds_when_supabase_has_position_but_alpaca_does_not(self, mock_trading_client):
-        """SELL order proceeds when Alpaca shows 0 but Supabase ledger shows the position."""
+    async def test_sell_skipped_even_if_supabase_has_position(self, mock_trading_client):
+        """SELL order is skipped when Alpaca holds 0 shares, even if Supabase ledger has shares, to prevent accidental shorting."""
         broker = AlpacaBroker()
         broker._client = mock_trading_client
 
         with (
             patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos,
-            patch.object(broker, "_get_supabase_position", return_value=15) as mock_sup,
+            patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update,
         ):
             trade_id = uuid4()
             await broker.submit_limit_order(
@@ -259,10 +257,73 @@ class TestSellGuardrails:
             )
 
             mock_pos.assert_called_once_with("JPM")
-            mock_sup.assert_called_once_with("JPM", "gpt-4o")
+            mock_trading_client.submit_order.assert_not_called()
+            mock_update.assert_awaited_once_with(trade_id, None, "SKIPPED_NO_POSITION")
+
+    async def test_short_signal_submits_sell_even_when_alpaca_has_zero_position(self, mock_trading_client):
+        """SHORT order is an intentional short, so it proceeds even when Alpaca holds 0 shares."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos:
+            trade_id = uuid4()
+            await broker.submit_limit_order(
+                trade_id=trade_id,
+                ticker="XLE",
+                quantity=10,
+                signal="SHORT",
+                limit_price=60.00,
+                agent_id="sys-sector-ls-consensus",
+            )
+
+            mock_pos.assert_not_called()
             request = mock_trading_client.submit_order.call_args[0][0]
-            assert request.qty == 5
+            assert request.qty == 10
             assert request.side == OrderSide.SELL
+
+    async def test_cover_signal_skipped_when_alpaca_not_short(self, mock_trading_client):
+        """COVER order is skipped when Alpaca holds 0 or positive shares (not short)."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with (
+            patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos,
+            patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update,
+        ):
+            trade_id = uuid4()
+            await broker.submit_limit_order(
+                trade_id=trade_id,
+                ticker="XLE",
+                quantity=10,
+                signal="COVER",
+                limit_price=60.00,
+                agent_id="sys-sector-ls-consensus",
+            )
+
+            mock_pos.assert_called_once_with("XLE")
+            mock_trading_client.submit_order.assert_not_called()
+            mock_update.assert_awaited_once_with(trade_id, None, "SKIPPED_NO_POSITION")
+
+    async def test_cover_signal_proceeds_when_alpaca_is_short(self, mock_trading_client):
+        """COVER order proceeds when Alpaca holds a negative (short) position."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(broker, "get_alpaca_position", return_value=-15.0) as mock_pos:
+            trade_id = uuid4()
+            await broker.submit_limit_order(
+                trade_id=trade_id,
+                ticker="XLE",
+                quantity=10,
+                signal="COVER",
+                limit_price=60.00,
+                agent_id="sys-sector-ls-consensus",
+            )
+
+            mock_pos.assert_called_once_with("XLE")
+            request = mock_trading_client.submit_order.call_args[0][0]
+            assert request.qty == 10
+            assert request.side == OrderSide.BUY
 
     async def test_sell_quantity_capped_when_under_held(self, mock_trading_client):
         """SELL quantity is reduced to actual Alpaca holdings when fewer shares held."""
@@ -324,6 +385,28 @@ class TestSellGuardrails:
             mock_pos.assert_not_called()
             request = mock_trading_client.submit_order.call_args[0][0]
             assert request.side == OrderSide.BUY
+
+    async def test_market_order_sell_skipped_when_no_alpaca_position(self, mock_trading_client):
+        """Market SELL order is skipped when Alpaca holds 0 shares."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with (
+            patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos,
+            patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update,
+        ):
+            trade_id = uuid4()
+            await broker.submit_market_order(
+                trade_id=trade_id,
+                ticker="SPY",
+                quantity=10,
+                signal="SELL",
+                agent_id="sys-daily-spy",
+            )
+
+            mock_pos.assert_called_once_with("SPY")
+            mock_trading_client.submit_order.assert_not_called()
+            mock_update.assert_awaited_once_with(trade_id, None, "SKIPPED_NO_POSITION")
 
 
 # ---------------------------------------------------------------------------

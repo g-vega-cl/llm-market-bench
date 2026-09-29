@@ -87,27 +87,28 @@ class AlpacaBroker:
         if not self._client:
             return
 
-        side = OrderSide.BUY if signal.upper() == "BUY" else OrderSide.SELL
+        sig = signal.upper()
+        if sig in ("BUY", "LONG", "COVER"):
+            side = OrderSide.BUY
+        elif sig in ("SELL", "SHORT"):
+            side = OrderSide.SELL
+        else:
+            side = OrderSide.BUY if "BUY" in sig else OrderSide.SELL
+
         client_order_id = f"{agent_id}__{ticker}__{signal}__{str(trade_id)}"
 
-        # Guardrail: prevent shorting in Alpaca on SELL orders
-        if side == OrderSide.SELL:
+        # Guardrails:
+        # 1. SELL (closing long): only sell shares Alpaca physically holds.
+        #    Never sell shares not held on Alpaca to prevent accidental short positions.
+        if sig == "SELL":
             alpaca_qty = self.get_alpaca_position(ticker)
             if alpaca_qty <= 0:
-                supabase_qty = self._get_supabase_position(ticker, agent_id)
-                if supabase_qty > 0:
-                    logger.info(
-                        f"[Alpaca] Supabase shows {supabase_qty} {ticker} shares, "
-                        f"overriding Alpaca position (0 shares)."
-                    )
-                    quantity = min(quantity, supabase_qty)
-                else:
-                    logger.warning(
-                        f"[Alpaca] SKIPPED SELL {quantity} {ticker}: "
-                        f"Alpaca holds {alpaca_qty} shares. No shorting allowed."
-                    )
-                    await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
-                    return
+                logger.warning(
+                    f"[Alpaca] SKIPPED SELL {quantity} {ticker}: "
+                    f"Alpaca holds {alpaca_qty} shares. Cannot close position not held."
+                )
+                await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
+                return
             elif quantity > alpaca_qty:
                 logger.warning(
                     f"[Alpaca] CAPPING SELL for {ticker}: "
@@ -115,6 +116,25 @@ class AlpacaBroker:
                     f"Submitting {alpaca_qty} instead."
                 )
                 quantity = int(alpaca_qty)
+
+        # 2. COVER (closing short): only cover shares Alpaca is physically short.
+        elif sig == "COVER":
+            alpaca_qty = self.get_alpaca_position(ticker)
+            if alpaca_qty >= 0:
+                logger.warning(
+                    f"[Alpaca] SKIPPED COVER {quantity} {ticker}: "
+                    f"Alpaca holds {alpaca_qty} shares. Cannot cover without short position."
+                )
+                await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
+                return
+            short_shares = int(abs(alpaca_qty))
+            if quantity > short_shares:
+                logger.warning(
+                    f"[Alpaca] CAPPING COVER for {ticker}: "
+                    f"requested {quantity}, Alpaca is short {short_shares}. "
+                    f"Submitting {short_shares} instead."
+                )
+                quantity = short_shares
 
         order_request = LimitOrderRequest(
             symbol=ticker,
@@ -165,26 +185,25 @@ class AlpacaBroker:
         if not self._client:
             return
 
-        side = OrderSide.BUY if signal.upper() in ("BUY", "LONG") else OrderSide.SELL
+        sig = signal.upper()
+        if sig in ("BUY", "LONG", "COVER"):
+            side = OrderSide.BUY
+        elif sig in ("SELL", "SHORT"):
+            side = OrderSide.SELL
+        else:
+            side = OrderSide.BUY if "BUY" in sig else OrderSide.SELL
+
         client_order_id = f"{agent_id}__{ticker}__{signal}__{str(trade_id)}"
 
-        if side == OrderSide.SELL:
+        if sig == "SELL":
             alpaca_qty = self.get_alpaca_position(ticker)
             if alpaca_qty <= 0:
-                supabase_qty = self._get_supabase_position(ticker, agent_id)
-                if supabase_qty > 0:
-                    logger.info(
-                        f"[Alpaca] Supabase shows {supabase_qty} {ticker} shares, "
-                        f"overriding Alpaca position (0 shares)."
-                    )
-                    quantity = min(quantity, supabase_qty)
-                else:
-                    logger.warning(
-                        f"[Alpaca] SKIPPED SELL {quantity} {ticker}: "
-                        f"Alpaca holds {alpaca_qty} shares. No shorting allowed."
-                    )
-                    await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
-                    return
+                logger.warning(
+                    f"[Alpaca] SKIPPED SELL {quantity} {ticker}: "
+                    f"Alpaca holds {alpaca_qty} shares. Cannot close position not held."
+                )
+                await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
+                return
             elif quantity > alpaca_qty:
                 logger.warning(
                     f"[Alpaca] CAPPING SELL for {ticker}: "
@@ -192,6 +211,23 @@ class AlpacaBroker:
                     f"Submitting {alpaca_qty} instead."
                 )
                 quantity = int(alpaca_qty)
+        elif sig == "COVER":
+            alpaca_qty = self.get_alpaca_position(ticker)
+            if alpaca_qty >= 0:
+                logger.warning(
+                    f"[Alpaca] SKIPPED COVER {quantity} {ticker}: "
+                    f"Alpaca holds {alpaca_qty} shares. Cannot cover without short position."
+                )
+                await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
+                return
+            short_shares = int(abs(alpaca_qty))
+            if quantity > short_shares:
+                logger.warning(
+                    f"[Alpaca] CAPPING COVER for {ticker}: "
+                    f"requested {quantity}, Alpaca is short {short_shares}. "
+                    f"Submitting {short_shares} instead."
+                )
+                quantity = short_shares
 
         order_request = MarketOrderRequest(
             symbol=ticker,

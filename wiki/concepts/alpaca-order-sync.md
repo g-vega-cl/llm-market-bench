@@ -1,106 +1,52 @@
 ---
-tags: [execution, alpaca, sync, cron]
+tags: [execution, alpaca, broker, order-sync, guardrails]
 category: concept
 ---
 
 # Alpaca Order Sync
 
-How Alpaca paper-trading order status is synced back to the Supabase `trades` table.
+The engine mirrors its internal trade ledger to the Alpaca paper broker via `AlpacaBroker` (`apps/engine/execution/alpaca_broker.py`). Both limit orders (`submit_limit_order`) and market orders (`submit_market_order`) map an engine-level **signal** string onto an Alpaca `OrderSide` and apply position-aware guardrails before submitting.
 
-## Architecture
+## Signal → OrderSide Mapping
 
-The sync is **decoupled** from the engine run lifecycle — it runs as a daily GitHub Actions cron job, not inside the trading pipeline.
+Signal strings are normalized to uppercase and mapped as follows:
 
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Engine trades   │────▶│  Alpaca Broker   │────▶│  Supabase trades │
-│  portfolio.py    │     │  submit_order()  │     │  alpaca_status = │
-│                  │     │                  │     │  "SUBMITTED"     │
-└─────────────────┘     └──────────────────┘     └────────┬────────┘
-                                                          │
-                                                    ...hours pass...
-                                                          │
-┌─────────────────┐     ┌──────────────────┐              │
-│  GitHub Actions  │────▶│  sync_alpaca_    │◀─────────────┘
-│  Daily 4pm ET    │     │  orders.py       │
-│                  │     │                  │
-└─────────────────┘     │  For each pending │     ┌─────────────────┐
-                        │  order:           │────▶│  Alpaca API     │
-                        │  get_order_by_id()│     │  order.status   │
-                        └──────────────────┘     └─────────────────┘
-                                │
-                                ▼
-                        ┌─────────────────┐
-                        │  Supabase trades │
-                        │  alpaca_status = │
-                        │  "FILLED" (etc.) │
-                        └─────────────────┘
-```
+| Signal | OrderSide |
+|--------|-----------|
+| `BUY`, `LONG`, `COVER` | `BUY` |
+| `SELL`, `SHORT` | `SELL` |
+| any other (fallback) | `BUY` if the string contains `BUY`, else `SELL` |
 
-## Status Lifecycle
+This lets the engine express intentional shorts (`SHORT`) and closes of shorts (`COVER`) distinctly from ordinary long closes (`SELL`), while the fallback preserves older signal names.
 
-| Status | Set By | Meaning |
-|--------|--------|---------|
-| `SUBMITTED` | `alpaca_broker.py` at order placement | Order placed in Alpaca, awaiting fill |
-| `FILLED` | Sync script | Alpaca filled the order |
-| `REJECTED` | Sync script | Alpaca rejected the order |
-| `CANCELED` | Sync script | Order was cancelled |
-| `EXPIRED` | Sync script | DAY order expired unfilled |
-| `ERROR` | `alpaca_broker.py` on submission failure | Couldn't submit to Alpaca |
-| `SKIPPED_NO_POSITION` | `alpaca_broker.py` SELL guardrail | Blocked — no shares held |
+## Position Guardrails
 
-Before 2026-05-14, the initial status was `PENDING` instead of `SUBMITTED`. All legacy `PENDING` orders reached terminal states (32 filled, 1 canceled) and were programmatically resolved in the database via a migration script on 2026-06-11. The sync script now only tracks `SUBMITTED` orders.
+Guardrails ensure the engine never accidentally opens (or fails to close) a position that Alpaca does not physically hold.
 
-## Sync Script
+### SELL — closing a long
 
-**Location**: `apps/engine/scripts/sync_alpaca_orders.py`
+A `SELL` is only allowed to close long shares that Alpaca **physically holds**:
 
-Queries trades with `alpaca_status = 'SUBMITTED'` and `alpaca_order_id IS NOT NULL` from the last 24 hours. For each, calls `TradingClient.get_order_by_id()` and updates status when the order reaches a terminal state (filled, rejected, canceled, expired). Also sets `alpaca_filled_at` when filled.
+- If `get_alpaca_position(ticker) <= 0`, the order is skipped and the trade is marked `SKIPPED_NO_POSITION`. The engine does **not** fall back to the Supabase ledger to synthesize a position — selling shares Alpaca does not hold would open an unintended short and collide with subsequent `BUY` orders (403 errors).
+- If the requested quantity exceeds Alpaca's holdings, it is capped to `int(alpaca_qty)`.
 
-**Rate limits**: Alpaca allows 200 requests/minute. The sync makes 1 API call per pending order — well within limits even on the busiest day.
+### COVER — closing a short
 
-## GitHub Actions
+A `COVER` is only allowed when Alpaca is actually short the ticker:
 
-**Workflow**: `.github/workflows/sync-alpaca.yml`
-- **Schedule**: Daily at 20:00 UTC (4pm ET, after market close) on weekdays
-- **Manual**: `workflow_dispatch` for ad-hoc runs
-- **Secrets required**: `ALPACA_API_KEY`, `ALPACA_SECRET_KEY`, `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- If `get_alpaca_position(ticker) >= 0`, the order is skipped and marked `SKIPPED_NO_POSITION` (cannot cover without a short position).
+- If the requested quantity exceeds the absolute short size, it is capped to `int(abs(alpaca_qty))`.
 
-## Failure Recovery & Idempotency
+### SHORT
 
-### 96-Hour Lookback Window
-To survive potential GitHub Actions runner outages, API timeouts, or holiday weekend gaps, the sync script queries orders with a **96-hour (4 days) lookback window** (`MAX_AGE_HOURS = 96`). 
-This means that if a weekday cron fails or if the market is closed over a multi-day weekend, the very next successful run of the cron will automatically scan back and capture all pending `SUBMITTED` orders submitted during the outage window.
+A `SHORT` maps to a `SELL` and bypasses the position guardrail entirely — it is an intentional short entry, so it proceeds even when Alpaca holds zero shares.
 
-### Idempotency Invariants
-The sync process is fully **idempotent** by design:
-1. **Target Filtering**: The script only queries trades in the `SUBMITTED` state that possess a valid `alpaca_order_id`. Trades that have already reached a terminal status (e.g. `FILLED`, `REJECTED`, `CANCELED`, `EXPIRED`) are ignored.
-2. **Terminal Transitions**: Updates are only written to Supabase once an order reaches a terminal state inside Alpaca. If an order remains in a non-terminal state (e.g. `PARTIALLY_FILLED` or `ACCEPTED`), it is skipped and will be checked again on the next cron run.
-3. **Manual Retries**: If needed, the GitHub Actions workflow can be triggered manually via `workflow_dispatch` at any time to execute an ad-hoc sync without any risk of double-counting or duplicating trades.
+## Trade Status Flags
 
-## Why Decoupled?
+Skipped orders are recorded via `_update_trade` with the sentinel status `SKIPPED_NO_POSITION`, giving a full audit trail of signals that were rejected because the broker-side position did not support them.
 
-The original design was "fire-and-forget" — Alpaca was treated as an audit mirror with no sync back, so `alpaca_status` stayed permanently at `PENDING`. An in-process polling approach (background asyncio tasks) was rejected because `asyncio.run()` cancels pending tasks when the main pipeline completes, making it unreliable.
+## Related
 
-A separate cron job is simpler, more reliable, and survives engine restarts.
-
-## Alpaca Portfolio Reconciliation Audit
-
-**Location**: `apps/engine/audit/alpaca_audit.py`
-**CLI Command**: `python main.py audit-alpaca [--model <model_name>] [--days <N>] [--json]`
-
-The reconciliation tool audits an agent's simulated Supabase portfolio against Alpaca brokerage fills:
-1. **Performance Verification**: Compares the frontend chart metrics (`portfolio_performance` snapshots) against mark-to-market trade calculations and Alpaca fills.
-2. **Trade Matching & Slippage**: Matches each trade ID with Alpaca orders (`client_order_id = {agent_id}__{ticker}__{signal}__{trade_id}`), calculating execution price slippage.
-3. **Position Reconciliation**: Compares Supabase holding quantities against reconstructed Alpaca share counts.
-4. **Root-Cause Discrepancy Detection**: Surfaces skipped orders (`SKIPPED_NO_POSITION`), rejected orders, or timing lags.
-
-## Related Files
-
-- `apps/engine/execution/alpaca_broker.py` — Sets `SUBMITTED` at order placement
-- `apps/engine/scripts/sync_alpaca_orders.py` — Standalone sync script
-- `apps/engine/audit/alpaca_audit.py` — Portfolio reconciliation audit engine
-- `.github/workflows/sync-alpaca.yml` — Daily cron trigger
-- `supabase/migrations/20260423000000_add_alpaca_columns_to_trades.sql` — Schema (original alpaca columns)
-- `supabase/migrations/20260514000000_add_alpaca_filled_at_to_trades.sql` — Schema (alpaca_filled_at)
-- `apps/web/src/features/portfolios/components/TradesTable.tsx` — Frontend trade execution table and audit trail with exact timestamps (executed_at and alpaca_filled_at)
+- [[entities/engine]]
+- [[concepts/execution]]
+- [[entities/sector-trading]]

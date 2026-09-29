@@ -83,7 +83,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: AI sector predictor autoresearch is really hard to figure out because many LLMs have autoresearch in the same tab?
 - [ ] - Benchify: today page global macro regime, show last updated
 - [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios
-- [ ] - Benchify: Sys daily spy why didn't it trade at the beginning of the day? Should it?
+- [x] - Benchify: Sys daily spy why didn't it trade at the beginning of the day? Should it? (Implemented live MOO entry & 3:30 PM close exit)
+- [ ] - Benchify: sys sector uncorr 7d alpaca errors
+- [ ] - Benchify: update today page 
 - [ ] - Benchify: could jev work for my autoresearcher?
 
 Speculative Fanout: Ask multiple questions in a single query and get all of them answered in parallel. For example: triage a support ticket and assess its type, severity, frustration level etc.

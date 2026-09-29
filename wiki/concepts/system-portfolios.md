@@ -42,14 +42,15 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Target Asset**: `SPY`
 - **Position Sizing**: 100% of available cash/equity allocated per session.
 - **Execution Mechanics**:
-  - **Entry Price**: Open Price $\times (1 \pm 0.0005)$ (5 bps slippage).
-  - **Profit Target Exit**: If intraday price reaches target return ($P_{open} \times (1 \pm |\text{expected\_return\_pct}| / 100)$), position closes immediately at the profit target price.
-  - **Time-Based Exit**: If profit target is not reached during regular trading hours, position is closed at 3:30 PM ET price (or Day Close price) with 5 bps slippage.
-- **Idempotency Guardrails**: Re-evaluation runs (`--force`) cleanly remove previous session trades and revert prior realized PnL before executing and recording the updated trade, guaranteeing zero double-buy or duplicate-trade compounding.
-- **Trigger**: Integrated into the daily predictor evaluation pipeline (`apps/engine/tasks/evaluate_daily_predictions.py`).
+  - **Live MOO Entry**: Pre-market Market-On-Open (OPG) market orders submitted to Alpaca before 9:28 AM ET via `daily-trade --action entry` in `.github/workflows/daily-predictor.yml`. For `UP` predictions, active holdings are tracked in `portfolio_positions`. For `DOWN` predictions, virtual `SHORT` trades are logged in the `trades` table.
+  - **Profit Target Exit**: At ~9:35 AM ET (post-open ingestion hook), a limit sell order is submitted to Alpaca at the profit target price ($P_{open} \times (1 + \text{expected\_return\_pct} / 100)$). If touched intraday, Alpaca fills the limit order.
+  - **Time-Based Exit**: Unfilled target limit orders are cancelled and remaining open positions are liquidated at ~3:30 PM ET during the afternoon ingestion run (`daily-trade --action exit`), realizing PnL with zero retroactive backfilling.
+- **Idempotency Guardrails**: Re-evaluation runs cleanly check existing cycle trades to prevent double-buy compounding.
+- **Trigger**: Pre-market entry in `.github/workflows/daily-predictor.yml`, target order placement at 9:35 AM in `main.py run_ingest`, and afternoon liquidation at 3:30 PM in `main.py run_ingest`.
 
 ### Idempotency & Timeframe Guardrails
 - **Horizon-Isolated Routing**: Sector predictor predictions are strictly routed to their matching horizon system portfolios: `7d` routes to weekly `sys-sector-ls-consensus`, `30d` routes to monthly `sys-sector-ls-30d`, and `90d` routes to quarterly `sys-sector-ls-90d`. The 4 mechanical sector benchmark portfolios strictly consume weekly trailing metrics. This eliminates cross-timeframe collision while providing systematic benchmark execution across all forecast horizons.
+- **Cycle-Isolated Daily Trades**: Daily SPY entries check for an existing trade on the target date before inserting, so re-runs never double-buy. Retroactive trade backfill in `evaluate_daily_predictions` is gated behind `--backfill-trades` (defaults to `False`) because live trades now execute during market hours.
 - **Idempotent Real-Time Execution**: All sector entries and exits check existing cycle trade records by timestamp and cycle end date to prevent double entries or re-exits.
 
 ### 5. 20-Day Uncorrelated Sector Momentum (`sys-sector-uncorr-20d`)
@@ -86,15 +87,15 @@ System portfolios are automated, rule-based investment and trading strategies th
 
 ### 10. Daily S&P Close Trader (`sys-daily-spy-close-{model}`)
 - **Signal**: Daily 9:30 AM – 4:00 PM ET S&P 500 predictions (`UP` or `DOWN`) from `daily_predictions` table.
-- **Portfolios**: Dedicated system portfolio per model track (e.g. `sys-daily-spy-close-deepseek-v4-flash`, `sys-daily-spy-close-MiniMax-M3`).
+- **Portfolios**: Dedicated system portfolio per model track (e.g. `sys-daily-spy-close-deepseek-v4-flash`, `sys-daily-spy-close-MiniMax-M3`, `sys-daily-spy-close-~typesafe/jev-latest`).
 - **Target Asset**: `SPY`
 - **Position Sizing**: 100% of available cash/equity allocated per session.
 - **Execution Mechanics**:
-  - **Entry Price**: Open Price $\times (1 \pm 0.0002)$ (2 bps / 0.02% slippage reflecting SPY liquidity).
+  - **Live MOO Entry**: Pre-market Market-On-Open (OPG) market orders submitted to Alpaca before 9:28 AM ET via `daily-trade --action entry` in `.github/workflows/daily-predictor.yml`. For `UP` predictions, active holdings are tracked in `portfolio_positions`. For `DOWN` predictions, virtual `SHORT` trades are logged in the `trades` table.
   - **Target Hits Ignored**: Holds throughout the regular session without exiting on midday profit target touches.
-  - **Session Close Exit**: Position is closed at 3:50 PM ET market close price with 2 bps slippage.
-- **Idempotency Guardrails**: Re-evaluation runs (`--force`) clean up previous session trades and revert prior realized PnL before re-allocating.
-- **Trigger**: Executed alongside target-exit portfolios in `apps/engine/tasks/evaluate_daily_predictions.py`. Backfilled historically via `apps/engine/tasks/backfill_daily_close_portfolios.py`.
+  - **Session Close Exit**: Closed at ~3:30 PM ET during the afternoon ingestion run (`daily-trade --action exit`), liquidating Alpaca shares, updating cash, and recording realized PnL.
+- **Idempotency Guardrails**: Re-evaluation runs cleanly check existing cycle trades to prevent double-buy compounding.
+- **Trigger**: Pre-market entry in `.github/workflows/daily-predictor.yml` and afternoon liquidation at 3:30 PM in `main.py run_ingest`.
 
 ### 11. Multi-Horizon Thematic Forces Strategy (`sys-future-forces`)
 - **Signal**: Multi-horizon (2 to 24 months) thematic forces across 7 canonical archetypes (geopolitical chokepoints, government defense priorities, sleeping giants, latent distribution turn-ons, AI threat surface toll roads, clinical TAM explosions, and mega-events).
@@ -103,6 +104,7 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Risk Management & Invalidation Sentinel**: Daily headline monitoring via OpenAI Luna (`gpt-5.6-luna`) with thinking. If explicit thesis invalidation criteria are satisfied, positions are immediately liquidated during regular market hours (or queued as `pending_liquidation` for the next market open).
 - **Execution & Auditability**: Liquidations and entries execute strictly between 09:30 and 16:00 ET via `apps/engine/execution/future_forces.py` and mirror in real time to the Alpaca paper broker API with zero retroactive backfilling.
 - **Trigger**: Monthly rebalance and daily sentinel audit via `apps/engine/tasks/future_forces_task.py`. Detailed documentation in [[entities/future-forces-portfolio]] and [[concepts/future-forces]].
+
 ## LLM & Autoresearch Inspection Tool (`get_system_portfolios`)
 
 Mechanical system portfolios serve as objective control baselines for autonomous trading agents and prompt autoresearchers. The `get_system_portfolios` tool exposes current holdings, entry prices, unrealized PnL, trailing returns, and underlying quantitative regime signals:
@@ -133,4 +135,6 @@ System portfolios record daily closing performance snapshots in the `public.port
 - [[entities/sector-predictor-arena]]
 - [[concepts/minimax-portfolio]]
 - [[entities/strategy-explainer]]
-
+- [[concepts/execution]]
+- [[concepts/alpaca-order-sync]]
+- [[entities/pipeline]]

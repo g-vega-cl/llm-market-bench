@@ -10,7 +10,7 @@ from uuid import UUID
 from alpaca.common.exceptions import APIError
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
-from alpaca.trading.requests import LimitOrderRequest
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
 
 from core.config import ALPACA_API_KEY, ALPACA_ENABLED, ALPACA_PAPER_ENDPOINT, ALPACA_SECRET_KEY
 from core.db import get_supabase_client
@@ -151,6 +151,91 @@ class AlpacaBroker:
             supabase.table("trades").update(payload).eq("id", str(trade_id)).execute()
         except Exception as exc:
             logger.error(f"[Alpaca] Failed to update trade {trade_id} status: {exc}")
+
+    async def submit_market_order(
+        self,
+        trade_id: UUID,
+        ticker: str,
+        quantity: int,
+        signal: str,
+        agent_id: str,
+        time_in_force: TimeInForce = TimeInForce.DAY,
+    ) -> None:
+        """Fire-and-forget market order submission to Alpaca (supports DAY and OPG)."""
+        if not self._client:
+            return
+
+        side = OrderSide.BUY if signal.upper() in ("BUY", "LONG") else OrderSide.SELL
+        client_order_id = f"{agent_id}__{ticker}__{signal}__{str(trade_id)}"
+
+        if side == OrderSide.SELL:
+            alpaca_qty = self.get_alpaca_position(ticker)
+            if alpaca_qty <= 0:
+                supabase_qty = self._get_supabase_position(ticker, agent_id)
+                if supabase_qty > 0:
+                    logger.info(
+                        f"[Alpaca] Supabase shows {supabase_qty} {ticker} shares, "
+                        f"overriding Alpaca position (0 shares)."
+                    )
+                    quantity = min(quantity, supabase_qty)
+                else:
+                    logger.warning(
+                        f"[Alpaca] SKIPPED SELL {quantity} {ticker}: "
+                        f"Alpaca holds {alpaca_qty} shares. No shorting allowed."
+                    )
+                    await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
+                    return
+            elif quantity > alpaca_qty:
+                logger.warning(
+                    f"[Alpaca] CAPPING SELL for {ticker}: "
+                    f"requested {quantity}, Alpaca holds {alpaca_qty}. "
+                    f"Submitting {alpaca_qty} instead."
+                )
+                quantity = int(alpaca_qty)
+
+        order_request = MarketOrderRequest(
+            symbol=ticker,
+            qty=quantity,
+            side=side,
+            time_in_force=time_in_force,
+            client_order_id=client_order_id,
+        )
+
+        try:
+            order = self._client.submit_order(order_request)
+            order_id_str = str(order.id) if order.id else None
+            await self._update_trade(trade_id, order_id_str, "SUBMITTED")
+            logger.info(
+                f"[Alpaca] Submitted market order {signal} {quantity} {ticker} ({time_in_force.value}) "
+                f"(OrderID: {order_id_str}, ClientOrderID: {client_order_id})"
+            )
+        except Exception:
+            logger.exception(f"[Alpaca] Failed to submit market order for {ticker}")
+            await self._update_trade(trade_id, None, "ERROR")
+
+    async def cancel_open_orders_for_agent(self, agent_id: str, ticker: str | None = None) -> int:
+        """Cancel open Alpaca orders belonging to a specific agent."""
+        if not self._client:
+            return 0
+
+        try:
+            from alpaca.trading.enums import QueryOrderStatus
+            from alpaca.trading.requests import GetOrdersRequest
+
+            req = GetOrdersRequest(status=QueryOrderStatus.OPEN, symbols=[ticker] if ticker else None)
+            open_orders = self._client.get_orders(filter=req)
+            cancelled_count = 0
+            prefix = f"{agent_id}__"
+            for order in open_orders:
+                client_id = getattr(order, "client_order_id", "") or ""
+                if client_id.startswith(prefix):
+                    self._client.cancel_order_by_id(order.id)
+                    cancelled_count += 1
+                    logger.info(f"[Alpaca] Cancelled open order {order.id} for agent {agent_id} ({client_id})")
+            return cancelled_count
+        except Exception:
+            logger.exception(f"[Alpaca] Failed to cancel open orders for agent {agent_id}")
+            return 0
 
     def _get_supabase_position(self, ticker: str, agent_id: str) -> int:
         """Check Supabase portfolio_positions for a ticker held by an agent.

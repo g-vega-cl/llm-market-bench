@@ -103,6 +103,15 @@ def test_daily_predictor_workflow_env_keys():
     step_env = run_step.get("env", {})
     assert "MINIMAX_API_KEY" in step_env, f"Expected MINIMAX_API_KEY in step env, found: {list(step_env.keys())}"
     assert step_env["MINIMAX_API_KEY"] == "${{ secrets.MINIMAX_API_KEY }}"
+    assert "ALPACA_API_KEY" in step_env, f"Expected ALPACA_API_KEY in step env, found: {list(step_env.keys())}"
+    assert "ALPACA_SECRET_KEY" in step_env, f"Expected ALPACA_SECRET_KEY in step env, found: {list(step_env.keys())}"
+
+    moo_step = next((s for s in steps if s.get("name") == "Run Market-On-Open Daily SPY Trade Entry"), None)
+    assert moo_step is not None, "Could not find 'Run Market-On-Open Daily SPY Trade Entry' step in daily-predictor.yml"
+    moo_env = moo_step.get("env", {})
+    assert "ALPACA_API_KEY" in moo_env
+    assert "ALPACA_SECRET_KEY" in moo_env
+    assert "daily-trade --action entry" in moo_step.get("run", "")
 
 
 def test_generate_newsletter_workflow_schedule():

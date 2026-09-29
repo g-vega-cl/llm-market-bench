@@ -171,12 +171,16 @@ async def fetch_intraday_open_close(ticker: str, target_date_str: str) -> tuple[
     return open_p, close_p
 
 
-async def evaluate_daily_predictions(target_date: str | None = None, force_recalc: bool = False) -> int:
+async def evaluate_daily_predictions(
+    target_date: str | None = None, force_recalc: bool = False, backfill_trades: bool = False
+) -> int:
     """Evaluate daily predictions against actual market Open, High, Low, and Close prices.
 
     Args:
         target_date: Optional specific ISO date string (YYYY-MM-DD) to evaluate.
         force_recalc: If True, re-evaluates already evaluated predictions for target_date.
+        backfill_trades: If True, retroactively executes and logs system daily trades.
+                         Defaults to False since daily trades execute live during market hours.
     """
     client = get_supabase_client()
 
@@ -270,29 +274,29 @@ async def evaluate_daily_predictions(target_date: str | None = None, force_recal
             }
         ).eq("id", pred_id).execute()
 
-        # Trigger systematic daily SPY trader portfolio execution (target-exit and 3:50 close-exit)
-        try:
-            from execution.daily_trading import (
-                execute_system_daily_close_trade,
-                execute_system_daily_trade,
-            )
+        # Optional: trigger systematic daily SPY trader portfolio backfill if explicitly enabled
+        if backfill_trades:
+            try:
+                from execution.daily_trading import (
+                    execute_system_daily_close_trade,
+                    execute_system_daily_trade,
+                )
 
-            intraday_data = {
-                "open_price": open_p,
-                "high_price": high_p,
-                "low_price": low_p,
-                "close_price": close_p,
-                "intraday_hit": intraday_hit,
-            }
-            # Only execute target-exit trade if the model provides an explicit profit target percentage.
-            # Models like Jev that only classify direction without magnitude/percentage do not participate in target-exit portfolios.
-            pred_model = str(pred.get("model_name", "")).lower()
-            target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
-            if "jev" not in pred_model and target_pct > 0.0:
-                await execute_system_daily_trade(prediction=pred, intraday_data=intraday_data)
-            await execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data)
-        except Exception as e:
-            logger.exception(f"Failed to execute system daily trade for prediction {pred_id}: {e}")
+                intraday_data = {
+                    "open_price": open_p,
+                    "high_price": high_p,
+                    "low_price": low_p,
+                    "close_price": close_p,
+                    "intraday_hit": intraday_hit,
+                }
+                # Only execute target-exit trade if the model provides an explicit profit target percentage.
+                pred_model = str(pred.get("model_name", "")).lower()
+                target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
+                if "jev" not in pred_model and target_pct > 0.0:
+                    await execute_system_daily_trade(prediction=pred, intraday_data=intraday_data)
+                await execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data)
+            except Exception as e:
+                logger.exception(f"Failed to execute system daily trade for prediction {pred_id}: {e}")
 
         evaluated_count += 1
         logger.info(
@@ -322,6 +326,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--force", action="store_true", help="Force re-evaluation of predictions even if already evaluated."
     )
+    parser.add_argument(
+        "--backfill-trades", action="store_true", help="Retroactively execute daily system trades (default: False)."
+    )
     args = parser.parse_args()
 
-    asyncio.run(evaluate_daily_predictions(target_date=args.target_date, force_recalc=args.force))
+    asyncio.run(
+        evaluate_daily_predictions(
+            target_date=args.target_date, force_recalc=args.force, backfill_trades=args.backfill_trades
+        )
+    )

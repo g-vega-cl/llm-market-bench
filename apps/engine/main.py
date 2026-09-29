@@ -30,6 +30,7 @@ from core.config import (
     COMMAND_DAILY_AUTORESEARCH,
     COMMAND_DAILY_POSTMORTEM,
     COMMAND_DAILY_PREDICTOR,
+    COMMAND_DAILY_TRADE,
     COMMAND_EVALUATE_DAILY_PREDICTIONS,
     COMMAND_FRONTIER_TECH,
     COMMAND_FUTURE_FORCES,
@@ -960,6 +961,17 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
                 except Exception:
                     logger.exception("Systematic weekly sector entry hook failed")
 
+                # Daily Systematic SPY Target Limit Orders Hook (Morning Market Open ~9:35 AM ET)
+                try:
+                    now_ny = datetime.now(ZoneInfo("America/New_York"))
+                    if now_ny.hour == 9 and now_ny.minute >= 30:
+                        logger.info("Morning open session detected — Submitting daily SPY target limit orders...")
+                        from execution.daily_trading import place_daily_target_limit_orders
+
+                        await place_daily_target_limit_orders(dry_run=dry_run)
+                except Exception:
+                    logger.exception("Daily SPY target limit orders hook failed")
+
                 # Systematic Weekly Sector Exit Hook (Friday Afternoon Market Close)
                 # Must run BEFORE snapshots and PCA so liquidated cash and realized PnL are captured immediately.
                 try:
@@ -972,6 +984,18 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
                         await run_sector_trade(action="exit")
                 except Exception:
                     logger.exception("Systematic weekly sector exit hook failed")
+
+                # Daily Systematic SPY Close Exit Hook (Afternoon Session ~3:30 PM ET)
+                # Liquidates open daily SPY positions before market close.
+                try:
+                    now_ny = datetime.now(ZoneInfo("America/New_York"))
+                    if now_ny.hour >= 15:
+                        logger.info("Afternoon session detected — Checking daily systematic SPY close exits...")
+                        from execution.daily_trading import execute_daily_close_exits
+
+                        await execute_daily_close_exits(dry_run=dry_run)
+                except Exception:
+                    logger.exception("Daily systematic SPY close exit hook failed")
 
             await _stage_snapshots_and_pca(sb_client, dry_run=dry_run)
 
@@ -1133,6 +1157,7 @@ def main():
             COMMAND_SECTOR_TRADE,
             COMMAND_GAINERS_POSTMORTEM,
             COMMAND_HISTORICAL_ANALOG,
+            COMMAND_DAILY_TRADE,
         ],
         help="Action to perform",
     )
@@ -1175,7 +1200,7 @@ def main():
     parser.add_argument(
         "--action",
         type=str,
-        choices=["entry", "open", "exit", "close", "status"],
+        choices=["entry", "open", "exit", "close", "status", "target-orders"],
         default="entry",
         help="Action for sector trade (entry, exit, status)",
     )
@@ -1355,6 +1380,21 @@ def main():
                 dry_run=args.dry_run,
             )
         )
+    elif args.command == COMMAND_DAILY_TRADE:
+        from execution.daily_trading import (
+            execute_daily_close_exits,
+            execute_daily_moo_entries,
+            place_daily_target_limit_orders,
+        )
+
+        if args.action in ("entry", "open"):
+            asyncio.run(execute_daily_moo_entries(target_date=args.target_date, dry_run=args.dry_run))
+        elif args.action == "target-orders":
+            asyncio.run(place_daily_target_limit_orders(target_date=args.target_date, dry_run=args.dry_run))
+        elif args.action in ("exit", "close"):
+            asyncio.run(execute_daily_close_exits(target_date=args.target_date, dry_run=args.dry_run))
+        else:
+            logger.error(f"Unknown action '{args.action}' for daily-trade.")
     elif args.command == COMMAND_GAINERS_POSTMORTEM:
         from analysis.gainers_postmortem import run_gainers_postmortem
 

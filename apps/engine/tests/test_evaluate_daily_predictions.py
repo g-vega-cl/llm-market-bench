@@ -376,9 +376,43 @@ async def test_evaluate_daily_predictions_skips_target_trade_for_jev():
         patch("execution.daily_trading.execute_system_daily_close_trade", new_callable=AsyncMock) as mock_close_trade,
         patch("analysis.daily_postmortem.run_daily_postmortem", new_callable=AsyncMock),
     ):
-        evaluated_count = await evaluate_daily_predictions(target_date="2026-08-03", force_recalc=True)
+        evaluated_count = await evaluate_daily_predictions(
+            target_date="2026-08-03", force_recalc=True, backfill_trades=True
+        )
         assert evaluated_count == 1
         # Target trade should not be executed for Jev
         mock_target_trade.assert_not_called()
-        # Close trade should be executed
+        # Close trade should be executed when backfill_trades is True
         mock_close_trade.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_evaluate_daily_predictions_default_skips_trade_backfill():
+    """Verify evaluate_daily_predictions does not execute retroactive trades by default."""
+    mock_supabase = MagicMock()
+    pending_data = [
+        {
+            "id": "pred-default",
+            "model_name": "deepseek-v4-flash",
+            "ticker": "SPY",
+            "target_date": "2026-08-03",
+            "predicted_direction": "UP",
+            "confidence": 75.0,
+            "expected_return_pct": 1.0,
+            "status": "pending",
+        }
+    ]
+    mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = pending_data
+
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.evaluate_daily_predictions.fetch_intraday_prices", return_value=(450.0, 452.0, 448.0, 455.0)),
+        patch("execution.daily_trading.execute_system_daily_trade", new_callable=AsyncMock) as mock_target_trade,
+        patch("execution.daily_trading.execute_system_daily_close_trade", new_callable=AsyncMock) as mock_close_trade,
+        patch("analysis.daily_postmortem.run_daily_postmortem", new_callable=AsyncMock),
+    ):
+        evaluated_count = await evaluate_daily_predictions(target_date="2026-08-03", force_recalc=True)
+        assert evaluated_count == 1
+        # Neither trade should be backfilled when backfill_trades=False
+        mock_target_trade.assert_not_called()
+        mock_close_trade.assert_not_called()

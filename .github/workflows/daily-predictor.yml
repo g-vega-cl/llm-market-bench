@@ -16,6 +16,7 @@ on:
           - 'evaluate-daily-predictions'
           - 'daily-autoresearch'
           - 'daily-postmortem'
+          - 'daily-trade'
 
 jobs:
   run-daily-predictor:
@@ -75,7 +76,22 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
         run: |
           cd apps/engine
           PYTHONPATH=. ./venv/bin/python3 main.py ${{ steps.cmd.outputs.command }}
+
+      - name: Run Market-On-Open Daily SPY Trade Entry
+        if: steps.cmd.outputs.command == 'daily-predictor' && steps.cmd.outputs.skip != 'true'
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+        run: |
+          cd apps/engine
+          PYTHONPATH=. ./venv/bin/python3 main.py daily-trade --action entry
 

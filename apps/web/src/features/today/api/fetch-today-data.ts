@@ -34,6 +34,7 @@ export interface TodayData {
     })[];
     marketFeeling: (MarketFeeling & { formattedTime: string; formattedDate: string }) | null;
     macroStats: MacroStat[];
+    macroLastUpdated?: string | null;
     serverTime?: string;
     isMarketOpen: boolean;
     isSentimentStale: boolean;
@@ -127,6 +128,8 @@ function computeMacroStatistics(cacheRows: MarketDataCache[] | null): MacroStat[
                 | 'Normal'
                 | '❗ UNUSUAL'
                 | '⚠️ HIGHLY UNUSUAL';
+            const fetchedAt = cacheEntry.fetched_at || null;
+            const formattedTime = fetchedAt ? formatEasternTime(fetchedAt) : undefined;
 
             macroStats.push({
                 ticker,
@@ -137,6 +140,8 @@ function computeMacroStatistics(cacheRows: MarketDataCache[] | null): MacroStat[
                 stdevPct,
                 regimeFlag,
                 hasHistory: stdevPct > 0,
+                fetchedAt,
+                formattedTime,
             });
         }
     }
@@ -146,6 +151,81 @@ function computeMacroStatistics(cacheRows: MarketDataCache[] | null): MacroStat[
 function extractDate(content: string): string | null {
     const match = content.match(/(\d{4}-\d{2}-\d{2})/);
     return match ? match[1] : null;
+}
+
+const MONTH_NAMES = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+];
+
+function formatFutureEvents(events: Memory[] | null) {
+    return (events || []).map((m) => {
+        const eventDate = m.target_date || extractDate(m.content);
+        let formattedTargetMonthDay = '';
+        let formattedTargetYear = '';
+        if (eventDate) {
+            const parts = eventDate.split('-');
+            if (parts.length === 3) {
+                const monthIndex = parseInt(parts[1], 10) - 1;
+                const monthName = MONTH_NAMES[monthIndex] || 'Unknown';
+                formattedTargetMonthDay = `${monthName} ${parseInt(parts[2], 10)}`;
+                formattedTargetYear = parts[0];
+            }
+        }
+        return {
+            ...m,
+            formattedShortDate: formatEasternShortDate(m.created_at),
+            formattedTargetMonthDay,
+            formattedTargetYear,
+        };
+    });
+}
+
+function checkMarketOpen(date: Date): boolean {
+    const currentHour = date.getUTCHours();
+    const currentMinutes = date.getUTCMinutes();
+    const dayOfWeek = date.getUTCDay();
+
+    return (
+        dayOfWeek >= 1 &&
+        dayOfWeek <= 5 &&
+        (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
+        currentHour < 20
+    );
+}
+
+function checkSentimentStale(feeling: MarketFeeling | null, now: Date): boolean {
+    if (!feeling?.created_at) return true;
+    const created = new Date(feeling.created_at);
+    const ageHours = (now.getTime() - created.getTime()) / 3600000;
+    return ageHours > 4;
+}
+
+function computeMacroLastUpdated(
+    cacheRows: MarketDataCache[] | null,
+    estDateStr: string,
+): string | null {
+    if (!cacheRows || cacheRows.length === 0) return null;
+    let latest: string | null = null;
+    for (const row of cacheRows) {
+        if (row.fetched_at && (!latest || row.fetched_at > latest)) {
+            latest = row.fetched_at;
+        }
+    }
+    if (!latest) return null;
+    return latest.startsWith(estDateStr)
+        ? formatEasternTime(latest)
+        : formatEasternDateTime(latest);
 }
 
 export async function fetchTodayData(limit: number = 50, tradesLimit?: number): Promise<TodayData> {
@@ -238,27 +318,11 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
 
     // Process and map pre-calculated macro statistics
     const macroStats = computeMacroStatistics(cacheRows);
+    const macroLastUpdated = computeMacroLastUpdated(cacheRows, estDateStr);
 
-    const currentHour = now.getUTCHours();
-    const currentMinutes = now.getUTCMinutes();
-    const dayOfWeek = now.getUTCDay();
-
-    const isMarketOpen =
-        dayOfWeek >= 1 &&
-        dayOfWeek <= 5 &&
-        (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
-        currentHour < 20;
-
+    const isMarketOpen = checkMarketOpen(now);
     const marketFeelingObj = (marketFeeling?.[0] || null) as MarketFeeling | null;
-    const isSentimentStale = marketFeelingObj
-        ? (() => {
-              if (!marketFeelingObj.created_at) return true;
-              const created = new Date(marketFeelingObj.created_at);
-              const ageHours = (now.getTime() - created.getTime()) / 3600000;
-              return ageHours > 4;
-          })()
-        : true;
-
+    const isSentimentStale = checkSentimentStale(marketFeelingObj, now);
     const todayDateString = formatEasternDate(now);
 
     const result: TodayData = {
@@ -280,39 +344,7 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
             formattedShortDate: formatEasternShortDate(m.created_at),
         })) as (Memory & { formattedShortDate: string; formattedDateTime: string })[],
         priceUpdates,
-        futureEvents: (futureEvents || []).map((m) => {
-            const eventDate = m.target_date || extractDate(m.content);
-            let formattedTargetMonthDay = '';
-            let formattedTargetYear = '';
-            if (eventDate) {
-                const parts = eventDate.split('-');
-                if (parts.length === 3) {
-                    const months = [
-                        'Jan',
-                        'Feb',
-                        'Mar',
-                        'Apr',
-                        'May',
-                        'Jun',
-                        'Jul',
-                        'Aug',
-                        'Sep',
-                        'Oct',
-                        'Nov',
-                        'Dec',
-                    ];
-                    const monthName = months[parseInt(parts[1], 10) - 1] || 'Unknown';
-                    formattedTargetMonthDay = `${monthName} ${parseInt(parts[2], 10)}`;
-                    formattedTargetYear = parts[0];
-                }
-            }
-            return {
-                ...m,
-                formattedShortDate: formatEasternShortDate(m.created_at),
-                formattedTargetMonthDay,
-                formattedTargetYear,
-            };
-        }) as (Memory & {
+        futureEvents: formatFutureEvents(futureEvents) as (Memory & {
             formattedShortDate: string;
             formattedTargetMonthDay: string;
             formattedTargetYear: string;
@@ -325,6 +357,7 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
               }
             : null,
         macroStats,
+        macroLastUpdated,
         serverTime: now.toISOString(),
         isMarketOpen,
         isSentimentStale,

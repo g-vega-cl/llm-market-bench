@@ -335,4 +335,56 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(queryLimits.decisions).toBe(50);
         expect(queryLimits.memories).toBe(50);
     });
+
+    it('populates macroLastUpdated and macroStats formattedTime from market_data_cache fetched_at', async () => {
+        const estToday = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+        const mockCacheRows = [
+            {
+                ticker: 'SPY',
+                price: 520.5,
+                today_pct_change: 0.75,
+                stdev_pct: 0.5,
+                regime_flag: 'Normal',
+                market_cap: 500000000,
+                fetched_at: `${estToday}T14:45:00Z`,
+            },
+            {
+                ticker: 'QQQ',
+                price: 450.0,
+                today_pct_change: 1.2,
+                stdev_pct: 0.6,
+                regime_flag: 'Normal',
+                market_cap: 300000000,
+                fetched_at: `${estToday}T14:40:00Z`,
+            },
+        ];
+
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
+                in: vi.fn().mockImplementation(() => {
+                    if (table === 'market_data_cache') {
+                        return Promise.resolve({ data: mockCacheRows, error: null });
+                    }
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        const result = await fetchTodayData();
+
+        expect(result.macroLastUpdated).toBe('10:45 AM ET');
+        const spyStat = result.macroStats.find((s) => s.ticker === 'SPY');
+        expect(spyStat).toBeDefined();
+        expect(spyStat?.fetchedAt).toBe(`${estToday}T14:45:00Z`);
+        expect(spyStat?.formattedTime).toBe('10:45 AM ET');
+    });
 });

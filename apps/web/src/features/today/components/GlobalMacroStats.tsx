@@ -4,6 +4,7 @@ import type { MacroCategory, MacroStat } from '../lib/macro-tickers';
 
 interface GlobalMacroStatsProps {
     macroStats: MacroStat[];
+    lastUpdated?: string | null;
 }
 
 const CATEGORIES: MacroCategory[] = [
@@ -16,12 +17,28 @@ const CATEGORIES: MacroCategory[] = [
     'Crypto',
 ];
 
-export function GlobalMacroStats({ macroStats }: GlobalMacroStatsProps) {
+function getLatestMacroTimestamp(stats: MacroStat[]): string | null {
+    const withFormatted = stats.filter((s) => s.formattedTime);
+    if (withFormatted.length > 0) {
+        const sorted = [...withFormatted].sort((a, b) => {
+            if (a.fetchedAt && b.fetchedAt) {
+                return b.fetchedAt.localeCompare(a.fetchedAt);
+            }
+            return 0;
+        });
+        return sorted[0].formattedTime || null;
+    }
+    return null;
+}
+
+export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsProps) {
     const [activeTab, setActiveTab] = React.useState<MacroCategory>('Market');
 
     if (!macroStats || macroStats.length === 0) {
         return null;
     }
+
+    const displayLastUpdated = lastUpdated ?? getLatestMacroTimestamp(macroStats);
 
     // Stats filtered by active category tab
     const filteredStats = macroStats.filter((s) => s.category === activeTab);
@@ -37,11 +54,21 @@ export function GlobalMacroStats({ macroStats }: GlobalMacroStatsProps) {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2 self-start px-3 py-1.5 bg-electric-blue-500/10 border border-electric-blue-500/20 rounded-xl">
-                    <span className="live-dot" />
-                    <span className="text-[10px] font-black text-electric-blue-600 dark:text-electric-blue-400 uppercase tracking-widest font-mono">
-                        Calculated Live
-                    </span>
+                <div className="flex flex-wrap items-center gap-3 self-start md:self-auto shrink-0">
+                    {displayLastUpdated && (
+                        <div className="text-xs text-zinc-400 font-mono">
+                            Last updated:{' '}
+                            <span className="text-zinc-200 font-semibold tabular-nums">
+                                {displayLastUpdated}
+                            </span>
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-electric-blue-500/10 border border-electric-blue-500/20 rounded-xl">
+                        <span className="live-dot" />
+                        <span className="text-[10px] font-black text-electric-blue-600 dark:text-electric-blue-400 uppercase tracking-widest font-mono">
+                            Calculated Live
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -165,6 +192,13 @@ export function GlobalMacroStats({ macroStats }: GlobalMacroStatsProps) {
                                         />
                                     </div>
                                 </div>
+
+                                {stat.formattedTime && (
+                                    <div className="flex justify-between items-center text-xs text-zinc-500 font-mono">
+                                        <span>Updated</span>
+                                        <span className="tabular-nums">{stat.formattedTime}</span>
+                                    </div>
+                                )}
                             </div>
                         </Card>
                     );

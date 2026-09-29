@@ -246,4 +246,34 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         expect(await screen.findByText('GOOGL')).toBeInTheDocument();
         expect(screen.getByText('AMZN')).toBeInTheDocument();
     });
+
+    it('renders Global Macro Regime last updated timestamp when macro data is provided', async () => {
+        const testData = {
+            ...emptyTodayData,
+            macroLastUpdated: '10:45 AM ET',
+            macroStats: [
+                {
+                    ticker: 'SPY',
+                    name: 'S&P 500',
+                    category: 'Market',
+                    price: 520.5,
+                    todayPctChange: 0.5,
+                    stdevPct: 0.8,
+                    regimeFlag: 'Normal',
+                    hasHistory: true,
+                    formattedTime: '10:45 AM ET',
+                },
+            ],
+        } as unknown as TodayData;
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <TodayPage initialData={testData} fetchFn={vi.fn().mockResolvedValue(testData)} />
+            </QueryClientProvider>,
+        );
+
+        expect(await screen.findByText('Global Macro Regime')).toBeInTheDocument();
+        expect(screen.getByText(/Last updated:/i)).toBeInTheDocument();
+        expect(screen.getAllByText('10:45 AM ET').length).toBeGreaterThanOrEqual(1);
+    });
 });

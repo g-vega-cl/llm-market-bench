@@ -1,3 +1,5 @@
+import { formatEasternTime } from '~/utils/date';
+
 /**
  * Centralized list of the 23 macro tickers tracked by the LLM Market Bench daily pipeline.
  * Categorized by asset class.
@@ -72,6 +74,8 @@ export interface MacroStat {
     stdevPct: number;
     regimeFlag: 'Normal' | '❗ UNUSUAL' | '⚠️ HIGHLY UNUSUAL';
     hasHistory: boolean;
+    fetchedAt?: string | null;
+    formattedTime?: string;
 }
 
 /**
@@ -84,7 +88,10 @@ export function calculateMacroStats(
     category: MacroCategory,
     currentPrice: number,
     history: HistoricalPricePoint[],
+    fetchedAt?: string | null,
 ): MacroStat {
+    const formattedTime = fetchedAt ? formatEasternTime(fetchedAt) : undefined;
+
     if (!history || history.length < 2) {
         return {
             ticker,
@@ -95,6 +102,8 @@ export function calculateMacroStats(
             stdevPct: 0,
             regimeFlag: 'Normal',
             hasHistory: false,
+            fetchedAt,
+            formattedTime,
         };
     }
 
@@ -151,5 +160,7 @@ export function calculateMacroStats(
         stdevPct,
         regimeFlag,
         hasHistory: true,
+        fetchedAt,
+        formattedTime,
     };
 }

@@ -62,7 +62,9 @@ For pull-based agents (e.g., candidate variants managed by the auto-researcher),
 
 ## History
 
+- **2026-09-29**: Added explicit "Last updated" timestamps to the Today page Global Macro Regime section header and individual ticker cards, consuming `fetched_at` from `market_data_cache` via `fetchTodayData` to provide immediate freshness transparency.
 - **2026-09-23**: Decoupled canonical Spot VIX (`^VIX`) from VIX futures ETFs (`VIXY`). Replaced `VIXY` with `^VIX` in the Global Macro Tracker and Today page dashboard to eliminate false complacency signals caused by futures contango roll decay. Refactored `get_volatility_index_details` tool to compute spot volatility levels and percentiles from `^VIX` while reserving `VIXY`/`VIXM` strictly for term structure and roll drag warnings.
+
 - **2026-08-27**: Fixed intraday macro percentage returns lag where `update_prices.py` computed percentage changes comparing yesterday against two days prior when EOD data had not yet closed. Refactored `compute_ticker_macro_metrics` to batch-fetch live quotes and compare live price vs previous close when EOD history lag occurs, and updated `_save_batch_to_cache` in `market_data.py` to persist `today_pct_change`.
 - **2026-08-27**: Enhanced Today page default "Market" price shower to render a comprehensive cross-asset indicator mix (`SPY`, `QQQ`, `TLT`, `VGK`, `EWJ`, `GLD`, `USO`, `^VIX`), providing instant visibility into equity benchmarks, bond yields, international markets, gold, crude oil, and VIX volatility directly on initial load.
 - **2026-08-21**: Clarified macro regime baseline output to explicitly specify `(PRIOR SESSION CLOSE)` and `[...% prior close]` to eliminate LLM confusion during pre-market inference. Expanded Daily Predictor's live pre-market multi-asset quoting loop to include international proxies (`EWJ`, `VGK`), yield proxies (`TLT`, `IEF`), and currency (`UUP`) alongside `SPY`, `QQQ`, `DIA`, `IWM`, `GLD`, and `USO`.

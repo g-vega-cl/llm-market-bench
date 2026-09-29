@@ -72,7 +72,10 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
             <PageLayout className="py-6 space-y-6" maxWidth="xl">
                 {/* Row 1: Global Macro Stats — full width */}
                 <Suspense fallback={<CardSkeleton rows={3} />}>
-                    <GlobalMacroStats macroStats={data.macroStats} />
+                    <GlobalMacroStats
+                        macroStats={data.macroStats}
+                        lastUpdated={data.macroLastUpdated}
+                    />
                 </Suspense>
 
                 {/* Row 2 / Empty state */}

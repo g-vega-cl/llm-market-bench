@@ -159,4 +159,45 @@ describe('GlobalMacroStats Component', () => {
         expect(screen.getByText('❗ UNUSUAL')).toBeInTheDocument();
         expect(screen.getByText('⚠️ REGIME SHIFT')).toBeInTheDocument();
     });
+
+    it('renders the last updated timestamp in the header when lastUpdated prop is provided', () => {
+        render(<GlobalMacroStats macroStats={mockMacroStats} lastUpdated="10:45 AM ET" />);
+
+        expect(screen.getByText(/Last updated:/i)).toBeInTheDocument();
+        expect(screen.getByText('10:45 AM ET')).toBeInTheDocument();
+    });
+
+    it('falls back to deriving last updated timestamp from macro stats when lastUpdated prop is omitted', () => {
+        const statsWithTime: MacroStat[] = [
+            {
+                ...mockMacroStats[0],
+                formattedTime: '09:30 AM ET',
+                fetchedAt: '2026-05-29T13:30:00Z',
+            },
+        ];
+
+        render(<GlobalMacroStats macroStats={statsWithTime} />);
+
+        expect(screen.getByText(/Last updated:/i)).toBeInTheDocument();
+        expect(screen.getAllByText('09:30 AM ET').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('renders individual ticker card updated timestamps when formattedTime is present', () => {
+        const statsWithTime: MacroStat[] = [
+            {
+                ...mockMacroStats[0],
+                formattedTime: '10:45 AM ET',
+            },
+            {
+                ...mockMacroStats[1],
+                formattedTime: '10:44 AM ET',
+            },
+        ];
+
+        render(<GlobalMacroStats macroStats={statsWithTime} />);
+
+        expect(screen.getAllByText('10:45 AM ET').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('10:44 AM ET')).toBeInTheDocument();
+        expect(screen.getAllByText('Updated').length).toBe(2);
+    });
 });

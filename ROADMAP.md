@@ -78,12 +78,9 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
     - same with text
-- [ ] - Benchify: see real time daily moves for system portfolios, not only when they are evaluated after? Audit
 - [ ] - Benchify: set up Laya alongside JEV?
 - [ ] - Benchify: AI sector predictor autoresearch is really hard to figure out because many LLMs have autoresearch in the same tab?
-- [x] - Benchify: today page global macro regime, show last updated (Surfaced last updated timestamp in header alongside live badge and on individual ticker cards; computed macroLastUpdated in fetchTodayData from market_data_cache fetched_at)
 - [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios
-
 - [ ] - Benchify: update today page 
 - [ ] - Benchify: could jev work for my autoresearcher?
 

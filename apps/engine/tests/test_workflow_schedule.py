@@ -113,6 +113,14 @@ def test_daily_predictor_workflow_env_keys():
     assert "ALPACA_SECRET_KEY" in moo_env
     assert "daily-trade --action entry" in moo_step.get("run", "")
 
+    heal_step = next((s for s in steps if s.get("name") == "Reconcile & Auto-Heal System Portfolio Health"), None)
+    assert heal_step is not None, (
+        "Could not find 'Reconcile & Auto-Heal System Portfolio Health' step in daily-predictor.yml"
+    )
+    heal_env = heal_step.get("env", {})
+    assert "SUPABASE_PROJECT_URL" in heal_env
+    assert "audit-portfolios --lookback-days 5 --fix" in heal_step.get("run", "")
+
 
 def test_generate_newsletter_workflow_schedule():
     """Verify generate-newsletter.yml relies on Cloudflare Worker workflow_dispatch and does not have native schedule."""

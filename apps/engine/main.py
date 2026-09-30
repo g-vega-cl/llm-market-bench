@@ -21,6 +21,7 @@ from core.audit import run_audit
 from core.config import (
     COMMAND_AUDIT,
     COMMAND_AUDIT_ALPACA,
+    COMMAND_AUDIT_PORTFOLIOS,
     COMMAND_AUTORESEARCH,
     COMMAND_BACKTEST_DAILY_AUTORESEARCH,
     COMMAND_BOOTSTRAP_AUTORESEARCH,
@@ -1158,10 +1159,13 @@ def main():
             COMMAND_GAINERS_POSTMORTEM,
             COMMAND_HISTORICAL_ANALOG,
             COMMAND_DAILY_TRADE,
+            COMMAND_AUDIT_PORTFOLIOS,
         ],
         help="Action to perform",
     )
 
+    parser.add_argument("--fix", action="store_true", help="Auto-heal and backfill missing systematic trades")
+    parser.add_argument("--lookback-days", type=int, default=5, help="Number of trading days to look back for audit")
     parser.add_argument("--force", action="store_true", help="Force ingestion even outside market hours")
     parser.add_argument("--dry-run", action="store_true", help="Run auto-research without writing to database")
     parser.add_argument(
@@ -1420,6 +1424,16 @@ def main():
             print(result)
 
         asyncio.run(_run_analog_cli())
+    elif args.command == COMMAND_AUDIT_PORTFOLIOS:
+        from audit.portfolio_auditor import run_portfolio_auditor_cli
+
+        asyncio.run(
+            run_portfolio_auditor_cli(
+                target_date=args.target_date,
+                lookback_days=args.lookback_days or 5,
+                fix=args.fix,
+            )
+        )
 
 
 if __name__ == "__main__":

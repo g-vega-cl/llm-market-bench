@@ -140,6 +140,7 @@ async def execute_daily_spy_trade(
     owner_prefix: str,
     exit_on_target: bool,
     slippage_bps: float,
+    alpaca_status: str | None = None,
     get_supabase_client_fn: Callable | None = None,
     get_or_create_system_portfolio_fn: Callable | None = None,
 ) -> dict[str, Any]:
@@ -192,32 +193,34 @@ async def execute_daily_spy_trade(
     exit_signal = "SELL" if direction == "UP" else "COVER"
 
     # Log entry trade at 9:30 AM ET (13:30 UTC)
-    client.table("trades").insert(
-        {
-            "portfolio_id": str(portfolio.id),
-            "ticker": ticker,
-            "signal": entry_signal,
-            "quantity": shares,
-            "price": execution["entry_price"],
-            "total_cost": shares * execution["entry_price"],
-            "executed_at": f"{target_date_str}T13:30:00Z",
-        }
-    ).execute()
+    entry_trade_payload: dict[str, Any] = {
+        "portfolio_id": str(portfolio.id),
+        "ticker": ticker,
+        "signal": entry_signal,
+        "quantity": shares,
+        "price": execution["entry_price"],
+        "total_cost": shares * execution["entry_price"],
+        "executed_at": f"{target_date_str}T13:30:00Z",
+    }
+    if alpaca_status:
+        entry_trade_payload["alpaca_status"] = alpaca_status
+    client.table("trades").insert(entry_trade_payload).execute()
 
     # Log exit trade at 4:00 PM ET (20:00 UTC) with realized PnL
-    client.table("trades").insert(
-        {
-            "portfolio_id": str(portfolio.id),
-            "ticker": ticker,
-            "signal": exit_signal,
-            "quantity": shares,
-            "price": execution["exit_price"],
-            "total_cost": shares * execution["exit_price"],
-            "realized_pnl": execution["realized_pnl"],
-            "realized_pnl_pct": execution["realized_pnl_pct"],
-            "executed_at": f"{target_date_str}T20:00:00Z",
-        }
-    ).execute()
+    exit_trade_payload: dict[str, Any] = {
+        "portfolio_id": str(portfolio.id),
+        "ticker": ticker,
+        "signal": exit_signal,
+        "quantity": shares,
+        "price": execution["exit_price"],
+        "total_cost": shares * execution["exit_price"],
+        "realized_pnl": execution["realized_pnl"],
+        "realized_pnl_pct": execution["realized_pnl_pct"],
+        "executed_at": f"{target_date_str}T20:00:00Z",
+    }
+    if alpaca_status:
+        exit_trade_payload["alpaca_status"] = alpaca_status
+    client.table("trades").insert(exit_trade_payload).execute()
 
     new_cash = max(0.0, current_cash + execution["realized_pnl"])
     client.table("portfolios").update(
@@ -261,6 +264,7 @@ async def execute_system_daily_trade(
     prediction: dict,
     intraday_data: dict,
     slippage_bps: float = DEFAULT_DAILY_SLIPPAGE_BPS,
+    alpaca_status: str | None = None,
     get_supabase_client_fn: Callable | None = None,
     get_or_create_system_portfolio_fn: Callable | None = None,
 ) -> dict[str, Any]:
@@ -285,6 +289,7 @@ async def execute_system_daily_trade(
         owner_prefix=SYS_DAILY_SPY_OWNER_PREFIX,
         exit_on_target=True,
         slippage_bps=slippage_bps,
+        alpaca_status=alpaca_status,
         get_supabase_client_fn=get_supabase_client_fn,
         get_or_create_system_portfolio_fn=get_or_create_system_portfolio_fn,
     )
@@ -294,6 +299,7 @@ async def execute_system_daily_close_trade(
     prediction: dict,
     intraday_data: dict,
     slippage_bps: float = DEFAULT_DAILY_CLOSE_SLIPPAGE_BPS,
+    alpaca_status: str | None = None,
     get_supabase_client_fn: Callable | None = None,
     get_or_create_system_portfolio_fn: Callable | None = None,
 ) -> dict[str, Any]:
@@ -304,6 +310,7 @@ async def execute_system_daily_close_trade(
         owner_prefix=SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
         exit_on_target=False,
         slippage_bps=slippage_bps,
+        alpaca_status=alpaca_status,
         get_supabase_client_fn=get_supabase_client_fn,
         get_or_create_system_portfolio_fn=get_or_create_system_portfolio_fn,
     )

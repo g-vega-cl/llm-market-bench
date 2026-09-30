@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/portfolio-auditor]] — health-check and auto-heal reconciliation island for systematic portfolios
 - [[entities/daily-postmortem]] — GPT-5.6 Luna post-close audit of daily SPY predictions with a closed root-cause taxonomy
 - [[entities/future-forces-portfolio]] — Auto-indexed page
 - [[entities/historical-analogs]] — Precedent-identification + empirical price-tape engine behind `research_historical_market_analog`
@@ -73,6 +74,7 @@
 
 ## Concepts
 
+- [[concepts/backfilled-trades]] — post-market reconstructed trades marked `alpaca_status = "BACKFILLED"`
 - [[concepts/laya-decisions-model]] — Auto-indexed page
 - [[concepts/daily-spy-live-trading]] — live intraday MOO entry, target limit, and close-exit lifecycle for daily SPY systematic portfolios
 - [[concepts/defensive-tool-dispatch]] — resilient tool-argument resolution, validation, and error boundary around every LLM tool call

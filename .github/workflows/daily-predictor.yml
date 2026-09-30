@@ -95,3 +95,16 @@ jobs:
           cd apps/engine
           PYTHONPATH=. ./venv/bin/python3 main.py daily-trade --action entry
 
+      - name: Reconcile & Auto-Heal System Portfolio Health
+        if: steps.cmd.outputs.command == 'evaluate-daily-predictions' && always()
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+        run: |
+          cd apps/engine
+          PYTHONPATH=. ./venv/bin/python3 main.py audit-portfolios --lookback-days 5 --fix
+

@@ -98,34 +98,51 @@ export function TradesTable({ trades }: TradesTableProps) {
                             </TableCell>
                             <TableCell>
                                 {trade.alpaca_status ? (
-                                    <a
-                                        href="https://paper.alpaca.markets/orders"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-block transition-opacity hover:opacity-80"
-                                        title={
-                                            trade.alpaca_order_id
-                                                ? `Order ID: ${trade.alpaca_order_id}`
-                                                : undefined
-                                        }
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        <Badge
-                                            variant="soft"
-                                            colorScheme={
-                                                trade.alpaca_status === 'FILLED'
-                                                    ? 'success'
-                                                    : trade.alpaca_status === 'PENDING' ||
-                                                        trade.alpaca_status === 'SUBMITTED'
-                                                      ? 'warning'
-                                                      : 'danger'
-                                            }
-                                            radius="md"
-                                            size="sm"
+                                    trade.alpaca_status === 'BACKFILLED' ? (
+                                        <span
+                                            className="inline-block"
+                                            onClick={(e) => e.stopPropagation()}
                                         >
-                                            {trade.alpaca_status}
-                                        </Badge>
-                                    </a>
+                                            <Badge
+                                                variant="soft"
+                                                colorScheme="accent"
+                                                radius="md"
+                                                size="sm"
+                                                title="Reconstructed post-market via historical session bars"
+                                            >
+                                                BACKFILLED
+                                            </Badge>
+                                        </span>
+                                    ) : (
+                                        <a
+                                            href="https://paper.alpaca.markets/orders"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-block transition-opacity hover:opacity-80"
+                                            title={
+                                                trade.alpaca_order_id
+                                                    ? `Order ID: ${trade.alpaca_order_id}`
+                                                    : undefined
+                                            }
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <Badge
+                                                variant="soft"
+                                                colorScheme={
+                                                    trade.alpaca_status === 'FILLED'
+                                                        ? 'success'
+                                                        : trade.alpaca_status === 'PENDING' ||
+                                                            trade.alpaca_status === 'SUBMITTED'
+                                                          ? 'warning'
+                                                          : 'danger'
+                                                }
+                                                radius="md"
+                                                size="sm"
+                                            >
+                                                {trade.alpaca_status}
+                                            </Badge>
+                                        </a>
+                                    )
                                 ) : (
                                     <span className="text-zinc-300 dark:text-zinc-700">—</span>
                                 )}

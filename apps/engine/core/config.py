@@ -140,6 +140,7 @@ COMMAND_HISTORICAL_ANALOG = "analog"
 COMMAND_FUTURE_FORCES = "future-forces"
 COMMAND_DAILY_POSTMORTEM = "daily-postmortem"
 COMMAND_DAILY_TRADE = "daily-trade"
+COMMAND_AUDIT_PORTFOLIOS = "audit-portfolios"
 
 
 # --- Content Constants ---

@@ -134,4 +134,26 @@ describe('TradesTable', () => {
             expect(screen.getByText(/Chip Demand Update/)).toBeInTheDocument();
         }
     });
+
+    it('renders BACKFILLED badge with explanatory tooltip for reconstructed trades', () => {
+        const backfilledTrade: Trade = {
+            ...mockTrades[0],
+            id: 't-backfill',
+            ticker: 'SPY',
+            alpaca_status: 'BACKFILLED',
+            alpaca_order_id: null,
+            alpaca_filled_at: null,
+        };
+
+        render(<TradesTable trades={[backfilledTrade]} />);
+        const badge = screen.getByText('BACKFILLED');
+        expect(badge).toBeInTheDocument();
+        expect(badge).toHaveAttribute(
+            'title',
+            'Reconstructed post-market via historical session bars',
+        );
+
+        // Ensure it is not an anchor link to Alpaca
+        expect(badge.closest('a')).toBeNull();
+    });
 });

@@ -426,7 +426,6 @@ async def test_run_daily_autoresearch_weekly_lookbacks():
     assert called_query_ranges.get("newsletter_snapshots_date_gte", [None])[-1] == f"{twenty_eight_days_ago}T00:00:00Z"
 
 
-
 def test_default_daily_predictor_tools():
     from tasks.daily_autoresearch import DEFAULT_DAILY_PREDICTOR_TOOLS
 

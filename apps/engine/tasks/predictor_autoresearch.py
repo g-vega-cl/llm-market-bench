@@ -195,7 +195,6 @@ async def generate_new_prompt(
     try:
         resp_awaitable = meta_researcher.chat.completions.create(
             model="gemini-3.5-flash-lite",
-
             response_model=MetaPromptResponse,
             messages=[{"role": "user", "content": meta_prompt}],
         )
@@ -277,7 +276,6 @@ async def run_predictor_autoresearch_for_model(
     # Calculate weekly score using baseline ratchet formula (including Brier penalty)
     weekly_metrics = calculate_baseline_metrics(predictions)
     weekly_score = weekly_metrics["score"]
-
 
     # 2. Fetch current active prompt for this model track
     prompt_response = (
@@ -407,7 +405,6 @@ async def run_predictor_autoresearch_for_model(
         multi_week_predictions=multi_week_predictions,
         macro_context=macro_context,
     )
-
 
     # 7. Insert new prompt and set status to active
     new_tag = f"sector-pred-{model_name}-{uuid.uuid4().hex[:8]}"

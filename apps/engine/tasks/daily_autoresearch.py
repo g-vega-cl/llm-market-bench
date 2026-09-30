@@ -595,7 +595,6 @@ async def run_daily_autoresearch_for_model(
     current_metrics = calculate_daily_ratchet_metrics(predictions)
     current_score = current_metrics["score"]
 
-
     # 2. Fetch active prompt variant for this model track
     prompt_response = (
         client.table("prompt_experiments")
@@ -716,7 +715,6 @@ async def run_daily_autoresearch_for_model(
             meta_researcher=deepseek_meta,
             cold_start=is_cold_start,
         )
-
 
     # 7. Deploy new active prompt variant scoped to track_id, demoting prior active variants
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"

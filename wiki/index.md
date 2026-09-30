@@ -74,6 +74,7 @@
 
 ## Concepts
 
+- [[concepts/tool-domain-decomposition]] — decomposition of monolithic tools.py into domain modules with barrel re-exports, O(1) table dispatch, and mock-compat bridge
 - [[concepts/backfilled-trades]] — post-market reconstructed trades marked `alpaca_status = "BACKFILLED"`
 - [[concepts/laya-decisions-model]] — Auto-indexed page
 - [[concepts/daily-spy-live-trading]] — live intraday MOO entry, target limit, and close-exit lifecycle for daily SPY systematic portfolios

@@ -254,4 +254,3 @@ async def test_openai_jev_autoresearch_injects_reasoning_effort_none():
     assert recorded_kwargs[0].get("reasoning_effort") == "none", (
         f"Expected reasoning_effort='none' in kwargs, got {recorded_kwargs[0]}"
     )
-

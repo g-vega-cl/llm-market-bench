@@ -12,18 +12,25 @@ The centralized canonical tool registry at `packages/config/tools.json` is the s
 - Eliminate drift between the engine's tool definitions (`core/llm/tools.py`), the frontend's tool display (`ExperimentDetails.tsx`), the research prompt (`autoresearch/program.md`), and the JSON tool list used for LLM function calling.
 - Provide a single importable source for the TanStack Start dashboard and any future consumers.
 
-## Structure
+## Architecture & Domain Decomposition
 
-The file is a JSON array of objects, each with:
+To prevent monolithic bloat and uphold [[concepts/vertical-slice-islands]], tool implementations are decomposed across dedicated domain modules in `apps/engine/tools/`:
+- `tools/market_data.py`: Quote, price history, intraday movement profiles, ticker news, volume context.
+- `tools/prediction_markets.py`: Polymarket and Kalshi search and odds.
+- `tools/portfolio.py`: Position PnL, buy/sell sizing, ledger queries, system portfolios.
+- `tools/technicals_options.py`: Volatility metrics, screeners, options chains, vol surfaces, touch probabilities.
+- `tools/macro.py`: Macro context, volatility index details, FRED series, yield curve, economic releases.
+- `tools/earnings.py`: Sector alternatives, related tickers, earnings history, PEAD candidates, revisions, bellwethers.
+- `tools/valuation.py`: Key metrics, market health barometer, sector fundamentals, 5-year DCF audit.
+- `tools/news_memories.py`: Newsletters, pgvector memory search, thematic flow persistence, market feeling, web search.
+- `tools/analyst_personas.py`: Warren Buffett/Munger audit, historical market analogs, future forces, thematic beneficiaries.
+- `tools/compliance.py`: Verifier rejections, SOP inspection, thesis pillar tracking, catalyst radar, calendar scenarios, STOCK Act congress trades.
 
-- `name` — the exact function name used in LLM tool definitions and prompt documentation
-- `desc` — a short human-readable description
-
-Current tools: 35 entries covering portfolio ledger, news, market data, prediction markets, macro indicators, thematic flows, earnings alpha, and quantitative options/macro regimes.
+The canonical barrel in `core/llm/tools.py` maintains backward-compatible re-exports, provider adapters (`to_anthropic`, `to_gemini`), and declarative schemas, while `core/llm/handlers/base.py` executes calls via an $O(1)$ `TOOL_DISPATCH_TABLE` lookup table.
 
 ## Drift Prevention
 
-`test_tools_consistency.py` automatically verifies that every tool in `tools.json` has a matching canonical definition in `core/llm/tools.py`, is documented in `PromptResearchResult.selected_tools` description, and appears in `autoresearch/program.md`. This test runs as part of the engine test suite.
+`test_tools_consistency.py` and `test_tools_domain_decomposition.py` automatically verify that every tool in `tools.json` has a matching canonical definition in `core/llm/tools.py`, domain handler implementation in `apps/engine/tools/`, is documented in `PromptResearchResult.selected_tools`, and appears in `autoresearch/program.md`.
 
 ## Tool Coverage
 

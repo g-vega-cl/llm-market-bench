@@ -194,7 +194,6 @@ async def test_daily_and_sector_autoresearch_independent_dice_rolls():
         assert sec_calls[3].kwargs.get("cold_start") is True
 
 
-
 @pytest.mark.asyncio
 async def test_daily_autoresearch_cold_start_preserves_frozen_sections():
     """Verify generate_new_daily_prompt with cold_start=True omits prior strategy and preserves frozen sections."""
@@ -290,11 +289,7 @@ async def test_sector_autoresearch_passes_multi_week_predictions_and_context():
         {"is_correct": False, "target_date": "2026-09-02"},
         {"is_correct": True, "target_date": "2026-09-03"},
     ]
-    macro_context = {
-        "daily_events": {
-            "2026-09-03": {"newsletters": ["Morning Brief: Tech rally"], "events": []}
-        }
-    }
+    macro_context = {"daily_events": {"2026-09-03": {"newsletters": ["Morning Brief: Tech rally"], "events": []}}}
 
     assembled, insight = await predictor_autoresearch.generate_new_prompt(
         old_prompt=old_prompt,
@@ -314,4 +309,3 @@ async def test_sector_autoresearch_passes_multi_week_predictions_and_context():
     assert "Morning Brief: Tech rally" in meta_prompt_sent
     assert "Evolved Multi-Week Sector Strategy" in assembled
     assert insight == "Semi-conductors lead recovery"
-

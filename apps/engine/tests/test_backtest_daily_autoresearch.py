@@ -254,7 +254,9 @@ async def test_run_backtest_daily_autoresearch_1_week():
     conn = sqlite3.connect(backtest_module.DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM prompt_experiments WHERE prompt_name = 'DAILY_PREDICTOR_PROMPT' ORDER BY created_at ASC")
+    cursor.execute(
+        "SELECT * FROM prompt_experiments WHERE prompt_name = 'DAILY_PREDICTOR_PROMPT' ORDER BY created_at ASC"
+    )
     rows = cursor.fetchall()
     assert len(rows) >= 2
     # First row is the baseline parent evaluated during the week
@@ -265,4 +267,3 @@ async def test_run_backtest_daily_autoresearch_1_week():
     assert new_active_row["status"] == "active"
     assert new_active_row["metrics"] is None
     conn.close()
-

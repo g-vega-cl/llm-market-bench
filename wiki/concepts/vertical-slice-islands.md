@@ -24,7 +24,7 @@ This dynamic is confirmed by git forensics in `apps/engine/hotspots.py`:
 | File | LOC | Churn | Bug Fix Ratio | Status |
 | :--- | :---: | :---: | :---: | :---: |
 | `apps/engine/core/llm/analysis.py` | 281 | 22 | 63.6% | Decomposed into vertical modules (`analysis_pipeline/*`) |
-| `apps/engine/execution/market_data.py` | 749 | 15 | 66.7% | CRITICAL |
+| `apps/engine/execution/market_data.py` | 388 | 15 | 66.7% | Decomposed into vertical modules (`market_cache.py`, `market_session.py`, `market_transforms.py`) |
 | `apps/engine/main.py` | 73 | 35 | 22.9% | Decomposed into CLI routers (`cli/*`) and pipeline (`pipeline/*`) |
 | `apps/engine/core/llm/tools.py` | 1,652 | 32 | 12.5% | Decomposed into domain islands (`tools/*`) |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 161 | 24 | 25.0% | Decomposed into sub-components (`components/*`) |

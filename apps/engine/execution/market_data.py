@@ -1,97 +1,70 @@
 """Market data manager with persistent caching.
 
-This module provides the MarketDataManager class, which coordinates between
-external financial APIs and a local database cache to optimize data retrieval.
+Coordinates external financial providers, persistent database caching, market session schedules,
+and data transforms through a modular, unified facade.
 """
 
-import datetime
+import asyncio
 import math
 
+import core.config as cfg
 from core.config import FMP_API_KEY, logger
 from core.db import get_supabase_client
 
+from .market_cache import MarketDataCache
+from .market_session import MarketSessionManager
+from .market_transforms import compute_premarket_quote, validate_date_coverage
 from .providers.base import FinancialProvider, TickerData
 from .providers.factory import get_financial_provider
 
-
-def _validate_date_coverage(rows: list, days_requested: int) -> tuple[bool, str]:
-    """Validate that cached price history rows represent true historical data.
-
-    Returns:
-        tuple: (is_valid, reason) - is_valid is True if cache should be used
-    """
-    if not rows:
-        return False, "no data"
-
-    today = datetime.datetime.now(datetime.UTC).date().isoformat()
-    distinct_dates = set()
-    for row in rows:
-        fetched_at = row.get("fetched_at", "")
-        if fetched_at:
-            date_part = fetched_at[:10]
-            distinct_dates.add(date_part)
-
-    distinct_count = len(distinct_dates)
-
-    if distinct_count == 0:
-        return False, "no valid dates"
-
-    if all(d == today for d in distinct_dates):
-        return False, f"all {distinct_count} rows from today"
-
-    min_required_dates = max(2, math.ceil(days_requested / 2))
-    if distinct_count < min_required_dates:
-        return False, f"only {distinct_count} distinct dates, need {min_required_dates}"
-
-    has_old_data = any(d != today for d in distinct_dates)
-    if not has_old_data:
-        return False, f"no historical data (all {distinct_count} dates are today)"
-
-    # Check cache staleness: if the newest date in cache is > 4 calendar days old,
-    # it's considered stale (e.g. over weekends/holidays is fine, but weeks is not).
-    sorted_dates = sorted(list(distinct_dates), reverse=True)
-    newest_date_str = sorted_dates[0]
-    try:
-        newest_date = datetime.date.fromisoformat(newest_date_str)
-        today_date = datetime.datetime.now(datetime.UTC).date()
-        age_days = (today_date - newest_date).days
-        if age_days > 4:
-            return False, f"cache is stale (newest entry from {newest_date_str} is {age_days} days old)"
-    except Exception as e:
-        logger.warning(f"Error validating price history cache staleness: {e}")
-
-    return True, f"valid cache with {distinct_count} distinct dates"
+# Backward compatibility alias for legacy imports/tests
+_validate_date_coverage = validate_date_coverage
+MARKET_DATA_RETRIES = getattr(cfg, "MARKET_DATA_RETRIES", 2)
 
 
 class MarketDataManager:
-    """Manages market data retrieval with a database-backed cache."""
+    """Manages market data retrieval with database-backed caching and provider fallback."""
 
-    _market_status_cache: dict = {
-        "is_open": None,
-        "fetched_at": None,
-        "ttl_seconds": 1800,  # 30 minutes
-    }
-    _market_status_lock = None
+    _market_status_cache: dict = MarketSessionManager._market_status_cache
+    _market_status_lock: asyncio.Lock | None = None
 
-    _holidays_cache: dict = {
-        "holidays": None,
-        "fetched_at": None,
-        "ttl_seconds": 86400,  # 24 hours
-    }
-    _holidays_lock = None
-
-    # In-memory cache for screener results to avoid redundant API hits within a session
+    _holidays_cache: dict = MarketSessionManager._holidays_cache
+    _holidays_lock: asyncio.Lock | None = None
 
     _screener_cache: dict = {}
 
     def __init__(self, cache_ttl_seconds: int | None = None):
-        import core.config as cfg
-
-        self.client = get_supabase_client()
-        self.cache_ttl_seconds = (
+        self._client = get_supabase_client()
+        self._cache_ttl_seconds = (
             cache_ttl_seconds if cache_ttl_seconds is not None else cfg.MARKET_DATA_CACHE_TTL_SECONDS
         )
+        self.cache = MarketDataCache(client=self._client, cache_ttl_seconds=self._cache_ttl_seconds)
+        self.session = MarketSessionManager(fmp_api_key=FMP_API_KEY)
         self.providers = [get_financial_provider(cfg.FINANCIAL_PROVIDER)]
+
+    @property
+    def client(self):
+        """Getter for Supabase client."""
+        return self._client
+
+    @client.setter
+    def client(self, value):
+        """Setter to allow manual override of Supabase client."""
+        self._client = value
+        if hasattr(self, "cache"):
+            self.cache.client = value
+
+    @property
+    def cache_ttl_seconds(self):
+        """Getter for cache TTL in seconds."""
+        return self._cache_ttl_seconds
+
+    @cache_ttl_seconds.setter
+    def cache_ttl_seconds(self, value):
+        """Setter to allow manual override of cache TTL."""
+        self._cache_ttl_seconds = value
+        if hasattr(self, "cache"):
+            self.cache.cache_ttl_seconds = value
 
     @property
     def provider(self):
@@ -107,242 +80,47 @@ class MarketDataManager:
             self.providers = [value]
 
     async def is_market_open(self) -> bool:
-        """Checks if the US stock market (NASDAQ/NYSE) is currently open.
+        """Checks if the US stock market (NASDAQ/NYSE) is currently open."""
+        self.session._market_status_cache = MarketDataManager._market_status_cache
+        if MarketDataManager._market_status_lock is not None:
+            MarketSessionManager._market_status_lock = MarketDataManager._market_status_lock
 
-        Prioritizes FMP API for holiday awareness, falls back to time-based check.
-        Uses a class-level cache to avoid repeated API calls within the same pipeline run.
-        """
-        import datetime
-
-        # Check class-level cache first to avoid repeated API calls
-        now = datetime.datetime.now(datetime.UTC)
-        cache = MarketDataManager._market_status_cache
-
-        if cache["fetched_at"] is not None:
-            elapsed = (now - cache["fetched_at"]).total_seconds()
-            if elapsed < cache["ttl_seconds"]:
-                logger.debug(f"Using cached market status: {'OPEN' if cache['is_open'] else 'CLOSED'}")
-                return cache["is_open"]
-
-        if MarketDataManager._market_status_lock is None:
-            import asyncio
-
-            MarketDataManager._market_status_lock = asyncio.Lock()
-
-        async with MarketDataManager._market_status_lock:
-            # Recheck cache after acquiring lock
-            if cache["fetched_at"] is not None:
-                elapsed = (now - cache["fetched_at"]).total_seconds()
-                if elapsed < cache["ttl_seconds"]:
-                    return cache["is_open"]
-
-            try:
-                from zoneinfo import ZoneInfo
-
-                now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
-            except ImportError:
-                # Fallback for environments without zoneinfo
-                # Assuming server is in ET or just using UTC-5 as an approximation
-                # But better to just use current local if zoneinfo fails
-                now_et = datetime.datetime.now()
-                logger.warning("zoneinfo not found, using local time for market hours baseline.")
-
-            # 1. Primary Check: FMP API (Handles Holidays)
-            if FMP_API_KEY:
-                try:
-                    import httpx
-
-                    async with httpx.AsyncClient() as client:
-                        # Use NASDAQ as the proxy for US Market status
-                        url = "https://financialmodelingprep.com/stable/exchange-market-hours"
-                        params = {"exchange": "NASDAQ", "apikey": FMP_API_KEY}
-                        resp = await client.get(url, params=params)
-                        resp.raise_for_status()
-                        data = resp.json()
-
-                        if data and isinstance(data, list):
-                            is_open = data[0].get("isMarketOpen", False)
-                            logger.info(f"FMP Market Status (NASDAQ): {'OPEN' if is_open else 'CLOSED'}")
-
-                            # Fallback to time-based override for transient API cache lag right at market open
-                            # (9:30 AM - 9:50 AM ET on weekdays)
-                            if not is_open:
-                                try:
-                                    from zoneinfo import ZoneInfo
-
-                                    now_et_check = datetime.datetime.now(ZoneInfo("America/New_York"))
-                                except ImportError:
-                                    now_et_check = datetime.datetime.now()
-
-                                if now_et_check.weekday() < 5:
-                                    market_open_threshold = now_et_check.replace(
-                                        hour=9, minute=30, second=0, microsecond=0
-                                    )
-                                    buffer_end = now_et_check.replace(hour=9, minute=50, second=0, microsecond=0)
-                                    if market_open_threshold <= now_et_check <= buffer_end:
-                                        logger.info(
-                                            "FMP reported CLOSED, but time is within the market-open buffer (9:30-9:50 AM ET) on a weekday. Overriding to OPEN."
-                                        )
-                                        is_open = True
-
-                            # Cache the result
-                            cache["is_open"] = is_open
-                            cache["fetched_at"] = datetime.datetime.now(datetime.UTC)
-
-                            return is_open
-                except Exception as e:
-                    logger.warning(f"Failed to fetch market status from FMP: {e}. Falling back to time-based check.")
-
-            # 2. Fallback Check: Time-based (Mon-Fri, 09:30-16:00 ET)
-            # Weekends
-            if now_et.weekday() >= 5:  # 5=Sat, 6=Sun
-                result = False
-            else:
-                market_start = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
-                market_end = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
-                result = market_start <= now_et <= market_end
-
-            # Cache the fallback result as well
-            cache["is_open"] = result
-            cache["fetched_at"] = datetime.datetime.now(datetime.UTC)
-
-            return result
+        is_open = await self.session.is_market_open(fmp_api_key=FMP_API_KEY)
+        MarketDataManager._market_status_cache = self.session._market_status_cache
+        MarketDataManager._market_status_lock = MarketSessionManager._market_status_lock
+        return is_open
 
     async def get_market_holidays(self) -> list[dict]:
         """Fetch US market holidays from FMP API with in-memory caching."""
-        import datetime
+        self.session._holidays_cache = MarketDataManager._holidays_cache
+        if MarketDataManager._holidays_lock is not None:
+            MarketSessionManager._holidays_lock = MarketDataManager._holidays_lock
 
-        now = datetime.datetime.now(datetime.UTC)
-        cache = MarketDataManager._holidays_cache
-
-        if cache["holidays"] is not None and cache["fetched_at"] is not None:
-            elapsed = (now - cache["fetched_at"]).total_seconds()
-            if elapsed < cache["ttl_seconds"]:
-                return cache["holidays"]
-
-        if MarketDataManager._holidays_lock is None:
-            import asyncio
-
-            MarketDataManager._holidays_lock = asyncio.Lock()
-
-        async with MarketDataManager._holidays_lock:
-            if cache["holidays"] is not None and cache["fetched_at"] is not None:
-                elapsed = (now - cache["fetched_at"]).total_seconds()
-                if elapsed < cache["ttl_seconds"]:
-                    return cache["holidays"]
-
-            holidays: list[dict] = []
-            if FMP_API_KEY:
-                try:
-                    import httpx
-
-                    async with httpx.AsyncClient() as client:
-                        url = "https://financialmodelingprep.com/stable/holidays-by-exchange"
-                        params = {"exchange": "NASDAQ", "apikey": FMP_API_KEY}
-                        resp = await client.get(url, params=params, timeout=10.0)
-                        resp.raise_for_status()
-                        data = resp.json()
-                        if isinstance(data, list):
-                            holidays = data
-                except Exception as e:
-                    logger.warning(f"Failed to fetch market holidays from FMP: {e}")
-
-            cache["holidays"] = holidays
-            cache["fetched_at"] = datetime.datetime.now(datetime.UTC)
-            return holidays
+        holidays = await self.session.get_market_holidays(fmp_api_key=FMP_API_KEY)
+        MarketDataManager._holidays_cache = self.session._holidays_cache
+        MarketDataManager._holidays_lock = MarketSessionManager._holidays_lock
+        return holidays
 
     def _is_known_us_market_holiday_fallback(self, date_obj) -> bool:
         """Rule-based fallback for US stock exchange holidays when API data is unavailable."""
-        month = date_obj.month
-        day = date_obj.day
-        weekday = date_obj.weekday()  # Monday=0, Sunday=6
-
-        return bool(
-            # New Year's Day (Jan 1, observed Jan 2 if Sun)
-            (month == 1 and day == 1)
-            or (month == 1 and day == 2 and weekday == 0)
-            # Martin Luther King Jr. Day (Third Monday in January)
-            or (month == 1 and weekday == 0 and 15 <= day <= 21)
-            # Washington's Birthday / Presidents' Day (Third Monday in February)
-            or (month == 2 and weekday == 0 and 15 <= day <= 21)
-            # Memorial Day (Last Monday in May)
-            or (month == 5 and weekday == 0 and day >= 25)
-            # Juneteenth (June 19, observed June 20 if Sun, June 18 if Sat)
-            or (month == 6 and day == 19)
-            or (month == 6 and day == 20 and weekday == 0)
-            or (month == 6 and day == 18 and weekday == 4)
-            # Independence Day (July 4, observed July 5 if Sun, July 3 if Sat)
-            or (month == 7 and day == 4)
-            or (month == 7 and day == 5 and weekday == 0)
-            or (month == 7 and day == 3 and weekday == 4)
-            # Labor Day (First Monday in September)
-            or (month == 9 and weekday == 0 and 1 <= day <= 7)
-            # Thanksgiving Day (Fourth Thursday in November)
-            or (month == 11 and weekday == 3 and 22 <= day <= 28)
-            # Christmas Day (Dec 25, observed Dec 26 if Sun, Dec 24 if Sat)
-            or (month == 12 and day == 25)
-            or (month == 12 and day == 26 and weekday == 0)
-            or (month == 12 and day == 24 and weekday == 4)
-        )
+        return MarketSessionManager.is_known_us_market_holiday_fallback(date_obj)
 
     async def is_trading_day(self, target_date=None) -> bool:
-        """Checks if a given date is an active US equity trading day (non-weekend, non-holiday).
+        """Checks if a given date is an active US equity trading day (non-weekend, non-holiday)."""
+        return await self.session.is_trading_day(target_date=target_date, fmp_api_key=FMP_API_KEY)
 
-        Args:
-            target_date: Target date to check (datetime.date, ISO string YYYY-MM-DD, or None for today ET).
-
-        Returns:
-            True if target_date is a regular trading session, False if weekend or market holiday.
-        """
-        import datetime
-
-        if target_date is None:
-            try:
-                from zoneinfo import ZoneInfo
-
-                date_obj = datetime.datetime.now(ZoneInfo("America/New_York")).date()
-            except ImportError:
-                date_obj = datetime.datetime.now().date()
-        elif isinstance(target_date, str):
-            date_obj = datetime.date.fromisoformat(target_date[:10])
-        elif isinstance(target_date, datetime.datetime):
-            date_obj = target_date.date()
-        else:
-            date_obj = target_date
-
-        # 1. Weekends (Saturday=5, Sunday=6)
-        if date_obj.weekday() >= 5:
-            return False
-
-        # 2. Check market holidays from FMP
-        date_str = date_obj.isoformat()
-        try:
-            holidays = await self.get_market_holidays()
-            for h in holidays:
-                if h.get("date") == date_str and h.get("isClosed", True):
-                    return False
-        except Exception as e:
-            logger.warning(f"Error checking market holiday for {date_str}: {e}")
-
-        # 3. Rule-based US market holiday fallback
-        return not self._is_known_us_market_holiday_fallback(date_obj)
+    async def is_premarket(self) -> bool:
+        """Checks if currently in US pre-market trading session (Mon-Fri 04:00 - 09:30 ET)."""
+        return await MarketSessionManager.is_premarket()
 
     async def get_quote(self, ticker: str, force_refresh: bool = False) -> TickerData | None:
-        """Fetch stock quote, checking cache first unless force_refresh is True.
-
-        Args:
-            ticker: The stock ticker symbol.
-            force_refresh: Whether to bypass the cache and fetch fresh data.
-
-        Returns:
-            TickerData if found, None otherwise.
-        """
+        """Fetch stock quote, checking cache first unless force_refresh is True."""
         if not ticker or not isinstance(ticker, str):
             return None
 
         ticker = ticker.strip().upper()
 
-        # 1. Check Cache (unless force_refresh is True)
+        # 1. Check Cache
         if not force_refresh:
             cached_data = self._get_from_cache(ticker)
             if cached_data:
@@ -358,11 +136,10 @@ class MarketDataManager:
         data = await self._fetch_with_backoff(provider, ticker)
 
         if data:
-            # 3. Save to Cache and Return
             self._save_to_cache(data)
             return data
 
-        # 4. Last Resort: Last Known Price from History
+        # 3. Fallback: Last Known Price from History (24h staleness check)
         last_known = self._get_last_known_price(ticker)
         if last_known:
             logger.info(f"All online retrieval failed for {ticker}. Using last known price: ${last_known.price}")
@@ -371,29 +148,6 @@ class MarketDataManager:
         logger.error(f"FATAL: All retrieval attempts failed for {ticker}. No historical data available.")
         return None
 
-    async def is_premarket(self) -> bool:
-        """Checks if currently in US pre-market trading session (Mon-Fri 04:00 - 09:30 ET).
-
-        Returns False on weekends.
-        """
-        import datetime
-
-        try:
-            from zoneinfo import ZoneInfo
-
-            now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
-        except ImportError:
-            now_et = datetime.datetime.now()
-
-        # Weekends
-        if now_et.weekday() >= 5:
-            return False
-
-        premarket_start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)
-        market_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
-
-        return premarket_start <= now_et < market_open
-
     async def get_premarket_quote(self, ticker: str) -> dict | None:
         """Fetch fresh pre-market / early session quote and calculate change details vs previous close."""
         if not ticker or not isinstance(ticker, str):
@@ -401,72 +155,147 @@ class MarketDataManager:
 
         ticker = ticker.strip().upper()
 
-        # 1. Try dedicated aftermarket / pre-market quote from provider if supported
-        pm_price = None
-        prev_close = None
-        change = None
-        change_pct = None
-        volume = None
-
+        # 1. Dedicated aftermarket quote lookup
+        aftermarket_quote = None
         provider = self.provider
         if provider and hasattr(provider, "get_aftermarket_quote"):
             try:
                 aftermarket_quote = await provider.get_aftermarket_quote(ticker)
-                if aftermarket_quote and aftermarket_quote.get("price") and float(aftermarket_quote["price"]) > 0:
-                    pm_price = float(aftermarket_quote["price"])
-                    volume = aftermarket_quote.get("volume")
             except Exception as e:
                 logger.debug(f"Provider aftermarket quote lookup failed for {ticker}: {e}")
 
-        # 2. Fall back to standard quote if aftermarket quote wasn't available
+        # 2. Standard quote lookup
         quote = await self.get_quote(ticker, force_refresh=True)
-        if quote:
-            if pm_price is not None:
-                # We have a dedicated aftermarket/premarket quote (pm_price).
-                # In pre-market, quote.price represents the prior regular session close.
-                if quote.price and quote.price > 0:
-                    prev_close = quote.price
-                elif quote.previous_close and quote.previous_close > 0:
-                    prev_close = quote.previous_close
-            else:
-                # No dedicated aftermarket quote available; use standard quote
-                if quote.price and quote.price > 0:
-                    pm_price = quote.price
-                    change = quote.change
-                    change_pct = quote.change_pct
-                if quote.previous_close and quote.previous_close > 0:
-                    prev_close = quote.previous_close
-                if volume is None:
-                    volume = quote.volume
 
-        if pm_price is None or pm_price <= 0:
-            return None
-
-        # 3. If previous close is still missing, fall back to recent history
-        if prev_close is None or prev_close <= 0:
+        # 3. History fallback if previous close is missing
+        history = None
+        needs_history_fallback = not quote or not (quote.price or quote.previous_close)
+        if needs_history_fallback or (quote and not quote.previous_close and aftermarket_quote is None):
             history = await self.get_history(ticker, days=5)
-            if history:
-                sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
-                prev_close = float(sorted_hist[-1].get("close") or sorted_hist[-1].get("price"))
 
-        if not prev_close or prev_close <= 0:
-            prev_close = pm_price
+        return compute_premarket_quote(
+            quote=quote,
+            aftermarket_quote=aftermarket_quote,
+            history=history,
+        )
 
-        if change is None:
-            change = pm_price - prev_close
-        if change_pct is None:
-            change_pct = (change / prev_close) * 100.0 if prev_close else 0.0
+    async def get_quotes(self, tickers: list[str], force_refresh: bool = False) -> dict[str, TickerData]:
+        """Fetch multiple stock quotes, checking cache first where possible."""
+        if not tickers:
+            return {}
 
-        res = {
-            "price": pm_price,
-            "previous_close": prev_close,
-            "change": change,
-            "change_pct": change_pct,
-        }
-        if volume is not None:
-            res["volume"] = volume
+        tickers = [t.strip().upper() for t in tickers]
+        results = {}
+        missing_tickers = list(tickers)
 
-        return res
+        # 1. Check Cache
+        if not force_refresh:
+            cached_results, missing_tickers = self.cache.get_quotes_batch(tickers)
+            results.update(cached_results)
+
+        if not missing_tickers:
+            return results
+
+        # 2. Fetch missing from configured provider
+        provider = self.provider
+        if provider is None:
+            logger.error("No financial provider configured for batch quote retrieval.")
+            return results
+
+        logger.info(
+            f"Batch fetching {len(missing_tickers)} tickers from configured provider ({provider.provider_name})..."
+        )
+
+        try:
+            batch_results = await provider.get_ticker_data_batch(missing_tickers)
+            if batch_results:
+                valid_batch_results = []
+                for t, data in batch_results.items():
+                    if data and data.exists and not math.isnan(data.price):
+                        results[t] = data
+                        valid_batch_results.append(data)
+                        if t in missing_tickers:
+                            missing_tickers.remove(t)
+
+                if valid_batch_results:
+                    self._save_batch_to_cache(valid_batch_results)
+        except Exception as e:
+            logger.error(f"Batch fetch failed for {provider.provider_name}: {e}")
+
+        # 3. Final individual pass for remaining missing tickers
+        if missing_tickers:
+            logger.info(
+                f"Still missing {len(missing_tickers)} tickers after batch fetch. Trying individual retrieval..."
+            )
+            for ticker in list(missing_tickers):
+                data = await self.get_quote(ticker, force_refresh=force_refresh)
+                if data:
+                    results[ticker] = data
+                    missing_tickers.remove(ticker)
+
+        return results
+
+    async def _fetch_with_backoff(self, provider: FinancialProvider, ticker: str) -> TickerData | None:
+        """Helper to fetch data from a provider with retries and validation."""
+        max_retries = getattr(cfg, "MARKET_DATA_RETRIES", MARKET_DATA_RETRIES)
+        for attempt in range(1, max_retries + 1):
+            try:
+                data = await provider.get_ticker_data(ticker)
+                if data and data.exists:
+                    if math.isnan(data.price):
+                        logger.warning(
+                            f"Provider {provider.provider_name} returned NaN price for {ticker}. Proceeding..."
+                        )
+                        continue
+                    return data
+            except Exception as e:
+                logger.debug(f"Attempt {attempt}/{max_retries} failed for {ticker} via {provider.provider_name}: {e}")
+
+            if attempt < max_retries:
+                wait_time = 2 ** (attempt - 1)
+                await asyncio.sleep(wait_time)
+        return None
+
+    def _get_from_cache(self, ticker: str) -> TickerData | None:
+        """Internal helper to retrieve cached data."""
+        return self.cache.get_quote(ticker)
+
+    def _save_to_cache(self, data: TickerData) -> None:
+        """Internal helper to upsert data into the live price cache."""
+        self.cache.save_quote(data)
+
+    def _save_batch_to_cache(self, data_list: list[TickerData]) -> None:
+        """Internal helper to upsert multiple data points into the live price cache."""
+        self.cache.save_quotes_batch(data_list)
+
+    def _get_last_known_price(self, ticker: str) -> TickerData | None:
+        """Retrieves the most recent price from the history table with a 24h staleness check."""
+        return self.cache.get_last_known_price(ticker)
+
+    async def get_history(self, ticker: str, days: int = 14, force_refresh: bool = False) -> list[dict]:
+        """Fetch historical price data, checking local DB first."""
+        ticker = ticker.strip().upper()
+
+        # 1. Check local DB
+        if not force_refresh:
+            cached_history = self.cache.get_history(ticker, days=days)
+            if cached_history is not None:
+                return cached_history
+
+        # 2. Fetch from configured provider
+        provider = self.provider
+        if provider is None:
+            logger.error(f"No financial provider configured for history retrieval for {ticker}.")
+            return []
+
+        logger.info(f"Fetching history for {ticker} from configured provider ({provider.provider_name})...")
+        history = await provider.get_history(ticker, days)
+
+        if history:
+            self.cache.save_history(ticker, history)
+            return history
+
+        return []
 
     async def screen_stocks(
         self,
@@ -487,430 +316,73 @@ class MarketDataManager:
         is_actively_trading: bool = True,
     ) -> list[dict]:
         """Exposes stock screening capabilities, checking cache first."""
-
-        # Create a cache key from the parameters
-        cache_key = f"{market_cap_more_than}-{market_cap_lower_than}-{price_more_than}-{price_lower_than}-{beta_more_than}-{beta_lower_than}-{volume_more_than}-{volume_lower_than}-{dividend_more_than}-{dividend_lower_than}-{sector}-{industry}-{exchange}-{limit}-{is_actively_trading}"
-
+        params = {
+            "market_cap_more_than": market_cap_more_than,
+            "market_cap_lower_than": market_cap_lower_than,
+            "price_more_than": price_more_than,
+            "price_lower_than": price_lower_than,
+            "beta_more_than": beta_more_than,
+            "beta_lower_than": beta_lower_than,
+            "volume_more_than": volume_more_than,
+            "volume_lower_than": volume_lower_than,
+            "dividend_more_than": dividend_more_than,
+            "dividend_lower_than": dividend_lower_than,
+            "sector": sector,
+            "industry": industry,
+            "exchange": exchange,
+            "limit": limit,
+            "is_actively_trading": is_actively_trading,
+        }
+        cache_key = str(sorted(params.items()))
         if cache_key in MarketDataManager._screener_cache:
-            logger.debug(f"Returning cached screener results for key: {cache_key[:30]}...")
             return MarketDataManager._screener_cache[cache_key]
 
-        # Currently only FMP supports direct screening tool
-        provider = self.provider  # Primary provider
+        provider = self.provider
         if not hasattr(provider, "screen_stocks"):
             logger.error(f"Primary provider {provider.provider_name} does not support screening.")
             return []
 
         try:
-            results = await provider.screen_stocks(
-                market_cap_more_than=market_cap_more_than,
-                market_cap_lower_than=market_cap_lower_than,
-                price_more_than=price_more_than,
-                price_lower_than=price_lower_than,
-                beta_more_than=beta_more_than,
-                beta_lower_than=beta_lower_than,
-                volume_more_than=volume_more_than,
-                volume_lower_than=volume_lower_than,
-                dividend_more_than=dividend_more_than,
-                dividend_lower_than=dividend_lower_than,
-                sector=sector,
-                industry=industry,
-                exchange=exchange,
-                limit=limit,
-                is_actively_trading=is_actively_trading,
-            )
-
-            # Save to cache
+            results = await provider.screen_stocks(**params)
             MarketDataManager._screener_cache[cache_key] = results
             return results
-
         except Exception as e:
             logger.error(f"Error executing stock screen via {provider.provider_name}: {e}")
             return []
 
-    async def get_quotes(self, tickers: list[str], force_refresh: bool = False) -> dict[str, TickerData]:
-        """Fetch multiple stock quotes, checking cache first where possible.
-
-        Args:
-            tickers: List of stock ticker symbols.
-            force_refresh: Whether to bypass the cache and fetch fresh data for all.
-
-        Returns:
-            Dict mapping ticker symbol to TickerData for all successfully retrieved stocks.
-        """
-        if not tickers:
-            return {}
-
-        tickers = [t.strip().upper() for t in tickers]
-        results = {}
-        missing_tickers = list(tickers)
-
-        # 1. Check Cache
-        if not force_refresh:
-            try:
-                response = self.client.table("market_data_cache").select("*").in_("ticker", tickers).execute()
-                if response.data:
-                    now = datetime.datetime.now(datetime.UTC)
-                    for record in response.data:
-                        ticker = record["ticker"]
-                        fetched_at = datetime.datetime.fromisoformat(record["fetched_at"].replace("Z", "+00:00"))
-                        if (now - fetched_at).total_seconds() <= self.cache_ttl_seconds:
-                            results[ticker] = TickerData(
-                                ticker=ticker,
-                                price=float(record["price"]),
-                                market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
-                                exists=True,
-                            )
-                            if ticker in missing_tickers:
-                                missing_tickers.remove(ticker)
-                        else:
-                            logger.debug(f"Cache entry for {ticker} is stale.")
-            except Exception as e:
-                logger.error(f"Error reading market data cache batch: {e}")
-
-        if not missing_tickers:
-            return results
-
-        # 2. Fetch missing from the configured provider
+    def _require_provider(self, ticker: str) -> FinancialProvider | None:
         provider = self.provider
         if provider is None:
-            logger.error("No financial provider configured for batch quote retrieval.")
-            return results
-
-        logger.info(
-            f"Batch fetching {len(missing_tickers)} tickers from configured provider ({provider.provider_name})..."
-        )
-
-        try:
-            batch_results = await provider.get_ticker_data_batch(missing_tickers)
-            if batch_results:
-                # Save successes to cache and results
-                valid_batch_results = []
-                for t, data in batch_results.items():
-                    if data and data.exists and not math.isnan(data.price):
-                        results[t] = data
-                        valid_batch_results.append(data)
-                        if t in missing_tickers:
-                            missing_tickers.remove(t)
-
-                if valid_batch_results:
-                    self._save_batch_to_cache(valid_batch_results)
-        except Exception as e:
-            logger.error(f"Batch fetch failed for {provider.provider_name}: {e}")
-
-        # 3. Final pass: resolve anything still missing individually.
-        if missing_tickers:
-            logger.info(
-                f"Still missing {len(missing_tickers)} tickers after batch fetch. Trying individual retrieval..."
-            )
-            for ticker in list(missing_tickers):
-                data = await self.get_quote(ticker, force_refresh=force_refresh)
-                if data:
-                    results[ticker] = data
-                    missing_tickers.remove(ticker)
-
-        return results
-
-    async def _fetch_with_backoff(self, provider: FinancialProvider, ticker: str) -> TickerData | None:
-        """Helper to fetch data from a provider with retries and validation."""
-        import asyncio
-
-        from core.config import MARKET_DATA_RETRIES
-
-        for attempt in range(1, MARKET_DATA_RETRIES + 1):
-            try:
-                data = await provider.get_ticker_data(ticker)
-
-                if data and data.exists:
-                    if math.isnan(data.price):
-                        logger.warning(
-                            f"Provider {provider.provider_name} returned NaN price for {ticker}. Proceeding..."
-                        )
-                        continue
-                    return data
-            except Exception as e:
-                # Reduce noise: don't log full stack trace for common timeouts/connection errors
-                logger.debug(
-                    f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed for {ticker} via {provider.provider_name}: {e}"
-                )
-
-            if attempt < MARKET_DATA_RETRIES:
-                wait_time = 2 ** (attempt - 1)
-                await asyncio.sleep(wait_time)
-        return None
-
-    def _get_last_known_price(self, ticker: str) -> TickerData | None:
-        """Retrieves the most recent price from the history table with a 24h staleness check."""
-        try:
-            # We want the latest entry from price_history
-            response = (
-                self.client.table("price_history")
-                .select("*")
-                .eq("ticker", ticker)
-                .order("fetched_at", desc=True)
-                .limit(1)
-                .execute()
-            )
-
-            if response.data:
-                record = response.data[0]
-                fetched_at_str = record.get("fetched_at", "")
-                if fetched_at_str:
-                    try:
-                        from dateutil import parser
-
-                        fetched_at = parser.isoparse(fetched_at_str)
-                        if fetched_at.tzinfo is None:
-                            fetched_at = fetched_at.replace(tzinfo=datetime.UTC)
-
-                        now = datetime.datetime.now(datetime.UTC)
-                        age_hours = (now - fetched_at).total_seconds() / 3600
-
-                        if age_hours > 24:
-                            logger.warning(f"Last known price for {ticker} is stale ({age_hours:.1f}h old). Rejecting.")
-                            return None
-                    except Exception as parse_err:
-                        logger.error(f"Error parsing fetched_at for {ticker}: {parse_err}")
-                        return None
-
-                return TickerData(
-                    ticker=record["ticker"],
-                    price=float(record["price"]),
-                    market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
-                    exists=True,
-                )
-        except Exception as e:
-            logger.error(f"Error fetching last known price for {ticker}: {e}")
-
-        return None
-
-    def _get_from_cache(self, ticker: str) -> TickerData | None:
-        """Internal helper to retrieve and validate cached data."""
-        try:
-            response = self.client.table("market_data_cache").select("*").eq("ticker", ticker).execute()
-
-            if not response.data:
-                return None
-
-            record = response.data[0]
-            fetched_at = datetime.datetime.fromisoformat(record["fetched_at"].replace("Z", "+00:00"))
-            now = datetime.datetime.now(datetime.UTC)
-
-            # Check if cache is stale
-            if (now - fetched_at).total_seconds() > self.cache_ttl_seconds:
-                logger.debug(f"Cache entry for {ticker} is stale.")
-                return None
-
-            return TickerData(
-                ticker=record["ticker"],
-                price=float(record["price"]),
-                market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
-                exists=True,
-            )
-        except Exception as e:
-            logger.error(f"Error reading market data cache for {ticker}: {e}")
-            return None
-
-    def _save_to_cache(self, data: TickerData):
-        """Internal helper to upsert data into the live price cache."""
-        self._save_batch_to_cache([data])
-
-    def _save_batch_to_cache(self, data_list: list[TickerData]):
-        """Internal helper to upsert multiple data points into the live price cache.
-
-        Note: EOD historical data is stored separately via get_history() to avoid
-        crowding out true historical records with high-frequency batch snapshots.
-        """
-        try:
-            now_iso = datetime.datetime.now(datetime.UTC).isoformat()
-            cache_payloads = []
-
-            for data in data_list:
-                if math.isnan(data.price) or math.isnan(data.market_cap):
-                    logger.warning(f"Skipping cache save for {data.ticker} due to NaN values.")
-                    continue
-
-                payload = {
-                    "ticker": data.ticker.strip(),
-                    "price": data.price,
-                    "market_cap": data.market_cap,
-                    "fetched_at": now_iso,
-                }
-                if data.change_pct is not None:
-                    payload["today_pct_change"] = data.change_pct
-                elif data.previous_close is not None and data.previous_close > 0:
-                    payload["today_pct_change"] = ((data.price - data.previous_close) / data.previous_close) * 100
-
-                cache_payloads.append(payload)
-
-            if cache_payloads:
-                # Upsert into the cache
-                self.client.table("market_data_cache").upsert(cache_payloads).execute()
-
-        except Exception as e:
-            tickers = [d.ticker for d in data_list]
-            logger.error(f"Error saving market data batch for {tickers}: {e}")
-
-    async def get_history(self, ticker: str, days: int = 14, force_refresh: bool = False) -> list[dict]:
-        """Fetch historical price data, checking local DB first.
-
-        Args:
-            ticker: The stock ticker symbol.
-            days: Number of days of history to retrieve.
-            force_refresh: Whether to bypass the local DB cache.
-
-        Returns:
-            List of dicts with 'price' and 'fetched_at'.
-        """
-        ticker = ticker.strip().upper()
-
-        # 1. Check local DB (unless force_refresh is True)
-        if not force_refresh:
-            try:
-                res = (
-                    self.client.table("price_history")
-                    .select("price, open, high, low, close, volume, fetched_at")
-                    .eq("ticker", ticker)
-                    .order("fetched_at", desc=True)
-                    .limit(days)
-                    .execute()
-                )
-
-                if res.data and len(res.data) >= (days * 0.7):
-                    is_valid, reason = _validate_date_coverage(res.data, days)
-                    if is_valid:
-                        logger.debug(f"Using local price history for {ticker} ({len(res.data)} samples, {reason}).")
-                        return [
-                            {
-                                "price": float(row["price"]),
-                                "open": float(row["open"]) if row.get("open") is not None else None,
-                                "high": float(row["high"]) if row.get("high") is not None else None,
-                                "low": float(row["low"]) if row.get("low") is not None else None,
-                                "close": float(row["close"]) if row.get("close") is not None else None,
-                                "volume": int(row["volume"]) if row.get("volume") is not None else None,
-                                "fetched_at": row["fetched_at"],
-                            }
-                            for row in res.data
-                        ]
-                    else:
-                        logger.debug(f"Skipping local cache for {ticker}: {reason}. Fetching from provider.")
-            except Exception as e:
-                logger.warning(f"Error checking local price history for {ticker}: {e}")
-
-        # 2. Fetch from the configured provider
-        provider = self.provider
-        if provider is None:
-            logger.error(f"No financial provider configured for history retrieval for {ticker}.")
-            return []
-
-        logger.info(f"Fetching history for {ticker} from configured provider ({provider.provider_name})...")
-        history = await provider.get_history(ticker, days)
-
-        if history:
-            # 3. Save to history table so it's available next time
-            try:
-                payloads = []
-                for entry in history:
-                    payload = {
-                        "ticker": ticker,
-                        "price": float(entry["price"]),
-                        "fetched_at": entry["fetched_at"],
-                        "market_cap": entry.get("market_cap", 0),  # Fallback for non-null column
-                    }
-                    # Persist OHLC when available so fetch_intraday_prices() can
-                    # compute correct intraday hit metrics on subsequent reads.
-                    if entry.get("open") is not None:
-                        payload["open"] = float(entry["open"])
-                    if entry.get("high") is not None:
-                        payload["high"] = float(entry["high"])
-                    if entry.get("low") is not None:
-                        payload["low"] = float(entry["low"])
-                    if entry.get("close") is not None:
-                        payload["close"] = float(entry["close"])
-                    elif entry.get("price") is not None:
-                        payload["close"] = float(entry["price"])  # price == close for EOD bars
-                    if entry.get("volume") is not None:
-                        payload["volume"] = int(entry["volume"])
-                    payloads.append(payload)
-
-                if payloads:
-                    # Batch upsert into price_history
-                    self.client.table("price_history").upsert(payloads, on_conflict="ticker, fetched_at").execute()
-            except Exception as e:
-                logger.warning(f"Error saving historical data for {ticker} to cache: {e}")
-            return history
-
-        return []
+            logger.error(f"No financial provider configured for {ticker}.")
+        return provider
 
     async def get_key_metrics(self, ticker: str, period: str = "annual", limit: int = 1) -> list[dict]:
-        """Fetch fundamental financial key metrics for a ticker.
-
-        Delegates to the configured financial provider.
-        """
-        provider = self.provider
-        if provider is None:
-            logger.error(f"No financial provider configured for key metrics retrieval for {ticker}.")
-            return []
-
-        return await provider.get_key_metrics(ticker, period, limit)
+        """Fetch fundamental financial key metrics for a ticker."""
+        p = self._require_provider(ticker)
+        return await p.get_key_metrics(ticker, period, limit) if p else []
 
     async def get_earnings_history(self, ticker: str, limit: int = 8) -> list[dict]:
-        """Fetch historical earnings and upcoming date for a ticker.
-
-        Delegates to the configured financial provider.
-        """
-        provider = self.provider
-        if provider is None:
-            logger.error(f"No financial provider configured for earnings history retrieval for {ticker}.")
-            return []
-
-        return await provider.get_earnings_history(ticker, limit)
+        """Fetch historical earnings and upcoming date for a ticker."""
+        p = self._require_provider(ticker)
+        return await p.get_earnings_history(ticker, limit) if p else []
 
     async def get_analyst_estimates(self, ticker: str, period: str = "annual", limit: int = 5) -> list[dict]:
-        """Fetch forward analyst consensus estimates for a ticker.
-
-        Delegates to the configured financial provider.
-        """
-        provider = self.provider
-        if provider is None:
-            logger.error(f"No financial provider configured for analyst estimates retrieval for {ticker}.")
+        """Fetch forward analyst consensus estimates for a ticker."""
+        p = self._require_provider(ticker)
+        if not p or not hasattr(p, "get_analyst_estimates"):
             return []
-
-        # Some providers might not implement it dynamically, check before calling
-        if not hasattr(provider, "get_analyst_estimates"):
-            logger.warning(f"Provider {provider.provider_name} does not support analyst estimates.")
-            return []
-
-        return await provider.get_analyst_estimates(ticker, period, limit)
+        return await p.get_analyst_estimates(ticker, period, limit)
 
     async def get_financial_growth(self, ticker: str, period: str = "annual", limit: int = 5) -> list[dict]:
-        """Fetch historical financial growth metrics (YoY) for a ticker.
-
-        Delegates to the configured financial provider.
-        """
-        provider = self.provider
-        if provider is None:
-            logger.error(f"No financial provider configured for financial growth retrieval for {ticker}.")
+        """Fetch historical financial growth metrics (YoY) for a ticker."""
+        p = self._require_provider(ticker)
+        if not p or not hasattr(p, "get_financial_growth"):
             return []
-
-        if not hasattr(provider, "get_financial_growth"):
-            logger.warning(f"Provider {provider.provider_name} does not support financial growth.")
-            return []
-
-        return await provider.get_financial_growth(ticker, period, limit)
+        return await p.get_financial_growth(ticker, period, limit)
 
     async def get_company_profile(self, ticker: str) -> list[dict]:
-        """Fetch company profile (including beta, sector, shares outstanding) for a ticker.
-
-        Delegates to the configured financial provider.
-        """
-        provider = self.provider
-        if provider is None:
-            logger.error(f"No financial provider configured for company profile retrieval for {ticker}.")
+        """Fetch company profile (including beta, sector, shares outstanding) for a ticker."""
+        p = self._require_provider(ticker)
+        if not p or not hasattr(p, "get_company_profile"):
             return []
-
-        if not hasattr(provider, "get_company_profile"):
-            logger.warning(f"Provider {provider.provider_name} does not support company profile.")
-            return []
-
-        return await provider.get_company_profile(ticker)
+        return await p.get_company_profile(ticker)

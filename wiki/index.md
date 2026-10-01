@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/market-data]] — market data facade and its cache, session, and transform modules
 - [[entities/cli]] — CLI package: argparse schema, command dispatch map, and per-domain sub-command routers
 - [[entities/analysis-pipeline]] — vertical-slice package for prompt assembly, response parsing, and validation in the LLM analysis flow
 - [[entities/portfolio-auditor]] — health-check and auto-heal reconciliation island for systematic portfolios

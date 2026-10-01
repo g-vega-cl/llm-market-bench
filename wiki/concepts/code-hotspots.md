@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **90 days ago**, Total commits analyzed: **268**).
+Living metrics generated from git history (Lookback window: **90 days ago**, Total commits analyzed: **269**).
 
 ## Top Hotspots
 
@@ -14,13 +14,13 @@ Files with high churn and high bug fix density represent code where changes freq
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/engine/tests/test_workflow_schedule.py` | 25 | 13 | 52.0% | 209 | 325 | **CRITICAL** |
-| `apps/engine/main.py` | 35 | 8 | 22.9% | 73 | 280 | **CRITICAL** |
+| `apps/engine/main.py` | 36 | 8 | 22.2% | 73 | 288 | **CRITICAL** |
 | `apps/engine/tasks/daily_predictor.py` | 26 | 7 | 26.9% | 498 | 182 | **CRITICAL** |
 | `apps/engine/tests/test_daily_predictor.py` | 21 | 8 | 38.1% | 612 | 168 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 25 | 6 | 24.0% | 161 | 150 | **CRITICAL** |
 | `apps/engine/core/llm/analysis.py` | 17 | 8 | 47.1% | 281 | 136 | **CRITICAL** |
 | `apps/engine/core/llm/tools.py` | 33 | 4 | 12.1% | 1652 | 132 | **CRITICAL** |
-| `apps/engine/execution/market_data.py` | 12 | 9 | 75.0% | 752 | 108 | **CRITICAL** |
+| `apps/engine/execution/market_data.py` | 12 | 9 | 75.0% | 319 | 108 | **CRITICAL** |
 | `apps/engine/autoresearch/researcher.py` | 34 | 3 | 8.8% | 297 | 102 | **CRITICAL** |
 | `apps/engine/core/config.py` | 33 | 3 | 9.1% | 212 | 99 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 18 | 5 | 27.8% | 673 | 90 | **HIGH** |

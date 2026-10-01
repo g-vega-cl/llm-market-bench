@@ -396,3 +396,83 @@ async def test_is_trading_day_regular_weekday():
     ]
     with patch.object(manager, "get_market_holidays", new_callable=AsyncMock, return_value=mock_holidays):
         assert await manager.is_trading_day("2026-09-08") is True
+
+
+@pytest.mark.asyncio
+async def test_get_quotes_batch_with_provider_and_fallback():
+    manager = MarketDataManager()
+    manager.cache = MagicMock()
+    # AAPL is in cache, MSFT and NVDA are missing
+    manager.cache.get_quotes_batch.return_value = (
+        {"AAPL": TickerData(ticker="AAPL", price=150.0, market_cap=2e12, exists=True)},
+        ["MSFT", "NVDA"],
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.provider_name = "fmp"
+    mock_provider.get_ticker_data_batch = AsyncMock(
+        return_value={"MSFT": TickerData(ticker="MSFT", price=400.0, market_cap=3e12, exists=True)}
+    )
+    manager.provider = mock_provider
+    manager.get_quote = AsyncMock(return_value=TickerData(ticker="NVDA", price=120.0, market_cap=2e12, exists=True))
+
+    results = await manager.get_quotes(["AAPL", "MSFT", "NVDA"])
+
+    assert len(results) == 3
+    assert results["AAPL"].price == 150.0
+    assert results["MSFT"].price == 400.0
+    assert results["NVDA"].price == 120.0
+
+
+@pytest.mark.asyncio
+async def test_screen_stocks_caching():
+    manager = MarketDataManager()
+    MarketDataManager._screener_cache.clear()
+
+    mock_provider = MagicMock()
+    mock_provider.provider_name = "fmp"
+    mock_provider.screen_stocks = AsyncMock(return_value=[{"symbol": "AAPL", "price": 150.0}])
+    manager.provider = mock_provider
+
+    res1 = await manager.screen_stocks(market_cap_more_than=1e9, limit=5)
+    assert res1 == [{"symbol": "AAPL", "price": 150.0}]
+    assert mock_provider.screen_stocks.call_count == 1
+
+    # Second call should hit in-memory screener cache
+    res2 = await manager.screen_stocks(market_cap_more_than=1e9, limit=5)
+    assert res2 == res1
+    assert mock_provider.screen_stocks.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_provider_passthroughs():
+    manager = MarketDataManager()
+    mock_provider = MagicMock()
+    mock_provider.provider_name = "fmp"
+    mock_provider.get_key_metrics = AsyncMock(return_value=[{"pe": 25.0}])
+    mock_provider.get_earnings_history = AsyncMock(return_value=[{"eps": 1.5}])
+    mock_provider.get_analyst_estimates = AsyncMock(return_value=[{"targetPrice": 200.0}])
+    mock_provider.get_financial_growth = AsyncMock(return_value=[{"revenueGrowth": 0.15}])
+    mock_provider.get_company_profile = AsyncMock(return_value=[{"sector": "Technology"}])
+    manager.provider = mock_provider
+
+    assert await manager.get_key_metrics("AAPL") == [{"pe": 25.0}]
+    assert await manager.get_earnings_history("AAPL") == [{"eps": 1.5}]
+    assert await manager.get_analyst_estimates("AAPL") == [{"targetPrice": 200.0}]
+    assert await manager.get_financial_growth("AAPL") == [{"revenueGrowth": 0.15}]
+    assert await manager.get_company_profile("AAPL") == [{"sector": "Technology"}]
+
+
+def test_market_data_manager_setters():
+    manager = MarketDataManager()
+    new_client = MagicMock()
+    manager.client = new_client
+    assert manager.client == new_client
+    assert manager.cache.client == new_client
+
+    manager.cache_ttl_seconds = 180
+    assert manager.cache_ttl_seconds == 180
+    assert manager.cache.cache_ttl_seconds == 180
+
+    manager.provider = "custom_provider"
+    assert manager.provider == "custom_provider"

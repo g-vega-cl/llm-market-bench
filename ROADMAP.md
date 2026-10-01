@@ -94,9 +94,7 @@ Composite Scoring: Give Jev a rubric, and it can give a composite score to all
 
 Decompose critical monolithic hotspots identified by churn forensics into isolated modules (target 100 to 300 LOC) with colocated tests.
 
-- [ ] **Refactor `apps/engine/core/llm/tools.py`** (3,128 LOC)
-  - Decompose the monolithic tool registry into domain modules (`tools/market_data.py`, `tools/technicals.py`, `tools/sec_filings.py`, `tools/portfolio.py`) with a thin dispatcher barrel.
-- [ ] **Refactor `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx`** (1,471 LOC, 20.0% fix ratio)
+- [x] **Refactor `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx`** (Decomposed from 1,731 LOC to 177 LOC orchestrator with 8 colocated sub-components under 300 LOC each)
   - Extract page sub-components (chart panels, variant sidebars, score modals, history tables) into colocated components under `features/daily-predictions/components/` under 300 LOC each.
 - [ ] **Refactor `apps/engine/core/llm/analysis.py`** (1,150 LOC, 63.6% bug fix ratio, CRITICAL)
   - Split prompt assembly, response parsing, and validation into separate vertical modules to eliminate patch search collisions and regression cascades.

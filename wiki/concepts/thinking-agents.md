@@ -63,7 +63,7 @@ In `apps/engine/core/llm/handlers/anthropic.py`, the assistant content accumulat
 - The agent can think in Turn 1, call Tool A (`get_stock_quote`), receive the quote in Turn 2, think about the price, call Tool B (`get_options_sentiment`), and complete the analysis with full contextual awareness.
 
 ### Solution 3: Turn-Ending and Extraction Guarantees
-In `apps/engine/core/llm/verification.py` and `apps/engine/core/llm/analysis.py`:
+In `apps/engine/core/llm/verification.py` and `apps/engine/core/llm/analysis.py` (via `apps/engine/core/llm/analysis_pipeline/prompt_assembly.py`):
 - Thinking blocks are preserved as `[Thinking: ...]` in flattened transcripts so downstream extraction models inherit the deliberation context.
 - If the conversation ends with an `assistant` or `model` turn, the engine automatically appends an explicit `user` turn (`"Based on the preceding evaluation, extract and structure the final result..."`).
 - For Anthropic, `system` content is extracted to the top-level `system` parameter rather than remaining in the `messages` array.

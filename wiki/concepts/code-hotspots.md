@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **90 days ago**, Total commits analyzed: **266**).
+Living metrics generated from git history (Lookback window: **90 days ago**, Total commits analyzed: **267**).
 
 ## Top Hotspots
 
@@ -17,9 +17,9 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/main.py` | 35 | 8 | 22.9% | 1244 | 280 | **CRITICAL** |
 | `apps/engine/tasks/daily_predictor.py` | 26 | 7 | 26.9% | 498 | 182 | **CRITICAL** |
 | `apps/engine/tests/test_daily_predictor.py` | 21 | 8 | 38.1% | 612 | 168 | **CRITICAL** |
-| `apps/engine/core/llm/analysis.py` | 17 | 9 | 52.9% | 1170 | 153 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 24 | 6 | 25.0% | 1639 | 144 | **CRITICAL** |
-| `apps/engine/core/llm/tools.py` | 32 | 4 | 12.5% | 1652 | 128 | **CRITICAL** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 25 | 6 | 24.0% | 161 | 150 | **CRITICAL** |
+| `apps/engine/core/llm/tools.py` | 33 | 4 | 12.1% | 1652 | 132 | **CRITICAL** |
+| `apps/engine/core/llm/analysis.py` | 16 | 8 | 50.0% | 281 | 128 | **CRITICAL** |
 | `apps/engine/execution/market_data.py` | 12 | 9 | 75.0% | 752 | 108 | **CRITICAL** |
 | `apps/engine/autoresearch/researcher.py` | 34 | 3 | 8.8% | 297 | 102 | **CRITICAL** |
 | `apps/engine/core/config.py` | 33 | 3 | 9.1% | 212 | 99 | **HIGH** |
@@ -28,11 +28,11 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tests/test_evaluate_daily_predictions.py` | 12 | 6 | 50.0% | 349 | 72 | **HIGH** |
 | `apps/engine/tasks/evaluate_daily_predictions.py` | 12 | 5 | 41.7% | 276 | 60 | **HIGH** |
 | `apps/web/src/config/how-it-works.json` | 12 | 5 | 41.7% | 109 | 60 | **HIGH** |
-| `apps/engine/tasks/daily_autoresearch.py` | 18 | 3 | 16.7% | 735 | 54 | **HIGH** |
-| `apps/engine/core/llm/handlers/base.py` | 26 | 2 | 7.7% | 287 | 52 | **HIGH** |
+| `apps/engine/tasks/daily_autoresearch.py` | 19 | 3 | 15.8% | 735 | 57 | **HIGH** |
 | `apps/engine/tests/test_autoresearch.py` | 10 | 5 | 50.0% | 1965 | 50 | **HIGH** |
 | `apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx` | 9 | 5 | 55.6% | 91 | 45 | **HIGH** |
 | `apps/cron-dispatcher/wrangler.jsonc` | 11 | 4 | 36.4% | 15 | 44 | **HIGH** |
+| `apps/engine/core/llm/verification.py` | 10 | 4 | 40.0% | 394 | 40 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -42,7 +42,7 @@ Files that consistently change in the same commit indicate implicit architectura
 | :--- | :--- | :---: | :---: |
 | `apps/engine/core/llm/handlers/base.py` | `apps/engine/core/llm/tools.py` | 18 | 69% |
 | `apps/engine/tasks/daily_predictor.py` | `apps/engine/tests/test_daily_predictor.py` | 17 | 81% |
-| `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/tools.py` | 17 | 53% |
+| `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/tools.py` | 17 | 52% |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 16 | 89% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 16 | 62% |
 | `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/handlers/base.py` | 16 | 62% |
@@ -50,7 +50,7 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/handlers/base.py` | 14 | 54% |
 | `apps/engine/core/config.py` | `apps/engine/main.py` | 14 | 42% |
 | `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 13 | 72% |
-| `apps/engine/tasks/daily_autoresearch.py` | `apps/engine/tests/test_daily_autoresearch.py` | 12 | 86% |
+| `apps/engine/tasks/daily_autoresearch.py` | `apps/engine/tests/test_daily_autoresearch.py` | 12 | 80% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/tests/test_tools_consistency.py` | 12 | 71% |
 | `apps/engine/tests/test_tools_consistency.py` | `packages/config/tools.json` | 12 | 71% |
 | `apps/engine/core/llm/tools.py` | `packages/config/tools.json` | 12 | 67% |

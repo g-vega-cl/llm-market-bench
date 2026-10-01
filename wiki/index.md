@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/analysis-pipeline]] — vertical-slice package for prompt assembly, response parsing, and validation in the LLM analysis flow
 - [[entities/portfolio-auditor]] — health-check and auto-heal reconciliation island for systematic portfolios
 - [[entities/daily-postmortem]] — GPT-5.6 Luna post-close audit of daily SPY predictions with a closed root-cause taxonomy
 - [[entities/future-forces-portfolio]] — Auto-indexed page

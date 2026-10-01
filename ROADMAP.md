@@ -90,9 +90,4 @@ Confidence Gated Routing: Jev can generate confidence scores that can be used to
 
 Composite Scoring: Give Jev a rubric, and it can give a composite score to all
 
-## Hotspot Refactoring (Vertical Slice Islands)
 
-Decompose critical monolithic hotspots identified by churn forensics into isolated modules (target 100 to 300 LOC) with colocated tests.
-
-- [ ] **Refactor `apps/engine/execution/market_data.py`** (749 LOC, 66.7% bug fix ratio, CRITICAL)
-  - Separate data provider clients, price caching, and transform logic into modular units.

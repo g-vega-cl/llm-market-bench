@@ -20,7 +20,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - add a local model?
 - [ ] - make an autoresearcher for the verifier
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
-- [ ] - Benchify allow people yo use their own models/keys/prompts and compete.
+- [ ] - Benchify allow people to use their own models/keys/prompts and compete.
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
@@ -84,10 +84,10 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: update today page 
 - [ ] - Benchify: could jev work for my autoresearcher?
 
-Speculative Fanout: Ask multiple questions in a single query and get all of them answered in parallel. For example: triage a support ticket and assess its type, severity, frustration level etc.
+    Speculative Fanout: Ask multiple questions in a single query and get all of them answered in parallel. For example: triage a support ticket and assess its type, severity, frustration level etc.
 
-Confidence Gated Routing: Jev can generate confidence scores that can be used to route to different actions. If you are highly confident you can take the action directly, or if you have low confidence, you can add a user prompt to clarify.
+    Confidence Gated Routing: Jev can generate confidence scores that can be used to route to different actions. If you are highly confident you can take the action directly, or if you have low confidence, you can add a user prompt to clarify.
 
-Composite Scoring: Give Jev a rubric, and it can give a composite score to all
+    Composite Scoring: Give Jev a rubric, and it can give a composite score to all
 
 

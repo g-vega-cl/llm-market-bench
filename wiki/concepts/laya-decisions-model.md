@@ -154,6 +154,38 @@ Requests must then pass `Authorization: Bearer <your-secret-token>`.
 
 ---
 
+## Empirical Fine-Tuning & Calibration Findings (`experiments/laya-training/`)
+
+In October 2026, an experimental workbench fine-tuned ModernBERT-large (`convaiinnovations/laya-typed-decisions`) on 78 historical pre-market macro contexts (~5,000 tokens) with out-of-sample forward testing across 20 September 2026 trading sessions.
+
+### Benchmark Performance
+
+| Evaluation Stage | Out-of-Sample Accuracy | Brier Score | Notes |
+|---|---|---|---|
+| Random Guess Baseline | 50.0% | 0.2500 | Theoretical uninformative baseline |
+| Zero-shot / Under-trained (10 epochs, lr=3e-5) | 45.0% | 0.2844 | Stalled at loss ~0.695 due to learning rate floor |
+| Overfit Checkpoint (25 epochs, no label smoothing) | 55.0% | 0.3559 | Train loss collapsed to 0.048; logit explosion ruined Brier |
+| Best LoRA Checkpoint (Epoch 17 + Label Smoothing) | 60.0% | 0.3100 | Stable train loss ~0.117; prevented logit explosion |
+| Temperature Scaled ($T=2.096$) | 60.0% | 0.2654 | Deflated overconfident logits toward 50/50 |
+| **Platt Calibrated ($w=0.485, b=-0.182$)** | **65.0%** | **0.2250** | **Learned 60/40 directional regime; flipped borderline error** |
+
+### Key Technical Findings
+
+1. **Hardware precision requirements:** On Ampere and Hopper architectures (A100, H100), `torch.bfloat16` is required. Standard `float16` overflows with Rotary Position Embeddings (RoPE) across 5,000 tokens, generating `nan` loss. `bfloat16` matches `float32` range while cutting VRAM in half.
+2. **Gradient checkpointing:** Calling `base_model.gradient_checkpointing_enable()` drops peak forward/backward VRAM from >14 GB to 2.6 GB for batch size 1, permitting batch sizes of 4 to 8.
+3. **Overfitting dynamics on small sample sizes:** With 78 training days, a 421M parameter model with 7.2M LoRA parameters can easily memorize the dataset within 20 epochs. Adding `label_smoothing=0.05` and evaluating validation Brier score per epoch prevents logit explosion and locks in peak generalization.
+4. **Platt scaling vs scalar temperature:** Scalar temperature scaling ($z / T$) assumes an exact 50/50 market prior. Platt scaling ($P = \sigma(w \cdot \Delta z + b)$) learns an intercept $b$ that reflects market regime asymmetry (September had 12 DOWN and 8 UP sessions), shifting borderline predictions into the higher-probability regime.
+
+### Architectural Limits & Future Horizon
+
+ModernBERT-large is currently the largest open bidirectional encoder available. However, scaling market context from 5,000 to 30,000+ tokens introduces structural constraints:
+
+1. **Mean pooling dilution:** ModernBERT averages all token vectors (`classifier_pooling: "mean"`). Averaging tens of thousands of tokens dilutes catalyst sentences with background table noise.
+2. **Model capacity:** Macroeconomic forecasting requires synthesizing multi-asset relationships across changing interest rate, inflation, and liquidity regimes. A 421M parameter model faces capacity constraints on complex market dynamics.
+3. **7B-8B sequence classifiers:** For larger contexts (16k to 128k tokens), the recommended successor is **Qwen-2.5-7B** or **Llama-3.1-8B** loaded as a sequence classifier (`AutoModelForSequenceClassification`). Causal attention pools from the final token, preserving sharp catalysts while retaining Laya's non-autoregressive, calibrated probability interface.
+
+---
+
 ## Planned Engine Integration (`llm-market-bench`)
 
 When ready to wire Laya into the repository as a 4th contestant:

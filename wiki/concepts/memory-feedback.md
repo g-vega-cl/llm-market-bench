@@ -92,6 +92,13 @@ To navigate large historical memory corpuses efficiently, the Memories page feat
 
 
 
+### Zero-Compute Database Full-Text Search
+To search historical events without serialization bloat or edge worker timeouts:
+1. **Database-Level Full-Text Search**: Replaces legacy in-memory full-table downloads (3,144 rows + 768-dim float vectors = 18.8 MB) and quadratic Levenshtein loops with PostgreSQL `to_tsvector('english', content)` and `websearch_to_tsquery` via PostgREST `.textSearch('content', query, { type: 'websearch' })`.
+2. **Dedicated GIN Index**: Supported by `memories_content_fts_idx` GIN index for sub-10ms English text search execution.
+3. **Scalar Column Projection**: Restricts database select queries to scalar metadata columns (`MEMORY_SCALAR_COLUMNS`), permanently preventing high-dimensional embedding vector leakage across the web read path.
+4. **TanStack Query Caching**: Search queries are managed with a 5-minute `staleTime` via `memoriesQueries.search` to eliminate redundant server trips when re-inspecting terms.
+
 ### Memory Reinforcement & Duplicate Bumping
 When a new memory is ingested with `check_similarity=True`, the system performs a semantic similarity search. If a duplicate or highly similar entry is found:
 - Instead of creating a redundant record or silently skipping it, the system **bumps** the existing memory.

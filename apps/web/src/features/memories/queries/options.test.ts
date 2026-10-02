@@ -26,4 +26,21 @@ describe('memoriesQueries options config', () => {
         const options = memoriesQueries.list({ fetchFn: vi.fn() });
         expect(options.staleTime).toBe(1000 * 60 * 60 * 4);
     });
+
+    it('configures search query with 5 minute staleTime and proper queryKey', async () => {
+        const mockFetchFn = vi.fn().mockResolvedValue([{ id: 'm1', content: 'test' }]);
+        const options = memoriesQueries.search({
+            query: 'energy',
+            limit: 50,
+            fetchFn: mockFetchFn,
+        });
+
+        expect(options.queryKey).toEqual(['benchify', 'memories', 'search', 'energy']);
+        expect(options.staleTime).toBe(1000 * 60 * 5);
+
+        // biome-ignore lint/suspicious/noExplicitAny: testing queryFn execution
+        const result = await (options as any).queryFn();
+        expect(mockFetchFn).toHaveBeenCalledWith('energy', 50);
+        expect(result).toEqual([{ id: 'm1', content: 'test' }]);
+    });
 });

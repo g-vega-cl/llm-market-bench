@@ -3,6 +3,9 @@ import { getSupabaseBrowserClient } from '~/lib/supabase-client';
 
 const PAGE_SIZE = 50;
 
+export const MEMORY_SCALAR_COLUMNS =
+    'id, content, created_at, memory_type, metadata, parent_id, relationship_type, relevance_score, status, target_date, importance_score';
+
 export interface PaginatedMemories {
     data: Memory[];
     hasMore: boolean;
@@ -39,7 +42,7 @@ export async function fetchMemories(
 ): Promise<PaginatedMemories> {
     const supabase = getSupabaseBrowserClient();
 
-    let query = supabase.from('memories').select('*, parent_id, status, relationship_type');
+    let query = supabase.from('memories').select(MEMORY_SCALAR_COLUMNS);
 
     if (category && category !== 'all') {
         query = applyCategoryFilter(query, category);
@@ -74,7 +77,7 @@ export async function fetchAllMemories(): Promise<Memory[]> {
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
         .from('memories')
-        .select('*, parent_id, status, relationship_type')
+        .select(MEMORY_SCALAR_COLUMNS)
         .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -85,7 +88,7 @@ export async function fetchNewMemories(since: string): Promise<Memory[]> {
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
         .from('memories')
-        .select('*, parent_id, status, relationship_type')
+        .select(MEMORY_SCALAR_COLUMNS)
         .gt('created_at', since)
         .order('created_at', { ascending: false });
 
@@ -133,7 +136,7 @@ export async function fetchMemoryById(memoryId: string): Promise<Memory | null> 
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
         .from('memories')
-        .select('*, parent_id, status, relationship_type')
+        .select(MEMORY_SCALAR_COLUMNS)
         .eq('id', memoryId)
         .single();
 
@@ -182,7 +185,7 @@ export async function fetchChildResolutionEvent(parentId: string): Promise<Memor
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
         .from('memories')
-        .select('*, parent_id, status, relationship_type')
+        .select(MEMORY_SCALAR_COLUMNS)
         .eq('parent_id', parentId)
         .eq('relationship_type', 'RESOLUTION')
         .maybeSingle();
@@ -191,99 +194,19 @@ export async function fetchChildResolutionEvent(parentId: string): Promise<Memor
     return data as Memory | null;
 }
 
-function levenshtein(a: string, b: string): number {
-    const tmp: number[][] = [];
-    for (let i = 0; i <= a.length; i++) {
-        tmp[i] = [i];
-    }
-    for (let j = 0; j <= b.length; j++) {
-        tmp[0][j] = j;
-    }
-    for (let i = 1; i <= a.length; i++) {
-        for (let j = 1; j <= b.length; j++) {
-            tmp[i][j] = Math.min(
-                tmp[i - 1][j] + 1, // deletion
-                tmp[i][j - 1] + 1, // insertion
-                tmp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1), // substitution
-            );
-        }
-    }
-    return tmp[a.length][b.length];
-}
-
-function computeSimilarity(content: string, queryWords: string[]): number {
-    const contentClean = content.trim().toLowerCase();
-    if (!contentClean) return 0;
-
-    // Tokenize content into words, ignoring common punctuation
-    const contentWords = contentClean
-        .replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, ' ')
-        .split(/\s+/)
-        .filter(Boolean);
-
-    if (contentWords.length === 0) return 0;
-
-    let totalWordSimilarity = 0;
-    for (const qw of queryWords) {
-        let bestWordSimilarity = 0;
-        for (const cw of contentWords) {
-            const dist = levenshtein(qw, cw);
-            const maxLen = Math.max(qw.length, cw.length);
-            const wordSim = maxLen > 0 ? 1 - dist / maxLen : 0;
-            if (wordSim > bestWordSimilarity) {
-                bestWordSimilarity = wordSim;
-            }
-        }
-        // Only consider it a match if it meets a minimum word similarity threshold (e.g. 0.6)
-        if (bestWordSimilarity >= 0.6) {
-            totalWordSimilarity += bestWordSimilarity;
-        }
-    }
-
-    return totalWordSimilarity / queryWords.length;
-}
-
 export async function searchMemories(queryText: string, limit: number = 50): Promise<Memory[]> {
+    const queryClean = queryText.trim();
+    if (!queryClean) return [];
+
     const supabase = getSupabaseBrowserClient();
 
-    // 1. Fetch all memories from the database in descending chronological order
-    const { data: allMemories, error } = await supabase
+    const { data, error } = await supabase
         .from('memories')
-        .select('*, parent_id, status, relationship_type')
-        .order('created_at', { ascending: false });
+        .select(MEMORY_SCALAR_COLUMNS)
+        .textSearch('content', queryClean, { type: 'websearch', config: 'english' })
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
     if (error) throw error;
-    if (!allMemories || allMemories.length === 0) return [];
-
-    const queryClean = queryText.trim().toLowerCase();
-    if (!queryClean) {
-        return allMemories.slice(0, limit);
-    }
-
-    // Tokenize search query into words
-    const queryWords = queryClean.split(/\s+/).filter(Boolean);
-    if (queryWords.length === 0) {
-        return allMemories.slice(0, limit);
-    }
-
-    // Match and score each memory
-    const results = allMemories
-        .map((m: Memory) => ({
-            ...m,
-            similarity: computeSimilarity(m.content || '', queryWords),
-        }))
-        // Filter out records that don't match the query at all
-        .filter((m) => (m.similarity || 0) > 0);
-
-    // Sort by similarity descending, then by created_at descending
-    results.sort((a, b) => {
-        if (Math.abs((b.similarity || 0) - (a.similarity || 0)) > 0.0001) {
-            return (b.similarity || 0) - (a.similarity || 0);
-        }
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return dateB - dateA;
-    });
-
-    return results.slice(0, limit);
+    return (data || []) as Memory[];
 }

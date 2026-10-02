@@ -8,7 +8,12 @@
  * import { fetchMemories } from '~/features/memories/api/fetch-memories'
  */
 
-export { fetchAllMemories, fetchMemories } from './api/fetch-memories';
+export {
+    fetchAllMemories,
+    fetchMemories,
+    MEMORY_SCALAR_COLUMNS,
+    searchMemories,
+} from './api/fetch-memories';
 // Re-export key components for use in other features if needed
 export { MemoriesList } from './components/MemoriesList';
 export { MemoryCard } from './components/MemoryCard';

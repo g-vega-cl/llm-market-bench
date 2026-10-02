@@ -12,6 +12,7 @@ export const memoriesQueryKeys = {
         ['benchify', 'memories', 'resolutionChild', parentId] as const,
     causeAndEffect: (eventId: string) =>
         ['benchify', 'memories', 'causeAndEffect', eventId] as const,
+    search: (query: string) => ['benchify', 'memories', 'search', query] as const,
 } as const;
 
 export const eventChainQueryKeys = {

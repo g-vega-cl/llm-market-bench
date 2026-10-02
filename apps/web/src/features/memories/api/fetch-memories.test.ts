@@ -10,6 +10,7 @@ interface MockSupabaseChain {
     lt: ReturnType<typeof vi.fn>;
     select: ReturnType<typeof vi.fn>;
     from: ReturnType<typeof vi.fn>;
+    textSearch?: ReturnType<typeof vi.fn>;
 }
 
 let mockSupabaseClient: MockSupabaseChain | null = null;
@@ -113,6 +114,7 @@ import {
     fetchMemoryById,
     fetchMemoryChain,
     fetchReferencedNewsletters,
+    MEMORY_SCALAR_COLUMNS,
     searchMemories,
 } from './fetch-memories';
 
@@ -186,53 +188,83 @@ describe('fetchReferencedNewsletters', () => {
     });
 });
 
-describe('searchMemories (Fuzzy Levenshtein Search)', () => {
-    it('fetches all memories and computes similarity score client-side', async () => {
-        const mockData = [
+describe('searchMemories (Zero Compute Database Full-Text Search)', () => {
+    it('executes database-level full-text search with scalar columns, textSearch, order, and limit', async () => {
+        const mockResults = [
             {
                 id: 'id-1',
-                content: 'Huge energy deal signed by Trump today',
+                content: 'Huge energy deal signed today',
                 created_at: '2026-07-05',
+                memory_type: 'MARKET_EVENT',
             },
-            { id: 'id-2', content: 'S&P 500 drop concerns investors', created_at: '2026-07-04' },
         ];
 
-        // Mock Supabase to return the memories
-        const mockOrder = vi.fn().mockResolvedValue({ data: mockData, error: null });
-        const mockSelect = vi.fn(() => ({ order: mockOrder }));
-        const chain = {
-            from: vi.fn(() => ({ select: mockSelect })),
+        const chain: MockSupabaseChain = {
+            eq: vi.fn(() => chain),
+            not: vi.fn(() => chain),
+            is: vi.fn(() => chain),
+            or: vi.fn(() => chain),
+            order: vi.fn(() => chain),
+            limit: vi.fn(() => Promise.resolve({ data: mockResults, error: null })),
+            lt: vi.fn(() => chain),
+            select: vi.fn(() => chain),
+            from: vi.fn(() => chain),
+            textSearch: vi.fn(() => chain),
         };
-        mockSupabaseClient = chain as unknown as MockSupabaseChain;
+        mockSupabaseClient = chain;
 
-        const results = await searchMemories('energy trmp', 50);
+        const results = await searchMemories('energy deal', 50);
 
         expect(chain.from).toHaveBeenCalledWith('memories');
-        expect(mockSelect).toHaveBeenCalledWith('*, parent_id, status, relationship_type');
-
-        // Check that results contain calculated similarity
-        // "energy trmp" vs "Huge energy deal signed by Trump today"
-        // "energy" matches "energy" (score 1.0)
-        // "trmp" matches "Trump" (Levenshtein distance 1, length 5, score 1 - 1/5 = 0.8)
-        // Avg = 0.9
-        expect(results).toHaveLength(1); // id-2 should be excluded because similarity is 0
-        expect(results[0].id).toBe('id-1');
-        expect(results[0].similarity).toBeCloseTo(0.9, 2);
+        expect(chain.select).toHaveBeenCalledWith(MEMORY_SCALAR_COLUMNS);
+        expect(chain.textSearch).toHaveBeenCalledWith('content', 'energy deal', {
+            type: 'websearch',
+            config: 'english',
+        });
+        expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+        expect(chain.limit).toHaveBeenCalledWith(50);
+        expect(results).toEqual(mockResults);
     });
 
-    it('returns empty array when no memories match above threshold', async () => {
-        const mockData = [
-            { id: 'id-2', content: 'S&P 500 drop concerns investors', created_at: '2026-07-04' },
-        ];
-
-        const mockOrder = vi.fn().mockResolvedValue({ data: mockData, error: null });
-        const mockSelect = vi.fn(() => ({ order: mockOrder }));
-        const chain = {
-            from: vi.fn(() => ({ select: mockSelect })),
+    it('returns empty array immediately without querying database when query is empty or whitespace', async () => {
+        const chain: MockSupabaseChain = {
+            eq: vi.fn(() => chain),
+            not: vi.fn(() => chain),
+            is: vi.fn(() => chain),
+            or: vi.fn(() => chain),
+            order: vi.fn(() => chain),
+            limit: vi.fn(() => chain),
+            lt: vi.fn(() => chain),
+            select: vi.fn(() => chain),
+            from: vi.fn(() => chain),
+            textSearch: vi.fn(() => chain),
         };
-        mockSupabaseClient = chain as unknown as MockSupabaseChain;
+        mockSupabaseClient = chain;
 
-        const results = await searchMemories('nuclear energy', 50);
-        expect(results).toEqual([]);
+        const resultsEmpty = await searchMemories('', 50);
+        const resultsWhitespace = await searchMemories('    ', 50);
+
+        expect(resultsEmpty).toEqual([]);
+        expect(resultsWhitespace).toEqual([]);
+        expect(chain.from).not.toHaveBeenCalled();
+    });
+
+    it('throws error when database returns an error', async () => {
+        const dbError = new Error('Database search failed');
+        const chain: MockSupabaseChain = {
+            eq: vi.fn(() => chain),
+            not: vi.fn(() => chain),
+            is: vi.fn(() => chain),
+            or: vi.fn(() => chain),
+            order: vi.fn(() => chain),
+            limit: vi.fn(() => Promise.resolve({ data: null, error: dbError })),
+            lt: vi.fn(() => chain),
+            select: vi.fn(() => chain),
+            from: vi.fn(() => chain),
+            textSearch: vi.fn(() => chain),
+        };
+        mockSupabaseClient = chain;
+
+        await expect(searchMemories('energy', 50)).rejects.toThrow('Database search failed');
     });
 });

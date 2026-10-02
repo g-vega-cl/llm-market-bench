@@ -50,6 +50,7 @@ The project maintains three canonical implementations of this pattern:
 | **Catalyst Radar** (`"Keep an Eye"`) | Matches concept vectors against calendar event embeddings in `apps/engine/analysis/catalyst_radar.py` during `calendar.yml` and `main.py`. | `public.catalyst_radar` | `fetchConcepts` loads scalar catalyst records (`stage`, `similarity`, `target_date`) in parallel with concepts. |
 | **Market Barometer** | Ingests 23 macro assets across 6 categories and computes historical z-scores and sentiment in `apps/engine/core/macro_tracker.py`. | `public.market_barometer_history` | `fetchMarketBarometer` loads pre-aggregated status and trend records. |
 | **Earnings Alpha** | Calculates historical post-earnings drift and probability distributions in engine ingestion. | `public.earnings_alpha` | `fetchEarningsCalendar` reads pre-calculated alpha metrics directly. |
+| **AI Memories Search** | Full-Text Search on `public.memories.content` via PostgreSQL GIN index (`to_tsvector`). | `public.memories` | `searchMemories` queries scalar projection with `textSearch(..., { type: 'websearch' })` and explicit limit (0ms JS compute, zero vector egress). |
 
 ---
 

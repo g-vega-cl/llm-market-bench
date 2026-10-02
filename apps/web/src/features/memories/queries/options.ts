@@ -66,6 +66,20 @@ export const memoriesQueries = {
                 opts.fetchFn ? opts.fetchFn() : Promise.reject(new Error('fetchFn required')),
             staleTime: Number.POSITIVE_INFINITY,
         }),
+
+    search: <T extends Memory[]>(opts: {
+        query: string;
+        limit?: number;
+        fetchFn?: (query: string, limit?: number) => Promise<T>;
+    }) =>
+        queryOptions({
+            queryKey: memoriesQueryKeys.search(opts.query),
+            queryFn: () =>
+                opts.fetchFn
+                    ? opts.fetchFn(opts.query, opts.limit)
+                    : Promise.reject(new Error('fetchFn required')),
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        }),
 };
 
 export const eventChainQueries = {

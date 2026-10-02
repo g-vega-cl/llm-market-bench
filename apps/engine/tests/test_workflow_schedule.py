@@ -166,6 +166,42 @@ def test_generate_newsletter_chains_daily_predictor():
     assert "daily-predictor" in trigger_step.get("run", "")
 
 
+def test_daily_predictor_safety_window_blocks_after_hours():
+    """Verify daily-predictor.yml safety check blocks pre-market predictions after 13:30 UTC without leaking past 20:00 UTC."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    predictor_yml_path = root / ".github" / "workflows" / "daily-predictor.yml"
+
+    content = predictor_yml_path.read_text()
+    assert '[ "$NOW_MINUTES" -ge 810 ]' in content
+    # Crucial regression check: Must NOT have '< 1200' upper bound which let 20:00-24:00 UTC evening runs leak through
+    assert "-lt 1200" not in content, (
+        "Found fragile '-lt 1200' check in daily-predictor.yml which allows rogue evening runs after 8 PM UTC."
+    )
+
+
+def test_generate_newsletter_workflow_auto_session_and_safety():
+    """Verify generate-newsletter.yml defaults to auto session, has 15m timeout, and blocks downstream predictor past 9:30 AM ET."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    newsletter_yml_path = root / ".github" / "workflows" / "generate-newsletter.yml"
+
+    content = newsletter_yml_path.read_text()
+    with open(newsletter_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    on_key = "on" if "on" in config else True
+    inputs = config.get(on_key, {}).get("workflow_dispatch", {}).get("inputs", {})
+    session_input = inputs.get("session", {})
+
+    assert session_input.get("default") == "auto", f"Expected default 'auto' for session input, got {session_input.get('default')}"
+    assert "auto" in session_input.get("options", []), f"Expected 'auto' in session options, got {session_input.get('options')}"
+
+    job = config.get("jobs", {}).get("generate-newsletter", {})
+    assert job.get("timeout-minutes") == 15, f"Expected 15m timeout, got {job.get('timeout-minutes')}"
+
+    # Verify downstream step guards against triggering daily-predictor past 13:30 UTC
+    assert "810" in content, "Expected downstream trigger step to check for 13:30 UTC (810 mins) cutoff."
+
+
 def test_cron_dispatcher_912_schedule():
     """Verify apps/cron-dispatcher/src/index.ts targets 9:12 AM ET for open newsletter synthesis and no longer has 9:20 or 5:15 branches."""
     root = Path(__file__).resolve().parent.parent.parent.parent

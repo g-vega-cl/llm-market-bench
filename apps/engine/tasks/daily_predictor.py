@@ -30,6 +30,16 @@ from core.llm.daily_predictor_prompts import (
 from core.llm.minimax import MiniMaxClient
 
 
+def get_ny_now() -> datetime:
+    """Helper to return current New York datetime."""
+    try:
+        from zoneinfo import ZoneInfo
+
+        return datetime.now(ZoneInfo("America/New_York"))
+    except Exception:
+        return datetime.now()
+
+
 async def predict_daily_with_jev(
     context: str,
     criteria: dict[str, str] | None = None,
@@ -403,15 +413,53 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
     """Run daily predictions ahead of market open for target ticker across model arena (DeepSeek & MiniMax)."""
     from execution.market_data import MarketDataManager
 
-    today = datetime.now(UTC).date()
+    now_et = get_ny_now()
+    today = now_et.date()
 
     if not force:
+        # 1. Market Hours Guard: Predictions are strictly for today's regular session (09:30 - 16:00 ET).
+        # Running after 09:30 AM ET makes no sense for the current session.
+        if now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 30):
+            logger.warning(
+                f"Refusing to run daily prediction for {today}: current time ({now_et.strftime('%H:%M')} ET) "
+                f"is after market open (09:30 ET). Daily predictions must run pre-market. Use --force to override."
+            )
+            return []
+        if now_et.hour < 4:
+            logger.warning(
+                f"Refusing to run daily prediction for {today}: current time ({now_et.strftime('%H:%M')} ET) "
+                f"is before pre-market open (04:00 ET). Use --force to override."
+            )
+            return []
+
+        # 2. Trading Day Guard
         mdm = MarketDataManager()
         is_trading = await mdm.is_trading_day(today)
         if not is_trading:
             logger.info(
                 f"Skipping daily prediction for {ticker} on {today}: "
                 f"Market is closed (weekend or holiday). Use --force to override."
+            )
+            return []
+
+        # 3. Idempotency & Overwrite Guard: Do not clobber existing morning predictions
+        client = get_supabase_client()
+        existing = (
+            client.table("daily_predictions")
+            .select("id")
+            .eq("target_date", today.isoformat())
+            .eq("ticker", ticker.upper())
+            .execute()
+        )
+        if (
+            existing
+            and getattr(existing, "data", None)
+            and isinstance(existing.data, list)
+            and len(existing.data) > 0
+        ):
+            logger.warning(
+                f"Daily predictions for {ticker} on {today} already exist in database ({len(existing.data)} records). "
+                f"Refusing to overwrite existing morning predictions. Use --force to override."
             )
             return []
 

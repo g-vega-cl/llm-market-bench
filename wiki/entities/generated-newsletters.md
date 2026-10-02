@@ -41,6 +41,7 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
 4. **Sequencing & Chained Dispatch**:
    - The morning newsletter generates at **9:12 AM ET** via Cloudflare Worker edge dispatch (see [[entities/cron-dispatcher]]).
    - Upon completion, `generate-newsletter.yml` automatically triggers `daily-predictor.yml` (`session: open` triggers `daily-predictor` and `session: close` triggers `evaluate-daily-predictions`), ensuring the predictor runs immediately after newsletter synthesis without race conditions.
+   - **Auto-Session & Cutoff Safety**: Manual workflow dispatch defaults to `session: auto`, which dynamically resolves to `open` between 13:00 and 15:00 UTC (9:00 - 11:00 AM EDT) and `close` outside that window. The workflow timeout is 15 minutes. Downstream predictor chaining enforces a strict pre-market cutoff ($< 13:30$ UTC), ensuring an `open` manual dispatch outside morning hours will never trigger pre-market predictions after market open.
 
 ## UI Presentation
 

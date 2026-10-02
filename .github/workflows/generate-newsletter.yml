@@ -4,18 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       session:
-        description: 'Session window for newsletter (open or close)'
+        description: 'Session window for newsletter (auto, open, or close)'
         required: true
-        default: 'open'
+        default: 'auto'
         type: choice
         options:
+          - 'auto'
           - 'open'
           - 'close'
 
 jobs:
   generate-newsletter:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       actions: write
@@ -37,11 +38,11 @@ jobs:
       - name: Determine session window
         id: sess
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.session }}" != "auto" ]; then
             SESSION="${{ inputs.session }}"
           else
             HOUR=$(date -u +%H)
-            if [ "$HOUR" = "13" ] || [ "$HOUR" = "14" ]; then
+            if [ "$HOUR" -ge 13 ] && [ "$HOUR" -le 14 ]; then
               SESSION="open"
             else
               SESSION="close"
@@ -75,6 +76,11 @@ jobs:
           GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
         run: |
           if [ "${{ steps.sess.outputs.session }}" = "open" ]; then
+            NOW_MINUTES=$(( $(date -u +%H) * 60 + $(date -u +%M) ))
+            if [ "$NOW_MINUTES" -ge 810 ]; then
+              echo "Session was 'open' but current time is past 13:30 UTC (9:30 AM ET market open). Skipping pre-market predictor trigger."
+              exit 0
+            fi
             ACTION="daily-predictor"
           else
             ACTION="evaluate-daily-predictions"

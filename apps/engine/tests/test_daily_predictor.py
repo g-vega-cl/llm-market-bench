@@ -12,6 +12,16 @@ from core.llm.daily_predictor_prompts import (
 from tasks.daily_predictor import run_daily_prediction
 
 
+@pytest.fixture(autouse=True)
+def default_mock_premarket_time(monkeypatch):
+    """Hermetic test fixture: default get_ny_now to pre-market 9:15 AM ET unless explicitly overridden."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    fake_time = datetime(2026, 10, 1, 9, 15, tzinfo=ZoneInfo("America/New_York"))
+    monkeypatch.setattr("tasks.daily_predictor.get_ny_now", lambda: fake_time)
+
+
 def test_split_daily_predictor_prompt():
     header, mutable, footer = split_daily_predictor_prompt(DAILY_PREDICTOR_PROMPT)
     assert header == DAILY_PREDICTOR_CONSTRAINTS_HEADER
@@ -708,3 +718,55 @@ async def test_run_daily_prediction_persists_market_context():
         for row in upserted_rows:
             assert "market_context" in row
             assert row["market_context"] == mock_context_str
+
+
+@pytest.mark.asyncio
+async def test_run_daily_prediction_aborts_after_market_hours_without_force():
+    """Verify run_daily_prediction strictly refuses to run after 9:30 AM ET without force=True."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    # Mock after-hours time: 4:30 PM ET (16:30 ET)
+    fake_after_hours = datetime(2026, 10, 1, 16, 30, tzinfo=ZoneInfo("America/New_York"))
+
+    mock_mdm = MagicMock()
+    mock_mdm.is_trading_day = AsyncMock(return_value=True)
+    mock_supabase = MagicMock()
+
+    with (
+        patch("tasks.daily_predictor.get_ny_now", return_value=fake_after_hours),
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
+    ):
+        results = await run_daily_prediction(ticker="SPY", force=False)
+        assert results == []
+        mock_supabase.table.return_value.upsert.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_daily_prediction_aborts_if_predictions_exist_without_force():
+    """Verify run_daily_prediction will not clobber existing predictions for the day without force=True."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    # Mock valid pre-market time: 9:15 AM ET
+    fake_premarket = datetime(2026, 10, 1, 9, 15, tzinfo=ZoneInfo("America/New_York"))
+
+    mock_mdm = MagicMock()
+    mock_mdm.is_trading_day = AsyncMock(return_value=True)
+
+    mock_supabase = MagicMock()
+    # Existing prediction exists for today
+    existing_query = MagicMock()
+    existing_query.eq.return_value = existing_query
+    existing_query.execute.return_value = MagicMock(data=[{"id": "existing-pred-1", "ticker": "SPY"}])
+    mock_supabase.table.return_value.select.return_value = existing_query
+
+    with (
+        patch("tasks.daily_predictor.get_ny_now", return_value=fake_premarket),
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
+    ):
+        results = await run_daily_prediction(ticker="SPY", force=False)
+        assert results == []
+        mock_supabase.table.return_value.upsert.assert_not_called()

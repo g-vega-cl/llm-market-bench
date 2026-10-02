@@ -55,8 +55,8 @@ jobs:
           # Pre-market prediction safety check: skip if running after 13:30 UTC (9:30 AM EDT market open)
           if [ "$COMMAND" = "daily-predictor" ]; then
             NOW_MINUTES=$(( $(date -u +%H) * 60 + $(date -u +%M) ))
-            # 13:30 UTC = 810 minutes; 20:00 UTC = 1200 minutes (intraday window)
-            if [ "$NOW_MINUTES" -ge 810 ] && [ "$NOW_MINUTES" -lt 1200 ]; then
+            # 13:30 UTC = 810 minutes (9:30 AM EDT market open)
+            if [ "$NOW_MINUTES" -ge 810 ]; then
               echo "WARNING: Pre-market prediction triggered after 9:30 AM ET market open ($NOW_MINUTES mins UTC). Skipping to avoid stale prediction."
               echo "skip=true" >> $GITHUB_OUTPUT
             fi

@@ -10,6 +10,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 ## Pipeline
 
 1. **Prediction Generation** — Models are prompted pre-market with injected market context and emit a direction, confidence, and expected return.
+   - **Pre-Market Hours & Idempotency Guard**: `run_daily_prediction` strictly requires execution within the pre-market window (04:00 to 09:30 ET). If triggered after 9:30 AM ET market open or before 4:00 AM ET, it refuses to run for the current session without `--force`. Furthermore, it checks if predictions already exist for the target date in `daily_predictions` and refuses to clobber existing records. In `.github/workflows/daily-predictor.yml`, the workflow safety check skips `daily-predictor` anytime the current time is $\ge 13:30$ UTC (9:30 AM ET).
 2. **Evaluation** — After the close, `apps/engine/tasks/evaluate_daily_predictions.py` scores each prediction against actual intraday prices.
    - **Non-Trading Day Purging**: If price data cannot be fetched and the target date was a non-trading day (weekend or market holiday), deletes the invalid prediction from `daily_predictions` to prevent indefinite retry loops.
    - Scopes today's 9:30 AM Open, High, Low, and 4:00 PM Close prices safely after market close by prioritizing timestamped Regular Trading Hours (`09:30:00 <= timestamp <= 16:00:00` ET) hourly bars (with automatic fallback to FMP `/historical-price-eod/full` EOD history). This guarantees zero extended-hours/post-market price contamination while immediately capturing afternoon price extremes.

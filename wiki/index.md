@@ -78,6 +78,7 @@
 
 ## Concepts
 
+- [[concepts/sector-model-tracks]] — per-model prompt evolution tracks with independent ratchet baselines in the Sector Predictor autoresearch
 - [[concepts/session-open-reconciliation]] — anchoring pre-market MOO entries to the official 9:30 AM session open price
 - [[concepts/dependency-resolver]] — `resolve_dep` test seam that keeps decomposed pipeline stages patchable via `main.<symbol>`
 - [[concepts/tool-domain-decomposition]] — decomposition of monolithic tools.py into domain modules with barrel re-exports, O(1) table dispatch, and mock-compat bridge

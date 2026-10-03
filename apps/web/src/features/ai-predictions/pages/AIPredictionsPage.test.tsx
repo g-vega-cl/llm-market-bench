@@ -362,4 +362,110 @@ Footer JSON schema`,
         const fromZeroBadges = screen.getAllByText('From 0');
         expect(fromZeroBadges.length).toBeGreaterThanOrEqual(1);
     });
+
+    it('isolates autoresearch prompt evolution and baselines per LLM model track', () => {
+        const multiModelExperiments: PromptExperiment[] = [
+            {
+                id: 'exp-ds-1',
+                prompt_name: 'SECTOR_PREDICTOR_PROMPT',
+                variant_tag: 'sector-ds-v1.0',
+                experiment_type: 'baseline',
+                prompt_content: 'DeepSeek content',
+                change_description: 'DeepSeek baseline',
+                metrics: { score: 86.5 },
+                status: 'active',
+                week_start: '2026-07-10',
+                week_end: '2026-07-17',
+                created_at: '2026-07-10T00:00:00Z',
+                parent_tag: null,
+                research_output: null,
+                is_backtest: false,
+                track_id: 'deepseek-v4-flash',
+            },
+            {
+                id: 'exp-mm-1',
+                prompt_name: 'SECTOR_PREDICTOR_PROMPT',
+                variant_tag: 'sector-mm-v1.0',
+                experiment_type: 'baseline',
+                prompt_content: 'MiniMax content',
+                change_description: 'MiniMax baseline',
+                metrics: { score: 78.2 },
+                status: 'active',
+                week_start: '2026-07-10',
+                week_end: '2026-07-17',
+                created_at: '2026-07-10T00:00:00Z',
+                parent_tag: null,
+                research_output: null,
+                is_backtest: false,
+                track_id: 'MiniMax-M3',
+            },
+            {
+                id: 'exp-gemini-1',
+                prompt_name: 'SECTOR_PREDICTOR_PROMPT',
+                variant_tag: 'sector-gem-v1.0',
+                experiment_type: 'baseline',
+                prompt_content: 'Gemini content',
+                change_description: 'Gemini baseline',
+                metrics: { score: 91.0 },
+                status: 'active',
+                week_start: '2026-07-10',
+                week_end: '2026-07-17',
+                created_at: '2026-07-10T00:00:00Z',
+                parent_tag: null,
+                research_output: null,
+                is_backtest: false,
+                track_id: 'gemini-3.5-flash-lite',
+            },
+            {
+                id: 'exp-gpt-1',
+                prompt_name: 'SECTOR_PREDICTOR_PROMPT',
+                variant_tag: 'sector-gpt-v1.0',
+                experiment_type: 'baseline',
+                prompt_content: 'GPT content',
+                change_description: 'GPT baseline',
+                metrics: { score: 83.4 },
+                status: 'active',
+                week_start: '2026-07-10',
+                week_end: '2026-07-17',
+                created_at: '2026-07-10T00:00:00Z',
+                parent_tag: null,
+                research_output: null,
+                is_backtest: false,
+                track_id: 'gpt-5.6-luna',
+            },
+        ];
+
+        render(
+            <AIPredictionsPage
+                initialData={mockPredictions}
+                experiments={multiModelExperiments}
+                refreshFn={refreshFn}
+            />,
+        );
+
+        // Switch to Prompt Auto-Research tab
+        fireEvent.click(screen.getByRole('button', { name: /Prompt Auto-Research/i }));
+
+        // Overview grid should show all 4 models simultaneously with distinct baselines
+        expect(screen.getByText('Multi-Model Sector Autoresearch Tracks')).toBeInTheDocument();
+        expect(screen.getByText('86.5000')).toBeInTheDocument(); // DeepSeek
+        expect(screen.getByText('78.2000')).toBeInTheDocument(); // MiniMax
+        expect(screen.getByText('91.0000')).toBeInTheDocument(); // Gemini
+        expect(screen.getByText('83.4000')).toBeInTheDocument(); // GPT
+
+        // Click on MiniMax track tab to isolate MiniMax
+        const mmButtons = screen.getAllByRole('button', { name: /MiniMax-M3/i });
+        fireEvent.click(mmButtons[0]);
+
+        // MiniMax isolated cards
+        expect(screen.getByText('MiniMax-M3 All-Time Baseline Score')).toBeInTheDocument();
+        expect(screen.getByText('78.2000')).toBeInTheDocument();
+        expect(screen.getByText('MiniMax-M3 Active Prompt')).toBeInTheDocument();
+        expect(screen.getAllByText('sector-mm-v1.0').length).toBeGreaterThanOrEqual(1);
+
+        // History list shows only MiniMax experiments
+        expect(screen.getByText('MiniMax History')).toBeInTheDocument();
+        expect(screen.queryByText('sector-ds-v1.0')).not.toBeInTheDocument();
+        expect(screen.queryByText('sector-gem-v1.0')).not.toBeInTheDocument();
+    });
 });

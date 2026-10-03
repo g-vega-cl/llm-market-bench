@@ -54,6 +54,7 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 * **Single Data Point Resilience**: The time scale domain adds a $\pm 1$-day margin when only a single data point is evaluated, preventing D3 coordinate scaling crashes.
 * **Unified Metrics**: Summary card statistics and chart plotting use the unified composite formula.
 * **Tabbed View**: Features a tabbed layout separating the forecasting tracker (Arena Dashboard) from the prompt evolution and mutations tracker (Prompt Auto-Research).
+* **Model Track Isolation**: Within the Prompt Auto-Research tab, model track selectors (`PredictorTrackTabs`) allow filtering prompt evolution independently across **All Models**, **DeepSeek Flash**, **MiniMax-M3**, **Gemini 3.5**, and **OpenAI GPT-5.6**. When "All Models" is selected, a 4-card status grid (`PredictorModelOverviewGrid`) renders each model's current active prompt variant, baseline score, and status side-by-side. Selecting an individual model isolates its baseline ratchet high-water mark, active prompt, lineage history, and math audit against that model's predictions.
 * **Prompt Evolution Details**: Visualises baseline scores, active prompt details, formula breakdowns, and line diffs for mutated variants.
 
 ---
@@ -72,7 +73,8 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 * **API Fetcher**: `apps/web/src/features/ai-predictions/api/fetch-predictions.ts` reading from `sector_predictions` (predictions) and `prompt_experiments` (scoped to `SECTOR_PREDICTOR_PROMPT` for experiments).
 * **Data Table**: `apps/web/src/features/ai-predictions/components/AIPredictionsTable.tsx` providing interactive column sorting, search, filtering, view switching, and expandable audit drawers.
 * **Visuals**: `apps/web/src/features/ai-predictions/components/AIPredictionChart.tsx` leveraging `d3` rendering pipeline.
-* **Pages**: `apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx` showing unified metrics, target track records, baseline stats, interactive prompt changes, and a detailed experiment history displaying active periods, mutation types, and parent references.
+* **Track Isolation Islands**: `apps/web/src/features/ai-predictions/lib/sector-tracks.ts` (track matching and baseline metrics), `PredictorTrackTabs.tsx` (track selector navigation), `PredictorModelOverviewGrid.tsx` (4-model status grid), and `PredictorAutoresearchTab.tsx` (isolated autoresearch dashboard).
+* **Pages**: `apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx` coordinating unified metrics, Arena scoreboard, accuracy chart, feed cards, and track-isolated prompt evolution.
 
 ---
 

@@ -232,3 +232,126 @@ async def test_execute_daily_close_exits(mock_supabase):
     assert mock_market_order.call_count == 1
     assert mock_market_order.call_args.kwargs["signal"] == "SELL"
     assert mock_market_order.call_args.kwargs["quantity"] == 20
+
+
+@pytest.mark.asyncio
+async def test_daily_close_exit_reconciles_open_price_from_beginning_of_day(mock_supabase):
+    """Reproduction test: Close exit must use beginning-of-day session open (770.58), not premarket prev close (763.99)."""
+    from execution.daily_trading import execute_daily_close_exits
+
+    target_date = "2026-10-02"
+    portfolio_id = uuid4()
+
+    # Pre-market entry was logged with previous day's close ($763.99)
+    prev_close = 763.99
+    actual_open = 770.58
+    actual_close = 769.50
+    shares = 13
+
+    mock_portfolio_data = [
+        {
+            "id": str(portfolio_id),
+            "owner_id": "sys-daily-spy-close-MiniMax-M3",
+            "cash_balance": 10000.0 - (shares * prev_close),
+            "total_equity": 10000.0,
+        }
+    ]
+    mock_positions_data = [
+        {
+            "portfolio_id": str(portfolio_id),
+            "ticker": "SPY",
+            "quantity": shares,
+            "average_cost_basis": prev_close,
+        }
+    ]
+    mock_entry_trades = [
+        {
+            "id": str(uuid4()),
+            "portfolio_id": str(portfolio_id),
+            "ticker": "SPY",
+            "signal": "BUY",
+            "quantity": shares,
+            "price": prev_close,
+            "total_cost": shares * prev_close,
+            "executed_at": f"{target_date}T13:30:00Z",
+        }
+    ]
+
+    inserted_trades = []
+    updated_trades = []
+
+    def table_router(table_name):
+        t = MagicMock()
+        t.select.return_value = t
+        t.eq.return_value = t
+        t.like.return_value = t
+        t.gte.return_value = t
+        t.lte.return_value = t
+        t.delete.return_value = t
+        t.upsert.return_value = t
+
+        def record_insert(payload):
+            inserted_trades.append(payload)
+            ib = MagicMock()
+            ib.execute.return_value = MagicMock(data=[payload])
+            return ib
+
+        def record_update(payload):
+            updated_trades.append(payload)
+            ub = MagicMock()
+            ub.eq.return_value = ub
+            ub.execute.return_value = MagicMock(data=[payload])
+            return ub
+
+        t.insert.side_effect = record_insert
+        t.update.side_effect = record_update
+
+        if table_name == "portfolios":
+            t.execute.return_value = MagicMock(data=mock_portfolio_data)
+        elif table_name == "portfolio_positions":
+            t.execute.return_value = MagicMock(data=mock_positions_data)
+        elif table_name == "trades":
+            t.execute.return_value = MagicMock(data=mock_entry_trades)
+        elif table_name == "daily_predictions":
+            t.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "model_name": "MiniMax-M3",
+                        "target_date": target_date,
+                        "open_price": actual_open,
+                        "close_price": actual_close,
+                        "predicted_direction": "UP",
+                    }
+                ]
+            )
+        else:
+            t.execute.return_value = MagicMock(data=[])
+        return t
+
+    mock_supabase.table.side_effect = table_router
+
+    with (
+        patch("execution.daily_trading.get_supabase_client", return_value=mock_supabase),
+        patch(
+            "execution.daily_trading.fetch_intraday_prices",
+            new=AsyncMock(return_value=(actual_open, 772.65, 767.15, actual_close)),
+            create=True,
+        ),
+        patch(
+            "execution.market_data.MarketDataManager.get_quote",
+            new=AsyncMock(return_value=MagicMock(price=actual_close)),
+        ),
+        patch("execution.alpaca_broker.AlpacaBroker.cancel_open_orders_for_agent", new=AsyncMock()),
+        patch("execution.alpaca_broker.AlpacaBroker.submit_market_order", new=AsyncMock()),
+    ):
+        result = await execute_daily_close_exits(target_date=target_date)
+
+    assert result["status"] == "success"
+    # Exit trade must have PnL calculated from beginning of day open (770.58), which is negative:
+    # (769.50 - 770.58) * 13 = -14.04 (or with slippage).
+    # It must NOT be (769.50 - 763.99) * 13 = +71.63!
+    assert len(result["exits"]) == 1
+    exit_pnl = result["exits"][0]["pnl"]
+    assert exit_pnl < 0, f"Expected loss from open {actual_open} to close {actual_close}, but got {exit_pnl}"
+    expected_pnl = (actual_close - actual_open) * shares
+    assert abs(exit_pnl - expected_pnl) < 1.0, f"Expected PnL near {expected_pnl}, got {exit_pnl}"

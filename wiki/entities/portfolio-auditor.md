@@ -19,12 +19,13 @@ The auditor walks a window of trading sessions (default 5, weekdays only) and ch
 | Type | Meaning |
 | :--- | :--- |
 | `MISSING_DAILY_SPY_TRADE` | A daily prediction exists but the system portfolio has fewer than 2 trades for that date. |
+| `INVALID_ENTRY_PRICE_DAILY_SPY` | SPY entry trade price desynced from session open price ($P_{open}$) by > 0.2% (e.g. taking previous close). |
 | `UNLIQUIDATED_WEEKLY_SECTOR_POSITION` | A weekly sector portfolio holds open positions during a period it should be flat (Friday post-close, weekend, or Monday pre-open). |
 | `MISSING_WEEKLY_SECTOR_ENTRY` | A weekly sector portfolio has zero positions mid-week, indicating a missed Monday rebalance. |
 
 ## Auto-Heal Mode
 
-When run with `--fix` (`auto_heal=True`), the auditor reconstructs missing Daily SPY executions using the session OHLC prices stored on the prediction (`open_price`, `high_price`, `low_price`, `close_price`) and the standard model slippage, reusing the canonical `execute_system_daily_trade` / `execute_system_daily_close_trade` paths. Reconstructed trades are written with `alpaca_status = "BACKFILLED"` so they are transparently distinguishable from live Alpaca executions. See [[concepts/backfilled-trades]].
+When run with `--fix` (`auto_heal=True`), the auditor reconstructs missing Daily SPY executions or replaces trades with invalid entry prices using session OHLC prints stored on the prediction (`open_price`, `high_price`, `low_price`, `close_price`) and standard model slippage, reusing canonical `execute_system_daily_trade` / `execute_system_daily_close_trade` paths. When auto-healing desynced entry prices, the auditor resets portfolio cash to prior-day closing equity from `portfolio_performance`, removes stale trades and positions, and re-executes chronologically to preserve accurate compounded returns. Reconstructed trades are written with `alpaca_status = "BACKFILLED"` so they are transparently distinguishable from live Alpaca executions. See [[concepts/backfilled-trades]].
 
 Weekly sector anomalies are flagged for review but not auto-healed — they require manual reconciliation.
 

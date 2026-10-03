@@ -65,6 +65,7 @@ async def audit_system_portfolios(
     """
     client = supabase_client or get_supabase_client()
     dates_to_check = _get_trading_dates(target_date, lookback_days)
+    dates_to_check.sort()
 
     anomalies: list[dict[str, Any]] = []
     healed: list[dict[str, Any]] = []
@@ -121,61 +122,117 @@ async def audit_system_portfolios(
                 )
                 trades = trades_res.data or []
 
-                if len(trades) < 2:
+                entry_trade = next(
+                    (t for t in trades if t.get("signal") in ("BUY", "SHORT")),
+                    trades[0] if trades else None,
+                )
+                open_p = float(pred.get("open_price") or 0.0)
+                entry_price = float(entry_trade.get("price") or 0.0) if entry_trade else 0.0
+
+                is_missing_trades = len(trades) < 2
+                has_invalid_entry = False
+
+                if not is_missing_trades and open_p > 0 and entry_price > 0:
+                    drift_pct = abs(entry_price - open_p) / open_p
+                    if drift_pct > 0.002:  # > 0.2% drift from beginning-of-day open
+                        has_invalid_entry = True
+
+                if is_missing_trades or has_invalid_entry:
+                    anomaly_type = "MISSING_DAILY_SPY_TRADE" if is_missing_trades else "INVALID_ENTRY_PRICE_DAILY_SPY"
+                    details = (
+                        f"Expected 2 trades (entry + exit) for {d}, found {len(trades)}"
+                        if is_missing_trades
+                        else f"Daily SPY entry price ${entry_price:.2f} desynced from session open ${open_p:.2f} (drift {drift_pct:.2%})"
+                    )
                     anomaly = {
                         "date": d,
                         "portfolio_id": portfolio_id,
                         "owner_id": owner_id,
-                        "type": "MISSING_DAILY_SPY_TRADE",
+                        "type": anomaly_type,
                         "model_name": model_name,
-                        "details": f"Expected 2 trades (entry + exit) for {d}, found {len(trades)}",
+                        "details": details,
                     }
                     anomalies.append(anomaly)
                     logger.warning(f"Portfolio health anomaly: {anomaly['details']} on {owner_id} ({d})")
 
-                    if auto_heal:
+                    if auto_heal and open_p > 0:
                         # Extract session OHLC prices from prediction or fetch fallback
-                        open_p = float(pred.get("open_price") or 0.0)
                         high_p = float(pred.get("high_price") or open_p)
                         low_p = float(pred.get("low_price") or open_p)
                         close_p = float(pred.get("close_price") or open_p)
 
-                        if open_p > 0:
-                            intraday_data = {
-                                "open_price": open_p,
-                                "high_price": high_p,
-                                "low_price": low_p,
-                                "close_price": close_p,
-                                "intraday_hit": bool(pred.get("intraday_hit", False)),
-                            }
+                        intraday_data = {
+                            "open_price": open_p,
+                            "high_price": high_p,
+                            "low_price": low_p,
+                            "close_price": close_p,
+                            "intraday_hit": bool(pred.get("intraday_hit", False)),
+                        }
 
-                            if owner_id.startswith(SYS_DAILY_SPY_CLOSE_OWNER_PREFIX):
-                                res = await execute_system_daily_close_trade(
-                                    prediction=pred,
-                                    intraday_data=intraday_data,
-                                    alpaca_status="BACKFILLED",
-                                    get_supabase_client_fn=lambda: client,
-                                    get_or_create_system_portfolio_fn=_portfolio_getter,
-                                )
-                            else:
-                                res = await execute_system_daily_trade(
-                                    prediction=pred,
-                                    intraday_data=intraday_data,
-                                    alpaca_status="BACKFILLED",
-                                    get_supabase_client_fn=lambda: client,
-                                    get_or_create_system_portfolio_fn=_portfolio_getter,
-                                )
-
-                            healed.append(
-                                {
-                                    "date": d,
-                                    "owner_id": owner_id,
-                                    "action": "AUTO_HEALED_DAILY_SPY",
-                                    "new_equity": res.get("new_equity"),
-                                    "alpaca_status": "BACKFILLED",
-                                }
+                        # Prior trading session equity
+                        prior_perf_res = (
+                            client.table("portfolio_performance")
+                            .select("total_equity")
+                            .eq("portfolio_id", portfolio_id)
+                            .lt("date", d)
+                            .order("date", desc=True)
+                            .limit(1)
+                            .execute()
+                        )
+                        prior_perf_data = prior_perf_res.data if isinstance(prior_perf_res.data, list) else []
+                        prior_equity = (
+                            float(prior_perf_data[0]["total_equity"])
+                            if (
+                                prior_perf_data
+                                and isinstance(prior_perf_data[0].get("total_equity"), (int, float, str))
                             )
-                            logger.info(f"Auto-healed {owner_id} for {d}: New equity ${res.get('new_equity', 0):,.2f}")
+                            else float(p.get("cash_balance") or 10000.0)
+                        )
+
+                        # Clean any existing trades for date d before executing
+                        client.table("trades").delete().eq("portfolio_id", portfolio_id).gte(
+                            "executed_at", f"{d}T00:00:00Z"
+                        ).lte("executed_at", f"{d}T23:59:59Z").execute()
+                        client.table("portfolio_positions").delete().eq("portfolio_id", portfolio_id).eq(
+                            "ticker", "SPY"
+                        ).execute()
+
+                        # Reset portfolio cash to prior_equity
+                        p["cash_balance"] = prior_equity
+                        client.table("portfolios").update(
+                            {"cash_balance": prior_equity, "total_equity": prior_equity}
+                        ).eq("id", portfolio_id).execute()
+
+                        if owner_id.startswith(SYS_DAILY_SPY_CLOSE_OWNER_PREFIX):
+                            res = await execute_system_daily_close_trade(
+                                prediction=pred,
+                                intraday_data=intraday_data,
+                                alpaca_status="BACKFILLED",
+                                get_supabase_client_fn=lambda: client,
+                                get_or_create_system_portfolio_fn=_portfolio_getter,
+                            )
+                        else:
+                            res = await execute_system_daily_trade(
+                                prediction=pred,
+                                intraday_data=intraday_data,
+                                alpaca_status="BACKFILLED",
+                                get_supabase_client_fn=lambda: client,
+                                get_or_create_system_portfolio_fn=_portfolio_getter,
+                            )
+
+                        if res.get("new_equity") is not None:
+                            p["cash_balance"] = res["new_equity"]
+
+                        healed.append(
+                            {
+                                "date": d,
+                                "owner_id": owner_id,
+                                "action": "AUTO_HEALED_DAILY_SPY",
+                                "new_equity": res.get("new_equity"),
+                                "alpaca_status": "BACKFILLED",
+                            }
+                        )
+                        logger.info(f"Auto-healed {owner_id} for {d}: New equity ${(res.get('new_equity') or 0):,.2f}")
 
     # 2. Check Weekly Sector Portfolios
     # Weekly Sector Portfolios hold positions from Monday 9:35 AM ET through Friday 15:30 ET.
@@ -280,7 +337,7 @@ def generate_markdown_summary(
 
         if h:
             resolution = (
-                f"✅ Auto-Healed (`alpaca_status='{h['alpaca_status']}'`, Equity: ${h.get('new_equity', 0):,.2f})"
+                f"✅ Auto-Healed (`alpaca_status='{h['alpaca_status']}'`, Equity: ${(h.get('new_equity') or 0):,.2f})"
             )
         else:
             resolution = "⚠️ Pending Review (Run `main.py audit-portfolios --fix`)"

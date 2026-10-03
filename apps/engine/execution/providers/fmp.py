@@ -105,6 +105,9 @@ class FMPProvider(FinancialProvider):
                         currency=q.get("currency", "USD"),
                         exchange=q.get("exchange"),
                         previous_close=float(q["previousClose"]) if q.get("previousClose") is not None else None,
+                        open_price=float(q["open"])
+                        if q.get("open") is not None and float(q.get("open", 0)) > 0
+                        else None,
                         change=float(q["change"]) if q.get("change") is not None else None,
                         change_pct=float(q["changePercentage"]) if q.get("changePercentage") is not None else None,
                         volume=int(q["volume"]) if q.get("volume") is not None else None,

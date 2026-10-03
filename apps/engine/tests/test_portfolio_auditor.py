@@ -29,6 +29,7 @@ def mock_supabase():
     table_mock.eq.return_value = table_mock
     table_mock.gte.return_value = table_mock
     table_mock.lte.return_value = table_mock
+    table_mock.lt.return_value = table_mock
     table_mock.like.return_value = table_mock
     table_mock.order.return_value = table_mock
     table_mock.limit.return_value = table_mock
@@ -219,7 +220,10 @@ async def test_audit_auto_heals_missing_daily_spy_trade(mock_supabase):
         mock_t.eq.return_value = mock_t
         mock_t.gte.return_value = mock_t
         mock_t.lte.return_value = mock_t
+        mock_t.lt.return_value = mock_t
         mock_t.like.return_value = mock_t
+        mock_t.order.return_value = mock_t
+        mock_t.limit.return_value = mock_t
 
         if table_name == "daily_predictions":
             mock_t.execute.return_value = MagicMock(data=[pred])
@@ -309,3 +313,188 @@ async def test_audit_detects_unliquidated_weekly_sector_position(mock_supabase):
 
     assert report["status"] == "anomalies_detected"
     assert any(a["type"] == "UNLIQUIDATED_WEEKLY_SECTOR_POSITION" for a in report["anomalies"])
+
+
+@pytest.mark.asyncio
+async def test_audit_detects_invalid_entry_price_daily_spy(mock_supabase):
+    """Detects when SPY daily entry price took previous day close instead of session open."""
+    from audit.portfolio_auditor import audit_system_portfolios
+
+    target_date = "2026-10-02"
+    pred = {
+        "id": "pred-10-02",
+        "model_name": "deepseek-v4-flash",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.20,
+        "target_date": target_date,
+        "open_price": 770.58,
+        "high_price": 772.65,
+        "low_price": 767.15,
+        "close_price": 769.50,
+    }
+
+    def table_router(table_name):
+        mock_t = MagicMock()
+        mock_t.select.return_value = mock_t
+        mock_t.eq.return_value = mock_t
+        mock_t.gte.return_value = mock_t
+        mock_t.lte.return_value = mock_t
+        mock_t.like.return_value = mock_t
+
+        if table_name == "daily_predictions":
+            mock_t.execute.return_value = MagicMock(data=[pred])
+        elif table_name == "portfolios":
+            mock_t.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": "p-1",
+                        "owner_id": "sys-daily-spy-close-deepseek-v4-flash",
+                        "cash_balance": 10000.0,
+                        "total_equity": 10000.0,
+                    },
+                ]
+            )
+        elif table_name == "trades":
+            # Entry trade price was 763.99 (previous close) instead of 770.58!
+            mock_t.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": "t-entry",
+                        "signal": "BUY",
+                        "price": 763.99,
+                        "quantity": 13,
+                        "executed_at": f"{target_date}T13:30:00Z",
+                    },
+                    {
+                        "id": "t-exit",
+                        "signal": "SELL",
+                        "price": 769.50,
+                        "quantity": 13,
+                        "executed_at": f"{target_date}T20:00:00Z",
+                    },
+                ]
+            )
+        elif table_name == "portfolio_positions":
+            mock_t.execute.return_value = MagicMock(data=[])
+        else:
+            mock_t.execute.return_value = MagicMock(data=[])
+        return mock_t
+
+    mock_supabase.table.side_effect = table_router
+
+    report = await audit_system_portfolios(
+        target_date=target_date,
+        lookback_days=1,
+        auto_heal=False,
+        supabase_client=mock_supabase,
+    )
+
+    assert report["status"] == "anomalies_detected"
+    assert len(report["anomalies"]) == 1
+    anomaly = report["anomalies"][0]
+    assert anomaly["type"] == "INVALID_ENTRY_PRICE_DAILY_SPY"
+    assert anomaly["owner_id"] == "sys-daily-spy-close-deepseek-v4-flash"
+    assert "763.99" in anomaly["details"]
+    assert "770.58" in anomaly["details"]
+
+
+@pytest.mark.asyncio
+async def test_audit_auto_heals_invalid_entry_price_daily_spy(mock_supabase):
+    """Auto-heals trades with invalid entry prices by recalculating with session open."""
+    from audit.portfolio_auditor import audit_system_portfolios
+
+    target_date = "2026-10-02"
+    pred = {
+        "id": "pred-10-02",
+        "model_name": "deepseek-v4-flash",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.20,
+        "target_date": target_date,
+        "open_price": 770.58,
+        "high_price": 772.65,
+        "low_price": 767.15,
+        "close_price": 769.50,
+    }
+
+    inserted_trades = []
+
+    def table_router(table_name):
+        mock_t = MagicMock()
+        mock_t.select.return_value = mock_t
+        mock_t.insert.side_effect = lambda p: inserted_trades.append(p) or mock_t
+        mock_t.upsert.return_value = mock_t
+        mock_t.update.return_value = mock_t
+        mock_t.delete.return_value = mock_t
+        mock_t.eq.return_value = mock_t
+        mock_t.gte.return_value = mock_t
+        mock_t.lte.return_value = mock_t
+        mock_t.lt.return_value = mock_t
+        mock_t.like.return_value = mock_t
+        mock_t.order.return_value = mock_t
+        mock_t.limit.return_value = mock_t
+
+        if table_name == "daily_predictions":
+            mock_t.execute.return_value = MagicMock(data=[pred])
+        elif table_name == "portfolios":
+            mock_t.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": str(uuid4()),
+                        "owner_id": "sys-daily-spy-close-deepseek-v4-flash",
+                        "cash_balance": 10000.0,
+                        "total_equity": 10000.0,
+                    },
+                ]
+            )
+        elif table_name == "trades":
+            # Initial select returns invalid entry price
+            if not inserted_trades:
+                mock_t.execute.return_value = MagicMock(
+                    data=[
+                        {
+                            "id": "t-old-1",
+                            "signal": "BUY",
+                            "price": 763.99,
+                            "quantity": 13,
+                            "realized_pnl": None,
+                            "executed_at": f"{target_date}T13:30:00Z",
+                        },
+                        {
+                            "id": "t-old-2",
+                            "signal": "SELL",
+                            "price": 769.50,
+                            "quantity": 13,
+                            "realized_pnl": 71.63,
+                            "executed_at": f"{target_date}T20:00:00Z",
+                        },
+                    ]
+                )
+            else:
+                mock_t.execute.return_value = MagicMock(data=inserted_trades)
+        elif table_name == "portfolio_performance":
+            # Prior day performance
+            mock_t.execute.return_value = MagicMock(data=[{"total_equity": 10000.0}])
+        elif table_name == "portfolio_positions":
+            mock_t.execute.return_value = MagicMock(data=[])
+        else:
+            mock_t.execute.return_value = MagicMock(data=[])
+        return mock_t
+
+    mock_supabase.table.side_effect = table_router
+
+    with patch("execution.daily_trading.get_supabase_client", return_value=mock_supabase):
+        report = await audit_system_portfolios(
+            target_date=target_date,
+            lookback_days=1,
+            auto_heal=True,
+            supabase_client=mock_supabase,
+        )
+
+    assert report["status"] == "healed"
+    assert len(report["healed"]) == 1
+    healed = report["healed"][0]
+    assert healed["action"] == "AUTO_HEALED_DAILY_SPY"
+    # Entry trade should now be based on open_price ~770.58
+    assert len(inserted_trades) >= 2
+    entry_trade = inserted_trades[0]
+    assert abs(entry_trade["price"] - 770.58) < 1.0

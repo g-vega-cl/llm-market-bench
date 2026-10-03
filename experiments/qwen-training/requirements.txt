@@ -1,0 +1,11 @@
+unsloth
+torch>=2.4.0
+transformers>=4.45.0
+datasets
+trl>=0.11.0
+accelerate
+bitsandbytes
+openai
+supabase
+python-dotenv
+pytest

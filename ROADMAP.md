@@ -80,7 +80,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
     - same with text
 - [ ] - Benchify: set up Laya alongside JEV?
-- [ ] - Benchify: AI sector predictor autoresearch is really hard to figure out because many LLMs have autoresearch in the same tab?
 - [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios
 - [ ] - Benchify: update today page 
 - [ ] - Benchify: could jev work for my autoresearcher?

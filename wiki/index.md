@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/qwen-training]] — standalone Qwen 3.8 27B QLoRA fine-tuning workbench for SPY intraday direction prediction
 - [[entities/laya-training-workbench]] — standalone workbench for fine-tuning Laya on pre-market macro contexts
 - [[entities/market-data]] — market data facade and its cache, session, and transform modules
 - [[entities/cli]] — CLI package: argparse schema, command dispatch map, and per-domain sub-command routers

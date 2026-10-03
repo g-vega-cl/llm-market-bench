@@ -1,0 +1,29 @@
+# Ollama Modelfile for Fine-Tuned Qwen 3.8 27B Market Predictor
+# To build locally:
+# ollama create qwen3.8-predictor -f Modelfile
+
+FROM ./Qwen3.8-27B.Q4_K_M.gguf
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant
+{{ .Response }}<|im_end|>"""
+
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"
+PARAMETER temperature 0.1
+PARAMETER top_p 0.9
+PARAMETER num_ctx 16384
+
+SYSTEM """You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
+Your goal is to predict whether today's 4:00 PM ET Close price will be higher (UP) or lower (DOWN) than today's 9:30 AM ET Open price.
+
+=== REQUIRED OUTPUT FORMAT ===
+You MUST return a valid JSON object (enclosed in { and }) containing:
+{
+  "predicted_direction": "UP" or "DOWN",
+  "expected_return_pct": <float estimated percentage return from Open to Close, e.g. +0.45 or -0.30>
+}
+Do not output raw Markdown headers, bullet lists, or YAML."""

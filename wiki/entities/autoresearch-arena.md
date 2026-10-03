@@ -15,9 +15,10 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 - **Segmented Trading Prompt Display**: Visually breaks down "The Trading Prompt" card into 3 distinct sections using `splitPromptSections`: Header (`[FROZEN / SYSTEM MANAGED]`), Mutable Strategy (`[MUTABLE / EVOLVED BY AUTORESEARCH]`), and Footer (`[FROZEN / SYSTEM MANAGED]`), making it immediately obvious which system rules are frozen and which strategies are mutated by autoresearch.
 - **Prompt Changes (Diff View)**: Interactive inline diff view displaying precise additions and deletions compared to the parent prompt. Diffs **only the mutable strategies section** (extracted via `splitPromptSections`) so the massive identical header/footer does not drown out real changes. Falls back to full-content diff if section markers are absent. Displays only changed lines by default with a toggle to show the full mutable diff. The subtitle reads *"mutable strategies section only"* to make the scope explicit.
 - **Daily Autoresearch Score**: Displays real-time daily evaluation of prompt performance against benchmark parameters. Refactored into isolated vertical-slice sub-primitives (`DailyScoreDisplay.tsx` reduced from 982 LOC to 96 LOC):
-  - `DailyScoreOverview.tsx`: Headline ratchet score, baseline comparison badge, and week range.
+  - `DailyScoreOverview.tsx`: Headline ratchet score, baseline comparison badge, week range, and live tracking warnings (`Provisional Do-Nothing (0.00%)`).
   - `DailyProgressionGrid.tsx`: Weekday checkpoint cards (Monday–Friday) with live tracking status ring and interactive day selection.
-  - `DailyAuditLedger.tsx`: Collapsible deep-dive math audit exposing exact constituent model returns (scaled actual vs do-nothing).
+  - `DailyAuditLedger.tsx`: Collapsible deep-dive math audit exposing exact constituent model returns, audited settlement timestamp (`evaluated_at`), and provisional warning callouts during active mid-week tracking.
+  - `ScoreBreakdown.tsx`: Granular asset and portfolio auditor displaying the audited settlement timestamp and `100% Cash at Week Start (0.0000% Return)` badge when starting holdings are all cash.
   - `daily-score-math.ts`: Pure helper functions for compounding, daily ratchet scoring, and portfolio returns.
   - `useActualReturns.ts`: Hermetic hook for fetching actual asset prices and compounding returns.
 - **Unified 3-Domain Transparency Standard ("Benchify Standard")**: Enforced across Portfolio Autoresearch (`/autoresearch`), Daily SPY Predictor (`/daily-predictions`), and Sector Predictor (`/ai-predictions`):
@@ -46,5 +47,6 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 
 ## Related
 - [[entities/autoresearch]] — the Python engine that produces the experiments
+- [[concepts/pending-settlement-state]] — live provisional states vs settled evaluations
 - [[concepts/system-heavy-prompt]] — the architecture that determines what is displayed
 - [[entities/web-app]] — the parent dashboard

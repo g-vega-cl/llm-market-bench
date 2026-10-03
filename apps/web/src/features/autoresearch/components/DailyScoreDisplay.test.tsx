@@ -434,4 +434,71 @@ describe('DailyScoreDisplay', () => {
         expect(actualSpyText).toBeInTheDocument();
         expect(screen.queryByText(/0.8500%/)).not.toBeInTheDocument();
     });
+
+    it('displays provisional do-nothing warning when experiment is active and constituent details are unfinalized', async () => {
+        const mockExperiment = {
+            variant_tag: 'v20260719-223956',
+            week_start: '2026-07-20',
+            week_end: '2026-07-24',
+            metrics: {
+                portfolio_return_pct: null,
+                spy_return_pct: null,
+                do_nothing_return_pct: null,
+                score: null,
+                portfolio_details: {},
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // Click Monday card (July 20th -> 7/20)
+        const monCard = screen.getByText('7/20').closest('button');
+        expect(monCard).toBeInTheDocument();
+        if (monCard) {
+            fireEvent.click(monCard);
+        }
+
+        // Must display prominent provisional benchmark warning
+        expect(screen.getByText(/PROVISIONAL LIVE TRACKING BENCHMARK/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /Do-Nothing baseline is provisional \(0\.0000%\) during active trading/i,
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('displays audited settlement timestamp when experiment has finalized details', async () => {
+        const mockExperiment = {
+            variant_tag: 'v20260601-120000',
+            week_start: '2026-06-01',
+            week_end: '2026-06-05',
+            created_at: '2026-06-07T20:00:00Z',
+            metrics: {
+                portfolio_return_pct: 2.0,
+                spy_return_pct: 1.0,
+                do_nothing_return_pct: 1.5,
+                score: 0.6,
+                evaluated_at: '2026-06-07T20:00:00Z',
+                portfolio_details: {
+                    p1: {
+                        owner_id: 'gemini-3.5-flash-lite',
+                        do_nothing_return_pct: 1.5,
+                    },
+                },
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // Click Monday card (June 1st -> 6/1)
+        const monCard = screen.getByText('6/1').closest('button');
+        expect(monCard).toBeInTheDocument();
+        if (monCard) {
+            fireEvent.click(monCard);
+        }
+
+        // Must display settlement timestamp
+        expect(screen.getByText(/Audited Settlement:/i)).toBeInTheDocument();
+        expect(screen.queryByText(/PROVISIONAL LIVE TRACKING BENCHMARK/i)).not.toBeInTheDocument();
+    });
 });

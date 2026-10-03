@@ -48,6 +48,13 @@ $$\text{Score} = \text{excess\_return} - (\text{max\_drawdown} \times 0.3)$$
   - Aligning starting cash with pre-week positions (`executed_at < week_start`) prevents capital deployed on Monday purchases from disappearing from the cash balance without counting the acquired stocks.
   - Newly initialized accounts without prior snapshots fall back to the earliest snapshot in the week (evaluating to 0.00% if entering with 100% cash).
 
+- **Live Mid-Week Tracking vs. Weekend Audited Settlement**:
+  - During mid-week active trading, live portfolio returns and SPY benchmarks stream in daily, but position-level counterfactual valuation across constituent portfolios is not computed on live read paths (preserving [[concepts/zero-frontend-compute]]).
+  - Live tracking displays a provisional `0.0000%` do-nothing baseline, demarcated in the UI with a `Provisional Do-Nothing (0.00%)` badge and ledger warnings (see [[concepts/pending-settlement-state]]).
+  - Weekend evaluation (`evaluator.py`) calculates `_do_nothing_return()`, records `portfolio_details` with per-asset entry/exit valuations, and stamps `evaluated_at`.
+  - Portfolios entering a week in 100% cash (e.g. liquidated the prior Friday) produce an audited do-nothing return of `0.0000%`. The UI surfaces this with a `100% Cash at Week Start (0.0000% Return)` badge to distinguish true cash returns from uncalculated provisional fallbacks.
+  - This separation is purely for display transparency and does not modify any scoring formulas or evaluation math.
+
 ### Historical Audit Note (August 2026 Ratchet Lockout)
 
 Early August 2026 variants (`v20260809-221804` in `track_default` and `v20260816-221127` in `track_claude`) suffered from a temporal cash mismatch where Monday buys reduced cash balance (into negative margin) while the purchased assets were omitted from pre-week holdings. This produced phantom do-nothing returns of -119.8% and -71.1%, inflating variant scores to 15.217 and 16.8998. This locked the Karpathy ratchet, causing all subsequent experiments in late August and early September to be discarded. In September 2026, the engine was patched to enforce pre-week snapshots, and database rows in `prompt_experiments` were updated to their audited scores (0.3186 and 1.7449), unfreezing the ratchet.
@@ -56,6 +63,7 @@ Early August 2026 variants (`v20260809-221804` in `track_default` and `v20260816
 
 - [[concepts/auto-research-prompt-improver]]
 - [[concepts/multi-track-autoresearch]]
+- [[concepts/pending-settlement-state]]
 - [[concepts/verifier-bypass]]
 - [[entities/daily-market-predictor]]
 - [[entities/pipeline]]

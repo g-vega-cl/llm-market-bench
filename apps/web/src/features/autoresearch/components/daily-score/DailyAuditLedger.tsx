@@ -1,3 +1,4 @@
+import { formatEasternDateTime } from '~/utils/date';
 import {
     type ActualReturns,
     type Checkpoint,
@@ -26,6 +27,8 @@ interface DailyAuditLedgerProps {
     actualReturns?: ActualReturns | null;
     isLoadingActuals?: boolean;
     isPending?: boolean;
+    isActive?: boolean;
+    evaluatedAt?: string | null;
     onClose: () => void;
 }
 
@@ -152,11 +155,15 @@ function DoNothingSection({
     multiplier,
     portfolioDetails,
     isPending,
+    isActive,
+    evaluatedAt,
 }: {
     doNothingReturn: number;
     multiplier: number;
     portfolioDetails?: Record<string, PortfolioDetail>;
     isPending?: boolean;
+    isActive?: boolean;
+    evaluatedAt?: string | null;
 }) {
     const details = (portfolioDetails || {}) as Record<string, PortfolioDetail>;
     const detailEntries = Object.entries(details);
@@ -179,12 +186,31 @@ function DoNothingSection({
                     </span>
                 </span>
             </div>
-            {detailEntries.length === 0 ? (
-                <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-600 italic">
-                    {isPending
-                        ? 'Active variant: starting positions will be audited at the close of the trading period.'
-                        : 'No constituent do-nothing details available (live/simulated).'}
+            {evaluatedAt && (
+                <div className="text-[10px] font-mono text-zinc-400">
+                    Audited Settlement: {formatEasternDateTime(evaluatedAt)}
                 </div>
+            )}
+            {detailEntries.length === 0 ? (
+                isActive ? (
+                    <div className="mt-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200/90 text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider text-amber-400">
+                            <span>⚠️</span>
+                            <span>PROVISIONAL LIVE TRACKING BENCHMARK</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-amber-300/80">
+                            The Do-Nothing baseline is provisional (0.0000%) during active trading.
+                            Constituent starting holdings and buy-and-hold returns are audited and
+                            finalized upon weekly market settlement.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-600 italic">
+                        {isPending
+                            ? 'Active variant: starting positions will be audited at the close of the trading period.'
+                            : 'No constituent do-nothing details available (live/simulated).'}
+                    </div>
+                )
             ) : (
                 <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-500 space-y-1.5">
                     <div className="font-bold text-[9px] uppercase tracking-wider text-zinc-400">
@@ -233,6 +259,8 @@ export function DailyAuditLedger({
     actualReturns,
     isLoadingActuals,
     isPending = false,
+    isActive = false,
+    evaluatedAt,
     onClose,
 }: DailyAuditLedgerProps) {
     return (
@@ -335,6 +363,8 @@ export function DailyAuditLedger({
                     multiplier={multiplier}
                     portfolioDetails={portfolioDetails}
                     isPending={isPending}
+                    isActive={isActive}
+                    evaluatedAt={evaluatedAt}
                 />
 
                 {/* 4. Opportunity Cost */}

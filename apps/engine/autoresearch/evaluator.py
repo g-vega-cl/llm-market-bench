@@ -6,7 +6,7 @@ markdown report and the score dict so the runner does not parse markdown.
 """
 
 import logging
-from datetime import date
+from datetime import UTC, date, datetime
 
 from core.config import ANTHROPIC_MODEL, AUTORESEARCH_EXPERIMENT_OWNER_IDS, OPENAI_MODEL
 from core.db import get_async_supabase_client
@@ -253,6 +253,7 @@ async def evaluate_week(
         do_nothing_return_pct=exp_metrics.get("do_nothing_return_pct", 0),
     )
     score_result["portfolio_details"] = exp_metrics.get("portfolio_details", {})
+    score_result["evaluated_at"] = datetime.now(UTC).isoformat()
 
     try:
         if track_id and track_id != "track_default":

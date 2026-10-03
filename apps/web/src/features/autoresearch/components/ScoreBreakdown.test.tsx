@@ -79,4 +79,39 @@ describe('ScoreBreakdown', () => {
             screen.getByText(/This experiment variant is currently active/i),
         ).toBeInTheDocument();
     });
+
+    it('renders audited settlement timestamp and 100% cash badge for empty starting positions', () => {
+        const mockExperiment = {
+            created_at: '2026-06-07T20:00:00Z',
+            metrics: {
+                portfolio_return_pct: 2.0,
+                spy_return_pct: 1.0,
+                do_nothing_return_pct: 0.0,
+                excess_return: 1.0,
+                opportunity_cost_penalty: 0.1,
+                max_drawdown: 1.0,
+                drawdown_penalty: 0.3,
+                score: 0.7,
+                evaluated_at: '2026-06-07T20:00:00Z',
+                portfolio_details: {
+                    'claude-portfolio-id': {
+                        owner_id: 'claude-haiku-4-5',
+                        initial_equity: 10000,
+                        initial_cash: 10000,
+                        end_equity: 10000,
+                        do_nothing_return_pct: 0.0,
+                        positions: {},
+                    },
+                },
+            },
+        } as unknown as PromptExperiment;
+
+        render(<ScoreBreakdown experiment={mockExperiment} />);
+
+        // Check if settlement timestamp is displayed
+        expect(screen.getAllByText(/Audited Settlement:/i).length).toBeGreaterThan(0);
+
+        // Check if 100% cash at week start indicator is displayed
+        expect(screen.getByText(/100% Cash at Week Start/i)).toBeInTheDocument();
+    });
 });

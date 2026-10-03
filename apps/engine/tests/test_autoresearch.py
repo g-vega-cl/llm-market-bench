@@ -318,6 +318,7 @@ class TestEvaluator:
         assert isinstance(metrics, dict) and "score" in metrics
         assert "excess_return" in metrics
         assert "max_drawdown" in metrics
+        assert "evaluated_at" in metrics
 
     @pytest.mark.asyncio
     async def test_evaluate_week_includes_control_reference(self, monkeypatch):

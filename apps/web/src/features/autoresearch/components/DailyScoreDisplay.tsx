@@ -93,6 +93,8 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
                     actualReturns={actualReturns}
                     isLoadingActuals={isLoadingActuals}
                     isPending={isPending}
+                    isActive={isActive}
+                    evaluatedAt={metrics.evaluated_at || (isActive ? null : experiment.created_at)}
                     onClose={() => setSelectedDayName(null)}
                 />
             )}

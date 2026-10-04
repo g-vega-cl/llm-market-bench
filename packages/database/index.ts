@@ -104,6 +104,7 @@ export type PortfolioPosition = Database['public']['Tables']['portfolio_position
 // Combined / View Model Types
 export type PositionWithReasoning = PositionPnl & {
     reasoning?: string;
+    side?: 'LONG' | 'SHORT';
 };
 
 export type TradeWithReasoning = Trade & {

@@ -69,40 +69,116 @@ export async function fetchPortfolioByOwnerId(
 export async function fetchPositions(portfolioId: string): Promise<PositionWithReasoning[]> {
     const supabase = getSupabaseServerClient();
 
-    const { data: positions, error: posError } = await supabase
-        .from('position_pnl')
-        .select('*')
-        .eq('portfolio_id', portfolioId)
-        .order('ticker', { ascending: true });
+    const [posRes, shortRes] = await Promise.all([
+        supabase
+            .from('position_pnl')
+            .select('*')
+            .eq('portfolio_id', portfolioId)
+            .order('ticker', { ascending: true }),
+        supabase
+            .from('trades')
+            .select('*')
+            .eq('portfolio_id', portfolioId)
+            .eq('signal', 'SHORT')
+            .is('realized_pnl', null)
+            .order('executed_at', { ascending: false }),
+    ]);
 
-    if (posError) throw posError;
-    if (!positions || positions.length === 0) return [];
+    if (posRes.error) throw posRes.error;
+    if (shortRes.error) throw shortRes.error;
 
-    const tickers = positions.map((p) => p.ticker);
+    const rawPositions = posRes.data || [];
+    const openShorts = shortRes.data || [];
 
-    const { data: decisions, error: decError } = await supabase
-        .from('decisions')
-        .select('ticker, reasoning, signal, created_at, trade_id')
-        .in('ticker', tickers)
-        .order('created_at', { ascending: false })
-        .limit(100);
+    if (rawPositions.length === 0 && openShorts.length === 0) return [];
 
-    if (decError) throw decError;
+    const longPositions: PositionWithReasoning[] = rawPositions.map((pos) => ({
+        ...pos,
+        side: 'LONG' as const,
+    }));
+
+    let shortPositions: PositionWithReasoning[] = [];
+    if (openShorts.length > 0) {
+        const shortTickers = Array.from(new Set(openShorts.map((s) => s.ticker)));
+        const { data: cacheData, error: cacheError } = await supabase
+            .from('market_data_cache')
+            .select('ticker, price, fetched_at')
+            .in('ticker', shortTickers);
+
+        if (cacheError) throw cacheError;
+
+        const marketMap = new Map<string, { price: number; fetched_at: string }>();
+        if (cacheData) {
+            for (const item of cacheData) {
+                marketMap.set(item.ticker, {
+                    price: Number(item.price),
+                    fetched_at: item.fetched_at,
+                });
+            }
+        }
+
+        shortPositions = openShorts.map((trade) => {
+            const avgCost = Number(trade.price) || 0;
+            const marketQuote = marketMap.get(trade.ticker);
+            const currentPrice = marketQuote ? marketQuote.price : avgCost;
+            const priceFetchedAt = marketQuote?.fetched_at || trade.executed_at;
+            const qty = Number(trade.quantity) || 0;
+
+            const unrealizedPnlUsd = (avgCost - currentPrice) * qty;
+            const unrealizedPnlPct = avgCost > 0 ? ((avgCost - currentPrice) / avgCost) * 100 : 0;
+
+            return {
+                position_id: trade.id,
+                portfolio_id: trade.portfolio_id,
+                owner_id: null,
+                ticker: trade.ticker,
+                quantity: qty,
+                average_cost_basis: avgCost,
+                current_price: currentPrice,
+                price_fetched_at: priceFetchedAt,
+                unrealized_pnl_usd: unrealizedPnlUsd,
+                unrealized_pnl_pct: unrealizedPnlPct,
+                side: 'SHORT' as const,
+            };
+        });
+    }
+
+    const allTickers = Array.from(
+        new Set(
+            [...longPositions.map((p) => p.ticker), ...shortPositions.map((p) => p.ticker)].filter(
+                Boolean,
+            ),
+        ),
+    ) as string[];
 
     const reasoningMap = new Map<string, string>();
+    if (allTickers.length > 0) {
+        const { data: decisions, error: decError } = await supabase
+            .from('decisions')
+            .select('ticker, reasoning, signal, created_at, trade_id')
+            .in('ticker', allTickers)
+            .order('created_at', { ascending: false })
+            .limit(100);
 
-    decisions?.forEach((d) => {
-        if (!reasoningMap.has(d.ticker)) {
-            reasoningMap.set(d.ticker, d.reasoning);
-        }
-    });
+        if (decError) throw decError;
 
-    return positions.map((pos) => ({
+        decisions?.forEach((d) => {
+            if (!reasoningMap.has(d.ticker)) {
+                reasoningMap.set(d.ticker, d.reasoning);
+            }
+        });
+    }
+
+    const combinedPositions = [...longPositions, ...shortPositions].map((pos) => ({
         ...pos,
         reasoning:
-            reasoningMap.get(pos.ticker) ||
-            'Reasoning not found in recent signals for this ticker.',
+            reasoningMap.get(pos.ticker || '') ||
+            (pos.side === 'SHORT'
+                ? 'Systematic short sector allocation.'
+                : 'Reasoning not found in recent signals for this ticker.'),
     }));
+
+    return combinedPositions.sort((a, b) => (a.ticker || '').localeCompare(b.ticker || ''));
 }
 
 export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoning[]> {

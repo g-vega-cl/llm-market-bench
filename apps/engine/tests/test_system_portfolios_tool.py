@@ -187,3 +187,82 @@ async def test_autoresearch_query_system_portfolios_audit():
     with patch("core.llm.tools.execute_get_system_portfolios_tool", return_value="Mock audit portfolios"):
         res = await query_system_portfolios_audit(category="all")
     assert "Mock audit portfolios" in res
+
+
+@pytest.mark.asyncio
+async def test_execute_get_system_portfolios_tool_with_open_shorts():
+    """Verify execute_get_system_portfolios_tool surfaces open shorts with [SHORT] tag."""
+    mock_portfolios = [
+        {
+            "id": "port-ls",
+            "owner_id": "sys-sector-ls-30d",
+            "cash_balance": 5000.0,
+            "total_equity": 10000.0,
+            "buying_power": 20000.0,
+        },
+    ]
+
+    mock_positions = [
+        {
+            "portfolio_id": "port-ls",
+            "owner_id": "sys-sector-ls-30d",
+            "ticker": "XLK",
+            "quantity": 10,
+            "average_cost_basis": 150.0,
+            "current_price": 160.0,
+            "unrealized_pnl_usd": 100.0,
+            "unrealized_pnl_pct": 6.67,
+        },
+    ]
+
+    mock_trades = [
+        {
+            "portfolio_id": "port-ls",
+            "ticker": "XLE",
+            "quantity": 25,
+            "price": 80.0,
+            "executed_at": "2026-10-01T13:30:00Z",
+            "signal": "SHORT",
+            "realized_pnl": None,
+        },
+    ]
+
+    mock_cache = [
+        {"ticker": "XLE", "price": 76.0},
+    ]
+
+    mock_sb = MagicMock()
+    mock_p_query = MagicMock()
+    mock_p_query.select.return_value.like.return_value.execute.return_value = MagicMock(data=mock_portfolios)
+    mock_pos_query = MagicMock()
+    mock_pos_query.select.return_value.execute.return_value = MagicMock(data=mock_positions)
+    mock_perf_query = MagicMock()
+    mock_perf_query.select.return_value.gte.return_value.order.return_value.execute.return_value = MagicMock(data=[])
+
+    mock_trades_query = MagicMock()
+    mock_trades_query.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
+        data=mock_trades
+    )
+
+    mock_cache_query = MagicMock()
+    mock_cache_query.select.return_value.in_.return_value.execute.return_value = MagicMock(data=mock_cache)
+
+    table_map = {
+        "portfolios": mock_p_query,
+        "position_pnl": mock_pos_query,
+        "portfolio_performance": mock_perf_query,
+        "trades": mock_trades_query,
+        "market_data_cache": mock_cache_query,
+    }
+    mock_sb.table.side_effect = lambda name: table_map.get(name, MagicMock())
+
+    with patch("analytics.system_portfolios_report.get_supabase_client", return_value=mock_sb):
+        res = await execute_get_system_portfolios_tool(category="sector_ls", include_positions=True)
+
+    assert "sys-sector-ls-30d" in res
+    assert "XLK: 10 shares" in res
+    assert "XLE [SHORT]: 25 shares" in res
+    assert "Short Entry: $80.00" in res
+    assert "Current Price: $76.00" in res
+    # (80 - 76) * 25 = +100 USD
+    assert "Unrealized PnL: $+100.00" in res

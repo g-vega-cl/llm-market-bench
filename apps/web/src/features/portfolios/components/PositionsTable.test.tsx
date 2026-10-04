@@ -136,4 +136,54 @@ describe('PositionsTable', () => {
         expect(screen.getByText(/Bought:/i)).toBeInTheDocument();
         expect(screen.getByText(/7:00:00 AM ET/)).toBeInTheDocument();
     });
+
+    it('renders short positions with SHORT badge and Sold Short timestamp', () => {
+        const mockPositionsWithShort: Position[] = [
+            {
+                position_id: '3',
+                portfolio_id: 'p1',
+                owner_id: 'owner1',
+                ticker: 'XHB',
+                quantity: 26,
+                average_cost_basis: 96.55,
+                current_price: 94.2,
+                price_fetched_at: '2026-10-02',
+                unrealized_pnl_usd: 61.1,
+                unrealized_pnl_pct: 2.43,
+                reasoning: 'Weak housing starts and rate sensitivity.',
+                side: 'SHORT',
+            },
+        ];
+
+        const mockShortTrades = [
+            {
+                id: 't-xhb',
+                portfolio_id: 'p1',
+                ticker: 'XHB',
+                signal: 'SHORT',
+                quantity: 26,
+                price: 96.55,
+                total_cost: 2510.3,
+                executed_at: '2026-10-02T13:35:00Z',
+                alpaca_status: null,
+                alpaca_order_id: null,
+                alpaca_submitted_at: null,
+                alpaca_filled_at: null,
+                realized_pnl: null,
+                realized_pnl_pct: null,
+                decision_id: null,
+                reasoning: 'Systematic short entry.',
+            },
+        ];
+
+        render(<PositionsTable positions={mockPositionsWithShort} trades={mockShortTrades} />);
+        expect(screen.getByText('XHB')).toBeInTheDocument();
+        expect(screen.getByText('SHORT')).toBeInTheDocument();
+
+        const xhbRow = screen.getByTestId('position-row-XHB');
+        fireEvent.click(xhbRow);
+
+        expect(screen.getByText(/Sold Short:/i)).toBeInTheDocument();
+        expect(screen.getByText(/9:35:00 AM ET/)).toBeInTheDocument();
+    });
 });

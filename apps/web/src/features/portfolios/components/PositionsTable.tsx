@@ -29,17 +29,22 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
     const [sortKey, setSortKey] = useState<SortKey | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
-    // Calculate total invested cash for the portfolio
+    // Calculate total invested cash for the portfolio using gross notional exposure
     const totalInvestedCash = positions.reduce(
-        (sum, pos) => sum + (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0),
+        (sum, pos) => sum + Math.abs((pos.quantity ?? 0) * (pos.average_cost_basis ?? 0)),
         0,
     );
 
-    const tickerToBuyTradeMap = React.useMemo(() => {
+    const hasAnyShorts = React.useMemo(() => {
+        return positions?.some((p) => p.side === 'SHORT');
+    }, [positions]);
+
+    const tickerToTradeMap = React.useMemo(() => {
         const map = new Map<string, TradeWithReasoning>();
         if (trades) {
             for (const t of trades) {
-                if (t.signal?.toUpperCase() === 'BUY' && !map.has(t.ticker.toUpperCase())) {
+                const sig = t.signal?.toUpperCase();
+                if ((sig === 'BUY' || sig === 'SHORT') && !map.has(t.ticker.toUpperCase())) {
                     map.set(t.ticker.toUpperCase(), t);
                 }
             }
@@ -84,16 +89,18 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
 
             switch (sortKey) {
                 case 'invested':
-                    aVal = (a.quantity ?? 0) * (a.average_cost_basis ?? 0);
-                    bVal = (b.quantity ?? 0) * (b.average_cost_basis ?? 0);
+                    aVal = Math.abs((a.quantity ?? 0) * (a.average_cost_basis ?? 0));
+                    bVal = Math.abs((b.quantity ?? 0) * (b.average_cost_basis ?? 0));
                     break;
                 case 'portfolio_pct':
                     aVal = totalInvestedCash
-                        ? (((a.quantity ?? 0) * (a.average_cost_basis ?? 0)) / totalInvestedCash) *
+                        ? (Math.abs((a.quantity ?? 0) * (a.average_cost_basis ?? 0)) /
+                              totalInvestedCash) *
                           100
                         : 0;
                     bVal = totalInvestedCash
-                        ? (((b.quantity ?? 0) * (b.average_cost_basis ?? 0)) / totalInvestedCash) *
+                        ? (Math.abs((b.quantity ?? 0) * (b.average_cost_basis ?? 0)) /
+                              totalInvestedCash) *
                           100
                         : 0;
                     break;
@@ -188,6 +195,16 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                         </svg>
                                     </span>
                                     {pos.ticker}
+                                    {pos.side === 'SHORT' && (
+                                        <Badge variant="soft" size="sm" colorScheme="danger">
+                                            SHORT
+                                        </Badge>
+                                    )}
+                                    {hasAnyShorts && pos.side === 'LONG' && (
+                                        <Badge variant="soft" size="sm" colorScheme="success">
+                                            LONG
+                                        </Badge>
+                                    )}
                                     {pos.ticker &&
                                         tickerToThemeMap.has(pos.ticker.toUpperCase()) && (
                                             <span className="text-[11px] font-normal px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700/60 font-sans tracking-tight">
@@ -218,8 +235,8 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             </TableCell>
                             <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
                                 $
-                                {(
-                                    (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0)
+                                {Math.abs(
+                                    (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0),
                                 ).toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
@@ -228,7 +245,9 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
                                 {totalInvestedCash
                                     ? `${(
-                                          (((pos.quantity ?? 0) * (pos.average_cost_basis ?? 0)) /
+                                          (Math.abs(
+                                              (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0),
+                                          ) /
                                               totalInvestedCash) *
                                               100
                                       ).toFixed(2)}%`
@@ -261,10 +280,14 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                 <TableCell colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
                                     <div className="flex flex-col gap-4">
                                         {pos.ticker &&
-                                            tickerToBuyTradeMap.has(pos.ticker.toUpperCase()) && (
+                                            tickerToTradeMap.has(pos.ticker.toUpperCase()) && (
                                                 <div className="flex flex-wrap items-center gap-2 text-xs border-b border-zinc-800 pb-3">
                                                     <span className="text-zinc-400 font-medium">
-                                                        Bought:
+                                                        {tickerToTradeMap
+                                                            .get(pos.ticker.toUpperCase())
+                                                            ?.signal?.toUpperCase() === 'SHORT'
+                                                            ? 'Sold Short:'
+                                                            : 'Bought:'}
                                                     </span>
                                                     <Badge
                                                         variant="outline"
@@ -274,13 +297,13 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                                         className="font-mono text-zinc-200"
                                                     >
                                                         {formatEasternDateTimeWithYear(
-                                                            tickerToBuyTradeMap.get(
+                                                            tickerToTradeMap.get(
                                                                 pos.ticker.toUpperCase(),
                                                             )?.executed_at,
                                                         )}{' '}
                                                         (
                                                         {formatEasternExactTime(
-                                                            tickerToBuyTradeMap.get(
+                                                            tickerToTradeMap.get(
                                                                 pos.ticker.toUpperCase(),
                                                             )?.executed_at,
                                                         )}

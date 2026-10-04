@@ -79,6 +79,7 @@
 
 ## Concepts
 
+- [[concepts/short-position-display]] — how long and short legs are stored, synthesized on read, and displayed across engine tools and the web UI
 - [[concepts/sector-model-tracks]] — per-model prompt evolution tracks with independent ratchet baselines in the Sector Predictor autoresearch
 - [[concepts/session-open-reconciliation]] — anchoring pre-market MOO entries to the official 9:30 AM session open price
 - [[concepts/dependency-resolver]] — `resolve_dep` test seam that keeps decomposed pipeline stages patchable via `main.<symbol>`

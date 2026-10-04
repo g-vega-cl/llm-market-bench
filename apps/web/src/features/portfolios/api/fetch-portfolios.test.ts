@@ -20,6 +20,7 @@ import {
     fetchAllActivePortfolioPerformance,
     fetchBenchmarkHistory,
     fetchPortfolios,
+    fetchPositions,
 } from './fetch-portfolios';
 
 vi.mock('../lib/config', () => ({
@@ -266,4 +267,125 @@ test('fetchBenchmarkHistory paginates multiple pages when data length is equal t
     expect(result.SPY).toHaveLength(1001);
     expect(result.SPY[0].price).toBe(100.0);
     expect(result.SPY[1000].price).toBe(2000.0);
+});
+
+test('fetchPositions merges long positions and open short trades with correct side and PnL', async () => {
+    const mockLongPositions = [
+        {
+            position_id: 'pos-1',
+            portfolio_id: 'pid-1',
+            owner_id: 'sys-sector-ls-30d',
+            ticker: 'XLK',
+            quantity: 10,
+            average_cost_basis: 100,
+            current_price: 110,
+            price_fetched_at: '2026-10-01T12:00:00Z',
+            unrealized_pnl_usd: 100,
+            unrealized_pnl_pct: 10,
+        },
+    ];
+
+    const mockShortTrades = [
+        {
+            id: 'trade-short-1',
+            portfolio_id: 'pid-1',
+            ticker: 'XLE',
+            quantity: 20,
+            price: 80,
+            signal: 'SHORT',
+            realized_pnl: null,
+            executed_at: '2026-10-01T13:30:00Z',
+        },
+    ];
+
+    const mockMarketCache = [
+        {
+            ticker: 'XLE',
+            price: 75,
+            fetched_at: '2026-10-02T12:00:00Z',
+        },
+    ];
+
+    const mockDecisions = [
+        {
+            ticker: 'XLK',
+            reasoning: 'Strong tech momentum',
+            signal: 'BUY',
+            created_at: '2026-10-01T12:00:00Z',
+            trade_id: 'trade-long-1',
+        },
+    ];
+
+    const client: MockSupabaseChain = {
+        from: vi.fn((table: string) => {
+            if (table === 'position_pnl') {
+                return {
+                    select: vi.fn(() => ({
+                        eq: vi.fn(() => ({
+                            order: vi.fn(() =>
+                                Promise.resolve({ data: mockLongPositions, error: null }),
+                            ),
+                        })),
+                    })),
+                };
+            }
+            if (table === 'trades') {
+                return {
+                    select: vi.fn(() => ({
+                        eq: vi.fn(() => ({
+                            eq: vi.fn(() => ({
+                                is: vi.fn(() => ({
+                                    order: vi.fn(() =>
+                                        Promise.resolve({ data: mockShortTrades, error: null }),
+                                    ),
+                                })),
+                            })),
+                        })),
+                    })),
+                };
+            }
+            if (table === 'market_data_cache') {
+                return {
+                    select: vi.fn(() => ({
+                        in: vi.fn(() => Promise.resolve({ data: mockMarketCache, error: null })),
+                    })),
+                };
+            }
+            if (table === 'decisions') {
+                return {
+                    select: vi.fn(() => ({
+                        in: vi.fn(() => ({
+                            order: vi.fn(() => ({
+                                limit: vi.fn(() =>
+                                    Promise.resolve({ data: mockDecisions, error: null }),
+                                ),
+                            })),
+                        })),
+                    })),
+                };
+            }
+            return client;
+        }),
+    };
+    mockSupabaseClient = client;
+
+    const positions = await fetchPositions('pid-1');
+
+    expect(positions).toHaveLength(2);
+
+    const xlk = positions.find((p) => p.ticker === 'XLK');
+    expect(xlk).toBeDefined();
+    expect(xlk?.side).toBe('LONG');
+    expect(xlk?.reasoning).toBe('Strong tech momentum');
+    expect(xlk?.unrealized_pnl_usd).toBe(100);
+
+    const xle = positions.find((p) => p.ticker === 'XLE');
+    expect(xle).toBeDefined();
+    expect(xle?.side).toBe('SHORT');
+    // Short entry = 80, current = 75, quantity = 20 -> (80 - 75) * 20 = +100 USD
+    expect(xle?.average_cost_basis).toBe(80);
+    expect(xle?.current_price).toBe(75);
+    expect(xle?.unrealized_pnl_usd).toBe(100);
+    expect(xle?.unrealized_pnl_pct).toBe(6.25);
+    expect(xle?.reasoning).toBe('Systematic short sector allocation.');
 });

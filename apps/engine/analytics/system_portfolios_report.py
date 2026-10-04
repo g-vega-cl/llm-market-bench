@@ -125,7 +125,51 @@ async def execute_get_system_portfolios_tool(
                 pid = pos.get("portfolio_id")
                 qty = float(pos.get("quantity", 0))
                 if pid in matched_pids and abs(qty) > 0:
-                    positions_by_pid.setdefault(pid, []).append(pos)
+                    pos_dict = dict(pos)
+                    pos_dict["side"] = "LONG"
+                    positions_by_pid.setdefault(pid, []).append(pos_dict)
+
+            try:
+                short_res = (
+                    client.table("trades")
+                    .select("portfolio_id, ticker, quantity, price, executed_at")
+                    .eq("signal", "SHORT")
+                    .is_("realized_pnl", "null")
+                    .execute()
+                )
+                open_shorts = short_res.data or []
+                if open_shorts:
+                    short_tickers = list({s["ticker"] for s in open_shorts if s.get("ticker")})
+                    cache_res = (
+                        client.table("market_data_cache").select("ticker, price").in_("ticker", short_tickers).execute()
+                    )
+                    price_cache = {
+                        item["ticker"]: float(item["price"])
+                        for item in (cache_res.data or [])
+                        if item.get("ticker") and item.get("price") is not None
+                    }
+                    for s in open_shorts:
+                        pid = s.get("portfolio_id")
+                        if pid in matched_pids:
+                            qty = float(s.get("quantity", 0))
+                            avg_cost = float(s.get("price", 0.0) or 0.0)
+                            curr_p = price_cache.get(s.get("ticker", ""), avg_cost)
+                            pnl_usd = (avg_cost - curr_p) * qty
+                            pnl_pct = ((avg_cost - curr_p) / avg_cost * 100.0) if avg_cost > 0 else 0.0
+                            positions_by_pid.setdefault(pid, []).append(
+                                {
+                                    "portfolio_id": pid,
+                                    "ticker": s.get("ticker"),
+                                    "quantity": qty,
+                                    "average_cost_basis": avg_cost,
+                                    "current_price": curr_p,
+                                    "unrealized_pnl_usd": pnl_usd,
+                                    "unrealized_pnl_pct": pnl_pct,
+                                    "side": "SHORT",
+                                }
+                            )
+            except Exception as e:
+                logger.debug("Failed to query open shorts in execute_get_system_portfolios_tool: %s", e)
 
         # 3. Fetch performance trajectory over lookback
         perf_by_pid: dict[str, list[dict[str, Any]]] = {}
@@ -186,8 +230,10 @@ async def execute_get_system_portfolios_tool(
                         curr_p = float(pos.get("current_price", 0.0) or 0.0)
                         pnl_usd = float(pos.get("unrealized_pnl_usd", 0.0) or 0.0)
                         pnl_pct = float(pos.get("unrealized_pnl_pct", 0.0) or 0.0)
+                        side_tag = " [SHORT]" if pos.get("side") == "SHORT" else ""
+                        cost_label = "Short Entry" if pos.get("side") == "SHORT" else "Avg Cost"
                         lines.append(
-                            f"  * {ticker}: {qty} shares | Avg Cost: ${avg_cost:.2f} | "
+                            f"  * {ticker}{side_tag}: {qty:g} shares | {cost_label}: ${avg_cost:.2f} | "
                             f"Current Price: ${curr_p:.2f} | Unrealized PnL: ${pnl_usd:+,.2f} ({pnl_pct:+.2f}%)"
                         )
                 else:

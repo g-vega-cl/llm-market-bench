@@ -83,5 +83,4 @@ A living document of features and improvements in progress or planned for the pl
     Confidence Gated Routing: Jev can generate confidence scores that can be used to route to different actions. If you are highly confident you can take the action directly, or if you have low confidence, you can add a user prompt to clarify.
 
     Composite Scoring: Give Jev a rubric, and it can give a composite score to all
-
-
+- [ ] - Benchify: jev + Qwen autoresearcher? Jev can do so many things like judge, decide which prompt is better, check for over fitting, check if the input is correct, etc

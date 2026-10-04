@@ -180,6 +180,9 @@ TOOL_DISPATCH_TABLE = {
     "get_options_sentiment": lambda ticker, args, mn, kw: tools.execute_get_options_sentiment_tool(
         ticker=ticker, expiration_date=args.get("expiration_date")
     ),
+    "get_macro_options_sentiment": lambda ticker, args, mn, kw: tools.execute_get_macro_options_sentiment_tool(
+        primary_ticker=args.get("primary_ticker") or ticker or "SPY"
+    ),
     "get_option_chain": lambda ticker, args, mn, kw: tools.execute_get_option_chain_tool(
         ticker=ticker,
         expiration_date=args.get("expiration_date"),

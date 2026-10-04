@@ -1,31 +1,24 @@
 ---
-tags: [audit, logging, tool-execution, database]
+tags: [entity, tool-audit, observability, logging]
 category: entity
 ---
 
-# Tool Audit Logging
+# Tool Audit
 
-Non-blocking background audit logging for LLM tool execution. Records every tool call's inputs, outputs, duration, and metadata to a separate analytical PostgreSQL archive database via PostgREST, with zero impact on Supabase storage quota.
+Non-blocking background audit logging for LLM tool execution. Records every tool call's name, arguments, result, model, duration, and status to the archive database's `public.tool_execution_logs` table without consuming Supabase storage quota.
 
-## Architecture
-
-- **Ingress & Schema**: Logs are POSTed to a `public.tool_execution_logs` table exposed by PostgREST on port 3001, accessible locally or via Cloudflare Tunnel (`https://benchify-archive-db.clvg.uk`).
-- **Non-blocking execution**: The `async_record_tool_audit` helper schedules the HTTP POST as a background asyncio task with a done callback for error logging. The calling tool experiences zero added latency.
-- **Payload safety**: Tool outputs >1 MB are truncated to `MAX_PAYLOAD_BYTES` (1,048,576) with a `truncated` flag and original size recorded in metadata.
-- **Resilience**: Network failures, timeouts, or PostgREST rejections are logged at warning level and never propagate exceptions to the main pipeline.
-
-## Key Functions
-
-- `record_tool_audit(...)` — Async coroutine that constructs the JSON payload and sends it to `{archive_base}/tool_execution_logs`. Returns `True` on success.
-- `async_record_tool_audit(...)` — Schedules `record_tool_audit` in the background without awaiting, using the running event loop. Safe to call from synchronous contexts (falls back to a warning log if no loop exists).
-- `get_archive_db_url()` — Resolves the target PostgREST URL: explicit `ARCHIVE_DB_URL` env var > GitHub Actions remote tunnel > localhost:3001.
-
-## Integration
+## Mechanism
 
 Used in `core/llm/handlers/base.py` wrapping `execute_tool` for all tools. Every tool execution measures wall-clock duration in milliseconds, emits a warning log when `duration_ms >= 5000` (`[tool_audit] Slow tool: ...`), logs standard completions, and non-blockingly dispatches records to `public.tool_execution_logs` via `async_record_tool_audit`.
+
+### Coverage & Phased Rollout
+- **Phase 1 (Volatility)**: `get_volatility_metrics` (1 MB truncation ceiling, background non-blocking execution).
+- **Phase 2 (Valuation & Screening)**: `audit_financial_valuation`, `get_sector_alternatives`, `find_uncorrelated_assets`, `run_stock_screener`.
+- **Phase 3 (Research & Grounding)**: `web_search`, `get_ticker_news`, `search_prediction_markets`, `get_prediction_market_odds`.
+- **Phase 4 (Daily Predictor Macro Suite)**: `tasks/daily_predictor.py:get_daily_market_context` dispatches its pre-market intelligence tools (`get_today_economic_releases`, `get_calendar_scenario_analysis`, `get_macro_options_sentiment`, `get_global_macro_context`, `get_volatility_index_details`, `get_market_health_barometer`, `get_market_feeling`) through `execute_tool(..., model_name="daily_predictor")`, ensuring pre-market background compilations are audited with zero Supabase quota impact while preserving the synthesized `daily_predictions.market_context` for presentation in the web viewer.
 
 ## Related
 
 - [[concepts/hybrid-database-archival]] — The archive database infrastructure
-- [[concepts/auditability]] — Overall traceability philosophy
-- [[entities/engine]] — The engine that invokes tools
+- [[entities/tool-registry]] — The dispatch table that routes tool calls
+- [[entities/daily-market-predictor]] — Phase 4 consumer

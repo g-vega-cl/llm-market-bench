@@ -191,14 +191,8 @@ async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> t
 
 async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close: bool = False) -> str:
     """Fetch recent market data context using canonical MarketDataManager (FMP) and pre-made tools."""
-    from core.llm.tools import (
-        execute_fetch_daily_newsletter_tool,
-        execute_get_global_macro_context_tool,
-        execute_get_macro_options_sentiment_tool,
-        execute_get_market_feeling_tool,
-        execute_get_volatility_index_details_tool,
-        execute_market_health_barometer_tool,
-    )
+    from core.llm.handlers.base import execute_tool
+    from core.llm.tools import execute_fetch_daily_newsletter_tool
     from core.time_utils import get_current_day_info
     from execution.market_data import MarketDataManager
 
@@ -211,20 +205,22 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
 
     # 0. Today's Morning Economic Releases & Macro Indicators (CPI, PPI, Jobs, etc.)
     try:
-        from core.economic_releases import get_today_economic_releases_summary
-
-        econ_summary = await get_today_economic_releases_summary()
-        if econ_summary:
+        econ_summary = await execute_tool(
+            "get_today_economic_releases",
+            {"target_date": today_str, "country": "US"},
+            model_name="daily_predictor",
+        )
+        if econ_summary and not econ_summary.startswith("Error") and not econ_summary.startswith("No scheduled"):
             context_lines.append(econ_summary)
     except Exception as e:
         logger.warning(f"Error fetching today's economic releases for daily predictor: {e}")
 
     # 1. Forward High-Impact Calendar Scenarios (Tomorrow & Next Week)
     try:
-        from core.llm.tools import execute_get_calendar_scenario_analysis_tool
-
-        cal_str = await execute_get_calendar_scenario_analysis_tool(
-            timeframe="tomorrow", ticker=ticker, min_importance=6, detail=False
+        cal_str = await execute_tool(
+            "get_calendar_scenario_analysis",
+            {"timeframe": "tomorrow", "ticker": ticker, "min_importance": 6, "detail": False},
+            model_name="daily_predictor",
         )
         if cal_str and not cal_str.startswith("Error"):
             context_lines.append(f"Upcoming High-Impact Catalysts & Scenarios:\n{cal_str}")
@@ -363,7 +359,11 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
 
     # 2. Options Derivatives Positioning & Cross-Asset Skew
     try:
-        options_str = await execute_get_macro_options_sentiment_tool(primary_ticker=ticker)
+        options_str = await execute_tool(
+            "get_macro_options_sentiment",
+            {"primary_ticker": ticker},
+            model_name="daily_predictor",
+        )
         if (
             options_str
             and not options_str.startswith("Error")
@@ -378,28 +378,44 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
 
     # 3. Macro & Market Feeling Context via Canonical Tools
     try:
-        macro_str = await execute_get_global_macro_context_tool()
+        macro_str = await execute_tool(
+            "get_global_macro_context",
+            {},
+            model_name="daily_predictor",
+        )
         if macro_str and not macro_str.startswith("Error"):
             context_lines.append(f"Prior Session Macro Baseline:\n{macro_str}")
     except Exception as e:
         logger.warning(f"Error fetching global macro context: {e}")
 
     try:
-        vol_str = await execute_get_volatility_index_details_tool()
+        vol_str = await execute_tool(
+            "get_volatility_index_details",
+            {"lookback_days": 90},
+            model_name="daily_predictor",
+        )
         if vol_str and not vol_str.startswith("Error"):
             context_lines.append(f"Volatility Index Details:\n{vol_str}")
     except Exception as e:
         logger.warning(f"Error fetching volatility index details: {e}")
 
     try:
-        baro_str = await execute_market_health_barometer_tool()
+        baro_str = await execute_tool(
+            "get_market_health_barometer",
+            {"limit": 5},
+            model_name="daily_predictor",
+        )
         if baro_str and not baro_str.startswith("Error"):
             context_lines.append(f"Market Health Barometer:\n{baro_str}")
     except Exception as e:
         logger.warning(f"Error fetching market health barometer: {e}")
 
     try:
-        feeling_str = await execute_get_market_feeling_tool()
+        feeling_str = await execute_tool(
+            "get_market_feeling",
+            {},
+            model_name="daily_predictor",
+        )
         if feeling_str and not feeling_str.startswith("Error"):
             context_lines.append(f"Recent Market Feeling:\n{feeling_str[:500]}")
     except Exception as e:
@@ -451,12 +467,7 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
             .eq("ticker", ticker.upper())
             .execute()
         )
-        if (
-            existing
-            and getattr(existing, "data", None)
-            and isinstance(existing.data, list)
-            and len(existing.data) > 0
-        ):
+        if existing and getattr(existing, "data", None) and isinstance(existing.data, list) and len(existing.data) > 0:
             logger.warning(
                 f"Daily predictions for {ticker} on {today} already exist in database ({len(existing.data)} records). "
                 f"Refusing to overwrite existing morning predictions. Use --force to override."

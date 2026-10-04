@@ -1,86 +1,35 @@
 ---
-tags: [database, postgresql, supabase, archival, cloudflare, docker]
+tags: [concept, database, archival, postgres, supabase]
 category: concept
 ---
 
 # Hybrid Database Archival
 
-The platform uses a hybrid storage model to operate within cloud database free tiers while retaining massive historical datasets for research, auditing, and backtesting.
+The platform splits persistence between Supabase (hot transactional path) and a self-hosted Postgres archive (cold analytical path). This keeps Supabase storage quota consumption low while retaining full auditability of tool execution and analytical history.
 
-## Overview
+## Architecture
 
-Supabase serves as the hot, low-latency transactional database for live trading state and UI rendering, while an on-premise PostgreSQL instance backed by local multi-terabyte storage acts as the cold analytical archive.
+Supabase serves as the hot, low-latency transactional database for live trading data, while a local archive Postgres instance absorbs high-volume analytical and audit records.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                       SUPABASE (Cloud)                      │
-│                  Hot / Live / Web Serving                   │
-│  - portfolios / holdings / performance                      │
-│  - current active consensus & decisions                     │
-│  - recent llm_reasoning_logs (<= 14 days)                   │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                      [ Python Engine / Web ]
-                               │
-┌──────────────────────────────┴──────────────────────────────┐
-│                  LOCAL ARCHIVE STACK (Docker)                │
-│              Cold / Bulk / Analytical / Storage             │
-│  - llm_reasoning_logs (> 14 days)                           │
-│  - historical market logs / backtest results                │
-└──────────────────────────────▲──────────────────────────────┘
-                               │
-                   Cloudflare Tunnel (cloudflared)
-                   (https://benchify-archive-db.clvg.uk)
-```
+### 1. Supabase (Hot Path)
 
-## Architecture & Components
+- Hosts live trading tables (`trades`, `portfolio_positions`, `daily_predictions`, etc.) with RLS enforcement.
+- Uses pgvector for semantic search over memories and newsletters.
+- Storage quota is preserved by offloading high-volume audit and analytical writes.
 
-### 1. Hot Tier (Supabase PostgreSQL)
-- Keeps live state: `portfolios`, `portfolio_positions`, `portfolio_performance`, `trades`, and `decisions`.
-- Retains only the most recent **14 days** of verbose trace logs (`llm_reasoning_logs`).
-- Keeps the cloud database footprint well within the 500MB free quota (~239 MB).
+### 2. Local Archive Postgres (Cold Path)
 
-### 2. Cold Archive Tier (Local Docker Postgres + PostgREST)
 - Managed via `docker/archive/docker-compose.yml` with persistent storage on local disk (`/mnt/docker-data`).
 - Runs `ankane/pgvector` on port 5433 for direct local SQL connections.
 - Runs `postgrest/postgrest` on port 3001 to expose a native HTTP REST API matching Supabase's API format.
-- Exposes `tool_execution_logs` for non-blocking audit logging of analytical tool calls (`get_volatility_metrics`, etc.) without consuming Supabase storage quota.
-
+- Exposes `tool_execution_logs` for non-blocking audit logging of analytical and macro suite tool calls across all phases (volatility, valuation, screening, research, and daily predictor macro context) via [[entities/tool-audit]], with zero Supabase storage quota consumption.
 
 ### 3. Remote Ingress via Cloudflare Tunnel
-- Exposes the local PostgREST instance via Cloudflare Tunnel at `https://benchify-archive-db.clvg.uk`.
-- Provides TLS encryption, zero router port forwarding, and seamless remote connectivity for web frontend and CI runners.
 
-### 4. Transparent Fallback Querying
-- The frontend client (`fetchReasoningLogs` in `apps/web/src/features/reasoning/api/fetch-reasoning-logs.ts`) queries Supabase first.
-- When paginating past the hot 14-day window (`cursor > 14 days`), the client automatically queries the archive endpoint without requiring user intervention or broken UI states.
-
-## Archival Workflow
-
-The script `apps/engine/scripts/archive_reasoning_logs.py` handles the data migration:
-1. Streams records older than `cutoff_days` (default 14) from Supabase.
-2. Upserts records into the local archive PostgREST endpoint.
-3. Deletes migrated records from Supabase by primary key ID.
-4. Physical disk space on Supabase is reclaimed by executing `VACUUM FULL public.llm_reasoning_logs;` in the Supabase SQL editor.
-
-## Maintenance & Operational Lifecycle
-
-### System Restarts & Boot Persistence
-- **Docker Containers**: Both `market-bench-archive-db` and `market-bench-archive-postgrest` use `restart: unless-stopped`. Since `docker.service` is enabled at boot, Docker automatically spins up both services within seconds of rebooting.
-- **Cloudflare Tunnel**: `cloudflared.service` is enabled via systemd, ensuring `https://benchify-archive-db.clvg.uk` connects automatically upon boot.
-
-### Health Verification
-- Check container status: `docker ps --filter "name=market-bench-archive"`
-- Check public HTTPS endpoint: `curl -s "https://benchify-archive-db.clvg.uk/llm_reasoning_logs?limit=1"`
-
-### On-Demand Archival Procedure
-When Supabase storage grows near limits:
-1. Run migration: `./apps/engine/.venv/bin/python3 apps/engine/scripts/archive_reasoning_logs.py --cutoff-days 14`
-2. Run SQL in Supabase Dashboard: `VACUUM FULL public.llm_reasoning_logs;`
+- The archive PostgREST endpoint is exposed remotely through a Cloudflare Tunnel (`https://benchify-archive-db.clvg.uk`), allowing the engine to write audit records from anywhere without opening inbound ports.
 
 ## Related
 
-- [[entities/database]] — Core database schema and entity reference
-- [[entities/cron-dispatcher]] — Cloudflare Worker edge dispatcher and account topology
-- [[entities/engine]] — Engine pipeline and data logging
-- [[concepts/performance-auditing-strategy]] — Zero-load query optimization
+- [[entities/tool-audit]] — The audit logging layer that writes to the archive
+- [[entities/database]] — The Supabase schema and migrations
+- [[entities/daily-market-predictor]] — A Phase 4 consumer of archive-backed auditing

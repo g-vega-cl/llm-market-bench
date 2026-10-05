@@ -150,6 +150,9 @@ describe('PortfoliosPage Card Heights & Layout', () => {
         expect(getSystemPortfolioSubtitle('sys-pead-drift')).toBe(
             'Post-Earnings Drift Systematic Momentum (SUE + Jev)',
         );
+        expect(getSystemPortfolioSubtitle('sys-max-pain')).toBe(
+            'Daily Options Max Pain 0DTE Pinning (Ni et al. + Jev)',
+        );
         expect(getSystemPortfolioSubtitle('custom-model')).toBeUndefined();
     });
 

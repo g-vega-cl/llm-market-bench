@@ -165,6 +165,39 @@ const STRATEGY_CONFIGS: Record<string, ExplainerConfig> = {
             },
         ],
     },
+    'sys-max-pain': {
+        emoji: '🎯',
+        title: 'Daily Options Max Pain Pinning Strategy',
+        badgeText: '0DTE Pinning + Jev Gate',
+        badgeColorScheme: 'warning',
+        subtitle:
+            'Exploiting daily options dealer gamma hedging on SPY and QQQ into 4:00 PM expiration.',
+        borderColor: 'border-amber-500/20',
+        bgColor: 'bg-amber-950/10',
+        gridColsClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+        pillars: [
+            {
+                title: '📚 Academic Foundation',
+                description:
+                    'Documented by Ni, Pearson & Poteshman (2005) in the Journal of Financial Economics. Dealer dynamic delta and gamma hedging clusters market prices at the minimum payout strike price.',
+            },
+            {
+                title: '🎯 0DTE Quantitative Filter',
+                description:
+                    "Screened across liquid index ETFs: spot price trading at a 0.25% to 2.50% discount below today's 0DTE Max Pain strike with high open interest concentration.",
+            },
+            {
+                title: '🧠 Jev System One Gatekeeper',
+                description:
+                    'TypeSafe Jev evaluates dealer gamma pinning dynamics on the OpenRouter Decisions API, requiring P(QUALIFIED) >= 70% to eliminate runaway macro catalyst risk.',
+            },
+            {
+                title: '⏱️ 0.01% Friction & 3:50 PM MOC',
+                description:
+                    'Exits when price touches the Max Pain strike (within 0.05%) or liquidates systematically at 3:50 PM MOC before close. Ultra-tight 1 bps slippage, zero overnight holding.',
+            },
+        ],
+    },
     'sys-sector-ls-consensus': {
         emoji: '⚖️',
         title: 'Weekly Sector Long/Short Consensus Strategy',

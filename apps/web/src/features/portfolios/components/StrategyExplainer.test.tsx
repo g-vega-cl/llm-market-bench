@@ -105,6 +105,14 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/30-Day Horizon & ATR Stop/i)).toBeInTheDocument();
     });
 
+    it('renders Daily Options Max Pain explainer for sys-max-pain', () => {
+        render(<StrategyExplainer ownerId="sys-max-pain" />);
+        expect(screen.getByText('Daily Options Max Pain Pinning Strategy')).toBeInTheDocument();
+        expect(screen.getByText('0DTE Pinning + Jev Gate')).toBeInTheDocument();
+        expect(screen.getByText(/0DTE Quantitative Filter/i)).toBeInTheDocument();
+        expect(screen.getByText(/0.01% Friction & 3:50 PM MOC/i)).toBeInTheDocument();
+    });
+
     it('returns null for non-system portfolio', () => {
         const { container } = render(<StrategyExplainer ownerId="deepseek-v3" />);
         expect(container.firstChild).toBeNull();

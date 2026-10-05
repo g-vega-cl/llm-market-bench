@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/pead-drift]] — `sys-pead-drift` systematic Post-Earnings Announcement Drift portfolio (SUE pre-filter + Jev admission gate, 30-day horizon, trailing stop)
 - [[entities/qwen-training]] — standalone Qwen 3.8 27B QLoRA fine-tuning workbench for SPY intraday direction prediction
 - [[entities/laya-training-workbench]] — standalone workbench for fine-tuning Laya on pre-market macro contexts
 - [[entities/market-data]] — market data facade and its cache, session, and transform modules
@@ -79,6 +80,7 @@
 
 ## Concepts
 
+- [[concepts/pead-drift]] — the post-earnings announcement drift anomaly and the signals used to exploit it
 - [[concepts/short-position-display]] — how long and short legs are stored, synthesized on read, and displayed across engine tools and the web UI
 - [[concepts/sector-model-tracks]] — per-model prompt evolution tracks with independent ratchet baselines in the Sector Predictor autoresearch
 - [[concepts/session-open-reconciliation]] — anchoring pre-market MOO entries to the official 9:30 AM session open price

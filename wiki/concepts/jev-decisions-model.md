@@ -11,6 +11,13 @@ category: concept
 
 Jev does not receive a natural-language strategy prompt. Instead, its behavior is fully determined by a pair of symmetric, human-readable **classification criteria** (`criteria_up`, `criteria_down`) that describe the technical/catalyst/macro conditions under which the market should be expected to close higher or lower. The question structure, choice labels (`UP`, `DOWN`), and instructions are **frozen** — only the criteria text is evolved.
 
+## Architecture & Specs
+
+- **Model ID**: `typesafe/jev-1.13` (tracked by alias `~typesafe/jev-latest`).
+- **Context Length**: **32,000 tokens** across the `state` object and `questions`. Output decisions have zero token charge.
+- **Primitives**: Jev natively supports three question primitives: `Choice` (multi-option selection with probability distribution), `Noul` (binary probability of a condition holding true), and `Score` (ordered scale with probability-weighted expectation).
+- **Execution Surfaces**: Available via OpenRouter's Decisions API (`POST /api/alpha/decisions`) and System One API (`POST /api/v1/systemone`).
+
 ## Frozen Question Contract
 
 The question shape is fixed in `apps/engine/core/llm/daily_predictor_prompts.py`:

@@ -18,7 +18,7 @@ Unlike Jev—which is a closed, proprietary model hosted via OpenRouter's Decisi
 | **Weights & License** | Closed API | **Apache 2.0 Open Weights** | Privacy, zero API token cost, self-hostable |
 | **Hosting Model** | OpenRouter Alpha Decisions API | **Self-hosted** (`laya-serve` or in-process) | Full local control |
 | **Backbone Architecture** | Proprietary Classifier | **ModernBERT-large** (421M params) | Open research & fine-tuning |
-| **Context Window** | ~512 tokens | **1,024 tokens** (up to 8,192 with RoPE) | 2x longer state context |
+| **Context Window** | **32,000 tokens** | 1,024 tokens (up to 8,192 with RoPE) | Jev leads on long context (transcripts, multi-statement history) |
 | **Inference Latency** | 236–276 ms (remote network p50) | **~32.8–39.5 ms** (local GPU forward pass) | **~7x faster** execution |
 | **Typed Decisions Accuracy** | 0.727 | **0.766** (clears teacher ceiling of 0.735) | +0.039 on typed decisions |
 | **Brier Score / Calibration** | 0.148 Brier / 0.144 ECE | **0.062 Brier / 0.081 ECE** (fitted) | Sharper probabilistic calibration |

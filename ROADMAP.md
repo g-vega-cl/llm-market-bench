@@ -57,6 +57,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: train small model?
 - [ ] - benchify: fine tune the autoresearcher rather than the model?
 - [ ] - Benchify: 2 week sector predictor and check how different are the weekly/monthly/90d predictions from each other..
+      - Did this.  It's mostly the same.
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
 - [ ] - Benchify: insider trading tracker, congress, CEO, whales , 13Fs?Canada insider trader specifically?
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused

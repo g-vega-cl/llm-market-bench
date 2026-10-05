@@ -132,6 +132,39 @@ const STRATEGY_CONFIGS: Record<string, ExplainerConfig> = {
             },
         ],
     },
+    'sys-pead-drift': {
+        emoji: '📊',
+        title: 'Post-Earnings Announcement Drift (PEAD) Strategy',
+        badgeText: 'SUE + Jev System One',
+        badgeColorScheme: 'info',
+        subtitle:
+            'Capturing structural 15 to 45 day institutional drift following top-decile earnings surprises.',
+        borderColor: 'border-cyan-500/20',
+        bgColor: 'bg-cyan-950/10',
+        gridColsClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+        pillars: [
+            {
+                title: '📚 Academic Foundation',
+                description:
+                    'First documented by Ball & Brown (1968) and Bernard & Thomas (1989). Exploits the multi-week institutional accumulation window post-earnings driven by TWAP/VWAP block execution frictions.',
+            },
+            {
+                title: '🎯 Quantitative Pre-Filter',
+                description:
+                    'Screened daily across S&P 500 constituents: Standardized Unexpected Earnings (SUE >= +2.0), positive revenue growth surprise, Sloan accrual quality ratio <= 0.10, and 20-day pre-earnings run-up < 25%.',
+            },
+            {
+                title: '🧠 Jev System One Gatekeeper',
+                description:
+                    'TypeSafe Jev evaluates candidate surprise metrics, margin deltas, and qualitative guidance on the OpenRouter Decisions API, requiring P(QUALIFIED) >= 70% to eliminate guidance traps.',
+            },
+            {
+                title: '⏱️ 30-Day Horizon & ATR Stop',
+                description:
+                    'Target 10 to 15 equal-weighted positions held for 30 trading days (the core drift sweet spot). Managed with a 5% trailing ATR stop and mandatory exit before the subsequent quarter earnings print.',
+            },
+        ],
+    },
     'sys-sector-ls-consensus': {
         emoji: '⚖️',
         title: 'Weekly Sector Long/Short Consensus Strategy',

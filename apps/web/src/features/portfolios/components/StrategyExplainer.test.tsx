@@ -94,6 +94,17 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/Live Market Hours & Alpaca Audit/i)).toBeInTheDocument();
     });
 
+    it('renders PEAD drift explainer for sys-pead-drift', () => {
+        render(<StrategyExplainer ownerId="sys-pead-drift" />);
+        expect(
+            screen.getByText('Post-Earnings Announcement Drift (PEAD) Strategy'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('SUE + Jev System One')).toBeInTheDocument();
+        expect(screen.getByText(/Academic Foundation/i)).toBeInTheDocument();
+        expect(screen.getByText(/Jev System One Gatekeeper/i)).toBeInTheDocument();
+        expect(screen.getByText(/30-Day Horizon & ATR Stop/i)).toBeInTheDocument();
+    });
+
     it('returns null for non-system portfolio', () => {
         const { container } = render(<StrategyExplainer ownerId="deepseek-v3" />);
         expect(container.firstChild).toBeNull();

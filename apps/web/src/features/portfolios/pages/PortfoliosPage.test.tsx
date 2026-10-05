@@ -147,6 +147,9 @@ describe('PortfoliosPage Card Heights & Layout', () => {
         expect(getSystemPortfolioSubtitle('sys-daily-spy-close-deepseek-v4-flash')).toBe(
             'Daily S&P 500 Close Trader (3:50 PM Exit)',
         );
+        expect(getSystemPortfolioSubtitle('sys-pead-drift')).toBe(
+            'Post-Earnings Drift Systematic Momentum (SUE + Jev)',
+        );
         expect(getSystemPortfolioSubtitle('custom-model')).toBeUndefined();
     });
 

@@ -17,6 +17,9 @@ const FutureCatalysts = lazy(() =>
 const GlobalMacroStats = lazy(() =>
     import('../components/GlobalMacroStats').then((m) => ({ default: m.GlobalMacroStats })),
 );
+const IntradayNewsWire = lazy(() =>
+    import('../components/IntradayNewsWire').then((m) => ({ default: m.IntradayNewsWire })),
+);
 const NewsletterFeed = lazy(() =>
     import('../components/NewsletterFeed').then((m) => ({ default: m.NewsletterFeed })),
 );
@@ -58,6 +61,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
     // Check if everything is empty for today (excluding future events and macro stats)
     const isEmpty =
         !data.newsletters?.length &&
+        !data.intradayNews?.length &&
         !data.trades?.length &&
         !data.decisions?.length &&
         !data.memories?.length &&
@@ -86,7 +90,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                     />
                 ) : (
                     <div className="space-y-6 animate-slide-up">
-                        {/* Row 2: 3-column grid — AgentInsights | NewsletterFeed | AI Feeling, then Market Execution full-width within the same grid */}
+                        {/* Row 2: 3-column grid — AgentInsights | NewsletterFeed | AI Feeling */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                             <Suspense fallback={<CardSkeleton rows={3} />}>
                                 <AgentInsights memories={data.memories} />
@@ -106,6 +110,11 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                                     isSentimentStale={data.isSentimentStale}
                                 />
                             </Suspense>
+                            <div className="lg:col-span-3">
+                                <Suspense fallback={<CardSkeleton rows={3} />}>
+                                    <IntradayNewsWire items={data.intradayNews} />
+                                </Suspense>
+                            </div>
                             <div className="lg:col-span-3">
                                 <Suspense fallback={<CardSkeleton rows={4} />}>
                                     <TradeActivity

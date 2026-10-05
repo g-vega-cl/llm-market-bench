@@ -1,5 +1,6 @@
 import type {
     Decision,
+    IntradayMarketNews,
     MarketDataCache,
     MarketFeeling,
     Memory,
@@ -19,6 +20,7 @@ import { MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
 
 export interface TodayData {
     newsletters: (NewsletterSnapshot & { formattedTime: string })[];
+    intradayNews: (IntradayMarketNews & { formattedTime: string; formattedDate: string })[];
     trades: (Trade & {
         portfolios: { owner_id: string };
         decisions?: Decision | Decision[] | null;
@@ -251,6 +253,7 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
 
     const [
         { data: newsletters },
+        { data: intradayNews },
         { data: trades },
         { data: decisions },
         { data: memories },
@@ -264,6 +267,12 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
             .gte('date', startOfDay)
             .order('date', { ascending: false })
             .limit(limit),
+        supabase
+            .from('intraday_market_news')
+            .select('*')
+            .gte('event_timestamp', startOfDay)
+            .order('event_timestamp', { ascending: false })
+            .limit(20),
         supabase
             .from('trades')
             .select('*, portfolios(owner_id), decisions(*)')
@@ -308,6 +317,7 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
             { data: null, error: err },
             { data: null, error: err },
             { data: null, error: err },
+            { data: null, error: err },
         ];
     });
 
@@ -330,6 +340,11 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
             ...n,
             formattedTime: formatEasternShortTime(n.date),
         })) as (NewsletterSnapshot & { formattedTime: string })[],
+        intradayNews: (intradayNews || []).map((item) => ({
+            ...item,
+            formattedTime: formatEasternShortTime(item.event_timestamp),
+            formattedDate: formatEasternShortDate(item.event_timestamp),
+        })) as (IntradayMarketNews & { formattedTime: string; formattedDate: string })[],
         trades: (trades || []).map((t) => ({
             ...t,
             formattedTime: formatEasternShortTime(t.executed_at),

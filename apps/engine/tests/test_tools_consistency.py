@@ -25,6 +25,7 @@ from core.llm.tools import (
     GET_MACRO_ECONOMIC_SERIES_TOOL,
     GET_MARKET_FEELING_TOOL,
     GET_MARKET_HEALTH_BAROMETER_TOOL,
+    GET_MARKET_MOVING_NEWS_TOOL,
     GET_OPTION_CHAIN_TOOL,
     GET_OPTIONS_SENTIMENT_TOOL,
     GET_OPTIONS_VOL_SURFACE_TOOL,
@@ -136,6 +137,7 @@ def test_tools_json_matches_engine_tool_definitions():
         GET_FUTURE_FORCES_TOOL,
         RESEARCH_FUTURE_FORCE_TOOL,
         GET_SYSTEM_PORTFOLIOS_TOOL,
+        GET_MARKET_MOVING_NEWS_TOOL,
     ]
 
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}

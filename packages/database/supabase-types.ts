@@ -746,6 +746,48 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            intraday_market_news: {
+                Row: {
+                    created_at: string;
+                    event_timestamp: string;
+                    headline: string;
+                    id: string;
+                    jev_choice: string;
+                    jev_confidence: number;
+                    source: string;
+                    source_id_hash: string;
+                    summary: string | null;
+                    tickers: Json | null;
+                    url: string | null;
+                };
+                Insert: {
+                    created_at?: string;
+                    event_timestamp: string;
+                    headline: string;
+                    id?: string;
+                    jev_choice?: string;
+                    jev_confidence: number;
+                    source: string;
+                    source_id_hash: string;
+                    summary?: string | null;
+                    tickers?: Json | null;
+                    url?: string | null;
+                };
+                Update: {
+                    created_at?: string;
+                    event_timestamp?: string;
+                    headline?: string;
+                    id?: string;
+                    jev_choice?: string;
+                    jev_confidence?: number;
+                    source?: string;
+                    source_id_hash?: string;
+                    summary?: string | null;
+                    tickers?: Json | null;
+                    url?: string | null;
+                };
+                Relationships: [];
+            };
             llm_reasoning_logs: {
                 Row: {
                     created_at: string | null;

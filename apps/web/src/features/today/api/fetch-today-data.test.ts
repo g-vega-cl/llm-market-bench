@@ -387,4 +387,50 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(spyStat?.fetchedAt).toBe(`${estToday}T14:45:00Z`);
         expect(spyStat?.formattedTime).toBe('10:45 AM ET');
     });
+
+    it('queries intraday_market_news and formats items in TodayData payload', async () => {
+        const mockNews = [
+            {
+                id: 'news-1',
+                headline: 'Fed Chair Powell Speaks on Policy',
+                summary: 'Discussion on inflation targets.',
+                source: 'Benzinga Wire',
+                url: 'https://example.com/fed',
+                tickers: ['SPY', 'QQQ'],
+                event_timestamp: '2026-10-05T14:30:00Z',
+                jev_choice: 'MARKET_MOVING',
+                jev_confidence: 88.0,
+                source_id_hash: 'hash_fed_1',
+                created_at: '2026-10-05T14:32:00Z',
+            },
+        ];
+
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => {
+                    if (table === 'intraday_market_news') {
+                        return Promise.resolve({ data: mockNews, error: null });
+                    }
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                in: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        const result = await fetchTodayData();
+
+        expect(fromSpy).toHaveBeenCalledWith('intraday_market_news');
+        expect(result.intradayNews).toHaveLength(1);
+        expect(result.intradayNews[0].headline).toBe('Fed Chair Powell Speaks on Policy');
+        expect(result.intradayNews[0].jev_choice).toBe('MARKET_MOVING');
+        expect(result.intradayNews[0].formattedTime).toBeDefined();
+    });
 });

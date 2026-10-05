@@ -364,3 +364,14 @@ async def execute_web_search_tool(query: str, max_results: int = 5) -> str:
         lines.append(f"{i}. {r['title']}{url_part}\n   {r['snippet']}")
 
     return "\n\n".join(lines)
+
+
+async def execute_get_market_moving_news_tool(limit: int = 8, force_refresh: bool = False) -> str:
+    """Executes the get_market_moving_news tool to retrieve high-impact catalysts."""
+    try:
+        from analysis.intraday_news import execute_get_market_moving_news_tool as _exec_tool
+
+        return await _exec_tool(limit=limit, force_refresh=force_refresh)
+    except Exception as e:
+        logger.exception("Error executing get_market_moving_news tool: %s", e)
+        return f"Error retrieving market moving news: {e}"

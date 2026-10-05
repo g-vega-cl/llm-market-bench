@@ -248,4 +248,3 @@ async def test_evaluate_candidate_with_jev_network_error():
         res = await evaluate_candidate_with_jev({"ticker": "SPY"})
         assert res["is_qualified"] is False
         assert res["choice"] == "DISQUALIFIED"
-

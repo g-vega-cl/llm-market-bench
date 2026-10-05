@@ -8,9 +8,11 @@
  * import { fetchTodayData } from '~/features/today/api/fetch-today-data'
  */
 
+export { fetchIntradayNews } from './api/fetch-intraday-news';
 export { fetchTodayData } from './api/fetch-today-data';
 export { AgentInsights } from './components/AgentInsights';
 export { FutureCatalysts } from './components/FutureCatalysts';
+export { IntradayNewsWire } from './components/IntradayNewsWire';
 // Re-export key components for specialized layouts (optional)
 export { MarketStatusHero } from './components/MarketStatusHero';
 export { MarketUpdates } from './components/MarketUpdates';

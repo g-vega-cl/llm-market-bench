@@ -190,6 +190,10 @@
   {
     "name": "get_system_portfolios",
     "desc": "Inspect mechanical system portfolios (mean reversion, momentum trends, sector long/short, intraday SPY) for positions, signals, and benchmark returns"
+  },
+  {
+    "name": "get_market_moving_news",
+    "desc": "Retrieve real-time intraday market-moving events, macro prints, and breaking catalysts vetted by TypeSafe Jev"
   }
 ]
 

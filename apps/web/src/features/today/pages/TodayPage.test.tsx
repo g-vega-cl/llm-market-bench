@@ -237,7 +237,7 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         );
 
         // Initially renders initial 5 trades
-        expect(screen.getByText('NVDA')).toBeInTheDocument();
+        expect(await screen.findByText('NVDA')).toBeInTheDocument();
 
         // Background refetch should be called immediately on mount due to initialDataUpdatedAt: 0
         expect(fetchFn).toHaveBeenCalledTimes(1);

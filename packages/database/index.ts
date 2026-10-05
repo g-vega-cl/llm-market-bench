@@ -77,6 +77,7 @@ export type LLMReasoningLog = Omit<
 
 export type NewsletterSnapshot = Database['public']['Tables']['newsletter_snapshots']['Row'];
 export type GeneratedNewsletter = Database['public']['Tables']['generated_newsletters']['Row'];
+export type IntradayMarketNews = Database['public']['Tables']['intraday_market_news']['Row'];
 export type MarketDataCache = Database['public']['Tables']['market_data_cache']['Row'];
 export type MarketFeeling = Database['public']['Tables']['market_feeling']['Row'];
 export type MarketBarometer = Database['public']['Tables']['market_barometer_history']['Row'];

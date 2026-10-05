@@ -115,6 +115,9 @@ from tools.news_memories import (
     execute_get_market_feeling_tool as execute_get_market_feeling_tool,
 )
 from tools.news_memories import (
+    execute_get_market_moving_news_tool as execute_get_market_moving_news_tool,
+)
+from tools.news_memories import (
     execute_get_thematic_flows_tool as execute_get_thematic_flows_tool,
 )
 from tools.news_memories import (
@@ -1355,6 +1358,27 @@ GET_TICKER_NEWS_TOOL = {
     },
 }
 
+GET_MARKET_MOVING_NEWS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_market_moving_news",
+        "description": "Real-time intraday market-moving events, macro surprises (ISM PMI, Jobs, CPI), Fed remarks, and breaking catalysts vetted by TypeSafe Jev.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of market-moving catalysts to return (1-20, default 8).",
+                },
+                "force_refresh": {
+                    "type": "boolean",
+                    "description": "Whether to force an on-demand re-sync of the news feed bypassing the 15-minute cache (default false).",
+                },
+            },
+        },
+    },
+}
+
 GET_CONGRESS_TRADES_TOOL = {
     "type": "function",
     "function": {
@@ -1725,6 +1749,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_future_forces": GET_FUTURE_FORCES_TOOL,
     "research_future_force": RESEARCH_FUTURE_FORCE_TOOL,
     "get_system_portfolios": GET_SYSTEM_PORTFOLIOS_TOOL,
+    "get_market_moving_news": GET_MARKET_MOVING_NEWS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }

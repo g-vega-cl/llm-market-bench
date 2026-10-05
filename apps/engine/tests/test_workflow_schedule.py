@@ -192,8 +192,12 @@ def test_generate_newsletter_workflow_auto_session_and_safety():
     inputs = config.get(on_key, {}).get("workflow_dispatch", {}).get("inputs", {})
     session_input = inputs.get("session", {})
 
-    assert session_input.get("default") == "auto", f"Expected default 'auto' for session input, got {session_input.get('default')}"
-    assert "auto" in session_input.get("options", []), f"Expected 'auto' in session options, got {session_input.get('options')}"
+    assert session_input.get("default") == "auto", (
+        f"Expected default 'auto' for session input, got {session_input.get('default')}"
+    )
+    assert "auto" in session_input.get("options", []), (
+        f"Expected 'auto' in session options, got {session_input.get('options')}"
+    )
 
     job = config.get("jobs", {}).get("generate-newsletter", {})
     assert job.get("timeout-minutes") == 15, f"Expected 15m timeout, got {job.get('timeout-minutes')}"

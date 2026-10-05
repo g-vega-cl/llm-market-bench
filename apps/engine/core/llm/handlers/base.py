@@ -288,6 +288,10 @@ TOOL_DISPATCH_TABLE = {
         include_positions=args.get("include_positions", True),
         lookback_days=args.get("lookback_days", 7),
     ),
+    "get_market_moving_news": lambda ticker, args, mn, kw: tools.execute_get_market_moving_news_tool(
+        limit=args.get("limit", 8),
+        force_refresh=args.get("force_refresh", False),
+    ),
     "web_search": lambda ticker, args, mn, kw: tools.execute_web_search_tool(args.get("query", "")),
 }
 

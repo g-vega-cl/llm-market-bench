@@ -6,6 +6,8 @@
 
 ## Entities
 
+- [[entities/intraday-news-wire]] — Today-page component rendering Jev-vetted intraday market-moving news
+- [[entities/intraday-news]] — engine module aggregating live catalysts and screening them through the Jev relevance sieve
 - [[entities/pead-drift]] — `sys-pead-drift` systematic Post-Earnings Announcement Drift portfolio (SUE pre-filter + Jev admission gate, 30-day horizon, trailing stop)
 - [[entities/max-pain-pinning]] — `sys-max-pain` systematic Daily Options Max Pain pinning portfolio (0DTE discount pre-filter + Jev admission gate, 3:50 PM MOC liquidation)
 - [[entities/qwen-training]] — standalone Qwen 3.8 27B QLoRA fine-tuning workbench for SPY intraday direction prediction
@@ -81,6 +83,7 @@
 
 ## Concepts
 
+- [[concepts/jev-news-sieve]] — TypeSafe Jev classification separating market-moving catalysts from corporate noise
 - [[concepts/pead-drift]] — the post-earnings announcement drift anomaly and the signals used to exploit it
 - [[concepts/max-pain-pinning]] — options expiration pinning anomaly driven by market maker dynamic gamma hedging on 0DTE index contracts
 - [[concepts/short-position-display]] — how long and short legs are stored, synthesized on read, and displayed across engine tools and the web UI

@@ -118,6 +118,7 @@ async def resolve_experiment_tools(model_name: str, prompt_type: str) -> tuple[l
                 "get_portfolio_ledger",
                 "get_todays_news_menu",
                 "get_ticker_news",
+                "get_market_moving_news",
                 "web_search",
             ]
             logger.info(
@@ -150,6 +151,7 @@ async def resolve_experiment_tools(model_name: str, prompt_type: str) -> tuple[l
             tools.CANONICAL_TOOLS_REGISTRY["get_portfolio_ledger"],
             tools.CANONICAL_TOOLS_REGISTRY["get_todays_news_menu"],
             tools.CANONICAL_TOOLS_REGISTRY["get_ticker_news"],
+            tools.CANONICAL_TOOLS_REGISTRY["get_market_moving_news"],
             tools.CALCULATE_BUY_QUANTITY_TOOL,
             tools.CALCULATE_SELL_QUANTITY_TOOL,
         ]

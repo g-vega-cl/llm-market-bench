@@ -42,6 +42,9 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
     sb_client = None
 
     dust_cleanup_fn = resolve_dep("_stage_dust_cleanup", _stage_dust_cleanup)
+    from analysis.intraday_news import sync_intraday_market_news
+
+    sync_intraday_news_fn = resolve_dep("sync_intraday_market_news", sync_intraday_market_news)
     ingest_snapshot_fn = resolve_dep("_stage_ingest_and_snapshot", _stage_ingest_and_snapshot)
     analysis_consensus_fn = resolve_dep("_stage_analysis_and_consensus", _stage_analysis_and_consensus)
     decision_processing_fn = resolve_dep("_stage_decision_processing", _stage_decision_processing)
@@ -75,6 +78,11 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
         sb_client = get_client_fn()
 
         await dust_cleanup_fn(sb_client, dry_run=dry_run)
+
+        try:
+            await sync_intraday_news_fn(force=False, sb_client=sb_client)
+        except Exception as e:
+            log.warning(f"Intraday market news sync encountered error: {e}")
 
         data, sb_client = await ingest_snapshot_fn(dry_run=dry_run)
         sb_client = sb_client or get_client_fn()

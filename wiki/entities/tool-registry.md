@@ -16,7 +16,7 @@ The table covers market data, options, macro, valuation, screening, research, an
 - `get_option_chain` — full option chain for a ticker/expiration
 - `get_volatility_metrics`, `get_volatility_index_details`
 - `audit_financial_valuation`, `get_sector_alternatives`, `find_uncorrelated_assets`, `run_stock_screener`
-- `web_search`, `get_ticker_news`, `search_prediction_markets`, `get_prediction_market_odds`
+- `web_search`, `get_ticker_news`, `get_market_moving_news`, `search_prediction_markets`, `get_prediction_market_odds`
 - `get_calendar_scenario_analysis`, `get_today_economic_releases`, `get_global_macro_context`, `get_market_health_barometer`, `get_market_feeling`
 - `get_position_pnl` — detailed profit & loss statistics for open model positions
 - `search_related_tickers` — thematic keyword stock searches

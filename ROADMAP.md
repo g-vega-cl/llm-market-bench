@@ -63,14 +63,13 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
 - [ ] - Benchify: something I can autoresearch daily?
         Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
-- [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
 - [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.
 
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
     - same with text
-- [ ] - Benchify: set up Laya alongside JEV?
+- [p] - Benchify: set up Laya alongside JEV?
 - [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios
 - [ ] - Benchify: update today page 
 - [ ] - Benchify: could jev work for my autoresearcher?

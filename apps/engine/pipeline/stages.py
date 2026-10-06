@@ -1,5 +1,7 @@
 """Pipeline execution stages for ingestion, analysis, and portfolio snapshotting."""
 
+import asyncio
+
 from analysis.analyze import analyze_chunks
 from analysis.pca_utils import update_pca_coordinates
 from core.config import logger
@@ -183,7 +185,8 @@ async def _stage_snapshots_and_pca(sb_client, dry_run: bool = False):
         if all_tickers:
             quotes = await mdm.get_quotes(list(all_tickers))
             price_map = {t: data.price for t, data in quotes.items()}
-            for p in active_portfolios:
+
+            async def _update_portfolio(p):
                 p.calculate_reg_t_metrics(price_map)
                 if p.id and str(p.id) in open_shorts_by_portfolio:
                     shorts = open_shorts_by_portfolio[str(p.id)]
@@ -196,6 +199,8 @@ async def _stage_snapshots_and_pca(sb_client, dry_run: bool = False):
 
                 await p.record_performance_snapshot(price_map)
                 await p.save_metrics()
+
+            await asyncio.gather(*[_update_portfolio(p) for p in active_portfolios])
 
     log.info("Updating PCA coordinates...")
     update_pca_fn(sb_client)

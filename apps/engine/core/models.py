@@ -367,16 +367,6 @@ class TickerSuggestion(BaseModel):
         return [t.upper() for t in v]
 
 
-class DiscoveryThemes(BaseModel):
-    """Sectors, industries, and keywords for asset discovery."""
-
-    sectors: list[str] = Field(default_factory=list, description="List of FMP-compatible sectors")
-    industries: list[str] = Field(default_factory=list, description="List of FMP-compatible industries")
-    keywords: list[str] = Field(default_factory=list, description="Keywords for ticker search")
-    market_cap_min: float | None = Field(None, description="Minimum market cap in USD (optional)")
-    reasoning: str = Field(..., description="Strategic reasoning for these discovery targets")
-
-
 class RankedAsset(BaseModel):
     """A ticker that has been ranked for relevance to a specific event."""
 
@@ -389,14 +379,6 @@ class RankedAsset(BaseModel):
     @classmethod
     def upper_case_ticker(cls, v: str) -> str:
         return v.upper()
-
-
-class DiscoveryRankingResponse(BaseModel):
-    """Container for the re-ranking step of discovery."""
-
-    ranked_assets: list[RankedAsset] = Field(
-        default_factory=list, description="List of assets ranked by thematic relevance"
-    )
 
 
 class MacroEventsResponse(BaseModel):

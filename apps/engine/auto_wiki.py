@@ -23,7 +23,6 @@ import os
 import re
 import subprocess
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
@@ -459,10 +458,6 @@ def add_index_entries(entries: list[dict]) -> None:
 
     if new_lines:
         index_path.write_text("\n".join(new_lines))
-
-
-def format_date_for_log() -> str:
-    return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
 def apply_changes(result: dict) -> None:

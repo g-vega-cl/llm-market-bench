@@ -11,6 +11,7 @@ from tasks.backtest_daily_autoresearch import (
     reset_backtest_daily_db,
     run_backtest_daily_autoresearch,
     run_simulated_daily_prediction,
+    sync_to_supabase,
 )
 
 
@@ -267,3 +268,24 @@ async def test_run_backtest_daily_autoresearch_1_week():
     assert new_active_row["status"] == "active"
     assert new_active_row["metrics"] is None
     conn.close()
+
+
+def test_sync_to_supabase_success():
+    """Verify sync_to_supabase successfully upserts records when Supabase client succeeds."""
+    mock_client = MagicMock()
+    with patch("tasks.backtest_daily_autoresearch.get_supabase_client", return_value=mock_client):
+        sync_to_supabase("prompt_experiments", {"id": "test-123", "status": "active"})
+        mock_client.table.assert_called_once_with("prompt_experiments")
+        mock_client.table.return_value.upsert.assert_called_once_with({"id": "test-123", "status": "active"})
+        mock_client.table.return_value.upsert.return_value.execute.assert_called_once()
+
+
+def test_sync_to_supabase_handles_error(caplog):
+    """Verify sync_to_supabase catches exceptions and logs a warning without crashing."""
+    mock_client = MagicMock()
+    mock_client.table.side_effect = RuntimeError("Supabase connection timeout")
+
+    with patch("tasks.backtest_daily_autoresearch.get_supabase_client", return_value=mock_client):
+        # Should not raise exception
+        sync_to_supabase("prompt_experiments", {"id": "test-456"})
+        assert "Could not sync prompt_experiments to Supabase" in caplog.text

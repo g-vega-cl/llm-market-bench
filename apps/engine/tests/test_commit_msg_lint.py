@@ -1,4 +1,7 @@
-from apps.engine.commit_msg_lint import validate_commit_msg
+import sys
+
+import pytest
+from apps.engine.commit_msg_lint import main, validate_commit_msg
 
 
 def test_valid_commit_msg_with_body():
@@ -83,3 +86,42 @@ def test_valid_revert_commit_whitelisted():
     is_valid, errors = validate_commit_msg(msg)
     assert is_valid
     assert not errors
+
+
+def test_main_missing_arguments(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["commit_msg_lint.py"])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 1
+    assert "Usage: commit_msg_lint.py" in capsys.readouterr().err
+
+
+def test_main_file_not_found(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["commit_msg_lint.py", "/nonexistent/commit.txt"])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 1
+    assert "not found at" in capsys.readouterr().err
+
+
+def test_main_valid_commit_file(tmp_path, monkeypatch, capsys):
+    msg_file = tmp_path / "valid_msg.txt"
+    msg_file.write_text(
+        "feat(engine): add unit test for commit linter\n\n- Add test_main functions\n- Ensure zero regressions"
+    )
+    monkeypatch.setattr(sys, "argv", ["commit_msg_lint.py", str(msg_file)])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 0
+    assert "validation passed" in capsys.readouterr().out
+
+
+def test_main_invalid_commit_file(tmp_path, monkeypatch, capsys):
+    msg_file = tmp_path / "invalid_msg.txt"
+    msg_file.write_text("bad commit format without type")
+    monkeypatch.setattr(sys, "argv", ["commit_msg_lint.py", str(msg_file)])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "ERROR: Commit message validation failed!" in captured.err

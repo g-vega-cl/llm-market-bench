@@ -297,16 +297,12 @@ export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoni
         const tradeTime = new Date(trade.executed_at).getTime();
         const tickerDecisions = decisionsByTicker.get(trade.ticker) || [];
 
-        let proximityMatch = null;
-        for (const d of tickerDecisions) {
-            if (
-                d.signal === trade.signal &&
-                Math.abs(d.timestamp - tradeTime) < 24 * 60 * 60 * 1000
-            ) {
-                proximityMatch = d;
-                break;
-            }
-        }
+        const proximityMatch =
+            tickerDecisions.find(
+                (d) =>
+                    d.signal === trade.signal &&
+                    Math.abs(d.timestamp - tradeTime) < 24 * 60 * 60 * 1000,
+            ) ?? null;
 
         if (proximityMatch)
             return {

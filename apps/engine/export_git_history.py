@@ -32,8 +32,8 @@ def ensure_gitignore(target_gitignore=None):
             f.write("\n# Git History Cache\ngit-history/\n")
 
 
-def run_cmd(command: str, shell: bool = True) -> str:
-    """Run a shell command and return its stdout, or empty string on error."""
+def run_cmd(command: list[str] | str, shell: bool = False) -> str:
+    """Run a process command safely without shell=True by default."""
     try:
         res = subprocess.run(command, shell=shell, capture_output=True, text=True, check=True)
         return res.stdout.strip()
@@ -49,10 +49,14 @@ def export_git_history(target_dir=None):
 
     print("[git-history] Fetching git logs...", flush=True)
     # Fetch all commits with date, author, subject, body, and name status
-    git_log_cmd = (
-        "git log --reverse --name-status --date=short "
-        '--pretty=format:"__GIT_HISTORY_COMMIT_START__|%H|%ad|%an|%s%n%b%n__GIT_HISTORY_COMMIT_FILES__"'
-    )
+    git_log_cmd = [
+        "git",
+        "log",
+        "--reverse",
+        "--name-status",
+        "--date=short",
+        "--pretty=format:__GIT_HISTORY_COMMIT_START__|%H|%ad|%an|%s%n%b%n__GIT_HISTORY_COMMIT_FILES__",
+    ]
 
     raw_log = run_cmd(git_log_cmd)
     if not raw_log:

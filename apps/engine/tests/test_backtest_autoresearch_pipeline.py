@@ -4,7 +4,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tasks.backtest_autoresearch import DB_PATH, MockSimulatedSupabaseClient, SQLiteTable, init_backtest_db
+from tasks.backtest_autoresearch import (
+    DB_PATH,
+    MockSimulatedSupabaseClient,
+    SQLiteTable,
+    _serialize_row_data,
+    init_backtest_db,
+    reset_backtest_db,
+)
 
 
 @pytest.mark.asyncio
@@ -148,3 +155,73 @@ async def test_evaluate_backtest_week_includes_trades():
     assert metrics["trades"][0]["price"] == 150.0
     assert metrics["trades"][0]["signal"] == "BUY"
     assert metrics["trades"][0]["reasoning"] == "Strong earnings growth"
+
+
+def test_serialize_row_data_helper():
+    """Verify _serialize_row_data serializes nested structures to JSON strings while preserving primitives."""
+    # Non-dict inputs are returned as-is
+    assert _serialize_row_data("plain_string") == "plain_string"
+    assert _serialize_row_data(123) == 123
+    assert _serialize_row_data([1, 2, 3]) == [1, 2, 3]
+    assert _serialize_row_data(None) is None
+
+    # Dict with primitives
+    input_data = {"ticker": "AAPL", "price": 150.5, "active": True}
+    assert _serialize_row_data(input_data) == input_data
+
+    # Dict with nested dict and list
+    nested_input = {
+        "ticker": "SPY",
+        "metadata": {"source": "fmp", "confidence": 0.95},
+        "tags": ["macro", "etf"],
+        "price": 500.0,
+    }
+    serialized = _serialize_row_data(nested_input)
+    assert serialized["ticker"] == "SPY"
+    assert serialized["price"] == 500.0
+    assert serialized["metadata"] == '{"source": "fmp", "confidence": 0.95}'
+    assert serialized["tags"] == '["macro", "etf"]'
+
+
+def test_reset_backtest_db_clears_and_initializes_portfolios(tmp_path, monkeypatch):
+    """Verify reset_backtest_db clears trades, positions, decisions and resets portfolios to $10k."""
+    import tasks.backtest_autoresearch as backtest_pkg
+
+    test_db = str(tmp_path / "test_reset_backtest.db")
+    monkeypatch.setattr(backtest_pkg, "DB_PATH", test_db)
+    init_backtest_db()
+
+    conn = sqlite3.connect(test_db)
+    cursor = conn.cursor()
+    # Insert dirty records
+    cursor.execute(
+        "INSERT INTO portfolios (id, owner_id, cash_balance, total_equity) VALUES ('p-old', 'old-owner', 50.0, 50.0)"
+    )
+    cursor.execute(
+        "INSERT INTO trades (id, portfolio_id, ticker, signal, quantity, price, total_cost, executed_at, reasoning) "
+        "VALUES ('t-old', 'p-old', 'XYZ', 'BUY', 5, 10.0, 50.0, '2026-04-20', 'Test')"
+    )
+    conn.commit()
+    conn.close()
+
+    # Reset
+    reset_backtest_db()
+
+    conn = sqlite3.connect(test_db)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM trades")
+    assert cursor.fetchone()[0] == 0
+
+    cursor.execute("SELECT COUNT(*) FROM portfolio_positions")
+    assert cursor.fetchone()[0] == 0
+
+    cursor.execute("SELECT COUNT(*) FROM decisions")
+    assert cursor.fetchone()[0] == 0
+
+    cursor.execute("SELECT owner_id, cash_balance, total_equity FROM portfolios")
+    portfolios = cursor.fetchall()
+    assert len(portfolios) == len(backtest_pkg.AUTORESEARCH_EXPERIMENT_OWNER_IDS)
+    for _owner, cash, equity in portfolios:
+        assert cash == 10000.0
+        assert equity == 10000.0
+    conn.close()

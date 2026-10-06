@@ -129,19 +129,44 @@ async def test_fetch_intraday_prices_forces_refresh_when_missing_from_cache():
 
 
 @pytest.mark.asyncio
-async def test_fetch_intraday_open_close_missing_date():
-    from unittest.mock import AsyncMock
+async def test_evaluate_daily_predictions_price_cache():
+    """Verify that multiple pending predictions for the same ticker and target_date reuse cached intraday prices."""
+    mock_supabase = MagicMock()
+    query_mock = MagicMock()
+    mock_supabase.table.return_value.select.return_value = query_mock
+    query_mock.eq.return_value = query_mock
+    query_mock.execute.return_value.data = [
+        {
+            "id": "pred-1",
+            "ticker": "SPY",
+            "target_date": "2026-08-05",
+            "predicted_direction": "UP",
+            "confidence": 70.0,
+            "status": "pending",
+        },
+        {
+            "id": "pred-2",
+            "ticker": "SPY",
+            "target_date": "2026-08-05",
+            "predicted_direction": "DOWN",
+            "confidence": 60.0,
+            "status": "pending",
+        },
+    ]
 
-    from tasks.evaluate_daily_predictions import fetch_intraday_open_close
-
-    mock_history = [{"price": 105.0, "fetched_at": "2026-08-04T00:00:00Z"}]
-    mock_mdm = MagicMock()
-    mock_mdm.get_history = AsyncMock(return_value=mock_history)
-
-    with patch("execution.market_data.MarketDataManager", return_value=mock_mdm):
-        open_p, close_p = await fetch_intraday_open_close("SPY", "2026-08-05")
-        assert open_p is None
-        assert close_p is None
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch(
+            "tasks.evaluate_daily_predictions.fetch_intraday_prices",
+            new_callable=AsyncMock,
+            return_value=(500.0, 505.0, 498.0, 502.0),
+        ) as mock_fetch,
+        patch("analysis.daily_postmortem.run_daily_postmortem", new_callable=AsyncMock),
+    ):
+        evaluated = await evaluate_daily_predictions(target_date="2026-08-05")
+        assert evaluated == 2
+        # Caching ensures fetch_intraday_prices is only called once for SPY on 2026-08-05
+        assert mock_fetch.call_count == 1
 
 
 @pytest.mark.asyncio

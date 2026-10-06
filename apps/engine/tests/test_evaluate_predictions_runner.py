@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from tasks.evaluate_predictions import run_evaluation
+from tasks.evaluate_predictions import get_price_for_date, run_evaluation
 
 
 @pytest.mark.asyncio
@@ -168,3 +168,45 @@ async def test_run_evaluation_runner_force():
     # In force mode, .or_() should NOT be called on the query chain
     mock_chain.or_.assert_not_called()
     mock_chain.update.assert_called_once()
+
+
+def test_get_price_for_date_edge_cases():
+    """Verify get_price_for_date handles empty lists, malformed dates, exact hits, and closest fallbacks."""
+    from datetime import date
+
+    target = date(2026, 8, 10)
+
+    # 1. Empty history
+    assert get_price_for_date([], target) is None
+
+    # 2. History with malformed entries only
+    malformed_history = [
+        {"price": 100.0, "fetched_at": "invalid-date"},
+        {"price": 105.0},
+        {"invalid": "entry"},
+    ]
+    assert get_price_for_date(malformed_history, target) is None
+
+    # 3. History with some malformed entries and one valid
+    mixed_history = [
+        {"price": 99.0, "fetched_at": "bad"},
+        {"price": 150.0, "fetched_at": "2026-08-10T14:30:00Z"},
+    ]
+    assert get_price_for_date(mixed_history, target) == 150.0
+
+    # 4. Exact match among multiple dates
+    history = [
+        {"price": 140.0, "fetched_at": "2026-08-08T00:00:00Z"},
+        {"price": 145.0, "fetched_at": "2026-08-09T00:00:00Z"},
+        {"price": 150.0, "fetched_at": "2026-08-10T00:00:00Z"},
+        {"price": 155.0, "fetched_at": "2026-08-11T00:00:00Z"},
+    ]
+    assert get_price_for_date(history, target) == 150.0
+
+    # 5. Missing target date: falls back to closest available date
+    # Target: 2026-08-10. Available: 2026-08-07 (diff 3) and 2026-08-11 (diff 1)
+    gap_history = [
+        {"price": 130.0, "fetched_at": "2026-08-07T00:00:00Z"},
+        {"price": 155.0, "fetched_at": "2026-08-11T00:00:00Z"},
+    ]
+    assert get_price_for_date(gap_history, target) == 155.0

@@ -79,14 +79,15 @@ def init_backtest_daily_db():
     # Auto-migrate existing SQLite table if columns missing from previous runs
     cursor.execute("PRAGMA table_info(daily_predictions)")
     existing_cols = {row[1] for row in cursor.fetchall()}
-    for col_name, col_type in [
-        ("actual_high_price", "REAL"),
-        ("actual_low_price", "REAL"),
-        ("intraday_hit", "INTEGER"),
-        ("intraday_direction_hit", "INTEGER"),
-    ]:
+    alter_statements = {
+        "actual_high_price": "ALTER TABLE daily_predictions ADD COLUMN actual_high_price REAL",
+        "actual_low_price": "ALTER TABLE daily_predictions ADD COLUMN actual_low_price REAL",
+        "intraday_hit": "ALTER TABLE daily_predictions ADD COLUMN intraday_hit INTEGER",
+        "intraday_direction_hit": "ALTER TABLE daily_predictions ADD COLUMN intraday_direction_hit INTEGER",
+    }
+    for col_name, stmt in alter_statements.items():
         if col_name not in existing_cols:
-            cursor.execute(f"ALTER TABLE daily_predictions ADD COLUMN {col_name} {col_type}")
+            cursor.execute(stmt)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS prompt_experiments (

@@ -165,12 +165,6 @@ async def fetch_intraday_prices(
     return None, None, None, None
 
 
-async def fetch_intraday_open_close(ticker: str, target_date_str: str) -> tuple[float | None, float | None]:
-    """Backward compatible helper fetching Open and Close prices."""
-    open_p, _high_p, _low_p, close_p = await fetch_intraday_prices(ticker, target_date_str)
-    return open_p, close_p
-
-
 async def evaluate_daily_predictions(
     target_date: str | None = None, force_recalc: bool = False, backfill_trades: bool = False
 ) -> int:
@@ -202,6 +196,7 @@ async def evaluate_daily_predictions(
         return 0
 
     evaluated_count = 0
+    price_cache: dict[tuple[str, str], tuple[float | None, float | None, float | None, float | None]] = {}
 
     for pred in pending:
         pred_id = pred["id"]
@@ -225,9 +220,14 @@ async def evaluate_daily_predictions(
             )
             continue
 
-        open_p, high_p, low_p, close_p = await fetch_intraday_prices(
-            ticker, target_date_str, force_refresh=force_recalc
-        )
+        cache_key = (ticker, target_date_str)
+        if cache_key in price_cache:
+            open_p, high_p, low_p, close_p = price_cache[cache_key]
+        else:
+            open_p, high_p, low_p, close_p = await fetch_intraday_prices(
+                ticker, target_date_str, force_refresh=force_recalc
+            )
+            price_cache[cache_key] = (open_p, high_p, low_p, close_p)
 
         if open_p is None or close_p is None or high_p is None or low_p is None:
             from execution.market_data import MarketDataManager
@@ -290,11 +290,13 @@ async def evaluate_daily_predictions(
                     "intraday_hit": intraday_hit,
                 }
                 # Only execute target-exit trade if the model provides an explicit profit target percentage.
+                trade_coros = []
                 pred_model = str(pred.get("model_name", "")).lower()
                 target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
                 if "jev" not in pred_model and target_pct > 0.0:
-                    await execute_system_daily_trade(prediction=pred, intraday_data=intraday_data)
-                await execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data)
+                    trade_coros.append(execute_system_daily_trade(prediction=pred, intraday_data=intraday_data))
+                trade_coros.append(execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data))
+                await asyncio.gather(*trade_coros)
             except Exception as e:
                 logger.exception(f"Failed to execute system daily trade for prediction {pred_id}: {e}")
 

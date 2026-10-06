@@ -84,6 +84,9 @@ def test_domain_modules_exist_and_export_handlers():
     assert hasattr(compliance, "execute_inspect_verifier_rules_tool")
     assert hasattr(compliance, "execute_get_catalyst_radar_tool")
     assert hasattr(compliance, "execute_get_calendar_scenario_analysis_tool")
+    assert hasattr(compliance, "execute_get_congress_trades_tool")
+    assert hasattr(compliance, "execute_get_insider_trades_tool")
+    assert hasattr(compliance, "execute_get_whale_holdings_tool")
 
 
 def test_core_llm_tools_barrel_parity():
@@ -137,6 +140,8 @@ def test_core_llm_tools_barrel_parity():
         "execute_barrier_touch_probabilities_tool",
         "execute_get_ticker_news_tool",
         "execute_get_congress_trades_tool",
+        "execute_get_insider_trades_tool",
+        "execute_get_whale_holdings_tool",
         "execute_analyze_thematic_beneficiaries_tool",
         "execute_get_today_economic_releases_tool",
         "execute_call_warren_buffett_tool",

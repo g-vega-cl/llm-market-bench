@@ -252,3 +252,47 @@ async def execute_get_congress_trades_tool(
     except Exception as e:
         logger.exception("Error executing get_congress_trades tool: %s", e)
         return f"Error retrieving Congress trading disclosures: {e}"
+
+
+async def execute_get_insider_trades_tool(
+    ticker: str | None = None,
+    symbol: str | None = None,
+    days: int = 90,
+    transaction_type: str = "all",
+    limit: int = 15,
+) -> str:
+    """Executes the get_insider_trades tool to retrieve Form 4 insider disclosures."""
+    try:
+        from tools.insider_tools import handle_get_insider_trades
+
+        sym = ticker or symbol or ""
+        return await handle_get_insider_trades(
+            symbol=sym,
+            days=days,
+            transaction_type=transaction_type,
+            limit=limit,
+        )
+    except Exception as e:
+        logger.exception("Error executing get_insider_trades tool: %s", e)
+        return f"Error retrieving insider trading disclosures: {e}"
+
+
+async def execute_get_whale_holdings_tool(
+    ticker: str | None = None,
+    symbol: str | None = None,
+    fund_name: str | None = None,
+    limit: int = 15,
+) -> str:
+    """Executes the get_whale_holdings tool to retrieve 13D/13G and 13F whale data."""
+    try:
+        from tools.whale_tools import handle_get_whale_holdings
+
+        sym = ticker or symbol
+        return await handle_get_whale_holdings(
+            ticker=sym,
+            fund_name=fund_name,
+            limit=limit,
+        )
+    except Exception as e:
+        logger.exception("Error executing get_whale_holdings tool: %s", e)
+        return f"Error retrieving whale holdings: {e}"

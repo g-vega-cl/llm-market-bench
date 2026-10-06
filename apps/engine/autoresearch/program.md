@@ -101,6 +101,8 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 47. **research_future_force**: Conducts deep-dive adversarial analysis on a candidate future force, market trend, geopolitical chokepoint, or sleeping giant using OpenAI Luna (`gpt-5.6-luna`) with extended thinking.
 48. **get_system_portfolios**: Inspects mechanical control portfolios (`sys-sector-mean-reversion`, `sys-sector-naive-momentum`, `sys-sector-uncorr-*`, `sys-sector-ls-*`, `sys-daily-spy`) for current stock/ETF positions, entry prices, unrealized PnL, trailing returns, and quantitative regime signals (mean reversion bounce vs momentum trend continuation).
 49. **get_market_moving_news**: Fetches today's live intraday market-moving catalysts, breaking news, and scheduled macro releases vetted by Jev AI.
+50. **get_insider_trades**: Retrieves corporate insider trading disclosures (SEC Form 4) for C-suite executives, directors, and 10%+ owners with transaction types, net volume, and filing dates.
+51. **get_whale_holdings**: Retrieves institutional whale holdings, Schedule 13D/13G (>5% owners) blockholders for a stock, and Form 13F portfolio holdings for major funds.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 

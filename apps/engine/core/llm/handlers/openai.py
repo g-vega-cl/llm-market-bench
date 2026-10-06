@@ -28,6 +28,9 @@ DEFAULT_OPENAI_TOOLS = [
     tools.GET_OPTIONS_SENTIMENT_TOOL,
     tools.GET_OPTION_CHAIN_TOOL,
     tools.GET_TICKER_NEWS_TOOL,
+    tools.GET_CONGRESS_TRADES_TOOL,
+    tools.GET_INSIDER_TRADES_TOOL,
+    tools.GET_WHALE_HOLDINGS_TOOL,
 ]
 
 # OpenAI web search tool (native tool, not a function)

@@ -40,7 +40,13 @@ from tools.compliance import (
     execute_get_congress_trades_tool as execute_get_congress_trades_tool,
 )
 from tools.compliance import (
+    execute_get_insider_trades_tool as execute_get_insider_trades_tool,
+)
+from tools.compliance import (
     execute_get_verifier_rejections_tool as execute_get_verifier_rejections_tool,
+)
+from tools.compliance import (
+    execute_get_whale_holdings_tool as execute_get_whale_holdings_tool,
 )
 from tools.compliance import (
     execute_inspect_verifier_rules_tool as execute_inspect_verifier_rules_tool,
@@ -1413,6 +1419,62 @@ GET_CONGRESS_TRADES_TOOL = {
     },
 }
 
+GET_INSIDER_TRADES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_insider_trades",
+        "description": "Retrieve corporate insider trading disclosures (SEC Form 4) for C-suite executives, directors, and 10%+ owners.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "Stock ticker symbol (e.g. 'NVDA', 'AAPL').",
+                },
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days of disclosures to look back (default 90).",
+                },
+                "transaction_type": {
+                    "type": "string",
+                    "description": "Optional transaction type filter: 'purchase', 'sale', or 'all' (default 'all').",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of records to return (default 15).",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+GET_WHALE_HOLDINGS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_whale_holdings",
+        "description": "Retrieve institutional whale holdings and blockholders: Schedule 13D/13G (>5% owners) for a stock, or Form 13F portfolio holdings for a major fund.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "Optional stock ticker symbol (e.g. 'NVDA') to view top institutional blockholders and 13D/13G whale positions.",
+                },
+                "fund_name": {
+                    "type": "string",
+                    "description": "Optional curated whale fund name (e.g. 'BERKSHIRE_HATHAWAY', 'COATUE', 'APPALOOSA', 'WHALE_ROCK', 'DUQUESNE') to inspect 13F portfolio.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of holdings/filers to return (default 15).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
 ANALYZE_THEMATIC_BENEFICIARIES_TOOL = {
     "type": "function",
     "function": {
@@ -1741,6 +1803,8 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_barrier_touch_probabilities": GET_BARRIER_TOUCH_PROBABILITIES_TOOL,
     "get_ticker_news": GET_TICKER_NEWS_TOOL,
     "get_congress_trades": GET_CONGRESS_TRADES_TOOL,
+    "get_insider_trades": GET_INSIDER_TRADES_TOOL,
+    "get_whale_holdings": GET_WHALE_HOLDINGS_TOOL,
     "analyze_thematic_beneficiaries": ANALYZE_THEMATIC_BENEFICIARIES_TOOL,
     "get_today_economic_releases": GET_TODAY_ECONOMIC_RELEASES_TOOL,
     "call_warren_buffett": CALL_WARREN_BUFFETT_TOOL,

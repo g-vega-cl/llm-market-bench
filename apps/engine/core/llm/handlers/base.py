@@ -88,6 +88,7 @@ TICKER_REQUIRED_TOOLS = {
     "track_thesis_pillars",
     "get_barrier_touch_probabilities",
     "get_ticker_news",
+    "get_insider_trades",
 }
 
 TOOL_DISPATCH_TABLE = {
@@ -236,6 +237,17 @@ TOOL_DISPATCH_TABLE = {
         days=args.get("days", 45),
         transaction_type=args.get("transaction_type"),
         limit=args.get("limit", 20),
+    ),
+    "get_insider_trades": lambda ticker, args, mn, kw: tools.execute_get_insider_trades_tool(
+        ticker=ticker or args.get("ticker") or args.get("symbol"),
+        days=args.get("days", 90),
+        transaction_type=args.get("transaction_type", "all"),
+        limit=args.get("limit", 15),
+    ),
+    "get_whale_holdings": lambda ticker, args, mn, kw: tools.execute_get_whale_holdings_tool(
+        ticker=ticker or args.get("ticker") or args.get("symbol"),
+        fund_name=args.get("fund_name"),
+        limit=args.get("limit", 15),
     ),
     "analyze_thematic_beneficiaries": lambda ticker, args, mn, kw: tools.execute_analyze_thematic_beneficiaries_tool(
         anchor_ticker=args.get("anchor_ticker") or args.get("ticker", ""),

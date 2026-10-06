@@ -6,6 +6,10 @@
 
 ## Entities
 
+- [[entities/whale-holdings]] — Institutional 13F holdings and Schedule 13D/13G blockholder tracker exposed via the `get_whale_holdings` tool
+- [[entities/insider-trades]] — SEC Form 4 corporate insider trading tracker (FMP ingestion, Supabase cache, `get_insider_trades` tool)
+- [[entities/whale-holdings]] — Auto-indexed page
+- [[entities/insider-trades]] — Auto-indexed page
 - [[entities/intraday-news-wire]] — Today-page component rendering Jev-vetted intraday market-moving news
 - [[entities/intraday-news]] — engine module aggregating live catalysts and screening them through the Jev relevance sieve
 - [[entities/pead-drift]] — `sys-pead-drift` systematic Post-Earnings Announcement Drift portfolio (SUE pre-filter + Jev admission gate, 30-day horizon, trailing stop)

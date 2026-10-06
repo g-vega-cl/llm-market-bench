@@ -6,6 +6,7 @@
     "scripts": {
         "dev": "NODE_OPTIONS=\"--no-deprecation\" vite dev",
         "build": "NODE_OPTIONS=\"--no-deprecation\" vite build && tsc --noEmit",
+        "typecheck": "tsc --noEmit",
         "preview": "vite preview",
         "start": "pnpx srvx --prod -s ../client dist/server/server.js",
         "test": "NODE_OPTIONS=\"--no-warnings --no-deprecation\" vitest run",

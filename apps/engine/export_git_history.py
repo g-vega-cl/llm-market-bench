@@ -32,13 +32,28 @@ def ensure_gitignore(target_gitignore=None):
             f.write("\n# Git History Cache\ngit-history/\n")
 
 
-def run_cmd(command: list[str] | str, shell: bool = False) -> str:
-    """Run a process command safely without shell=True by default."""
+def run_cmd(command: list[str] | str, shell: bool | None = None) -> str:
+    """Run a process command safely.
+
+    Uses shell=False for list commands to prevent injection.
+    Enables bash shell execution for compound shell strings (e.g. NVM environment setup).
+    """
+    if shell is None:
+        shell = isinstance(command, str)
     try:
-        res = subprocess.run(command, shell=shell, capture_output=True, text=True, check=True)
+        executable = "/bin/bash" if shell else None
+        res = subprocess.run(
+            command,
+            shell=shell,
+            executable=executable,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         return res.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        print(f"[git-history] Command failed: {command}\nError: {e.stderr}", flush=True)
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        err = getattr(e, "stderr", str(e))
+        print(f"[git-history] Command failed: {command}\nError: {err}", flush=True)
         return ""
 
 

@@ -79,7 +79,7 @@ SYSTEM_PROMPT_MUTABLE_STRATEGIES = (
     "   - Think beyond the immediate news. Trace the **Chain of Events**. If X happens, what happens next?\n"
     "   - For example: Military tension in Iran -> Potential War -> Increased Oil Prices -> Increased Fertilizer Costs -> Profit via Energy or Fertilizer companies.\n"
     "   - For example: Agricultural bill for AI -> Agritech sector boom -> Profit via niche Agritech software/hardware providers.\n"
-    "   - 9. **UNCROWDED TRADES / UNDER-THE-RADAR:**\n"
+    "9. **UNCROWDED TRADES / UNDER-THE-RADAR:**\n"
     '   - Actively search for these secondary effects or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = "UNCROWDED_TRADE"`.\n'
     "10. **COUNTRY TO ETF MAPPING:**\n"
     "    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.\n"

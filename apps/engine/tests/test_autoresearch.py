@@ -12,7 +12,6 @@ Covers the fixes from the post-review TDD pass:
 """
 
 import asyncio
-import sys
 from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -20,8 +19,6 @@ from unittest.mock import MagicMock
 import pytest
 
 ENGINE_DIR = Path(__file__).resolve().parent.parent
-if str(ENGINE_DIR) not in sys.path:
-    sys.path.insert(0, str(ENGINE_DIR))
 
 # ---------------------------------------------------------------------------
 # Helpers — a fluent supabase mock that records every chained call.

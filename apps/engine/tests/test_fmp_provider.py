@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -79,3 +80,29 @@ async def test_fmp_provider_get_history_http_error():
     with patch("httpx.AsyncClient.get", side_effect=httpx.HTTPError("API Down")):
         history = await provider.get_history("AAPL", days=30)
         assert history == []
+
+
+def test_fmp_provider_init_db_success(tmp_path, monkeypatch):
+    """Verify FMPProvider._init_db initializes the hourly_bars SQLite schema."""
+    test_db = str(tmp_path / "hourly_cache.db")
+    monkeypatch.setattr(FMPProvider, "_db_path", test_db)
+
+    provider = FMPProvider()
+    assert provider._db_path == test_db
+
+    conn = sqlite3.connect(test_db)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='hourly_bars'")
+    assert cursor.fetchone() is not None
+
+    cursor.execute("PRAGMA table_info(hourly_bars)")
+    cols = {row[1] for row in cursor.fetchall()}
+    assert cols == {"ticker", "bar_date", "open", "high", "low", "close", "volume"}
+    conn.close()
+
+
+def test_fmp_provider_init_db_error_handling(caplog):
+    """Verify FMPProvider._init_db catches and logs SQLite initialization failures."""
+    with patch("sqlite3.connect", side_effect=sqlite3.OperationalError("permission denied")):
+        _ = FMPProvider()
+        assert "Failed to initialize SQLite hourly price cache database" in caplog.text

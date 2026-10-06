@@ -69,7 +69,7 @@ export async function fetchPortfolioByOwnerId(
 export async function fetchPositions(portfolioId: string): Promise<PositionWithReasoning[]> {
     const supabase = getSupabaseServerClient();
 
-    const [posRes, shortRes] = await Promise.all([
+    const [posRes, tradesRes] = await Promise.all([
         supabase
             .from('position_pnl')
             .select('*')
@@ -79,16 +79,64 @@ export async function fetchPositions(portfolioId: string): Promise<PositionWithR
             .from('trades')
             .select('*')
             .eq('portfolio_id', portfolioId)
-            .eq('signal', 'SHORT')
-            .is('realized_pnl', null)
-            .order('executed_at', { ascending: false }),
+            .in('signal', ['SHORT', 'COVER'])
+            .order('executed_at', { ascending: true }),
     ]);
 
     if (posRes.error) throw posRes.error;
-    if (shortRes.error) throw shortRes.error;
+    if (tradesRes.error) throw tradesRes.error;
 
     const rawPositions = posRes.data || [];
-    const openShorts = shortRes.data || [];
+    const shortCoverTrades = tradesRes.data || [];
+
+    // Chronologically match SHORT and COVER trades per ticker to identify true open lots
+    const openLotsByTicker = new Map<
+        string,
+        Array<{ trade: (typeof shortCoverTrades)[0]; remainingQty: number }>
+    >();
+
+    for (const trade of shortCoverTrades) {
+        const ticker = trade.ticker?.toUpperCase();
+        if (!ticker) continue;
+        const sig = trade.signal?.toUpperCase();
+        const qty = Number(trade.quantity) || 0;
+
+        if (sig === 'SHORT') {
+            // If the SHORT trade explicitly has realized_pnl recorded, it is already closed
+            if (trade.realized_pnl !== null && trade.realized_pnl !== undefined) {
+                continue;
+            }
+            if (!openLotsByTicker.has(ticker)) {
+                openLotsByTicker.set(ticker, []);
+            }
+            openLotsByTicker.get(ticker)!.push({ trade, remainingQty: qty });
+        } else if (sig === 'COVER') {
+            const lots = openLotsByTicker.get(ticker) || [];
+            let coverQtyNeeded = qty;
+            while (lots.length > 0 && coverQtyNeeded > 0) {
+                const oldest = lots[0];
+                if (oldest.remainingQty <= coverQtyNeeded) {
+                    coverQtyNeeded -= oldest.remainingQty;
+                    lots.shift();
+                } else {
+                    oldest.remainingQty -= coverQtyNeeded;
+                    coverQtyNeeded = 0;
+                }
+            }
+        }
+    }
+
+    const openShorts: typeof shortCoverTrades = [];
+    for (const lots of openLotsByTicker.values()) {
+        for (const lot of lots) {
+            if (lot.remainingQty > 0) {
+                openShorts.push({
+                    ...lot.trade,
+                    quantity: lot.remainingQty,
+                });
+            }
+        }
+    }
 
     if (rawPositions.length === 0 && openShorts.length === 0) return [];
 

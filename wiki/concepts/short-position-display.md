@@ -13,9 +13,16 @@ System portfolios (notably the long/short sector strategies) hold both long and 
 - **Short legs** → `trades` rows with `signal = 'SHORT'` and `realized_pnl IS NULL`.
 - **Current prices for shorts** → `market_data_cache`.
 
+## Trade Lifecycle Invariants
+
+To prevent closed historical short trades from resurrecting as open "ghost" positions:
+1. **Write Invariant (Symmetrical Closure)**: Whenever a short position is liquidated (via a `COVER` trade in `daily_live_trading.py`, `daily_trading.py`, or `sector_trading.py`), the original entry `SHORT` trade row MUST be updated with `realized_pnl` and `realized_pnl_pct` matching the exit trade.
+2. **Read Invariant (FIFO Lot Matching)**: Read paths do not rely solely on `realized_pnl IS NULL`. They query both `SHORT` and `COVER` trades and chronologically match exits against entry lots (FIFO). Any `SHORT` trade that has a matching `COVER` trade in the same session/cycle is immediately excluded from open positions.
+3. **Auditor Health & Reconciliation**: `portfolio_auditor.py` continuously audits `trades` for `UNCLOSED_SHORT_DAILY_SPY` anomalies (where a `SHORT` trade has `realized_pnl IS NULL` despite a matching `COVER` trade) and auto-heals them during post-market GitHub Actions runs (`main.py audit-portfolios --fix`).
+
 ## Engine Read Path
 
-`execute_get_system_portfolios_tool` (`apps/engine/analytics/system_portfolios_report.py`) queries open shorts, joins `market_data_cache` for the latest price, and computes inverted mark-to-market PnL:
+`execute_get_system_portfolios_tool` (`apps/engine/analytics/system_portfolios_report.py`) queries `SHORT` and `COVER` trades, resolves open lots chronologically, joins `market_data_cache` for the latest price, and computes inverted mark-to-market PnL:
 
 - `unrealized_pnl_usd = (avg_cost - current_price) * quantity`
 - `unrealized_pnl_pct = (avg_cost - current_price) / avg_cost * 100`
@@ -24,7 +31,7 @@ Each short line is tagged `[SHORT]` and labeled "Short Entry" instead of "Avg Co
 
 ## Web Read Path
 
-`fetchPositions` (`apps/web/src/features/portfolios/api/fetch-portfolios.ts`) fetches `position_pnl` (longs) and open `trades` (shorts) in parallel, resolves current prices from `market_data_cache`, and merges them into a single `PositionWithReasoning[]` with a `side` field of `LONG` or `SHORT`. Shorts fall back to a default reasoning string ("Systematic short sector allocation.") when no matching decision exists. The combined list is sorted by ticker.
+`fetchPositions` (`apps/web/src/features/portfolios/api/fetch-portfolios.ts`) fetches `position_pnl` (longs) and trades (`SHORT` + `COVER`), resolves open short lots chronologically (FIFO), resolves current prices from `market_data_cache`, and merges them into a single `PositionWithReasoning[]` with a `side` field of `LONG` or `SHORT`. Shorts fall back to a default reasoning string ("Systematic short sector allocation.") when no matching decision exists. The combined list is sorted by ticker.
 
 ## UI
 
@@ -35,3 +42,5 @@ Each short line is tagged `[SHORT]` and labeled "Short Entry" instead of "Avg Co
 - [[concepts/system-portfolios]]
 - [[entities/sector-trading]]
 - [[entities/web-app]]
+- [[entities/portfolio-auditor]]
+

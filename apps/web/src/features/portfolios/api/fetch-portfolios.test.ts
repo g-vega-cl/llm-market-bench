@@ -333,6 +333,11 @@ test('fetchPositions merges long positions and open short trades with correct si
                 return {
                     select: vi.fn(() => ({
                         eq: vi.fn(() => ({
+                            in: vi.fn(() => ({
+                                order: vi.fn(() =>
+                                    Promise.resolve({ data: mockShortTrades, error: null }),
+                                ),
+                            })),
                             eq: vi.fn(() => ({
                                 is: vi.fn(() => ({
                                     order: vi.fn(() =>
@@ -388,4 +393,91 @@ test('fetchPositions merges long positions and open short trades with correct si
     expect(xle?.unrealized_pnl_usd).toBe(100);
     expect(xle?.unrealized_pnl_pct).toBe(6.25);
     expect(xle?.reasoning).toBe('Systematic short sector allocation.');
+});
+
+test('fetchPositions ignores historical SHORT trades that have matching COVER trades', async () => {
+    const mockTrades = [
+        {
+            id: 'trade-short-historical',
+            portfolio_id: 'pid-2',
+            ticker: 'SPY',
+            quantity: 13,
+            price: 768.63,
+            signal: 'SHORT',
+            realized_pnl: null,
+            executed_at: '2026-09-25T13:30:00Z',
+        },
+        {
+            id: 'trade-cover-historical',
+            portfolio_id: 'pid-2',
+            ticker: 'SPY',
+            quantity: 13,
+            price: 771.4,
+            signal: 'COVER',
+            realized_pnl: -36.11,
+            executed_at: '2026-09-25T20:00:00Z',
+        },
+    ];
+
+    const client: MockSupabaseChain = {
+        from: vi.fn((table: string) => {
+            if (table === 'position_pnl') {
+                return {
+                    select: vi.fn(() => ({
+                        eq: vi.fn(() => ({
+                            order: vi.fn(() => Promise.resolve({ data: [], error: null })),
+                        })),
+                    })),
+                };
+            }
+            if (table === 'trades') {
+                return {
+                    select: vi.fn(() => ({
+                        eq: vi.fn(() => ({
+                            eq: vi.fn(() => ({
+                                is: vi.fn(() => ({
+                                    order: vi.fn(() =>
+                                        Promise.resolve({ data: [mockTrades[0]], error: null }),
+                                    ),
+                                })),
+                            })),
+                            in: vi.fn(() => ({
+                                order: vi.fn(() =>
+                                    Promise.resolve({ data: mockTrades, error: null }),
+                                ),
+                            })),
+                        })),
+                    })),
+                };
+            }
+            if (table === 'market_data_cache') {
+                return {
+                    select: vi.fn(() => ({
+                        in: vi.fn(() =>
+                            Promise.resolve({
+                                data: [{ ticker: 'SPY', price: 769.0 }],
+                                error: null,
+                            }),
+                        ),
+                    })),
+                };
+            }
+            if (table === 'decisions') {
+                return {
+                    select: vi.fn(() => ({
+                        in: vi.fn(() => ({
+                            order: vi.fn(() => ({
+                                limit: vi.fn(() => Promise.resolve({ data: [], error: null })),
+                            })),
+                        })),
+                    })),
+                };
+            }
+            return client;
+        }),
+    };
+    mockSupabaseClient = client;
+
+    const positions = await fetchPositions('pid-2');
+    expect(positions).toHaveLength(0);
 });

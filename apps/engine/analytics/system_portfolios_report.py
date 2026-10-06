@@ -132,12 +132,45 @@ async def execute_get_system_portfolios_tool(
             try:
                 short_res = (
                     client.table("trades")
-                    .select("portfolio_id, ticker, quantity, price, executed_at")
-                    .eq("signal", "SHORT")
-                    .is_("realized_pnl", "null")
+                    .select("portfolio_id, ticker, quantity, price, signal, realized_pnl, executed_at")
+                    .in_("signal", ["SHORT", "COVER"])
+                    .order("executed_at")
                     .execute()
                 )
-                open_shorts = short_res.data or []
+                trade_records = short_res.data or []
+                lots_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+                for tr in trade_records:
+                    pid = tr.get("portfolio_id")
+                    t_sym = tr.get("ticker", "").upper()
+                    if not pid or not t_sym:
+                        continue
+                    key = (pid, t_sym)
+                    sig = str(tr.get("signal", "")).upper()
+                    qty = float(tr.get("quantity", 0) or 0)
+                    if sig == "SHORT":
+                        if tr.get("realized_pnl") is not None:
+                            continue
+                        lots_by_key.setdefault(key, []).append({"trade": tr, "remainingQty": qty})
+                    elif sig == "COVER":
+                        lots = lots_by_key.get(key, [])
+                        needed = qty
+                        while lots and needed > 0:
+                            oldest = lots[0]
+                            if oldest["remainingQty"] <= needed:
+                                needed -= oldest["remainingQty"]
+                                lots.pop(0)
+                            else:
+                                oldest["remainingQty"] -= needed
+                                needed = 0
+
+                open_shorts = []
+                for lots in lots_by_key.values():
+                    for lot in lots:
+                        if lot["remainingQty"] > 0:
+                            tr = dict(lot["trade"])
+                            tr["quantity"] = lot["remainingQty"]
+                            open_shorts.append(tr)
+
                 if open_shorts:
                     short_tickers = list({s["ticker"] for s in open_shorts if s.get("ticker")})
                     cache_res = (

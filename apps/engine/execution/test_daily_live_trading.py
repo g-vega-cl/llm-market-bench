@@ -355,3 +355,106 @@ async def test_daily_close_exit_reconciles_open_price_from_beginning_of_day(mock
     assert exit_pnl < 0, f"Expected loss from open {actual_open} to close {actual_close}, but got {exit_pnl}"
     expected_pnl = (actual_close - actual_open) * shares
     assert abs(exit_pnl - expected_pnl) < 1.0, f"Expected PnL near {expected_pnl}, got {exit_pnl}"
+
+
+@pytest.mark.asyncio
+async def test_execute_daily_close_exits_for_short_trade_updates_entry_pnl(mock_supabase):
+    """Verify afternoon close exit for SHORT trades inserts COVER trade and updates entry SHORT trade realized_pnl."""
+    from execution.daily_trading import execute_daily_close_exits
+
+    target_date = "2026-09-25"
+    portfolio_id = uuid4()
+    entry_trade_id = str(uuid4())
+
+    mock_portfolio_data = [
+        {"id": str(portfolio_id), "owner_id": "sys-daily-spy-close-~typesafe/jev-latest", "cash_balance": 10000.0}
+    ]
+    # No long position in portfolio_positions
+    mock_positions_data = []
+    mock_day_trades = [
+        {
+            "id": entry_trade_id,
+            "portfolio_id": str(portfolio_id),
+            "ticker": "SPY",
+            "signal": "SHORT",
+            "quantity": 13,
+            "price": 768.63,
+            "realized_pnl": None,
+            "executed_at": f"{target_date}T13:30:00Z",
+        }
+    ]
+
+    inserted_trades = []
+    updated_trades = []
+
+    def table_router(table_name):
+        t = MagicMock()
+        t.select.return_value = t
+        t.eq.return_value = t
+        t.like.return_value = t
+        t.gte.return_value = t
+        t.lte.return_value = t
+        t.delete.return_value = t
+        t.upsert.return_value = t
+
+        def record_insert(payload):
+            inserted_trades.append(payload)
+            ib = MagicMock()
+            ib.execute.return_value = MagicMock(data=[payload])
+            return ib
+
+        def record_update(payload):
+            updated_trades.append(payload)
+            ub = MagicMock()
+            ub.eq.return_value = ub
+            ub.execute.return_value = MagicMock(data=[payload])
+            return ub
+
+        t.insert.side_effect = record_insert
+        t.update.side_effect = record_update
+
+        if table_name == "portfolios":
+            t.execute.return_value = MagicMock(data=mock_portfolio_data)
+        elif table_name == "portfolio_positions":
+            t.execute.return_value = MagicMock(data=mock_positions_data)
+        elif table_name == "trades":
+            t.execute.return_value = MagicMock(data=mock_day_trades)
+        elif table_name == "daily_predictions":
+            t.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "model_name": "~typesafe/jev-latest",
+                        "target_date": target_date,
+                        "open_price": 768.63,
+                        "close_price": 771.40,
+                        "predicted_direction": "DOWN",
+                    }
+                ]
+            )
+        else:
+            t.execute.return_value = MagicMock(data=[])
+        return t
+
+    mock_supabase.table.side_effect = table_router
+
+    with (
+        patch("execution.daily_live_trading.dt.get_supabase_client", return_value=mock_supabase),
+        patch("execution.market_data.MarketDataManager.get_quote", new=AsyncMock(return_value=MagicMock(price=771.40))),
+        patch("execution.alpaca_broker.AlpacaBroker.cancel_open_orders_for_agent", new=AsyncMock()),
+    ):
+        result = await execute_daily_close_exits(target_date=target_date)
+
+    assert result["status"] == "success"
+    assert len(result["exits"]) == 1
+    assert result["exits"][0]["signal"] == "COVER"
+
+    # Assert COVER trade was inserted
+    cover_trade = next((t for t in inserted_trades if t.get("signal") == "COVER"), None)
+    assert cover_trade is not None
+    assert cover_trade["realized_pnl"] is not None
+
+    # Assert entry SHORT trade was updated with realized_pnl
+    entry_update = next((u for u in updated_trades if "realized_pnl" in u), None)
+    assert entry_update is not None, "Expected entry SHORT trade to be updated with realized_pnl"
+    assert entry_update["realized_pnl"] == cover_trade["realized_pnl"]
+

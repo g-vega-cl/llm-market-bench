@@ -126,18 +126,63 @@ async def audit_system_portfolios(
                     (t for t in trades if t.get("signal") in ("BUY", "SHORT")),
                     trades[0] if trades else None,
                 )
+                exit_trade = next(
+                    (t for t in trades if t.get("signal") in ("SELL", "COVER")),
+                    None,
+                )
                 open_p = float(pred.get("open_price") or 0.0)
                 entry_price = float(entry_trade.get("price") or 0.0) if entry_trade else 0.0
 
                 is_missing_trades = len(trades) < 2
                 has_invalid_entry = False
+                has_unclosed_short = False
 
                 if not is_missing_trades and open_p > 0 and entry_price > 0:
                     drift_pct = abs(entry_price - open_p) / open_p
                     if drift_pct > 0.002:  # > 0.2% drift from beginning-of-day open
                         has_invalid_entry = True
 
-                if is_missing_trades or has_invalid_entry:
+                if (
+                    not is_missing_trades
+                    and entry_trade
+                    and entry_trade.get("signal") == "SHORT"
+                    and entry_trade.get("realized_pnl") is None
+                    and exit_trade
+                    and exit_trade.get("signal") == "COVER"
+                    and exit_trade.get("realized_pnl") is not None
+                ):
+                    has_unclosed_short = True
+
+                if has_unclosed_short and not (is_missing_trades or has_invalid_entry):
+                    anomaly = {
+                        "date": d,
+                        "portfolio_id": portfolio_id,
+                        "owner_id": owner_id,
+                        "type": "UNCLOSED_SHORT_DAILY_SPY",
+                        "model_name": model_name,
+                        "details": f"Entry SHORT trade {entry_trade['id']} has NULL realized_pnl despite matching COVER trade on {d}",
+                    }
+                    anomalies.append(anomaly)
+                    logger.warning(f"Portfolio health anomaly: {anomaly['details']} on {owner_id} ({d})")
+
+                    if auto_heal:
+                        cover_pnl = float(exit_trade["realized_pnl"])
+                        cover_pnl_pct = float(exit_trade.get("realized_pnl_pct") or 0.0)
+                        client.table("trades").update(
+                            {"realized_pnl": cover_pnl, "realized_pnl_pct": cover_pnl_pct}
+                        ).eq("id", entry_trade["id"]).execute()
+                        healed.append(
+                            {
+                                "date": d,
+                                "portfolio_id": portfolio_id,
+                                "owner_id": owner_id,
+                                "type": "UNCLOSED_SHORT_DAILY_SPY",
+                                "action": "HEALED_UNCLOSED_SHORT",
+                                "details": f"Healed entry SHORT trade {entry_trade['id']} with realized PnL ${cover_pnl:,.2f}",
+                            }
+                        )
+
+                elif is_missing_trades or has_invalid_entry:
                     anomaly_type = "MISSING_DAILY_SPY_TRADE" if is_missing_trades else "INVALID_ENTRY_PRICE_DAILY_SPY"
                     details = (
                         f"Expected 2 trades (entry + exit) for {d}, found {len(trades)}"
@@ -336,9 +381,10 @@ def generate_markdown_summary(
         h = healed_lookup.get((d, owner))
 
         if h:
-            resolution = (
-                f"✅ Auto-Healed (`alpaca_status='{h['alpaca_status']}'`, Equity: ${(h.get('new_equity') or 0):,.2f})"
-            )
+            if "alpaca_status" in h:
+                resolution = f"✅ Auto-Healed (`alpaca_status='{h['alpaca_status']}'`, Equity: ${(h.get('new_equity') or 0):,.2f})"
+            else:
+                resolution = f"✅ Auto-Healed ({h.get('details')})"
         else:
             resolution = "⚠️ Pending Review (Run `main.py audit-portfolios --fix`)"
 

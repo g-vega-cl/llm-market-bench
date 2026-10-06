@@ -498,3 +498,118 @@ async def test_audit_auto_heals_invalid_entry_price_daily_spy(mock_supabase):
     assert len(inserted_trades) >= 2
     entry_trade = inserted_trades[0]
     assert abs(entry_trade["price"] - 770.58) < 1.0
+
+
+@pytest.mark.asyncio
+async def test_portfolio_auditor_detects_and_heals_unclosed_short_trade(mock_supabase):
+    """Verify portfolio auditor detects unclosed entry SHORT trade and heals its realized_pnl from matching COVER."""
+    from audit.portfolio_auditor import audit_system_portfolios
+
+    target_date = "2026-09-28"
+    portfolio_id = "p-jev"
+    pred = {
+        "model_name": "~typesafe/jev-latest",
+        "predicted_direction": "DOWN",
+        "expected_return_pct": 0.0,
+        "target_date": target_date,
+        "open_price": 768.20,
+        "high_price": 769.00,
+        "low_price": 765.00,
+        "close_price": 765.66,
+    }
+
+    mock_portfolios = [
+        {
+            "id": portfolio_id,
+            "owner_id": "sys-daily-spy-close-~typesafe/jev-latest",
+            "cash_balance": 10000.0,
+            "total_equity": 10000.0,
+        }
+    ]
+
+    mock_trades = [
+        {
+            "id": "t-short-1",
+            "portfolio_id": portfolio_id,
+            "signal": "SHORT",
+            "price": 768.20,
+            "quantity": 12,
+            "realized_pnl": None,
+            "executed_at": f"{target_date}T13:30:00Z",
+        },
+        {
+            "id": "t-cover-1",
+            "portfolio_id": portfolio_id,
+            "signal": "COVER",
+            "price": 765.66,
+            "quantity": 12,
+            "realized_pnl": 30.40,
+            "realized_pnl_pct": 0.33,
+            "executed_at": f"{target_date}T20:00:00Z",
+        },
+    ]
+
+    updated_records = []
+
+    def table_router(table_name):
+        mock_t = MagicMock()
+        mock_t.select.return_value = mock_t
+        mock_t.eq.return_value = mock_t
+        mock_t.gte.return_value = mock_t
+        mock_t.lte.return_value = mock_t
+        mock_t.like.return_value = mock_t
+
+        def record_update(payload):
+            updated_records.append(payload)
+            ub = MagicMock()
+            ub.eq.return_value = ub
+            ub.execute.return_value = MagicMock(data=[payload])
+            return ub
+
+        mock_t.update.side_effect = record_update
+
+        if table_name == "daily_predictions":
+            mock_t.execute.return_value = MagicMock(data=[pred])
+        elif table_name == "portfolios":
+            mock_t.execute.return_value = MagicMock(data=mock_portfolios)
+        elif table_name == "trades":
+            mock_t.execute.return_value = MagicMock(data=mock_trades)
+        elif table_name == "portfolio_positions":
+            mock_t.execute.return_value = MagicMock(data=[])
+        elif table_name == "portfolio_performance":
+            mock_t.execute.return_value = MagicMock(data=[{"total_equity": 10000.0}])
+        else:
+            mock_t.execute.return_value = MagicMock(data=[])
+        return mock_t
+
+    mock_supabase.table.side_effect = table_router
+
+    # 1. Without auto-heal: detects anomaly
+    report = await audit_system_portfolios(
+        target_date=target_date,
+        lookback_days=1,
+        auto_heal=False,
+        supabase_client=mock_supabase,
+    )
+
+    assert report["status"] == "anomalies_detected"
+    assert len(report["anomalies"]) == 1
+    anomaly = report["anomalies"][0]
+    assert anomaly["type"] == "UNCLOSED_SHORT_DAILY_SPY"
+    assert anomaly["owner_id"] == "sys-daily-spy-close-~typesafe/jev-latest"
+
+    # 2. With auto-heal: heals entry trade
+    report_heal = await audit_system_portfolios(
+        target_date=target_date,
+        lookback_days=1,
+        auto_heal=True,
+        supabase_client=mock_supabase,
+    )
+
+    assert report_heal["status"] == "healed"
+    assert len(report_heal["healed"]) == 1
+    healed = report_heal["healed"][0]
+    assert healed["type"] == "UNCLOSED_SHORT_DAILY_SPY"
+    entry_pnl_update = next((u for u in updated_records if u.get("realized_pnl") == 30.40), None)
+    assert entry_pnl_update is not None
+

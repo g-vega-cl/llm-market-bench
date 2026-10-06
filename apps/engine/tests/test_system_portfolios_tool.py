@@ -240,6 +240,9 @@ async def test_execute_get_system_portfolios_tool_with_open_shorts():
     mock_perf_query.select.return_value.gte.return_value.order.return_value.execute.return_value = MagicMock(data=[])
 
     mock_trades_query = MagicMock()
+    mock_trades_query.select.return_value.in_.return_value.order.return_value.execute.return_value = MagicMock(
+        data=mock_trades
+    )
     mock_trades_query.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
         data=mock_trades
     )
@@ -266,3 +269,67 @@ async def test_execute_get_system_portfolios_tool_with_open_shorts():
     assert "Current Price: $76.00" in res
     # (80 - 76) * 25 = +100 USD
     assert "Unrealized PnL: $+100.00" in res
+
+
+@pytest.mark.asyncio
+async def test_execute_get_system_portfolios_tool_ignores_covered_shorts():
+    """Verify execute_get_system_portfolios_tool ignores historical SHORT trades that have been covered."""
+    mock_portfolios = [
+        {
+            "id": "port-daily",
+            "owner_id": "sys-daily-spy-close-~typesafe/jev-latest",
+            "cash_balance": 10000.0,
+            "total_equity": 10000.0,
+            "buying_power": 40000.0,
+        },
+    ]
+
+    mock_trades = [
+        {
+            "portfolio_id": "port-daily",
+            "ticker": "SPY",
+            "quantity": 13,
+            "price": 768.63,
+            "executed_at": "2026-09-25T13:30:00Z",
+            "signal": "SHORT",
+            "realized_pnl": None,
+        },
+        {
+            "portfolio_id": "port-daily",
+            "ticker": "SPY",
+            "quantity": 13,
+            "price": 771.40,
+            "executed_at": "2026-09-25T20:00:00Z",
+            "signal": "COVER",
+            "realized_pnl": -36.11,
+        },
+    ]
+
+    mock_sb = MagicMock()
+    mock_p_query = MagicMock()
+    mock_p_query.select.return_value.like.return_value.execute.return_value = MagicMock(data=mock_portfolios)
+    mock_pos_query = MagicMock()
+    mock_pos_query.select.return_value.execute.return_value = MagicMock(data=[])
+    mock_perf_query = MagicMock()
+    mock_perf_query.select.return_value.gte.return_value.order.return_value.execute.return_value = MagicMock(data=[])
+
+    mock_trades_query = MagicMock()
+    mock_trades_query.select.return_value.in_.return_value.order.return_value.execute.return_value = MagicMock(
+        data=mock_trades
+    )
+
+    table_map = {
+        "portfolios": mock_p_query,
+        "position_pnl": mock_pos_query,
+        "portfolio_performance": mock_perf_query,
+        "trades": mock_trades_query,
+        "market_data_cache": MagicMock(),
+    }
+    mock_sb.table.side_effect = lambda name: table_map.get(name, MagicMock())
+
+    with patch("analytics.system_portfolios_report.get_supabase_client", return_value=mock_sb):
+        res = await execute_get_system_portfolios_tool(category="daily_spy", include_positions=True)
+
+    assert "sys-daily-spy-close-~typesafe/jev-latest" in res
+    assert "SPY [SHORT]" not in res
+

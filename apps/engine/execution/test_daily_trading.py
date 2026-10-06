@@ -209,6 +209,8 @@ async def test_execute_system_daily_close_trade_flow():
 
     # In DOWN, close 761.62 > open 761.31 -> loss
     assert exit_trade["realized_pnl"] < 0
+    # Entry SHORT trade must also be marked closed with realized_pnl
+    assert entry_trade["realized_pnl"] == exit_trade["realized_pnl"]
 
 
 @pytest.mark.asyncio

@@ -202,6 +202,9 @@ async def execute_daily_spy_trade(
         "total_cost": shares * execution["entry_price"],
         "executed_at": f"{target_date_str}T13:30:00Z",
     }
+    if direction == "DOWN":
+        entry_trade_payload["realized_pnl"] = execution["realized_pnl"]
+        entry_trade_payload["realized_pnl_pct"] = execution["realized_pnl_pct"]
     if alpaca_status:
         entry_trade_payload["alpaca_status"] = alpaca_status
     client.table("trades").insert(entry_trade_payload).execute()

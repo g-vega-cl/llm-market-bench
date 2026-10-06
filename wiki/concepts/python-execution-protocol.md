@@ -1,34 +1,52 @@
 ---
-tags: [agents, execution, security, antigravity]
+tags: [python, tooling, conventions, scratch, diagnostics]
 category: concept
 ---
 
-# File-Based Python Execution
+# Python Execution Protocol
 
-Mandatory agent protocol requiring all Python work to be executed from script files via the repository virtualenv binary, never as inline multiline `python3 -c "..."` commands. Driven by the security constraints of Antigravity's permission engine.
+A mandatory project convention governing how Python is executed for testing,
+diagnostics, one-off queries, and inspection. The rule is **file-based execution
+only** — no inline `-c` and no multiline Python passed on the command line.
 
-## Rationale
+## Core Rule: Zero Inline `-c`
 
-Inline interpreter invocations with evaluation flags (`-c`/`-e`) trip Antigravity's `RequiresExactMatch` execution-hijacking guardrail, which disables prefix allowlists (e.g. `command(./apps/engine/.venv/bin/python3)`) and demands an exact full-command match including code contents.
+Never execute multiline Python via `python -c "..."`. Instead, write the code to
+a script file and execute the file. This keeps the invoked command auditable,
+diffable, and reproducible, and avoids quoting/escaping hazards.
 
-Three mechanisms make inline `-c` untenable:
+```bash
+./apps/engine/.venv/bin/python3 <path/to/script.py>
+```
 
-1. **Execution Hijacking Guardrails** — `RequiresExactMatch` blocks prefix allowlisting of inline evaluation.
-2. **Grant Regex Limitations** — Grant validation is a single-line regex (`^(command|...)\(.*\)$`); multi-line `-c` payloads fail with `invalid grant string` and cannot be saved or auto-approved.
-3. **Dynamic Payloads** — Ad-hoc snippets vary per invocation, defeating permission persistence.
+Always use the project virtualenv interpreter (`./apps/engine/.venv/bin/python3`)
+so diagnostics run against the same dependency set as the engine.
 
-## Execution Protocol
+## Scratch & Temporary Script Locations
 
-- **Prohibited**: multiline or complex Python via `python3 -c "..."` or `./apps/engine/.venv/bin/python3 -c "..."`.
-- **Canonical interpreter**: always `./apps/engine/.venv/bin/python3 <path/to/script.py> [args]`.
-- **Scratch locations**: conversation scratch `<appDataDir>/brain/<conversation-id>/scratch/<name>.py`, or gitignored workspace scratch `.scratch/<name>.py` / `apps/engine/scratch/<name>.py`.
-- **Workflow**: write script with `write_to_file` → execute via virtualenv binary → read output → clean up temporary workspace scratch files.
+When drafting temporary, inspection, or diagnostic scripts, choose the location
+in this priority order:
 
-## Relationship to Agent Rules
+1. **Conversation scratch directory (preferred)** — write to
+   `<appDataDir>/brain/<conversation-id>/scratch/<name>.py`. This directory is
+   automatically persisted across conversation steps, keeps the repository
+   workspace clean, and avoids triggering shell permission prompts during manual
+   cleanup.
+2. **Workspace scratch directory (fallback)** — use `.scratch/<name>.py` or
+   `apps/engine/scratch/<name>.py` (gitignored) **only** when local relative path
+   resolution is strictly required. Note that executing shell `rm` commands on
+   workspace files may trigger permission-confirmation prompts.
 
-Codified as mandatory rule #12 in `GEMINI.md` and detailed in `.agents/rules/python-execution.md`, both enforced by the agent instruction system documented in [[entities/agent-rules]].
+## Workflow
+
+1. Write the Python code to a script file using `write_to_file`.
+2. Execute the file via `./apps/engine/.venv/bin/python3 <path/to/script.py>`.
+3. Read the output.
+4. Prefer conversation scratch so cleanup is handled cleanly without manual shell
+   `rm` commands in the workspace.
 
 ## Related
 
-- [[entities/agent-rules]]
-- [[concepts/agent-workflow]]
+- [[entities/engine]] — the component whose modules these scripts exercise
+- [[concepts/tool-domain-decomposition]] — sibling convention for tool design
+- [[concepts/workflow-consolidation]] — sibling convention for CI task placement

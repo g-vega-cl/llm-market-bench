@@ -27,7 +27,7 @@
 - Format with `ruff format` / `biome check --write`.
 - **Zero External Network Calls in Tests (MANDATORY)**: Unit and integration tests MUST NEVER make outbound network calls (HTTP/HTTPS, external sockets, or external DNS resolution). All external APIs, SDK clients, and databases must be strictly mocked (`httpx`, `requests`, `AsyncAnthropic`, `AsyncOpenAI`, Supabase, FMP, Massive, FRED, Gmail IMAP). Tests must be 100% hermetic and run successfully without internet access or ambient API keys. An autouse session fixture in `apps/engine/tests/conftest.py` intercepts socket connects and DNS lookups, throwing a `RuntimeError` if an unmocked network connection is attempted.
 
-**After every code change, verify lint and coverage pass before marking work complete.** The pre-commit hook will block commits with lint errors or low coverage. Run `ruff check` on changed Python files and `biome check` on changed TS files. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint or low coverage is not done.
+**After every code change, verify lint and coverage pass before marking work complete.** The pre-commit hook will block commits with lint errors, low coverage, or broken wiki links. Run `ruff check` on changed Python files, `biome check` on changed TS files, and `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` whenever any file in `wiki/` is created or modified. Validate that all backtick code references in wiki markdown match existing paths on disk. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint or low coverage is not done.
 
 ## Commit Message Protocol (MANDATORY)
 
@@ -78,8 +78,12 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
     - **Zero arbitrary values**: Never use square-bracket Tailwind escapes (such as `w-[230px]` or `bg-[#1a2b3c]`). Use established theme spacing, typography, and token classes.
     - **Prefer default system props**: Always use built-in props (`colorScheme`, `variant`, `size`, `radius`) to achieve styling rather than ad-hoc custom `className` utility overrides.
     - **Unified high-contrast dark theme**: The application standardizes on a single theme ("Bloomberg Terminal meets Wired"). Never introduce light/dark toggles, custom theme switches, or `dark:` conditional classes. See `[[entities/design-system]]`.
-12. **File-Based Python Execution (Zero Inline `-c`) (MANDATORY)**: Never execute multiline Python via `-c`. Write temporary or diagnostic scripts to `.scratch/<name>.py` and run via `./apps/engine/.venv/bin/python3 <script.py>`. See [`.agents/rules/python-execution.md`](file:///home/cv/Documents/Code/llm-market-bench/.agents/rules/python-execution.md).
+12. **File-Based Python Execution (Zero Inline `-c`) (MANDATORY)**: Never execute multiline Python via `-c`. Write temporary or diagnostic scripts to conversation scratch (`<appDataDir>/brain/<conversation-id>/scratch/<name>.py`) or workspace `.scratch/<name>.py` and run via `./apps/engine/.venv/bin/python3 <script.py>`. See [`.agents/rules/python-execution.md`](file:///home/cv/Documents/Code/llm-market-bench/.agents/rules/python-execution.md).
 13. **Fluent Layout & Overflow Prevention (MANDATORY)**: Never use explicit media query breakpoints (`sm:`, `md:`, `lg:`) or raw pixel layouts. Use `flex-wrap`, `repeat(auto-fit, minmax(...))`, relative `rem` tokens (`basis-72`, `basis-96`), `min-w-0`, and `whitespace-pre-wrap break-words` on `<pre>` elements. See [`.agents/rules/css-overflow-prevention.md`](file:///home/cv/Documents/Code/llm-market-bench/.agents/rules/css-overflow-prevention.md) and `[[concepts/fluent-responsive-design]]`.
+14. **Workflow Consolidation & Piggybacking (MANDATORY)**:
+    - Never create standalone GitHub Actions workflow files for secondary or periodic tasks if an existing scheduled pipeline runs on the appropriate cadence (e.g., market close, price update, ingest).
+    - Prefer "piggybacking" tasks into established workflows (`update-prices.yml`, `update-earnings-alpha.yml`, `ingest.yml`) as distinct steps or chained script calls.
+    - Only introduce a new workflow file if the cadence, trigger event, or execution runner environment is genuinely decoupled and cannot be shared.
 
 
 

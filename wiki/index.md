@@ -83,6 +83,7 @@
 
 ## Concepts
 
+- [[concepts/workflow-consolidation]] — piggyback periodic CI tasks onto existing scheduled workflows instead of creating new ones
 - [[concepts/portfolio-metrics-initialization]] — full Reg T metric seeding on new and legacy portfolio load
 - [[concepts/systematic-strategy-hooks]] — clock-driven orchestration of sector exits, Max Pain, and PEAD drift during price updates
 - [[concepts/anthropic-prompt-caching]] — Anthropic prompt caching via explicit system breakpoints and automatic caching, with MiniMax exclusion and cache telemetry

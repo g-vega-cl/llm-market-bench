@@ -26,14 +26,14 @@ When testing modules, executing diagnostics, running one-off queries, or inspect
 
 ### 3. Scratch & Temporary Script Locations
 When drafting temporary, inspection, or diagnostic scripts:
-- **Conversation Scratch Directory**: Write to `<appDataDir>/brain/<conversation-id>/scratch/<name>.py` (automatically persisted across conversation steps).
-- **Workspace Scratch Directory**: Write to `.scratch/<name>.py` or `apps/engine/scratch/<name>.py` (gitignored).
+- **Conversation Scratch Directory (Preferred)**: Write to `<appDataDir>/brain/<conversation-id>/scratch/<name>.py` (automatically persisted across conversation steps). This avoids repository workspace clutter and avoids triggering shell permission prompts during manual cleanup.
+- **Workspace Scratch Directory (Fallback)**: Use `.scratch/<name>.py` or `apps/engine/scratch/<name>.py` (gitignored) only if local relative path resolution is strictly required. Note that executing shell `rm` commands on workspace files may trigger permission confirmation prompts.
 
 ### 4. Workflow
 1. Write the Python code to a script file using `write_to_file`.
 2. Execute the file via:
    ```bash
-   ./apps/engine/.venv/bin/python3 .scratch/test_script.py
+   ./apps/engine/.venv/bin/python3 <path/to/script.py>
    ```
 3. Read the output.
-4. If created in the repository workspace, clean up or delete temporary scratch files once diagnostics are complete.
+4. Prefer conversation scratch so cleanup is handled cleanly without manual shell `rm` commands in the workspace.

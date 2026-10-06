@@ -46,5 +46,9 @@ jobs:
           # Alpaca Paper Trading Mirror
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+
+          # Options Max Pain & Jev Decisions
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           python scripts/update_prices.py

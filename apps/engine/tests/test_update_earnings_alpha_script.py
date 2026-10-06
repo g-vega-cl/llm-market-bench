@@ -1,7 +1,7 @@
 """Unit tests for the update_earnings_alpha daily/batch pipeline script."""
 
 from datetime import date
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -126,3 +126,25 @@ async def test_process_ticker_handles_error_gracefully():
         )
 
         assert snapshot is None
+
+
+@pytest.mark.asyncio
+async def test_run_earnings_alpha_pipeline_triggers_pead_drift_hook():
+    """Verify that completing snapshots upsert triggers the PEAD drift strategy hook."""
+    from scripts.update_earnings_alpha import run_earnings_alpha_pipeline
+
+    mock_db = MagicMock()
+    mock_db.table.return_value.upsert.return_value.execute.return_value = MagicMock()
+
+    with (
+        patch("scripts.update_earnings_alpha.FMP_API_KEY", "mock-fmp-key"),
+        patch("scripts.update_earnings_alpha.get_supabase_client", return_value=mock_db),
+        patch("scripts.update_earnings_alpha.process_ticker_earnings_alpha", new_callable=AsyncMock) as mock_process,
+        patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock) as mock_pead_drift,
+    ):
+        mock_process.return_value = {"ticker": "AAPL", "snapshot_date": "2026-10-06", "sue_score": 3.0}
+
+        await run_earnings_alpha_pipeline(as_of_date=date(2026, 10, 6), test_mode=False)
+
+        assert mock_db.table.called
+        mock_pead_drift.assert_awaited_once()

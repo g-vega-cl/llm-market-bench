@@ -243,11 +243,67 @@ async def test_initialize_new_portfolio():
     with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
         await p.initialize()
 
-        # Verify insert was called with $10k default
-        mock_table.insert.assert_called_with({"owner_id": "new_agent", "cash_balance": 10000.00, "sma": 10000.00})
+        # Verify insert was called with full $10k initial metrics
+        mock_table.insert.assert_called_with(
+            {
+                "owner_id": "new_agent",
+                "cash_balance": 10000.00,
+                "sma": 10000.00,
+                "total_equity": 10000.00,
+                "buying_power": 40000.00,
+                "excess_liquidity": 10000.00,
+                "maintenance_margin": 0.0,
+                "realized": 10000.00,
+            }
+        )
 
     assert p.id == "uuid-new"
     assert p.cash_balance == 10000.00
+    assert p.total_equity == 10000.00
+    assert p.metrics is not None
+    assert p.metrics.buying_power == 40000.00
+
+
+@pytest.mark.asyncio
+async def test_initialize_existing_portfolio_with_null_metrics():
+    """Verify that loading an existing portfolio with NULL total_equity falls back to cash_balance."""
+    p = Portfolio("existing_agent")
+
+    mock_db = MagicMock()
+    mock_table = MagicMock()
+    mock_db.table.return_value = mock_table
+
+    # Existing row where total_equity and buying_power are NULL
+    mock_res_existing = MagicMock(
+        data=[
+            {
+                "id": "uuid-existing",
+                "owner_id": "existing_agent",
+                "cash_balance": 10000.00,
+                "sma": 10000.00,
+                "total_equity": None,
+                "buying_power": None,
+                "excess_liquidity": None,
+                "maintenance_margin": None,
+                "realized": 10000.00,
+            }
+        ]
+    )
+    mock_table.select.return_value.eq.return_value.execute.return_value = mock_res_existing
+    mock_table.select.return_value.eq.return_value.execute.return_value.data = mock_res_existing.data
+    # Positions select returns empty
+    pos_mock = MagicMock(data=[])
+    mock_table.select.return_value.eq.return_value.execute.side_effect = [mock_res_existing, pos_mock]
+
+    with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
+        await p.initialize()
+
+    assert p.id == "uuid-existing"
+    assert p.cash_balance == 10000.00
+    assert p.total_equity == 10000.00
+    assert p.metrics is not None
+    assert p.metrics.total_equity == 10000.00
+    assert p.metrics.buying_power == 40000.00
 
 
 @pytest.mark.asyncio

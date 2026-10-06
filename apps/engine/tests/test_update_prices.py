@@ -74,6 +74,8 @@ class TestAsyncSleepOptimization:
             patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls,
             patch("scripts.update_prices.datetime") as mock_dt,
             patch("execution.sector_trading.run_sector_trade", new_callable=AsyncMock) as mock_exit,
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
+            patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock),
         ):
             mock_dt.now.return_value = friday_afternoon
             mock_mdm = mock_mdm_cls.return_value
@@ -84,7 +86,7 @@ class TestAsyncSleepOptimization:
 
             await update_prices()
 
-            mock_exit.assert_awaited_once_with(action="exit")
+            mock_exit.assert_awaited_once_with(action="exit", dry_run=False)
 
     @pytest.mark.asyncio
     async def test_update_prices_triggers_weekday_afternoon_horizon_exit(self):
@@ -98,6 +100,8 @@ class TestAsyncSleepOptimization:
                 "execution.sector_horizon_trading.execute_horizon_sector_exits",
                 new_callable=AsyncMock,
             ) as mock_horizon_exit,
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
+            patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock),
         ):
             mock_dt.now.return_value = thursday_afternoon
             mock_mdm = mock_mdm_cls.return_value
@@ -278,3 +282,31 @@ class TestBenchmarkTickerConsistency:
         assert set(BENCHMARK_TICKERS) == set(frontend_tickers), (
             f"BENCHMARK_TICKERS {BENCHMARK_TICKERS} does not match frontend tickers {frontend_tickers}"
         )
+
+
+class TestSystematicStrategyHooks:
+    """Tests for run_systematic_strategy_hooks in update_prices."""
+
+    @pytest.mark.asyncio
+    async def test_hooks_max_pain_exit_in_market_close_window(self):
+        """Should trigger Max Pain liquidation exit at 3:45+ PM ET."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
+        close_time = datetime(2026, 10, 6, 15, 50, 0, tzinfo=ZoneInfo("America/New_York"))
+        with patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain:
+            await run_systematic_strategy_hooks(close_time)
+            mock_max_pain.assert_awaited_with(action="exit", dry_run=False)
+
+    @pytest.mark.asyncio
+    async def test_hooks_max_pain_entry_and_pead_rebalance_morning(self):
+        """Should trigger Max Pain entry and PEAD drift rebalance during morning open."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
+        morning_time = datetime(2026, 10, 6, 10, 0, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain,
+            patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock) as mock_pead,
+        ):
+            await run_systematic_strategy_hooks(morning_time)
+            mock_max_pain.assert_awaited_with(action="entry", dry_run=False)
+            mock_pead.assert_awaited_once_with(dry_run=False)

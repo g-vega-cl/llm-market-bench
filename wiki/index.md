@@ -83,6 +83,8 @@
 
 ## Concepts
 
+- [[concepts/portfolio-metrics-initialization]] — full Reg T metric seeding on new and legacy portfolio load
+- [[concepts/systematic-strategy-hooks]] — clock-driven orchestration of sector exits, Max Pain, and PEAD drift during price updates
 - [[concepts/anthropic-prompt-caching]] — Anthropic prompt caching via explicit system breakpoints and automatic caching, with MiniMax exclusion and cache telemetry
 - [[concepts/jev-news-sieve]] — TypeSafe Jev classification separating market-moving catalysts from corporate noise
 - [[concepts/pead-drift]] — the post-earnings announcement drift anomaly and the signals used to exploit it

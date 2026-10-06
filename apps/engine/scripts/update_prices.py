@@ -63,7 +63,54 @@ async def initialize_with_retry(owner: str) -> Portfolio:
     return p
 
 
-async def update_prices():
+async def run_systematic_strategy_hooks(now_et: datetime, dry_run: bool = False) -> None:
+    """Executes systematic strategy triggers (Sector exits, Max Pain, PEAD) based on ET market hours.
+
+    Must run BEFORE loading portfolios so liquidated cash and cleared positions are loaded fresh.
+    """
+    # 1. Friday Afternoon Sector Exit Hook & Horizon Sector Exits
+    try:
+        if now_et.hour > 15 or (now_et.hour == 15 and now_et.minute >= 25):
+            if now_et.weekday() == 4:
+                logger.info(
+                    "Friday afternoon detected in price update — Checking systematic weekly sector portfolio exit..."
+                )
+                from execution.sector_trading import run_sector_trade
+
+                await run_sector_trade(action="exit", dry_run=dry_run)
+            elif now_et.weekday() in (0, 1, 2, 3):
+                from execution.sector_horizon_trading import execute_horizon_sector_exits
+
+                await execute_horizon_sector_exits(today_str=now_et.date().isoformat(), price_map={})
+    except Exception:
+        logger.exception("Sector exit hook in update_prices failed")
+
+    # 2. Options Max Pain Pinning (sys-max-pain)
+    try:
+        from tasks.max_pain_task import run_max_pain_task
+
+        if now_et.hour == 15 and now_et.minute >= 45:
+            logger.info("Market close liquidation window (3:45+ PM ET) — Executing Max Pain exits...")
+            await run_max_pain_task(action="exit", dry_run=dry_run)
+        elif 9 <= now_et.hour < 15 or (now_et.hour == 15 and now_et.minute < 45):
+            logger.info("Intraday trading window — Running Max Pain evaluation/entry...")
+            await run_max_pain_task(action="entry", dry_run=dry_run)
+    except Exception:
+        logger.exception("Max Pain strategy hook in update_prices failed")
+
+    # 3. Systematic PEAD Drift (sys-pead-drift)
+    try:
+        from tasks.pead_drift_task import run_pead_drift_task
+
+        # Run morning rebalance check between 9:35 AM and 10:35 AM ET
+        if (now_et.hour == 9 and now_et.minute >= 35) or (now_et.hour == 10 and now_et.minute <= 35):
+            logger.info("Morning open window — Running PEAD drift evaluation and rebalance...")
+            await run_pead_drift_task(dry_run=dry_run)
+    except Exception:
+        logger.exception("PEAD drift strategy hook in update_prices failed")
+
+
+async def update_prices(dry_run: bool = False):
     """Main function to update prices and metrics."""
     logger.info("Starting Price Update Script (No LLM)...")
 
@@ -75,26 +122,14 @@ async def update_prices():
         logger.info("Market is currently CLOSED. Skipping price update to save resources.")
         return
 
-    # 0b. Friday Afternoon Sector Exit Hook (Failsafe for 3:30 PM / 4:00 PM ET runs)
-    # Must run BEFORE loading portfolios so liquidated cash and cleared positions are loaded fresh.
+    # 0b. Systematic Strategy Hooks (Sector exits, Max Pain intraday/MOC, PEAD morning drift)
     try:
         from zoneinfo import ZoneInfo
 
         now_et = datetime.now(ZoneInfo("America/New_York"))
-        if now_et.hour > 15 or (now_et.hour == 15 and now_et.minute >= 25):
-            if now_et.weekday() == 4:
-                logger.info(
-                    "Friday afternoon detected in price update — Checking systematic weekly sector portfolio exit..."
-                )
-                from execution.sector_trading import run_sector_trade
-
-                await run_sector_trade(action="exit")
-            elif now_et.weekday() in (0, 1, 2, 3):
-                from execution.sector_horizon_trading import execute_horizon_sector_exits
-
-                await execute_horizon_sector_exits(today_str=now_et.date().isoformat(), price_map={})
+        await run_systematic_strategy_hooks(now_et, dry_run=dry_run)
     except Exception:
-        logger.exception("Sector exit hook in update_prices failed")
+        logger.exception("Systematic strategy hooks in update_prices failed")
 
     # 1. Get all active portfolios
     def fetch_portfolios():

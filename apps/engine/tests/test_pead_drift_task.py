@@ -169,6 +169,7 @@ async def test_run_pead_drift_task_live_execution():
     mock_portfolio.positions = {}
     mock_portfolio.initialize = AsyncMock()
     mock_portfolio.execute_trade = AsyncMock()
+    mock_portfolio.save_metrics = AsyncMock()
 
     mock_jev_eval = {
         "is_qualified": True,
@@ -192,4 +193,5 @@ async def test_run_pead_drift_task_live_execution():
         assert res["buys"][0]["ticker"] == "AAPL"
         # Verify execute_trade was called on portfolio
         mock_portfolio.execute_trade.assert_called_once()
+        mock_portfolio.save_metrics.assert_called_once()
         assert mock_supabase.table.return_value.upsert.called

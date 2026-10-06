@@ -322,6 +322,15 @@ async def run_earnings_alpha_pipeline(as_of_date: date | None = None, test_mode:
         except Exception as e:
             logger.exception(f"Failed to upsert snapshots to database: {e}")
 
+        # Hook: Evaluate PEAD drift portfolio with updated earnings surprises
+        try:
+            from tasks.pead_drift_task import run_pead_drift_task
+
+            logger.info("Triggering PEAD drift portfolio evaluation hook with fresh earnings data...")
+            await run_pead_drift_task()
+        except Exception as e:
+            logger.exception(f"PEAD drift strategy hook in update_earnings_alpha failed: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(run_earnings_alpha_pipeline())

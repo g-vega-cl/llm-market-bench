@@ -290,12 +290,13 @@ async def run_pead_drift_task(
             )
             logger.info(f"PEAD Executed BUY {shares} {ticker} @ {exec_p:.2f} (SUE: {buy['sue_score']})")
 
+        portfolio.calculate_reg_t_metrics(current_prices)
+        await portfolio.save_metrics()
+
         # Upsert portfolio performance
         now = datetime.now(UTC)
         today_str = now.strftime("%Y-%m-%d")
-        total_equity = portfolio.cash_balance + sum(
-            pos.quantity * current_prices.get(t, pos.average_cost_basis) for t, pos in portfolio.positions.items()
-        )
+        total_equity = portfolio.total_equity
 
         supabase.table("portfolio_performance").upsert(
             {
@@ -303,9 +304,9 @@ async def run_pead_drift_task(
                 "date": today_str,
                 "total_equity": total_equity,
                 "cash_balance": portfolio.cash_balance,
-                "buying_power": portfolio.cash_balance * 2,
-                "sma": 0.0,
-                "realized": total_equity,
+                "buying_power": portfolio.metrics.buying_power if portfolio.metrics else portfolio.cash_balance * 2,
+                "sma": portfolio.sma,
+                "realized": portfolio.metrics.realized if portfolio.metrics else total_equity,
             },
             on_conflict="portfolio_id,date",
         ).execute()

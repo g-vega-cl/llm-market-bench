@@ -77,20 +77,30 @@ class Portfolio:
                     realized=float(data.get("realized") if data.get("realized") is not None else self.cash_balance),
                     buying_power=float(data.get("buying_power") or 0.0),
                 )
+            else:
+                self.calculate_reg_t_metrics({})
 
             # Load positions
             self._await_load_positions(supabase)
         else:
-            # Create new
-            # For a new $10k account, SMA starts equal to Cash?
-            # Or 0? Usually SMA starts at 0 and grows with income/interest or is created by excess equity?
-            # Reg T: SMA = Cash on deposit. if 10k cash dep, SMA=10k.
-            # Let's start with 10k default if cash is 10k
+            # Create new portfolio with full initial metrics
             self.sma = 10000.00
+            self.calculate_reg_t_metrics({})
 
             res = (
                 supabase.table("portfolios")
-                .insert({"owner_id": self.owner_id, "cash_balance": 10000.00, "sma": 10000.00})
+                .insert(
+                    {
+                        "owner_id": self.owner_id,
+                        "cash_balance": self.cash_balance,
+                        "sma": self.sma,
+                        "total_equity": self.metrics.total_equity if self.metrics else self.cash_balance,
+                        "buying_power": self.metrics.buying_power if self.metrics else self.cash_balance * 4.0,
+                        "excess_liquidity": self.metrics.excess_liquidity if self.metrics else self.cash_balance,
+                        "maintenance_margin": self.metrics.maintenance_margin_req if self.metrics else 0.0,
+                        "realized": self.metrics.realized if self.metrics else self.cash_balance,
+                    }
+                )
                 .execute()
             )
             if res.data:

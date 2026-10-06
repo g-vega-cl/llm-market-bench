@@ -72,10 +72,47 @@ function PortfolioLastUpdated({ timestamp }: { timestamp?: string | null }) {
     );
 }
 
+function PortfolioBadges({
+    portfolio,
+    isSystem,
+    track,
+    deprecated,
+}: {
+    portfolio: PortfolioWithActive;
+    isSystem: boolean;
+    track: ReturnType<typeof getPortfolioTrack>;
+    deprecated: boolean;
+}) {
+    if (deprecated) return null;
+    return (
+        <div className="flex flex-wrap gap-2 mb-4">
+            {isSystem && (
+                <Badge variant="glass" size="xs" colorScheme="warning" showDot>
+                    System
+                </Badge>
+            )}
+            {portfolio.is_autoresearch && (
+                <Badge variant="glass" size="xs" colorScheme="info" showDot>
+                    Auto-Research
+                </Badge>
+            )}
+            {track && (
+                <Badge variant="soft" size="xs" colorScheme="accent">
+                    Track: {track.trackLabel}
+                </Badge>
+            )}
+            {!isSystem && !hasVerifier(portfolio.owner_id) && (
+                <Badge variant="glass" size="xs" colorScheme="warning">
+                    No Verifier
+                </Badge>
+            )}
+        </div>
+    );
+}
+
 function PortfolioCard({
     portfolio,
     todayPct,
-
     deprecated = false,
 }: {
     portfolio: PortfolioWithActive;
@@ -85,6 +122,8 @@ function PortfolioCard({
     const track = getPortfolioTrack(portfolio.owner_id);
     const isSystem = portfolio.is_system ?? isSystemPortfolio(portfolio.owner_id);
     const subtitle = getSystemPortfolioSubtitle(portfolio.owner_id);
+    const totalEquity = Number(portfolio.total_equity ?? portfolio.cash_balance ?? 0);
+    const buyingPower = Number(portfolio.buying_power ?? Number(portfolio.cash_balance || 0) * 2);
 
     return (
         <Link
@@ -135,34 +174,18 @@ function PortfolioCard({
                     </p>
                 )}
 
-                <div className="flex flex-wrap gap-2 mb-4">
-                    {isSystem && !deprecated && (
-                        <Badge variant="glass" size="xs" colorScheme="warning" showDot>
-                            System
-                        </Badge>
-                    )}
-                    {portfolio.is_autoresearch && !deprecated && (
-                        <Badge variant="glass" size="xs" colorScheme="info" showDot>
-                            Auto-Research
-                        </Badge>
-                    )}
-                    {track && !deprecated && (
-                        <Badge variant="soft" size="xs" colorScheme="accent">
-                            Track: {track.trackLabel}
-                        </Badge>
-                    )}
-                    {!isSystem && !hasVerifier(portfolio.owner_id) && !deprecated && (
-                        <Badge variant="glass" size="xs" colorScheme="warning">
-                            No Verifier
-                        </Badge>
-                    )}
-                </div>
+                <PortfolioBadges
+                    portfolio={portfolio}
+                    isSystem={isSystem}
+                    track={track}
+                    deprecated={deprecated}
+                />
 
                 <div className="space-y-4 mt-auto">
                     <MetricTile
                         icon="💰"
                         label="Total Equity"
-                        value={`$${Number(portfolio.total_equity || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        value={`$${totalEquity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     />
 
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
@@ -174,7 +197,7 @@ function PortfolioCard({
                         <MetricTile
                             icon="📊"
                             label="Buying Power"
-                            value={`$${Number(portfolio.buying_power || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            value={`$${buyingPower.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </div>
 

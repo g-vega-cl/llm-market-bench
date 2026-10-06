@@ -164,6 +164,7 @@ async def test_run_max_pain_task_live_execution():
     mock_portfolio.id = "mock-portfolio-id"
     mock_portfolio.initialize = AsyncMock()
     mock_portfolio.execute_trade = AsyncMock()
+    mock_portfolio.save_metrics = AsyncMock()
 
     mock_metrics = {
         "max_pain": 560.0,
@@ -187,6 +188,7 @@ async def test_run_max_pain_task_live_execution():
         assert res["dry_run"] is False
         assert len(res["buys"]) == 1
         mock_portfolio.execute_trade.assert_called_once()
+        mock_portfolio.save_metrics.assert_called_once()
         mock_supabase.table.assert_called_with("portfolio_performance")
 
 

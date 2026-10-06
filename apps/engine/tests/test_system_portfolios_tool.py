@@ -332,4 +332,3 @@ async def test_execute_get_system_portfolios_tool_ignores_covered_shorts():
 
     assert "sys-daily-spy-close-~typesafe/jev-latest" in res
     assert "SPY [SHORT]" not in res
-

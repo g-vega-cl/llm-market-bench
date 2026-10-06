@@ -612,4 +612,3 @@ async def test_portfolio_auditor_detects_and_heals_unclosed_short_trade(mock_sup
     assert healed["type"] == "UNCLOSED_SHORT_DAILY_SPY"
     entry_pnl_update = next((u for u in updated_records if u.get("realized_pnl") == 30.40), None)
     assert entry_pnl_update is not None
-

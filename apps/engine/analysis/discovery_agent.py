@@ -176,12 +176,15 @@ class DiscoveryAgent:
                                 anthropic_msgs.append({"role": m["role"], "content": text})
                             elif isinstance(content, str):
                                 anthropic_msgs.append({"role": m["role"], "content": content})
-                resp = await self.client.client.messages.create(
-                    model=self.model_name,
-                    system=system,
-                    messages=anthropic_msgs,
-                    max_tokens=4096,
-                )
+                create_kwargs = {
+                    "model": self.model_name,
+                    "messages": anthropic_msgs,
+                    "max_tokens": 4096,
+                    "cache_control": {"type": "ephemeral"},
+                }
+                if system:
+                    create_kwargs["system"] = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+                resp = await self.client.client.messages.create(**create_kwargs)
                 text_blocks = [b.text for b in resp.content if b.type == "text"]
                 messages.append({"role": "assistant", "content": "\n".join(text_blocks)})
         except Exception as e:

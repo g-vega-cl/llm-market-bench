@@ -215,6 +215,11 @@ async def run_sector_predictions():
                             if hasattr(types, "ThinkingConfig"):
                                 create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
                         if model.get("provider") == "anthropic":
+                            create_kwargs["cache_control"] = {"type": "ephemeral"}
+                            create_kwargs["system"] = [
+                                {"type": "text", "text": prompt_content, "cache_control": {"type": "ephemeral"}}
+                            ]
+                            create_kwargs["messages"] = [{"role": "user", "content": user_msg}]
                             create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": 2048}
                             create_kwargs["max_tokens"] = 4000
 

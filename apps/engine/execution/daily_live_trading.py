@@ -420,9 +420,9 @@ async def execute_daily_close_exits(target_date: str | None = None, dry_run: boo
 
                 client.table("trades").insert(exit_trade).execute()
                 # Mark original entry SHORT trade as closed with realized PnL
-                client.table("trades").update(
-                    {"realized_pnl": realized_pnl, "realized_pnl_pct": realized_pnl_pct}
-                ).eq("id", st["id"]).execute()
+                client.table("trades").update({"realized_pnl": realized_pnl, "realized_pnl_pct": realized_pnl_pct}).eq(
+                    "id", st["id"]
+                ).execute()
                 new_cash = max(0.0, current_cash + realized_pnl)
                 client.table("portfolios").update(
                     {

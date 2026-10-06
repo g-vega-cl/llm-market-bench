@@ -84,6 +84,7 @@ async def run_tool_loop(
     max_tool_steps: int = 5,
     override_tools: list | None = None,
     enable_web_search: bool = False,
+    thinking_budget: int = 2048,
 ) -> None:
     """Runs the tool execution loop for Anthropic.
 
@@ -103,6 +104,10 @@ async def run_tool_loop(
             system_prompt = messages[0]["content"]
             current_messages = messages[1:]
 
+        is_anthropic = not (
+            "minimax" in str(getattr(raw_client, "base_url", "")).lower() or "minimax" in model_name.lower()
+        )
+
         args = {
             "model": model_name,
             "messages": current_messages,
@@ -110,17 +115,49 @@ async def run_tool_loop(
             "tools": _build_tool_list(enable_web_search, override_tools=override_tools),
         }
         if system_prompt:
-            args["system"] = system_prompt
+            if is_anthropic:
+                if isinstance(system_prompt, str):
+                    args["system"] = [
+                        {
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ]
+                elif isinstance(system_prompt, list):
+                    args["system"] = system_prompt
+            else:
+                args["system"] = system_prompt
+
+        if is_anthropic:
+            args["cache_control"] = {"type": "ephemeral"}
 
         # Extended thinking for Claude models that support it
         if "claude" in model_name.lower() or "haiku" in model_name.lower() or "sonnet" in model_name.lower():
-            args["thinking"] = {"type": "enabled", "budget_tokens": 2048}
+            args["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
 
         try:
             resp = await raw_client.messages.create(**args)
         except Exception as e:
             logger.warning(f"Tool execution failed for anthropic/{model_name}, falling back to basic analysis: {e}")
             break
+
+        # Log prompt cache telemetry for observability
+        usage = getattr(resp, "usage", None)
+        if usage:
+            cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+            cache_create = getattr(usage, "cache_creation_input_tokens", 0) or 0
+            uncached_input = getattr(usage, "input_tokens", 0) or 0
+            output_tokens = getattr(usage, "output_tokens", 0) or 0
+            if cache_read or cache_create:
+                logger.info(
+                    "Anthropic [%s] cache usage: read=%d, create=%d, uncached_input=%d, output=%d",
+                    model_name,
+                    cache_read,
+                    cache_create,
+                    uncached_input,
+                    output_tokens,
+                )
 
         # Check for function tool calls (client-side tools that we need to execute)
         tool_uses = [c for c in resp.content if c.type == "tool_use"]

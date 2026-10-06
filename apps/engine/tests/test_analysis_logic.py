@@ -559,7 +559,9 @@ class TestAnthropicMessageFlattening:
             from core.llm.analysis import analyze_with_provider
 
             await analyze_with_provider(provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks)
-        assert captured["system"] == "You are a helpful trading assistant."
+        assert captured["system"] == [
+            {"type": "text", "text": "You are a helpful trading assistant.", "cache_control": {"type": "ephemeral"}}
+        ]
         # System removed from messages list; only user message remains
         roles = [m["role"] for m in captured["messages"]]
         assert "system" not in roles

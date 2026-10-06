@@ -323,9 +323,14 @@ def build_provider_extraction_args(
     if provider in ("anthropic", "minimax"):
         final_args["max_tokens"] = 32000
         if messages and messages[0]["role"] == "system":
-            final_args["system"] = messages[0]["content"]
+            sys_content = messages[0]["content"]
+            if provider == "anthropic":
+                final_args["system"] = [{"type": "text", "text": sys_content, "cache_control": {"type": "ephemeral"}}]
+            else:
+                final_args["system"] = sys_content
             final_args["messages"] = messages[1:]
         if provider == "anthropic":
+            final_args["cache_control"] = {"type": "ephemeral"}
             final_args["thinking"] = {"type": "enabled", "budget_tokens": 2048}
 
     if provider == "gemini":

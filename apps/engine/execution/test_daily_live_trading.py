@@ -457,4 +457,3 @@ async def test_execute_daily_close_exits_for_short_trade_updates_entry_pnl(mock_
     entry_update = next((u for u in updated_trades if "realized_pnl" in u), None)
     assert entry_update is not None, "Expected entry SHORT trade to be updated with realized_pnl"
     assert entry_update["realized_pnl"] == cover_trade["realized_pnl"]
-

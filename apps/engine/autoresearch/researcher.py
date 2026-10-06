@@ -197,6 +197,7 @@ async def run_research(
                         messages,
                         max_tool_steps=max_tool_steps,
                         override_tools=override_tools,
+                        thinking_budget=4096,
                     )
                 elif provider == "gemini":
                     from core.llm.handlers.gemini import run_tool_loop
@@ -228,6 +229,7 @@ async def run_research(
         if provider == "deepseek" or "deepseek" in model_name.lower():
             create_args["extra_body"] = {"thinking": {"type": "enabled"}}
         if provider == "anthropic":
+            create_args["cache_control"] = {"type": "ephemeral"}
             create_args["thinking"] = {"type": "enabled", "budget_tokens": 4096}
         if provider == "gemini":
             from google.genai import types

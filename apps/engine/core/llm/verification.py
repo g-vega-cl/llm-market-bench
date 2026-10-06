@@ -149,7 +149,14 @@ async def verify_trading_decision(
         elif provider == "anthropic":
             from core.llm.handlers.anthropic import run_tool_loop
 
-            await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
+            await run_tool_loop(
+                client.client,
+                model_name,
+                messages,
+                max_tool_steps,
+                verifier_tools,
+                thinking_budget=1024,
+            )
         elif provider == "gemini":
             from core.llm.handlers.gemini import run_tool_loop
 
@@ -252,9 +259,16 @@ async def verify_trading_decision(
 
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
+            create_args["cache_control"] = {"type": "ephemeral"}
             create_args["thinking"] = {"type": "enabled", "budget_tokens": 1024}
             if create_args["messages"] and create_args["messages"][0].get("role") == "system":
-                create_args["system"] = create_args["messages"][0]["content"]
+                create_args["system"] = [
+                    {
+                        "type": "text",
+                        "text": create_args["messages"][0]["content"],
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ]
                 create_args["messages"] = create_args["messages"][1:]
         if provider == "gemini":
             from google.genai import types

@@ -163,6 +163,7 @@ async def get_newsletter_options_context(ticker: str = "SPY") -> str:
         execute_get_macro_options_sentiment_tool,
         execute_get_volatility_index_details_tool,
         execute_options_vol_surface_tool,
+        execute_yield_curve_regime_tool,
     )
 
     sections = []
@@ -205,6 +206,16 @@ async def get_newsletter_options_context(ticker: str = "SPY") -> str:
             logger.warning(f"Error fetching VIX details for newsletter: {vix_details}")
     except Exception as e:
         logger.warning(f"Exception fetching VIX details for newsletter: {e}")
+
+    # 4. US Treasury Yield Curve Slope & Flow Regime
+    try:
+        yield_curve = await execute_yield_curve_regime_tool()
+        if yield_curve and not yield_curve.startswith("Error"):
+            sections.append(f"### 🏛️ US Treasury Yield Curve Slope & Flow Regime\n{yield_curve}")
+        elif yield_curve and yield_curve.startswith("Error"):
+            logger.warning(f"Error fetching yield curve regime for newsletter: {yield_curve}")
+    except Exception as e:
+        logger.warning(f"Exception fetching yield curve regime for newsletter: {e}")
 
     return "\n\n".join(sections)
 

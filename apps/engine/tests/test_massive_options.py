@@ -443,3 +443,66 @@ async def test_free_tier_aborts_when_spot_unresolvable():
         contracts = await client._fetch_free_tier_contracts("SPY", current_price=None)
         assert contracts == []
         assert not mock_get.called
+
+
+@pytest.mark.asyncio
+async def test_free_tier_fallback_calculates_25d_skew():
+    """Verify that _fetch_free_tier_contracts selects ATM and 25-delta OTM contracts, populating volatility skew."""
+    client = MassiveOptionsClient(api_key="test_key")
+
+    today = datetime.datetime.now(datetime.UTC).date()
+    exp_future = (today + datetime.timedelta(days=14)).isoformat()
+    yesterday_ts = int((datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=1)).timestamp() * 1000)
+
+    # Spot = 200.0. 25-delta target call ~ 205.0, 25-delta target put ~ 195.0
+    mock_calls = [
+        {"ticker": "O:SPY_200_C", "contract_type": "call", "strike_price": 200.0, "expiration_date": exp_future},
+        {"ticker": "O:SPY_201_C", "contract_type": "call", "strike_price": 201.0, "expiration_date": exp_future},
+        {"ticker": "O:SPY_205_C", "contract_type": "call", "strike_price": 205.0, "expiration_date": exp_future},
+    ]
+    mock_puts = [
+        {"ticker": "O:SPY_200_P", "contract_type": "put", "strike_price": 200.0, "expiration_date": exp_future},
+        {"ticker": "O:SPY_199_P", "contract_type": "put", "strike_price": 199.0, "expiration_date": exp_future},
+        {"ticker": "O:SPY_195_P", "contract_type": "put", "strike_price": 195.0, "expiration_date": exp_future},
+    ]
+
+    async def mock_get(url, params=None):
+        resp = MagicMock()
+        resp.status_code = 200
+        if "reference/options/contracts" in url:
+            if params and params.get("contract_type") == "call":
+                resp.json.return_value = {"results": mock_calls}
+            else:
+                resp.json.return_value = {"results": mock_puts}
+        elif "aggs/ticker" in url:
+            # Provide option prices that result in valid Black-Scholes IV
+            # At S=200, T=14/365, IV~0.20:
+            # 200 Call ~ 3.50, 201 Call ~ 3.00, 205 Call ~ 1.25
+            # 200 Put ~ 3.30, 199 Put ~ 2.80, 195 Put ~ 1.35
+            c_val = 3.50
+            if "205_C" in url:
+                c_val = 1.25
+            elif "201_C" in url:
+                c_val = 3.00
+            elif "195_P" in url:
+                c_val = 1.35
+            elif "199_P" in url:
+                c_val = 2.80
+            elif "200_P" in url:
+                c_val = 3.30
+            resp.json.return_value = {
+                "results": [{"c": c_val, "v": 1000, "o": c_val, "h": c_val, "l": c_val, "t": yesterday_ts}]
+            }
+        return resp
+
+    with patch("httpx.AsyncClient.get", side_effect=mock_get):
+        contracts = await client._fetch_free_tier_contracts("SPY", current_price=200.0, min_dte=7)
+        assert len(contracts) == 4
+        # Selected tickers must include the 25d OTM contracts (205 call and 195 put)
+        selected_tickers = {c["details"]["ticker"] for c in contracts}
+        assert "O:SPY_205_C" in selected_tickers
+        assert "O:SPY_195_P" in selected_tickers
+
+        sentiment = calculate_options_sentiment("SPY", contracts, current_price=200.0)
+        assert sentiment["volatility_skew_25d_diff_pct"] is not None
+        assert isinstance(sentiment["volatility_skew_25d_diff_pct"], float)

@@ -333,3 +333,38 @@ async def test_generate_daily_newsletter_passes_options_context():
         mock_llm_call.assert_called_once()
         assert "options_context" in mock_llm_call.call_args.kwargs
         assert "Options metrics: Max Pain $590" in mock_llm_call.call_args.kwargs["options_context"]
+
+
+@pytest.mark.asyncio
+async def test_get_newsletter_options_context_includes_yield_curve():
+    """Verify get_newsletter_options_context aggregates macro sentiment, vol surface, VIX, and yield curve."""
+    from tasks.newsletter_generator import get_newsletter_options_context
+
+    with (
+        patch(
+            "core.llm.tools.execute_get_macro_options_sentiment_tool",
+            new_callable=AsyncMock,
+            return_value="| SPY | 560 | +2.15% |",
+        ),
+        patch(
+            "core.llm.tools.execute_options_vol_surface_tool",
+            new_callable=AsyncMock,
+            return_value="Vol surface: 25d skew +2.15%",
+        ),
+        patch(
+            "core.llm.tools.execute_get_volatility_index_details_tool",
+            new_callable=AsyncMock,
+            return_value="VIX: 15.2 (Contango)",
+        ),
+        patch(
+            "core.llm.tools.execute_yield_curve_regime_tool",
+            new_callable=AsyncMock,
+            return_value="Yield Curve: BULL_STEEPENER",
+        ),
+    ):
+        ctx = await get_newsletter_options_context("SPY")
+        assert "| SPY | 560 | +2.15% |" in ctx
+        assert "Vol surface: 25d skew +2.15%" in ctx
+        assert "VIX: 15.2 (Contango)" in ctx
+        assert "US Treasury Yield Curve Slope & Flow Regime" in ctx
+        assert "Yield Curve: BULL_STEEPENER" in ctx

@@ -615,9 +615,9 @@ class MassiveOptionsClient:
             )
             return []
 
-        # Step 1: Query contracts reference for CALLS and PUTS near spot
-        min_strike = ref_px * 0.96
-        max_strike = ref_px * 1.04
+        # Step 1: Query contracts reference for CALLS and PUTS near spot (±6% bounds to capture 25-delta skew)
+        min_strike = ref_px * 0.94
+        max_strike = ref_px * 1.06
 
         ref_contracts = []
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -674,8 +674,52 @@ class MassiveOptionsClient:
             calls.sort(key=lambda c: abs(c.get("strike_price", 0) - ref_px))
             puts.sort(key=lambda c: abs(c.get("strike_price", 0) - ref_px))
 
-            # Pick top 2 closest calls and top 2 closest puts
-            target_selection = calls[:2] + puts[:2]
+            # Pick 1 ATM Call + 1 ATM Put, and 1 25-delta OTM Call + 1 25-delta OTM Put (budget: exactly 4 contracts)
+            atm_call = calls[0] if calls else None
+            atm_put = puts[0] if puts else None
+
+            # Estimate target 25-delta strikes via Black-Scholes inversion: K ≈ S * exp(±0.6745 * σ * sqrt(t))
+            target_exp_str = target_exps[0] if target_exps else today_str
+            try:
+                target_exp_date = datetime.date.fromisoformat(target_exp_str)
+                dte_est = max(1, (target_exp_date - today).days)
+            except Exception:
+                dte_est = 14
+            t_est = dte_est / 365.0
+            sigma_baseline = 0.20  # Standard annualized volatility baseline for equity index / ETFs
+            std_move = 0.6745 * sigma_baseline * math.sqrt(t_est)
+            target_call_k = ref_px * math.exp(std_move)
+            target_put_k = ref_px * math.exp(-std_move)
+
+            # Select OTM Call closest to target 25d strike (must be OTM: strike > ref_px)
+            otm_calls = [c for c in calls if c.get("strike_price", 0) > ref_px]
+            call_25d = (
+                min(otm_calls, key=lambda c: abs(c.get("strike_price", 0) - target_call_k))
+                if otm_calls
+                else (calls[1] if len(calls) > 1 else None)
+            )
+
+            # Select OTM Put closest to target 25d strike (must be OTM: strike < ref_px)
+            otm_puts = [c for c in puts if c.get("strike_price", 0) < ref_px]
+            put_25d = (
+                min(otm_puts, key=lambda c: abs(c.get("strike_price", 0) - target_put_k))
+                if otm_puts
+                else (puts[1] if len(puts) > 1 else None)
+            )
+
+            selected_dict: dict[str, dict[str, Any]] = {}
+            for c in (atm_call, atm_put, call_25d, put_25d):
+                if c and c.get("ticker"):
+                    selected_dict[c["ticker"]] = c
+
+            # Backfill up to 4 contracts from closest strikes if any are missing or duplicates
+            for c in calls + puts:
+                if len(selected_dict) >= 4:
+                    break
+                if c.get("ticker") and c["ticker"] not in selected_dict:
+                    selected_dict[c["ticker"]] = c
+
+            target_selection = list(selected_dict.values())
 
             # Step 3: Fetch previous day bars for selected target contracts
             results = []

@@ -33,8 +33,8 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
             label: 'Realized P&L',
             valA: modelA.realized_pnl,
             valB: modelB.realized_pnl,
-            formattedA: `$${modelA.realized_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            formattedB: `$${modelB.realized_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            formattedA: `$${modelA.realized_pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            formattedB: `$${modelB.realized_pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             isHigherBetter: true,
         },
         {

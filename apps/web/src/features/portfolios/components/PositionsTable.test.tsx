@@ -71,12 +71,12 @@ describe('PositionsTable', () => {
         // Invested cash values
         expect(
             screen.getByText(
-                `$${(10 * 150).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                `$${(10 * 150).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             ),
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                `$${(5 * 700).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                `$${(5 * 700).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             ),
         ).toBeInTheDocument();
         // Percentage values

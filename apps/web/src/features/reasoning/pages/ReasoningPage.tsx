@@ -11,6 +11,7 @@ import {
 import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import { formatEasternDateTime, formatEasternShortTime } from '~/utils/date';
 import type { PaginatedReasoningLogs } from '../api/fetch-reasoning-logs';
 import { HumanFriendlyPrompt } from '../components/HumanFriendlyPrompt';
 import { HumanFriendlyResponse } from '../components/HumanFriendlyResponse';
@@ -171,7 +172,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                                     </Badge>
                                     <span className="text-[9px] md:text-[10px] text-zinc-400 font-mono italic">
                                         {log.created_at
-                                            ? new Date(log.created_at).toLocaleTimeString()
+                                            ? formatEasternShortTime(log.created_at)
                                             : '-'}
                                     </span>
                                 </div>
@@ -257,7 +258,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                                         <p className="text-[10px] md:text-xs text-zinc-400 font-mono tracking-tighter bg-zinc-100 dark:bg-zinc-800/50 px-1.5 md:px-2 py-0.5 md:py-1 rounded-md w-fit">
                                             UUID: {selectedLog.id} •{' '}
                                             {selectedLog.created_at
-                                                ? new Date(selectedLog.created_at).toLocaleString()
+                                                ? formatEasternDateTime(selectedLog.created_at)
                                                 : '-'}
                                         </p>
                                     </div>

@@ -74,7 +74,7 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
         }
 
         evaluated.forEach((item) => {
-            const dateStr = new Date(item.target_date).toLocaleDateString();
+            const dateStr = new Date(item.target_date).toLocaleDateString('en-US');
             const entry = getOrCreateEntry(dateStr, item.target_date);
             const scores = [
                 item.sector_percentile_score,

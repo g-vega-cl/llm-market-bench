@@ -535,7 +535,7 @@ function Step4PortfolioDetailsAuditor({
                                         </span>
                                         <span className="font-bold text-zinc-800 dark:text-zinc-200">
                                             $
-                                            {initialEquity.toLocaleString(undefined, {
+                                            {initialEquity.toLocaleString('en-US', {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             })}
@@ -547,7 +547,7 @@ function Step4PortfolioDetailsAuditor({
                                         </span>
                                         <span className="font-bold text-zinc-800 dark:text-zinc-200">
                                             $
-                                            {initialCash.toLocaleString(undefined, {
+                                            {initialCash.toLocaleString('en-US', {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             })}
@@ -559,7 +559,7 @@ function Step4PortfolioDetailsAuditor({
                                         </span>
                                         <span className="font-bold text-zinc-800 dark:text-zinc-200">
                                             $
-                                            {endEquity.toLocaleString(undefined, {
+                                            {endEquity.toLocaleString('en-US', {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             })}
@@ -645,7 +645,7 @@ function Step4PortfolioDetailsAuditor({
                                                                     {pos.start_value !==
                                                                     undefined ? (
                                                                         `$${pos.start_value.toLocaleString(
-                                                                            undefined,
+                                                                            'en-US',
                                                                             {
                                                                                 minimumFractionDigits: 2,
                                                                                 maximumFractionDigits: 2,
@@ -676,7 +676,7 @@ function Step4PortfolioDetailsAuditor({
                                                                     $
                                                                     {(
                                                                         pos.value ?? 0
-                                                                    ).toLocaleString(undefined, {
+                                                                    ).toLocaleString('en-US', {
                                                                         minimumFractionDigits: 2,
                                                                         maximumFractionDigits: 2,
                                                                     })}

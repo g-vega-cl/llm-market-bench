@@ -1,6 +1,7 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
+import { formatEasternDateTimeWithYear } from '~/utils/date';
 
 export interface BacktestTrade {
     id?: string;
@@ -35,7 +36,7 @@ function BacktestTradeRow({
     return (
         <tr className="hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40 transition-colors">
             <td className="py-3.5 px-4 text-zinc-500 whitespace-nowrap">
-                {trade.executed_at ? new Date(trade.executed_at).toLocaleString() : 'N/A'}
+                {trade.executed_at ? formatEasternDateTimeWithYear(trade.executed_at) : 'N/A'}
             </td>
             <td className="py-3.5 px-4 text-zinc-800 dark:text-zinc-200 font-semibold">
                 {trade.model_name || 'Agent'}
@@ -55,14 +56,14 @@ function BacktestTradeRow({
                 </span>
             </td>
             <td className="py-3.5 px-4 text-right font-medium">
-                {trade.quantity.toLocaleString()}
+                {trade.quantity.toLocaleString('en-US')}
             </td>
             <td className="py-3.5 px-4 text-right text-zinc-700 dark:text-zinc-300">
                 ${trade.price.toFixed(2)}
             </td>
             <td className="py-3.5 px-4 text-right font-semibold text-zinc-900 dark:text-zinc-100">
                 $
-                {trade.total_cost.toLocaleString(undefined, {
+                {trade.total_cost.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                 })}

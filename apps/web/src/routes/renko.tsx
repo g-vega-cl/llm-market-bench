@@ -366,21 +366,21 @@ export function RenkoAgentPageView({
                         <MetricTile
                             icon="💰"
                             label="Total Equity"
-                            value={`$${totalEquity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            value={`$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
                     <Card padding="md" variant="glass">
                         <MetricTile
                             icon="💵"
                             label="Cash Balance"
-                            value={`$${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            value={`$${cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
                     <Card padding="md" variant="glass">
                         <MetricTile
                             icon="🏭"
                             label="LIN Equity Value"
-                            value={`$${positionsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            value={`$${positionsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
                     <Card padding="md" variant="glass">

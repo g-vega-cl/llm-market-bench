@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentProps, Suspense } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import { HomePage, type HomePageData } from '~/features/home/pages/HomePage';
 import { MarketOverviewPage } from '~/features/market-overview/pages/MarketOverviewPage';
 import { EventChainPage } from '~/features/memories/pages/EventChainPage';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
@@ -238,6 +239,43 @@ const mockMarketOverview = {
     uncorrelatedPairs: [],
 };
 
+const mockHomeData: HomePageData = {
+    portfolios: [
+        {
+            name: 'Sys Sector Uncorr 7d',
+            todayPct: -0.69,
+            weekPct: 2.72,
+            totalEquity: 10582.61,
+            isActive: true,
+            isAutoResearch: false,
+            isSystem: true,
+        },
+    ],
+    benchmark: { todayPct: 0.55, weekPct: 2.16 },
+    feeling: {
+        sentiment: 'NEUTRAL',
+        summary: 'Defensive market positioning with cautious macro overlay.',
+        sentimentLabel: 'Cautiously Defensive',
+        sentimentEmoji: '🛡️',
+        confidence: 78,
+        primaryConcern: 'FOMC Minutes volatility',
+        secondaryConcern: 'Concentration in financials',
+        modelUsed: 'MiniMax-M3',
+        lastAnalyzed: '12:00 PM ET',
+    },
+    barometer: {
+        date: '2026-10-07',
+        pe_ratio: 29.04,
+        forward_pe: 21.61,
+        pb_ratio: 6.94,
+        ps_ratio: 5.02,
+        pfcf_ratio: 35.77,
+        earnings_surprise_momentum: 91.9,
+        updated_at: '2026-10-07T00:00:00Z',
+        constituents_data: [],
+    },
+};
+
 // Helper to create a pristine QueryClient for page rendering
 function createTestQueryClient() {
     return new QueryClient({
@@ -412,6 +450,41 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
                     </QueryClientProvider>,
                 );
                 // Under Zero-Date, client-side renders pre-formatted strings, yielding 0 hydration errors.
+                expect(errors).toEqual([]);
+            } finally {
+                renderSpy.mockRestore();
+                toLocaleStringSpy.mockRestore();
+            }
+        });
+
+        it('should hydrate HomePage flawlessly even if client browser defaults to European/Latin-American locale', () => {
+            let isHydration = false;
+            const originalRender = ReactDOMServer.renderToString;
+            const renderSpy = vi
+                .spyOn(ReactDOMServer, 'renderToString')
+                .mockImplementation((el) => {
+                    isHydration = false;
+                    const res = originalRender(el);
+                    isHydration = true;
+                    return res;
+                });
+
+            const originalToLocaleString = Number.prototype.toLocaleString;
+            const toLocaleStringSpy = vi
+                .spyOn(Number.prototype, 'toLocaleString')
+                .mockImplementation(function (
+                    this: number,
+                    ...args: Parameters<typeof Number.prototype.toLocaleString>
+                ) {
+                    // If caller passed undefined or no locale, simulate client browser defaulting to es-CL
+                    if (isHydration && (args.length === 0 || args[0] === undefined)) {
+                        return originalToLocaleString.apply(this, ['es-CL', args[1]]);
+                    }
+                    return originalToLocaleString.apply(this, args);
+                });
+
+            try {
+                const errors = assertHydrationSymmetry(<HomePage data={mockHomeData} />);
                 expect(errors).toEqual([]);
             } finally {
                 renderSpy.mockRestore();
@@ -646,6 +719,11 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
                     />
                 </QueryClientProvider>,
             );
+            expect(errors).toEqual([]);
+        });
+
+        it('10. Home Page: hydrates flawlessly', () => {
+            const errors = assertHydrationSymmetry(<HomePage data={mockHomeData} />);
             expect(errors).toEqual([]);
         });
     });

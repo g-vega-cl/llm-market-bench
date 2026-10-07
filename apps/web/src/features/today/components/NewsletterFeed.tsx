@@ -133,7 +133,7 @@ export function NewsletterFeed({
                                 {/* Footer */}
                                 <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
                                     <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                        {(news.content?.length || 0).toLocaleString()} chars
+                                        {(news.content?.length || 0).toLocaleString('en-US')} chars
                                     </span>
                                     <span className="text-[9px] font-bold text-electric-blue-500 uppercase tracking-wider group-hover:translate-x-2 transition-transform duration-300 inline-flex items-center gap-1.5">
                                         Read More

@@ -31,7 +31,7 @@ export interface HomePageData {
 function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][number] }) {
     const formatMoney = (val: number) => {
         const sign = val < 0 ? '-' : '';
-        return `${sign}$${Math.abs(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${sign}$${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     return (

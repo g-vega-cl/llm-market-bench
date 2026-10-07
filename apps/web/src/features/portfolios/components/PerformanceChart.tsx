@@ -127,7 +127,7 @@ export function PerformanceChart({
                     .tickFormat((d) =>
                         usePercentage
                             ? `${Number(d) > 0 ? '+' : ''}${Number(d).toFixed(1)}%`
-                            : `$${Number(d).toLocaleString()}`,
+                            : `$${Number(d).toLocaleString('en-US')}`,
                     ),
             )
             .attr('color', '#94a3b8');
@@ -435,7 +435,7 @@ export function PerformanceChart({
                         <span className="text-xl font-bold text-sky-600">
                             {showPercentage && hasBenchmark
                                 ? `${displayData.equity > 0 ? '+' : ''}${displayData.equity.toFixed(2)}%`
-                                : `$${displayData.equity.toLocaleString(undefined, {
+                                : `$${displayData.equity.toLocaleString('en-US', {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
                                   })}`}
@@ -451,7 +451,7 @@ export function PerformanceChart({
                                 :{' '}
                                 {showPercentage
                                     ? `${displayData.benchmarkValue > 0 ? '+' : ''}${displayData.benchmarkValue.toFixed(2)}%`
-                                    : `$${displayData.benchmarkValue?.toLocaleString()}`}
+                                    : `$${displayData.benchmarkValue?.toLocaleString('en-US')}`}
                             </div>
                             {displayData.outperformance !== undefined && (
                                 <div

@@ -1,5 +1,6 @@
 import * as d3 from 'd3';
 import * as React from 'react';
+import { formatEasternDateTime } from '~/utils/date';
 import type { Memory } from './MemoriesList';
 
 interface MemoryFlowProps {
@@ -233,7 +234,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
                     </div>
                     <div className="text-xs text-zinc-400 border-t border-zinc-200 dark:border-zinc-800 pt-2">
                         {hoveredNode.created_at
-                            ? new Date(hoveredNode.created_at).toLocaleString()
+                            ? formatEasternDateTime(hoveredNode.created_at)
                             : '-'}
                     </div>
                 </div>

@@ -1,4 +1,5 @@
 import { Badge } from '@llm-market-bench/ui-design-system';
+import { formatEasternTime } from '~/utils/date';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 
 export interface DailyPostMortemCardProps {
@@ -50,11 +51,7 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
                     </span>
                     {prediction.postmortem_evaluated_at && (
                         <span className="text-[10px] text-zinc-500 font-mono">
-                            {new Date(prediction.postmortem_evaluated_at).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            })}{' '}
-                            ET
+                            {formatEasternTime(prediction.postmortem_evaluated_at)}
                         </span>
                     )}
                 </div>

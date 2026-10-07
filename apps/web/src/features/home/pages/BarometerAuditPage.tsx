@@ -183,7 +183,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
         if (rev >= 1e6) {
             return `$${(rev / 1e6).toFixed(2)}M`;
         }
-        return `$${rev.toLocaleString()}`;
+        return `$${rev.toLocaleString('en-US')}`;
     };
 
     return (

@@ -130,7 +130,7 @@ export function PortfolioDetailPage({
                         <MetricTile
                             icon="💰"
                             label="Total Equity"
-                            value={`$${Number(portfolio.total_equity ?? portfolio.cash_balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            value={`$${Number(portfolio.total_equity ?? portfolio.cash_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                         {todayPct !== null && (
                             <MetricTile
@@ -142,7 +142,7 @@ export function PortfolioDetailPage({
                         <MetricTile
                             icon="💵"
                             label="Cash"
-                            value={`$${Number(portfolio.cash_balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            value={`$${Number(portfolio.cash_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
                 </header>

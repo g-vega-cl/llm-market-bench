@@ -160,7 +160,7 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
                                 <div className="flex justify-between items-baseline gap-2">
                                     <span className="text-2xl font-black text-zinc-900 dark:text-white font-mono tracking-tight text-display">
                                         {stat.ticker === 'BTCUSD'
-                                            ? `$${stat.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                            ? `$${stat.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                             : `$${stat.price.toFixed(2)}`}
                                     </span>
                                     <span

@@ -152,7 +152,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                             </TableCell>
                             <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
                                 $
-                                {Number(trade.price).toLocaleString(undefined, {
+                                {Number(trade.price).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}
@@ -162,7 +162,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                 className="text-zinc-900 dark:text-zinc-100 font-medium"
                             >
                                 $
-                                {Number(trade.total_cost).toLocaleString(undefined, {
+                                {Number(trade.total_cost).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}
@@ -174,13 +174,10 @@ export function TradesTable({ trades }: TradesTableProps) {
                                             className={`font-bold ${trade.realized_pnl >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}
                                         >
                                             {trade.realized_pnl >= 0 ? '+' : ''}$
-                                            {Math.abs(trade.realized_pnl).toLocaleString(
-                                                undefined,
-                                                {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2,
-                                                },
-                                            )}
+                                            {Math.abs(trade.realized_pnl).toLocaleString('en-US', {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2,
+                                            })}
                                         </span>
                                         <Badge
                                             size="xs"

@@ -44,7 +44,7 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
                         Market Context (Model Input)
                     </span>
                     <Badge variant="soft" colorScheme="neutral" size="sm">
-                        ~{estTokens.toLocaleString()} tokens
+                        ~{estTokens.toLocaleString('en-US')} tokens
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2">

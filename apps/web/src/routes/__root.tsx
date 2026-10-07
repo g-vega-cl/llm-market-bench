@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { Badge, Button, cn, GlobalBackground } from '@llm-market-bench/ui-design-system';
+import { Badge, cn, GlobalBackground } from '@llm-market-bench/ui-design-system';
 import { PostHogProvider, usePostHog } from '@posthog/react';
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
@@ -177,11 +177,12 @@ export function RootDocument({ children }: { children: ReactNode }) {
                     rel="stylesheet"
                     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
                     media="print"
+                    suppressHydrationWarning
                     onLoad={(e) => {
                         e.currentTarget.media = 'all';
                     }}
                 />
-                <noscript>
+                <noscript suppressHydrationWarning>
                     <link
                         rel="stylesheet"
                         href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
@@ -246,25 +247,18 @@ export function RootDocument({ children }: { children: ReactNode }) {
 
                         <div className="ml-auto flex items-center gap-4 shrink-0">
                             {user ? (
-                                <Link to="/logout">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        colorScheme="danger"
-                                        className="uppercase tracking-widest"
-                                    >
-                                        Logout
-                                    </Button>
+                                <Link
+                                    to="/logout"
+                                    className="inline-flex items-center justify-center font-bold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-xl text-danger hover:bg-danger/10 focus:ring-danger/40 px-3 py-1.5 text-sm uppercase tracking-widest"
+                                >
+                                    Logout
                                 </Link>
                             ) : (
-                                <Link to="/login">
-                                    <Button
-                                        variant="solid"
-                                        size="sm"
-                                        className="uppercase tracking-widest"
-                                    >
-                                        Login
-                                    </Button>
+                                <Link
+                                    to="/login"
+                                    className="inline-flex items-center justify-center font-bold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-xl bg-accent text-white hover:bg-accent-hover focus:ring-accent/40 px-3 py-1.5 text-sm uppercase tracking-widest"
+                                >
+                                    Login
                                 </Link>
                             )}
                         </div>

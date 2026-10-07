@@ -1,6 +1,7 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { formatEasternShortDateWithYear } from '~/utils/date';
 import { CognitiveToolboxCard } from '../../autoresearch/components/CognitiveToolboxCard';
 import { PromptBlocksCard } from '../../autoresearch/components/PromptBlocksCard';
 import { PromptChanges } from '../../autoresearch/components/PromptChanges';
@@ -474,9 +475,9 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                         </h3>
                                         <span style={{ fontSize: '12px', color: '#64748b' }}>
                                             Created:{' '}
-                                            {new Date(
+                                            {formatEasternShortDateWithYear(
                                                 selectedExperiment.created_at,
-                                            ).toLocaleDateString()}
+                                            )}
                                         </span>
                                     </div>
 

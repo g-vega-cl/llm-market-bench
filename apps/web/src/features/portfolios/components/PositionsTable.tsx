@@ -218,7 +218,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             </TableCell>
                             <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
                                 $
-                                {Number(pos.average_cost_basis).toLocaleString(undefined, {
+                                {Number(pos.average_cost_basis).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}
@@ -226,7 +226,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
                                 $
                                 {Number(pos.current_price || pos.average_cost_basis).toLocaleString(
-                                    undefined,
+                                    'en-US',
                                     {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
@@ -237,7 +237,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                 $
                                 {Math.abs(
                                     (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0),
-                                ).toLocaleString(undefined, {
+                                ).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}
@@ -258,7 +258,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                 className={`font-medium ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}
                             >
                                 {Number(pos.unrealized_pnl_usd) >= 0 ? '+' : ''}$
-                                {Number(pos.unrealized_pnl_usd).toLocaleString(undefined, {
+                                {Number(pos.unrealized_pnl_usd).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}

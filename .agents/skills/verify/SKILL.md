@@ -12,12 +12,13 @@ Use this skill after every coding round or when invoking `/verify` to audit chan
 Run the relevant checks for the modified surfaces:
 
 ```bash
-# Static hygiene & bug hotspot forensics
+# Static hygiene, wiki synchronization & bug hotspot forensics
 ./apps/engine/.venv/bin/ruff check apps/engine/
 ./apps/engine/.venv/bin/ruff format --check apps/engine/
 pnpm biome check
-./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py
-./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 10
+./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki
+./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix
+qmd update && qmd embed
 
 # Web types and build
 cd apps/web && pnpm run typecheck
@@ -61,11 +62,13 @@ Audit all changed files through these six tiers. Do not skip any tier.
      - `core/llm/tools.py` $\leftrightarrow$ `packages/config/tools.json` $\leftrightarrow$ `program.md` $\leftrightarrow$ `test_tools_consistency.py`
      - `researcher.py` $\leftrightarrow$ `handlers/base.py` $\leftrightarrow$ `tools.py`
      - `market_data.py` $\leftrightarrow$ `test_market_data.py`
-5. **Wiki and documentation integrity**:
-   - Run `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` whenever files in `wiki/` are added or modified.
+5. **Wiki and documentation synchronization (MANDATORY)**:
+   - **Synchronize changes everywhere**: When code changes alter formulas, scoring, models, tools, or architectural patterns, YOU MUST update the corresponding wiki pages (`wiki/concepts/`, `wiki/entities/`) documenting the new behavior and the rationale ("the why").
+   - **Refresh code hotspots**: Refresh the code hotspots wiki page via `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki`.
+   - **Auto-index catalog**: Run `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix` to auto-index new pages into `wiki/index.md`.
+   - **Re-index search embeddings**: Update and regenerate QMD vector embeddings via `qmd update && qmd embed` so knowledge remains discoverable via semantic search.
    - **Root-relative paths in backticks**: Any backtick string starting with project prefixes (`apps/`, `packages/`, `scripts/`, `supabase/`, `wiki/`, `.github/`) must be an exact valid path from the repository root. Never use relative shorthand (e.g. `scripts/verify.sh` when the file is at `.agents/skills/verify/scripts/verify.sh`).
    - **Internal link resolution**: Every `[[page-name]]` cross-reference must resolve to an existing markdown page under `wiki/`.
-   - **Catalog index parity**: Every new wiki page must be indexed in `wiki/index.md`. Run `apps/engine/wiki_lint.py --fix` to auto-index new pages.
    - **Config parity**: New models in `packages/config/models.json` and tools in `packages/config/tools.json` must be documented in the wiki.
 
 ### Tier 2. Build and type integrity

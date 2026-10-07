@@ -27,6 +27,11 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
   3. **Modular Reasoning Blocks**: Active thematic prompt blocks (`PromptBlocksCard.tsx`).
   4. **Meta-Researcher Rationale & Conviction**: Unified `ResearchRationaleCard.tsx` showing change summary, hypothesis, analytical thought process, confidence gauge, and durable track memory.
   5. **Segmented Prompt Inspector**: Triple-band inspection (`splitPromptSections`) isolating frozen system headers and output schemas from mutable autoresearch analytical strategies.
+- **Portfolio Ratchet Score Audit**: `ScoreCalculation.tsx` and `ScoreBreakdown.tsx` expose the Unified Risk-Adjusted Z-Score formula in standard-deviation ($\sigma$) units (see [[concepts/risk-adjusted-z-score]]):
+  $$\text{Score} = \frac{\text{Composite Excess Return} - (\text{max\_drawdown} \times 0.3)}{\text{Weekly Effective Volatility}} \quad (\text{units of } \sigma)$$
+  $$\text{Weekly Effective Volatility} = \frac{\max(\sigma_{\text{portfolio}}, \sigma_{\text{market}}, 10.0\%)}{\sqrt{52}}$$
+  - **Why We Added It**: Prevents runaway baseline ratchet lockouts from high-volatility outlier weeks (such as the July 19 outlier recalibrated from 24.16 to 2.52σ), creates statistical parity between calm and turbulent regimes, and deflates lucky meme bets when portfolio volatility exceeds market volatility.
+  - **Step-by-Step UI Flow**: Renders the 5-step derivation: (1) Composite benchmark triad, (2) Risk-free bond component, (3) Drawdown penalty, (4) Asset fact-check ledger, and (5) Complete arithmetic breakdown with the $\sigma$ unit suffix.
 - **Sector Ratchet Score Audit**: `SectorScoreBreakdown.tsx` exposes the weekly multi-pillar formula:
   $$\text{Score} = \text{Avg}(\text{Base Percentile} + \text{S\&P Alpha Bonus}) - (\text{Mean Brier} \times 50.0)$$
 
@@ -34,7 +39,7 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 
 > [!IMPORTANT]
 > **Scoring Symmetry Mandate**: The engine in `apps/engine/autoresearch/metrics.py`, `apps/engine/tasks/daily_autoresearch.py`, and `apps/engine/tasks/predictor_autoresearch.py` is the canonical source of truth for evaluation math. The frontend UI mirrors this with zero-frontend-compute transparency:
-> - Portfolio Autoresearch: `ScoreCalculation.tsx`, `ScoreBreakdown.tsx`, `DailyScoreDisplay.tsx`
+> - Portfolio Autoresearch: `ScoreCalculation.tsx`, `ScoreBreakdown.tsx`, `DailyScoreDisplay.tsx` ([[concepts/risk-adjusted-z-score]])
 > - Daily Predictor Autoresearch: `DailyScoreBreakdown.tsx`
 > - Sector Predictor Autoresearch: `SectorScoreBreakdown.tsx`
 > - Engine Tasks: `daily_autoresearch.py`, `predictor_autoresearch.py`
@@ -47,6 +52,7 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 
 ## Related
 - [[entities/autoresearch]] — the Python engine that produces the experiments
+- [[concepts/risk-adjusted-z-score]] — volatility-normalized weekly scoring formula
 - [[concepts/pending-settlement-state]] — live provisional states vs settled evaluations
 - [[concepts/system-heavy-prompt]] — the architecture that determines what is displayed
 - [[entities/web-app]] — the parent dashboard

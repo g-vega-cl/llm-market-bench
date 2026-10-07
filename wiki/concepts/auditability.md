@@ -42,12 +42,14 @@ Our logs are actively audited:
 - Hardened stack traces are output via `logger.exception()` to ensure root-cause analysis is straightforward.
 
 ### 5. Scoring Auditability & Frontend Symmetry
-Autoresearch scores determine whether prompt variants are promoted to baseline or discarded.
-- **Engine as Source of Truth**: The engine ([`apps/engine/autoresearch/metrics.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/autoresearch/metrics.py), [`apps/engine/tasks/daily_autoresearch.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/tasks/daily_autoresearch.py)) computes the official performance and ratchet scores.
+Autoresearch scores determine whether prompt variants are promoted to baseline or discarded across the platform's independent research loops:
+- **Portfolio Autoresearch**: Evaluated under the **Unified Risk-Adjusted Z-Score Model** ([`apps/engine/autoresearch/metrics.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/autoresearch/metrics.py)), dividing net excess return by weekly effective volatility ($\max(\sigma_{\text{portfolio}}, \sigma_{\text{market}}, 10.0\%) / \sqrt{52}$) to express performance in standard-deviation ($\sigma$) units. Volatility normalization is essential for auditability: it prevents volatile-week outlier spikes (such as the July 19 outlier) from freezing the Karpathy ratchet baseline and guarantees statistical comparability between calm and turbulent market regimes (see [[concepts/risk-adjusted-z-score]]).
+- **Daily Market Predictor**: Evaluated under a 4-pillar composite ratchet score (close accuracy, intraday hit rate, magnitude capture, Brier penalty) in [`apps/engine/tasks/daily_autoresearch.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/tasks/daily_autoresearch.py) (see [[entities/daily-score-breakdown]]).
 - **Mandatory Frontend Synchronization**: Because frontend cards ([`ScoreCalculation.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreCalculation.tsx), [`ScoreBreakdown.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreBreakdown.tsx), [`DailyScoreDisplay.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx), [`DailyScoreBreakdown.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/daily-predictions/components/DailyScoreBreakdown.tsx)) display explanatory formulas and step-by-step arithmetic breakdowns, any modification to scoring formulas, weights, benchmarks, or penalties in the engine **must be updated in the frontend and verified via tests in the same change**.
 
 ## Related
 
+- [[concepts/risk-adjusted-z-score]]
 - [[concepts/hallucination-audit]]
 - [[concepts/observability-standard]]
 - [[concepts/agent-workflow]]

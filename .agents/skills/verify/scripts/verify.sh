@@ -42,8 +42,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "$HOTSPOTS_ONLY" = true ]; then
-  echo "--> Running Hotspot and Churn Forensics..."
-  ./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15
+  echo "--> Running Hotspot and Churn Forensics & refreshing wiki..."
+  ./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki
   exit 0
 fi
 
@@ -56,9 +56,17 @@ echo "=================================================="
 echo "  Code Verification Suite"
 echo "=================================================="
 
-# Always run Wiki integrity check (takes <0.1s, guards against broken code references)
-echo "--> Running Wiki integrity check..."
-./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py
+# Synchronize Wiki: refresh hotspots, auto-index, and validate integrity
+echo "--> Synchronizing Wiki (hotspots, indexes, and integrity)..."
+./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki
+./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix
+
+# Re-index and embed QMD vector search if available
+if command -v qmd >/dev/null 2>&1; then
+  echo "--> Updating QMD vector index and embeddings..."
+  qmd update
+  qmd embed
+fi
 
 # Static checks & Hotspots
 if [ "$ENGINE" = true ] || [ "$FAST" = true ]; then

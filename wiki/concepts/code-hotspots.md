@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **90 days ago**, Total commits analyzed: **269**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **201**).
 
 ## Top Hotspots
 
@@ -13,26 +13,21 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/engine/tests/test_workflow_schedule.py` | 25 | 13 | 52.0% | 209 | 325 | **CRITICAL** |
-| `apps/engine/main.py` | 36 | 8 | 22.2% | 73 | 288 | **CRITICAL** |
-| `apps/engine/tasks/daily_predictor.py` | 26 | 7 | 26.9% | 498 | 182 | **CRITICAL** |
-| `apps/engine/tests/test_daily_predictor.py` | 21 | 8 | 38.1% | 612 | 168 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 25 | 6 | 24.0% | 161 | 150 | **CRITICAL** |
-| `apps/engine/core/llm/analysis.py` | 17 | 8 | 47.1% | 281 | 136 | **CRITICAL** |
-| `apps/engine/core/llm/tools.py` | 33 | 4 | 12.1% | 1652 | 132 | **CRITICAL** |
-| `apps/engine/execution/market_data.py` | 12 | 9 | 75.0% | 319 | 108 | **CRITICAL** |
-| `apps/engine/autoresearch/researcher.py` | 34 | 3 | 8.8% | 297 | 102 | **CRITICAL** |
-| `apps/engine/core/config.py` | 33 | 3 | 9.1% | 212 | 99 | **HIGH** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 18 | 5 | 27.8% | 673 | 90 | **HIGH** |
-| `apps/engine/autoresearch/program.md` | 26 | 3 | 11.5% | 133 | 78 | **HIGH** |
-| `apps/engine/tests/test_evaluate_daily_predictions.py` | 12 | 6 | 50.0% | 349 | 72 | **HIGH** |
-| `apps/engine/tasks/evaluate_daily_predictions.py` | 12 | 5 | 41.7% | 276 | 60 | **HIGH** |
-| `apps/web/src/config/how-it-works.json` | 12 | 5 | 41.7% | 109 | 60 | **HIGH** |
-| `apps/engine/tasks/daily_autoresearch.py` | 19 | 3 | 15.8% | 735 | 57 | **HIGH** |
-| `apps/engine/tests/test_autoresearch.py` | 10 | 5 | 50.0% | 1965 | 50 | **HIGH** |
-| `apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx` | 9 | 5 | 55.6% | 91 | 45 | **HIGH** |
-| `apps/cron-dispatcher/wrangler.jsonc` | 11 | 4 | 36.4% | 15 | 44 | **HIGH** |
-| `apps/engine/core/llm/verification.py` | 10 | 4 | 40.0% | 394 | 40 | **HIGH** |
+| `apps/engine/tests/test_workflow_schedule.py` | 25 | 12 | 48.0% | 239 | 300 | **CRITICAL** |
+| `apps/engine/tasks/daily_predictor.py` | 25 | 7 | 28.0% | 559 | 175 | **CRITICAL** |
+| `apps/engine/tests/test_daily_predictor.py` | 19 | 8 | 42.1% | 660 | 152 | **CRITICAL** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 21 | 6 | 28.6% | 161 | 126 | **CRITICAL** |
+| `apps/engine/main.py` | 25 | 3 | 12.0% | 73 | 75 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 15 | 5 | 33.3% | 673 | 75 | **HIGH** |
+| `apps/engine/autoresearch/researcher.py` | 31 | 2 | 6.5% | 299 | 62 | **HIGH** |
+| `apps/engine/execution/market_data.py` | 10 | 6 | 60.0% | 319 | 60 | **HIGH** |
+| `apps/engine/core/llm/tools.py` | 27 | 2 | 7.4% | 1738 | 54 | **HIGH** |
+| `apps/engine/tasks/daily_autoresearch.py` | 17 | 3 | 17.6% | 735 | 51 | **HIGH** |
+| `apps/engine/core/config.py` | 24 | 2 | 8.3% | 212 | 48 | **HIGH** |
+| `apps/engine/autoresearch/program.md` | 22 | 2 | 9.1% | 136 | 44 | **HIGH** |
+| `packages/config/tools.json` | 20 | 2 | 10.0% | 206 | 40 | **HIGH** |
+| `apps/engine/tasks/evaluate_daily_predictions.py` | 10 | 4 | 40.0% | 280 | 40 | **HIGH** |
+| `apps/web/src/config/how-it-works.json` | 10 | 4 | 40.0% | 109 | 40 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -40,21 +35,21 @@ Files that consistently change in the same commit indicate implicit architectura
 
 | Primary File | Coupled File | Shared Commits | Coupling Strength |
 | :--- | :--- | :---: | :---: |
-| `apps/engine/core/llm/handlers/base.py` | `apps/engine/core/llm/tools.py` | 18 | 69% |
-| `apps/engine/tasks/daily_predictor.py` | `apps/engine/tests/test_daily_predictor.py` | 17 | 81% |
-| `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/tools.py` | 17 | 52% |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 16 | 89% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 16 | 62% |
-| `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/handlers/base.py` | 16 | 62% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 15 | 58% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/handlers/base.py` | 14 | 54% |
-| `apps/engine/core/config.py` | `apps/engine/main.py` | 14 | 42% |
-| `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 13 | 72% |
-| `apps/engine/tasks/daily_autoresearch.py` | `apps/engine/tests/test_daily_autoresearch.py` | 12 | 80% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/tests/test_tools_consistency.py` | 12 | 71% |
-| `apps/engine/tests/test_tools_consistency.py` | `packages/config/tools.json` | 12 | 71% |
-| `apps/engine/core/llm/tools.py` | `packages/config/tools.json` | 12 | 67% |
-| `apps/engine/autoresearch/researcher.py` | `apps/engine/tests/test_tools_consistency.py` | 11 | 65% |
+| `apps/engine/tasks/daily_predictor.py` | `apps/engine/tests/test_daily_predictor.py` | 16 | 84% |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 14 | 93% |
+| `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/handlers/base.py` | 14 | 56% |
+| `apps/engine/core/llm/handlers/base.py` | `apps/engine/core/llm/tools.py` | 14 | 56% |
+| `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/tools.py` | 14 | 52% |
+| `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 13 | 65% |
+| `apps/engine/autoresearch/program.md` | `apps/engine/tests/test_tools_consistency.py` | 12 | 63% |
+| `apps/engine/tests/test_tools_consistency.py` | `packages/config/tools.json` | 12 | 63% |
+| `apps/engine/core/llm/tools.py` | `packages/config/tools.json` | 12 | 60% |
+| `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 12 | 55% |
+| `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 12 | 55% |
+| `apps/engine/autoresearch/researcher.py` | `apps/engine/tests/test_tools_consistency.py` | 11 | 58% |
+| `apps/engine/core/llm/handlers/base.py` | `apps/engine/tests/test_tools_consistency.py` | 11 | 58% |
+| `apps/engine/core/llm/tools.py` | `apps/engine/tests/test_tools_consistency.py` | 11 | 58% |
+| `apps/engine/autoresearch/researcher.py` | `packages/config/tools.json` | 11 | 55% |
 
 ## Usage Guidelines for LLM Agents
 

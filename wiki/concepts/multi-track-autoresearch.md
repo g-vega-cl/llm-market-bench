@@ -16,7 +16,7 @@ Each track maintains its own independent prompt lineage, baseline, ratchet score
 
 - **No cross-track fallback**: Prompts and memories are queried strictly by `track_id` and `scope`. If no active variant exists for a model, it falls back to that model's baseline, then seeds a new baseline, never falling back to another model's active prompt.
 - **Single active variant per track**: Deploying a new active variant automatically demotes all prior `active` variants for that `track_id` to `saved`, guaranteeing exactly one live strategy per model track.
-- **Ratchet comparison scoped to track**: Baseline score comparison and ratchet promotion operate only within the same `track_id`.
+- **Ratchet comparison scoped to track**: Baseline score comparison and ratchet promotion operate only within the same `track_id`. For portfolio trading tracks (`track_default`, `track_claude`, `track_openai`), baselines are evaluated using the Unified Risk-Adjusted Z-Score in $\sigma$ units (see [[concepts/risk-adjusted-z-score]]), ensuring individual track baselines cannot be permanently frozen by volatile market regimes or lucky outlier weeks.
 - **Track-Isolated Memories (`AUTORESEARCH_INSIGHT`)**: During optimization cycles, meta-researchers synthesize succinct hypotheses and postmortems (`research_insight`). These are recorded in `memories` with `metadata.track_id` and `metadata.scope`.
 - **Independent Stochastic Cold-Start**: During weekly evolution, each track rolls the 1-in-6 stochastic dice (`roll_cold_start_dice(sides=6)`) independently. One track can reset "from 0" based on 4 weeks of empirical history while another executes an incremental mutation (see [[concepts/stochastic-cold-start]]).
 - **Multi-Week Lookback Horizon (28 Days)**: Prompt synthesis and postmortem analysis across all tracks ingest a 28-day window of market events and predictions, while the weekly ratchet score remains strictly evaluated over the 7-day active week.
@@ -31,6 +31,7 @@ Each track maintains its own independent prompt lineage, baseline, ratchet score
 ## Related
 
 - [[entities/autoresearch]]
+- [[concepts/risk-adjusted-z-score]]
 - [[concepts/auto-research-prompt-improver]]
 - [[entities/daily-market-predictor]]
 - [[concepts/prompt-section-splitting]]

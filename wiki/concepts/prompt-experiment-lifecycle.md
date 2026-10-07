@@ -31,7 +31,7 @@ When a backtest week completes, the flow is:
 
 This ordering means the parent always carries a real score while the child is explicitly
 marked as pending, avoiding the previous behavior where a new variant inherited the parent's
-score before it had been evaluated.
+score before it had been evaluated. For portfolio trading tracks, the evaluated score in `metrics.score` is the Unified Risk-Adjusted Z-Score in $\sigma$ units (see [[concepts/risk-adjusted-z-score]]), whereas daily predictor variants store the 4-pillar composite score.
 
 ## UI Representation
 
@@ -47,6 +47,7 @@ score before it had been evaluated.
 
 ## Related
 
+- [[concepts/risk-adjusted-z-score]]
 - [[entities/daily-score-breakdown]]
 - [[entities/daily-predictor-backtest-arena]]
 - [[concepts/auto-research-prompt-improver]]

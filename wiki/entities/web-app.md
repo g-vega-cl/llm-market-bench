@@ -11,7 +11,7 @@ TanStack Start dashboard (React + TypeScript) providing real-time portfolio data
 
 - **Today Page** (`/today`): Dashboard overview featuring dynamic standard deviations, current price shifts, and regime shift signals (`GlobalMacroStats`). Default "Market" price shower displays a balanced multi-asset mix of key economic indicators (`SPY`, `QQQ`, `TLT`, `VGK`, `EWJ`, `GLD`, `USO`, `^VIX`), with tab-level filtering for asset-specific classes.
 - **Daily Predictions Page** (`/daily-predictions`): Independent model tabs (DeepSeek Flash, MiniMax M3) with strict track isolation. The `resolveActiveDailyPrompt` function now only considers experiments filtered to the selected model — no cross-track fallback. The `allExperiments` prop and `isFallback` flag have been removed. Status badges: `active` status only shows `🟢 ACTIVE` for the single active variant; other `active` records display `📦 SAVED`. The Autoresearch view defaults to inspecting the current active variant.
-- **Autoresearch Milestone Cards**: Shows active ratchet score, best baseline score, delta, and baseline anchor status. No fallback indicator.
+- **Autoresearch Milestone Cards**: On `/autoresearch`, renders the Unified Risk-Adjusted Z-Score with $\sigma$ unit suffix, baseline comparisons, and step-by-step arithmetic drawers (`ScoreBreakdown.tsx`, `ScoreCalculation.tsx`, see [[concepts/risk-adjusted-z-score]]). On `/daily-predictions`, displays the 4-pillar composite ratchet score.
 - **Variant Sidebar**: Lists all experiments for the selected model with status badges (`🟢 ACTIVE`, `🏆 BASELINE`, `❌ DISCARDED`, `📦 SAVED`).
 - **Portfolio Detail Pages** (`/portfolios/:id` & `/renko`): Real-time portfolio analysis, performance charts, and benchmark comparisons. Includes **Current Positions** with acquisition timestamps matched against entry trades, and **Recent Trades** audit trail displaying exact execution timestamps down to the second in Eastern Time (`ET`) alongside Alpaca order and fill provenance.
 - **Investment Chat Gateway** (`/chat`): Gated conversational research interface with live database query tools, memory search, and ticker context deep-dives. See [[entities/investment-chat-gateway]].
@@ -26,6 +26,8 @@ TanStack Start dashboard (React + TypeScript) providing real-time portfolio data
 
 ## Related
 
+- [[entities/autoresearch-arena]]
+- [[concepts/risk-adjusted-z-score]]
 - [[entities/daily-market-predictor]]
 - [[entities/investment-chat-gateway]]
 - [[entities/design-system]]

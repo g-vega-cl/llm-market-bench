@@ -16,7 +16,7 @@ The skill ships as two files:
 
 The protocol audits every changed file through six tiers; none may be skipped.
 
-1. **Static hygiene, size ceilings & hotspot forensics** — Ruff (E, F, I, UP, B, SIM) and Biome must pass with zero warnings. Enforces a 400-LOC soft ceiling and 800-LOC hard ceiling per file, colocated tests (`foo.py` ↔ `test_foo.py`, `foo.tsx` ↔ `foo.test.tsx`), and checks `apps/engine/hotspots.py` for `CRITICAL`/`HIGH` risk files and strongly coupled companions that must stay in sync.
+1. **Static hygiene, size ceilings & hotspot forensics** — Ruff (E, F, I, UP, B, SIM) and Biome must pass with zero warnings. Enforces a 400-LOC soft ceiling and 800-LOC hard ceiling per file, colocated tests (`foo.py` ↔ `test_foo.py`, `foo.tsx` ↔ `foo.test.tsx`), checks `apps/engine/hotspots.py` for `CRITICAL`/`HIGH` risk files, and **synchronizes the wiki**: updates concepts/entities for changed formulas/models, refreshes `wiki/concepts/code-hotspots.md` via `hotspots.py --write-wiki`, auto-indexes new pages via `wiki_lint.py --fix`, and regenerates QMD vector embeddings (`qmd update && qmd embed`).
 2. **Build & type integrity** — `pnpm run typecheck` (added to `apps/web/package.json`) and `pnpm run build` must pass. Also covers subprocess safety (no compound or multiline `-c` commands), scratch-script usage, and CI workflow secret parity for new `core/config.py` keys.
 3. **Hermetic testing & coverage** — Tests must make zero external network calls and pass without ambient environment variables. Engine coverage must stay ≥ 70%, web coverage ≥ 40%. Bug fixes require a failing-without-change regression test.
 4. **Domain, API & financial invariants** — Financial bounds checks (implied volatility, spot prices, option deltas, put/call distribution), spot vs futures separation, explicit HTTP 401/403/429/400 handling, weekend and zero-row handling, `America/New_York` timezone enforcement, trade idempotency, FIFO lot matching, short-position prevention, RLS on new migration tables, and tool-definition parity across `tools.json`, `core/llm/tools.py`, `program.md`, and `test_tools_consistency.py`.
@@ -35,7 +35,7 @@ The runner script supports flags to scope the suite:
 ./.agents/skills/verify/scripts/verify.sh --hotspots # hotspot & churn forensics only
 ```
 
-It runs Ruff (`check` and `format --check`), Biome, `wiki_lint.py`, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage.
+It synchronizes the wiki (`hotspots.py --write-wiki`, `wiki_lint.py --fix`, `qmd update && qmd embed`), runs Ruff (`check` and `format --check`), Biome, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage.
 
 ## Report Format
 

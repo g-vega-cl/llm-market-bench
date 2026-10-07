@@ -88,6 +88,7 @@
 
 ## Concepts
 
+- [[concepts/wiki-synchronization]] — the mandatory wiki-sync step baked into the verify workflow (hotspot refresh, auto-index, QMD re-embed)
 - [[concepts/risk-adjusted-z-score]] — volatility-normalized weekly scoring formula for auto-research prompt variants
 - [[concepts/workflow-consolidation]] — piggyback periodic CI tasks onto existing scheduled workflows instead of creating new ones
 - [[concepts/portfolio-metrics-initialization]] — full Reg T metric seeding on new and legacy portfolio load

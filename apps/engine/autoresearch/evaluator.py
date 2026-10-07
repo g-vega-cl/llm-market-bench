@@ -6,6 +6,7 @@ markdown report and the score dict so the runner does not parse markdown.
 """
 
 import logging
+import math
 from datetime import UTC, date, datetime
 
 from core.config import ANTHROPIC_MODEL, AUTORESEARCH_EXPERIMENT_OWNER_IDS, OPENAI_MODEL
@@ -209,13 +210,18 @@ async def evaluate_week(
     sb_client = await get_async_supabase_client()
     spy_returns = await _spy_returns(sb_client, week_start, week_end)
 
-    # Compute SPY return from daily returns.
+    # Compute SPY return and annualized volatility from daily returns.
     spy_return_pct = 0.0
+    spy_volatility_pct = 0.0
     if spy_returns:
         cumulative = 1.0
         for r in spy_returns:
             cumulative *= 1 + r
         spy_return_pct = (cumulative - 1) * 100
+        if len(spy_returns) > 1:
+            mean_spy = sum(spy_returns) / len(spy_returns)
+            var_spy = sum((r - mean_spy) ** 2 for r in spy_returns) / (len(spy_returns) - 1)
+            spy_volatility_pct = math.sqrt(var_spy) * math.sqrt(252) * 100
 
     # Experiment group metrics.
     from core.config import AUTORESEARCH_TRACKS
@@ -250,6 +256,7 @@ async def evaluate_week(
         bond_return_pct=bond_return_pct,
         dollar_return_pct=dollar_return_pct,
         volatility_pct=exp_metrics.get("volatility", 0) * 100,
+        spy_volatility_pct=spy_volatility_pct,
         do_nothing_return_pct=exp_metrics.get("do_nothing_return_pct", 0),
     )
     score_result["portfolio_details"] = exp_metrics.get("portfolio_details", {})
@@ -348,10 +355,9 @@ async def evaluate_week(
         f"  - Actual US Dollar Index Return (DXY/UUP) [Context Only]: {dollar_return_pct:+.4f}%",
         f"  - Risk-Free Excess Return (Portfolio - Bond): {opp_penalty:+.4f}%",
         baseline_line,
-        f"Formula: 0.4 × (Portfolio - SPY) + 0.4 × (Portfolio - Do-Nothing) + 0.2 × (Portfolio - Bond) - (Drawdown × 0.3) = "
-        f"0.4 × ({portfolio_ret:.2f} - {spy_return_pct:.2f}) + 0.4 × ({portfolio_ret:.2f} - {score_result['do_nothing_return_pct']:.2f}) + 0.2 × ({portfolio_ret:.2f} - {bond_return_pct:.2f}) - ({max_drawdown:.2f} × 0.3) = "
-        f"{0.4 * (portfolio_ret - spy_return_pct):.2f} + {0.4 * (portfolio_ret - score_result['do_nothing_return_pct']):.2f} + {0.2 * (portfolio_ret - bond_return_pct):.2f} - {max_drawdown * 0.3:.2f} = "
-        f"{score_result['score']}",
+        f"Unified Risk-Adjusted Z-Score Formula: [0.4 × (Portfolio - SPY) + 0.4 × (Portfolio - Do-Nothing) + 0.2 × (Portfolio - Bond) - (Drawdown × 0.3)] / Weekly Effective Volatility = "
+        f"[{score_result.get('net_excess_return', 0):+.2f}%] / [{score_result.get('weekly_effective_volatility', 1.0):.2f}% (max({score_result.get('volatility', 0):.1f}% port, {score_result.get('spy_volatility', 0):.1f}% SPY, 10.0% floor) / √52)] = "
+        f"{score_result['score']:+.4f}σ",
         "",
         "# Multi-Week Context (Past 4 Weeks)",
         f"4-Week Return: {mw_ret:+.2f}% | Max Drawdown: -{mw_dd:.2f}% | Volatility: {mw_vol:.2f}%",

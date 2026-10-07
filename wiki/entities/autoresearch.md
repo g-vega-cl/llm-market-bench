@@ -35,12 +35,17 @@ Located in `apps/engine/tasks/daily_autoresearch.py`. The `run_daily_autoresearc
   - `query_past_research_memories(track_id, limit)`: Callable tool allowing the portfolio meta-researcher to pull historical hypothesis records on demand.
   - For `track_claude` (the sole track executing skeptical verification), `researcher.py` provides the optional `inspect_verifier_rules_and_rejections` tool inside `run_tool_loop` (see [[concepts/verifier-bypass]]).
 
-## Portfolio Evaluation Math & Do-Nothing Benchmark
+## Portfolio Evaluation Math (Unified Risk-Adjusted Z-Score Model)
 
-Portfolio prompt variants are evaluated weekly across three composite benchmarks (Benchmark-Triad Weighted Model):
+Portfolio prompt variants are evaluated weekly using a risk-adjusted Z-score normalized by weekly effective volatility, putting calm and turbulent market regimes on an equal statistical playing field:
 
-$$\text{excess\_return} = 0.4 \times (\text{portfolio} - \text{SPY}) + 0.4 \times (\text{portfolio} - \text{Do-Nothing}) + 0.2 \times (\text{portfolio} - \text{Bond})$$
-$$\text{Score} = \text{excess\_return} - (\text{max\_drawdown} \times 0.3)$$
+$$\text{Composite Excess Return} = 0.4 \times (\text{portfolio} - \text{SPY}) + 0.4 \times (\text{portfolio} - \text{Do-Nothing}) + 0.2 \times (\text{portfolio} - \text{Bond})$$
+$$\text{Net Excess Return} = \text{Composite Excess Return} - (\text{max\_drawdown} \times 0.3)$$
+$$\text{Weekly Effective Volatility} = \frac{\max(\sigma_{\text{portfolio}}, \sigma_{\text{market}}, 10.0\%)}{\sqrt{52}}$$
+$$\text{Score} = \frac{\text{Net Excess Return}}{\text{Weekly Effective Volatility}} \quad (\text{units of } \sigma)$$
+
+- **Market-Anchored Regime Normalization**: During wild macro market weeks (high SPY $\sigma$), raw percentage moves expand naturally. Dividing by market volatility deflates wide beta swings so high-volatility weeks cannot create unrepeatable, runaway baseline scores. Conversely, in low-volatility calm weeks, precision alpha is scaled up so quiet weeks have an equal shot at beating the ratchet.
+- **Idiosyncratic Risk Deflator**: If an agent takes extreme, reckless meme bets that blow past market volatility ($\sigma_{\text{portfolio}} > \sigma_{\text{market}}$), the denominator expands to the portfolio's own volatility, mathematically deflating lucky tail-risk flukes.
 
 - **Pre-Week Snapshot Mandate for Do-Nothing Return**:
   - The "do-nothing return" measures how the portfolio would have performed if no trades were made during the evaluated week.

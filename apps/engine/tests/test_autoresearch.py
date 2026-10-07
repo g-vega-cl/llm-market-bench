@@ -1900,7 +1900,9 @@ class TestComputeScore:
     returns a dict with score, excess_return, max_drawdown."""
 
     def test_basic_formula(self):
-        """score = 0.4*(portfolio - spy) + 0.4*(portfolio - do_nothing) + 0.2*(portfolio - bond) - (max_drawdown * 0.3)"""
+        """score = (0.4*(portfolio - spy) + 0.4*(portfolio - do_nothing) + 0.2*(portfolio - bond) - max_drawdown * 0.3) / weekly_vol"""
+        import math
+
         from autoresearch.metrics import compute_score
 
         result = compute_score(
@@ -1912,9 +1914,11 @@ class TestComputeScore:
         )
         # excess_vs_spy = 2.0, excess_vs_do_nothing = 3.0, excess_vs_bond = 3.0
         # excess_return = 0.4(2.0) + 0.4(3.0) + 0.2(3.0) = 0.8 + 1.2 + 0.6 = 2.6
-        # score = 2.6 - (5.0 * 0.3) = 2.6 - 1.5 = 1.1
+        # net_excess_return = 2.6 - (5.0 * 0.3) = 2.6 - 1.5 = 1.1
+        # score = 1.1 / (10.0 / sqrt(52))
         assert result["excess_return"] == pytest.approx(2.6)
-        assert result["score"] == pytest.approx(1.1)
+        assert result["net_excess_return"] == pytest.approx(1.1)
+        assert result["score"] == pytest.approx(round(1.1 / (10.0 / math.sqrt(52)), 4))
 
     def test_drawdown_penalty_reduces_score(self):
         """Higher drawdown must produce lower score for same excess return."""
@@ -1951,6 +1955,8 @@ class TestComputeScore:
 
     def test_zero_drawdown_positive_excess(self):
         """Perfect run: excess return with no drawdown."""
+        import math
+
         from autoresearch.metrics import compute_score
 
         result = compute_score(
@@ -1962,7 +1968,8 @@ class TestComputeScore:
         )
         # excess_vs_spy = 4.0, excess_vs_do_nothing = 3.0, excess_vs_bond = 5.0
         # excess_return = 0.4(4.0) + 0.4(3.0) + 0.2(5.0) = 1.6 + 1.2 + 1.0 = 3.8
-        assert result["score"] == pytest.approx(3.8)
+        assert result["net_excess_return"] == pytest.approx(3.8)
+        assert result["score"] == pytest.approx(round(3.8 / (10.0 / math.sqrt(52)), 4))
         assert result["max_drawdown"] == 0.0
 
     def test_excess_return_in_output(self):
@@ -1973,6 +1980,7 @@ class TestComputeScore:
             portfolio_return_pct=2.0, spy_return_pct=0.5, max_drawdown_pct=3.0, do_nothing_return_pct=1.0
         )
         assert "excess_return" in result
+        assert "net_excess_return" in result
         assert "max_drawdown" in result
         assert "score" in result
         assert "portfolio_return_pct" in result
@@ -1989,6 +1997,8 @@ class TestComputeScore:
 
     def test_benchmark_triad_weighted_score_calculation(self):
         """Verify that score is computed using the Approach 3 Benchmark-Triad Weighted Model (40% SPY, 40% Do-Nothing, 20% Bond)."""
+        import math
+
         from autoresearch.metrics import compute_score
 
         # Scenario: R_p = 1.5%, SPY = 0.5%, Do-Nothing = 0.3%, Bond = 0.1%, Drawdown = 2.0%
@@ -1997,7 +2007,8 @@ class TestComputeScore:
         # excess_vs_bond = 1.4%
         # excess_return = 0.4(1.0) + 0.4(1.2) + 0.2(1.4) = 0.4 + 0.48 + 0.28 = 1.16
         # drawdown_penalty = 2.0 * 0.3 = 0.6
-        # score = 1.16 - 0.6 = 0.56
+        # net_excess_return = 1.16 - 0.6 = 0.56
+        # score = 0.56 / (10.0 / sqrt(52)) = 0.4038
         result = compute_score(
             portfolio_return_pct=1.5,
             spy_return_pct=0.5,
@@ -2007,14 +2018,17 @@ class TestComputeScore:
             do_nothing_return_pct=0.3,
         )
         assert result["excess_return"] == pytest.approx(1.16)
+        assert result["net_excess_return"] == pytest.approx(0.56)
         assert result["bond_return_pct"] == pytest.approx(0.1)
         assert result["dollar_return_pct"] == pytest.approx(0.8)
         assert result["opportunity_cost_penalty"] == pytest.approx(1.4)  # 1.5 - 0.1 = 1.4
         assert result["drawdown_penalty"] == pytest.approx(0.6)
-        assert result["score"] == pytest.approx(0.56)
+        assert result["score"] == pytest.approx(round(0.56 / (10.0 / math.sqrt(52)), 4))
 
     def test_opportunity_cost_negative_when_underperforming_bond_hurdle(self):
         """Verify that underperforming the bond hurdle results in a negative risk-free excess value (0.0% vs 0.1% = -0.1%)."""
+        import math
+
         from autoresearch.metrics import compute_score
 
         # Scenario: R_p = 0.0% (cash), SPY = 0.5%, Do-Nothing = 0.3%, Bond = 0.1%, Drawdown = 0.0%
@@ -2022,6 +2036,8 @@ class TestComputeScore:
         # excess_vs_do_nothing = -0.3%
         # excess_vs_bond = -0.1%
         # excess_return = 0.4(-0.5) + 0.4(-0.3) + 0.2(-0.1) = -0.2 - 0.12 - 0.02 = -0.34
+        # net_excess_return = -0.34
+        # score = -0.34 / (10.0 / sqrt(52)) = -0.2452
         result = compute_score(
             portfolio_return_pct=0.0,
             spy_return_pct=0.5,
@@ -2031,8 +2047,107 @@ class TestComputeScore:
             do_nothing_return_pct=0.3,
         )
         assert result["excess_return"] == pytest.approx(-0.34)
+        assert result["net_excess_return"] == pytest.approx(-0.34)
         assert result["opportunity_cost_penalty"] == pytest.approx(-0.1)
-        assert result["score"] == pytest.approx(-0.34)
+        assert result["score"] == pytest.approx(round(-0.34 / (10.0 / math.sqrt(52)), 4))
+
+
+class TestUnifiedRiskAdjustedZScore:
+    """Tests for the Unified Risk-Adjusted Z-Score formula:
+    score = (composite_excess - 0.3 * max_drawdown) / weekly_effective_vol
+    where weekly_effective_vol = max(volatility, spy_volatility, 10.0%) / sqrt(52).
+    """
+
+    def test_score_normalized_by_market_volatility(self):
+        """In a high-volatility market week, excess return is normalized by market volatility."""
+        import math
+
+        from autoresearch.metrics import compute_score
+
+        spy_vol = 36.0  # 36% annualized
+        weekly_vol = spy_vol / math.sqrt(52)  # ~4.9923%
+        # Net excess = 4.9923%
+        result = compute_score(
+            portfolio_return_pct=6.9923,
+            spy_return_pct=2.0,
+            max_drawdown_pct=0.0,
+            volatility_pct=20.0,  # Portfolio vol lower than market
+            spy_volatility_pct=spy_vol,
+            do_nothing_return_pct=2.0,
+            bond_return_pct=2.0,
+        )
+        assert result["spy_volatility"] == pytest.approx(36.0)
+        assert result["effective_volatility"] == pytest.approx(36.0)
+        assert result["weekly_effective_volatility"] == pytest.approx(weekly_vol, rel=1e-3)
+        assert result["score"] == pytest.approx(1.0, abs=0.01)
+
+    def test_score_deflated_by_portfolio_volatility_when_higher(self):
+        """When an agent takes extreme idiosyncratic risk, its own volatility deflates the score."""
+        import math
+
+        from autoresearch.metrics import compute_score
+
+        spy_vol = 12.0  # 12% market
+        port_vol = 60.0  # 60% meme bet
+        weekly_vol = port_vol / math.sqrt(52)  # ~8.3205%
+        # Net excess = 8.3205%
+        result = compute_score(
+            portfolio_return_pct=9.3205,
+            spy_return_pct=1.0,
+            max_drawdown_pct=0.0,
+            volatility_pct=port_vol,
+            spy_volatility_pct=spy_vol,
+            do_nothing_return_pct=1.0,
+            bond_return_pct=1.0,
+        )
+        assert result["effective_volatility"] == pytest.approx(60.0)
+        assert result["weekly_effective_volatility"] == pytest.approx(weekly_vol, rel=1e-3)
+        # Score scaled by 60% vol, NOT by 12% market vol (which would have yielded 5.0!)
+        assert result["score"] == pytest.approx(1.0, abs=0.01)
+
+    def test_score_respects_10pct_floor(self):
+        """When both market and portfolio volatilities are low, floor is 10.0% annualized."""
+        import math
+
+        from autoresearch.metrics import compute_score
+
+        weekly_vol_floor = 10.0 / math.sqrt(52)  # ~1.3868%
+        result = compute_score(
+            portfolio_return_pct=2.3868,
+            spy_return_pct=1.0,
+            max_drawdown_pct=0.0,
+            volatility_pct=5.0,
+            spy_volatility_pct=4.0,
+            do_nothing_return_pct=1.0,
+            bond_return_pct=1.0,
+        )
+        assert result["effective_volatility"] == pytest.approx(10.0)
+        assert result["weekly_effective_volatility"] == pytest.approx(weekly_vol_floor, rel=1e-3)
+        assert result["score"] == pytest.approx(1.0, abs=0.01)
+
+    def test_regime_symmetry_calm_vs_turbulent(self):
+        """A +1.5% net excess in a 12% vol week and +4.5% net excess in a 36% vol week have similar Z-scores."""
+        from autoresearch.metrics import compute_score
+
+        calm = compute_score(
+            portfolio_return_pct=2.5,
+            spy_return_pct=1.0,
+            max_drawdown_pct=0.0,
+            volatility_pct=12.0,
+            spy_volatility_pct=12.0,
+            do_nothing_return_pct=1.0,
+            bond_return_pct=1.0,
+        )
+        turbulent = compute_score(
+            portfolio_return_pct=5.5,
+            spy_return_pct=1.0,
+            max_drawdown_pct=0.0,
+            volatility_pct=36.0,
+            spy_volatility_pct=36.0,
+            do_nothing_return_pct=1.0,
+            bond_return_pct=1.0,
+        )
+        assert calm["score"] == pytest.approx(turbulent["score"], abs=0.05)
 
 
 # ==============================================================================
@@ -2172,7 +2287,7 @@ class TestBaselineTracking:
 
         report, _, _ = await evaluator.evaluate_week()
         assert (
-            "Formula: 0.4 × (Portfolio - SPY) + 0.4 × (Portfolio - Do-Nothing) + 0.2 × (Portfolio - Bond) - (Drawdown × 0.3)"
+            "Unified Risk-Adjusted Z-Score Formula: [0.4 × (Portfolio - SPY) + 0.4 × (Portfolio - Do-Nothing) + 0.2 × (Portfolio - Bond) - (Drawdown × 0.3)] / Weekly Effective Volatility"
             in report
         )
 

@@ -379,6 +379,7 @@ async def compute_wall_street_metrics(
 
 
 DRAWDOWN_PENALTY_WEIGHT = 0.3
+VOLATILITY_ANNUAL_FLOOR = 10.0
 
 
 def compute_score(
@@ -389,29 +390,43 @@ def compute_score(
     dollar_return_pct: float = 0.0,
     volatility_pct: float = 0.0,
     do_nothing_return_pct: float = 0.0,
+    spy_volatility_pct: float = 0.0,
 ) -> dict:
-    """Compute the single auto-research score.
+    """Compute the risk-adjusted auto-research Z-score.
 
-    Formula (Benchmark-Triad Weighted Model):
-      excess_vs_spy        = portfolio_return_pct - spy_return_pct
-      excess_vs_do_nothing = portfolio_return_pct - do_nothing_return_pct
-      excess_vs_bond       = portfolio_return_pct - bond_return_pct
-      excess_return        = 0.4 * excess_vs_spy + 0.4 * excess_vs_do_nothing + 0.2 * excess_vs_bond
-      drawdown_penalty     = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT (0.3)
-      score                = excess_return - drawdown_penalty
+    Formula (Unified Risk-Adjusted Z-Score Model):
+      excess_vs_spy          = portfolio_return_pct - spy_return_pct
+      excess_vs_do_nothing   = portfolio_return_pct - do_nothing_return_pct
+      excess_vs_bond         = portfolio_return_pct - bond_return_pct
+      excess_return          = 0.4 * excess_vs_spy + 0.4 * excess_vs_do_nothing + 0.2 * excess_vs_bond
+      drawdown_penalty       = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT (0.3)
+      net_excess_return      = excess_return - drawdown_penalty
+      effective_volatility   = max(volatility_pct, spy_volatility_pct, VOLATILITY_ANNUAL_FLOOR)
+      weekly_effective_vol   = effective_volatility / sqrt(52)
+      score                  = net_excess_return / weekly_effective_vol (in units of sigma)
 
-    Positive score = beating the weighted composite benchmark (40% SPY + 40% Do-Nothing + 20% Treasury Bond) after risk penalty.
+    Positive score = beating the weighted composite benchmark after risk penalty.
     Zero = matching composite benchmark.
-    Negative = losing to composite benchmark or too volatile.
+    Negative = losing to composite benchmark or excessive drawdown.
     """
+    import math
+
     excess_vs_spy = portfolio_return_pct - spy_return_pct
     excess_vs_do_nothing = portfolio_return_pct - do_nothing_return_pct
     excess_vs_bond = portfolio_return_pct - bond_return_pct
 
     excess_return = round(0.4 * excess_vs_spy + 0.4 * excess_vs_do_nothing + 0.2 * excess_vs_bond, 4)
     opportunity_cost = round(excess_vs_bond, 4)
-    penalty = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT
-    score = round(excess_return - penalty, 4)
+    penalty = round(max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT, 4)
+    net_excess_return = round(excess_return - penalty, 4)
+
+    effective_volatility = max(
+        float(volatility_pct or 0.0),
+        float(spy_volatility_pct or 0.0),
+        VOLATILITY_ANNUAL_FLOOR,
+    )
+    weekly_effective_vol = effective_volatility / math.sqrt(52)
+    score = round(net_excess_return / weekly_effective_vol, 4)
 
     return {
         "score": score,
@@ -419,12 +434,16 @@ def compute_score(
         "spy_return_pct": round(spy_return_pct, 4),
         "do_nothing_return_pct": round(do_nothing_return_pct, 4),
         "excess_return": round(excess_return, 4),
+        "net_excess_return": net_excess_return,
         "max_drawdown": max_drawdown_pct,
         "volatility": volatility_pct,
+        "spy_volatility": spy_volatility_pct,
+        "effective_volatility": round(effective_volatility, 4),
+        "weekly_effective_volatility": round(weekly_effective_vol, 4),
         "bond_return_pct": round(bond_return_pct, 4),
         "dollar_return_pct": round(dollar_return_pct, 4),
         "opportunity_cost_penalty": opportunity_cost,
-        "drawdown_penalty": round(penalty, 4),
+        "drawdown_penalty": penalty,
     }
 
 

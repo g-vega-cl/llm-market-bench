@@ -35,9 +35,14 @@ describe('ScoreBreakdown', () => {
         expect(screen.getByText('-3.0000%')).toBeInTheDocument();
         expect(screen.getByText('10.0000% × 0.3 = 3.0000%')).toBeInTheDocument();
         expect(
-            screen.getByText(/score = Composite Excess Return - Drawdown Penalty/i),
+            screen.getByText(
+                /score = \(Composite Excess Return - Drawdown Penalty\) \/ Weekly Effective Volatility/i,
+            ),
         ).toBeInTheDocument();
-        expect(screen.getByText(/score = \+?5\.0000% - 3\.0000%/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/net_excess = 5\.0000% - 3\.0000% = 2\.0000%/i),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/Unified Z-Score:/i)).toBeInTheDocument();
     });
 
     it('renders with negative excess return and score', () => {

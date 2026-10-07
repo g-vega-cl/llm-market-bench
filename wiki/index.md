@@ -88,6 +88,7 @@
 
 ## Concepts
 
+- [[concepts/risk-adjusted-z-score]] — volatility-normalized weekly scoring formula for auto-research prompt variants
 - [[concepts/workflow-consolidation]] — piggyback periodic CI tasks onto existing scheduled workflows instead of creating new ones
 - [[concepts/portfolio-metrics-initialization]] — full Reg T metric seeding on new and legacy portfolio load
 - [[concepts/systematic-strategy-hooks]] — clock-driven orchestration of sector exits, Max Pain, and PEAD drift during price updates

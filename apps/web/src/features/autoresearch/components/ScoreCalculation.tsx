@@ -14,15 +14,15 @@ export function ScoreCalculation() {
 
             <div className="py-8 px-6 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700 flex flex-col items-center justify-center space-y-4">
                 <div className="text-sm font-medium text-zinc-500 dark:text-zinc-500 uppercase tracking-wider">
-                    Risk-Adjusted Score Formula
+                    Unified Risk-Adjusted Z-Score Formula
                 </div>
                 <div className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-zinc-900 dark:text-zinc-100 text-center leading-relaxed">
-                    0.4 × (Portfolio% - SPY%) + 0.4 × (Portfolio% - Do-Nothing%) + 0.2 × (Portfolio%
-                    - 10Y Bond%) - (Max Drawdown% × 0.3)
+                    [0.4 × (Portfolio% - SPY%) + 0.4 × (Portfolio% - Do-Nothing%) + 0.2 ×
+                    (Portfolio% - 10Y Bond%) - (Max Drawdown% × 0.3)] / Weekly Effective Volatility%
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 pt-4">
                 <div className="space-y-2">
                     <SubHeading>Excess Return</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -45,15 +45,26 @@ export function ScoreCalculation() {
                 <div className="space-y-2">
                     <SubHeading>Risk Penalty</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        We multiply the maximum drawdown by 0.3. This penalizes volatility and
-                        peak-to-trough drawdowns, ensuring the AI prioritizes capital preservation.
+                        We multiply the maximum drawdown by 0.3. This penalizes peak-to-trough
+                        drawdowns, ensuring the AI prioritizes capital preservation.
+                    </p>
+                </div>
+                <div className="space-y-2">
+                    <SubHeading>Volatility Normalizer</SubHeading>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        Divides net excess return by weekly effective volatility{' '}
+                        <span className="font-mono text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-200/50 dark:bg-zinc-800 px-1 py-0.5 rounded">
+                            max(SPY Vol, Port Vol, 10%) / √52
+                        </span>
+                        . Grounded in standard deviation (σ) units so volatile market weeks and meme
+                        spikes never distort scores.
                     </p>
                 </div>
                 <div className="space-y-2">
                     <SubHeading>The &quot;Ratchet&quot;</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        If the score is lower than the all-time best baseline for this model track,
-                        the experiment is discarded and we revert to the baseline prompt.
+                        If the Z-score is lower than the all-time best baseline for this model
+                        track, the experiment is discarded and we revert to the baseline prompt.
                     </p>
                 </div>
             </div>

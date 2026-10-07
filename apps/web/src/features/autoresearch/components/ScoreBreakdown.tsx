@@ -70,21 +70,49 @@ interface ScoreMetrics {
     opportunityCost: number;
     maxDrawdown: number;
     drawdownPenalty: number;
+    netExcessReturn: number;
+    volatility: number;
+    spyVolatility: number;
+    effectiveVolatility: number;
+    weeklyEffectiveVolatility: number;
     score: number;
 }
 
 function extractScoreMetrics(metrics: Record<string, unknown>): ScoreMetrics {
     const num = (val: unknown): number => (typeof val === 'number' ? val : 0);
+    const excessReturn = num(metrics.excess_return);
+    const maxDrawdown = num(metrics.max_drawdown);
+    const drawdownPenalty = num(metrics.drawdown_penalty);
+    const netExcessReturn =
+        typeof metrics.net_excess_return === 'number'
+            ? metrics.net_excess_return
+            : excessReturn - drawdownPenalty;
+    const volatility = num(metrics.volatility);
+    const spyVolatility = num(metrics.spy_volatility);
+    const effectiveVolatility =
+        typeof metrics.effective_volatility === 'number'
+            ? metrics.effective_volatility
+            : Math.max(volatility, spyVolatility, 10.0);
+    const weeklyEffectiveVolatility =
+        typeof metrics.weekly_effective_volatility === 'number'
+            ? metrics.weekly_effective_volatility
+            : effectiveVolatility / Math.sqrt(52);
+
     return {
         portfolioReturn: num(metrics.portfolio_return_pct),
         spyReturn: num(metrics.spy_return_pct),
         doNothingReturn: num(metrics.do_nothing_return_pct),
-        excessReturn: num(metrics.excess_return),
+        excessReturn,
         bondReturn: num(metrics.bond_return_pct),
         dollarReturn: num(metrics.dollar_return_pct),
         opportunityCost: num(metrics.opportunity_cost_penalty),
-        maxDrawdown: num(metrics.max_drawdown),
-        drawdownPenalty: num(metrics.drawdown_penalty),
+        maxDrawdown,
+        drawdownPenalty,
+        netExcessReturn,
+        volatility,
+        spyVolatility,
+        effectiveVolatility,
+        weeklyEffectiveVolatility,
         score: num(metrics.score),
     };
 }
@@ -106,6 +134,10 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
         opportunityCost,
         maxDrawdown,
         drawdownPenalty,
+        netExcessReturn,
+        volatility,
+        spyVolatility,
+        weeklyEffectiveVolatility,
         score,
     } = extractScoreMetrics(metrics);
 
@@ -177,12 +209,29 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
                         <div className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider border-b border-zinc-800 pb-1.5 mb-2">
                             Math Equation Breakdown
                         </div>
-                        <div>score = Composite Excess Return - Drawdown Penalty</div>
-                        <div className="text-emerald-400 pt-1 font-bold">
-                            score = {excessReturn.toFixed(4)}% - {drawdownPenalty.toFixed(4)}%
+                        <div>
+                            score = (Composite Excess Return - Drawdown Penalty) / Weekly Effective
+                            Volatility
                         </div>
-                        <div className="text-emerald-450 font-bold text-sm pt-1.5 border-t border-zinc-800">
-                            score = <SignValue value={score} showSign={false} />
+                        <div className="text-zinc-400">
+                            net_excess = {excessReturn.toFixed(4)}% - {drawdownPenalty.toFixed(4)}%
+                            = {netExcessReturn.toFixed(4)}%
+                        </div>
+                        <div className="text-zinc-400">
+                            weekly_effective_vol = max({volatility.toFixed(1)}% port,{' '}
+                            {spyVolatility.toFixed(1)}% SPY, 10.0% floor) / √52 ={' '}
+                            {weeklyEffectiveVolatility.toFixed(4)}%
+                        </div>
+                        <div className="text-emerald-400 pt-1 font-bold">
+                            score = {netExcessReturn.toFixed(4)}% /{' '}
+                            {weeklyEffectiveVolatility.toFixed(4)}%
+                        </div>
+                        <div className="text-emerald-400 font-bold text-sm pt-1.5 border-t border-zinc-800 flex items-center justify-between">
+                            <span>Unified Z-Score:</span>
+                            <span>
+                                {score >= 0 ? '+' : ''}
+                                {score.toFixed(4)}σ
+                            </span>
                         </div>
                     </div>
                 </div>

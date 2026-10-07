@@ -1,10 +1,17 @@
-from export_dataset import (
-    build_assistant_outcome,
-    build_user_prompt,
-    chronological_split,
-    format_qwen_sample,
-    reconstruct_context,
-)
+import importlib.util
+from pathlib import Path
+
+_module_path = Path(__file__).resolve().parent / "export_dataset.py"
+_spec = importlib.util.spec_from_file_location("qwen_export_dataset", _module_path)
+assert _spec and _spec.loader
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+
+build_assistant_outcome = _mod.build_assistant_outcome
+build_user_prompt = _mod.build_user_prompt
+chronological_split = _mod.chronological_split
+format_qwen_sample = _mod.format_qwen_sample
+reconstruct_context = _mod.reconstruct_context
 
 
 def test_build_assistant_outcome():

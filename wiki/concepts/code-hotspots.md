@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **201**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **202**).
 
 ## Top Hotspots
 
@@ -16,14 +16,14 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tests/test_workflow_schedule.py` | 25 | 12 | 48.0% | 239 | 300 | **CRITICAL** |
 | `apps/engine/tasks/daily_predictor.py` | 25 | 7 | 28.0% | 559 | 175 | **CRITICAL** |
 | `apps/engine/tests/test_daily_predictor.py` | 19 | 8 | 42.1% | 660 | 152 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 21 | 6 | 28.6% | 161 | 126 | **CRITICAL** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 20 | 6 | 30.0% | 161 | 120 | **CRITICAL** |
 | `apps/engine/main.py` | 25 | 3 | 12.0% | 73 | 75 | **HIGH** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 15 | 5 | 33.3% | 673 | 75 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 14 | 5 | 35.7% | 673 | 70 | **HIGH** |
 | `apps/engine/autoresearch/researcher.py` | 31 | 2 | 6.5% | 299 | 62 | **HIGH** |
 | `apps/engine/execution/market_data.py` | 10 | 6 | 60.0% | 319 | 60 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 27 | 2 | 7.4% | 1738 | 54 | **HIGH** |
 | `apps/engine/tasks/daily_autoresearch.py` | 17 | 3 | 17.6% | 735 | 51 | **HIGH** |
-| `apps/engine/core/config.py` | 24 | 2 | 8.3% | 212 | 48 | **HIGH** |
+| `apps/engine/core/config.py` | 24 | 2 | 8.3% | 214 | 48 | **HIGH** |
 | `apps/engine/autoresearch/program.md` | 22 | 2 | 9.1% | 136 | 44 | **HIGH** |
 | `packages/config/tools.json` | 20 | 2 | 10.0% | 206 | 40 | **HIGH** |
 | `apps/engine/tasks/evaluate_daily_predictions.py` | 10 | 4 | 40.0% | 280 | 40 | **HIGH** |
@@ -36,10 +36,10 @@ Files that consistently change in the same commit indicate implicit architectura
 | Primary File | Coupled File | Shared Commits | Coupling Strength |
 | :--- | :--- | :---: | :---: |
 | `apps/engine/tasks/daily_predictor.py` | `apps/engine/tests/test_daily_predictor.py` | 16 | 84% |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 14 | 93% |
 | `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/handlers/base.py` | 14 | 56% |
 | `apps/engine/core/llm/handlers/base.py` | `apps/engine/core/llm/tools.py` | 14 | 56% |
 | `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/tools.py` | 14 | 52% |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 13 | 93% |
 | `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 13 | 65% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/tests/test_tools_consistency.py` | 12 | 63% |
 | `apps/engine/tests/test_tools_consistency.py` | `packages/config/tools.json` | 12 | 63% |

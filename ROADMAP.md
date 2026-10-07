@@ -41,7 +41,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
 - [x] - Benchify; make an statistic if any of our buys were ever profitable. Like what if I followed my agent's buys and decide on the sells myself?
     - Did this, I think it was basically a 50/50 bet. Even I checked if it ever touched something like .5% or .1% and it didn't change it much.
-- [ ] - Benchify: I might already have something like this, try to predict earnings movement. Maybe just up/down from beginning of trading day?
+- [x] - Benchify: I might already have something like this, try to predict earnings movement. Maybe just up/down from beginning of trading day?
+    - Built Day-1 Earnings Movement Predictor Arena benchmarking GPT Luna (gpt-5.6-luna), DeepSeek Flash (deepseek-chat), and TypeSafe Jev (~typesafe/jev-latest) on Regular Trading Hours Open-to-Close (09:30 to 16:00 ET) continuation vs fade reactions. Created `earnings_predictions` table, `earnings_predictor.py`, `evaluate_earnings_predictions.py`, and `EarningsArenaTab` UI in `/earnings-audit`.
+
 - [ ] - Single company focused llm - Did this with LIN, but I don't think it's working as expected. REVISIT.
         - [ ] - Benchify: "hyperfocus on a mid size company?
         - [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?

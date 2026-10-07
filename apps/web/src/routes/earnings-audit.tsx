@@ -4,17 +4,20 @@ import {
     fetchEarningsAlphaSnapshots,
     fetchSectorBellwethers,
 } from '~/features/earnings/api/fetch-earnings-audit';
+import { fetchEarningsPredictions } from '~/features/earnings/api/fetch-earnings-predictions';
 import { EarningsAuditPage } from '~/features/earnings/pages/EarningsAuditPage';
 
 const getEarningsAuditData = createServerFn({ method: 'GET' }).handler(async () => {
-    const [snapshots, bellwethers] = await Promise.all([
+    const [snapshots, bellwethers, predictions] = await Promise.all([
         fetchEarningsAlphaSnapshots(),
         fetchSectorBellwethers(),
+        fetchEarningsPredictions(),
     ]);
 
     return {
         snapshots,
         bellwethers,
+        predictions,
     };
 });
 
@@ -30,6 +33,7 @@ function RouteComponent() {
         <EarningsAuditPage
             snapshots={data?.snapshots ?? []}
             bellwethers={data?.bellwethers ?? []}
+            predictions={data?.predictions ?? []}
         />
     );
 }

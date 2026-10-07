@@ -31,9 +31,11 @@ Three canonical tools are registered in `apps/engine/core/llm/tools.py` and disp
 
 ## Related
 
+- [[entities/earnings-predictor]]
 - [[concepts/earnings-prediction-strategies]]
 - [[entities/earnings-audit]]
 - [[entities/tool-registry]]
 - [[entities/database]]
 - [[entities/engine]]
 - [[entities/pipeline]]
+

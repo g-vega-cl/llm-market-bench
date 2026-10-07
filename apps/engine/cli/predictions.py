@@ -68,3 +68,22 @@ def handle_generate_newsletter(args: argparse.Namespace) -> None:
     from tasks.newsletter_generator import generate_daily_newsletter
 
     asyncio.run(generate_daily_newsletter(session=args.session))
+
+
+def handle_earnings_predictor(args: argparse.Namespace) -> None:
+    """Run earnings day-1 prediction pipeline across Luna, DeepSeek, and Jev."""
+    from tasks.earnings_predictor import run_earnings_prediction
+
+    target_date = getattr(args, "target_date", None)
+    ticker = getattr(args, "ticker", None)
+    force = getattr(args, "force", False)
+    asyncio.run(run_earnings_prediction(target_date=target_date, ticker=ticker, force=force))
+
+
+def handle_evaluate_earnings_predictions(args: argparse.Namespace) -> None:
+    """Evaluate earnings predictions against RTH market outcomes."""
+    from tasks.evaluate_earnings_predictions import evaluate_earnings_predictions
+
+    target_date = getattr(args, "target_date", None)
+    force = getattr(args, "force", False)
+    asyncio.run(evaluate_earnings_predictions(target_date=target_date, force_recalc=force))

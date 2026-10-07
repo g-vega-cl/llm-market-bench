@@ -12,10 +12,13 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
 import type { EarningsAlphaSnapshot, SectorBellwetherSignal } from '../api/fetch-earnings-audit';
+import type { EarningsPrediction } from '../api/fetch-earnings-predictions';
+import { EarningsArenaTab } from '../components/EarningsArenaTab';
 
 export interface EarningsAuditPageProps {
     snapshots: EarningsAlphaSnapshot[];
     bellwethers: SectorBellwetherSignal[];
+    predictions?: EarningsPrediction[];
 }
 
 function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
@@ -165,8 +168,15 @@ function RevisionTableRow({ item }: { item: EarningsAlphaSnapshot }) {
     );
 }
 
-export function EarningsAuditPage({ snapshots, bellwethers }: EarningsAuditPageProps) {
-    const [activeTab, setActiveTab] = useState<'pead' | 'bellwethers' | 'revisions'>('pead');
+export function EarningsAuditPage({
+    snapshots,
+    bellwethers,
+    predictions = [],
+}: EarningsAuditPageProps) {
+    const [activeTab, setActiveTab] = useState<'pead' | 'bellwethers' | 'revisions' | 'arena'>(
+        'pead',
+    );
+
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSector, setSelectedSector] = useState<string>('ALL');
 
@@ -286,35 +296,48 @@ export function EarningsAuditPage({ snapshots, bellwethers }: EarningsAuditPageP
                     >
                         Analyst Revision Momentum
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('arena')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                            activeTab === 'arena'
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : 'text-zinc-400 hover:text-white'
+                        }`}
+                    >
+                        Day-1 Movement Arena
+                    </button>
                 </div>
 
-                {/* Filters */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="w-full sm:w-64">
-                        <Input
-                            placeholder="Search ticker or sector..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-zinc-900/50 border-zinc-800 text-white placeholder:text-zinc-500"
-                        />
+                {/* Filters (for PEAD, Bellwethers, Revisions) */}
+                {activeTab !== 'arena' && (
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="w-full sm:w-64">
+                            <Input
+                                placeholder="Search ticker or sector..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="bg-zinc-900/50 border-zinc-800 text-white placeholder:text-zinc-500"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                            {sectors.map((sec) => (
+                                <button
+                                    key={sec}
+                                    type="button"
+                                    onClick={() => setSelectedSector(sec)}
+                                    className={`px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap ${
+                                        selectedSector === sec
+                                            ? 'bg-zinc-700 text-white'
+                                            : 'bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                                    }`}
+                                >
+                                    {sec}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                        {sectors.map((sec) => (
-                            <button
-                                key={sec}
-                                type="button"
-                                onClick={() => setSelectedSector(sec)}
-                                className={`px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap ${
-                                    selectedSector === sec
-                                        ? 'bg-zinc-700 text-white'
-                                        : 'bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-                                }`}
-                            >
-                                {sec}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                )}
 
                 {/* Tab 1: PEAD Table */}
                 {activeTab === 'pead' && (
@@ -437,6 +460,9 @@ export function EarningsAuditPage({ snapshots, bellwethers }: EarningsAuditPageP
                         </Table>
                     </Card>
                 )}
+
+                {/* Tab 4: Day-1 Movement Arena */}
+                {activeTab === 'arena' && <EarningsArenaTab predictions={predictions} />}
             </div>
         </PageLayout>
     );

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/earnings-predictor]] — Auto-indexed page
 - [[entities/verify-skill]] — six-tier post-coding verification protocol, runner script, and report format
 - [[entities/whale-holdings]] — Institutional 13F holdings and Schedule 13D/13G blockholder tracker exposed via the `get_whale_holdings` tool
 - [[entities/insider-trades]] — SEC Form 4 corporate insider trading tracker (FMP ingestion, Supabase cache, `get_insider_trades` tool)

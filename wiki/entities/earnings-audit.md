@@ -13,20 +13,25 @@ The route `apps/web/src/routes/earnings-audit.tsx` uses a TanStack Start `create
 
 - `fetchEarningsAlphaSnapshots()` — selects all rows from `earnings_alpha_snapshots` ordered by SUE score descending.
 - `fetchSectorBellwethers()` — selects all rows from `sector_bellwether_signals` ordered by sector then market cap rank.
+- `fetchEarningsPredictions()` — selects all rows from `earnings_predictions` ordered by `target_date` descending.
 
-The page receives both datasets as props and falls back to empty arrays on error.
+The page receives all datasets as props and falls back to empty arrays on error.
+
 
 ## Tabs & Filters
 
 - **PEAD & SUE Leaderboard** — SUE score coloring (>= 2.0 emerald, < 0 rose), revenue surprise, Sloan accrual quality badges, and top-decile status; ticker/sector search and sector chips.
 - **Sector Bellwether Radar** — Early Bellwether vs Downstream Peer badges, market cap rank, report status, and the active 14-day signal window.
 - **Analyst Revision Momentum** — analyst consensus, coverage count, buy ratio, consensus target price, and implied upside.
+- **Day-1 Movement Arena** — renders `EarningsArenaTab.tsx` benchmarking GPT Luna, DeepSeek Flash, and TypeSafe Jev on RTH Open-to-Close (UP/DOWN) direction, Brier scores, and accuracy.
 
 Summary cards show total analyzed, top-decile SUE count, Sloan clean percentage, and active bellwethers.
 
 ## Related
 
+- [[entities/earnings-predictor]]
 - [[concepts/earnings-prediction-strategies]]
 - [[entities/earnings-alpha]]
 - [[entities/web-app]]
 - [[entities/database]]
+

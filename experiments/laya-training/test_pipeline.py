@@ -4,12 +4,20 @@ Verifies schema compliance with Laya typed decisions, zero lookahead leakage
 in chronological splitting, and fallback context reconstruction.
 """
 
+import importlib.util
+from pathlib import Path
+
 import pytest
-from export_dataset import (
-    chronological_split,
-    format_laya_record,
-    reconstruct_context,
-)
+
+_module_path = Path(__file__).resolve().parent / "export_dataset.py"
+_spec = importlib.util.spec_from_file_location("laya_export_dataset", _module_path)
+assert _spec and _spec.loader
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+
+chronological_split = _mod.chronological_split
+format_laya_record = _mod.format_laya_record
+reconstruct_context = _mod.reconstruct_context
 
 
 def test_format_laya_record_valid():
@@ -128,11 +136,15 @@ def test_compute_calibrated_probability_platt():
         "platt_b": -0.2,
     }
     # delta = 2.0. scaled = 0.5 * 2.0 - 0.2 = 0.8. sigmoid(0.8) ~= 0.68997
-    prob = compute_calibrated_probability(logit_down=0.0, logit_up=2.0, calibration_cfg=cfg)
+    prob = compute_calibrated_probability(
+        logit_down=0.0, logit_up=2.0, calibration_cfg=cfg
+    )
     assert 0.68 < prob < 0.70
 
     # With negative bias, delta = 0 produces < 0.5 (DOWN bias)
-    prob_zero = compute_calibrated_probability(logit_down=1.0, logit_up=1.0, calibration_cfg=cfg)
+    prob_zero = compute_calibrated_probability(
+        logit_down=1.0, logit_up=1.0, calibration_cfg=cfg
+    )
     assert prob_zero < 0.5
 
 
@@ -141,6 +153,7 @@ def test_compute_calibrated_probability_temperature():
 
     cfg = {"fitted_temperature": 2.0}
     # raw delta = 2.0, scaled delta = 1.0, sigmoid(1.0) ~= 0.731
-    prob = compute_calibrated_probability(logit_down=0.0, logit_up=2.0, calibration_cfg=cfg)
+    prob = compute_calibrated_probability(
+        logit_down=0.0, logit_up=2.0, calibration_cfg=cfg
+    )
     assert 0.72 < prob < 0.74
-

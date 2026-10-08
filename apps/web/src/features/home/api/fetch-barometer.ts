@@ -1,6 +1,8 @@
 import type { MarketBarometer } from '@llm-market-bench/database';
 import { getSupabaseServerClient } from '~/lib/supabase';
 
+let cachedLatestBarometer: MarketBarometer | null = null;
+
 /**
  * Fetches the latest S&P 500 Market Health Barometer snapshot from the database.
  */
@@ -15,13 +17,17 @@ export async function fetchLatestMarketBarometer(): Promise<MarketBarometer | nu
 
         if (error) {
             console.error('Error fetching latest market barometer:', error);
-            return null;
+            return cachedLatestBarometer;
         }
 
-        return (data?.[0] || null) as MarketBarometer | null;
+        const barometer = (data?.[0] || null) as MarketBarometer | null;
+        if (barometer) {
+            cachedLatestBarometer = barometer;
+        }
+        return barometer ?? cachedLatestBarometer;
     } catch (err) {
         console.warn('Network or database timeout fetching latest market barometer:', err);
-        return null;
+        return cachedLatestBarometer;
     }
 }
 

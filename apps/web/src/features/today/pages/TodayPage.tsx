@@ -34,22 +34,6 @@ interface TodayPageProps {
     fetchFn: () => Promise<TodayData>;
 }
 
-/** Thin skeleton placeholder for a dashboard card column */
-function CardSkeleton({ rows = 4 }: { rows?: number }) {
-    return (
-        <div className="space-y-3 animate-pulse">
-            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-1/3" />
-            {Array.from({ length: rows }).map((_, i) => (
-                <div
-                    // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholder
-                    key={i}
-                    className="h-16 bg-zinc-100 dark:bg-zinc-800/70 rounded-xl"
-                />
-            ))}
-        </div>
-    );
-}
-
 export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
     const { data } = useSuspenseQuery({
         ...todayQueries.data({ fetchFn }),
@@ -75,7 +59,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
             {/* Dashboard body — no opaque bg so the dotted GlobalBackground shows through */}
             <PageLayout className="py-6 space-y-6" maxWidth="xl">
                 {/* Row 1: Global Macro Stats — full width */}
-                <Suspense fallback={<CardSkeleton rows={3} />}>
+                <Suspense fallback={null}>
                     <GlobalMacroStats
                         macroStats={data.macroStats}
                         lastUpdated={data.macroLastUpdated}
@@ -92,10 +76,10 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                     <div className="space-y-6 animate-slide-up">
                         {/* Row 2: 3-column grid — AgentInsights | NewsletterFeed | AI Feeling */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                            <Suspense fallback={<CardSkeleton rows={3} />}>
+                            <Suspense fallback={null}>
                                 <AgentInsights memories={data.memories} />
                             </Suspense>
-                            <Suspense fallback={<CardSkeleton rows={3} />}>
+                            <Suspense fallback={null}>
                                 <NewsletterFeed
                                     newsletters={data.newsletters}
                                     newsSummary={data.marketFeeling?.news_summary}
@@ -103,7 +87,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                                     newsSummaryTime={data.marketFeeling?.formattedTime}
                                 />
                             </Suspense>
-                            <Suspense fallback={<CardSkeleton rows={4} />}>
+                            <Suspense fallback={null}>
                                 <AIFeelingCard
                                     marketFeeling={data.marketFeeling}
                                     trades={data.trades}
@@ -111,12 +95,12 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                                 />
                             </Suspense>
                             <div className="lg:col-span-3">
-                                <Suspense fallback={<CardSkeleton rows={3} />}>
+                                <Suspense fallback={null}>
                                     <IntradayNewsWire items={data.intradayNews} />
                                 </Suspense>
                             </div>
                             <div className="lg:col-span-3">
-                                <Suspense fallback={<CardSkeleton rows={4} />}>
+                                <Suspense fallback={null}>
                                     <TradeActivity
                                         trades={data.trades}
                                         decisions={data.decisions}
@@ -126,7 +110,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                         </div>
 
                         {/* Row 4: Future Catalysts — full width */}
-                        <Suspense fallback={<CardSkeleton rows={2} />}>
+                        <Suspense fallback={null}>
                             <FutureCatalysts events={data.futureEvents as Memory[]} />
                         </Suspense>
                     </div>
@@ -164,7 +148,7 @@ function EmptyStateView({
 
             {hasFutureEvents && (
                 <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 animate-slide-up animate-stagger-2">
-                    <Suspense fallback={<CardSkeleton rows={2} />}>
+                    <Suspense fallback={null}>
                         <FutureCatalysts events={futureEvents as Memory[]} />
                     </Suspense>
                 </div>

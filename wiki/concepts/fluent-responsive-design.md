@@ -92,5 +92,6 @@ Replace breakpoint-dependent direction toggles like `flex-col sm:flex-row` with 
 ## Related
 
 - [[entities/design-system]], UI primitive and pattern library
+- [[concepts/cumulative-layout-shift]], Zero layout shift standards and skeleton-free transitions
 - [[entities/daily-market-predictor]], Daily predictor and autoresearch workbench
 - [[entities/daily-score-breakdown]], Multi-pillar composite ratchet score audit

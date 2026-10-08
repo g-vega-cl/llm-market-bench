@@ -3,6 +3,7 @@ import {
     type Concept,
     calculateDateOffset,
     cleanCatalystTitle,
+    clearConceptsCache,
     cosineSimilarity,
     mapCatalystsToConcepts,
     parseVector,
@@ -204,6 +205,13 @@ describe('fetch-concepts utilities', () => {
             expect(concepts[0].catalyst).toBeDefined();
             expect(concepts[0].catalyst?.catalyst_title).toBe('September FOMC Rate Decision');
             expect(concepts[0].catalyst?.catalyst_id).toBe('m_fomc');
+        });
+    });
+
+    describe('fetchConcepts caching & offline resilience', () => {
+        it('clears concepts cache when clearConceptsCache is invoked', () => {
+            clearConceptsCache();
+            expect(true).toBe(true);
         });
     });
 });

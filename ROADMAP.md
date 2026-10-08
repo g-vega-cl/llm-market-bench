@@ -81,3 +81,5 @@ A living document of features and improvements in progress or planned for the pl
 
     Composite Scoring: Give Jev a rubric, and it can give a composite score to all
 - [ ] - Benchify: jev + Qwen autoresearcher? Jev can do so many things like judge, decide which prompt is better, check for over fitting, check if the input is correct, etc
+- [ ] - Benchify: when remaking and updating design system. Make sure sidebar is only 4 items tops. Maybe change the items based on frequency of use?
+- [ ] - Benchify: weekly s&p predictor?

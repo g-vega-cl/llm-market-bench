@@ -230,37 +230,23 @@ function computeMacroLastUpdated(
         : formatEasternDateTime(latest);
 }
 
-export async function fetchTodayData(limit: number = 50, tradesLimit?: number): Promise<TodayData> {
-    const effectiveTradesLimit = tradesLimit !== undefined ? tradesLimit : limit;
-
-    const nowTime = Date.now();
-    // Do not use in-memory cache if we are asking for more items than previously cached
-    if (
+function shouldServeCached(nowTime: number, limit: number, tradesLimit: number): boolean {
+    return Boolean(
         cachedTodayData &&
-        nowTime - lastFetchTime < CACHE_TTL &&
-        limit <= cachedLimit &&
-        effectiveTradesLimit <= cachedTradesLimit
-    ) {
-        return cachedTodayData;
-    }
+            nowTime - lastFetchTime < CACHE_TTL &&
+            limit <= cachedLimit &&
+            tradesLimit <= cachedTradesLimit,
+    );
+}
 
+async function executeTodayQueries(
+    limit: number,
+    effectiveTradesLimit: number,
+    startOfDay: string,
+    estDateStr: string,
+) {
     const supabase = getSupabaseServerClient();
-
-    const now = new Date();
-    const estDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-
-    const startOfDay = `${estDateStr}T00:00:00`;
-
-    const [
-        { data: newsletters },
-        { data: intradayNews },
-        { data: trades },
-        { data: decisions },
-        { data: memories },
-        { data: futureEvents },
-        { data: marketFeeling },
-        { data: cacheRows },
-    ] = await Promise.all([
+    return Promise.all([
         supabase
             .from('newsletter_snapshots')
             .select('*')
@@ -305,79 +291,160 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
             .select('*')
             .order('created_at', { ascending: false })
             .limit(1),
-        // Fetch all macro quotes + pre-calculated volatility in a single query
         supabase.from('market_data_cache').select('*').in('ticker', MACRO_TICKERS_LIST),
-    ]).catch((err) => {
-        console.warn('Network or database timeout in fetchTodayPageData:', err);
-        return [
-            { data: null, error: err },
-            { data: null, error: err },
-            { data: null, error: err },
-            { data: null, error: err },
-            { data: null, error: err },
-            { data: null, error: err },
-            { data: null, error: err },
-            { data: null, error: err },
-        ];
-    });
+    ]);
+}
 
-    // Derive priceUpdates in-memory from cacheRows to eliminate an entire extra DB query
-    const priceUpdates = (cacheRows || []).filter(
+interface RawTodayQueryResult {
+    newsletters: NewsletterSnapshot[] | null;
+    intradayNews: IntradayMarketNews[] | null;
+    trades: Trade[] | null;
+    decisions: Decision[] | null;
+    memories: Memory[] | null;
+    futureEvents: Memory[] | null;
+    marketFeelingObj: MarketFeeling | null;
+    cacheRows: MarketDataCache[] | null;
+}
+
+function assembleTodayData(
+    raw: RawTodayQueryResult,
+    now: Date,
+    estDateStr: string,
+    startOfDay: string,
+): TodayData {
+    const priceUpdates = (raw.cacheRows || []).filter(
         (row) => row.fetched_at && row.fetched_at >= startOfDay,
     ) as unknown as MarketDataCache[];
 
-    // Process and map pre-calculated macro statistics
-    const macroStats = computeMacroStatistics(cacheRows);
-    const macroLastUpdated = computeMacroLastUpdated(cacheRows, estDateStr);
+    const macroStats = computeMacroStatistics(raw.cacheRows);
+    const macroLastUpdated = computeMacroLastUpdated(raw.cacheRows, estDateStr);
 
-    const isMarketOpen = checkMarketOpen(now);
-    const marketFeelingObj = (marketFeeling?.[0] || null) as MarketFeeling | null;
-    const isSentimentStale = checkSentimentStale(marketFeelingObj, now);
-    const todayDateString = formatEasternDate(now);
-
-    const result: TodayData = {
-        newsletters: (newsletters || []).map((n) => ({
+    return {
+        newsletters: (raw.newsletters || []).map((n) => ({
             ...n,
             formattedTime: formatEasternShortTime(n.date),
         })) as (NewsletterSnapshot & { formattedTime: string })[],
-        intradayNews: (intradayNews || []).map((item) => ({
+        intradayNews: (raw.intradayNews || []).map((item) => ({
             ...item,
             formattedTime: formatEasternShortTime(item.event_timestamp),
             formattedDate: formatEasternShortDate(item.event_timestamp),
         })) as (IntradayMarketNews & { formattedTime: string; formattedDate: string })[],
-        trades: (trades || []).map((t) => ({
+        trades: (raw.trades || []).map((t) => ({
             ...t,
             formattedTime: formatEasternShortTime(t.executed_at),
         })) as (Trade & { portfolios: { owner_id: string }; formattedTime: string })[],
-        decisions: (decisions || []).map((d) => ({
+        decisions: (raw.decisions || []).map((d) => ({
             ...d,
             formattedTime: formatEasternShortTime(d.created_at),
         })) as (Decision & { formattedTime: string })[],
-        memories: (memories || []).map((m) => ({
+        memories: (raw.memories || []).map((m) => ({
             ...m,
             formattedDateTime: formatEasternDateTime(m.created_at),
             formattedShortDate: formatEasternShortDate(m.created_at),
         })) as (Memory & { formattedShortDate: string; formattedDateTime: string })[],
         priceUpdates,
-        futureEvents: formatFutureEvents(futureEvents) as (Memory & {
+        futureEvents: formatFutureEvents(raw.futureEvents) as (Memory & {
             formattedShortDate: string;
             formattedTargetMonthDay: string;
             formattedTargetYear: string;
         })[],
-        marketFeeling: marketFeelingObj
+        marketFeeling: raw.marketFeelingObj
             ? {
-                  ...marketFeelingObj,
-                  formattedTime: formatEasternTime(marketFeelingObj.created_at),
-                  formattedDate: formatEasternDate(marketFeelingObj.created_at),
+                  ...raw.marketFeelingObj,
+                  formattedTime: formatEasternTime(raw.marketFeelingObj.created_at),
+                  formattedDate: formatEasternDate(raw.marketFeelingObj.created_at),
               }
             : null,
         macroStats,
         macroLastUpdated,
         serverTime: now.toISOString(),
-        isMarketOpen,
-        isSentimentStale,
-        todayDateString,
+        isMarketOpen: checkMarketOpen(now),
+        isSentimentStale: checkSentimentStale(raw.marketFeelingObj, now),
+        todayDateString: formatEasternDate(now),
     };
+}
+
+export async function fetchTodayData(limit: number = 50, tradesLimit?: number): Promise<TodayData> {
+    const effectiveTradesLimit = tradesLimit !== undefined ? tradesLimit : limit;
+    const nowTime = Date.now();
+
+    if (shouldServeCached(nowTime, limit, effectiveTradesLimit)) {
+        return cachedTodayData as TodayData;
+    }
+
+    const now = new Date();
+    const estDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const startOfDay = `${estDateStr}T00:00:00`;
+
+    let fetchError: unknown = null;
+    const queryResults = await executeTodayQueries(
+        limit,
+        effectiveTradesLimit,
+        startOfDay,
+        estDateStr,
+    ).catch((err) => {
+        console.warn('Network or database timeout in fetchTodayData:', err);
+        fetchError = err;
+        return null;
+    });
+
+    if (fetchError || !queryResults) {
+        if (cachedTodayData) {
+            console.warn('[TodayData] Fetch failed; serving last known good cached data');
+            return cachedTodayData;
+        }
+        throw fetchError instanceof Error
+            ? fetchError
+            : new Error(`Database connection failed in fetchTodayData: ${String(fetchError)}`);
+    }
+
+    const [
+        { data: newsletters, error: nlError },
+        { data: intradayNews, error: newsError },
+        { data: trades, error: tradesError },
+        { data: decisions, error: decisionsError },
+        { data: memories, error: memError },
+        { data: futureEvents, error: feError },
+        { data: marketFeeling, error: mfError },
+        { data: cacheRows, error: crError },
+    ] = queryResults;
+
+    const anyQueryError =
+        nlError ||
+        newsError ||
+        tradesError ||
+        decisionsError ||
+        memError ||
+        feError ||
+        mfError ||
+        crError;
+    if (anyQueryError && !newsletters && !trades && !cacheRows) {
+        if (cachedTodayData) {
+            console.warn(
+                '[TodayData] Database queries returned error; serving last known good cached data',
+            );
+            return cachedTodayData;
+        }
+        throw new Error(
+            `Database query error in fetchTodayData: ${(anyQueryError as Error)?.message || 'query failed'}`,
+        );
+    }
+
+    const result = assembleTodayData(
+        {
+            newsletters,
+            intradayNews,
+            trades,
+            decisions,
+            memories,
+            futureEvents,
+            marketFeelingObj: (marketFeeling?.[0] || null) as MarketFeeling | null,
+            cacheRows,
+        },
+        now,
+        estDateStr,
+        startOfDay,
+    );
 
     cachedTodayData = result;
     cachedLimit = limit;
@@ -386,6 +453,8 @@ export async function fetchTodayData(limit: number = 50, tradesLimit?: number): 
 
     return result;
 }
+
+let cachedMarketFeeling: MarketFeeling | null = null;
 
 export async function fetchLatestMarketFeeling(): Promise<MarketFeeling | null> {
     try {
@@ -398,12 +467,16 @@ export async function fetchLatestMarketFeeling(): Promise<MarketFeeling | null> 
 
         if (error) {
             console.error('Error fetching latest market feeling:', error);
-            return null;
+            return cachedMarketFeeling;
         }
 
-        return (data?.[0] || null) as MarketFeeling | null;
+        const feeling = (data?.[0] || null) as MarketFeeling | null;
+        if (feeling) {
+            cachedMarketFeeling = feeling;
+        }
+        return feeling ?? cachedMarketFeeling;
     } catch (err) {
         console.warn('Network or database timeout fetching latest market feeling:', err);
-        return null;
+        return cachedMarketFeeling;
     }
 }

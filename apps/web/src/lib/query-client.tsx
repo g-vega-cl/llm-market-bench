@@ -2,21 +2,37 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import type * as React from 'react';
 
-function makeQueryClient() {
+export function makeQueryClient() {
     return new QueryClient({
         defaultOptions: {
             queries: {
                 // With SSR, we usually want to set some default staleTime
                 // above 0 to avoid refetching immediately on the client
                 staleTime: 1000 * 60, // 1 minute
-                // Retry on failures up to 3 times with exponential backoff
+                // Retry on failures up to 3 times with exponential backoff and jitter
                 retry: (failureCount, error) => {
-                    // Don't retry on 404s or authentication errors
-                    if (error instanceof Error && error.message.includes('404')) {
-                        return false;
+                    // Don't retry on 4xx client errors (400, 401, 403, 404)
+                    if (error instanceof Error) {
+                        const msg = error.message;
+                        if (
+                            msg.includes('404') ||
+                            msg.includes('401') ||
+                            msg.includes('403') ||
+                            msg.includes('400')
+                        ) {
+                            return false;
+                        }
                     }
                     return failureCount < 3;
                 },
+                retryDelay: (attemptIndex) => {
+                    // Exponential backoff with jitter: 1s, 2s, 4s (+ 0-500ms jitter, max 10s)
+                    const baseDelay = Math.min(1000 * 2 ** attemptIndex, 10000);
+                    const jitter = Math.random() * 500;
+                    return baseDelay + jitter;
+                },
+                // Automatically refetch when network reconnects (TanStack default)
+                refetchOnReconnect: true,
                 // Show error in UI but don't throw
                 throwOnError: false,
                 // Add a timeout for queries

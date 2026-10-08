@@ -203,36 +203,49 @@ export async function fetchConcepts(options?: { forceFresh?: boolean }): Promise
     }
 
     const supabase = getSupabaseServerClient();
-    const [conceptsResp, radarResp] = await Promise.all([
-        supabase
-            .from('concept_metrics')
-            .select(
-                'id, concept_name, pca_x, pca_y, mention_count, velocity_score, first_mention_at, last_mention_at',
-            )
-            .not('pca_x', 'is', null)
-            .limit(1000),
-        supabase
-            .from('catalyst_radar')
-            .select(
-                'concept_id, catalyst_id, catalyst_title, target_date, impact, similarity, memory_content, related_tickers',
-            )
-            .order('velocity_score', { ascending: false })
-            .limit(300),
-    ]);
+    try {
+        const [conceptsResp, radarResp] = await Promise.all([
+            supabase
+                .from('concept_metrics')
+                .select(
+                    'id, concept_name, pca_x, pca_y, mention_count, velocity_score, first_mention_at, last_mention_at',
+                )
+                .not('pca_x', 'is', null)
+                .limit(1000),
+            supabase
+                .from('catalyst_radar')
+                .select(
+                    'concept_id, catalyst_id, catalyst_title, target_date, impact, similarity, memory_content, related_tickers',
+                )
+                .order('velocity_score', { ascending: false })
+                .limit(300),
+        ]);
 
-    if (conceptsResp.error) {
-        console.error('Error fetching concepts:', conceptsResp.error);
-        return [];
+        if (conceptsResp.error) {
+            console.error('Error fetching concepts:', conceptsResp.error);
+            if (cachedConcepts) {
+                console.warn('[Concepts] Fetch error; serving last known good cached concepts');
+                return cachedConcepts;
+            }
+            throw new Error(`Failed to fetch concepts: ${conceptsResp.error.message}`);
+        }
+
+        const concepts = (conceptsResp.data || []) as Concept[];
+        const radarRows = (radarResp.data || []) as RadarRow[];
+
+        mapCatalystsToConcepts(concepts, radarRows, new Date());
+
+        cachedConcepts = concepts;
+        lastConceptsFetchTime = nowTime;
+        return concepts;
+    } catch (err) {
+        console.warn('Network error fetching concepts:', err);
+        if (cachedConcepts) {
+            console.warn('[Concepts] Fetch exception; serving last known good cached concepts');
+            return cachedConcepts;
+        }
+        throw err instanceof Error ? err : new Error(`Failed to fetch concepts: ${String(err)}`);
     }
-
-    const concepts = (conceptsResp.data || []) as Concept[];
-    const radarRows = (radarResp.data || []) as RadarRow[];
-
-    mapCatalystsToConcepts(concepts, radarRows, new Date());
-
-    cachedConcepts = concepts;
-    lastConceptsFetchTime = nowTime;
-    return concepts;
 }
 
 export async function fetchConceptMemories(conceptId: string): Promise<ConceptMemory[]> {

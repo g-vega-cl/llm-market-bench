@@ -1,6 +1,6 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
 import { PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
 import { fetchLeaderboard } from '../api/fetch-leaderboard';
@@ -31,6 +31,7 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
         queryFn: () => getLeaderboardFn({ data: timeframe }),
         initialData: timeframe === 30 ? initialData : undefined,
         refetchOnWindowFocus: false,
+        placeholderData: keepPreviousData,
     });
 
     const handleToggleSelectModel = (modelName: string) => {
@@ -93,7 +94,7 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                 </div>
 
                 {/* Loading state indicator */}
-                {isLoading ? (
+                {isLoading && models.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-4">
                         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent" />
                         <p className="text-sm text-zinc-500 font-mono">

@@ -433,4 +433,95 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(result.intradayNews[0].jev_choice).toBe('MARKET_MOVING');
         expect(result.intradayNews[0].formattedTime).toBeDefined();
     });
+
+    it('returns previous cached data instead of empty payload when a new fetch fails due to network or database error', async () => {
+        const mockNews = [
+            {
+                id: 'news-1',
+                headline: 'Cached News Headline',
+                summary: 'Discussion.',
+                source: 'Benzinga Wire',
+                url: 'https://example.com/cached',
+                tickers: ['SPY'],
+                event_timestamp: '2026-10-05T14:30:00Z',
+                jev_choice: 'MARKET_MOVING',
+                jev_confidence: 90.0,
+                source_id_hash: 'hash_cached_1',
+                created_at: '2026-10-05T14:32:00Z',
+            },
+        ];
+
+        let shouldFail = false;
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => {
+                    if (shouldFail) {
+                        return Promise.reject(new Error('Network error: connection lost'));
+                    }
+                    if (table === 'intraday_market_news') {
+                        return Promise.resolve({ data: mockNews, error: null });
+                    }
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                in: vi.fn().mockImplementation(() => {
+                    if (shouldFail) {
+                        return Promise.reject(new Error('Network error: connection lost'));
+                    }
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        // 1. Prime the cache with initial successful fetch (limit 5)
+        const initialResult = await fetchTodayData(5);
+        expect(initialResult.intradayNews).toHaveLength(1);
+        expect(initialResult.intradayNews[0].headline).toBe('Cached News Headline');
+
+        // 2. Now simulate network disconnection and request limit 50 (bypassing in-memory limit check)
+        shouldFail = true;
+        const fallbackResult = await fetchTodayData(50);
+
+        // MUST return the cached data from step 1 instead of erasing it with empty array []
+        expect(fallbackResult.intradayNews).toHaveLength(1);
+        expect(fallbackResult.intradayNews[0].headline).toBe('Cached News Headline');
+
+        // 3. Verify internal cache was NOT overwritten with empty arrays
+        const cachedCheck = await fetchTodayData(5);
+        expect(cachedCheck.intradayNews).toHaveLength(1);
+        expect(cachedCheck.intradayNews[0].headline).toBe('Cached News Headline');
+    });
+
+    it('throws an error on cold start failure when no cached data exists', async () => {
+        const fromSpy = vi.fn().mockImplementation(() => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => {
+                    return Promise.reject(new Error('Network error: no connection on cold start'));
+                }),
+                in: vi.fn().mockImplementation(() => {
+                    return Promise.reject(new Error('Network error: no connection on cold start'));
+                }),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        // Cold start with no cache: should throw to allow React Query retry loop
+        await expect(fetchTodayData(50)).rejects.toThrow(
+            'Network error: no connection on cold start',
+        );
+    });
 });

@@ -53,6 +53,9 @@ export function getSystemPortfolioSubtitle(ownerId: string): string | undefined 
     if (SYSTEM_PORTFOLIO_SUBTITLES[ownerId]) {
         return SYSTEM_PORTFOLIO_SUBTITLES[ownerId];
     }
+    if (ownerId.startsWith('sys-daily-tlt-close-')) {
+        return 'Daily 20+ Year Treasury Bond Trader (3:50 PM Exit)';
+    }
     if (ownerId.startsWith('sys-daily-spy-close-')) {
         return 'Daily S&P 500 Close Trader (3:50 PM Exit)';
     }

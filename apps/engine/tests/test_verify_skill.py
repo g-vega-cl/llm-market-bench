@@ -43,3 +43,21 @@ def test_verify_entity_md_documents_wiki_update():
 
     assert "--write-wiki" in content or "hotspots" in content
     assert "qmd" in content or "auto-index" in content
+
+
+def test_verify_skill_mandates_typecheck_and_supabase_parity():
+    """Verify that SKILL.md and wiki entity explicitly mandate TypeScript typecheck and remote Supabase parity."""
+    assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
+    skill_content = VERIFY_SKILL_MD.read_text()
+    assert "typecheck" in skill_content, "SKILL.md must mandate pnpm run typecheck"
+    assert "supabase db push" in skill_content or "remote Supabase" in skill_content, (
+        "SKILL.md must mandate remote Supabase state parity"
+    )
+
+    assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
+    entity_content = VERIFY_ENTITY_MD.read_text()
+    assert "typecheck" in entity_content, "wiki/entities/verify-skill.md must document typecheck mandate"
+    assert "supabase db push" in entity_content or "remote Supabase" in entity_content, (
+        "wiki/entities/verify-skill.md must document remote Supabase state parity"
+    )
+

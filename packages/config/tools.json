@@ -128,6 +128,10 @@
     "desc": "Sector bellwether reports, margin surprises, and unannounced peers"
   },
   {
+    "name": "get_treasury_yield_curve",
+    "desc": "Live US Treasury benchmark yields (3M, 2Y, 5Y, 10Y, 30Y) with 1d basis point changes and slope spreads"
+  },
+  {
     "name": "get_yield_curve_regime",
     "desc": "Classifies US Treasury yield curve slope into 4 macro monetary regimes (Bull/Bear Steepener/Flattener)"
   },

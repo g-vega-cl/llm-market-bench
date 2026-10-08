@@ -73,8 +73,9 @@ Audit all changed files through these six tiers. Do not skip any tier.
 
 ### Tier 2. Build and type integrity
 
-1. **TypeScript compilation**:
+1. **TypeScript compilation & typecheck enforcement**:
    - `pnpm run typecheck` passes with zero type errors.
+   - **Mandatory for web modifications**: Neither `pnpm test` (Vitest) nor `pnpm biome check` executes type checking. They transpile code and run runtime checks, stripping TypeScript types without checking compatibility. You MUST run `cd apps/web && pnpm run typecheck` (or `pnpm run build`) whenever any `.ts` or `.tsx` file is created or modified.
    - No `any` escapes or unsafe type assertions on external API payloads.
 2. **Web production build**:
    - `pnpm run build` succeeds without bundle errors or missing environment variable crashes.
@@ -112,8 +113,10 @@ Audit all changed files through these six tiers. Do not skip any tier.
    - Enforce trade idempotency on re-evaluations.
    - Enforce FIFO lot matching on positions.
    - Prevent accidental short positions when submitting exit SELL orders.
-5. **Database migration RLS enforcement**:
-   - Any new table created in `supabase/migrations/*.sql` must explicitly include `ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;`.
+5. **Database migration, RLS, and remote Supabase state parity**:
+   - *RLS enforcement*: Any new table created in `supabase/migrations/*.sql` must explicitly include `ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;`.
+   - *Remote migration push check*: When modifying or adding SQL files in `supabase/migrations/`, verify whether the remote Supabase project has been updated via `supabase db push --linked`.
+   - *System portfolio & entity online verification*: When adding or updating system portfolios (`sys-*`) or baseline benchmark models, run a live read-only verification probe against remote Supabase (via diagnostic scratch script) to ensure initial records are provisioned in the remote `portfolios` table with initial cash balances and Reg T metrics before deployment.
 6. **Tool definition parity**:
    - When introducing or altering tools, keep all four locations synchronized:
      1. `packages/config/tools.json`
@@ -154,8 +157,8 @@ Conclude every verification run with a concise status report:
 | Tier | Area | Result | Notes / Action Items |
 | :--- | :--- | :--- | :--- |
 | **Tier 1** | Static hygiene, LOC ceilings & hotspots | PASS / FAIL | Zero Ruff/Biome warnings; hotspot risk verified |
-| **Tier 2** | Builds & types | PASS / FAIL | TypeScript and production build status |
+| **Tier 2** | Builds & types | PASS / FAIL | TypeScript typecheck (`tsc --noEmit`) and production build status |
 | **Tier 3** | Hermetic tests & coverage | PASS / FAIL | Pytest / Vitest passing; coverage numbers |
-| **Tier 4** | Domain & API sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity |
+| **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, remote Supabase state |
 | **Tier 5** | Architecture & UI/UX | PASS / FAIL | Zero frontend compute, design system, layout |
 | **Tier 6** | Observability | PASS / FAIL | logger.exception used, zero swallowed exceptions |

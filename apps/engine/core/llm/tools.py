@@ -79,6 +79,9 @@ from tools.macro import (
     execute_get_today_economic_releases_tool as execute_get_today_economic_releases_tool,
 )
 from tools.macro import (
+    execute_get_treasury_yield_curve_tool as execute_get_treasury_yield_curve_tool,
+)
+from tools.macro import (
     execute_get_volatility_index_details_tool as execute_get_volatility_index_details_tool,
 )
 from tools.macro import (
@@ -1141,6 +1144,23 @@ GET_OPTION_CHAIN_TOOL = {
     },
 }
 
+GET_TREASURY_YIELD_CURVE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_treasury_yield_curve",
+        "description": (
+            "Fetch live US Treasury benchmark yields across the curve (3M, 2Y, 5Y, 10Y, 30Y) with 1-day basis-point "
+            "changes and key slope spreads (10Y-2Y, 10Y-3M, 30Y-10Y). Indispensable for assessing interest rate "
+            "expectations, bond market direction, and duration risk."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
 GET_YIELD_CURVE_REGIME_TOOL = {
     "type": "function",
     "function": {
@@ -1795,6 +1815,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_pead_candidates": GET_PEAD_CANDIDATES_TOOL,
     "get_earnings_revisions": GET_EARNINGS_REVISIONS_TOOL,
     "get_sector_bellwethers": GET_SECTOR_BELLWETHERS_TOOL,
+    "get_treasury_yield_curve": GET_TREASURY_YIELD_CURVE_TOOL,
     "get_yield_curve_regime": GET_YIELD_CURVE_REGIME_TOOL,
     "get_options_vol_surface": GET_OPTIONS_VOL_SURFACE_TOOL,
     "track_thesis_pillars": TRACK_THESIS_PILLARS_TOOL,

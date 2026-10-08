@@ -277,11 +277,6 @@ async def evaluate_daily_predictions(
         # Optional: trigger systematic daily SPY trader portfolio backfill if explicitly enabled
         if backfill_trades:
             try:
-                from execution.daily_trading import (
-                    execute_system_daily_close_trade,
-                    execute_system_daily_trade,
-                )
-
                 intraday_data = {
                     "open_price": open_p,
                     "high_price": high_p,
@@ -289,14 +284,24 @@ async def evaluate_daily_predictions(
                     "close_price": close_p,
                     "intraday_hit": intraday_hit,
                 }
-                # Only execute target-exit trade if the model provides an explicit profit target percentage.
-                trade_coros = []
-                pred_model = str(pred.get("model_name", "")).lower()
-                target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
-                if "jev" not in pred_model and target_pct > 0.0:
-                    trade_coros.append(execute_system_daily_trade(prediction=pred, intraday_data=intraday_data))
-                trade_coros.append(execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data))
-                await asyncio.gather(*trade_coros)
+                if ticker.upper() == "TLT":
+                    from execution.daily_bond_trading import execute_system_daily_bond_close_trade
+
+                    await execute_system_daily_bond_close_trade(prediction=pred, intraday_data=intraday_data)
+                else:
+                    from execution.daily_trading import (
+                        execute_system_daily_close_trade,
+                        execute_system_daily_trade,
+                    )
+
+                    # Only execute target-exit trade if the model provides an explicit profit target percentage.
+                    trade_coros = []
+                    pred_model = str(pred.get("model_name", "")).lower()
+                    target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
+                    if "jev" not in pred_model and target_pct > 0.0:
+                        trade_coros.append(execute_system_daily_trade(prediction=pred, intraday_data=intraday_data))
+                    trade_coros.append(execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data))
+                    await asyncio.gather(*trade_coros)
             except Exception as e:
                 logger.exception(f"Failed to execute system daily trade for prediction {pred_id}: {e}")
 

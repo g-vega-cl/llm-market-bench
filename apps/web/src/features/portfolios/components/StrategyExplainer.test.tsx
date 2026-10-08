@@ -83,6 +83,15 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/0.02% Liquid Friction/i)).toBeInTheDocument();
     });
 
+    it('renders daily TLT bond close exit explainer', () => {
+        render(<StrategyExplainer ownerId="sys-daily-tlt-close-gpt-5.6-luna" />);
+        expect(
+            screen.getByText('Daily 20+ Year Treasury Bond Trader (TLT Close Exit)'),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/Duration Hold-to-Close/i)).toBeInTheDocument();
+        expect(screen.getByText(/Fixed Income Duration/i)).toBeInTheDocument();
+    });
+
     it('renders future forces explainer for sys-future-forces', () => {
         render(<StrategyExplainer ownerId="sys-future-forces" />);
         expect(

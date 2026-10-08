@@ -146,6 +146,14 @@ def test_handle_daily_predictor_dispatches():
         mock_run.assert_awaited_once_with(ticker="QQQ", force=True)
 
 
+def test_handle_daily_predictor_dispatches_tlt():
+    """Verify handle_daily_predictor invokes run_daily_bond_prediction when ticker is TLT."""
+    with patch("tasks.bond_predictor.run_daily_bond_prediction", new_callable=AsyncMock) as mock_run:
+        args = argparse.Namespace(ticker="TLT", force=True)
+        handle_daily_predictor(args)
+        mock_run.assert_awaited_once_with(ticker="TLT", force=True)
+
+
 def test_handle_evaluate_daily_predictions_dispatches():
     """Verify handle_evaluate_daily_predictions invokes evaluate_daily_predictions."""
     with patch("tasks.evaluate_daily_predictions.evaluate_daily_predictions", new_callable=AsyncMock) as mock_run:
@@ -232,6 +240,21 @@ def test_handle_daily_trade_actions_dispatches():
         # Exit
         handle_daily_trade(argparse.Namespace(action="exit", target_date=None, dry_run=False))
         mock_exit.assert_awaited_once()
+
+
+def test_handle_daily_trade_tlt_dispatches():
+    """Verify handle_daily_trade routes TLT to execution.daily_bond_trading."""
+    with (
+        patch("execution.daily_bond_trading.execute_daily_bond_moo_entries", new_callable=AsyncMock) as mock_bond_entry,
+        patch("execution.daily_bond_trading.execute_daily_bond_close_exits", new_callable=AsyncMock) as mock_bond_exit,
+    ):
+        # Entry
+        handle_daily_trade(argparse.Namespace(action="entry", target_date="2026-10-07", dry_run=False, ticker="TLT"))
+        mock_bond_entry.assert_awaited_once_with(target_date="2026-10-07", dry_run=False)
+
+        # Exit
+        handle_daily_trade(argparse.Namespace(action="exit", target_date="2026-10-07", dry_run=False, ticker="TLT"))
+        mock_bond_exit.assert_awaited_once_with(target_date="2026-10-07", dry_run=False)
 
 
 def test_handle_frontier_tech_dispatches():

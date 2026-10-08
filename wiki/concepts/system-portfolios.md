@@ -46,8 +46,15 @@ System portfolios are automated, rule-based investment and trading strategies th
   - **Live MOO Entry**: Pre-market Market-On-Open (OPG) market orders submitted to Alpaca before 9:28 AM ET via `daily-trade --action entry` in `.github/workflows/daily-predictor.yml`. For `UP` predictions, active holdings are tracked in `portfolio_positions`. For `DOWN` predictions, virtual `SHORT` trades are logged in the `trades` table.
   - **Profit Target Exit**: At ~9:35 AM ET (post-open ingestion hook), a limit sell order is submitted to Alpaca at the profit target price ($P_{open} \times (1 + \text{expected\_return\_pct} / 100)$). If touched intraday, Alpaca fills the limit order.
   - **Time-Based Exit**: Unfilled target limit orders are cancelled and remaining open positions are liquidated at ~3:30 PM ET during the afternoon ingestion run (`daily-trade --action exit`), realizing PnL with zero retroactive backfilling.
-- **Idempotency Guardrails**: Re-evaluation runs cleanly check existing cycle trades to prevent double-buy compounding.
 - **Trigger**: Pre-market entry in `.github/workflows/daily-predictor.yml`, target order placement at 9:35 AM in `main.py run_ingest`, and afternoon liquidation at 3:30 PM in `main.py run_ingest`.
+
+### 4b. Daily 20+ Year Treasury Bond Trader (`sys-daily-tlt-close-{model}`)
+- **Signal**: Daily 9:30 AM – 4:00 PM ET fixed income predictions (`UP` or `DOWN`, `confidence`, `expected_return_pct`) from `daily_predictions` table (ticker='TLT') produced by `apps/engine/tasks/bond_predictor.py`.
+- **Target Asset**: `TLT` (iShares 20+ Year Treasury Bond ETF, ~17y duration).
+- **Architecture**: Tool-first, pull-based multi-turn research loop for reasoning models (`gpt-5.6-luna`, `deepseek-v4-flash`) and automated lean tool bundle for `~typesafe/jev-latest`.
+- **Portfolios**: One systematic portfolio per model: `sys-daily-tlt-close-gpt-5.6-luna`, `sys-daily-tlt-close-deepseek-v4-flash`, `sys-daily-tlt-close-jev`.
+- **Position Sizing & Execution**: 100% portfolio equity entered at 9:30 AM open (Long if UP, Short if DOWN) and liquidated at 3:50 PM session close (MOC) with 2 bps (0.02%) liquidity slippage via `apps/engine/execution/daily_bond_trading.py`.
+- **Trigger**: Piggybacked in `.github/workflows/daily-predictor.yml` (`daily-trade --ticker TLT --action entry` and afternoon close exits / evaluation).
 
 ### Idempotency & Timeframe Guardrails
 - **Horizon-Isolated Routing**: Sector predictor predictions are strictly routed to their matching horizon system portfolios: `7d` routes to weekly `sys-sector-ls-consensus`, `30d` routes to monthly `sys-sector-ls-30d`, and `90d` routes to quarterly `sys-sector-ls-90d`. The 4 mechanical sector benchmark portfolios strictly consume weekly trailing metrics. This eliminates cross-timeframe collision while providing systematic benchmark execution across all forecast horizons.

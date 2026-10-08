@@ -6,6 +6,9 @@
 
 ## Entities
 
+- [[entities/treasury-yield-curve-tool]] — no-arg tool returning live US Treasury benchmark yields, 1d bps changes, and curve spreads from FRED
+- [[entities/daily-bond-trading]] — systematic TLT close-exit execution into per-model sys-daily-tlt-close-{model} portfolios
+- [[entities/bond-predictor]] — daily fixed-income open-to-close predictor for TLT (tool-first arena: gpt-5.6-luna, deepseek-v4-flash, Jev)
 - [[entities/earnings-predictor]] — Auto-indexed page
 - [[entities/verify-skill]] — six-tier post-coding verification protocol, runner script, and report format
 - [[entities/whale-holdings]] — Institutional 13F holdings and Schedule 13D/13G blockholder tracker exposed via the `get_whale_holdings` tool
@@ -89,6 +92,7 @@
 
 ## Concepts
 
+- [[concepts/daily-tlt-live-trading]] — the daily duration day-trading loop for TLT: predict, enter at open, exit at close
 - [[concepts/hydration-symmetry]] — forcing explicit locales and shared date helpers so SSR and client renders match
 - [[concepts/wiki-synchronization]] — the mandatory wiki-sync step baked into the verify workflow (hotspot refresh, auto-index, QMD re-embed)
 - [[concepts/risk-adjusted-z-score]] — volatility-normalized weekly scoring formula for auto-research prompt variants

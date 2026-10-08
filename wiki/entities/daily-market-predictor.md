@@ -24,12 +24,18 @@ The context includes:
 
 Routing through `execute_tool` keeps the predictor's background compilations audited with zero Supabase storage quota impact, while the synthesized `daily_predictions.market_context` is preserved for presentation in the web viewer.
 
-## Idempotency
+## Daily Bond Predictor (`TLT`)
 
-`run_daily_prediction` refuses to overwrite existing morning predictions for the same ticker and date unless `force=True` is passed.
+The daily bond predictor (`apps/engine/tasks/bond_predictor.py`) implements a pure tool-first, pull-based architecture for fixed income (enforcing Principle 8: "Provide Tools, Don't Push Data"):
+- **Target Asset**: `TLT` (iShares 20+ Year Treasury Bond ETF, ~17y duration).
+- **Prompt Structure**: Initial prompt injects only lean temporal context (date, session, pre-market quote/overnight gap), omitting bulky context tables.
+- **Autonomous Tool Loop**: Reasoning models (`gpt-5.6-luna`, `deepseek-v4-flash`) pull data dynamically from a curated fixed-income toolbox (`get_treasury_yield_curve`, `get_today_economic_releases`, `get_yield_curve_regime`, `get_macro_options_sentiment`, `get_calendar_scenario_analysis`).
+- **Jev Integration**: Single-turn Decisions API receives an automated lean tool bundle pre-compiled from the yield curve and economic calendar.
+- **Portfolios**: Feeds into systematic close-exit portfolios (`sys-daily-tlt-close-{model}`) executed via `apps/engine/execution/daily_bond_trading.py`.
 
 ## Related
 
+- [[concepts/system-portfolios]]
 - [[entities/tool-audit]]
 - [[entities/tool-registry]]
 - [[concepts/hybrid-database-archival]]

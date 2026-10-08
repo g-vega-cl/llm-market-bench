@@ -5,10 +5,24 @@ import asyncio
 
 
 def handle_daily_predictor(args: argparse.Namespace) -> None:
-    """Run daily prediction pipeline for target ticker."""
-    from tasks.daily_predictor import run_daily_prediction
+    """Run daily prediction pipeline for target ticker (SPY, TLT, or all)."""
+    ticker = getattr(args, "ticker", "SPY") or "SPY"
+    ticker_clean = ticker.strip().upper()
 
-    asyncio.run(run_daily_prediction(ticker=args.ticker, force=args.force))
+    if ticker_clean == "TLT":
+        from tasks.bond_predictor import run_daily_bond_prediction
+
+        asyncio.run(run_daily_bond_prediction(ticker="TLT", force=args.force))
+    elif ticker_clean == "ALL":
+        from tasks.bond_predictor import run_daily_bond_prediction
+        from tasks.daily_predictor import run_daily_prediction
+
+        asyncio.run(run_daily_prediction(ticker="SPY", force=args.force))
+        asyncio.run(run_daily_bond_prediction(ticker="TLT", force=args.force))
+    else:
+        from tasks.daily_predictor import run_daily_prediction
+
+        asyncio.run(run_daily_prediction(ticker=ticker, force=args.force))
 
 
 def handle_evaluate_daily_predictions(args: argparse.Namespace) -> None:

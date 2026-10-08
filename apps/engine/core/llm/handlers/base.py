@@ -192,6 +192,7 @@ TOOL_DISPATCH_TABLE = {
         min_dte=args.get("min_dte"),
         max_dte=args.get("max_dte"),
     ),
+    "get_treasury_yield_curve": lambda ticker, args, mn, kw: tools.execute_get_treasury_yield_curve_tool(),
     "get_yield_curve_regime": lambda ticker, args, mn, kw: tools.execute_yield_curve_regime_tool(),
     "get_options_vol_surface": lambda ticker, args, mn, kw: tools.execute_options_vol_surface_tool(
         ticker=ticker or "SPY"

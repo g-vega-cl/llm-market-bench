@@ -27,15 +27,33 @@ FRED_SERIES_ALIASES: dict[str, dict[str, Any]] = {
         "default_units": "lin",
         "category": "Interest Rates",
     },
-    "treasury_10y": {
-        "series_id": "DGS10",
-        "title": "10-Year Treasury Constant Maturity Rate",
+    "treasury_3m": {
+        "series_id": "DGS3MO",
+        "title": "3-Month Treasury Constant Maturity Rate",
         "default_units": "lin",
         "category": "Bond Yields",
     },
     "treasury_2y": {
         "series_id": "DGS2",
         "title": "2-Year Treasury Constant Maturity Rate",
+        "default_units": "lin",
+        "category": "Bond Yields",
+    },
+    "treasury_5y": {
+        "series_id": "DGS5",
+        "title": "5-Year Treasury Constant Maturity Rate",
+        "default_units": "lin",
+        "category": "Bond Yields",
+    },
+    "treasury_10y": {
+        "series_id": "DGS10",
+        "title": "10-Year Treasury Constant Maturity Rate",
+        "default_units": "lin",
+        "category": "Bond Yields",
+    },
+    "treasury_30y": {
+        "series_id": "DGS30",
+        "title": "30-Year Treasury Constant Maturity Rate",
         "default_units": "lin",
         "category": "Bond Yields",
     },

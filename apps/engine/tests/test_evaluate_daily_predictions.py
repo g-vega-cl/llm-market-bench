@@ -441,3 +441,40 @@ async def test_evaluate_daily_predictions_default_skips_trade_backfill():
         # Neither trade should be backfilled when backfill_trades=False
         mock_target_trade.assert_not_called()
         mock_close_trade.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_evaluate_daily_predictions_routes_tlt_to_bond_close_trade():
+    """Verify evaluate_daily_predictions invokes bond close trade for TLT predictions."""
+    mock_supabase = MagicMock()
+    pending_data = [
+        {
+            "id": "pred-tlt-1",
+            "model_name": "gpt-5.6-luna",
+            "ticker": "TLT",
+            "target_date": "2026-10-07",
+            "predicted_direction": "UP",
+            "confidence": 70.0,
+            "expected_return_pct": 0.5,
+            "status": "pending",
+        }
+    ]
+    mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = pending_data
+
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.evaluate_daily_predictions.fetch_intraday_prices", return_value=(92.0, 93.0, 91.5, 92.8)),
+        patch(
+            "execution.daily_bond_trading.execute_system_daily_bond_close_trade", new_callable=AsyncMock
+        ) as mock_bond_trade,
+        patch("execution.daily_trading.execute_system_daily_trade", new_callable=AsyncMock) as mock_spy_target,
+        patch("execution.daily_trading.execute_system_daily_close_trade", new_callable=AsyncMock) as mock_spy_close,
+        patch("analysis.daily_postmortem.run_daily_postmortem", new_callable=AsyncMock),
+    ):
+        evaluated_count = await evaluate_daily_predictions(
+            target_date="2026-10-07", force_recalc=True, backfill_trades=True
+        )
+        assert evaluated_count == 1
+        mock_bond_trade.assert_called_once()
+        mock_spy_target.assert_not_called()
+        mock_spy_close.assert_not_called()

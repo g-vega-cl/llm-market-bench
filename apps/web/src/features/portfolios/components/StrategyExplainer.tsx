@@ -444,6 +444,34 @@ const DAILY_SPY_CLOSE_CONFIG: ExplainerConfig = {
     ],
 };
 
+const DAILY_TLT_CLOSE_CONFIG: ExplainerConfig = {
+    emoji: '🏛️',
+    title: 'Daily 20+ Year Treasury Bond Trader (TLT Close Exit)',
+    badgeText: 'Duration Hold-to-Close',
+    badgeColorScheme: 'info',
+    subtitle:
+        'Systematic duration day trading on TLT entering at 9:30 AM ET open and liquidating at 3:50 PM ET close based on tool-first macro predictions.',
+    borderColor: 'border-blue-500/20',
+    bgColor: 'bg-blue-950/10',
+    pillars: [
+        {
+            title: '⏱️ 3:50 PM Close Exit',
+            description:
+                'Position is entered at the 9:30 AM open and held until 3:50 PM session close, capturing daily yield curve repricing and macro print drift.',
+        },
+        {
+            title: '📊 Fixed Income Duration',
+            description:
+                'Trades 20+ Year Treasury paper (~17y duration) systematically across Long (UP on rate drop) and Short (DOWN on rate spike) signals.',
+        },
+        {
+            title: '⛽ 0.02% Liquid Friction',
+            description:
+                'Allocates 100% available portfolio cash with tight 0.02% (2 bps) slippage reflecting institutional-grade TLT liquidity.',
+        },
+    ],
+};
+
 function ExplainerCard({ config }: { config: ExplainerConfig }) {
     return (
         <Card
@@ -490,11 +518,13 @@ function ExplainerCard({ config }: { config: ExplainerConfig }) {
 export function StrategyExplainer({ ownerId }: StrategyExplainerProps) {
     const config =
         STRATEGY_CONFIGS[ownerId] ??
-        (ownerId.startsWith('sys-daily-spy-close-')
-            ? DAILY_SPY_CLOSE_CONFIG
-            : ownerId.startsWith('sys-daily-spy-')
-              ? DAILY_SPY_CONFIG
-              : null);
+        (ownerId.startsWith('sys-daily-tlt-close-')
+            ? DAILY_TLT_CLOSE_CONFIG
+            : ownerId.startsWith('sys-daily-spy-close-')
+              ? DAILY_SPY_CLOSE_CONFIG
+              : ownerId.startsWith('sys-daily-spy-')
+                ? DAILY_SPY_CONFIG
+                : null);
 
     if (!config) {
         return null;

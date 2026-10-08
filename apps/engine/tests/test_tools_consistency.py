@@ -40,6 +40,7 @@ from core.llm.tools import (
     GET_TICKER_NEWS_TOOL,
     GET_TODAY_ECONOMIC_RELEASES_TOOL,
     GET_TODAYS_NEWS_MENU_TOOL,
+    GET_TREASURY_YIELD_CURVE_TOOL,
     GET_VERIFIER_REJECTIONS_TOOL,
     GET_VOLATILITY_INDEX_DETAILS_TOOL,
     GET_WHALE_HOLDINGS_TOOL,
@@ -142,6 +143,7 @@ def test_tools_json_matches_engine_tool_definitions():
         RESEARCH_FUTURE_FORCE_TOOL,
         GET_SYSTEM_PORTFOLIOS_TOOL,
         GET_MARKET_MOVING_NEWS_TOOL,
+        GET_TREASURY_YIELD_CURVE_TOOL,
     ]
 
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}

@@ -25,6 +25,7 @@ The table covers market data, options, macro, valuation, screening, research, an
 - `get_catalyst_radar` — high-velocity market concepts paired with upcoming and digesting calendar triggers
 - `analyze_thematic_beneficiaries` — screens second-order winners and thematic beneficiaries via correlation and co-ownership
 - `call_warren_buffett` — value investing analysis, margin of safety, moat quality, debt sanity, and the Munger Inversion test
+- `get_treasury_yield_curve` — US Treasury yields across key tenors (3M, 2Y, 5Y, 10Y, 30Y) and 1-day basis point changes from FRED
 
 ## Related
 

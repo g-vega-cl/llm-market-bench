@@ -16,6 +16,10 @@ from uuid import UUID
 
 from core.config import logger
 from core.db import get_supabase_client
+from execution.daily_bond_trading import (
+    SYS_DAILY_TLT_CLOSE_OWNER_PREFIX,
+    execute_system_daily_bond_close_trade,
+)
 from execution.daily_trading import (
     SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
     SYS_DAILY_SPY_OWNER_PREFIX,
@@ -101,10 +105,14 @@ async def audit_system_portfolios(
             model_name = str(pred.get("model_name", "unknown"))
             exp_ret_raw = pred.get("expected_return_pct")
             target_pct = abs(float(exp_ret_raw)) if exp_ret_raw is not None else 0.0
+            ticker = str(pred.get("ticker", "SPY")).upper()
 
-            target_owners = [f"{SYS_DAILY_SPY_CLOSE_OWNER_PREFIX}{model_name}"]
-            if "jev" not in model_name.lower() and target_pct > 0.0:
-                target_owners.append(f"{SYS_DAILY_SPY_OWNER_PREFIX}{model_name}")
+            if ticker == "TLT":
+                target_owners = [f"{SYS_DAILY_TLT_CLOSE_OWNER_PREFIX}{model_name}"]
+            else:
+                target_owners = [f"{SYS_DAILY_SPY_CLOSE_OWNER_PREFIX}{model_name}"]
+                if "jev" not in model_name.lower() and target_pct > 0.0:
+                    target_owners.append(f"{SYS_DAILY_SPY_OWNER_PREFIX}{model_name}")
 
             for owner_id in target_owners:
                 p = port_by_owner.get(owner_id)
@@ -239,7 +247,7 @@ async def audit_system_portfolios(
                             "executed_at", f"{d}T00:00:00Z"
                         ).lte("executed_at", f"{d}T23:59:59Z").execute()
                         client.table("portfolio_positions").delete().eq("portfolio_id", portfolio_id).eq(
-                            "ticker", "SPY"
+                            "ticker", ticker
                         ).execute()
 
                         # Reset portfolio cash to prior_equity
@@ -248,7 +256,12 @@ async def audit_system_portfolios(
                             {"cash_balance": prior_equity, "total_equity": prior_equity}
                         ).eq("id", portfolio_id).execute()
 
-                        if owner_id.startswith(SYS_DAILY_SPY_CLOSE_OWNER_PREFIX):
+                        if owner_id.startswith(SYS_DAILY_TLT_CLOSE_OWNER_PREFIX):
+                            res = await execute_system_daily_bond_close_trade(
+                                prediction=pred,
+                                intraday_data=intraday_data,
+                            )
+                        elif owner_id.startswith(SYS_DAILY_SPY_CLOSE_OWNER_PREFIX):
                             res = await execute_system_daily_close_trade(
                                 prediction=pred,
                                 intraday_data=intraday_data,

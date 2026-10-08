@@ -21,7 +21,7 @@ def handle_sector_trade(args: argparse.Namespace) -> None:
 
 
 def handle_daily_trade(args: argparse.Namespace) -> None:
-    """Execute daily systematic SPY MOO entries, target orders, or close exits."""
+    """Execute daily systematic MOO entries, target orders, or close exits (SPY, TLT, or all)."""
     from execution.daily_trading import (
         execute_daily_close_exits,
         execute_daily_moo_entries,
@@ -29,13 +29,25 @@ def handle_daily_trade(args: argparse.Namespace) -> None:
     )
 
     log = resolve_dep("logger", logger)
+    ticker = (getattr(args, "ticker", "SPY") or "SPY").strip().upper()
 
     if args.action in ("entry", "open"):
-        asyncio.run(execute_daily_moo_entries(target_date=args.target_date, dry_run=args.dry_run))
+        if ticker in ("TLT", "ALL"):
+            from execution.daily_bond_trading import execute_daily_bond_moo_entries
+
+            asyncio.run(execute_daily_bond_moo_entries(target_date=args.target_date, dry_run=args.dry_run))
+        if ticker in ("SPY", "ALL"):
+            asyncio.run(execute_daily_moo_entries(target_date=args.target_date, dry_run=args.dry_run))
     elif args.action == "target-orders":
-        asyncio.run(place_daily_target_limit_orders(target_date=args.target_date, dry_run=args.dry_run))
+        if ticker in ("SPY", "ALL"):
+            asyncio.run(place_daily_target_limit_orders(target_date=args.target_date, dry_run=args.dry_run))
     elif args.action in ("exit", "close"):
-        asyncio.run(execute_daily_close_exits(target_date=args.target_date, dry_run=args.dry_run))
+        if ticker in ("TLT", "ALL"):
+            from execution.daily_bond_trading import execute_daily_bond_close_exits
+
+            asyncio.run(execute_daily_bond_close_exits(target_date=args.target_date, dry_run=args.dry_run))
+        if ticker in ("SPY", "ALL"):
+            asyncio.run(execute_daily_close_exits(target_date=args.target_date, dry_run=args.dry_run))
     else:
         log.error(f"Unknown action '{args.action}' for daily-trade.")
 

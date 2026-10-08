@@ -103,6 +103,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 49. **get_market_moving_news**: Fetches today's live intraday market-moving catalysts, breaking news, and scheduled macro releases vetted by Jev AI.
 50. **get_insider_trades**: Retrieves corporate insider trading disclosures (SEC Form 4) for C-suite executives, directors, and 10%+ owners with transaction types, net volume, and filing dates.
 51. **get_whale_holdings**: Retrieves institutional whale holdings, Schedule 13D/13G (>5% owners) blockholders for a stock, and Form 13F portfolio holdings for major funds.
+52. **get_treasury_yield_curve**: Retrieves US Treasury yields across key tenors (3M, 2Y, 5Y, 10Y, 30Y) and 1-day basis point changes from FRED.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 

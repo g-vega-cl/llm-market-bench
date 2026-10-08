@@ -231,3 +231,89 @@ async def execute_get_today_economic_releases_tool(
     except Exception as e:
         logger.exception("Error executing get_today_economic_releases tool: %s", e)
         return f"Error retrieving economic releases: {str(e)}"
+
+
+async def execute_get_treasury_yield_curve_tool() -> str:
+    """Executes the get_treasury_yield_curve tool to fetch live Treasury benchmark yields and basis-point shifts."""
+    import asyncio
+
+    from core.fred import fetch_fred_series_observations
+
+    tenors = [
+        ("3-Month", "treasury_3m", "DGS3MO"),
+        ("2-Year", "treasury_2y", "DGS2"),
+        ("5-Year", "treasury_5y", "DGS5"),
+        ("10-Year", "treasury_10y", "DGS10"),
+        ("30-Year", "treasury_30y", "DGS30"),
+    ]
+
+    try:
+        tasks = [fetch_fred_series_observations(alias, lookback_periods=2) for _, alias, _ in tenors]
+        tasks.append(fetch_fred_series_observations("yield_curve_10y2y", lookback_periods=2))
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        tenor_results = results[:-1]
+        spread_10y2y_res = results[-1]
+
+        as_of_date = "N/A"
+        rows = []
+        yields_by_tenor: dict[str, float | None] = {}
+
+        for (label, _, fallback_id), res in zip(tenors, tenor_results, strict=False):
+            if isinstance(res, dict) and res.get("observations"):
+                obs = res["observations"]
+                curr_val = obs[-1].get("value")
+                as_of_date = obs[-1].get("date", as_of_date)
+                yields_by_tenor[label] = curr_val
+
+                if len(obs) >= 2 and obs[-2].get("value") is not None and curr_val is not None:
+                    diff = curr_val - obs[-2]["value"]
+                    diff_bps = diff * 100.0
+                    sign = "+" if diff_bps > 0 else ""
+                    change_str = f"{sign}{diff_bps:.1f} bps"
+                else:
+                    change_str = "-"
+
+                val_str = f"{curr_val:.2f}%" if curr_val is not None else "N/A"
+                series_code = res.get("series_id", fallback_id)
+                rows.append(f"| {label} (`{series_code}`) | {val_str} | {change_str} |")
+            else:
+                rows.append(f"| {label} (`{fallback_id}`) | N/A | - |")
+
+        lines = [
+            "### 📈 US Treasury Yield Curve Snapshot",
+            f"- **As of Date**: {as_of_date}",
+            "",
+            "| Tenor | Yield (%) | 1D Change (bps) |",
+            "| :--- | :---: | :---: |",
+        ]
+        lines.extend(rows)
+        lines.append("")
+
+        # Slope & Spreads
+        lines.append("**Key Curve Spreads & Slope**:")
+        y10 = yields_by_tenor.get("10-Year")
+        y2 = yields_by_tenor.get("2-Year")
+        y3m = yields_by_tenor.get("3-Month")
+        y30 = yields_by_tenor.get("30-Year")
+
+        if y10 is not None and y2 is not None:
+            s_10_2 = (y10 - y2) * 100.0
+            regime = "Inverted" if s_10_2 < 0 else "Normal / Upward Sloping"
+            lines.append(f"- **10Y - 2Y Spread**: {s_10_2:+.1f} bps ({regime})")
+        elif isinstance(spread_10y2y_res, dict) and spread_10y2y_res.get("latest_value") is not None:
+            s_val = spread_10y2y_res["latest_value"] * 100.0
+            lines.append(f"- **10Y - 2Y Spread (T10Y2Y)**: {s_val:+.1f} bps")
+
+        if y10 is not None and y3m is not None:
+            s_10_3m = (y10 - y3m) * 100.0
+            lines.append(f"- **10Y - 3M Spread**: {s_10_3m:+.1f} bps")
+
+        if y30 is not None and y10 is not None:
+            s_30_10 = (y30 - y10) * 100.0
+            lines.append(f"- **30Y - 10Y (Long-End Slope)**: {s_30_10:+.1f} bps")
+
+        return "\n".join(lines)
+    except Exception as e:
+        logger.exception("Error executing get_treasury_yield_curve tool: %s", e)
+        return f"Error retrieving Treasury yield curve: {str(e)}"

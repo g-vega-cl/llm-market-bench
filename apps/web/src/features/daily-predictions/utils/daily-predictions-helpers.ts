@@ -13,13 +13,19 @@ export const DEFAULT_DAILY_PREDICTOR_TOOLS = [
     'get_premarket_quote',
 ];
 
+import modelsConfig from '@repo/config/models.json';
+
+export type SupportedDailyTicker = 'SPY' | 'TLT';
+
 export interface ModelConfig {
     id: string;
     label: string;
     matches: (modelName: string) => boolean;
 }
 
-export const PREDICTOR_MODELS: ModelConfig[] = [
+const OPENAI_MODEL_ID = (modelsConfig as { OPENAI_MODEL?: string }).OPENAI_MODEL || 'gpt-5.6-luna';
+
+export const SPY_PREDICTOR_MODELS: ModelConfig[] = [
     {
         id: 'deepseek-v4-flash',
         label: 'DeepSeek Flash',
@@ -36,6 +42,33 @@ export const PREDICTOR_MODELS: ModelConfig[] = [
         matches: (m: string) => m.toLowerCase().includes('jev'),
     },
 ];
+
+export const BOND_PREDICTOR_MODELS: ModelConfig[] = [
+    {
+        id: OPENAI_MODEL_ID,
+        label: 'GPT-5.6 Luna',
+        matches: (m: string) =>
+            m.toLowerCase().includes('gpt-5.6') ||
+            m.toLowerCase().includes('luna') ||
+            m.toLowerCase().includes('openai'),
+    },
+    {
+        id: 'deepseek-v4-flash',
+        label: 'DeepSeek Flash',
+        matches: (m: string) => m.toLowerCase().includes('deepseek'),
+    },
+    {
+        id: '~typesafe/jev-latest',
+        label: 'Jev (TypeSafe)',
+        matches: (m: string) => m.toLowerCase().includes('jev'),
+    },
+];
+
+export const PREDICTOR_MODELS: ModelConfig[] = SPY_PREDICTOR_MODELS;
+
+export function getPredictorModelsForTicker(ticker: SupportedDailyTicker): ModelConfig[] {
+    return ticker === 'TLT' ? BOND_PREDICTOR_MODELS : SPY_PREDICTOR_MODELS;
+}
 
 export function computeDailyPredictionStats(predictions: DailyPrediction[]) {
     const evaluatedPredictions = predictions.filter((p) => p.status === 'evaluated');

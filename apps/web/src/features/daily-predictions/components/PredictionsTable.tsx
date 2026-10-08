@@ -137,9 +137,9 @@ function PredictionTableRowItem({
                     {p.predicted_direction}
                 </TableCell>
                 <TableCell>{p.confidence}%</TableCell>
-                <TableCell>{p.open_price !== null ? `$${p.open_price.toFixed(2)}` : '-'}</TableCell>
+                <TableCell>{p.open_price != null ? `$${p.open_price.toFixed(2)}` : '-'}</TableCell>
                 <TableCell>
-                    {p.close_price !== null ? `$${p.close_price.toFixed(2)}` : '-'}
+                    {p.close_price != null ? `$${p.close_price.toFixed(2)}` : '-'}
                 </TableCell>
                 <TableCell className="font-semibold">{p.actual_direction || '-'}</TableCell>
                 <TableCell>

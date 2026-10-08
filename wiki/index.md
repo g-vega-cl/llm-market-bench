@@ -94,6 +94,7 @@
 
 ## Concepts
 
+- [[concepts/unified-daily-predictor]] — single page serving both SPY and TLT prediction arenas via an asset switcher
 - [[concepts/cumulative-layout-shift]] — Auto-indexed page
 - [[concepts/daily-tlt-live-trading]] — the daily duration day-trading loop for TLT: predict, enter at open, exit at close
 - [[concepts/hydration-symmetry]] — forcing explicit locales and shared date helpers so SSR and client renders match

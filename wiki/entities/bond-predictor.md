@@ -33,6 +33,10 @@ For the tool-loop models, the final structured prediction is extracted with an i
 
 `run_daily_bond_prediction` refuses to run after 09:30 ET or before 04:00 ET, skips non-trading days, and skips when predictions already exist for the target ticker/date unless `force=True`. Successful predictions are persisted to the `daily_predictions` table with `ticker='TLT'`, `status='pending'`, and a `prompt_variant_tag` of `pull-bond-{model}`. The CLI routes here via `main.py daily-predictor --ticker TLT`; `--ticker ALL` runs SPY and TLT in sequence.
 
+## Web Presentation
+
+TLT predictions are presented in the unified Daily Predictor interface (`apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx`, `/daily-predictions?ticker=TLT`). An asset segment toggle allows switching between S&P 500 (SPY) and 20+ Year Treasuries (TLT), dynamically rendering the bond arena models (`gpt-5.6-luna`, `deepseek-v4-flash`, `~typesafe/jev-latest`) with GPT-5.6 Luna selected as the default.
+
 ## Related
 
 - [[entities/daily-market-predictor]] — the SPY equity sibling

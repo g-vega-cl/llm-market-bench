@@ -9,6 +9,7 @@ import {
     getActiveBadge,
     getDeltaColor,
     getMilestoneSubtitle,
+    getPredictorModelsForTicker,
     getSidebarStatusBadge,
     PREDICTOR_MODELS,
     resolveActiveDailyPrompt,
@@ -26,6 +27,22 @@ describe('daily-predictions-helpers', () => {
 
         const jev = PREDICTOR_MODELS[2];
         expect(jev.matches('~typesafe/jev-latest')).toBe(true);
+    });
+
+    it('defines getPredictorModelsForTicker with SPY and TLT models', () => {
+        const spyModels = getPredictorModelsForTicker('SPY');
+        expect(spyModels).toHaveLength(3);
+        expect(spyModels[0].id).toBe('deepseek-v4-flash');
+        expect(spyModels[1].id).toBe('MiniMax-M3');
+        expect(spyModels[2].id).toBe('~typesafe/jev-latest');
+
+        const bondModels = getPredictorModelsForTicker('TLT');
+        expect(bondModels).toHaveLength(3);
+        expect(bondModels[0].id).toBe('gpt-5.6-luna');
+        expect(bondModels[0].label).toBe('GPT-5.6 Luna');
+        expect(bondModels[0].matches('gpt-5.6-luna')).toBe(true);
+        expect(bondModels[1].id).toBe('deepseek-v4-flash');
+        expect(bondModels[2].id).toBe('~typesafe/jev-latest');
     });
 
     it('defines DEFAULT_DAILY_PREDICTOR_TOOLS', () => {

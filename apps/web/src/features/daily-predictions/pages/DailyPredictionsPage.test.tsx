@@ -742,4 +742,128 @@ You MUST return a valid JSON object.`,
         ).toBeInTheDocument();
         expect(screen.getByText('Assumed relief bid would fade.')).toBeInTheDocument();
     });
+
+    it('renders asset switcher tabs and allows switching between SPY and TLT', () => {
+        const spyPrediction: DailyPrediction = {
+            id: 'pred-spy-1',
+            prediction_date: '2026-10-08',
+            target_date: '2026-10-08',
+            ticker: 'SPY',
+            model_name: 'deepseek-v4-flash',
+            predicted_direction: 'UP',
+            confidence: 75.0,
+            open_price: 570.0,
+            close_price: 574.0,
+            actual_direction: 'UP',
+            status: 'evaluated',
+            is_correct: true,
+            intraday_hit: true,
+            brier_score: 0.0625,
+            created_at: '2026-10-08T08:00:00Z',
+            updated_at: '2026-10-08T16:05:00Z',
+        } as DailyPrediction;
+
+        const bondPredictionLuna: DailyPrediction = {
+            id: 'pred-tlt-luna-1',
+            prediction_date: '2026-10-08',
+            target_date: '2026-10-08',
+            ticker: 'TLT',
+            model_name: 'gpt-5.6-luna',
+            predicted_direction: 'DOWN',
+            confidence: 82.0,
+            open_price: 92.5,
+            close_price: 91.8,
+            actual_direction: 'DOWN',
+            status: 'evaluated',
+            is_correct: true,
+            intraday_hit: true,
+            brier_score: 0.0324,
+            created_at: '2026-10-08T08:00:00Z',
+            updated_at: '2026-10-08T16:05:00Z',
+        } as DailyPrediction;
+
+        const bondPredictionDeepseek: DailyPrediction = {
+            id: 'pred-tlt-ds-1',
+            prediction_date: '2026-10-08',
+            target_date: '2026-10-08',
+            ticker: 'TLT',
+            model_name: 'deepseek-v4-flash',
+            predicted_direction: 'UP',
+            confidence: 60.0,
+            open_price: 92.5,
+            close_price: 91.8,
+            actual_direction: 'DOWN',
+            status: 'evaluated',
+            is_correct: false,
+            intraday_hit: false,
+            brier_score: 0.36,
+            created_at: '2026-10-08T08:00:00Z',
+            updated_at: '2026-10-08T16:05:00Z',
+        } as DailyPrediction;
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={[spyPrediction, bondPredictionLuna, bondPredictionDeepseek]}
+                experiments={[]}
+            />,
+        );
+
+        // Verify Asset Switcher exists and default is SPY
+        expect(screen.getByRole('button', { name: /S&P 500 \(SPY\)/i })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /20\+ Year Treasuries \(TLT\)/i }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Daily S&P Market Predictor')).toBeInTheDocument();
+
+        // SPY models should be visible, and DeepSeek count should be 1 (only the SPY prediction)
+        expect(screen.getByRole('button', { name: /DeepSeek Flash \(1\)/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /MiniMax M3 \(0\)/i })).toBeInTheDocument();
+
+        // Switch to TLT Asset
+        fireEvent.click(screen.getByRole('button', { name: /20\+ Year Treasuries \(TLT\)/i }));
+
+        // Heading must update to Treasury Bond Predictor
+        expect(screen.getByText('Daily 20+ Year Treasury Bond Predictor')).toBeInTheDocument();
+
+        // Model tabs must update to TLT models with GPT-5.6 Luna as default
+        expect(screen.getByRole('button', { name: /GPT-5\.6 Luna \(1\)/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /DeepSeek Flash \(1\)/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Jev \(TypeSafe\) \(0\)/i })).toBeInTheDocument();
+
+        // Luna prediction must be displayed (82% confidence, TLT ticker)
+        expect(screen.getByText('82%')).toBeInTheDocument();
+        expect(screen.queryByText('$570.00')).not.toBeInTheDocument();
+    });
+
+    it('honors initialTicker="TLT" prop directly', () => {
+        const bondPrediction: DailyPrediction = {
+            id: 'pred-tlt-luna-init',
+            prediction_date: '2026-10-08',
+            target_date: '2026-10-08',
+            ticker: 'TLT',
+            model_name: 'gpt-5.6-luna',
+            predicted_direction: 'UP',
+            confidence: 85.0,
+            open_price: 92.0,
+            close_price: 93.0,
+            actual_direction: 'UP',
+            status: 'evaluated',
+            is_correct: true,
+            intraday_hit: true,
+            brier_score: 0.0225,
+            created_at: '2026-10-08T08:00:00Z',
+            updated_at: '2026-10-08T16:05:00Z',
+        } as DailyPrediction;
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={[bondPrediction]}
+                experiments={[]}
+                initialTicker="TLT"
+            />,
+        );
+
+        expect(screen.getByText('Daily 20+ Year Treasury Bond Predictor')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /GPT-5\.6 Luna \(1\)/i })).toBeInTheDocument();
+    });
 });

@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { Button } from '@llm-market-bench/ui-design-system';
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -12,8 +12,10 @@ import { PredictionsTable } from '../components/PredictionsTable';
 import {
     computeDailyPredictionStats,
     DEFAULT_DAILY_PREDICTOR_TOOLS,
+    getPredictorModelsForTicker,
     PREDICTOR_MODELS,
     resolveActiveDailyPrompt,
+    type SupportedDailyTicker,
 } from '../utils/daily-predictions-helpers';
 
 // Re-export for backwards compatibility with DailyPredictionsBacktestPage
@@ -22,16 +24,92 @@ export { DEFAULT_DAILY_PREDICTOR_TOOLS };
 export interface DailyPredictionsPageProps {
     initialPredictions: DailyPrediction[];
     experiments: PromptExperiment[];
+    initialTicker?: SupportedDailyTicker;
     refreshFn?: () => Promise<{ predictions: DailyPrediction[]; experiments: PromptExperiment[] }>;
+}
+
+interface AssetSwitcherProps {
+    selectedTicker: SupportedDailyTicker;
+    onSelectTicker: (ticker: SupportedDailyTicker) => void;
+    spyCount: number;
+    tltCount: number;
+}
+
+function AssetSwitcher({ selectedTicker, onSelectTicker, spyCount, tltCount }: AssetSwitcherProps) {
+    return (
+        <div className="flex flex-wrap items-center gap-2 mb-6 p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl w-fit border border-zinc-200 dark:border-zinc-800">
+            <Button
+                type="button"
+                variant={selectedTicker === 'SPY' ? 'solid' : 'ghost'}
+                size="sm"
+                onClick={() => onSelectTicker('SPY')}
+                className={`rounded-xl font-bold text-xs uppercase tracking-wider transition-all px-4 py-2 ${
+                    selectedTicker === 'SPY'
+                        ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100'
+                }`}
+            >
+                <span className="flex items-center gap-1.5">
+                    <span>📈 S&P 500 (SPY)</span>
+                    <Badge variant="soft" size="xs" colorScheme="neutral">
+                        {spyCount}
+                    </Badge>
+                </span>
+            </Button>
+            <Button
+                type="button"
+                variant={selectedTicker === 'TLT' ? 'solid' : 'ghost'}
+                size="sm"
+                onClick={() => onSelectTicker('TLT')}
+                className={`rounded-xl font-bold text-xs uppercase tracking-wider transition-all px-4 py-2 ${
+                    selectedTicker === 'TLT'
+                        ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100'
+                }`}
+            >
+                <span className="flex items-center gap-1.5">
+                    <span>🏛️ 20+ Year Treasuries (TLT)</span>
+                    <Badge variant="soft" size="xs" colorScheme="neutral">
+                        {tltCount}
+                    </Badge>
+                </span>
+            </Button>
+        </div>
+    );
+}
+
+function PredictorHeader({ selectedTicker }: { selectedTicker: SupportedDailyTicker }) {
+    const isBond = selectedTicker === 'TLT';
+    return (
+        <div className="mb-6">
+            <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
+                {isBond ? 'Daily 20+ Year Treasury Bond Predictor' : 'Daily S&P Market Predictor'}
+            </h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 m-0">
+                {isBond
+                    ? '9:15 AM ET Intraday (Open to Close) Directional Fixed Income Predictions on TLT powered by GPT-5.6 Luna, DeepSeek Flash & Jev.'
+                    : '9:15 AM ET Intraday (Open to Close) Directional AI Predictions powered by DeepSeek Flash & MiniMax.'}
+            </p>
+        </div>
+    );
 }
 
 export function DailyPredictionsPage({
     initialPredictions,
     experiments,
+    initialTicker = 'SPY',
 }: DailyPredictionsPageProps) {
     const [predictions] = useState<DailyPrediction[]>(initialPredictions);
     const [promptExperiments] = useState<PromptExperiment[]>(experiments);
-    const [selectedModelId, setSelectedModelId] = useState<string>(PREDICTOR_MODELS[0].id);
+    const [selectedTicker, setSelectedTicker] = useState<SupportedDailyTicker>(
+        initialTicker === 'TLT' ? 'TLT' : 'SPY',
+    );
+    const currentModels = getPredictorModelsForTicker(selectedTicker);
+    const [selectedModelId, setSelectedModelId] = useState<string>(
+        (initialTicker === 'TLT'
+            ? getPredictorModelsForTicker('TLT')[0]?.id
+            : PREDICTOR_MODELS[0]?.id) || currentModels[0].id,
+    );
     const [viewMode, setViewMode] = useState<'predictions' | 'autoresearch'>('predictions');
     const [selectedExpId, setSelectedExpId] = useState<string | null>(null);
 
@@ -40,11 +118,21 @@ export function DailyPredictionsPage({
         (p) => !p.prompt_variant_tag?.toLowerCase().includes('backtest'),
     );
 
-    // Identify dynamic or configured models
-    const activeModelCfg =
-        PREDICTOR_MODELS.find((m) => m.id === selectedModelId) || PREDICTOR_MODELS[0];
+    // Filter predictions by selected asset/ticker (defaulting missing ticker to SPY)
+    const tickerPredictions = livePredictions.filter((p) => {
+        const t = (p.ticker || 'SPY').toUpperCase();
+        return t === selectedTicker;
+    });
 
-    const modelPredictions = livePredictions.filter((p) => activeModelCfg.matches(p.model_name));
+    const spyCount = livePredictions.filter(
+        (p) => (p.ticker || 'SPY').toUpperCase() === 'SPY',
+    ).length;
+    const tltCount = livePredictions.filter((p) => (p.ticker || '').toUpperCase() === 'TLT').length;
+
+    // Identify dynamic or configured models for current asset
+    const activeModelCfg = currentModels.find((m) => m.id === selectedModelId) || currentModels[0];
+
+    const modelPredictions = tickerPredictions.filter((p) => activeModelCfg.matches(p.model_name));
     const modelExperiments = promptExperiments.filter((e) =>
         e.track_id ? activeModelCfg.matches(e.track_id) : true,
     );
@@ -55,17 +143,32 @@ export function DailyPredictionsPage({
 
     const { activePrompt } = resolveActiveDailyPrompt(modelExperiments);
 
+    const handleSelectTicker = (newTicker: SupportedDailyTicker) => {
+        if (newTicker === selectedTicker) return;
+        setSelectedTicker(newTicker);
+        const newModels = getPredictorModelsForTicker(newTicker);
+        setSelectedModelId(newModels[0].id);
+        try {
+            if (typeof window !== 'undefined' && window.location) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('ticker', newTicker);
+                window.history.replaceState({}, '', url.toString());
+            }
+        } catch {
+            // Ignore in test or non-browser environments
+        }
+    };
+
     return (
         <div className="w-full max-w-7xl mx-auto min-w-0 overflow-x-hidden p-6 font-sans">
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
-                    Daily S&P Market Predictor
-                </h1>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 m-0">
-                    9:15 AM ET Intraday (Open to Close) Directional AI Predictions powered by
-                    DeepSeek Flash & MiniMax.
-                </p>
-            </div>
+            <AssetSwitcher
+                selectedTicker={selectedTicker}
+                onSelectTicker={handleSelectTicker}
+                spyCount={spyCount}
+                tltCount={tltCount}
+            />
+
+            <PredictorHeader selectedTicker={selectedTicker} />
 
             {/* Model Navigation Tabs and Relocated Backtest Arena Button */}
             <div
@@ -79,8 +182,8 @@ export function DailyPredictionsPage({
                 className="border-b-2 border-zinc-200 dark:border-zinc-800 mb-5"
             >
                 <div className="flex gap-2">
-                    {PREDICTOR_MODELS.map((model) => {
-                        const count = livePredictions.filter((p) =>
+                    {currentModels.map((model) => {
+                        const count = tickerPredictions.filter((p) =>
                             model.matches(p.model_name),
                         ).length;
                         const isSelected = activeModelCfg.id === model.id;

@@ -17,7 +17,7 @@ The `apps/engine/cli/` package is the command-line interface layer for the engin
 | `cli/predictions.py` | Daily predictor, prediction evaluation, daily/gainers postmortems, newsletter generation, and historical analog research. |
 | `cli/trading.py` | Sector rotation, daily SPY MOO/target/close trades, Frontier Tech, and Future Forces thematic portfolios. |
 | `cli/autoresearch.py` | Continuous autoresearch loops, bootstrap, daily autoresearch, and multi-week backtests. |
-| `cli/audit.py` | Pipeline integrity audit, Alpaca reconciliation, portfolio audit, and database cleanup. |
+| `cli/audit.py` | Pipeline integrity audit, Alpaca reconciliation, system health auditor and audit-portfolios --fix auto-healer, and database cleanup. |
 
 ## Dispatch Flow
 
@@ -26,6 +26,14 @@ The `apps/engine/cli/` package is the command-line interface layer for the engin
 3. The matched handler lazily imports its domain module and runs it via `asyncio.run(...)`. Unknown commands raise `ValueError`.
 
 Handlers import their heavy dependencies lazily (inside the function body) so that unrelated commands do not pay the import cost and so tests can patch the domain modules directly.
+
+## Audit and Reconciliation Commands
+
+`cli/audit.py` routes diagnostic and self-healing commands:
+- `audit` (`COMMAND_AUDIT`): Pipeline integrity audit across LLM predictions and DB records.
+- `audit-alpaca` (`COMMAND_AUDIT_ALPACA`): Reconciles simulated broker trade decisions against Alpaca API executions.
+- `audit-portfolios` (`COMMAND_AUDIT_PORTFOLIOS`): Dispatches `run_portfolio_auditor_cli` in `apps/engine/audit/portfolio_auditor.py` (see [[entities/portfolio-auditor]]). Audits holdings, detects unliquidated Friday sector legs, flags missing daily SPY executions or entry-price drift (`INVALID_ENTRY_PRICE_DAILY_SPY`). When invoked with `--fix`, the auto-healer reconstructs missing executions from canonical historical OHLC prints, compounds equity chronologically, and tags repaired trades with `alpaca_status = "BACKFILLED"` (see [[concepts/backfilled-trades]]).
+- `cleanup` (`COMMAND_CLEANUP`): Log retention and database table pruning.
 
 ## Design Notes
 
@@ -37,4 +45,6 @@ Handlers import their heavy dependencies lazily (inside the function body) so th
 
 - [[entities/engine]] — the engine as a whole
 - [[entities/pipeline]] — the orchestration layer the CLI dispatches into
+- [[entities/portfolio-auditor]] — system health auditor and auto-healer
+- [[concepts/backfilled-trades]] — backfilled trade reconciliation and UI badges
 - [[concepts/vertical-slice-islands]] — the decomposition principle behind this package

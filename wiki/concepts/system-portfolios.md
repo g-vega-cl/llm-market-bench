@@ -43,10 +43,11 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Target Asset**: `SPY`
 - **Position Sizing**: 100% of available cash/equity allocated per session.
 - **Execution Mechanics**:
-  - **Live MOO Entry**: Pre-market Market-On-Open (OPG) market orders submitted to Alpaca before 9:28 AM ET via `daily-trade --action entry` in `.github/workflows/daily-predictor.yml`. For `UP` predictions, active holdings are tracked in `portfolio_positions`. For `DOWN` predictions, virtual `SHORT` trades are logged in the `trades` table.
-  - **Profit Target Exit**: At ~9:35 AM ET (post-open ingestion hook), a limit sell order is submitted to Alpaca at the profit target price ($P_{open} \times (1 + \text{expected\_return\_pct} / 100)$). If touched intraday, Alpaca fills the limit order.
-  - **Time-Based Exit**: Unfilled target limit orders are cancelled and remaining open positions are liquidated at ~3:30 PM ET during the afternoon ingestion run (`daily-trade --action exit`), realizing PnL with zero retroactive backfilling.
-- **Trigger**: Pre-market entry in `.github/workflows/daily-predictor.yml`, target order placement at 9:35 AM in `main.py run_ingest`, and afternoon liquidation at 3:30 PM in `main.py run_ingest`.
+  - **Live MOO Entry**: Pre-market Market-On-Open (OPG) market orders submitted to Alpaca before 9:28 AM ET via `daily-trade --action entry` in `.github/workflows/daily-predictor.yml`. Orders are sized using pre-market quotes (which may reflect prior close). For `UP` predictions, active holdings are tracked in `portfolio_positions`. For `DOWN` predictions, virtual `SHORT` trades are logged in the `trades` table.
+  - **Beginning-of-Day Entry Reconciliation**: At ~9:35 AM ET (post-open ingestion hook), `reconcile_daily_open_trades` anchors entry trades and position cost basis to the canonical session open price ($P_{open}$) resolved via a three-tier hierarchy (prediction open, intraday bars, live quote open) before submitting target limit orders (see [[concepts/session-open-reconciliation]]).
+  - **Profit Target Exit**: Immediately following open reconciliation at ~9:35 AM ET, a limit sell order is submitted to Alpaca at the profit target price ($P_{open}^{\text{reconciled}} \times (1 + \text{expected\_return\_pct} / 100) = \text{cost\_basis} \times (1 + \text{expected\_return\_pct} / 100)$). If touched intraday, Alpaca fills the limit order.
+  - **Time-Based Exit**: Unfilled target limit orders are cancelled and remaining open positions are liquidated at ~3:30 PM ET during the afternoon ingestion run (`daily-trade --action exit`), defensively verifying $P_{open}$ reconciliation and realizing PnL with zero retroactive backfilling (see [[concepts/daily-spy-live-trading]]).
+- **Trigger**: Pre-market entry in `.github/workflows/daily-predictor.yml`, target order placement and open reconciliation at 9:35 AM in `main.py run_ingest`, and afternoon liquidation at 3:30 PM in `main.py run_ingest`.
 
 ### 4b. Daily 20+ Year Treasury Bond Trader (`sys-daily-tlt-close-{model}`)
 - **Signal**: Daily 9:30 AM – 4:00 PM ET fixed income predictions (`UP` or `DOWN`, `confidence`, `expected_return_pct`) from `daily_predictions` table (ticker='TLT') produced by `apps/engine/tasks/bond_predictor.py`.
@@ -135,6 +136,8 @@ System portfolios record daily closing performance snapshots in the `public.port
 - **Homepage leaderboard**: The homepage (`apps/web/src/routes/index.tsx` and `apps/web/src/features/home/pages/HomePage.tsx`) renders active system portfolios with a dedicated amber `System` badge and computes their 1-day (`todayPct`) and 7-day (`weekPct`) percentage moves.
 - **Performance comparison chart**: The comparison line chart on `/portfolios` plots normalized percentage trajectories for all system portfolios across 7d, 30d, 90d, and all available history with benchmark overlay.
 - **Card and detail metrics**: Each `PortfolioCard` on `/portfolios` displays a daily percentage move badge (`+X.XX%` in emerald or `-X.XX%` in red) next to the status badge, and `PortfolioDetailPage` renders a Daily Move metric tile in the header card comparing the two most recent daily closing snapshots.
+- **Last-updated timestamps**: Both `PortfolioCard` on `/portfolios` and the header card on `PortfolioDetailPage` render a formatted Eastern Time last-updated indicator (`formatEasternExactTime`), with normalized timestamp formatting to prevent SSR hydration mismatches between server and client.
+- **Exact execution and acquisition timestamps**: `TradesTable` (`apps/web/src/features/portfolios/components/TradesTable.tsx`) renders exact Eastern Time timestamps down to the second (`formatEasternExactTime`, `HH:mm:ss ET`) in trade cells and expanded trade metadata. `PositionsTable` (`apps/web/src/features/portfolios/components/PositionsTable.tsx`) wires acquisition timestamps to expanded holdings from recent BUY executions.
 
 ## Related
 - [[entities/future-forces-portfolio]]
@@ -146,4 +149,6 @@ System portfolios record daily closing performance snapshots in the `public.port
 - [[entities/strategy-explainer]]
 - [[concepts/execution]]
 - [[concepts/alpaca-order-sync]]
+- [[concepts/session-open-reconciliation]]
+- [[concepts/daily-spy-live-trading]]
 - [[entities/pipeline]]

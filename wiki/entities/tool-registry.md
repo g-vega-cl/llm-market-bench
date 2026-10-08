@@ -19,6 +19,7 @@ The table covers market data, options, macro, valuation, screening, research, an
 - `web_search`, `get_ticker_news`, `get_market_moving_news`, `search_prediction_markets`, `get_prediction_market_odds`
 - `get_calendar_scenario_analysis`, `get_today_economic_releases`, `get_global_macro_context`, `get_market_health_barometer`, `get_market_feeling`
 - `get_position_pnl` — detailed profit & loss statistics for open model positions
+- `get_system_portfolios` — inspects mechanical baseline system portfolios (mean-reversion, momentum, sector long/short, intraday SPY) returning holdings, mark-to-market unrealized PnL, trailing returns, and quantitative signals without prompt bloat (see [[concepts/system-portfolios]])
 - `search_related_tickers` — thematic keyword stock searches
 - `get_verifier_rejections` — past trade compliance rejection logs and verifier feedback
 - `get_thematic_flows`, `add_thematic_flow` — retrieve active thematic flows and register new narrative signals
@@ -32,3 +33,4 @@ The table covers market data, options, macro, valuation, screening, research, an
 - [[entities/tool-audit]]
 - [[concepts/tool-enforcement]]
 - [[entities/daily-market-predictor]]
+- [[concepts/system-portfolios]]

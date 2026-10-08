@@ -21,6 +21,10 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
   - `ScoreBreakdown.tsx`: Granular asset and portfolio auditor displaying the audited settlement timestamp and `100% Cash at Week Start (0.0000% Return)` badge when starting holdings are all cash.
   - `daily-score-math.ts`: Pure helper functions for compounding, daily ratchet scoring, and portfolio returns.
   - `useActualReturns.ts`: Hermetic hook for fetching actual asset prices and compounding returns.
+- **Multi-Week Lookback & Stochastic Cold-Start Scoring Features**:
+  - **4-Week (28-Day) Lookback Context**: Ingests 28 days of trade postmortems, compliance rejection audits, and macro newsletters for hypothesis generation and prompt mutations, while keeping weekly ratchet score evaluation strictly scoped to the 7-day deployment week.
+  - **Per-Track Stochastic Dice**: Evaluates an independent 1-in-6 stochastic cold-start dice roll (`roll_cold_start_dice(sides=6)`) per track across portfolio, daily SPY, and sector predictor loops, preventing local optima convergence while preserving distinct track lineages (see [[concepts/stochastic-cold-start]]).
+  - **"From 0" Visual Warning Badge**: Renders design-system amber warning badges (`From 0`, `variant="soft"`, `colorScheme="warning"`) on `TrackTabs` (when active variant is cold-started), `ExperimentList` table rows, `ExperimentDetails` header cards, and prediction variant views whenever an experiment is generated via cold start (`research_output["is_cold_start"] = True`).
 - **Unified 3-Domain Transparency Standard ("Benchify Standard")**: Enforced across Portfolio Autoresearch (`/autoresearch`), Daily SPY Predictor (`/daily-predictions`), and Sector Predictor (`/ai-predictions`):
   1. **Score & Math Audit**: Formula substitution bar, pillar tiles, and baseline delta (`ScoreBreakdown.tsx`, `DailyScoreBreakdown.tsx`, `SectorScoreBreakdown.tsx`).
   2. **Cognitive Toolbox**: Dynamic tool registry inspection (`CognitiveToolboxCard.tsx`) displaying enabled/total tools badges, parent deltas, and capability tags.
@@ -54,5 +58,7 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 - [[entities/autoresearch]] — the Python engine that produces the experiments
 - [[concepts/risk-adjusted-z-score]] — volatility-normalized weekly scoring formula
 - [[concepts/pending-settlement-state]] — live provisional states vs settled evaluations
+- [[concepts/stochastic-cold-start]] — independent 1-in-6 dice resets and "From 0" lineage
+- [[concepts/multi-track-autoresearch]] — parallel isolated model tracks
 - [[concepts/system-heavy-prompt]] — the architecture that determines what is displayed
 - [[entities/web-app]] — the parent dashboard

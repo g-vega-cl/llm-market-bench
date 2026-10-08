@@ -3,8 +3,9 @@ import * as d3 from 'd3';
 import * as React from 'react';
 import type { BenchmarkDataPoint } from '../api/fetch-portfolios';
 import { BENCHMARK_OPTIONS } from './BenchmarkSelector';
+import { PortfolioComparisonSelector } from './PortfolioComparisonSelector';
 
-const PORTFOLIO_COLORS = ['#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
+const PORTFOLIO_COLORS = ['#0ea5e9', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 interface PortfolioSeries {
     portfolioId: string;
@@ -34,6 +35,7 @@ interface PortfolioComparisonChartProps {
     benchmarkData?: Record<string, BenchmarkDataPoint[]>;
     selectedBenchmark?: string;
     onReset?: () => void;
+    maxSelected?: number;
 }
 
 export function PortfolioComparisonChart({
@@ -41,6 +43,7 @@ export function PortfolioComparisonChart({
     benchmarkData: rawBenchmarkData,
     selectedBenchmark = 'SPY',
     onReset,
+    maxSelected = 5,
 }: PortfolioComparisonChartProps) {
     const data = React.useMemo(() => {
         return rawData.map((portfolio) => {
@@ -116,26 +119,96 @@ export function PortfolioComparisonChart({
     const [clickedData, setClickedData] = React.useState<TooltipData | null>(null);
     const [latestData, setLatestData] = React.useState<TooltipData | null>(null);
 
+    const defaultSelectedIds = React.useMemo(() => {
+        const withData = data.filter((p) => p.performance.length > 0);
+        const source = withData.length > 0 ? withData : data;
+        return source.slice(0, maxSelected).map((p) => p.portfolioId);
+    }, [data, maxSelected]);
+
+    const isInitializedRef = React.useRef(defaultSelectedIds.length > 0);
+    const [selectedPortfolioIds, setSelectedPortfolioIds] = React.useState<string[]>(
+        () => defaultSelectedIds,
+    );
+
+    React.useEffect(() => {
+        if (!isInitializedRef.current && defaultSelectedIds.length > 0) {
+            setSelectedPortfolioIds(defaultSelectedIds);
+            isInitializedRef.current = true;
+        } else if (isInitializedRef.current) {
+            setSelectedPortfolioIds((prev) =>
+                prev.filter((id) => data.some((p) => p.portfolioId === id)),
+            );
+        }
+    }, [defaultSelectedIds, data]);
+
+    const handleAddPortfolio = React.useCallback(
+        (portfolioId: string) => {
+            setSelectedPortfolioIds((prev) => {
+                if (prev.includes(portfolioId) || prev.length >= maxSelected) return prev;
+                return [...prev, portfolioId];
+            });
+        },
+        [maxSelected],
+    );
+
+    const handleRemovePortfolio = React.useCallback((portfolioId: string) => {
+        setSelectedPortfolioIds((prev) => prev.filter((id) => id !== portfolioId));
+    }, []);
+
+    const handleResetSelection = React.useCallback(() => {
+        setSelectedPortfolioIds(defaultSelectedIds);
+    }, [defaultSelectedIds]);
+
+    const isCustomSelection = React.useMemo(() => {
+        if (selectedPortfolioIds.length !== defaultSelectedIds.length) return true;
+        const defaultSet = new Set(defaultSelectedIds);
+        return selectedPortfolioIds.some((id) => !defaultSet.has(id));
+    }, [selectedPortfolioIds, defaultSelectedIds]);
+
+    const activeData = React.useMemo(() => {
+        const currentIds =
+            selectedPortfolioIds.length > 0 || isInitializedRef.current
+                ? selectedPortfolioIds
+                : defaultSelectedIds;
+        return data.filter((p) => currentIds.includes(p.portfolioId));
+    }, [data, selectedPortfolioIds, defaultSelectedIds]);
+
+    const portfolioColors = React.useMemo(() => {
+        const colors: Record<string, string> = {};
+        activeData.forEach((portfolio, index) => {
+            colors[portfolio.portfolioId] = PORTFOLIO_COLORS[index % PORTFOLIO_COLORS.length];
+        });
+        return colors;
+    }, [activeData]);
+
     const dateRange = React.useMemo(() => {
-        if (data.length === 0) return [new Date(), new Date()] as [Date, Date];
-        const allDates = data.flatMap((p) => p.performance.map((pp) => new Date(pp.date)));
+        if (activeData.length === 0) {
+            if (selectedBenchmark && benchmarkData?.[selectedBenchmark]?.length) {
+                const bDates = benchmarkData[selectedBenchmark].map((b) => new Date(b.date));
+                return d3.extent(bDates) as [Date, Date];
+            }
+            return [new Date(), new Date()] as [Date, Date];
+        }
+        const allDates = activeData.flatMap((p) => p.performance.map((pp) => new Date(pp.date)));
         if (allDates.length === 0) return [new Date(), new Date()] as [Date, Date];
         return d3.extent(allDates) as [Date, Date];
-    }, [data]);
+    }, [activeData, selectedBenchmark, benchmarkData]);
 
     const getLatestData = React.useCallback((): TooltipData | null => {
-        if (data.length === 0) return null;
+        if (activeData.length === 0 && !selectedBenchmark) return null;
 
         const portfolioValues: { ownerId: string; value: number; color: string }[] = [];
 
-        data.forEach((portfolio, index) => {
+        activeData.forEach((portfolio, index) => {
             if (portfolio.performance.length === 0) return;
 
             const latest = portfolio.performance[portfolio.performance.length - 1];
             portfolioValues.push({
                 ownerId: portfolio.ownerId,
                 value: latest.value,
-                color: PORTFOLIO_COLORS[index % PORTFOLIO_COLORS.length],
+                color:
+                    portfolioColors[portfolio.portfolioId] ||
+                    PORTFOLIO_COLORS[index % PORTFOLIO_COLORS.length],
             });
         });
 
@@ -149,7 +222,7 @@ export function PortfolioComparisonChart({
             }
         }
 
-        const latestDate = data.reduce((latest, portfolio) => {
+        const latestDate = activeData.reduce((latest, portfolio) => {
             if (portfolio.performance.length === 0) return latest;
             const d = portfolio.performance[portfolio.performance.length - 1].date;
             return !latest || d > latest ? d : latest;
@@ -163,7 +236,23 @@ export function PortfolioComparisonChart({
             x: 0,
             y: 0,
         };
-    }, [data, benchmarkData, selectedBenchmark]);
+    }, [activeData, portfolioColors, benchmarkData, selectedBenchmark]);
+
+    React.useEffect(() => {
+        setClickedData((prev) => {
+            if (!prev) return null;
+            const remaining = prev.portfolioValues.filter((pv) =>
+                selectedPortfolioIds.some((id) => {
+                    const p = data.find((d) => d.portfolioId === id);
+                    return p?.ownerId === pv.ownerId;
+                }),
+            );
+            if (remaining.length === 0 && !prev.benchmarkValue) {
+                return null;
+            }
+            return { ...prev, portfolioValues: remaining };
+        });
+    }, [selectedPortfolioIds, data]);
 
     React.useEffect(() => {
         setLatestData(getLatestData());
@@ -187,7 +276,7 @@ export function PortfolioComparisonChart({
     const displayData = clickedData || latestData;
 
     React.useEffect(() => {
-        if (!data || data.length === 0 || !svgRef.current) return;
+        if (!svgRef.current) return;
 
         const margin = { top: 20, right: 150, bottom: 30, left: 60 };
         const width = 800 - margin.left - margin.right;
@@ -198,12 +287,12 @@ export function PortfolioComparisonChart({
 
         const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
-        const portfolioColors: Record<string, string> = {};
         const portfolioGroups = new Map<string, ChartLine[]>();
 
-        data.forEach((portfolio, index) => {
-            const color = PORTFOLIO_COLORS[index % PORTFOLIO_COLORS.length];
-            portfolioColors[portfolio.portfolioId] = color;
+        activeData.forEach((portfolio, index) => {
+            const color =
+                portfolioColors[portfolio.portfolioId] ||
+                PORTFOLIO_COLORS[index % PORTFOLIO_COLORS.length];
 
             const points: ChartLine[] = portfolio.performance.map((p) => ({
                 date: new Date(p.date),
@@ -238,6 +327,17 @@ export function PortfolioComparisonChart({
         }
 
         const allValues = [...allLines.map((d) => d.value), ...benchmarkLines.map((d) => d.value)];
+
+        if (allValues.length === 0) {
+            g.append('text')
+                .attr('x', width / 2)
+                .attr('y', height / 2)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#94a3b8')
+                .attr('font-size', '13px')
+                .text('No agents selected. Select up to 5 agents above to compare.');
+            return;
+        }
 
         const x = d3.scaleTime().domain(dateRange).range([0, width]);
 
@@ -301,6 +401,7 @@ export function PortfolioComparisonChart({
 
             g.append('path')
                 .datum(sorted)
+                .attr('class', `portfolio-line portfolio-line-${portfolioId}`)
                 .attr('fill', 'none')
                 .attr('stroke', color)
                 .attr('stroke-width', 2.5)
@@ -319,6 +420,7 @@ export function PortfolioComparisonChart({
 
             g.append('path')
                 .datum(sortedBenchmark)
+                .attr('class', 'benchmark-line')
                 .attr('fill', 'none')
                 .attr('stroke', '#f59e0b')
                 .attr('stroke-width', 2)
@@ -363,7 +465,7 @@ export function PortfolioComparisonChart({
 
                     if (pt) {
                         if (!tooltipDate) tooltipDate = pt.date;
-                        const portfolio = data.find((p) => p.portfolioId === portfolioId);
+                        const portfolio = activeData.find((p) => p.portfolioId === portfolioId);
                         portfolioValues.push({
                             ownerId: portfolio?.ownerId || portfolioId,
                             value: pt.value,
@@ -440,7 +542,7 @@ export function PortfolioComparisonChart({
 
         let legendY = 0;
         portfolioGroups.forEach((_points, portfolioId) => {
-            const portfolio = data.find((p) => p.portfolioId === portfolioId);
+            const portfolio = activeData.find((p) => p.portfolioId === portfolioId);
             const color = portfolioColors[portfolioId];
             const label = portfolio?.ownerId.replace(/-/g, ' ') || portfolioId;
 
@@ -486,7 +588,7 @@ export function PortfolioComparisonChart({
                 .attr('fill', '#f59e0b')
                 .text(benchmarkLabel);
         }
-    }, [data, benchmarkData, selectedBenchmark, dateRange]);
+    }, [activeData, portfolioColors, benchmarkData, selectedBenchmark, dateRange]);
 
     React.useEffect(() => {
         if (!svgRef.current) return;
@@ -498,7 +600,7 @@ export function PortfolioComparisonChart({
 
         const x = d3.scaleTime().domain(dateRange).range([0, width]);
 
-        const allValues = data.flatMap((p) => p.performance.map((pp) => pp.value));
+        const allValues = activeData.flatMap((p) => p.performance.map((pp) => pp.value));
         const yMin = d3.min(allValues, (d) => d) ?? -10;
         const yMax = d3.max(allValues, (d) => d) ?? 10;
         const yPadding = Math.max((yMax - yMin) * 0.1, 1);
@@ -515,7 +617,7 @@ export function PortfolioComparisonChart({
                 .attr('opacity', 1)
                 .attr('transform', `translate(${clickedData.x},0)`);
 
-            data.forEach((portfolio) => {
+            activeData.forEach((portfolio) => {
                 const dot = svg.select(`.dot-${portfolio.portfolioId}`);
                 const pv = clickedData.portfolioValues.find((p) => p.ownerId === portfolio.ownerId);
                 if (dot.size() > 0 && pv) {
@@ -531,13 +633,13 @@ export function PortfolioComparisonChart({
             }
         } else {
             const latest = latestData;
-            if (latest && data.length > 0) {
+            if (latest && activeData.length > 0) {
                 const lastDate = new Date(latest.date || Date.now());
                 const _xPos = x(lastDate);
 
                 svg.select('.crosshair').attr('opacity', 0);
 
-                data.forEach((portfolio, _index) => {
+                activeData.forEach((portfolio, _index) => {
                     const dot = svg.select(`.dot-${portfolio.portfolioId}`);
                     const pv = latest.portfolioValues.find((p) => p.ownerId === portfolio.ownerId);
                     if (dot.size() > 0 && pv) {
@@ -548,15 +650,15 @@ export function PortfolioComparisonChart({
                 svg.select('.benchmark-dot').attr('opacity', 0);
             }
         }
-    }, [clickedData, latestData, displayData, data, dateRange]);
+    }, [clickedData, latestData, displayData, activeData, dateRange]);
 
     const sortedPortfolioValues = displayData?.portfolioValues
         ? [...displayData.portfolioValues].sort((a, b) => b.value - a.value)
         : [];
 
     return (
-        <div className="w-full bg-white border border-zinc-200 rounded-xl p-4 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
+        <div className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm overflow-hidden flex flex-col gap-4">
+            <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">
                     Performance Comparison
                 </h3>
@@ -564,13 +666,29 @@ export function PortfolioComparisonChart({
                     <div className="text-xs text-zinc-400">Normalized to percentage returns</div>
                     {clickedData && (
                         <Button variant="ghost" colorScheme="info" size="sm" onClick={handleReset}>
-                            Reset
+                            Reset Crosshair
                         </Button>
                     )}
                 </div>
             </div>
-            {displayData && (
-                <div className="mb-4 p-3 bg-zinc-50 rounded-lg border border-zinc-100">
+
+            {data.length > 0 && (
+                <PortfolioComparisonSelector
+                    availablePortfolios={data.map((p) => ({
+                        portfolioId: p.portfolioId,
+                        ownerId: p.ownerId,
+                    }))}
+                    selectedIds={selectedPortfolioIds}
+                    portfolioColors={portfolioColors}
+                    onAdd={handleAddPortfolio}
+                    onRemove={handleRemovePortfolio}
+                    onReset={isCustomSelection ? handleResetSelection : undefined}
+                    maxSelected={maxSelected}
+                />
+            )}
+
+            {displayData && sortedPortfolioValues.length > 0 && (
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg border border-zinc-100 dark:border-zinc-800">
                     <div className="text-xs text-zinc-500 mb-2">{displayData.date}</div>
                     <div className="space-y-1">
                         {sortedPortfolioValues.map((pv) => (
@@ -580,10 +698,10 @@ export function PortfolioComparisonChart({
                             >
                                 <div className="flex items-center gap-2">
                                     <div
-                                        className="w-2 h-2 rounded-full"
+                                        className="w-2 h-2 rounded-full shrink-0"
                                         style={{ backgroundColor: pv.color }}
                                     />
-                                    <span className="text-zinc-600 capitalize">
+                                    <span className="text-zinc-600 dark:text-zinc-300 capitalize truncate max-w-xs">
                                         {pv.ownerId.replace(/-/g, ' ')}
                                     </span>
                                 </div>
@@ -598,9 +716,9 @@ export function PortfolioComparisonChart({
                             </div>
                         ))}
                         {displayData.benchmarkValue !== undefined && (
-                            <div className="flex items-center justify-between gap-4 text-sm pt-2 border-t border-zinc-200">
+                            <div className="flex items-center justify-between gap-4 text-sm pt-2 border-t border-zinc-200 dark:border-zinc-700">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                    <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                                     <span className="text-amber-600">
                                         {BENCHMARK_OPTIONS.find(
                                             (b) => b.ticker === selectedBenchmark,
@@ -625,6 +743,7 @@ export function PortfolioComparisonChart({
             <div className="w-full overflow-x-auto relative">
                 <svg
                     ref={svgRef}
+                    data-testid="portfolio-comparison-svg"
                     width="100%"
                     height="400"
                     viewBox="0 0 800 400"
@@ -632,7 +751,7 @@ export function PortfolioComparisonChart({
                     style={{ transition: 'opacity 150ms ease' }}
                 />
             </div>
-            <div className="mt-2 text-xs text-zinc-400 text-center">
+            <div className="text-xs text-zinc-400 text-center">
                 Click on chart to see performance at a specific date · Press Esc to reset
             </div>
         </div>

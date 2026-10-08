@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/portfolio-comparison-selector]] — agent picker for the performance comparison chart, capped at 5 portfolios
 - [[entities/gemini-api-dev]] — reference skill for Gemini API development
 - [[entities/treasury-yield-curve-tool]] — no-arg tool returning live US Treasury benchmark yields, 1d bps changes, and curve spreads from FRED
 - [[entities/daily-bond-trading]] — systematic TLT close-exit execution into per-model sys-daily-tlt-close-{model} portfolios

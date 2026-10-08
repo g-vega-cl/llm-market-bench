@@ -14,6 +14,7 @@ export {
 export { BENCHMARK_OPTIONS, BenchmarkSelector } from './components/BenchmarkSelector';
 export { PerformanceChart } from './components/PerformanceChart';
 export { PortfolioComparisonChart } from './components/PortfolioComparisonChart';
+export { PortfolioComparisonSelector } from './components/PortfolioComparisonSelector';
 export { PositionsTable } from './components/PositionsTable';
 export { StrategyExplainer } from './components/StrategyExplainer';
 export { TradesTable } from './components/TradesTable';

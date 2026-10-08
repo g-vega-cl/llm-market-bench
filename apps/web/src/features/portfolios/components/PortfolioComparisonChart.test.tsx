@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-router', () => ({
@@ -76,5 +76,89 @@ describe('PortfolioComparisonChart — uses design system', () => {
                 expect(xCoordinates.length).toBe(uniqueXCoordinates.size);
             }
         });
+    });
+
+    it('only shows at most 5 portfolios by default when more than 5 are provided', () => {
+        const tenPortfolios = Array.from({ length: 10 }, (_, i) => ({
+            portfolioId: `port-${i + 1}`,
+            ownerId: `agent-${i + 1}`,
+            performance: [
+                { date: '2026-05-01', value: 10 + i },
+                { date: '2026-05-02', value: 15 + i },
+            ],
+        }));
+
+        const { container } = render(
+            <PortfolioComparisonChart
+                data={tenPortfolios}
+                benchmarkData={{}}
+                selectedBenchmark=""
+                onReset={vi.fn()}
+            />,
+        );
+
+        // Should render exactly 5 portfolio lines for the default top 5 portfolios (not all 10)
+        const portfolioLines = container.querySelectorAll('.portfolio-line');
+        expect(portfolioLines.length).toBe(5);
+    });
+
+    it('allows users to remove and add portfolios up to max 5, and never more than 5', () => {
+        const tenPortfolios = Array.from({ length: 10 }, (_, i) => ({
+            portfolioId: `port-${i + 1}`,
+            ownerId: `agent-${i + 1}`,
+            performance: [
+                { date: '2026-05-01', value: 10 + i },
+                { date: '2026-05-02', value: 15 + i },
+            ],
+        }));
+
+        const { container } = render(
+            <PortfolioComparisonChart
+                data={tenPortfolios}
+                benchmarkData={{}}
+                selectedBenchmark=""
+                onReset={vi.fn()}
+            />,
+        );
+
+        // Initially 5 portfolio lines
+        expect(container.querySelectorAll('.portfolio-line').length).toBe(5);
+
+        // Remove agent-1
+        const removeButton = container.querySelector(
+            'button[aria-label="Remove agent 1 from comparison"]',
+        ) as HTMLButtonElement;
+        expect(removeButton).toBeTruthy();
+        fireEvent.click(removeButton);
+
+        // Now exactly 4 portfolio lines (users can show less than 5)
+        expect(container.querySelectorAll('.portfolio-line').length).toBe(4);
+
+        // Add an unselected portfolio (port-6) via the select combobox
+        const select = container.querySelector(
+            'select[aria-label="Add agent to comparison"]',
+        ) as HTMLSelectElement;
+        expect(select).not.toBeDisabled();
+        fireEvent.change(select, { target: { value: 'port-6' } });
+
+        // Now exactly 5 portfolio lines again
+        expect(container.querySelectorAll('.portfolio-line').length).toBe(5);
+
+        // With 5 portfolios selected, the add select should now be disabled (never more than 5)
+        expect(select).toBeDisabled();
+
+        // Reset to top 5 restores initial selection
+        const resetToTop5 = Array.from(container.querySelectorAll('button')).find((b) =>
+            b.textContent?.includes('Reset to Top 5'),
+        );
+        expect(resetToTop5).toBeTruthy();
+        if (resetToTop5) {
+            fireEvent.click(resetToTop5);
+        }
+
+        expect(container.querySelectorAll('.portfolio-line').length).toBe(5);
+        expect(
+            container.querySelector('button[aria-label="Remove agent 1 from comparison"]'),
+        ).toBeTruthy();
     });
 });

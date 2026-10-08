@@ -213,7 +213,7 @@ async def run_sector_predictions():
                             from google.genai import types
 
                             if hasattr(types, "ThinkingConfig"):
-                                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+                                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="high")
                         if model.get("provider") == "anthropic":
                             create_kwargs["cache_control"] = {"type": "ephemeral"}
                             create_kwargs["system"] = [

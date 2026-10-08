@@ -77,7 +77,7 @@ All agent arenas and predictors across the system operate as thinking agents whi
   - Multi-turn tool execution preserves `ThinkingBlock` elements in assistant history across turns.
   - Structured extraction uses `Mode.ANTHROPIC_JSON` via Instructor to avoid forced `tool_choice`, preventing 400 errors.
 - **Gemini (`gemini-3.5-flash-lite`)**:
-  - Uses `types.ThinkingConfig(thinking_budget=2048)` in `GenerateContentConfig`.
+  - Uses `types.ThinkingConfig(thinking_level="high")` in `GenerateContentConfig`.
   - Native `types.Content` objects preserve thought parts and function call IDs across turns.
 - **DeepSeek (`deepseek-v4-flash`)**:
   - Enables `extra_body={"thinking": {"type": "enabled"}}` during structured extraction and reasoning steps across all tasks.

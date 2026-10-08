@@ -337,7 +337,7 @@ def build_provider_extraction_args(
         from google.genai import types
 
         if hasattr(types, "ThinkingConfig"):
-            final_args["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+            final_args["thinking_config"] = types.ThinkingConfig(thinking_level="high")
 
     return final_args
 

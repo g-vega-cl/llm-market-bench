@@ -89,6 +89,7 @@ async def run_tool_loop(
     max_tool_steps: int = 5,
     override_tools: list | None = None,
     enable_google_search: bool = False,
+    thinking_level: str = "high",
 ) -> None:
     """Runs the tool execution loop for Gemini.
 
@@ -100,6 +101,7 @@ async def run_tool_loop(
         override_tools: Optional list of canonical (OpenAI-format) tool defs
             to override defaults. Translated to Gemini format internally.
         enable_google_search: Whether to enable Google Search grounding.
+        thinking_level: Thinking depth level ('minimal', 'low', 'medium', 'high').
     """
     tool_defs = [tools.to_gemini(t) for t in override_tools] if override_tools is not None else DEFAULT_GEMINI_TOOLS
 
@@ -187,7 +189,7 @@ async def run_tool_loop(
                 ],
             }
             if hasattr(types, "ThinkingConfig"):
-                config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+                config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level=thinking_level)
 
             if enable_google_search:
                 # Gemini 3 requires this flag to mix built-in tools (google_search) with

@@ -128,6 +128,8 @@ async def test_verification_enables_thinking_for_deepseek():
 @pytest.mark.asyncio
 async def test_sector_predictor_enables_thinking_for_deepseek():
     """Verify that sector_predictor passes extra_body with thinking enabled for DeepSeek."""
+    from google.genai import types
+
     from tasks.sector_predictor import run_sector_predictions
 
     mock_ds_client = MagicMock()
@@ -184,7 +186,8 @@ async def test_sector_predictor_enables_thinking_for_deepseek():
     assert len(captured_gemini_kwargs) > 0, "Expected Gemini create calls in sector predictor"
     gemini_call = captured_gemini_kwargs[0]
     assert gemini_call.get("thinking_config") is not None
-    assert gemini_call["thinking_config"].thinking_budget == 2048
+    assert gemini_call["thinking_config"].thinking_level in (types.ThinkingLevel.HIGH, "HIGH")
+    assert gemini_call["thinking_config"].thinking_budget is None
 
 
 @pytest.mark.asyncio
@@ -311,7 +314,7 @@ async def test_anthropic_tool_loop_enables_thinking_and_preserves_thinking_block
 
 @pytest.mark.asyncio
 async def test_gemini_tool_loop_enables_thinking_config():
-    """Verify Gemini tool loop configures thinking_budget in GenerateContentConfig."""
+    """Verify Gemini tool loop configures thinking_level in GenerateContentConfig."""
     from google.genai import types
 
     from core.llm.handlers import gemini
@@ -336,7 +339,8 @@ async def test_gemini_tool_loop_enables_thinking_config():
     config_arg = raw_client.aio.models.generate_content.call_args.kwargs["config"]
     assert isinstance(config_arg, types.GenerateContentConfig)
     assert config_arg.thinking_config is not None
-    assert config_arg.thinking_config.thinking_budget == 2048
+    assert config_arg.thinking_config.thinking_level in (types.ThinkingLevel.HIGH, "HIGH")
+    assert config_arg.thinking_config.thinking_budget is None
 
 
 def test_anthropic_client_uses_anthropic_json_mode():
@@ -352,6 +356,8 @@ def test_anthropic_client_uses_anthropic_json_mode():
 @pytest.mark.asyncio
 async def test_verification_enables_thinking_for_anthropic_and_gemini():
     """Verify that verification sets thinking parameters for Anthropic and Gemini."""
+    from google.genai import types
+
     from core.llm.verification import verify_trading_decision
     from core.models import DecisionObject
 
@@ -428,12 +434,15 @@ async def test_verification_enables_thinking_for_anthropic_and_gemini():
 
     assert len(captured_gemini) > 0
     assert captured_gemini[0].get("thinking_config") is not None
-    assert captured_gemini[0]["thinking_config"].thinking_budget == 1024
+    assert captured_gemini[0]["thinking_config"].thinking_level in (types.ThinkingLevel.LOW, "LOW")
+    assert captured_gemini[0]["thinking_config"].thinking_budget is None
 
 
 @pytest.mark.asyncio
 async def test_autoresearcher_enables_thinking_for_anthropic_and_gemini():
     """Verify that autoresearch passes thinking arguments for Anthropic and Gemini."""
+    from google.genai import types
+
     from autoresearch import researcher
 
     mock_client = MagicMock()
@@ -474,4 +483,23 @@ async def test_autoresearcher_enables_thinking_for_anthropic_and_gemini():
             await researcher.run_research(report="Report", track_id="track_default", model_name="gemini-3.5-flash-lite")
         assert len(captured) == 2
         assert captured[1].get("thinking_config") is not None
-        assert captured[1]["thinking_config"].thinking_budget == 4096
+        assert captured[1]["thinking_config"].thinking_level in (types.ThinkingLevel.HIGH, "HIGH")
+        assert captured[1]["thinking_config"].thinking_budget is None
+
+
+@pytest.mark.asyncio
+async def test_prompt_assembly_enables_thinking_level_for_gemini():
+    """Verify prompt_assembly configures thinking_level instead of thinking_budget for Gemini."""
+    from google.genai import types
+
+    from core.llm.analysis_pipeline.prompt_assembly import build_provider_extraction_args
+
+    final_args = build_provider_extraction_args(
+        provider="gemini",
+        model_name="gemini-3.5-flash-lite",
+        messages=[{"role": "user", "content": "analyze"}],
+        response_model=MagicMock,
+    )
+    assert "thinking_config" in final_args
+    assert final_args["thinking_config"].thinking_level in (types.ThinkingLevel.HIGH, "HIGH")
+    assert final_args["thinking_config"].thinking_budget is None

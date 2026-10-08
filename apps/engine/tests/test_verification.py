@@ -758,7 +758,7 @@ async def test_verify_trading_decision_gemini_trailing_model_turn():
         mock_factories.get.return_value = mock_factory
 
         # Mock gemini run_tool_loop to append a model turn to messages
-        async def mock_gemini_tool_loop(client, model, messages, max_steps, tools):
+        async def mock_gemini_tool_loop(client, model, messages, max_steps, tools, **kwargs):
             from google.genai import types
 
             content = types.Content(role="model", parts=[types.Part(text="Analysis complete, approving.")])

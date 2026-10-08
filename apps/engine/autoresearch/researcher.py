@@ -235,7 +235,7 @@ async def run_research(
             from google.genai import types
 
             if hasattr(types, "ThinkingConfig"):
-                create_args["thinking_config"] = types.ThinkingConfig(thinking_budget=4096)
+                create_args["thinking_config"] = types.ThinkingConfig(thinking_level="high")
 
         wrapper = None
         last_error = None

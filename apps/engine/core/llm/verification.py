@@ -160,7 +160,14 @@ async def verify_trading_decision(
         elif provider == "gemini":
             from core.llm.handlers.gemini import run_tool_loop
 
-            await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
+            await run_tool_loop(
+                client.client,
+                model_name,
+                messages,
+                max_tool_steps,
+                verifier_tools,
+                thinking_level="low",
+            )
 
         # DeepSeek-specific: Prepare messages for Instructor extraction
         # DeepSeek with thinking mode may return empty content with reasoning_content.
@@ -274,7 +281,7 @@ async def verify_trading_decision(
             from google.genai import types
 
             if hasattr(types, "ThinkingConfig"):
-                create_args["thinking_config"] = types.ThinkingConfig(thinking_budget=1024)
+                create_args["thinking_config"] = types.ThinkingConfig(thinking_level="low")
         if provider == "openai":
             create_args["reasoning_effort"] = "none"
         if provider == "deepseek" and "deepseek" in model_name.lower():

@@ -530,7 +530,7 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                             from google.genai import types
 
                             if hasattr(types, "ThinkingConfig"):
-                                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+                                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="high")
                         elif provider == "openai":
                             create_kwargs["reasoning_effort"] = "low"
 

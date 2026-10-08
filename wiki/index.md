@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/gemini-api-dev]] — reference skill for Gemini API development
 - [[entities/treasury-yield-curve-tool]] — no-arg tool returning live US Treasury benchmark yields, 1d bps changes, and curve spreads from FRED
 - [[entities/daily-bond-trading]] — systematic TLT close-exit execution into per-model sys-daily-tlt-close-{model} portfolios
 - [[entities/bond-predictor]] — daily fixed-income open-to-close predictor for TLT (tool-first arena: gpt-5.6-luna, deepseek-v4-flash, Jev)

@@ -75,7 +75,7 @@ Rather than applying a naive global toggle, thinking parameters are tailored to 
 | Model | Provider | Tool Loop Strategy | Extraction Strategy | Implementation |
 | :--- | :--- | :--- | :--- | :--- |
 | `claude-haiku-4-5` | Anthropic | Active (`budget_tokens: 2048`) with preserved signatures | Active (`budget_tokens: 1024-2048`) | `Mode.ANTHROPIC_JSON` in `clients.py`, signature loop in `handlers/anthropic.py` |
-| `gemini-3.5-flash-lite` | Gemini | Active via `ThinkingConfig(thinking_budget=2048)` | Active (`thinking_budget=1024-2048`) | `types.Content` preservation in `handlers/gemini.py` |
+| `gemini-3.5-flash-lite` | Gemini | Active via `ThinkingConfig(thinking_level="high")` | Active (`thinking_level="low"` for verification, `"high"` for analysis) | `types.Content` preservation in `handlers/gemini.py` |
 | `deepseek-v4-flash` | DeepSeek | Suppressed during tool calls (prevents prose narration) | Active via `extra_body={"thinking": {"type": "enabled"}}` | Enabled in `daily_predictor`, `sector_predictor`, `verification`, `researcher` |
 | `gpt-5.6-luna` | OpenAI | Suppressed (`reasoning_effort="none"`) | Suppressed (`reasoning_effort="none"`) | Adheres to `/v1/chat/completions` function tool gateway rules |
 | `MiniMax-M3` | MiniMax | Standard execution via Anthropic format | Structured extraction | `Mode.ANTHROPIC_JSON` in `clients.py` |
@@ -106,13 +106,13 @@ Thinking is unified across all autonomous decision and analytical pipelines in t
 1. **Daily Predictor (`tasks/daily_predictor.py`)**:
    - Predicts whether the target benchmark (SPY) will close higher or lower relative to the 9:30 AM open.
    - DeepSeek applies `extra_body={"thinking": {"type": "enabled"}}` to deliberate over overnight briefing newsletters, forward calendar catalysts, options derivatives, and macro barometers before emitting directional conviction.
-   - Anthropic and Gemini are configured with explicit thinking budgets (`budget_tokens: 2048` and `thinking_budget: 2048`).
+   - Anthropic and Gemini are configured with explicit thinking controls (`budget_tokens: 2048` and `thinking_level: "high"`).
 2. **Sector Predictor (`tasks/sector_predictor.py`)**:
    - Forecasts top sector, worst sector, and uncorrelated pairs across 7d, 30d, 60d, and 90d forecast horizons.
    - DeepSeek and Gemini apply thinking mode to deliberate over 90-day correlation matrices, asset returns, and high-impact calendar scenarios.
 3. **Daily Researcher / Autoresearcher (`autoresearch/researcher.py`)**:
    - Karpathy-style autonomous loop analyzing post-mortem performance reports, verifier audit logs, and prompt blocks.
-   - Anthropic (`budget_tokens: 4096`), Gemini (`thinking_budget: 4096`), and DeepSeek use extended thinking to evaluate trading failure modes and propose modular mutations.
+   - Anthropic (`budget_tokens: 4096`), Gemini (`thinking_level: "high"`), and DeepSeek use extended thinking to evaluate trading failure modes and propose modular mutations.
 4. **Primary Analysis Agents (`analysis.py`)**:
    - Executes multi-turn pull loops (`max_tool_steps = 5`) where models evaluate real-time quotes, technical momentum, and volatility surfaces before extracting final BUY/SELL/HOLD decisions.
 5. **Trade Verification Agent (`verification.py`)**:

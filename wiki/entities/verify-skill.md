@@ -35,7 +35,7 @@ The runner script supports flags to scope the suite:
 ./.agents/skills/verify/scripts/verify.sh --hotspots # hotspot & churn forensics only
 ```
 
-It synchronizes the wiki (`hotspots.py --write-wiki`, `wiki_lint.py --fix`, `qmd update && qmd embed`), runs Ruff (`check` and `format --check`), Biome, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage.
+It synchronizes the wiki (`hotspots.py --write-wiki`, `wiki_lint.py --fix`, `qmd update && qmd embed`), checks remote Supabase migration parity (`npx supabase migration list`), runs Ruff (`check` and `format --check`), Biome, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage.
 
 ## Report Format
 

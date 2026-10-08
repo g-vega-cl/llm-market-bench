@@ -115,7 +115,7 @@ Audit all changed files through these six tiers. Do not skip any tier.
    - Prevent accidental short positions when submitting exit SELL orders.
 5. **Database migration, RLS, and remote Supabase state parity**:
    - *RLS enforcement*: Any new table created in `supabase/migrations/*.sql` must explicitly include `ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;`.
-   - *Remote migration push check*: When modifying or adding SQL files in `supabase/migrations/`, verify whether the remote Supabase project has been updated via `supabase db push --linked`.
+   - *Remote migration push check*: When modifying or adding SQL files in `supabase/migrations/`, verify whether the remote Supabase project has been updated via `supabase db push --linked`. The runner script `verify.sh` automatically audits `npx supabase migration list` to block unapplied migrations.
    - *System portfolio & entity online verification*: When adding or updating system portfolios (`sys-*`) or baseline benchmark models, run a live read-only verification probe against remote Supabase (via diagnostic scratch script) to ensure initial records are provisioned in the remote `portfolios` table with initial cash balances and Reg T metrics before deployment.
 6. **Tool definition parity**:
    - When introducing or altering tools, keep all four locations synchronized:

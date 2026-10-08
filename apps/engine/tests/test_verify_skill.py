@@ -61,3 +61,11 @@ def test_verify_skill_mandates_typecheck_and_supabase_parity():
         "wiki/entities/verify-skill.md must document remote Supabase state parity"
     )
 
+
+def test_verify_script_checks_supabase_migration_parity():
+    """Verify that verify.sh executes an automated remote Supabase migration parity check."""
+    assert VERIFY_SCRIPT.exists(), "verify.sh must exist"
+    content = VERIFY_SCRIPT.read_text()
+    assert "supabase migration list" in content or "supabase db push" in content, (
+        "verify.sh must inspect Supabase migrations for remote parity"
+    )

@@ -144,7 +144,8 @@ async def test_fetch_raw_intraday_events():
         events = await fetch_raw_intraday_events()
 
     assert len(events) >= 2
-    assert any("ISM Services PMI" in e["headline"] for e in events)
+    ism_event = next(e for e in events if "ISM Services PMI" in e["headline"])
+    assert ism_event["event_timestamp"] == "2026-10-05T10:00:00+00:00"
     assert any("Fed Governor" in e["headline"] for e in events)
 
 

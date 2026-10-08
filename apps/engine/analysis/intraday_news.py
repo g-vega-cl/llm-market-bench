@@ -196,10 +196,7 @@ async def fetch_raw_intraday_events() -> list[dict[str, Any]]:
                 iso_time = (
                     datetime.now(UTC).isoformat()
                     if not e.date
-                    else datetime.fromisoformat(e.date.replace(" ", "T"))
-                    .replace(tzinfo=ZoneInfo("America/New_York"))
-                    .astimezone(UTC)
-                    .isoformat()
+                    else datetime.fromisoformat(e.date.strip()[:19].replace(" ", "T")).replace(tzinfo=UTC).isoformat()
                 )
                 source_name = "FMP Macro Calendar"
                 events.append(

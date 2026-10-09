@@ -162,6 +162,13 @@ FRED_SERIES_ALIASES: dict[str, dict[str, Any]] = {
         "default_units": "lin",
         "category": "Volatility",
     },
+    # Foreign Exchange
+    "dollar_index": {
+        "series_id": "DTWEXBGS",
+        "title": "Nominal Broad U.S. Dollar Index",
+        "default_units": "lin",
+        "category": "Foreign Exchange",
+    },
 }
 
 
@@ -443,6 +450,7 @@ async def get_curated_macro_dashboard(indicators: list[str] | None = None) -> st
             "high_yield_spread",
             "m2",
             "pce",
+            "dollar_index",
         ]
 
     lines = ["=== Macro & Economic Context (FRED) ==="]

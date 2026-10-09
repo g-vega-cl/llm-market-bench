@@ -94,6 +94,7 @@
 
 ## Concepts
 
+- [[concepts/macroeconomic-data-fred]] — macroeconomic data (FRED) series aliases, curated dashboard, and dollar index integration
 - [[concepts/unified-daily-predictor]] — single page serving both SPY and TLT prediction arenas via an asset switcher
 - [[concepts/cumulative-layout-shift]] — Auto-indexed page
 - [[concepts/daily-tlt-live-trading]] — the daily duration day-trading loop for TLT: predict, enter at open, exit at close
@@ -156,7 +157,6 @@
 - [[concepts/unslop-editing]] — Structured editing skill for removing AI pattern tells and injecting human voice
 - [[concepts/wayfinder]] — Planning methodology for decomposing large work into tracked decision tickets
 - [[concepts/system-portfolios]] — Mechanical and rule-based systematic trading strategies (sector L/S, benchmarks, daily SPY target & 3:50 close exits)
-- [[concepts/macroeconomic-data-fred]] — Auto-indexed page
 - [[concepts/magnitude-calibration]] — Magnitude capture ratio and postmortem diagnosis for daily S&P prediction prompt evolution
 - [[concepts/deepseek-web-search]] — Live web search tool integration for DeepSeek agents with DuckDuckGo/FMP hybrid backend
 - [[concepts/worst-sector-scoring]] — Two-sided sector prediction, worst sector percentile scoring, and S&P 500 alpha bonus

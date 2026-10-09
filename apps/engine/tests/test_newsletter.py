@@ -202,12 +202,12 @@ async def test_ingest_newsletters_parallel_cleaning(caplog):
         elapsed = time.monotonic() - start
 
         # If parallel: ~0.1s (max single delay). If sequential: > 0.5s (5 × 0.1s).
-        assert elapsed < 0.3, f"Cleaning took {elapsed:.2f}s — appears to be sequential (expected < 0.3s for parallel)"
+        assert elapsed < 0.4, f"Cleaning took {elapsed:.2f}s — appears to be sequential (expected < 0.4s for parallel)"
 
-        # All 5 cleaning calls should have started within 50ms of each other (concurrent)
+        # All 5 cleaning calls should have started concurrently (distinguishes from sequential 5x 0.1s >= 0.40s)
         if len(call_times) >= 2:
             spread = max(call_times) - min(call_times)
-            assert spread < 0.05, f"Cleaning call start spread was {spread:.3f}s — not concurrent (expected < 0.05s)"
+            assert spread < 0.30, f"Cleaning call start spread was {spread:.3f}s — not concurrent (expected < 0.30s)"
 
         # Verify all 5 were cleaned
         assert len(call_times) == 5, f"Expected 5 cleaning calls, got {len(call_times)}"

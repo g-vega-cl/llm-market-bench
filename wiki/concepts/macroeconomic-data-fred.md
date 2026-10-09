@@ -37,6 +37,7 @@ The system maps convenient high-level alias keys to official FRED series identif
 | **Liquidity & Money** | `m2`<br>`fed_balance_sheet`<br>`reverse_repo` | `M2SL`<br>`WALCL`<br>`RRPONTSYD` | M2 Money Supply YoY<br>Fed Total Assets<br>Overnight Reverse Repo | `pc1`<br>`lin`<br>`lin` |
 | **Growth & Labor** | `nonfarm_payrolls`<br>`initial_claims`<br>`real_gdp`<br>`retail_sales` | `PAYEMS`<br>`ICSA`<br>`GDPC1`<br>`RSAFS` | Total Nonfarm Payrolls Change<br>Initial Jobless Claims<br>Real GDP Growth YoY<br>Advance Retail Sales YoY | `chg`<br>`lin`<br>`pc1`<br>`pc1` |
 | **Inflation & Sentiment** | `pce`<br>`consumer_sentiment`<br>`breakeven_5y`<br>`breakeven_10y` | `PCEPI`<br>`UMCSENT`<br>`T5YIE`<br>`T10YIE` | PCE Inflation YoY<br>UMich Consumer Sentiment<br>5Y Breakeven Inflation<br>10Y Breakeven Inflation | `pc1`<br>`lin`<br>`lin`<br>`lin` |
+| **Foreign Exchange** | `dollar_index` | `DTWEXBGS` | Nominal Broad U.S. Dollar Index | `lin` |
 
 *Arbitrary raw FRED series IDs (e.g. `WALCL`, `PCEPI`) are also supported directly.*
 

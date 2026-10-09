@@ -1,5 +1,6 @@
 """Task for generating a daily 1-2 minute synthesized market newsletter using DeepSeek V4 Flash."""
 
+import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -38,6 +39,7 @@ async def _call_deepseek_flash(
     macro_context: str = "",
     options_context: str = "",
     economic_releases_context: str = "",
+    fx_context: str = "",
 ) -> GeneratedNewsletterOutput:
     """Invokes DeepSeek V4 Flash to synthesize ingested daily newsletters, FRED macro indicators, options data, and live economic releases into a proper newsletter."""
     session_label = "Morning Market Open Briefing" if session == "open" else "Evening Market Close Briefing"
@@ -52,6 +54,7 @@ async def _call_deepseek_flash(
         )
         macro_text = f"\n\n**Key Economic Readings (FRED):**\n{macro_context}" if macro_context else ""
         options_text = f"\n\n**Key Options & Volatility Readings:**\n{options_context}" if options_context else ""
+        fx_text = f"\n\n**Foreign Exchange & US Dollar (FX):**\n{fx_context}" if fx_context else ""
         return GeneratedNewsletterOutput(
             title=f"{session_label} — {now_date_str}",
             summary=f"No new financial newsletters were ingested prior to the {session} session.",
@@ -65,7 +68,7 @@ async def _call_deepseek_flash(
                 f"**Creation Time:** {formatted_time}\n\n"
                 f"### 🌐 The Macro & Cross-Asset Narrative\n\n"
                 f"No raw financial newsletters were ingested during this session window. "
-                f"Major indices, benchmark Treasury yields, and currency pairs are holding steady as market participants await upcoming macroeconomic catalysts.{econ_text}{macro_text}{options_text}\n\n"
+                f"Major indices, benchmark Treasury yields, and currency pairs are holding steady as market participants await upcoming macroeconomic catalysts.{econ_text}{macro_text}{options_text}{fx_text}\n\n"
                 f"### 🔬 Sector & Earnings Spotlight\n\n"
                 f"- **Sector Rotation**: Broad market breadth remains balanced with defensive and cyclical sectors trading in narrow ranges.\n"
                 f"- **Earnings Radar**: Corporate earnings calendar and earnings call transcripts continue to guide fundamental expectations.\n\n"
@@ -108,7 +111,8 @@ async def _call_deepseek_flash(
         "   - `### 💡 Trade Ideas & Scenarios to Watch`: Detailed actionable setups with catalyst, entry/triggers, key support/resistance, invalidation levels, and explicit Bull/Bear scenario branching.\n"
         "   - `### 🗓️ The Catalyst Radar & Key Levels`: Upcoming economic data releases, earnings calendar timeline, and critical technical pivot levels.\n"
         "   Use subheadings, bullet points, and bold key tickers and metrics (e.g., **NVDA**, **SPX**, **10Y Yield 4.25%**, **CPI +0.2%**, **Fed Funds 5.25%**).\n"
-        "5. Tone must be professional, analytical, objective, and developer/investor friendly, delivering deep substance without fluff."
+        "5. Tone must be professional, analytical, objective, and developer/investor friendly, delivering deep substance without fluff. "
+        "Ground all market and currency commentary strictly in the provided data. If a specific metric or ticker is unavailable, discuss macro implications naturally without referencing 'packet', 'prompt', 'context', or missing data feeds."
     )
 
     economic_block = (
@@ -120,6 +124,7 @@ async def _call_deepseek_flash(
     options_block = (
         f"Official Options Derivatives & Volatility Structure:\n{options_context}\n\n" if options_context else ""
     )
+    fx_block = f"Live Foreign Exchange & US Dollar (FX) Dynamics:\n{fx_context}\n\n" if fx_context else ""
 
     user_prompt = (
         f"Session Window: {session.upper()} ({session_label})\n"
@@ -127,6 +132,7 @@ async def _call_deepseek_flash(
         f"{economic_block}"
         f"{macro_block}"
         f"{options_block}"
+        f"{fx_block}"
         f"Ingested Newsletters ({len(chunks)} sources):\n"
         f"{compiled_sources}"
     )
@@ -220,6 +226,59 @@ async def get_newsletter_options_context(ticker: str = "SPY") -> str:
     return "\n\n".join(sections)
 
 
+async def get_newsletter_fx_context(mdm=None) -> str:
+    """Fetch live Foreign Exchange (FX) and US Dollar Index metrics for newsletter context.
+
+    Queries UUP (US Dollar Index proxy) along with major currency pairs (EURUSD, USDJPY)
+    via MarketDataManager, returning a formatted summary block.
+    """
+    from execution.market_data import MarketDataManager
+
+    manager = mdm or MarketDataManager()
+    fx_targets = [
+        ("UUP", "US Dollar Index / DXY Proxy"),
+        ("EURUSD", "EUR/USD"),
+        ("USDJPY", "USD/JPY"),
+    ]
+
+    try:
+        quotes = await asyncio.gather(
+            *[manager.get_premarket_quote(ticker) for ticker, _ in fx_targets],
+            return_exceptions=True,
+        )
+    except Exception as e:
+        logger.warning(f"Error fetching FX context for newsletter: {e}")
+        return ""
+
+    lines = []
+    for (ticker, label), q in zip(fx_targets, quotes, strict=False):
+        if isinstance(q, Exception):
+            logger.warning(f"Error fetching FX context for {ticker}: {q}")
+            continue
+        if isinstance(q, dict) and q.get("price") is not None:
+            price = q["price"]
+            chg_pct = q.get("change_pct")
+            prev_close = q.get("previous_close")
+
+            chg_str = f"{chg_pct:+.2f}%" if chg_pct is not None else "N/A"
+            if ticker == "UUP":
+                price_str = f"${price:.2f}"
+                prev_str = f" (Prev Close: ${prev_close:.2f})" if prev_close is not None else ""
+                lines.append(f"- **{ticker} ({label})**: {price_str} | Day: {chg_str}{prev_str}")
+            elif ticker == "EURUSD":
+                lines.append(f"- **{label}**: {price:.4f} | Day: {chg_str}")
+            elif ticker == "USDJPY":
+                lines.append(f"- **{label}**: {price:.2f} | Day: {chg_str}")
+            else:
+                lines.append(f"- **{label} ({ticker})**: {price} | Day: {chg_str}")
+
+    if not lines:
+        return ""
+
+    header = "### 💵 Foreign Exchange & US Dollar (FX)\n"
+    return header + "\n".join(lines)
+
+
 async def generate_daily_newsletter(session: str = "open", sb_client=None) -> dict | None:
     """Main pipeline task to generate and store a daily newsletter.
 
@@ -281,6 +340,13 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
     except Exception as e:
         logger.warning(f"Could not fetch options context for newsletter: {e}")
 
+    # Step 4.5: Fetch FX & Dollar Index context
+    fx_context = ""
+    try:
+        fx_context = await get_newsletter_fx_context()
+    except Exception as e:
+        logger.warning(f"Could not fetch FX context for newsletter: {e}")
+
     # Generate newsletter content via DeepSeek V4 Flash
     output = await _call_deepseek_flash(
         snapshots,
@@ -289,6 +355,7 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
         macro_context=macro_context,
         options_context=options_context,
         economic_releases_context=economic_releases_context,
+        fx_context=fx_context,
     )
 
     # Insert into generated_newsletters table

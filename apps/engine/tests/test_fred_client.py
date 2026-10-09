@@ -16,6 +16,7 @@ def test_resolve_series_alias():
     assert resolve_series_alias("fed_funds") == "FEDFUNDS"
     assert resolve_series_alias("yield_curve_10y2y") == "T10Y2Y"
     assert resolve_series_alias("cpi") == "CPIAUCSL"
+    assert resolve_series_alias("dollar_index") == "DTWEXBGS"
     assert resolve_series_alias("WALCL") == "WALCL"
     assert resolve_series_alias("walcl") == "WALCL"
     assert resolve_series_alias("unknown_custom_id") == "UNKNOWN_CUSTOM_ID"

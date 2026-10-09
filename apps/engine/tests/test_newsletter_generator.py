@@ -368,3 +368,111 @@ async def test_get_newsletter_options_context_includes_yield_curve():
         assert "VIX: 15.2 (Contango)" in ctx
         assert "US Treasury Yield Curve Slope & Flow Regime" in ctx
         assert "Yield Curve: BULL_STEEPENER" in ctx
+
+
+@pytest.mark.asyncio
+async def test_call_deepseek_flash_includes_fx_context():
+    """Verify that _call_deepseek_flash includes fx_context in user_prompt."""
+    from tasks.newsletter_generator import _call_deepseek_flash
+
+    mock_client = MagicMock()
+    mock_output = GeneratedNewsletterOutput(
+        title="Test Briefing",
+        summary="Test Summary",
+        bullet_points=["Point 1"],
+        content="Test content",
+    )
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_output)
+
+    with (
+        patch("core.llm.clients.get_deepseek_client", return_value=mock_client),
+        patch("core.llm.clients.close_client", new_callable=AsyncMock),
+    ):
+        resp = await _call_deepseek_flash(
+            chunks=[{"sender": "WSJ", "subject": "Market Open", "content": "Stocks rising"}],
+            session="open",
+            formatted_time="09:12 ET",
+            fx_context="- **UUP (US Dollar Index / DXY Proxy)**: $28.52 | Day: +0.35%",
+        )
+        assert resp.title == "Test Briefing"
+        create_args = mock_client.chat.completions.create.call_args[1]
+        user_msg = next(m["content"] for m in create_args["messages"] if m["role"] == "user")
+        assert "Live Foreign Exchange & US Dollar (FX) Dynamics:" in user_msg
+        assert "**UUP (US Dollar Index / DXY Proxy)**: $28.52" in user_msg
+
+
+@pytest.mark.asyncio
+async def test_get_newsletter_fx_context_success():
+    """Verify that get_newsletter_fx_context formats UUP, EURUSD, and USDJPY properly."""
+    from tasks.newsletter_generator import get_newsletter_fx_context
+
+    mock_mdm = MagicMock()
+    quotes_map = {
+        "UUP": {"price": 28.52, "previous_close": 28.42, "change": 0.10, "change_pct": 0.35},
+        "EURUSD": {"price": 1.0850, "previous_close": 1.0877, "change": -0.0027, "change_pct": -0.25},
+        "USDJPY": {"price": 154.20, "previous_close": 153.59, "change": 0.61, "change_pct": 0.40},
+    }
+
+    async def mock_get_quote(ticker: str):
+        return quotes_map.get(ticker)
+
+    mock_mdm.get_premarket_quote = AsyncMock(side_effect=mock_get_quote)
+
+    ctx = await get_newsletter_fx_context(mdm=mock_mdm)
+    assert "Foreign Exchange & US Dollar (FX)" in ctx
+    assert "**UUP (US Dollar Index / DXY Proxy)**: $28.52" in ctx
+    assert "+0.35%" in ctx
+    assert "**EUR/USD**: 1.0850" in ctx
+    assert "-0.25%" in ctx
+    assert "**USD/JPY**: 154.20" in ctx
+    assert "+0.40%" in ctx
+
+
+@pytest.mark.asyncio
+async def test_get_newsletter_fx_context_graceful_on_errors(caplog):
+    """Verify that get_newsletter_fx_context handles exceptions and missing quotes gracefully."""
+    from tasks.newsletter_generator import get_newsletter_fx_context
+
+    mock_mdm = MagicMock()
+    mock_mdm.get_premarket_quote = AsyncMock(side_effect=Exception("Data provider connection timeout"))
+
+    with caplog.at_level("WARNING", logger="engine"):
+        ctx = await get_newsletter_fx_context(mdm=mock_mdm)
+        assert ctx == ""
+        assert any("error fetching fx context" in r.message.lower() for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_generate_daily_newsletter_passes_fx_context():
+    """Verify that generate_daily_newsletter fetches FX context and forwards it to _call_deepseek_flash."""
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = []
+    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "fx-gen-id"}]
+
+    mock_llm_response = GeneratedNewsletterOutput(
+        title="FX Aware Briefing",
+        summary="Dollar strength anchors macro cross-asset flows",
+        bullet_points=["UUP prints $28.52 +0.35%"],
+        content="Market briefing with FX context",
+        read_time_minutes=6,
+    )
+
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock, return_value="Macro"),
+        patch(
+            "tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value="Options"
+        ),
+        patch(
+            "tasks.newsletter_generator.get_newsletter_fx_context",
+            new_callable=AsyncMock,
+            return_value="FX metrics: UUP $28.52",
+        ) as mock_get_fx,
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
+    ):
+        result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
+        assert result is not None
+        mock_get_fx.assert_called_once()
+        mock_llm_call.assert_called_once()
+        assert "fx_context" in mock_llm_call.call_args.kwargs
+        assert "FX metrics: UUP $28.52" in mock_llm_call.call_args.kwargs["fx_context"]

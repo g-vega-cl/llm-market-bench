@@ -15,13 +15,14 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
 4. **Macroeconomic Pulse**: Queries [[concepts/macroeconomic-data-fred]] via `get_curated_macro_dashboard()` for real-time benchmark interest rates, yield curve spreads (10Y-2Y), CPI/PCE inflation, labor metrics, and credit spreads.
 5. **Live Economic Releases & Macro Surprises**: Queries FMP via `get_today_economic_releases_summary()` for 8:30 AM ET and morning macroeconomic prints (CPI, Core CPI, PPI, Jobs/Payrolls, Retail Sales, Unemployment, GDP) with actual vs consensus surprises, prior values, and release status (RELEASED vs PENDING), cached for 30 minutes.
 6. **Options Derivatives & Volatility Structure**: Queries options positioning and volatility dynamics via `get_newsletter_options_context()` including cross-asset macro options sentiment table covering `SPY`, `QQQ`, `IWM`, and `GLD` (Put/Call ratios, Max Pain, 25-delta skew via `execute_get_macro_options_sentiment_tool`), SPY options volatility surface and 1-sigma daily move cone (via `execute_options_vol_surface_tool`), VIX term structure and curve dynamics (via `execute_get_volatility_index_details_tool`), and US Treasury yield curve slope & flow regime (via `execute_yield_curve_regime_tool`).
-7. **LLM**: Uses DeepSeek V4 Flash to summarize and synthesize the most impactful events, economic data, and options positioning into a comprehensive 6-minute newsletter (~1,200–1,500 words, ~6 min read) featuring:
+7. **Foreign Exchange & Dollar Dynamics (FX)**: Queries live market quotes via `get_newsletter_fx_context()` covering the US Dollar Index Bullish Fund (`UUP` / DXY proxy) and core major currency pairs (`EURUSD`, `USDJPY`), supplemented by FRED's Nominal Broad U.S. Dollar Index (`DTWEXBGS`), ensuring grounded spot FX rates and overnight moves for macro cross-asset synthesis.
+8. **LLM**: Uses DeepSeek V4 Flash to summarize and synthesize the most impactful events, economic data, options positioning, and currency dynamics into a comprehensive 6-minute newsletter (~1,200–1,500 words, ~6 min read) featuring:
    - `### 🌐 The Macro & Cross-Asset Narrative`
    - `### 🔬 Sector & Earnings Spotlight`
    - `### 📈 Market Internals, Sentiment & Flows`
    - `### 💡 Trade Ideas & Scenarios to Watch`
    - `### 🗓️ The Catalyst Radar & Key Levels`
-8. **Storage**: The generated newsletter is inserted into the `generated_newsletters` table with a unique ID and `read_time_minutes` (default 6).
+9. **Storage**: The generated newsletter is inserted into the `generated_newsletters` table with a unique ID and `read_time_minutes` (default 6).
 
 ## Downstream Consumers & Tooling Integration
 

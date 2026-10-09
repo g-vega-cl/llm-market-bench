@@ -376,6 +376,7 @@ def apply_page_deletions(paths: list[str]) -> None:
     index_path = WIKI_DIR / "index.md"
 
     for rel_path in paths:
+        rel_path = rel_path.removeprefix("wiki/").removeprefix("/")
         target = (WIKI_DIR / rel_path).resolve()
         if not str(target).startswith(str(WIKI_DIR.resolve())):
             print(
@@ -402,6 +403,7 @@ def apply_page_deletions(paths: list[str]) -> None:
 
 
 def write_new_page(rel_path: str, content: str) -> None:
+    rel_path = rel_path.removeprefix("wiki/").removeprefix("/")
     target = (WIKI_DIR / rel_path).resolve()
     if not str(target).startswith(str(WIKI_DIR.resolve())):
         print(f"  [auto-wiki] ERROR: path traversal attempt: {rel_path}", file=sys.stderr)

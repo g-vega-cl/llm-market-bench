@@ -222,7 +222,7 @@ AUTORESEARCH_TRACK_MODELS = dict(
 )
 
 # Model owner IDs that execute the skeptical verification agent stage (track_claude portfolios)
-VERIFIER_ENABLED_OWNER_IDS = set(_models.get("VERIFIER_ENABLED_OWNER_IDS", ["claude-haiku-4-5", "deepseek-v4-flash"]))
+VERIFIER_ENABLED_OWNER_IDS = set(_models.get("VERIFIER_ENABLED_OWNER_IDS", ["claude-haiku-5-5", "deepseek-v4-flash"]))
 
 # Model owner IDs that bypass the skeptical verification agent stage
 SKIP_VERIFIER_OWNER_IDS = set(

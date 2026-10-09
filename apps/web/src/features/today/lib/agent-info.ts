@@ -59,5 +59,9 @@ export function getAgentInfo(ownerId: string | null | undefined) {
             return config;
         }
     }
+    // Brand-level fallback for historical or variant model names
+    if (normalized.includes('claude') || normalized.includes('haiku')) {
+        return agentConfig[MODELS.ANTHROPIC];
+    }
     return { name: 'Unknown', color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' };
 }

@@ -72,9 +72,9 @@ All agent arenas and predictors across the system operate as thinking agents whi
 - **Performance Impact**: Sequential multi-turn tool calling does not degrade system performance. Bounded token budgets (1,024 to 2,048 tokens) and capped tool steps keep wall-clock runtime fast (typically 2-6 seconds total), while grounding every decision on real market data.
 
 ### Provider Execution Contracts
-- **Anthropic (`claude-haiku-4-5`)**:
-  - Sets `thinking={"type": "enabled", "budget_tokens": 2048}` during tool loops.
-  - Multi-turn tool execution preserves `ThinkingBlock` elements in assistant history across turns.
+- **Anthropic (`claude-haiku-5-5`)**:
+  - Sets adaptive thinking (`thinking={"type": "adaptive", "display": "summarized"}`) and effort level via `output_config={"effort": "medium"}` during tool loops.
+  - Multi-turn tool execution preserves `ThinkingBlock` elements in assistant history across turns even when thinking text is empty (signature-only).
   - Structured extraction uses `Mode.ANTHROPIC_JSON` via Instructor to avoid forced `tool_choice`, preventing 400 errors.
 - **Gemini (`gemini-3.5-flash-lite`)**:
   - Uses `types.ThinkingConfig(thinking_level="high")` in `GenerateContentConfig`.

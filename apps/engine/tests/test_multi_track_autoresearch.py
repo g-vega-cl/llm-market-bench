@@ -17,9 +17,9 @@ async def test_skip_verifier_owner_ids_config():
     assert hasattr(config, "is_verifier_enabled_for_owner")
 
     # Track Claude portfolios have verifier enabled
-    assert config.is_verifier_enabled_for_owner("claude-haiku-4-5") is True
+    assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is True
     assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is True
-    assert "claude-haiku-4-5" in config.VERIFIER_ENABLED_OWNER_IDS
+    assert "claude-haiku-5-5" in config.VERIFIER_ENABLED_OWNER_IDS
     assert "deepseek-v4-flash" in config.VERIFIER_ENABLED_OWNER_IDS
 
     # All other portfolios skip LLM verification
@@ -37,7 +37,7 @@ async def test_skip_verifier_owner_ids_config():
 @pytest.mark.asyncio
 async def test_verifier_gating_helper_contract():
     """Verify is_verifier_enabled_for_owner correctly respects VERIFIER_ENABLED_OWNER_IDS."""
-    assert config.is_verifier_enabled_for_owner("claude-haiku-4-5") is True
+    assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is True
     assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is True
     assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
     assert config.is_verifier_enabled_for_owner("gemini-3.5-flash-lite") is False
@@ -92,14 +92,14 @@ async def test_prompt_store_multi_track_saving_and_retrieval():
 async def test_prompt_factory_resolves_track_id():
     """Verify PromptFactory resolves owner_id to correct track_id prompt."""
     with (
-        patch.object(config, "AUTORESEARCH_TRACKS", {"track_claude": ["claude-haiku-4-5"]}),
+        patch.object(config, "AUTORESEARCH_TRACKS", {"track_claude": ["claude-haiku-5-5"]}),
         patch("autoresearch.prompt_store.get_active_prompt", new_callable=AsyncMock) as mock_get_prompt,
     ):
         mock_get_prompt.return_value = "=== REASONING RIGOR ===\nCustom Claude Prompt\n=== SOUP ==="
 
         msgs = await PromptFactory.build_analysis_messages(
             provider="anthropic",
-            owner_id="claude-haiku-4-5",
+            owner_id="claude-haiku-5-5",
             market_data_block="",
             current_day_info="Friday, July 31",
             news_content="Breaking news content",

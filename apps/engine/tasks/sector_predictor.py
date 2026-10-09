@@ -215,12 +215,18 @@ async def run_sector_predictions():
                             if hasattr(types, "ThinkingConfig"):
                                 create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="high")
                         if model.get("provider") == "anthropic":
+                            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
                             create_kwargs["cache_control"] = {"type": "ephemeral"}
                             create_kwargs["system"] = [
                                 {"type": "text", "text": prompt_content, "cache_control": {"type": "ephemeral"}}
                             ]
                             create_kwargs["messages"] = [{"role": "user", "content": user_msg}]
-                            create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": 2048}
+                            create_kwargs.update(
+                                get_anthropic_thinking_kwargs(
+                                    model.get("model", ""), budget_tokens=2048, effort="medium"
+                                )
+                            )
                             create_kwargs["max_tokens"] = 4000
 
                         resp_awaitable = client_inst.chat.completions.create(**create_kwargs)

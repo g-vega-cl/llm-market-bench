@@ -519,12 +519,16 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                         if provider == "deepseek" or "deepseek" in model_name.lower():
                             create_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
                         elif provider == "anthropic":
+                            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
                             create_kwargs["cache_control"] = {"type": "ephemeral"}
                             create_kwargs["system"] = [
                                 {"type": "text", "text": prompt_content, "cache_control": {"type": "ephemeral"}}
                             ]
                             create_kwargs["messages"] = [{"role": "user", "content": user_msg}]
-                            create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": 2048}
+                            create_kwargs.update(
+                                get_anthropic_thinking_kwargs(model_name, budget_tokens=2048, effort="medium")
+                            )
                             create_kwargs["max_tokens"] = 4000
                         elif provider == "gemini":
                             from google.genai import types

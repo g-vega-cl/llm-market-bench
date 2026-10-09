@@ -63,6 +63,7 @@ export function getAgentDisplayName(ownerId: string | null | undefined): string 
     if (normalized.includes('gemini-3.1-flash-lite')) return 'Gemini 3.1 Flash Lite';
     if (normalized.includes('deepseek-v4-pro')) return 'DeepSeek V4 Pro';
     if (normalized.includes('deepseek-v4-flash')) return 'DeepSeek V4 Flash';
+    if (normalized.includes('claude-haiku-5-5')) return 'Claude Haiku 5.5';
     if (normalized.includes('claude-haiku-4-5')) return 'Claude Haiku 4.5';
     if (normalized.includes('gpt-5.6-luna')) return 'GPT 5.6 Luna';
     if (normalized.includes('minimax-m3') || normalized.includes('minimax')) return 'MiniMax-M3';

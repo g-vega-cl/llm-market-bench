@@ -14,7 +14,7 @@ Only portfolios in `track_claude` run the skeptical second-step verification. Al
 ```json
 {
   "VERIFIER_ENABLED_OWNER_IDS": [
-    "claude-haiku-4-5",
+    "claude-haiku-5-5",
     "deepseek-v4-flash"
   ],
   "SKIP_VERIFIER_OWNER_IDS": [

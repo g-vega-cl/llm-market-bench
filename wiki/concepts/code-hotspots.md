@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **204**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **200**).
 
 ## Top Hotspots
 
@@ -13,13 +13,12 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/engine/tests/test_workflow_schedule.py` | 23 | 12 | 52.2% | 239 | 276 | **CRITICAL** |
-| `apps/engine/tasks/daily_predictor.py` | 25 | 7 | 28.0% | 559 | 175 | **CRITICAL** |
+| `apps/engine/tests/test_workflow_schedule.py` | 22 | 11 | 50.0% | 239 | 242 | **CRITICAL** |
+| `apps/engine/tasks/daily_predictor.py` | 25 | 7 | 28.0% | 562 | 175 | **CRITICAL** |
 | `apps/engine/tests/test_daily_predictor.py` | 17 | 8 | 47.1% | 660 | 136 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 21 | 6 | 28.6% | 257 | 126 | **CRITICAL** |
 | `apps/engine/main.py` | 25 | 3 | 12.0% | 73 | 75 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 15 | 5 | 33.3% | 784 | 75 | **HIGH** |
-| `apps/engine/autoresearch/researcher.py` | 32 | 2 | 6.2% | 299 | 64 | **HIGH** |
 | `apps/engine/execution/market_data.py` | 10 | 6 | 60.0% | 319 | 60 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 28 | 2 | 7.1% | 1758 | 56 | **HIGH** |
 | `apps/engine/tasks/daily_autoresearch.py` | 17 | 3 | 17.6% | 735 | 51 | **HIGH** |
@@ -28,6 +27,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `packages/config/tools.json` | 21 | 2 | 9.5% | 210 | 42 | **HIGH** |
 | `apps/engine/tasks/evaluate_daily_predictions.py` | 10 | 4 | 40.0% | 284 | 40 | **HIGH** |
 | `apps/web/src/config/how-it-works.json` | 10 | 4 | 40.0% | 109 | 40 | **HIGH** |
+| `apps/engine/tests/test_evaluate_daily_predictions.py` | 9 | 4 | 44.4% | 410 | 36 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 

@@ -18,7 +18,7 @@ export const modelDisplayConfig: Record<
         gradient: 'success',
     },
     [MODELS.ANTHROPIC]: {
-        name: 'Claude (haiku-4-5)',
+        name: 'Claude (haiku-5-5)',
         color: 'text-amber-500',
         bgColor: 'bg-amber-500',
         emoji: '🟠',

@@ -94,6 +94,7 @@
 
 ## Concepts
 
+- [[concepts/anthropic-adaptive-thinking]] — Haiku 5.5 adaptive thinking + effort levels via `get_anthropic_thinking_kwargs`
 - [[concepts/macroeconomic-data-fred]] — macroeconomic data (FRED) series aliases, curated dashboard, and dollar index integration
 - [[concepts/unified-daily-predictor]] — single page serving both SPY and TLT prediction arenas via an asset switcher
 - [[concepts/cumulative-layout-shift]] — Auto-indexed page

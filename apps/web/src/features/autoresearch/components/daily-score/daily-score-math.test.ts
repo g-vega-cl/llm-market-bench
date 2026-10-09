@@ -19,6 +19,7 @@ describe('daily-score-math', () => {
             expect(getAgentDisplayName('gemini_3.1_flash_lite')).toBe('Gemini 3.1 Flash Lite');
             expect(getAgentDisplayName('deepseek-v4-pro')).toBe('DeepSeek V4 Pro');
             expect(getAgentDisplayName('deepseek-v4-flash')).toBe('DeepSeek V4 Flash');
+            expect(getAgentDisplayName('claude-haiku-5-5')).toBe('Claude Haiku 5.5');
             expect(getAgentDisplayName('claude-haiku-4-5')).toBe('Claude Haiku 4.5');
             expect(getAgentDisplayName('gpt-5.6-luna')).toBe('GPT 5.6 Luna');
             expect(getAgentDisplayName('minimax-m3')).toBe('MiniMax-M3');

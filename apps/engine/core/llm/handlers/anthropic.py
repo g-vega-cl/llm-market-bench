@@ -1,6 +1,7 @@
 """Anthropic tool loop handler."""
 
 import logging
+from typing import Any
 
 from core.config import (
     ANTHROPIC_MAX_WEB_SEARCHES,
@@ -11,6 +12,27 @@ from core.llm import tools
 from core.llm.handlers import base
 
 logger = logging.getLogger("engine")
+
+
+def get_anthropic_thinking_kwargs(
+    model_name: str,
+    budget_tokens: int = 2048,
+    effort: str = "medium",
+) -> dict[str, Any]:
+    """Returns thinking and output_config parameters for Anthropic API.
+
+    For Claude Haiku 5.5, requests must omit manual token budgets and instead
+    use adaptive thinking with output_config effort level.
+    """
+    if "haiku-5-5" in model_name.lower():
+        return {
+            "thinking": {"type": "adaptive", "display": "summarized"},
+            "output_config": {"effort": effort},
+        }
+    return {
+        "thinking": {"type": "enabled", "budget_tokens": budget_tokens},
+    }
+
 
 DEFAULT_ANTHROPIC_TOOLS = [
     tools.to_anthropic(t)
@@ -137,7 +159,7 @@ async def run_tool_loop(
 
         # Extended thinking for Claude models that support it
         if "claude" in model_name.lower() or "haiku" in model_name.lower() or "sonnet" in model_name.lower():
-            args["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
+            args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=thinking_budget, effort="medium"))
 
         try:
             resp = await raw_client.messages.create(**args)
@@ -195,14 +217,21 @@ async def run_tool_loop(
                 )
             elif content_block.type == "thinking":
                 thinking_text = getattr(content_block, "thinking", "")
-                if thinking_text:
-                    assistant_content.append(
-                        {
-                            "type": "thinking",
-                            "thinking": thinking_text,
-                            "signature": getattr(content_block, "signature", None),
-                        }
-                    )
+                signature = getattr(content_block, "signature", None)
+                thinking_block = {
+                    "type": "thinking",
+                    "thinking": thinking_text or "",
+                }
+                if signature:
+                    thinking_block["signature"] = signature
+                assistant_content.append(thinking_block)
+            elif content_block.type == "redacted_thinking":
+                assistant_content.append(
+                    {
+                        "type": "redacted_thinking",
+                        "data": getattr(content_block, "data", ""),
+                    }
+                )
             # Skip server_tool_use blocks - they are internal to Anthropic's server
 
         # Ensure assistant content is never empty to avoid 400 errors from API

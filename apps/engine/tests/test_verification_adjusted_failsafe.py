@@ -96,7 +96,7 @@ async def test_adjusted_allocation_failsafe_rejection():
         ticker="AAPL",
         source_id="src_1",
         model_provider="anthropic",
-        model_name="claude-haiku-4-5",
+        model_name="claude-haiku-5-5",
         allocation_percentage=20.0,
     )
 

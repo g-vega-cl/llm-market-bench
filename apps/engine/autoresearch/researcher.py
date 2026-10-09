@@ -229,8 +229,10 @@ async def run_research(
         if provider == "deepseek" or "deepseek" in model_name.lower():
             create_args["extra_body"] = {"thinking": {"type": "enabled"}}
         if provider == "anthropic":
+            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
             create_args["cache_control"] = {"type": "ephemeral"}
-            create_args["thinking"] = {"type": "enabled", "budget_tokens": 4096}
+            create_args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=4096, effort="high"))
         if provider == "gemini":
             from google.genai import types
 

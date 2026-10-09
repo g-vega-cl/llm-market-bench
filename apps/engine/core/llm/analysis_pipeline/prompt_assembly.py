@@ -330,8 +330,10 @@ def build_provider_extraction_args(
                 final_args["system"] = sys_content
             final_args["messages"] = messages[1:]
         if provider == "anthropic":
+            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
             final_args["cache_control"] = {"type": "ephemeral"}
-            final_args["thinking"] = {"type": "enabled", "budget_tokens": 2048}
+            final_args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=2048, effort="medium"))
 
     if provider == "gemini":
         from google.genai import types

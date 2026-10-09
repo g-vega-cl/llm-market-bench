@@ -265,9 +265,11 @@ async def verify_trading_decision(
                 )
 
         if provider == "anthropic":
+            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
             create_args["max_tokens"] = 4000
             create_args["cache_control"] = {"type": "ephemeral"}
-            create_args["thinking"] = {"type": "enabled", "budget_tokens": 1024}
+            create_args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=1024, effort="medium"))
             if create_args["messages"] and create_args["messages"][0].get("role") == "system":
                 create_args["system"] = [
                     {

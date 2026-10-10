@@ -6,6 +6,7 @@ import { useState } from 'react';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import { AutoresearchHistoryArena } from '../components/AutoresearchHistoryArena';
 import { AutoresearchMilestoneCards } from '../components/AutoresearchMilestoneCards';
+import { CuratedManifestCard } from '../components/CuratedManifestCard';
 import { DailyMetricsOverview } from '../components/DailyMetricsOverview';
 import { HeroPredictionCard } from '../components/HeroPredictionCard';
 import { PredictionsTable } from '../components/PredictionsTable';
@@ -14,6 +15,7 @@ import {
     DEFAULT_DAILY_PREDICTOR_TOOLS,
     getPredictorModelsForTicker,
     PREDICTOR_MODELS,
+    parseCuratedManifest,
     resolveActiveDailyPrompt,
     type SupportedDailyTicker,
 } from '../utils/daily-predictions-helpers';
@@ -142,6 +144,7 @@ export function DailyPredictionsPage({
         computeDailyPredictionStats(modelPredictions);
 
     const { activePrompt } = resolveActiveDailyPrompt(modelExperiments);
+    const curatedManifest = parseCuratedManifest(activePrompt?.prompt_content);
 
     const handleSelectTicker = (newTicker: SupportedDailyTicker) => {
         if (newTicker === selectedTicker) return;
@@ -255,6 +258,8 @@ export function DailyPredictionsPage({
                         totalPredictions={modelPredictions.length}
                         activePromptTag={activePrompt?.variant_tag || 'daily-pred-baseline'}
                     />
+
+                    {curatedManifest && <CuratedManifestCard manifest={curatedManifest} />}
 
                     {latestPrediction && <HeroPredictionCard prediction={latestPrediction} />}
 

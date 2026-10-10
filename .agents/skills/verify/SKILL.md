@@ -63,13 +63,15 @@ Audit all changed files through these six tiers. Do not skip any tier.
      - `researcher.py` $\leftrightarrow$ `handlers/base.py` $\leftrightarrow$ `tools.py`
      - `market_data.py` $\leftrightarrow$ `test_market_data.py`
 5. **Wiki and documentation synchronization (MANDATORY)**:
-   - **Synchronize changes everywhere**: When code changes alter formulas, scoring, models, tools, or architectural patterns, YOU MUST update the corresponding wiki pages (`wiki/concepts/`, `wiki/entities/`) documenting the new behavior and the rationale ("the why").
+   - **Synchronize changes everywhere**: When code changes alter formulas, scoring, models, tools, UI components, background tasks, schemas, or architectural patterns, YOU MUST proactively audit and update ALL relevant wiki pages (`wiki/concepts/`, `wiki/entities/`) documenting the new behavior, component interfaces, invariants, and the rationale ("the why"). Never leave new features, model tracks, or schemas undocumented.
+   - **Audit all affected surfaces**: Review `git diff --name-only` across backend, frontend, and config to identify every concept and entity page requiring documentation. If a new capability or pattern is introduced, create a new dedicated wiki page.
    - **Refresh code hotspots**: Refresh the code hotspots wiki page via `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki`.
    - **Auto-index catalog**: Run `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix` to auto-index new pages into `wiki/index.md`.
    - **Re-index search embeddings**: Update and regenerate QMD vector embeddings via `qmd update && qmd embed` so knowledge remains discoverable via semantic search.
    - **Root-relative paths in backticks**: Any backtick string starting with project prefixes (`apps/`, `packages/`, `scripts/`, `supabase/`, `wiki/`, `.github/`) must be an exact valid path from the repository root. Never use relative shorthand (e.g. `scripts/verify.sh` when the file is at `.agents/skills/verify/scripts/verify.sh`).
    - **Internal link resolution**: Every `[[page-name]]` cross-reference must resolve to an existing markdown page under `wiki/`.
    - **Config parity**: New models in `packages/config/models.json` and tools in `packages/config/tools.json` must be documented in the wiki.
+
 
 ### Tier 2. Build and type integrity
 

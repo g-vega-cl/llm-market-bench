@@ -185,10 +185,11 @@ async def test_run_daily_prediction_includes_jev_track():
     ):
         results = await run_daily_prediction(ticker="SPY", force=True)
 
-        # 3 models in the arena: DeepSeek, MiniMax, Jev
+        # 4 models in the arena: DeepSeek, MiniMax, Jev, and Jev Local Champion
         model_names = [r["model_name"] for r in results]
         assert JEV_MODEL in model_names
-        assert len(results) == 3
+        assert "jev-local-autoresearched" in model_names
+        assert len(results) == 4
 
         jev_row = next(r for r in results if r["model_name"] == JEV_MODEL)
         assert jev_row["predicted_direction"] == "UP"

@@ -29,6 +29,13 @@ The question shape is fixed in `apps/engine/core/llm/daily_predictor_prompts.py`
 
 Criteria are serialized to JSON via `format_jev_prompt_content()` and recovered via `parse_jev_prompt_content()` when stored in and read back from `prompt_experiments.prompt_content` (falling back to the defaults on missing/invalid JSON).
 
+### Curated Manifest & Confidence Gating (`jev-local-autoresearched`)
+
+For the evolved local champion track (`jev-local-autoresearched`), the criteria schema is extended via `format_jev_curated_prompt_content()` and `parse_jev_curated_prompt_content()` to package:
+1. **Decision Criteria**: Symmetrical `UP` and `DOWN` conditions requiring observable pre-market gap confirmation ($\ge \pm 0.30\%$), proxy confirmation (`QQQ`), and prior-day VWAP/CLV structure.
+2. **Confidence Gating (`min_confidence`)**: Lower bound threshold (e.g. $61.0\%$). Decisions where Jev's output confidence is below this threshold automatically gate to `⚡ NO TRADE` (`predicted_direction = 'NO_TRADE'`), preserving portfolio capital and win rate during ambiguous regimes.
+3. **Data Manifest ("Box of Data")**: JSON manifest specifying curated information inputs compiled by `pack_daily_context()`, including narrative newsletters (`Sherwood News`, `Chartr`), macro proxies (`QQQ`, `IWM`), options positioning, and technical intraday profiles, while strictly pruning noise sources (`UUP`, market barometer, market feeling).
+
 ## Inference Path
 
 `predict_daily_with_jev()` in `apps/engine/tasks/daily_predictor.py`:
@@ -48,20 +55,22 @@ Because Jev is a direction-only classifier without a percentage target:
 
 ## Autoresearch Integration
 
-The weekly ratchet optimizer treats Jev as a third independent track (`concepts/multi-track-autoresearch`). `run_daily_autoresearch()` now iterates over `deepseek-v4-flash`, `MiniMax-M3`, and `~typesafe/jev-latest`. When the track is Jev (`"jev" in model_name.lower()`), mutation is delegated to `generate_new_jev_criteria()` rather than the standard prompt mutator:
-
-- Uses **OpenAI Luna** (`gpt-5.6-luna` via `get_openai_client()`) as the meta-researcher, returning a structured `JevMetaCriteriaResponse` (`criteria_up`, `criteria_down`, optional `research_insight`).
-- The meta-prompt freezes the question structure and instructs Luna to keep both criteria symmetric and to avoid bullish drift.
-- The active prompt variant for a Jev track stores the JSON criteria (not a strategy prompt) and records `selected_tools = ["openrouter_decisions"]`.
-- A Jev cold-start reset (1-in-6 stochastic exploration) discards prior criteria and generates fresh rules from scratch.
+The daily predictor arena supports two distinct Jev optimization pathways:
+1. **Weekly Remote Ratchet (`~typesafe/jev-latest`)**: Runs in `apps/engine/tasks/daily_autoresearch.py` using `gpt-5.6-luna` to mutate symmetric criteria.
+2. **Local Meta-Researcher (`jev-local-autoresearched`)**: Runs offline in `apps/engine/local_autoresearch/` pairing local **Qwen via Strata** with **Jev System One**. Co-evolves criteria, confidence gating thresholds, and the curated data manifest across non-chronological weekly k-fold splits before promoting champion variants to Supabase.
 
 ## Frontend
 
-`DailyPredictionsPage` exposes a dedicated **Jev (TypeSafe)** tab (matched by `"jev"` in the model name) that isolates Jev's predictions, metrics, and evolved criteria alongside the DeepSeek and MiniMax tabs.
+`DailyPredictionsPage` exposes dedicated tabs for both Jev models:
+- **Jev (TypeSafe)**: Baseline uncurated model.
+- **Jev (Local Champion)**: Evolved model featuring the `CuratedManifestCard` detailing the active "Box of Data" configuration, and high-contrast amber badges (`⚡ NO TRADE`) when confidence falls below the gating threshold.
 
 ## Related
 
 - [[entities/daily-market-predictor]] — the prediction arena Jev participates in
+- [[entities/local-autoresearch]] — local offline prompt and manifest evolution loop
+- [[concepts/unified-daily-predictor]] — web interface hosting the multi-model prediction arena
 - [[concepts/multi-track-autoresearch]] — per-model isolated prompt/criteria optimization
 - [[concepts/prompt-section-splitting]] — standard prompt structure Jev bypasses
 - [[entities/database]] — `prompt_experiments` stores the Jev criteria content
+

@@ -21,10 +21,20 @@ The `PredictorHeader` swaps its title and subtitle based on the ticker — "Dail
 
 `getPredictorModelsForTicker(ticker)` in `daily-predictions-helpers.ts` returns the model set for a given asset:
 
-- **SPY** (`SPY_PREDICTOR_MODELS`): `deepseek-v4-flash`, `MiniMax-M3`, `~typesafe/jev-latest`
+- **SPY** (`SPY_PREDICTOR_MODELS`):
+  - `deepseek-v4-flash`
+  - `MiniMax-M3`
+  - `~typesafe/jev-latest`
+  - `jev-local-autoresearched` ("Jev (Local Champion)")
 - **TLT** (`BOND_PREDICTOR_MODELS`): `gpt-5.6-luna` (default), `deepseek-v4-flash`, `~typesafe/jev-latest`
 
 The OpenAI model id is read from `@repo/config/models.json` (`OPENAI_MODEL`, falling back to `gpt-5.6-luna`). `PREDICTOR_MODELS` is retained as an alias for `SPY_PREDICTOR_MODELS` for backwards compatibility.
+
+## Curated Manifest & Confidence Gating UI
+
+For the `jev-local-autoresearched` model, the UI renders specialized visual components:
+- **Curated Manifest Card** (`CuratedManifestCard.tsx`): Displays the model's active "Box of Data" configuration, breaking down included/pruned proxies, selected newsletter senders, options positioning, and technical intraday profiles.
+- **NO_TRADE Amber Gating Badge**: In `HeroPredictionCard.tsx`, predictions where confidence was below the gating threshold render in high-contrast amber with lightning badge styling (`⚡ NO TRADE`), clearly communicating why capital was preserved.
 
 ## Filtering and Routing
 
@@ -33,5 +43,7 @@ Predictions are filtered by ticker before model matching; a missing `ticker` fie
 ## Related
 
 - [[entities/daily-market-predictor]] — the SPY prediction arena
+- [[entities/local-autoresearch]] — local offline prompt and manifest evolution loop
 - [[entities/bond-predictor]] — the TLT prediction arena
 - [[entities/web-app]] — the dashboard that hosts this page
+

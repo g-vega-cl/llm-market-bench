@@ -5,24 +5,28 @@ category: entity
 
 # Daily Market Predictor
 
-The daily market predictor (`apps/engine/tasks/daily_predictor.py`) generates a morning directional prediction for a ticker (default `SPY`) before the US market opens. It compiles a rich pre-market context, asks an LLM for a prediction, and persists the result to `daily_predictions`.
+The daily market predictor (`apps/engine/tasks/daily_predictor.py`) generates a morning directional prediction for a ticker (default `SPY`) before the US market opens. It compiles a rich pre-market context, asks an LLM for a prediction across a four-model arena, and persists the result to `daily_predictions`.
 
-## Market Context Compilation
+## Model Arena (S&P 500)
 
-`get_daily_market_context(ticker, include_full_prior_close)` assembles the pre-market intelligence block injected into the prediction prompt. Every data source is fetched through the canonical tool dispatcher `core.llm.handlers.base.execute_tool` with `model_name="daily_predictor"`, so each call is measured, logged, and non-blockingly audited to `tool_execution_logs` (see [[entities/tool-audit]]).
+The daily predictor arena compares four distinct model architectures:
+1. **DeepSeek Flash** (`deepseek-v4-flash`) — Direct thinking/reasoning prompt with structured output via Instructor.
+2. **MiniMax** (`MiniMax-M3`) — High-context reasoning LLM with JSON format output.
+3. **Jev Baseline** (`~typesafe/jev-latest`) — Direct System One typed classification via OpenRouter Decisions API.
+4. **Jev Local Champion** (`jev-local-autoresearched`) — Evolved via local Strata/Qwen autoresearch (`qwen-jev-243de1`). Uses a tailored **Curated Manifest** ("Box of Data") compiled by `pack_daily_context()`, observable multi-signal criteria, and **Confidence Gating** below 61.0% routing to `⚡ NO TRADE` (`predicted_direction = 'NO_TRADE'`).
 
-The context includes:
+## Market Context Compilation & Curated Manifests
 
-- **Today's economic releases** — `get_today_economic_releases`
-- **Forward high-impact calendar scenarios** — `get_calendar_scenario_analysis`
-- **Options derivatives positioning & cross-asset skew** — `get_macro_options_sentiment`
-- **Prior session macro baseline** — `get_global_macro_context`
-- **Volatility index details** — `get_volatility_index_details`
-- **Market health barometer** — `get_market_health_barometer`
-- **Recent market feeling** — `get_market_feeling`
-- **Daily newsletter** — `execute_fetch_daily_newsletter_tool`
+`get_structured_daily_market_context(ticker, include_full_prior_close)` assembles both the full raw pre-market intelligence string AND a structured data record (`data_record`). Every data source is fetched through the canonical tool dispatcher `core.llm.handlers.base.execute_tool` with `model_name="daily_predictor"`, so each call is measured, logged, and non-blockingly audited to `tool_execution_logs` (see [[entities/tool-audit]]).
 
-Routing through `execute_tool` keeps the predictor's background compilations audited with zero Supabase storage quota impact, while the synthesized `daily_predictions.market_context` is preserved for presentation in the web viewer.
+For standard models, the full narrative context is passed. For `jev-local-autoresearched`, the raw data record is compiled dynamically through `pack_daily_context(data_record, manifest)` into a lean, noise-pruned "Box of Data" adhering to the winning variant's active manifest:
+- **Included**: Prior session intraday technical profile (VWAP, Close Location Value), high-signal proxies (`QQQ`, `IWM`), options positioning, economic releases, and curated newsletters (`Sherwood News`, `Chartr`).
+- **Pruned / Excluded**: FX noise (`UUP`), market health barometer, qualitative market feeling.
+
+## Confidence Gating & Evaluation
+
+Predictions with confidence below the model's threshold (e.g. $61.0\%$ for the local champion) are classified as `NO_TRADE`. In `apps/engine/tasks/evaluate_daily_predictions.py`, `NO_TRADE` outcomes are recorded with `is_correct = None` and `brier_score = None`, protecting portfolio capital and win rate during low-conviction market regimes.
+
 
 ## Daily Bond Predictor (`TLT`)
 

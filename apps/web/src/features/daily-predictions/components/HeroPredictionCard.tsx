@@ -6,7 +6,17 @@ export interface HeroPredictionCardProps {
 }
 
 export function HeroPredictionCard({ prediction }: HeroPredictionCardProps) {
+    const isNoTrade =
+        (prediction.predicted_direction as string) === 'NO_TRADE' || prediction.confidence === 0;
     const isUp = prediction.predicted_direction === 'UP';
+
+    const directionColor = isNoTrade
+        ? 'text-amber-400'
+        : isUp
+          ? 'text-emerald-400'
+          : 'text-rose-400';
+
+    const directionText = isNoTrade ? '⚡ NO TRADE' : isUp ? '▲ UP' : '▼ DOWN';
 
     return (
         <Card className="p-6 bg-gradient-to-br from-slate-900 to-slate-950 text-white rounded-2xl border border-slate-800 shadow-xl mb-8">
@@ -25,11 +35,7 @@ export function HeroPredictionCard({ prediction }: HeroPredictionCardProps) {
             </div>
 
             <div className="flex items-baseline gap-4 mb-4 flex-wrap">
-                <span
-                    className={`text-4xl font-black ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}
-                >
-                    {isUp ? '▲ UP' : '▼ DOWN'}
-                </span>
+                <span className={`text-4xl font-black ${directionColor}`}>{directionText}</span>
                 <span className="text-xl font-semibold text-slate-200">
                     {prediction.confidence}% Confidence
                 </span>

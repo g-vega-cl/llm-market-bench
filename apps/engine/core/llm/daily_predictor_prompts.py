@@ -1,4 +1,6 @@
-"""Prompts and schemas for the Daily S&P Open-to-Close Predictor and Autoresearch loop."""
+from __future__ import annotations
+
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -186,9 +188,58 @@ def parse_jev_prompt_content(prompt_content: str | None) -> dict[str, str]:
         return dict(JEV_DEFAULT_CRITERIA)
     try:
         data = json.loads(prompt_content)
-        if isinstance(data, dict) and "UP" in data and "DOWN" in data:
-            return {"UP": str(data["UP"]).strip(), "DOWN": str(data["DOWN"]).strip()}
+        if isinstance(data, dict):
+            crit = data.get("criteria") if "criteria" in data and isinstance(data["criteria"], dict) else data
+            if "UP" in crit and "DOWN" in crit:
+                return {"UP": str(crit["UP"]).strip(), "DOWN": str(crit["DOWN"]).strip()}
     except Exception:
         pass
 
     return dict(JEV_DEFAULT_CRITERIA)
+
+
+def parse_jev_curated_prompt_content(
+    prompt_content: str | None,
+) -> tuple[dict[str, str], float, dict[str, Any]]:
+    """Parse criteria dictionary, min_confidence threshold, and manifest dictionary."""
+    import json
+
+    default_crit = dict(JEV_DEFAULT_CRITERIA)
+    default_conf = 50.0
+    default_manifest: dict[str, Any] = {}
+
+    if not prompt_content:
+        return default_crit, default_conf, default_manifest
+
+    try:
+        data = json.loads(prompt_content)
+        if isinstance(data, dict):
+            crit = data.get("criteria") if "criteria" in data and isinstance(data["criteria"], dict) else data
+            up = str(crit.get("UP", default_crit["UP"])).strip()
+            down = str(crit.get("DOWN", default_crit["DOWN"])).strip()
+            min_conf = float(data.get("min_confidence", default_conf))
+            manifest = data.get("manifest", {}) if isinstance(data.get("manifest"), dict) else {}
+            return {"UP": up, "DOWN": down}, min_conf, manifest
+    except Exception:
+        pass
+
+    return default_crit, default_conf, default_manifest
+
+
+def format_jev_curated_prompt_content(
+    criteria: dict[str, str],
+    min_confidence: float = 50.0,
+    manifest: dict[str, Any] | None = None,
+) -> str:
+    """Format Jev criteria, min_confidence, and data manifest as JSON for prompt_experiments."""
+    import json
+
+    payload = {
+        "criteria": {
+            "UP": criteria.get("UP", JEV_DEFAULT_CRITERIA["UP"]).strip(),
+            "DOWN": criteria.get("DOWN", JEV_DEFAULT_CRITERIA["DOWN"]).strip(),
+        },
+        "min_confidence": round(float(min_confidence), 1),
+        "manifest": manifest or {},
+    }
+    return json.dumps(payload, indent=2)

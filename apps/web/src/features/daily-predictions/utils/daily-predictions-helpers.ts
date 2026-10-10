@@ -39,9 +39,45 @@ export const SPY_PREDICTOR_MODELS: ModelConfig[] = [
     {
         id: '~typesafe/jev-latest',
         label: 'Jev (TypeSafe)',
-        matches: (m: string) => m.toLowerCase().includes('jev'),
+        matches: (m: string) =>
+            m.toLowerCase().includes('jev') &&
+            !m.toLowerCase().includes('local') &&
+            !m.toLowerCase().includes('autoresearch'),
+    },
+    {
+        id: 'jev-local-autoresearched',
+        label: 'Jev (Local Champion)',
+        matches: (m: string) =>
+            m.toLowerCase().includes('local-autoresearch') || m.toLowerCase().includes('jev-local'),
     },
 ];
+
+export interface ParsedCuratedManifest {
+    selected_newsletters?: string[] | null;
+    include_synthetic_newsletter?: boolean;
+    include_macro_proxies?: string[];
+    include_currency_uup?: boolean;
+    include_options_derivatives?: boolean;
+    include_economic_calendar?: boolean;
+    include_market_health_barometer?: boolean;
+    include_recent_market_feeling?: boolean;
+    include_intraday_profile?: boolean;
+}
+
+export function parseCuratedManifest(
+    promptContent: string | null | undefined,
+): ParsedCuratedManifest | null {
+    if (!promptContent) return null;
+    try {
+        const parsed = JSON.parse(promptContent);
+        if (parsed && typeof parsed === 'object' && parsed.manifest) {
+            return parsed.manifest as ParsedCuratedManifest;
+        }
+    } catch {
+        // Plain text prompt content
+    }
+    return null;
+}
 
 export const BOND_PREDICTOR_MODELS: ModelConfig[] = [
     {
@@ -71,7 +107,9 @@ export function getPredictorModelsForTicker(ticker: SupportedDailyTicker): Model
 }
 
 export function computeDailyPredictionStats(predictions: DailyPrediction[]) {
-    const evaluatedPredictions = predictions.filter((p) => p.status === 'evaluated');
+    const evaluatedPredictions = predictions.filter(
+        (p) => p.status === 'evaluated' && (p.predicted_direction as string) !== 'NO_TRADE',
+    );
     const totalEvaluated = evaluatedPredictions.length;
     const correctCount = evaluatedPredictions.filter((p) => p.is_correct === true).length;
     const accuracyPct =

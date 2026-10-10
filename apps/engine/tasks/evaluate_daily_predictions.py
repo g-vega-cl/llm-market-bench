@@ -248,15 +248,21 @@ async def evaluate_daily_predictions(
             continue
 
         actual_dir = "UP" if close_p >= open_p else "DOWN"
-        is_correct = predicted_dir.upper() == actual_dir
-        brier_score = calculate_brier_score(predicted_dir, confidence, actual_dir)
-        intraday_hit, intraday_dir_hit = compute_intraday_hit_metrics(
-            predicted_direction=predicted_dir,
-            expected_return_pct=expected_return_pct,
-            open_price=open_p,
-            high_price=high_p,
-            low_price=low_p,
-        )
+        if predicted_dir.upper() == "NO_TRADE":
+            is_correct = None
+            brier_score = None
+            intraday_hit = None
+            intraday_dir_hit = None
+        else:
+            is_correct = predicted_dir.upper() == actual_dir
+            brier_score = calculate_brier_score(predicted_dir, confidence, actual_dir)
+            intraday_hit, intraday_dir_hit = compute_intraday_hit_metrics(
+                predicted_direction=predicted_dir,
+                expected_return_pct=expected_return_pct,
+                open_price=open_p,
+                high_price=high_p,
+                low_price=low_p,
+            )
 
         client.table("daily_predictions").update(
             {

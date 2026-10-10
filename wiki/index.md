@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/local-autoresearch]] — Auto-indexed page
 - [[entities/portfolio-comparison-selector]] — agent picker for the performance comparison chart, capped at 5 portfolios
 - [[entities/gemini-api-dev]] — reference skill for Gemini API development
 - [[entities/treasury-yield-curve-tool]] — no-arg tool returning live US Treasury benchmark yields, 1d bps changes, and curve spreads from FRED
@@ -94,6 +95,9 @@
 
 ## Concepts
 
+- [[concepts/curated-data-manifest]] — the evolvable "Box of Data" manifest controlling which pre-market inputs a predictor sees
+- [[concepts/confidence-gating]] — gating low-conviction Jev predictions to NO_TRADE, with abstention-aware evaluation semantics
+- [[concepts/locked-vault-kfold]] — non-chronological weekly grouped K-fold with an overfit penalty and a hidden Locked Vault that rejects pool-only winners
 - [[concepts/anthropic-adaptive-thinking]] — Haiku 5.5 adaptive thinking + effort levels via `get_anthropic_thinking_kwargs`
 - [[concepts/macroeconomic-data-fred]] — macroeconomic data (FRED) series aliases, curated dashboard, and dollar index integration
 - [[concepts/unified-daily-predictor]] — single page serving both SPY and TLT prediction arenas via an asset switcher

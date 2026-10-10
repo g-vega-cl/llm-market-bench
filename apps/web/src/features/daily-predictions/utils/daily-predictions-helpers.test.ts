@@ -12,12 +12,13 @@ import {
     getPredictorModelsForTicker,
     getSidebarStatusBadge,
     PREDICTOR_MODELS,
+    parseCuratedManifest,
     resolveActiveDailyPrompt,
 } from './daily-predictions-helpers';
 
 describe('daily-predictions-helpers', () => {
     it('defines PREDICTOR_MODELS with proper matching', () => {
-        expect(PREDICTOR_MODELS).toHaveLength(3);
+        expect(PREDICTOR_MODELS).toHaveLength(4);
         const deepseek = PREDICTOR_MODELS[0];
         expect(deepseek.matches('deepseek-v4-flash')).toBe(true);
         expect(deepseek.matches('MiniMax')).toBe(false);
@@ -27,14 +28,20 @@ describe('daily-predictions-helpers', () => {
 
         const jev = PREDICTOR_MODELS[2];
         expect(jev.matches('~typesafe/jev-latest')).toBe(true);
+
+        const jevLocal = PREDICTOR_MODELS[3];
+        expect(jevLocal.id).toBe('jev-local-autoresearched');
+        expect(jevLocal.label).toBe('Jev (Local Champion)');
+        expect(jevLocal.matches('jev-local-autoresearched')).toBe(true);
     });
 
     it('defines getPredictorModelsForTicker with SPY and TLT models', () => {
         const spyModels = getPredictorModelsForTicker('SPY');
-        expect(spyModels).toHaveLength(3);
+        expect(spyModels).toHaveLength(4);
         expect(spyModels[0].id).toBe('deepseek-v4-flash');
         expect(spyModels[1].id).toBe('MiniMax-M3');
         expect(spyModels[2].id).toBe('~typesafe/jev-latest');
+        expect(spyModels[3].id).toBe('jev-local-autoresearched');
 
         const bondModels = getPredictorModelsForTicker('TLT');
         expect(bondModels).toHaveLength(3);
@@ -223,6 +230,35 @@ describe('daily-predictions-helpers', () => {
             expect(getSidebarStatusBadge('discarded', false)).toEqual({
                 colorScheme: 'danger',
                 label: '❌ DISCARDED',
+            });
+        });
+    });
+
+    describe('parseCuratedManifest', () => {
+        it('returns null for null, undefined, or empty string', () => {
+            expect(parseCuratedManifest(null)).toBeNull();
+            expect(parseCuratedManifest(undefined)).toBeNull();
+            expect(parseCuratedManifest('')).toBeNull();
+        });
+
+        it('returns null for plain text prompt content', () => {
+            expect(parseCuratedManifest('You are a predictor model')).toBeNull();
+        });
+
+        it('extracts manifest from valid JSON prompt content', () => {
+            const json = JSON.stringify({
+                criteria: { UP: 'Bullish criteria', DOWN: 'Bearish criteria' },
+                manifest: {
+                    selected_newsletters: ['Sherwood News', 'Chartr'],
+                    include_macro_proxies: ['QQQ', 'IWM'],
+                    include_intraday_profile: true,
+                },
+            });
+            const parsed = parseCuratedManifest(json);
+            expect(parsed).toEqual({
+                selected_newsletters: ['Sherwood News', 'Chartr'],
+                include_macro_proxies: ['QQQ', 'IWM'],
+                include_intraday_profile: true,
             });
         });
     });

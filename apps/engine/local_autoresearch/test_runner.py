@@ -292,3 +292,124 @@ async def test_run_local_autoresearch_loop_seed_archetype(temp_dbs):
 
         assert best is not None
         assert best["variant_tag"].startswith("seed-mean-reversion")
+
+
+def test_all_ten_seed_archetypes_defined():
+    from local_autoresearch.runner import SEED_ARCHETYPES
+
+    expected_archetypes = {
+        "clean-sheet",
+        "mean-reversion",
+        "macro-rates",
+        "momentum-breadth",
+        "volatility-skew",
+        "opening-drive",
+        "cross-asset-flight",
+        "trend-exhaustion",
+        "selective-catalyst",
+        "contrarian-sentiment",
+    }
+    assert expected_archetypes.issubset(set(SEED_ARCHETYPES.keys()))
+
+    for key in expected_archetypes:
+        crit, man, hyp = SEED_ARCHETYPES[key]
+        assert crit.criteria_up
+        assert crit.criteria_down
+        assert 45.0 <= crit.min_confidence <= 80.0
+        assert isinstance(hyp, str) and len(hyp) > 10
+
+
+@pytest.mark.asyncio
+async def test_run_archetype_curriculum_hermetic(temp_dbs):
+    cache_path, local_path = temp_dbs
+    from local_autoresearch.runner import run_archetype_curriculum
+
+    mock_eval = {
+        "train_metrics": {"score": 45.0, "traded_win_rate_pct": 48.0},
+        "test_metrics": {"score": 46.0, "traded_win_rate_pct": 50.0},
+        "overfit_penalty": 0.0,
+        "effective_score": 46.0,
+        "train_weeks": ["2026-W41"],
+        "test_weeks": ["2026-W42"],
+    }
+    mock_mutation = AutoresearchMutation(
+        criteria=JevCriteriaConfig(criteria_up="Iter Up", criteria_down="Iter Down", min_confidence=52.0),
+        manifest=DataManifest(),
+        hypothesis="Refined archetype.",
+    )
+
+    with (
+        patch(
+            "local_autoresearch.runner.evaluate_weekly_kfold",
+            AsyncMock(return_value=mock_eval),
+        ),
+        patch(
+            "local_autoresearch.runner.evaluate_vault",
+            AsyncMock(return_value={"score": 45.0, "traded_win_rate_pct": 47.0}),
+        ),
+        patch(
+            "local_autoresearch.runner.generate_mutation_with_strata",
+            AsyncMock(return_value=mock_mutation),
+        ),
+    ):
+        results = await run_archetype_curriculum(
+            archetypes=["macro-rates", "momentum-breadth"],
+            iterations_per_archetype=1,
+            cache_db=cache_path,
+            local_db=local_path,
+            kill_strata=False,
+        )
+
+        assert len(results) == 2
+        assert "macro-rates" in results
+        assert "momentum-breadth" in results
+
+
+@pytest.mark.asyncio
+async def test_evaluate_baseline_on_vault_fallback(temp_dbs):
+    cache_path, local_path = temp_dbs
+    from local_autoresearch.local_store import save_local_experiment
+    from local_autoresearch.manifest import DataManifest, JevCriteriaConfig
+    from local_autoresearch.runner import evaluate_baseline_on_vault
+
+    # Seed baseline in local_store
+    save_local_experiment(
+        variant_tag="baseline-vault-test",
+        criteria=JevCriteriaConfig(criteria_up="Up", criteria_down="Down", min_confidence=55.0),
+        manifest=DataManifest(),
+        effective_score=55.0,
+        status="baseline",
+        db_path=local_path,
+    )
+
+    # Seed 5 distinct weekly blocks into cache_path so split_weekly_vault produces vault weeks
+    distinct_dates = ["2026-01-05", "2026-01-12", "2026-01-19", "2026-01-26", "2026-02-02"]
+    for d_str in distinct_dates:
+        save_cached_day(
+            {
+                "target_date": d_str,
+                "ticker": "SPY",
+                "open_price": 570.0,
+                "close_price": 572.0,
+                "actual_direction": "UP",
+            },
+            db_path=cache_path,
+        )
+
+    mock_vault_eval = {
+        "score": 52.5,
+        "traded_win_rate_pct": 55.0,
+        "total_days": 1,
+        "traded_days": 1,
+        "no_trade_days": 0,
+    }
+
+    with patch("local_autoresearch.runner.evaluate_vault", AsyncMock(return_value=mock_vault_eval)):
+        # Point vault_cache_db to non-existent path so it falls back to cache_path
+        res = await evaluate_baseline_on_vault(
+            local_db=local_path,
+            vault_cache_db=".non_existent_vault.db",
+            cache_db=cache_path,
+        )
+        assert res["score"] == 52.5
+        assert res["traded_win_rate_pct"] == 55.0

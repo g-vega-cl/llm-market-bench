@@ -281,3 +281,230 @@ async def build_cache_from_supabase(
     except Exception as e:
         logger.error(f"Error building local cache from Supabase: {e}")
         return 0
+
+
+def build_cache_from_raw_db(
+    raw_db_path: str,
+    cache_db_path: str = DEFAULT_CACHE_DB,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    is_regime_vault: bool = False,
+) -> int:
+    """Materialize point-in-time training/test days from local raw SQLite database into cache.
+
+    Guarantees:
+    - Zero lookahead: All features strictly timestamped <= 09:15 AM ET on target_date.
+    - Regime Vault mode: Pre-market tape is omitted completely without 09:30 open leakage.
+    """
+    init_cache_db(cache_db_path)
+    if not os.path.exists(raw_db_path):
+        logger.error(f"Raw database not found at {raw_db_path}")
+        return 0
+
+    conn = sqlite3.connect(raw_db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    # Query all SPY EOD bars ordered chronologically
+    cursor.execute("""
+        SELECT ticker, date, open, high, low, close, volume, vwap
+        FROM eod_bars
+        WHERE ticker = 'SPY'
+        ORDER BY date ASC
+    """)
+    all_eod_rows = cursor.fetchall()
+
+    if not all_eod_rows:
+        logger.warning(f"No SPY EOD bars found in {raw_db_path}")
+        conn.close()
+        return 0
+
+    count = 0
+    # Process each day starting from index 1 (so index 0 provides prior day setup)
+    for i in range(1, len(all_eod_rows)):
+        target_row = all_eod_rows[i]
+        t_date = target_row["date"]
+
+        if start_date and t_date < start_date:
+            continue
+        if end_date and t_date > end_date:
+            continue
+
+        prior_row = all_eod_rows[i - 1]
+        prev_date = prior_row["date"]
+
+        # 1. Prior day technical profile (fully realized at T-1 16:00 ET)
+        p_open = float(prior_row["open"])
+        p_high = float(prior_row["high"])
+        p_low = float(prior_row["low"])
+        p_close = float(prior_row["close"])
+        p_vwap = float(prior_row["vwap"] or p_close)
+        clv = ((2.0 * p_close - p_high - p_low) / (p_high - p_low)) if (p_high > p_low) else 0.0
+
+        intraday_profile = (
+            f"=== PRIOR SESSION TECHNICAL PROFILE ({prev_date}) ===\n"
+            f"- Close: ${p_close:.2f} | High: ${p_high:.2f} | Low: ${p_low:.2f} | Open: ${p_open:.2f}\n"
+            f"- Prior Session VWAP: ${p_vwap:.2f} | CLV: {clv:+.2f}"
+        )
+
+        # 2. Overnight window timestamps: (T-1 16:00 ET / 20:00 UTC) to (T 09:15 ET / 13:15 UTC)
+        cutoff_start = f"{prev_date}T20:00:00Z"
+        cutoff_end = f"{t_date}T13:15:00Z"
+
+        # Newsletters
+        cursor.execute(
+            """
+            SELECT sender, subject, content, date_utc
+            FROM raw_newsletters
+            WHERE date_utc >= ? AND date_utc <= ?
+            ORDER BY date_utc ASC
+            """,
+            (cutoff_start, cutoff_end),
+        )
+        newsletters = [dict(r) for r in cursor.fetchall()]
+
+        # Market news
+        cursor.execute(
+            """
+            SELECT id, published_utc, ticker, title, description, publisher
+            FROM market_news
+            WHERE published_utc >= ? AND published_utc <= ?
+            ORDER BY published_utc ASC
+            """,
+            (cutoff_start, cutoff_end),
+        )
+        market_news = [dict(r) for r in cursor.fetchall()]
+
+        # 3. Pre-market quotes & proxy gaps
+        proxies: dict[str, dict[str, float]] = {}
+        if not is_regime_vault:
+            # Query premarket bar for SPY closing on or before 13:15:00Z (09:15 ET)
+            cursor.execute(
+                """
+                SELECT close, bar_time_utc
+                FROM premarket_bars
+                WHERE ticker = 'SPY' AND bar_time_utc >= ? AND bar_time_utc <= ?
+                ORDER BY bar_time_utc DESC
+                LIMIT 1
+                """,
+                (f"{t_date}T00:00:00Z", cutoff_end),
+            )
+            pm_bar = cursor.fetchone()
+            if pm_bar:
+                pm_px = float(pm_bar["close"])
+                pm_gap = ((pm_px - p_close) / p_close) * 100.0
+                proxies["SPY"] = {"price": pm_px, "change_pct": round(pm_gap, 2)}
+
+            # Also check macro proxy premarket gaps if available
+            for sym in ["QQQ", "DIA", "IWM", "TLT", "IEF", "GLD", "USO", "UUP"]:
+                cursor.execute(
+                    """
+                    SELECT close FROM premarket_bars
+                    WHERE ticker = ? AND bar_time_utc >= ? AND bar_time_utc <= ?
+                    ORDER BY bar_time_utc DESC LIMIT 1
+                    """,
+                    (sym, f"{t_date}T00:00:00Z", cutoff_end),
+                )
+                sym_bar = cursor.fetchone()
+                if sym_bar:
+                    sym_px = float(sym_bar["close"])
+                    # Query prior EOD for this sym
+                    cursor.execute(
+                        "SELECT close FROM eod_bars WHERE ticker = ? AND date = ?",
+                        (sym, prev_date),
+                    )
+                    sym_prev = cursor.fetchone()
+                    sym_prev_c = float(sym_prev["close"]) if sym_prev else sym_px
+                    sym_gap = ((sym_px - sym_prev_c) / sym_prev_c) * 100.0 if sym_prev_c else 0.0
+                    proxies[sym] = {"price": sym_px, "change_pct": round(sym_gap, 2)}
+
+        # 4. Macroeconomic rates & calendar (FRED) strictly point-in-time <= prev_date
+        cursor.execute(
+            """
+            SELECT series_id, value, date
+            FROM macro_series
+            WHERE date <= ?
+            ORDER BY date DESC
+            """,
+            (prev_date,),
+        )
+        macro_rows = cursor.fetchall()
+        macro_dict: dict[str, list[tuple[float, str]]] = {}
+        for mr in macro_rows:
+            s_id = mr["series_id"]
+            if s_id not in macro_dict:
+                macro_dict[s_id] = []
+            if len(macro_dict[s_id]) < 2:
+                macro_dict[s_id].append((float(mr["value"]), mr["date"]))
+
+        econ_lines = []
+        if "DGS10" in macro_dict and macro_dict["DGS10"]:
+            y10 = macro_dict["DGS10"][0][0]
+            d10 = (y10 - macro_dict["DGS10"][1][0]) * 100.0 if len(macro_dict["DGS10"]) > 1 else 0.0
+            econ_lines.append(f"- 10-Year Treasury Yield: {y10:.2f}% (1-Day change: {d10:+.1f} bps)")
+
+        if "DGS2" in macro_dict and macro_dict["DGS2"]:
+            y2 = macro_dict["DGS2"][0][0]
+            d2 = (y2 - macro_dict["DGS2"][1][0]) * 100.0 if len(macro_dict["DGS2"]) > 1 else 0.0
+            econ_lines.append(f"- 2-Year Treasury Yield: {y2:.2f}% (1-Day change: {d2:+.1f} bps)")
+
+        if "T10Y2Y" in macro_dict and macro_dict["T10Y2Y"]:
+            spread = macro_dict["T10Y2Y"][0][0]
+            spread_status = "Inverted" if spread < 0 else "Normal / Steepening"
+            econ_lines.append(f"- 10Y-2Y Spread: {spread:+.2f}% ({spread_status})")
+
+        if "FEDFUNDS" in macro_dict and macro_dict["FEDFUNDS"]:
+            econ_lines.append(f"- Fed Funds Effective Rate: {macro_dict['FEDFUNDS'][0][0]:.2f}%")
+
+        if "ICSA" in macro_dict and macro_dict["ICSA"]:
+            claims_val = int(macro_dict["ICSA"][0][0])
+            econ_lines.append(f"- Initial Jobless Claims: {claims_val:,}")
+
+        if "UNRATE" in macro_dict and macro_dict["UNRATE"]:
+            econ_lines.append(f"- Civilian Unemployment Rate: {macro_dict['UNRATE'][0][0]:.1f}%")
+
+        economic_calendar = "\n".join(econ_lines)
+
+        # 5. Synthetic newsletter digest
+        synthetic_newsletter = ""
+        if newsletters:
+            top_headlines = [f"[{nl['sender']}] {nl.get('subject', '')}" for nl in newsletters[:4]]
+            synthetic_newsletter = "Morning Newsletter Digest:\n" + "\n".join(f"- {h}" for h in top_headlines)
+
+        # 6. Options sentiment proxy derived from prior CLV and session range
+        options_sentiment = (
+            f"SPY Prior Session Positioning: CLV={clv:+.2f} | "
+            f"Close vs VWAP=${p_close - p_vwap:+.2f} | "
+            f"Range=${p_high - p_low:.2f}"
+        )
+
+        # 7. Target day outcome
+        open_price = float(target_row["open"])
+        close_price = float(target_row["close"])
+        high_price = float(target_row["high"])
+        low_price = float(target_row["low"])
+        actual_direction = "UP" if close_price >= open_price else "DOWN"
+
+        day_rec: dict[str, Any] = {
+            "target_date": t_date,
+            "ticker": "SPY",
+            "open_price": open_price,
+            "high_price": high_price,
+            "low_price": low_price,
+            "close_price": close_price,
+            "actual_direction": actual_direction,
+            "economic_calendar": economic_calendar,
+            "synthetic_newsletter": synthetic_newsletter,
+            "newsletters": newsletters,
+            "market_news": market_news,
+            "proxies": proxies,
+            "options_sentiment": options_sentiment,
+            "intraday_profile": intraday_profile,
+        }
+
+        save_cached_day(day_rec, db_path=cache_db_path)
+        count += 1
+
+    conn.close()
+    logger.info(f"Built cache with {count} trading days into {cache_db_path} (regime_vault={is_regime_vault})")
+    return count

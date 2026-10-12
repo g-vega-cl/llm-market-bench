@@ -7,7 +7,7 @@ A living document of features and improvements in progress or planned for the pl
 ## ⚡ Horizon 1: Immediate Focus (Now)
 
 ### Autoresearch & Prompt Evolution (Local Loop)
-- [ ] - Set up a local auto researcher with Qwaen and Strava and jev. That means that since Jeb is so cheap, I can just run it all night with Qwen and Strava running locally in my computer and it iterating over and over until my prompt is excellent and it can predict the daily movement with great accuracy and no overfitting. It's basically an attempt to improve my prompt consistently with autoresearch. The qwen autoresearcher should have access to my database and tools. It should also be able to create memories itself, (although maybe with some tag that says it comes from autoresearch, and maybe also store it on my local db so it doesn't cram supabase while autoresearching since some memories mught prove counterproductive and need to be deleted)
+- [x] - Set up a local auto researcher with Qwen, Strata, and Jev. Evaluated across 10-batch (300 iterations) tournament on 2-year multi-regime dataset (507 days, 106 weeks). Revealed that unconstrained open-to-close daily direction caps at ~52% due to random walk noise and selectivity subsidy trap. Post-mortem documented at [[concepts/daily-directional-predictability-limits]].
 - [ ] - Benchify: jev + Qwen autoresearcher? Jev can do so many things like judge, decide which prompt is better, check for over fitting, check if the input is correct, etc
 - [ ] - Benchify: could jev work for my autoresearcher?
 
@@ -20,6 +20,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs.
 - [ ] - Benchify: something I can autoresearch daily?
         Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
+- [ ] - **Fix Pure Directional Scoring (Kill Selectivity Subsidy)**: Eliminate the `+ 0.10 * Selectivity` incentive trap in [[concepts/pure-directional-scoring]] that rewarded models for trading 99% of sessions on random chop. Redesign metric around Traded Win Rate / Expectancy with a hard minimum volume floor (>= 20% sessions), directly rewarding disciplined gating that aims for 65–70% accuracy on high-conviction days.
+- [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
+- [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.

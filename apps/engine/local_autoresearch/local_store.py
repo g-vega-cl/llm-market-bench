@@ -76,6 +76,12 @@ def save_local_experiment(
     now_iso = datetime.now(UTC).isoformat()
     manifest_json = json.dumps(manifest.model_dump())
 
+    if status == "baseline":
+        cursor.execute(
+            "UPDATE local_experiments SET status = 'superseded' WHERE status = 'baseline' AND variant_tag != ?",
+            (variant_tag,),
+        )
+
     cursor.execute(
         """
         INSERT OR REPLACE INTO local_experiments (
@@ -106,7 +112,7 @@ def save_local_experiment(
 
 
 def get_active_baseline(db_path: str = DEFAULT_LOCAL_DB) -> dict[str, Any] | None:
-    """Retrieve the current active baseline experiment with the highest ratchet score."""
+    """Retrieve the current active baseline experiment with the latest active baseline record."""
     init_local_store(db_path)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -115,7 +121,7 @@ def get_active_baseline(db_path: str = DEFAULT_LOCAL_DB) -> dict[str, Any] | Non
     cursor.execute("""
         SELECT * FROM local_experiments
         WHERE status = 'baseline'
-        ORDER BY effective_score DESC, created_at DESC
+        ORDER BY created_at DESC
         LIMIT 1
     """)
     row = cursor.fetchone()

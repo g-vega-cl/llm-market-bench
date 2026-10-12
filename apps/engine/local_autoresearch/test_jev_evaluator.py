@@ -112,9 +112,32 @@ def test_calculate_metrics():
     m = calculate_metrics(results)
     assert m["total_days"] == 4
     assert m["traded_days"] == 3
+    assert m["no_trade_days"] == 1
     # Traded correct: 2 out of 3 = 66.67%
     assert m["traded_win_rate_pct"] == pytest.approx(66.67, abs=0.1)
     assert m["selectivity_pct"] == 75.0
+
+
+def test_calculate_metrics_pure_directional():
+    # 4 days total: model trades 2 high-confidence days (both correct),
+    # and correctly filters out 2 low-confidence days (which ended up incorrect).
+    results = [
+        {"is_correct": True, "is_traded": True, "brier_score": 0.05},
+        {"is_correct": True, "is_traded": True, "brier_score": 0.05},
+        {"is_correct": False, "is_traded": False, "brier_score": 0.25},
+        {"is_correct": False, "is_traded": False, "brier_score": 0.25},
+    ]
+    m = calculate_metrics(results)
+    assert m["total_days"] == 4
+    assert m["traded_days"] == 2
+    assert m["no_trade_days"] == 2
+    assert m["traded_win_rate_pct"] == 100.0
+    assert m["close_accuracy_pct"] == 50.0
+    assert m["selectivity_pct"] == 50.0
+    assert m["mean_brier"] == 0.15
+    # Expected Score: (0.65 * 100.0) + (0.25 * 50.0) + (0.10 * 50.0) - (0.15 * 20.0)
+    # = 65.0 + 12.5 + 5.0 - 3.0 = 79.50
+    assert m["score"] == 79.50
 
 
 @pytest.mark.asyncio

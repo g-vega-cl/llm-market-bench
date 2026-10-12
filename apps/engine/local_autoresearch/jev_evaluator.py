@@ -81,8 +81,6 @@ async def evaluate_single_day(
     high_p = float(day_record.get("high_price", max(open_p, close_p)))
     low_p = float(day_record.get("low_price", min(open_p, close_p)))
 
-    intraday_hit = (high_p > open_p) if choice == "UP" else (low_p < open_p)
-
     return {
         "target_date": day_record.get("target_date"),
         "predicted_direction": choice,
@@ -96,7 +94,7 @@ async def evaluate_single_day(
         "confidence": confidence,
         "probabilities": probabilities,
         "is_correct": is_correct,
-        "intraday_hit": intraday_hit,
+        "intraday_hit": None,
         "is_traded": not is_gated_out,
         "brier_score": brier_score,
     }
@@ -136,40 +134,50 @@ async def evaluate_batch(
 
 
 def calculate_metrics(results: list[dict[str, Any]]) -> dict[str, Any]:
-    """Compute aggregate ratchet evaluation metrics from evaluation results using canonical formula."""
-    from tasks.daily_autoresearch import calculate_daily_ratchet_metrics
+    """Compute pure directional trading evaluation metrics for Jev System One.
 
+    Formula:
+    Score = (0.65 * traded_win_rate) + (0.25 * close_acc) + (0.10 * selectivity) - (mean_brier * 20.0)
+    """
     if not results:
         return {
             "total_days": 0,
             "traded_days": 0,
-            "close_accuracy_pct": 0.0,
-            "intraday_hit_pct": 0.0,
-            "magnitude_capture_pct": 0.0,
+            "no_trade_days": 0,
+            "selectivity_pct": 0.0,
             "traded_win_rate_pct": 0.0,
+            "close_accuracy_pct": 0.0,
             "mean_brier": 0.25,
             "score": 0.0,
         }
 
-    canonical = calculate_daily_ratchet_metrics(results)
     total_days = len(results)
+    correct_count = sum(1 for r in results if r.get("is_correct") is True)
+    close_acc = (correct_count / total_days * 100.0) if total_days > 0 else 0.0
+
     traded_results = [r for r in results if r.get("is_traded", True)]
     traded_days = len(traded_results)
+    no_trade_days = total_days - traded_days
 
-    traded_acc = (sum(1 for r in traded_results if r["is_correct"]) / traded_days * 100.0) if traded_days > 0 else 50.0
+    traded_correct = sum(1 for r in traded_results if r.get("is_correct") is True)
+    traded_acc = (traded_correct / traded_days * 100.0) if traded_days > 0 else 0.0
 
-    selectivity_pct = round((traded_days / total_days) * 100.0, 2)
+    selectivity_pct = round((traded_days / total_days) * 100.0, 2) if total_days > 0 else 0.0
+
+    brier_scores = [r.get("brier_score") for r in results if r.get("brier_score") is not None]
+    mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.25
+
+    score = (0.65 * traded_acc) + (0.25 * close_acc) + (0.10 * selectivity_pct) - (mean_brier * 20.0)
 
     return {
         "total_days": total_days,
         "traded_days": traded_days,
+        "no_trade_days": no_trade_days,
         "selectivity_pct": selectivity_pct,
         "traded_win_rate_pct": round(traded_acc, 2),
-        "close_accuracy_pct": canonical["close_accuracy_pct"],
-        "intraday_hit_pct": canonical["intraday_hit_pct"],
-        "magnitude_capture_pct": canonical["magnitude_capture_pct"],
-        "mean_brier": canonical["mean_brier"],
-        "score": canonical["score"],
+        "close_accuracy_pct": round(close_acc, 2),
+        "mean_brier": round(float(mean_brier), 4),
+        "score": round(float(score), 4),
     }
 
 

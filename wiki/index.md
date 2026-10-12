@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/historical-downloader]] — rate-limited offline downloader for multi-year EOD/pre-market/news/newsletter/macro data into a local SQLite raw vault
 - [[entities/local-autoresearch]] — Auto-indexed page
 - [[entities/portfolio-comparison-selector]] — agent picker for the performance comparison chart, capped at 5 portfolios
 - [[entities/gemini-api-dev]] — reference skill for Gemini API development
@@ -95,6 +96,17 @@
 
 ## Concepts
 
+- [[concepts/baseline-calibration]] — re-scoring the active baseline on the current dataset so candidates beat a fair watermark
+- [[concepts/engine-import-hygiene]] — engine code must import relative to apps/engine root, never via apps.engine.*
+- [[concepts/multi-seed-archetypes]] — quantitative seed archetypes that start autoresearch in disjoint design-space regions
+- [[concepts/regime-vault]] — held-out out-of-distribution evaluation set for cross-regime stress testing
+- [[concepts/zero-lookahead-materialization]] — strict 09:15 ET point-in-time contract when compiling raw data into feature caches
+- [[concepts/engine-import-hygiene]] — engine code must import relative to apps/engine root, never via apps.engine.*
+- [[concepts/engine-import-hygiene]] — engine code must import relative to apps/engine, never via apps.engine.* (CI parity)
+- [[concepts/baseline-calibration]] — re-scoring the active baseline on the current dataset so candidates beat a fair watermark
+- [[concepts/multi-seed-archetypes]] — quantitative seed archetypes that start autoresearch in disjoint design-space regions
+- [[concepts/zero-lookahead-materialization]] — strict 09:15 ET point-in-time contract when compiling raw data into feature caches
+- [[concepts/regime-vault]] — held-out out-of-distribution evaluation set for cross-regime stress testing
 - [[concepts/curated-data-manifest]] — the evolvable "Box of Data" manifest controlling which pre-market inputs a predictor sees
 - [[concepts/confidence-gating]] — gating low-conviction Jev predictions to NO_TRADE, with abstention-aware evaluation semantics
 - [[concepts/locked-vault-kfold]] — non-chronological weekly grouped K-fold with an overfit penalty and a hidden Locked Vault that rejects pool-only winners

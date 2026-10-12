@@ -125,11 +125,12 @@ def extract_links(content: str) -> list[str]:
 
 def resolve_link(target: str) -> str | None:
     """Convert a [[link]] to a relative path from wiki/ root. Returns None if unresolvable."""
-    if not target.endswith(".md"):
-        target += ".md"
-    candidate = WIKI_DIR / target
+    target_clean = target.split("|")[0].strip()
+    if not target_clean.endswith(".md"):
+        target_clean += ".md"
+    candidate = WIKI_DIR / target_clean
     if candidate.is_file():
-        return target
+        return target_clean
     return None
 
 

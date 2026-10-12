@@ -88,6 +88,12 @@ if [ "$ENGINE" = true ] || [ "$FAST" = true ]; then
   echo "--> Running Ruff format check..."
   ./apps/engine/.venv/bin/ruff format --check apps/engine/
 
+  echo "--> Checking Engine import root hygiene (zero forbidden 'apps.engine' in production code)..."
+  if git grep -nE "(from|import) apps\.engine\." apps/engine/core/ apps/engine/tasks/ apps/engine/execution/ apps/engine/analytics/ apps/engine/tools/ apps/engine/local_autoresearch/ 2>/dev/null; then
+    echo "ERROR: Engine production code must use module imports relative to apps/engine (e.g. 'from core.' or 'from local_autoresearch.', NOT 'from apps.engine.') to guarantee CI/CD parity!" >&2
+    exit 1
+  fi
+
   echo "--> Checking Bug Hotspots and Churn Forensics..."
   ./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 10
 fi
@@ -111,8 +117,8 @@ fi
 # Tests & Coverage
 if [ "$FAST" = false ]; then
   if [ "$ENGINE" = true ]; then
-    echo "--> Running Hermetic Engine tests with coverage..."
-    ./apps/engine/.venv/bin/python3 -m pytest -n auto --cov=. --cov-config=.coveragerc
+    echo "--> Running Hermetic Engine tests with coverage (matching CI working-directory: apps/engine)..."
+    (cd apps/engine && "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest -n auto --cov=. --cov-config=.coveragerc)
   fi
 
   if [ "$WEB" = true ]; then

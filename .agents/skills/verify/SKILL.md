@@ -62,7 +62,11 @@ Audit all changed files through these six tiers. Do not skip any tier.
      - `core/llm/tools.py` $\leftrightarrow$ `packages/config/tools.json` $\leftrightarrow$ `program.md` $\leftrightarrow$ `test_tools_consistency.py`
      - `researcher.py` $\leftrightarrow$ `handlers/base.py` $\leftrightarrow$ `tools.py`
      - `market_data.py` $\leftrightarrow$ `test_market_data.py`
-5. **Wiki and documentation synchronization (MANDATORY)**:
+5. **Engine import root hygiene & CI working directory parity**:
+   - Engine production code (`apps/engine/core/`, `apps/engine/tasks/`, `apps/engine/execution/`, `apps/engine/local_autoresearch/`, etc.) must NEVER import with `from apps.engine.` or `import apps.engine.`. All engine code must use imports relative to the `apps/engine` root (e.g. `from core.`, `from tasks.`, `from local_autoresearch.`).
+   - In CI/CD runners, tests run with `working-directory: apps/engine`. Any import assuming `apps` is in `sys.path` will fail with `ModuleNotFoundError: No module named 'apps'`.
+   - Packages inside `apps/engine` must contain `__init__.py` files so they are treated as standard Python packages.
+6. **Wiki and documentation synchronization (MANDATORY)**:
    - **Synchronize changes everywhere**: When code changes alter formulas, scoring, models, tools, UI components, background tasks, schemas, or architectural patterns, YOU MUST proactively audit and update ALL relevant wiki pages (`wiki/concepts/`, `wiki/entities/`) documenting the new behavior, component interfaces, invariants, and the rationale ("the why"). Never leave new features, model tracks, or schemas undocumented.
    - **Audit all affected surfaces**: Review `git diff --name-only` across backend, frontend, and config to identify every concept and entity page requiring documentation. If a new capability or pattern is introduced, create a new dedicated wiki page.
    - **Refresh code hotspots**: Refresh the code hotspots wiki page via `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki`.
@@ -99,6 +103,8 @@ Audit all changed files through these six tiers. Do not skip any tier.
    - Web coverage must remain $\ge 40\%$.
 4. **TDD reproduction check**:
    - Bug fixes and new features must include a test that would fail without the change and passes with it.
+5. **CI working directory test parity**:
+   - Tests must pass when executed from `apps/engine` as the working directory (`cd apps/engine && python3 -m pytest -n auto`), matching `.github/workflows/ci.yml`. Never rely solely on running pytest from the repository root, as ambient editable `.pth` files can mask import path mismatches.
 
 ### Tier 4. Domain, API, and financial invariants
 

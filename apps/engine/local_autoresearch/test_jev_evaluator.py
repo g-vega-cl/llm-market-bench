@@ -3,14 +3,15 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from apps.engine.local_autoresearch.jev_evaluator import (
+
+from local_autoresearch.jev_evaluator import (
     calculate_metrics,
     evaluate_single_day,
     evaluate_vault,
     evaluate_weekly_kfold,
     split_weekly_vault,
 )
-from apps.engine.local_autoresearch.manifest import DataManifest, JevCriteriaConfig
+from local_autoresearch.manifest import DataManifest, JevCriteriaConfig
 
 
 @pytest.mark.asyncio

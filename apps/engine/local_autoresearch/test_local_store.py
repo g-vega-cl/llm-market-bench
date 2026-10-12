@@ -4,7 +4,8 @@ import os
 import tempfile
 
 import pytest
-from apps.engine.local_autoresearch.local_store import (
+
+from local_autoresearch.local_store import (
     format_memories_for_prompt,
     get_active_baseline,
     get_recent_memories,
@@ -12,7 +13,7 @@ from apps.engine.local_autoresearch.local_store import (
     save_local_experiment,
     save_local_memory,
 )
-from apps.engine.local_autoresearch.manifest import DataManifest, JevCriteriaConfig
+from local_autoresearch.manifest import DataManifest, JevCriteriaConfig
 
 
 @pytest.fixture

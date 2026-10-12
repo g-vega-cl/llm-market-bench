@@ -1,6 +1,6 @@
 """Unit tests for local_autoresearch.manifest."""
 
-from apps.engine.local_autoresearch.manifest import (
+from local_autoresearch.manifest import (
     AutoresearchMutation,
     DataManifest,
     JevCriteriaConfig,

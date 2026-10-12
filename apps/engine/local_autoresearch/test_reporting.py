@@ -3,7 +3,7 @@
 import os
 import tempfile
 
-from apps.engine.local_autoresearch.reporting import (
+from local_autoresearch.reporting import (
     render_terminal_dashboard,
     update_dashboard_artifact,
 )

@@ -4,8 +4,9 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from apps.engine.local_autoresearch.manifest import DataManifest, JevCriteriaConfig
-from apps.engine.local_autoresearch.strata_client import (
+
+from local_autoresearch.manifest import DataManifest, JevCriteriaConfig
+from local_autoresearch.strata_client import (
     _extract_json_payload,
     generate_mutation_with_strata,
     is_strata_available,
@@ -109,7 +110,7 @@ async def test_generate_mutation_with_strata_hermetic():
 
 
 def test_strata_meta_researcher_system_has_strict_premarket_mandate():
-    from apps.engine.local_autoresearch.strata_client import STRATA_META_RESEARCHER_SYSTEM
+    from local_autoresearch.strata_client import STRATA_META_RESEARCHER_SYSTEM
 
     assert "STRICT TEMPORAL PRE-MARKET CONSTRAINT" in STRATA_META_RESEARCHER_SYSTEM
     assert "before the 9:30 AM ET" in STRATA_META_RESEARCHER_SYSTEM

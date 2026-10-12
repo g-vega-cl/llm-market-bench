@@ -8,7 +8,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from apps.engine.local_autoresearch.manifest import DataManifest, JevCriteriaConfig
+from local_autoresearch.manifest import DataManifest, JevCriteriaConfig
 
 DEFAULT_LOCAL_DB = ".local_autoresearch.db"
 

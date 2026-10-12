@@ -13,14 +13,13 @@ import httpx
 # Ensure apps/engine root is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from apps.engine.local_autoresearch.manifest import (
+from core.config import JEV_MODEL, OPENROUTER_API_KEY
+from local_autoresearch.manifest import (
     DataManifest,
     JevCriteriaConfig,
     format_jev_payload,
     pack_daily_context,
 )
-
-from core.config import JEV_MODEL, OPENROUTER_API_KEY
 
 OPENROUTER_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
 

@@ -10,8 +10,6 @@ import httpx
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from apps.engine.local_autoresearch.manifest import DataManifest, pack_daily_context
-
 from core.config import (
     DEEPSEEK_FLASH_MODEL,
     JEV_MODEL,
@@ -35,6 +33,7 @@ from core.llm.daily_predictor_prompts import (
     split_daily_predictor_prompt,
 )
 from core.llm.minimax import MiniMaxClient
+from local_autoresearch.manifest import DataManifest, pack_daily_context
 
 
 def get_ny_now() -> datetime:

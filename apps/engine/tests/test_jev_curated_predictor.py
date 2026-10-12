@@ -2,12 +2,12 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from apps.engine.local_autoresearch.manifest import DataManifest, pack_daily_context
 
 from core.llm.daily_predictor_prompts import (
     JEV_DEFAULT_CRITERIA,
     parse_jev_curated_prompt_content,
 )
+from local_autoresearch.manifest import DataManifest, pack_daily_context
 
 
 def test_parse_jev_curated_prompt_content():

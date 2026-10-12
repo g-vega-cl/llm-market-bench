@@ -13,7 +13,7 @@ import httpx
 # Ensure apps/engine root is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from apps.engine.local_autoresearch.manifest import (
+from local_autoresearch.manifest import (
     KNOWN_NEWSLETTER_SENDERS,
     AutoresearchMutation,
     DataManifest,

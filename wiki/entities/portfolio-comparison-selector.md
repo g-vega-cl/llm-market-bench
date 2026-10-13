@@ -26,7 +26,7 @@ The comparison chart can receive data for many portfolios, but rendering all of 
 
 - `selectedPortfolioIds` state is initialized from the default top-5 and pruned when portfolios disappear from the incoming data.
 - `handleAddPortfolio` refuses additions beyond `maxSelected`; `handleRemovePortfolio` allows dropping below the cap (including to zero).
-- Only `activeData` (the selected subset) is rendered as lines, legend entries, and tooltip values. Portfolio colors are assigned per selected portfolio so they stay stable across add/remove.
+- Only `activeData` (the selected subset) is rendered as lines and tooltip values (portfolio names are displayed exclusively in the selector chips to avoid visual redundancy with the chart). Benchmark series remain labeled in the chart legend. Portfolio colors are assigned per selected portfolio so they stay stable across add/remove.
 - When no portfolios are selected, the chart renders a centered message: *"No agents selected. Select up to 5 agents above to compare."*
 - The crosshair tooltip is trimmed to the currently selected portfolios, and the chart's date range falls back to the benchmark's range when nothing is selected.
 

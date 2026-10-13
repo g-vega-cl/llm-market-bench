@@ -96,6 +96,7 @@
 
 ## Concepts
 
+- [[concepts/strata-laya-double-ratchet]] — Auto-indexed page
 - [[concepts/daily-directional-predictability-limits]] — Auto-indexed page
 - [[concepts/pure-directional-scoring]] — Auto-indexed page
 - [[concepts/baseline-calibration]] — re-scoring the active baseline on the current dataset so candidates beat a fair watermark

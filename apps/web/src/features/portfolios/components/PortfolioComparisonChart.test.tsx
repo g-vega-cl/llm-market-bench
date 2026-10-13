@@ -161,4 +161,48 @@ describe('PortfolioComparisonChart — uses design system', () => {
             container.querySelector('button[aria-label="Remove agent 1 from comparison"]'),
         ).toBeTruthy();
     });
+
+    it('does not render portfolio names inside the chart SVG legend (they are already in the selector)', () => {
+        const data = [
+            {
+                portfolioId: 'port-1',
+                ownerId: 'deepseek-chat',
+                performance: [
+                    { date: '2026-05-01', value: 10 },
+                    { date: '2026-05-02', value: 15 },
+                ],
+            },
+        ];
+
+        const benchmarkData = {
+            SPY: [
+                { date: '2026-05-01', price: 100 },
+                { date: '2026-05-02', price: 105 },
+            ],
+        };
+
+        const { container } = render(
+            <PortfolioComparisonChart
+                data={data}
+                benchmarkData={benchmarkData}
+                selectedBenchmark="SPY"
+                onReset={vi.fn()}
+            />,
+        );
+
+        // The selector chip has the portfolio name
+        const chip = container.querySelector(
+            'button[aria-label="Remove deepseek chat from comparison"]',
+        );
+        expect(chip).toBeTruthy();
+
+        // The chart SVG must NOT contain text for the portfolio name (redundant with the selector)
+        const svgTexts = Array.from(container.querySelectorAll('svg text')).map(
+            (t) => t.textContent,
+        );
+        expect(svgTexts).not.toContain('deepseek chat');
+
+        // Benchmark label should still be rendered in the SVG legend
+        expect(svgTexts).toContain('S&P 500');
+    });
 });

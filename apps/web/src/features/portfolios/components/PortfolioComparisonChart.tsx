@@ -538,41 +538,15 @@ export function PortfolioComparisonChart({
             .attr('stroke-width', 2)
             .attr('opacity', 0);
 
-        const legend = g.append('g').attr('transform', `translate(${width + 20}, 20)`);
-
-        let legendY = 0;
-        portfolioGroups.forEach((_points, portfolioId) => {
-            const portfolio = activeData.find((p) => p.portfolioId === portfolioId);
-            const color = portfolioColors[portfolioId];
-            const label = portfolio?.ownerId.replace(/-/g, ' ') || portfolioId;
-
-            legend
-                .append('line')
-                .attr('x1', 0)
-                .attr('x2', 16)
-                .attr('y1', legendY)
-                .attr('y2', legendY)
-                .attr('stroke', color)
-                .attr('stroke-width', 2.5);
-
-            legend
-                .append('text')
-                .attr('x', 24)
-                .attr('y', legendY + 4)
-                .attr('font-size', '11px')
-                .attr('fill', '#64748b')
-                .text(label);
-
-            legendY += 22;
-        });
-
         if (benchmarkLines.length > 0) {
+            const legend = g.append('g').attr('transform', `translate(${width + 20}, 20)`);
+
             legend
                 .append('line')
                 .attr('x1', 0)
                 .attr('x2', 16)
-                .attr('y1', legendY + 2)
-                .attr('y2', legendY + 2)
+                .attr('y1', 2)
+                .attr('y2', 2)
                 .attr('stroke', '#f59e0b')
                 .attr('stroke-width', 2)
                 .attr('stroke-dasharray', '6,3');
@@ -583,7 +557,7 @@ export function PortfolioComparisonChart({
             legend
                 .append('text')
                 .attr('x', 24)
-                .attr('y', legendY + 6)
+                .attr('y', 6)
                 .attr('font-size', '11px')
                 .attr('fill', '#f59e0b')
                 .text(benchmarkLabel);

@@ -80,6 +80,7 @@ async def predict_with_luna(candidate: dict[str, Any], context: str) -> dict[str
             model=OPENAI_MODEL,
             response_model=EarningsPredictionOutput,
             messages=messages,
+            reasoning_effort="none",
         )
         return {
             "predicted_direction": resp.predicted_direction,

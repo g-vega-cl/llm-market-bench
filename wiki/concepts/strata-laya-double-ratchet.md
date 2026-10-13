@@ -92,17 +92,38 @@ To ensure Laya evaluates **100% of the daily briefing with zero truncation**, Pr
 
 ---
 
+## Max Reasoning & Full Newsletter Ingestion (Zero-Truncation Pipeline)
+
+To maximize Qwen's analytical intelligence across multi-channel morning inputs:
+1. **Unconstrained Reasoning**: `STRATA_REASONING_BUDGET_TOKENS` defaults to `-1`, allowing Qwen to generate unconstrained chain-of-thought tokens without artificial cutoffs.
+2. **Full Body Ingestion**: Newsletters are no longer truncated to arbitrary character limits (`[:500]`). Qwen ingests 100% of substantive financial reporting.
+3. **Local Deterministic De-Advertisement Pass**: Ingested newsletters undergo MIME email header decoding (`=?utf-8?B?...?=` $\rightarrow$ clean text) and deterministic stripping of HTML tags, sponsor logos (*Autocamp*, *Cinnabon*), podcast plugs, and legal unsubscribe disclaimers before being fed to Qwen.
+
+---
+
+## Strategy C: Multi-Fidelity Early Pruning (Throughput Optimization)
+
+Evaluating 432 trading days with unconstrained reasoning takes ~2.0 hours per candidate iteration. To optimize throughput without sacrificing full-dataset training on winning models:
+1. **Stage 1 (Filter Slice, 80 Trading Days)**: Every candidate mutation pair $(P_1, P_2)$ is first evaluated on an 80-day regime-diverse slice (~22 minutes).
+2. **Early Rejection Rule**: If candidate filter score delta vs champion's filter score is less than `-1.50` (`delta < -1.50`), the mutation is **discarded immediately**, saving ~1.5 hours of wasted compute on regressive candidates.
+3. **Stage 2 (Full Confirmation, 432 Trading Days)**: If `delta >= -1.50` (candidate is competitive or winning), evaluation continues across all remaining 352 days. If the full 432-day score beats the active champion, it is promoted to the new Champion.
+
+---
+
 ## Persistent SQLite Document Caching (Optional Fast Mode)
 
 For development or fast criteria-only search, briefings can be persisted in SQLite (`.local_autoresearch_cache.db` in table `double_ratchet_documents`) keyed by `(target_date, prompt_hash)`. In production ratchet mode, `--no-cache` bypasses this table to guarantee fresh per-day synthesis.
 
 ---
 
-## Cloud Fallbacks (CI & Resiliency)
+## Zero External API Calls (MANDATORY HARD REQUIREMENT)
 
-When local GPU servers are offline or executing in GitHub Actions CI:
-- **Qwen Fallback**: Routes to **Claude Haiku 5.5** or **GPT-6 Luna** for document distillation.
-- **Laya Fallback**: Routes to **TypeSafe Jev** on OpenRouter (`/api/alpha/decisions`), which shares the exact same wire protocol.
+> [!CAUTION]
+> **Hard Cost & Token Safety Requirement**: During local autoresearch, double-ratchet tournaments, and offline backtests, calling external or cloud LLM APIs (Anthropic, OpenAI, OpenRouter Jev, etc.) is **STRICTLY PROHIBITED**.
+
+Iterating across hundreds of trading sessions over multiple generations causes massive API credit drain. All inference for both distillation and decision classification must run 100% locally on dedicated hardware (Strata and Laya). 
+
+If a local server encounters transient engine stalls, PCIe desynchronization, or engine reload cycles, pipelines must execute local retries with progressive backoff. Cloud fallbacks are completely disabled to prevent unintended API egress and credit consumption.
 
 ---
 

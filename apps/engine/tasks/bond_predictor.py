@@ -131,8 +131,9 @@ async def predict_bond_with_reasoning_model(
     try:
         if provider == "openai":
             client = get_openai_client()
+            raw_client = getattr(client, "client", client)
             await openai.run_tool_loop(
-                client,
+                raw_client,
                 model_name=model_name,
                 messages=messages,
                 provider="openai",
@@ -140,8 +141,9 @@ async def predict_bond_with_reasoning_model(
             )
         elif provider == "deepseek":
             client = get_deepseek_client()
+            raw_client = getattr(client, "client", client)
             await deepseek.run_tool_loop(
-                client,
+                raw_client,
                 model_name=model_name,
                 messages=messages,
                 provider="deepseek",
@@ -149,7 +151,7 @@ async def predict_bond_with_reasoning_model(
             )
 
         # Final structured extraction using instructor client
-        instructor_client = get_deepseek_client() if provider == "deepseek" else get_openai_client()
+        instructor_client = client or (get_deepseek_client() if provider == "deepseek" else get_openai_client())
         formatted_messages = deepseek.prepare_messages_for_instructor(messages) if provider == "deepseek" else messages
 
         create_kwargs = {
@@ -160,7 +162,7 @@ async def predict_bond_with_reasoning_model(
         if provider == "deepseek":
             create_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
         elif provider == "openai":
-            create_kwargs["reasoning_effort"] = "low"
+            create_kwargs["reasoning_effort"] = "none"
 
         resp_awaitable = instructor_client.chat.completions.create(**create_kwargs)
         resp = await resp_awaitable if asyncio.iscoroutine(resp_awaitable) else resp_awaitable
@@ -238,6 +240,7 @@ async def run_daily_bond_prediction(ticker: str = "TLT", force: bool = False) ->
                 pred = await predict_daily_with_jev(context=jev_context, ticker=ticker, model_name=model_name)
 
             db_payload = {
+                "prediction_date": today_str,
                 "target_date": today_str,
                 "ticker": ticker.upper(),
                 "model_name": model_name,
@@ -251,7 +254,11 @@ async def run_daily_bond_prediction(ticker: str = "TLT", force: bool = False) ->
                 "status": "pending",
                 "created_at": datetime.now(UTC).isoformat(),
             }
-            insert_res = client.table("daily_predictions").insert(db_payload).execute()
+            insert_res = (
+                client.table("daily_predictions")
+                .upsert(db_payload, on_conflict="target_date,ticker,model_name")
+                .execute()
+            )
             pred_id = insert_res.data[0]["id"] if insert_res and insert_res.data else "unknown"
 
             results.append({"status": "success", "id": pred_id, "model": model_name, "prediction": pred})

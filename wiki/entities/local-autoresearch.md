@@ -118,7 +118,9 @@ When evaluating the 10 batch winners out-of-distribution across the **21 sequest
 ./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner --promote-best
 
 # 8. Run Strata (Qwen) + Laya Double-Ratchet Tournament (see [[concepts/strata-laya-double-ratchet]])
+# Zero external cloud calls (strictly local Strata + Laya inference)
 # Uses --no-cache to enforce fresh daily briefings per session day (mirrors live 9:15 AM ET execution)
 ./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
   --double-ratchet --iterations 10 --no-cache --cache-db .local_autoresearch_cache.db
 ```
+

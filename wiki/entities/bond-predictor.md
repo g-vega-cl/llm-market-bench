@@ -1,47 +1,56 @@
 ---
-tags: [entity, engine, tasks, bond, tlt, predictor]
+tags: [entity, bond, predictor, tlt, daily-predictions]
 category: entity
 ---
 
-# Bond Predictor (TLT)
+# Bond Predictor
 
-`apps/engine/tasks/bond_predictor.py` is the systematic daily bond predictor that produces open-to-close direction forecasts for **TLT** (iShares 20+ Year Treasury Bond ETF, ~17-year duration). It is a vertical slice island mirroring the [[entities/daily-market-predictor]] for the equity index, but applies fixed-income mechanics: bond prices move inversely to Treasury yields, so falling yields imply TLT UP and rising yields imply TLT DOWN. High duration makes TLT sensitive to morning economic prints (CPI, PPI, NFP), Fed expectations, and Treasury auction dynamics.
+`apps/engine/tasks/bond_predictor.py` produces daily directional predictions for
+Treasury bonds (default ticker `TLT`). It runs a reasoning-model tool loop to
+reason over bond context, then performs a structured extraction into a
+`BondPredictionOutput` schema and persists the result to the `daily_predictions`
+table.
 
-## Prompt Architecture
+## Reasoning Model Path
 
-The predictor enforces the tool-first convention ("Provide Tools, Don't Push Data"). The initial prompt built by `construct_lean_bond_prompt` injects only lean temporal context — target ticker, prediction date, the 09:30–16:00 ET session window, and the pre-market/overnight quote with gap vs previous close. It deliberately omits bulky context tables, yield-curve dumps, and pre-injected news.
+`predict_bond_with_reasoning_model` supports two providers:
 
-## Models & Toolbox
+- **openai** — uses `get_openai_client()`
+- **deepseek** — uses `get_deepseek_client()`
 
-Three arena members compete each morning:
+The tool loop (`openai.run_tool_loop` / `deepseek.run_tool_loop`) is invoked with
+the **raw** underlying client, unwrapped via `getattr(client, "client", client)`.
+The instructor-wrapped client exposes the raw SDK client on its `.client`
+attribute; passing the wrapper directly to the tool loop is incorrect, so the
+raw client is extracted first.
 
-- **`gpt-5.6-luna`** (OpenAI) — multi-turn autonomous tool loop via `predict_bond_with_reasoning_model`
-- **`deepseek-v4-flash`** (DeepSeek) — multi-turn autonomous tool loop, thinking enabled during final extraction
-- **`~typesafe/jev-latest`** (OpenRouter) — single-turn Decisions API (`predict_daily_with_jev`) fed a pre-compiled lean tool bundle (`compile_jev_bond_context`), assembled from the Treasury yield curve and today's economic releases
+After the tool loop completes, the same client is reused for the final
+structured extraction (`instructor_client = client or ...`), falling back to a
+freshly constructed client only if none was created.
 
-The curated `BOND_TOOLBOX` exposes these canonical tools to the tool-loop models:
+### Structured Extraction Options
 
-- `get_treasury_yield_curve`
-- `get_today_economic_releases`
-- `get_yield_curve_regime`
-- `get_macro_options_sentiment`
-- `get_calendar_scenario_analysis`
+- **deepseek** — `extra_body={"thinking": {"type": "enabled"}}`
+- **openai** — `reasoning_effort="none"`
 
-For the tool-loop models, the final structured prediction is extracted with an instructor client against `DailyPredictionOutput`, yielding `predicted_direction`, `confidence`, `expected_return_pct`, `rationale`, and `catalysts`.
+The OpenAI structured extraction uses `reasoning_effort="none"` because the
+reasoning models reject the request with a 400 error when a non-`none` effort is
+supplied alongside the instructor structured-output call.
 
-## Scheduling & Idempotency
+## Persistence
 
-`run_daily_bond_prediction` refuses to run after 09:30 ET or before 04:00 ET, skips non-trading days, and skips when predictions already exist for the target ticker/date unless `force=True`. Successful predictions are persisted to the `daily_predictions` table with `ticker='TLT'`, `status='pending'`, and a `prompt_variant_tag` of `pull-bond-{model}`. The CLI routes here via `main.py daily-predictor --ticker TLT`; `--ticker ALL` runs SPY and TLT in sequence.
+`run_daily_bond_prediction` writes each model's prediction to the
+`daily_predictions` table using an **upsert** keyed on
+`on_conflict="target_date,ticker,model_name"`. This makes re-runs idempotent —
+re-predicting the same ticker/model/date overwrites the prior row instead of
+creating duplicates.
 
-## Web Presentation
-
-TLT predictions are presented in the unified Daily Predictor interface (`apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx`, `/daily-predictions?ticker=TLT`). An asset segment toggle allows switching between S&P 500 (SPY) and 20+ Year Treasuries (TLT), dynamically rendering the bond arena models (`gpt-5.6-luna`, `deepseek-v4-flash`, `~typesafe/jev-latest`) with GPT-5.6 Luna selected as the default.
+The payload includes both `prediction_date` and `target_date` (both set to the
+current day), satisfying the `prediction_date` NOT NULL constraint on the table.
 
 ## Related
 
-- [[entities/daily-market-predictor]] — the SPY equity sibling
-- [[entities/daily-bond-trading]] — the execution consumer of these predictions
-- [[entities/treasury-yield-curve-tool]] — the flagship data source
-- [[concepts/system-portfolios]]
+- [[entities/daily-bond-trading]]
 - [[concepts/daily-tlt-live-trading]]
-- [[entities/tool-registry]]
+- [[entities/daily-market-predictor]]
+- [[entities/database]]

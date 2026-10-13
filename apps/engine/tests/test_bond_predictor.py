@@ -11,6 +11,7 @@ from tasks.bond_predictor import (
     BOND_TOOLBOX,
     compile_jev_bond_context,
     construct_lean_bond_prompt,
+    predict_bond_with_reasoning_model,
     run_daily_bond_prediction,
 )
 
@@ -69,7 +70,7 @@ async def test_compile_jev_bond_context():
 
 @pytest.mark.asyncio
 async def test_run_daily_bond_prediction_success():
-    """Verify run_daily_bond_prediction executes across models and inserts into Supabase."""
+    """Verify run_daily_bond_prediction executes across models and upserts with prediction_date into Supabase."""
     mock_supabase = MagicMock()
     mock_table = MagicMock()
     mock_supabase.table.return_value = mock_table
@@ -80,10 +81,10 @@ async def test_run_daily_bond_prediction_success():
     mock_select.execute.return_value = MagicMock(data=[])
     mock_table.select.return_value = mock_select
 
-    # Insert execution returns mock ID
-    mock_insert = MagicMock()
-    mock_insert.execute.return_value = MagicMock(data=[{"id": "pred-123"}])
-    mock_table.insert.return_value = mock_insert
+    # Upsert execution returns mock ID
+    mock_upsert = MagicMock()
+    mock_upsert.execute.return_value = MagicMock(data=[{"id": "pred-123"}])
+    mock_table.upsert.return_value = mock_upsert
 
     mock_quote = {"price": 92.45, "change": -0.35, "change_pct": -0.38, "previous_close": 92.80}
 
@@ -121,4 +122,48 @@ async def test_run_daily_bond_prediction_success():
         results = await run_daily_bond_prediction(ticker="TLT", force=False)
         assert len(results) == 3
         assert all(r["status"] == "success" for r in results)
-        assert mock_table.insert.call_count == 3
+        assert mock_table.upsert.call_count == 3
+        for call_args in mock_table.upsert.call_args_list:
+            payload = call_args[0][0]
+            assert "prediction_date" in payload, "prediction_date must be present to satisfy NOT NULL DB constraint"
+            assert payload["prediction_date"] == "2026-10-07"
+            assert payload["target_date"] == "2026-10-07"
+            assert payload["ticker"] == "TLT"
+            assert call_args[1].get("on_conflict") == "target_date,ticker,model_name"
+
+
+@pytest.mark.asyncio
+async def test_predict_bond_with_reasoning_model_openai_reasoning_effort_none():
+    """Verify OpenAI structured extraction uses reasoning_effort='none' to avoid 400 error."""
+    mock_client = MagicMock()
+    mock_create = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.predicted_direction = "UP"
+    mock_resp.confidence = 75.0
+    mock_resp.expected_return_pct = 0.5
+    mock_resp.rationale = "Test rationale"
+    mock_resp.catalysts = ["Test catalyst"]
+    mock_create.return_value = mock_resp
+    mock_client.chat.completions.create = mock_create
+
+    mock_raw_client = MagicMock()
+    mock_client.client = mock_raw_client
+
+    with (
+        patch("tasks.bond_predictor.get_openai_client", return_value=mock_client),
+        patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock) as mock_loop,
+        patch("tasks.bond_predictor.close_client", new_callable=AsyncMock),
+    ):
+        res = await predict_bond_with_reasoning_model(
+            model_name="gpt-5.6-luna",
+            provider="openai",
+            user_prompt="Predict TLT",
+        )
+        assert res["predicted_direction"] == "UP"
+        mock_loop.assert_called_once()
+        assert mock_loop.call_args[0][0] is mock_raw_client, "Must pass raw_client (.client) to run_tool_loop"
+        mock_create.assert_called_once()
+        call_kwargs = mock_create.call_args[1]
+        assert call_kwargs.get("reasoning_effort") == "none", (
+            f"Expected reasoning_effort='none' for OpenAI structured extraction, got {call_kwargs.get('reasoning_effort')}"
+        )

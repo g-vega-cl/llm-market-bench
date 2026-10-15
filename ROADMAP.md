@@ -23,6 +23,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - **Fix Pure Directional Scoring (Kill Selectivity Subsidy)**: Eliminate the `+ 0.10 * Selectivity` incentive trap in [[concepts/pure-directional-scoring]] that rewarded models for trading 99% of sessions on random chop. Redesign metric around Traded Win Rate / Expectancy with a hard minimum volume floor (>= 20% sessions), directly rewarding disciplined gating that aims for 65–70% accuracy on high-conviction days.
 - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
+- [ ] - Benchify: remove anti bias from frozen, those are not "format" instructions those affect the prediction so they should be able to be mutated
+- [ ] - Benchify: audit that we are passing "weekly or trend" data.to daily predictor
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.
@@ -34,6 +36,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: update today page
 - [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
+- [ ] - Benchify: update tanstack
+- [ ] - Benchify : design rules cheat sheet to ground my design system
 
 ### Marketing & Building in Public
 - [ ] - Benchify: start building in public. Maybe videos maybe blogs anything but start saying the things you think about that loud critique YouTube videos critique other creators or say something good about them too. Audit audit audit
@@ -56,6 +60,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
 - [ ] - Benchify: a bond trader?
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
+- [ ] - Benchify: why has sys future forces or sys max pain or haiku 5.5 not done a single trade?
+- [ ] - Benchify; the portfolios should all run with 10k and no margin. Easier to get and also no dealing with interest
+- [ ] - Benchify: move newsletter generator and predictor closer to 9:30 maybe 9:24
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 
 ### Database & Performance Polish
@@ -73,6 +80,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Look for statistical analysis for markets
 - [ ] - Benchify: follow the crowd strategy? Like using options and volume data?
 - [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
+- [ ] - Benchify: an option targeter? A predictor that says "in X amount of time, this stock will move Y"
+- [ ] - Benchify; a daily stock picker, which stocks will go up today? And pick 3 up and 3 down.
 - [ ] - Benchify: train small model?
 
 ### Focused Assets (Single Ticker / ETF)

@@ -7,7 +7,7 @@
 ## Entities
 
 - [[entities/historical-downloader]] — rate-limited offline downloader for multi-year EOD/pre-market/news/newsletter/macro data into a local SQLite raw vault
-- [[entities/local-autoresearch]] — Auto-indexed page
+- [[entities/local-autoresearch]] — Local prompt tournament orchestrator pairing Strata Qwen distillation with Laya ModernBERT decision classification over a 20-week curriculum
 - [[entities/portfolio-comparison-selector]] — agent picker for the performance comparison chart, capped at 5 portfolios
 - [[entities/gemini-api-dev]] — reference skill for Gemini API development
 - [[entities/treasury-yield-curve-tool]] — no-arg tool returning live US Treasury benchmark yields, 1d bps changes, and curve spreads from FRED
@@ -96,7 +96,7 @@
 
 ## Concepts
 
-- [[concepts/strata-laya-double-ratchet]] — Auto-indexed page
+- [[concepts/strata-laya-double-ratchet]] — Two-pass co-evolutionary prompt optimization pairing Qwen 32B ingestion with Qwen 32B predictive reasoning over a 10-week curriculum with 3B student distillation roadmap
 - [[concepts/daily-directional-predictability-limits]] — Auto-indexed page
 - [[concepts/pure-directional-scoring]] — Auto-indexed page
 - [[concepts/baseline-calibration]] — re-scoring the active baseline on the current dataset so candidates beat a fair watermark

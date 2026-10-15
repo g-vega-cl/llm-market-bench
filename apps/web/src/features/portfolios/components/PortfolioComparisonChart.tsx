@@ -626,9 +626,14 @@ export function PortfolioComparisonChart({
         }
     }, [clickedData, latestData, displayData, activeData, dateRange]);
 
-    const sortedPortfolioValues = displayData?.portfolioValues
-        ? [...displayData.portfolioValues].sort((a, b) => b.value - a.value)
-        : [];
+    const chipValues = React.useMemo(() => {
+        const result: Record<string, number> = {};
+        for (const pv of displayData?.portfolioValues ?? []) {
+            const portfolio = data.find((p) => p.ownerId === pv.ownerId);
+            if (portfolio) result[portfolio.portfolioId] = pv.value;
+        }
+        return result;
+    }, [displayData, data]);
 
     return (
         <div className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm overflow-hidden flex flex-col gap-4">
@@ -654,6 +659,7 @@ export function PortfolioComparisonChart({
                     }))}
                     selectedIds={selectedPortfolioIds}
                     portfolioColors={portfolioColors}
+                    values={chipValues}
                     onAdd={handleAddPortfolio}
                     onRemove={handleRemovePortfolio}
                     onReset={isCustomSelection ? handleResetSelection : undefined}
@@ -661,36 +667,12 @@ export function PortfolioComparisonChart({
                 />
             )}
 
-            {displayData && sortedPortfolioValues.length > 0 && (
+            {displayData && displayData.portfolioValues.length > 0 && (
                 <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg border border-zinc-100 dark:border-zinc-800">
                     <div className="text-xs text-zinc-500 mb-2">{displayData.date}</div>
                     <div className="space-y-1">
-                        {sortedPortfolioValues.map((pv) => (
-                            <div
-                                key={pv.ownerId}
-                                className="flex items-center justify-between gap-4 text-sm"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <div
-                                        className="w-2 h-2 rounded-full shrink-0"
-                                        style={{ backgroundColor: pv.color }}
-                                    />
-                                    <span className="text-zinc-600 dark:text-zinc-300 capitalize truncate max-w-xs">
-                                        {pv.ownerId.replace(/-/g, ' ')}
-                                    </span>
-                                </div>
-                                <span
-                                    className={`font-semibold ${
-                                        pv.value >= 0 ? 'text-emerald-600' : 'text-red-600'
-                                    }`}
-                                >
-                                    {pv.value >= 0 ? '+' : ''}
-                                    {pv.value.toFixed(2)}%
-                                </span>
-                            </div>
-                        ))}
                         {displayData.benchmarkValue !== undefined && (
-                            <div className="flex items-center justify-between gap-4 text-sm pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                            <div className="flex items-center justify-between gap-4 text-sm">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                                     <span className="text-amber-600">

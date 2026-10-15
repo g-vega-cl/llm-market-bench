@@ -14,7 +14,7 @@ The comparison chart can receive data for many portfolios, but rendering all of 
 ## Behavior
 
 - **Default selection** — the first `maxSelected` (default 5) portfolios that have performance data are selected on mount; if none have data, the first 5 overall are used.
-- **Chips** — each selected portfolio renders as a chip showing its color swatch and formatted owner name (`ownerId` with hyphens replaced by spaces). Each chip has a remove button (`aria-label="Remove <owner> from comparison"`).
+- **Chips** — each selected portfolio renders as a chip showing its color swatch, formatted owner name (`ownerId` with hyphens replaced by spaces), and — when the optional `values` prop (`portfolioId` → percent) is supplied — a signed, green/red percentage for the latest or crosshair-clicked date. Each chip has a remove button (`aria-label="Remove <owner> from comparison"`).
 - **Add dropdown** — a `<select>` (`aria-label="Add agent to comparison"`) lists unselected portfolios. It is disabled once the selection reaches `maxSelected`, and its placeholder reads `+ Add Agent...` or `+ Add Agent (Max N)` when full.
 - **Counter badge** — shows `selected / maxSelected` (e.g. `3 / 5`), switching to a warning color scheme at the limit.
 - **Empty state** — when zero portfolios are selected, an italic hint prompts the user to choose up to `maxSelected` agents.
@@ -26,7 +26,7 @@ The comparison chart can receive data for many portfolios, but rendering all of 
 
 - `selectedPortfolioIds` state is initialized from the default top-5 and pruned when portfolios disappear from the incoming data.
 - `handleAddPortfolio` refuses additions beyond `maxSelected`; `handleRemovePortfolio` allows dropping below the cap (including to zero).
-- Only `activeData` (the selected subset) is rendered as lines and tooltip values (portfolio names are displayed exclusively in the selector chips to avoid visual redundancy with the chart). Benchmark series remain labeled in the chart legend. Portfolio colors are assigned per selected portfolio so they stay stable across add/remove.
+- Only `activeData` (the selected subset) is rendered as lines. Portfolio names and their percentages are displayed exclusively in the selector chips (via `chipValues`, mapped from the readout's `ownerId` to `portfolioId`); the readout panel above the chart keeps just the date and the benchmark row. Benchmark series remain labeled in the chart legend. Portfolio colors are assigned per selected portfolio so they stay stable across add/remove.
 - When no portfolios are selected, the chart renders a centered message: *"No agents selected. Select up to 5 agents above to compare."*
 - The crosshair tooltip is trimmed to the currently selected portfolios, and the chart's date range falls back to the benchmark's range when nothing is selected.
 

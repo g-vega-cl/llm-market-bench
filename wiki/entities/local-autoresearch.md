@@ -117,10 +117,22 @@ When evaluating the 10 batch winners out-of-distribution across the **21 sequest
 # 7. Promote champion to remote Supabase under track jev-local-autoresearched
 ./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner --promote-best
 
-# 8. Run Strata (Qwen) + Laya Double-Ratchet Tournament (see [[concepts/strata-laya-double-ratchet]])
-# Zero external cloud calls (strictly local Strata + Laya inference)
-# Uses --no-cache to enforce fresh daily briefings per session day (mirrors live 9:15 AM ET execution)
+# 8. Run Strata Two-Pass Double-Ratchet Tournament (see [[concepts/strata-laya-double-ratchet]])
+# Zero external cloud calls (strictly local Qwen 32B via Strata)
+# Evaluates on 10-week curriculum (~50 trading sessions) with Friday mini-cycles
 ./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
-  --double-ratchet --iterations 10 --no-cache --cache-db .local_autoresearch_cache.db
+  --double-ratchet --curriculum-weeks 10 --iterations 5 --cache-db .local_autoresearch_cache.db
 ```
+
+---
+
+## 10-Week Curriculum & Cumulative Weekly Mini-Cycles
+
+- **Two Autoresearched Prompts**: Co-evolves `AUTORESEARCHED_PROMPT_1` (Model 1 dynamic catalyst re-generation) and `AUTORESEARCHED_PROMPT_2` (Model 2 prediction arbiter with unconstrained CoT reasoning budget `-1`).
+- **Memory-Driven Prompt 2 Evolution**: To improve `AUTORESEARCHED_PROMPT_2`, the Meta-Autoresearcher actively queries the Supabase/local memories database (1,000+ `POST_MORTEM` and `LESSON_LEARNED` records) to target and eliminate verified failure modes.
+- **Weekly Mini-Autoresearch**: At each week's Friday close (16:00 ET), a local mini-cycle evaluates the week's daily sessions, identifies false signals, generates 1–2 actionable "Lessons Learned", and appends them to local SQLite `cached_memories`.
+- **Dynamic Point-in-Time RAG**: Model 2 and subsequent weeks query accumulated lessons strictly prior to target date (`WHERE created_at < target_date`), ensuring zero lookahead bias.
+- **Model Fine-Tuning Roadmap**: Historical Qwen 32B CoT reasoning traces and verified directional calls serve as the teacher dataset to fine-tune a dedicated 3B student model for sub-second production inference.
+- **Strictly Local**: All data, weekly lessons, and prompt mutations remain in `.local_autoresearch_cache.db` and `local_store.db`. Zero external API calls. See [[concepts/strata-laya-double-ratchet]].
+
 

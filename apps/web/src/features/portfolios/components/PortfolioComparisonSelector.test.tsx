@@ -48,6 +48,22 @@ describe('PortfolioComparisonSelector', () => {
         expect(onRemove).toHaveBeenCalledWith('p-1');
     });
 
+    it('renders signed percentage values inside chips when provided', () => {
+        render(
+            <PortfolioComparisonSelector
+                availablePortfolios={mockAvailable}
+                selectedIds={['p-1', 'p-2']}
+                portfolioColors={mockColors}
+                values={{ 'p-1': 4.2, 'p-2': -1.5 }}
+                onAdd={vi.fn()}
+                onRemove={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText('+4.20%')).toBeInTheDocument();
+        expect(screen.getByText('-1.50%')).toBeInTheDocument();
+    });
+
     it('allows user to select and add an unselected portfolio when count is less than 5', () => {
         const onAdd = vi.fn();
         const onRemove = vi.fn();

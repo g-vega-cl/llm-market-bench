@@ -205,4 +205,36 @@ describe('PortfolioComparisonChart — uses design system', () => {
         // Benchmark label should still be rendered in the SVG legend
         expect(svgTexts).toContain('S&P 500');
     });
+
+    it('shows each portfolio name once, with its percentage inside the selector chip', () => {
+        const data = [
+            {
+                portfolioId: 'port-1',
+                ownerId: 'deepseek-chat',
+                performance: [
+                    { date: '2026-05-01', value: 10 },
+                    { date: '2026-05-02', value: 15.5 },
+                ],
+            },
+        ];
+
+        const { container } = render(
+            <PortfolioComparisonChart
+                data={data}
+                benchmarkData={{}}
+                selectedBenchmark=""
+                onReset={vi.fn()}
+            />,
+        );
+
+        const nameMatches = Array.from(container.querySelectorAll('span')).filter(
+            (el) => el.textContent === 'deepseek chat',
+        );
+        expect(nameMatches.length).toBe(1);
+
+        const chip = container.querySelector(
+            'button[aria-label="Remove deepseek chat from comparison"]',
+        )?.parentElement;
+        expect(chip?.textContent).toContain('+15.50%');
+    });
 });

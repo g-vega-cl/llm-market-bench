@@ -10,6 +10,8 @@ export interface PortfolioComparisonSelectorProps {
     availablePortfolios: PortfolioOption[];
     selectedIds: string[];
     portfolioColors: Record<string, string>;
+    /** Optional percentage value per portfolioId, shown inside each selected chip. */
+    values?: Record<string, number>;
     onAdd: (portfolioId: string) => void;
     onRemove: (portfolioId: string) => void;
     onReset?: () => void;
@@ -24,6 +26,7 @@ export function PortfolioComparisonSelector({
     availablePortfolios,
     selectedIds,
     portfolioColors,
+    values,
     onAdd,
     onRemove,
     onReset,
@@ -86,6 +89,7 @@ export function PortfolioComparisonSelector({
                     );
                     const ownerName = portfolio ? formatOwnerName(portfolio.ownerId) : portfolioId;
                     const color = portfolioColors[portfolioId] || '#94a3b8';
+                    const pct = values?.[portfolioId];
 
                     return (
                         <span
@@ -100,6 +104,16 @@ export function PortfolioComparisonSelector({
                             <span className="capitalize text-zinc-700 dark:text-zinc-200 max-w-xs truncate">
                                 {ownerName}
                             </span>
+                            {pct !== undefined && (
+                                <span
+                                    className={`font-semibold ${
+                                        pct >= 0 ? 'text-emerald-600' : 'text-red-600'
+                                    }`}
+                                >
+                                    {pct >= 0 ? '+' : ''}
+                                    {pct.toFixed(2)}%
+                                </span>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => onRemove(portfolioId)}

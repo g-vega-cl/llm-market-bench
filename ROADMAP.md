@@ -8,20 +8,9 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Autoresearch & Prompt Evolution (Local Loop)
 - [x] - Set up a local auto researcher with Qwen, Strata, and Jev. Evaluated across 10-batch (300 iterations) tournament on 2-year multi-regime dataset (507 days, 106 weeks). Revealed that unconstrained open-to-close daily direction caps at ~52% due to random walk noise and selectivity subsidy trap. Post-mortem documented at [[concepts/daily-directional-predictability-limits]].
-- [ ] - Benchify: jev + Qwen autoresearcher? Jev can do so many things like judge, decide which prompt is better, check for over fitting, check if the input is correct, etc
-- [ ] - Benchify: could jev work for my autoresearcher?
-
-    Speculative Fanout: Ask multiple questions in a single query and get all of them answered in parallel. For example: triage a support ticket and assess its type, severity, frustration level etc.
-
-    Confidence Gated Routing: Jev can generate confidence scores that can be used to route to different actions. If you are highly confident you can take the action directly, or if you have low confidence, you can add a user prompt to clarify.
-
-    Composite Scoring: Give Jev a rubric, and it can give a composite score to all
-- [ ] - Many of these things should be able to be picked up by autoresearch, I guess the loop is quite slow. How to speed up the loop?
-- [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs.
 - [ ] - Benchify: something I can autoresearch daily?
         Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
-- [ ] - **Fix Pure Directional Scoring (Kill Selectivity Subsidy)**: Eliminate the `+ 0.10 * Selectivity` incentive trap in [[concepts/pure-directional-scoring]] that rewarded models for trading 99% of sessions on random chop. Redesign metric around Traded Win Rate / Expectancy with a hard minimum volume floor (>= 20% sessions), directly rewarding disciplined gating that aims for 65–70% accuracy on high-conviction days.
-- [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
+    - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
 - [ ] - Benchify: remove anti bias from frozen, those are not "format" instructions those affect the prediction so they should be able to be mutated
 - [ ] - Benchify: audit that we are passing "weekly or trend" data.to daily predictor

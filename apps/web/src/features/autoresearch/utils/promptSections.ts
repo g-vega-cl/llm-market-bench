@@ -5,6 +5,26 @@ export interface SplitPromptResult {
     isSplit: boolean;
 }
 
+const DAILY_CONTEXT_MARKER = '=== AVAILABLE MARKET CONTEXT ===';
+const FROZEN_IDENTITY_LINE_PREFIXES = [
+    'You are an elite quantitative macro trader',
+    "Your goal is to predict whether today's 4:00 PM ET Close",
+];
+
+/** Index just past the context block starting at markerIdx: first blank line or next `===` heading. */
+function contextBlockEnd(text: string, markerIdx: number): number {
+    let pos = text.indexOf('\n', markerIdx);
+    while (pos !== -1) {
+        const next = text.indexOf('\n', pos + 1);
+        const line = text.slice(pos + 1, next === -1 ? text.length : next);
+        if (!line.trim() || line.startsWith('===')) {
+            return pos;
+        }
+        pos = next;
+    }
+    return text.length;
+}
+
 /**
  * Split a full CORE_ANALYSIS_SYSTEM_PROMPT or DAILY_PREDICTOR_PROMPT into Header, Mutable Strategies, and Footer.
  * Mirrors the logic from apps/engine/core/llm/prompts.py:split_prompt and daily_predictor_prompts.py:split_daily_predictor_prompt
@@ -32,21 +52,21 @@ export function splitPromptSections(promptText: string): SplitPromptResult {
         };
     }
 
-    // Daily Predictor prompts: Header ends after Zero-Mean Mandate
-    const lastMandateIdx = promptText.lastIndexOf('Avoid positive-framing bias.');
-    if (lastMandateIdx !== -1 && lastMandateIdx < footerStart) {
-        const firstMandateIdx = promptText.indexOf('Avoid positive-framing bias.');
-        const mandateLen = 'Avoid positive-framing bias.'.length;
-        const header = promptText.slice(0, firstMandateIdx + mandateLen).trim();
-        let mutable = promptText.slice(lastMandateIdx + mandateLen, footerStart).trim();
+    // Daily Predictor prompts: Header = trader identity + available market context.
+    // Everything after the context block (including base-rate / anti-bias guidance) is mutable.
+    const body = promptText.slice(0, footerStart);
+    const firstContextIdx = body.indexOf(DAILY_CONTEXT_MARKER);
+    if (firstContextIdx !== -1) {
+        const lastContextIdx = body.lastIndexOf(DAILY_CONTEXT_MARKER);
+        const header = body.slice(0, contextBlockEnd(body, firstContextIdx)).trim();
         const footer = promptText.slice(footerStart).trim();
 
-        // Defensive cleanup of any leftover duplicate headers in mutable
-        mutable = mutable
-            .replace(
-                /You are an elite quantitative macro trader[\s\S]*?Avoid positive-framing bias\.\s*/g,
-                '',
-            )
+        // Last context block wins so duplicated headers are dropped; also drop stray identity lines
+        const mutable = body
+            .slice(contextBlockEnd(body, lastContextIdx))
+            .split('\n')
+            .filter((line) => !FROZEN_IDENTITY_LINE_PREFIXES.some((p) => line.startsWith(p)))
+            .join('\n')
             .trim();
 
         return {

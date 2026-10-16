@@ -32,7 +32,7 @@ Whenever a variant is generated from scratch:
 
 A cold start is never literally empty. As defined in [[concepts/prompt-section-splitting]], system prompts consist of three segments:
 1. **Frozen Engine Header**: System constraints, risk guardrails, pricing protocols, and context injection rules. Managed entirely by the engine and strictly frozen.
-2. **Mutable Autoresearch Body**: Analytical strategies, market playbooks, indicator interpretations, and conviction rules. This is the only section the meta-researcher can mutate.
+2. **Mutable Autoresearch Body**: Analytical strategies, market playbooks, indicator interpretations, conviction rules, and base-rate / directional-bias guidance (e.g. the daily predictor's zero-mean mandate). This is the only section the meta-researcher can mutate.
 3. **Frozen Output Schema**: JSON schemas and formatting requirements. Enforced automatically by the engine.
 
 During a cold start reset:

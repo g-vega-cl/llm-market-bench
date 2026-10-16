@@ -25,6 +25,16 @@ The TypeScript utility `splitPromptSections` (`apps/web/src/features/autoresearc
 - **Mutable Strategy (Evolvable)**: The section between the first mutable marker and the footer marker (e.g., `=== SMA MANAGEMENT RULES ===`). Contains trading philosophy, reasoning frameworks, entry/exit logic, and portfolio management rules. This is the target of the autoresearch loop.
 - **Footer (Frozen)**: Everything from the footer marker onward. Contains SMA margin rules, trade signal definitions, and the mandatory structured JSON output schema.
 
+### Daily Predictor Split (`split_daily_predictor_prompt`)
+
+The SPY daily predictor prompt uses a narrower frozen scope than the portfolio prompt. Only **input/output framing** is frozen; anything that influences the prediction is mutable.
+
+- **Header (Frozen)**: trader identity and the `=== AVAILABLE MARKET CONTEXT ===` description of the inputs provided.
+- **Mutable Strategy (Evolvable)**: everything between the context block and `=== REQUIRED OUTPUT FORMAT ===`. This includes base-rate and directional-bias guidance. The seed starts with a `=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===` block, but it is ordinary strategy text the researcher may keep, rewrite, or delete. Nothing re-injects it.
+- **Footer (Frozen)**: the required JSON output schema.
+
+The split finds the *last* `AVAILABLE MARKET CONTEXT` block and treats everything after it as mutable. This keeps duplicated headers out and also keeps legacy stored prompts (whose header once embedded the mandate) intact: the mandate simply becomes mutable text on the next autoresearch pass, with no database migration. The same rule is mirrored in `splitPromptSections` for the UI, and the researcher meta-prompts (`daily_autoresearch.py`, `strata_client.py`) no longer describe symmetry or zero-mean rules as frozen or mandatory, in line with the project's tool-first, agency-driven principle (prompt evolution belongs to the Autoresearcher).
+
 ### Fallback Behavior
 
 If the standard section markers are not found (e.g., for custom or legacy prompts), the utility gracefully falls back to displaying the entire prompt as a single, un-split block.

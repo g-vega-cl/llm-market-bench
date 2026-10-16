@@ -10,8 +10,10 @@ describe('SegmentedPromptInspector', () => {
     });
 
     it('renders segmented sections with badges and pre tags', () => {
-        const splitPrompt = `=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
-Engine Constraints
+        const splitPrompt = `You are an elite quantitative macro trader.
+
+=== AVAILABLE MARKET CONTEXT ===
+Context.
 
 === ANALYTICAL STRATEGY INSTRUCTIONS ===
 Intraday Strategy
@@ -21,7 +23,8 @@ JSON schema`;
 
         const { container } = render(<SegmentedPromptInspector promptContent={splitPrompt} />);
 
-        expect(screen.getByText(/1\. Engine Constraints & Anti-Bias Mandate/i)).toBeInTheDocument();
+        expect(screen.getByText(/1\. Trader Identity & Market Context/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Anti-Bias/i)).not.toBeInTheDocument();
         expect(
             screen.getByText(/2\. Intraday Trading Strategy & Analysis Rules/i),
         ).toBeInTheDocument();

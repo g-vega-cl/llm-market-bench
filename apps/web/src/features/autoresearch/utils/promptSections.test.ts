@@ -83,7 +83,7 @@ Return JSON schema.`;
         expect(result.footer).toContain('=== REQUIRED OUTPUT FORMAT ===');
     });
 
-    it('correctly splits DAILY_PREDICTOR_PROMPT with evolved strategy heading', () => {
+    it('keeps the anti-bias mandate in the mutable section for legacy daily prompts', () => {
         const prompt = `You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
 Your goal is to predict whether today's 4:00 PM ET Close price will be higher (UP) or lower (DOWN) than today's 9:30 AM ET Open price.
 
@@ -104,14 +104,62 @@ Return JSON.`;
         const result = splitPromptSections(prompt);
         expect(result.isSplit).toBe(true);
         expect(result.header).toContain('You are an elite quantitative macro trader');
-        expect(result.header).toContain('ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE');
+        expect(result.header).toContain('=== AVAILABLE MARKET CONTEXT ===');
+        expect(result.header).not.toContain('ANTI-BIAS');
+        expect(result.mutable).toContain('=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===');
         expect(result.mutable).toContain(
             '=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===',
         );
         expect(result.footer).toContain('=== REQUIRED OUTPUT FORMAT ===');
     });
 
-    it('correctly cleans up DAILY_PREDICTOR_PROMPT with duplicate headers', () => {
+    it('splits new-format daily prompts where the mandate opens the mutable strategy', () => {
+        const prompt = `You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
+
+=== AVAILABLE MARKET CONTEXT ===
+You are provided with:
+1. Price action.
+
+=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+CRITICAL: Do NOT default to UP.
+
+=== ANALYTICAL STRATEGY INSTRUCTIONS ===
+1. Macro catalyst extraction.
+
+=== REQUIRED OUTPUT FORMAT ===
+Return JSON.`;
+
+        const result = splitPromptSections(prompt);
+        expect(result.isSplit).toBe(true);
+        expect(result.header).not.toContain('ZERO-MEAN');
+        expect(result.mutable.startsWith('=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===')).toBe(
+            true,
+        );
+        expect(result.mutable).toContain('=== ANALYTICAL STRATEGY INSTRUCTIONS ===');
+    });
+
+    it('does not re-inject a mandate the autoresearcher removed', () => {
+        const prompt = `You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
+
+=== AVAILABLE MARKET CONTEXT ===
+You are provided with:
+1. Price action.
+
+=== ANALYTICAL STRATEGY INSTRUCTIONS ===
+1. Follow momentum.
+
+=== REQUIRED OUTPUT FORMAT ===
+Return JSON.`;
+
+        const result = splitPromptSections(prompt);
+        expect(result.isSplit).toBe(true);
+        expect(result.mutable).toBe(
+            '=== ANALYTICAL STRATEGY INSTRUCTIONS ===\n1. Follow momentum.',
+        );
+        expect(result.header).not.toContain('ZERO-MEAN');
+    });
+
+    it('cleans up duplicate headers while keeping the mandate once in mutable', () => {
         const prompt = `You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.
 === AVAILABLE MARKET CONTEXT ===
 Context 1.
@@ -133,7 +181,7 @@ Return JSON.`;
         const result = splitPromptSections(prompt);
         expect(result.isSplit).toBe(true);
         expect(result.mutable).not.toContain('You are an elite quantitative macro trader');
-        expect(result.mutable).not.toContain('=== ZERO-MEAN BASE RATE');
+        expect(result.mutable.split('=== ZERO-MEAN BASE RATE').length - 1).toBe(1);
         expect(result.mutable).toContain(
             '=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===',
         );

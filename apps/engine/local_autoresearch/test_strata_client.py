@@ -1,7 +1,7 @@
 """Hermetic unit tests for local_autoresearch.strata_client."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -43,14 +43,14 @@ Hope this helps!"""
 
 @pytest.mark.asyncio
 async def test_is_strata_available():
-    mock_client = AsyncMock()
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_client.get.return_value = mock_resp
 
-    assert (
-        await is_strata_available("http://localhost:8081/v1") is False
-    )  # default client without running server returns False
+    with patch("httpx.AsyncClient.get", return_value=mock_resp):
+        assert await is_strata_available("http://localhost:8080/v1") is True
+
+    with patch("httpx.AsyncClient.get", side_effect=Exception("Connection refused")):
+        assert await is_strata_available("http://localhost:8080/v1") is False
 
 
 @pytest.mark.asyncio
@@ -116,3 +116,71 @@ def test_strata_meta_researcher_system_has_strict_premarket_mandate():
     assert "before the 9:30 AM ET" in STRATA_META_RESEARCHER_SYSTEM
     assert "MUST NEVER reference post-open intraday data" in STRATA_META_RESEARCHER_SYSTEM
     assert "first 30-minute" in STRATA_META_RESEARCHER_SYSTEM.lower()
+
+
+def test_strata_meta_prompts_do_not_hardcode_bias_rules():
+    """Zero-mean / symmetry rules are trading heuristics owned by the researcher, not baked in."""
+    from local_autoresearch.strata_client import (
+        STRATA_DOUBLE_RATCHET_META_RESEARCHER_SYSTEM,
+        STRATA_META_RESEARCHER_SYSTEM,
+    )
+
+    for system_prompt in (STRATA_META_RESEARCHER_SYSTEM, STRATA_DOUBLE_RATCHET_META_RESEARCHER_SYSTEM):
+        lowered = system_prompt.lower()
+        assert "zero-mean" not in lowered
+        assert "bullish bias" not in lowered
+        assert "symmetric" not in lowered
+        assert "50/50" not in lowered
+    # Non-trading structural principles remain
+    assert "OVERFITTING PREVENTION" in STRATA_META_RESEARCHER_SYSTEM
+
+
+def test_strata_double_ratchet_meta_prompt_enforces_zero_abstention():
+    from local_autoresearch.strata_client import STRATA_DOUBLE_RATCHET_META_RESEARCHER_SYSTEM
+
+    assert "ZERO ABSTENTION" in STRATA_DOUBLE_RATCHET_META_RESEARCHER_SYSTEM
+    assert "min_confidence" not in STRATA_DOUBLE_RATCHET_META_RESEARCHER_SYSTEM
+
+
+@pytest.mark.asyncio
+async def test_generate_double_ratchet_mutation_with_strata():
+    from local_autoresearch.strata_client import generate_double_ratchet_mutation_with_strata
+
+    baseline_criteria = JevCriteriaConfig(criteria_up="Up", criteria_down="Down", min_confidence=55.0)
+    mock_client = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_response_dict = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "ingestion_prompt": "Updated ingestion prompt for Qwen",
+                            "criteria": {
+                                "criteria_up": "Treasury yield drop and tech bid",
+                                "criteria_down": "Treasury yield surge and tech fade",
+                            },
+                            "hypothesis": "Aligned yield extraction with directional rules.",
+                        }
+                    )
+                }
+            }
+        ]
+    }
+    mock_resp.json.return_value = mock_response_dict
+    mock_client.post.return_value = mock_resp
+
+    mutation = await generate_double_ratchet_mutation_with_strata(
+        baseline_ingestion_prompt="Base prompt",
+        baseline_criteria=baseline_criteria,
+        baseline_score=50.0,
+        train_score=52.0,
+        test_score=54.0,
+        client=mock_client,
+    )
+
+    assert mutation.ingestion_prompt == "Updated ingestion prompt for Qwen"
+    assert mutation.criteria.min_confidence == 0.0
+    assert mutation.criteria.criteria_up == "Treasury yield drop and tech bid"
+    assert mutation.hypothesis == "Aligned yield extraction with directional rules."

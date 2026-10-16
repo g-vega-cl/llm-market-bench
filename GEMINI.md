@@ -84,6 +84,11 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
     - Never create standalone GitHub Actions workflow files for secondary or periodic tasks if an existing scheduled pipeline runs on the appropriate cadence (e.g., market close, price update, ingest).
     - Prefer "piggybacking" tasks into established workflows (`update-prices.yml`, `update-earnings-alpha.yml`, `ingest.yml`) as distinct steps or chained script calls.
     - Only introduce a new workflow file if the cadence, trigger event, or execution runner environment is genuinely decoupled and cannot be shared.
+15. **Hermetic Local Autoresearch (Zero External Cloud API Calls) (MANDATORY)**:
+    - During local autoresearch, double-ratchet tournaments, and offline backtests, calling external or cloud LLM APIs (Anthropic, OpenAI, OpenRouter Jev, etc.) is **STRICTLY PROHIBITED**.
+    - Iterating across hundreds of trading sessions over multiple generations causes catastrophic API credit drain. All inference for distillation and decision classification must run 100% locally on dedicated hardware (Strata and Laya).
+    - If a local server encounters transient engine stalls or reload cycles, pipelines must execute local retries with progressive backoff. Cloud fallbacks must remain disabled.
+
 
 
 

@@ -61,6 +61,28 @@ async def test_generate_new_jev_criteria_with_luna():
 
 
 @pytest.mark.asyncio
+async def test_jev_meta_prompt_does_not_force_symmetry():
+    """Symmetry / bullish-drift rules are trading heuristics the researcher decides on its own."""
+    from tasks.daily_autoresearch import JevMetaCriteriaResponse, generate_new_jev_criteria
+
+    mock_openai = MagicMock()
+    mock_openai.chat.completions.create = AsyncMock(
+        return_value=JevMetaCriteriaResponse(criteria_up="Up rule.", criteria_down="Down rule.", research_insight="x")
+    )
+    await generate_new_jev_criteria(
+        old_prompt_content=format_jev_prompt_content(JEV_DEFAULT_CRITERIA),
+        predictions=[],
+        macro_context={},
+        baseline_score=45.0,
+        openai_meta=mock_openai,
+    )
+    meta_prompt = mock_openai.chat.completions.create.call_args[1]["messages"][0]["content"]
+    assert "symmetric" not in meta_prompt.lower()
+    assert "bullish drift" not in meta_prompt.lower()
+    assert "FROZEN" in meta_prompt  # question structure stays frozen
+
+
+@pytest.mark.asyncio
 async def test_run_daily_autoresearch_includes_jev_track():
     """Verify run_daily_autoresearch processes Jev track with OpenAI Luna client."""
     from tasks.daily_autoresearch import run_daily_autoresearch

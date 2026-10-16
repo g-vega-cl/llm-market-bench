@@ -28,12 +28,19 @@ from core.llm.daily_predictor_prompts import (
     DailyPredictionOutput,
     format_jev_curated_prompt_content,
     format_jev_prompt_content,
+    format_laya_curated_prompt_content,
     parse_jev_curated_prompt_content,
     parse_jev_prompt_content,
+    parse_laya_curated_prompt_content,
     split_daily_predictor_prompt,
 )
 from core.llm.minimax import MiniMaxClient
-from local_autoresearch.manifest import DataManifest, pack_daily_context
+from local_autoresearch.document_builder import (
+    DEFAULT_INGESTION_SYSTEM_PROMPT,
+    generate_daily_document,
+)
+from local_autoresearch.laya_client import evaluate_with_laya
+from local_autoresearch.manifest import DataManifest, JevCriteriaConfig, pack_daily_context
 
 
 def get_ny_now() -> datetime:
@@ -114,9 +121,15 @@ async def seed_daily_predictor_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) ->
     today = datetime.now(UTC).date()
     tag = f"daily-pred-seeded-{model_name}"
 
-    is_jev_curated = "local" in model_name.lower() or "curated" in model_name.lower()
-    is_jev = "jev" in model_name.lower()
-    if is_jev_curated:
+    is_laya_curated = "laya" in model_name.lower()
+    is_jev_curated = not is_laya_curated and ("local" in model_name.lower() or "curated" in model_name.lower())
+    is_jev = "jev" in model_name.lower() and not is_jev_curated
+    if is_laya_curated:
+        prompt_content = format_laya_curated_prompt_content(
+            DEFAULT_INGESTION_SYSTEM_PROMPT, JEV_DEFAULT_CRITERIA, min_confidence=54.0
+        )
+        change_desc = f"Seeded baseline ingestion prompt and decision criteria for {model_name}."
+    elif is_jev_curated:
         prompt_content = format_jev_curated_prompt_content(
             JEV_DEFAULT_CRITERIA, min_confidence=61.0, manifest=DataManifest().model_dump()
         )
@@ -126,7 +139,7 @@ async def seed_daily_predictor_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) ->
         change_desc = f"Seeded baseline decision criteria for {model_name}."
     else:
         prompt_content = DAILY_PREDICTOR_PROMPT
-        change_desc = f"Seeded symmetric zero-mean anti-bias predictor prompt for {model_name}."
+        change_desc = f"Seeded baseline predictor prompt for {model_name}."
 
     try:
         # Demote previous active/baseline live predictor prompts for this track to saved
@@ -567,6 +580,7 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
         {"name": MINIMAX_MODEL, "type": "minimax", "provider": "minimax"},
         {"name": JEV_MODEL, "type": "jev", "provider": "openrouter"},
         {"name": "jev-local-autoresearched", "type": "jev_curated", "provider": "openrouter"},
+        {"name": "laya-local-autoresearched", "type": "laya_curated", "provider": "local"},
     ]
 
     results = []
@@ -576,7 +590,7 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
         m_type = model_cfg["type"]
         provider = model_cfg["provider"]
         prompt_tag, raw_prompt_content = await fetch_active_daily_prompt(model_name=model_name)
-        if m_type not in ("jev", "jev_curated"):
+        if m_type not in ("jev", "jev_curated", "laya_curated"):
             header, mutable, footer = split_daily_predictor_prompt(raw_prompt_content)
             prompt_content = header + mutable + footer
         else:
@@ -695,6 +709,43 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                         pred_dir = raw_dir
                         rationale = jev_res["rationale"]
                     model_context = curated_context
+
+                elif m_type == "laya_curated":
+                    ingestion_prompt, crit, min_conf = parse_laya_curated_prompt_content(raw_prompt_content)
+                    daily_doc = await generate_daily_document(
+                        day_record=data_record,
+                        ingestion_prompt=ingestion_prompt,
+                        allow_fallback=True,
+                    )
+                    criteria_obj = JevCriteriaConfig(
+                        criteria_up=crit["UP"],
+                        criteria_down=crit["DOWN"],
+                        min_confidence=min_conf,
+                    )
+                    laya_res = await evaluate_with_laya(
+                        context=daily_doc,
+                        criteria=criteria_obj,
+                        ticker=ticker,
+                        fallback_to_jev=True,
+                    )
+                    raw_dir = str(laya_res["predicted_direction"]).upper()
+                    confidence = float(laya_res["confidence"])
+                    expected_return_pct = 0.0
+                    catalysts = []
+                    if confidence < min_conf:
+                        pred_dir = "NO_TRADE"
+                        rationale = (
+                            f"⚡ Confidence ({confidence:.1f}%) below gating threshold ({min_conf:.1f}%). "
+                            f"Gated to NO_TRADE. Raw decision was: {raw_dir}."
+                        )
+                    else:
+                        pred_dir = raw_dir
+                        backend_note = laya_res.get("model_backend", "laya-local")
+                        rationale = (
+                            f"Laya Decision ({backend_note}): {raw_dir} (Confidence: {confidence:.1f}%, "
+                            f"distribution={laya_res.get('probabilities', {})})"
+                        )
+                    model_context = daily_doc
 
                 prediction_row = {
                     "prediction_date": today.isoformat(),

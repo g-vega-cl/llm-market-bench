@@ -157,6 +157,26 @@ async def test_generate_new_daily_prompt_success():
 
 
 @pytest.mark.asyncio
+async def test_daily_meta_prompt_does_not_freeze_anti_bias_mandate():
+    """Base-rate / anti-bias guidance is a trading rule the researcher may rewrite or remove."""
+    mock_llm = MagicMock()
+    mock_llm.chat.completions.create.return_value = MagicMock(new_prompt="New strategy.")
+
+    await generate_new_daily_prompt(
+        old_prompt="Header\nInstructions\nFooter",
+        baseline_score=70.0,
+        predictions=[],
+        meta_researcher=mock_llm,
+    )
+    meta_prompt = mock_llm.chat.completions.create.call_args.kwargs["messages"][0]["content"]
+    assert "anti-bias" not in meta_prompt.lower()
+    assert "zero-mean" not in meta_prompt.lower()
+    assert "may" in meta_prompt.lower() and "base-rate" in meta_prompt.lower()
+    # Still frozen: identity, context definitions, and JSON schema
+    assert "FROZEN" in meta_prompt
+
+
+@pytest.mark.asyncio
 async def test_run_daily_autoresearch_ratchet():
     mock_supabase = MagicMock()
 

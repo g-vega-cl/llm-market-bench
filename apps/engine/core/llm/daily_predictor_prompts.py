@@ -14,13 +14,13 @@ You are provided with:
 3. Options derivatives positioning & volatility skew (Put/Call volume and open interest ratios, 25-delta volatility skew, ATM implied volatility, Max Pain strike, and unusual options activity alerts with explicit timestamp and staleness notes).
 4. AI Wall Street synthesized morning newsletter briefing (macro narrative, sector spotlight, market internals & flows, trade ideas & scenarios), prior session macro regime baseline, sentiment barometers, and market feeling.
 
-=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+"""
+
+DAILY_PREDICTOR_MUTABLE_STRATEGIES = """=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
 CRITICAL: Do NOT default to UP due to long-term market drift. Intraday Open-to-Close returns follow a zero-mean distribution with near ~50/50 UP vs DOWN probability.
 You MUST evaluate DOWN (bearish) signals with equal weight and rigour as UP (bullish) signals. Avoid positive-framing bias.
 
-"""
-
-DAILY_PREDICTOR_MUTABLE_STRATEGIES = """=== ANALYTICAL STRATEGY INSTRUCTIONS ===
+=== ANALYTICAL STRATEGY INSTRUCTIONS ===
 1. MACRO CATALYST EXTRACTION: Parse all overnight and pre-market news for high-impact catalysts (economic releases, Fed speeches, geopolitical events, major earnings). Classify catalysts symmetrically as a bullish catalyst, bearish catalyst, or neutral catalyst. Determine whether catalysts are already priced into the futures move or represent new information driving an intraday trend or reversal.
 
 2. TECHNICAL LEVEL SIGNALS: Identify key support and resistance levels on the SPY chart: previous day high/low, opening range high/low, VWAP, and key moving averages (20/50/200 EMA/SMA). Evaluate BOTH bullish hold scenarios (price above VWAP with rising momentum) and bearish breakdown/rejection scenarios (price capped under VWAP with weakening MACD / overbought RSI > 70).
@@ -73,12 +73,37 @@ class DailyPredictionOutput(BaseModel):
     )
 
 
+_CONTEXT_MARKER = "=== AVAILABLE MARKET CONTEXT ==="
+_FROZEN_IDENTITY_LINE_PREFIXES = (
+    "You are an elite quantitative macro trader",
+    "Your goal is to predict whether today's 4:00 PM ET Close",
+)
+
+
+def _context_block_end(text: str, marker_idx: int) -> int:
+    """Return the index just past the context block that starts at ``marker_idx``.
+
+    The block ends at the first blank line or the next ``===`` section heading,
+    whichever comes first.
+    """
+    pos = text.find("\n", marker_idx)
+    while pos != -1:
+        line_end = text.find("\n", pos + 1)
+        line = text[pos + 1 : line_end if line_end != -1 else len(text)]
+        if not line.strip() or line.startswith("==="):
+            return pos
+        pos = line_end
+    return len(text)
+
+
 def split_daily_predictor_prompt(prompt_text: str) -> tuple[str, str, str]:
     """Split DAILY_PREDICTOR_PROMPT into Header, Mutable Strategies, and Footer.
 
-    Extracts the mutable strategy section and rebuilds it using
-    the clean, hardcoded header and footer definitions. Ensures legacy
-    or duplicated structural constraints (header/footer) are cleanly stripped.
+    Only the trader identity, the available market context description (header) and the
+    JSON output format (footer) are frozen. Everything between them, including any
+    base-rate / anti-bias guidance, is trading content owned by autoresearch. Legacy or
+    duplicated structural constraints are cleanly stripped; a legacy stored prompt whose
+    header contained the anti-bias mandate keeps it as mutable text.
     """
     header = DAILY_PREDICTOR_CONSTRAINTS_HEADER
     footer = DAILY_PREDICTOR_CONSTRAINTS_FOOTER
@@ -93,20 +118,11 @@ def split_daily_predictor_prompt(prompt_text: str) -> tuple[str, str, str]:
     else:
         content_before_footer = prompt_text.strip()
 
-    # 2. Strip all occurrences of frozen header / zero-mean mandate
-    end_mandate_marker = "Avoid positive-framing bias."
-    if end_mandate_marker in content_before_footer:
-        # Find the last occurrence to eliminate any duplicate headers
-        split_idx = content_before_footer.rfind(end_mandate_marker) + len(end_mandate_marker)
-        mutable = content_before_footer[split_idx:].strip()
-    elif "=== ZERO-MEAN BASE RATE" in content_before_footer:
-        # Fallback if wording slightly differs
-        last_zero_mean = content_before_footer.rfind("=== ZERO-MEAN BASE RATE")
-        next_double_nl = content_before_footer.find("\n\n", last_zero_mean)
-        if next_double_nl != -1:
-            mutable = content_before_footer[next_double_nl:].strip()
-        else:
-            mutable = content_before_footer.strip()
+    # 2. Strip frozen identity + market context (last occurrence eliminates duplicate headers)
+    last_context_idx = content_before_footer.rfind(_CONTEXT_MARKER)
+    if last_context_idx != -1:
+        end_idx = _context_block_end(content_before_footer, last_context_idx)
+        mutable = content_before_footer[end_idx:].strip()
     elif content_before_footer.startswith(header.strip()):
         mutable = content_before_footer[len(header.strip()) :].strip()
     else:
@@ -125,28 +141,11 @@ def split_daily_predictor_prompt(prompt_text: str) -> tuple[str, str, str]:
 
         mutable = content_before_footer[marker_idx:].strip() if marker_idx != -1 else content_before_footer.strip()
 
-    # 3. Defensive sanity check: remove any leftover persona or context headers in mutable
-    if "You are an elite quantitative macro trader" in mutable:
-        lines = mutable.split("\n")
-        filtered_lines = []
-        skip = False
-        for line in lines:
-            if (
-                "You are an elite quantitative macro trader" in line
-                or "=== AVAILABLE MARKET CONTEXT ===" in line
-                or "=== ZERO-MEAN BASE RATE" in line
-            ):
-                skip = True
-                continue
-            if (
-                skip
-                and (line.startswith("===") or line.startswith("1.") or line.startswith("0."))
-                and not any(k in line for k in ["AVAILABLE MARKET CONTEXT", "ZERO-MEAN", "REQUIRED OUTPUT"])
-            ):
-                skip = False
-            if not skip:
-                filtered_lines.append(line)
-        mutable = "\n".join(filtered_lines).strip()
+    # 3. Defensive sanity check: remove any leftover frozen identity lines in mutable
+    if any(prefix in mutable for prefix in _FROZEN_IDENTITY_LINE_PREFIXES):
+        mutable = "\n".join(
+            line for line in mutable.split("\n") if not line.startswith(_FROZEN_IDENTITY_LINE_PREFIXES)
+        ).strip()
 
     return header, mutable, footer
 
@@ -241,5 +240,52 @@ def format_jev_curated_prompt_content(
         },
         "min_confidence": round(float(min_confidence), 1),
         "manifest": manifest or {},
+    }
+    return json.dumps(payload, indent=2)
+
+
+def parse_laya_curated_prompt_content(
+    prompt_content: str | None,
+) -> tuple[str, dict[str, str], float]:
+    """Parse ingestion_prompt, criteria dictionary, and min_confidence threshold for Laya."""
+    import json
+
+    default_crit = dict(JEV_DEFAULT_CRITERIA)
+    default_conf = 54.0
+    default_ingestion = "Please synthesize pre-market observations into a structured briefing."
+
+    if not prompt_content:
+        return default_ingestion, default_crit, default_conf
+
+    try:
+        data = json.loads(prompt_content)
+        if isinstance(data, dict):
+            ingestion = str(data.get("ingestion_prompt", default_ingestion)).strip()
+            crit = data.get("criteria") if "criteria" in data and isinstance(data["criteria"], dict) else data
+            up = str(crit.get("UP", default_crit["UP"])).strip()
+            down = str(crit.get("DOWN", default_crit["DOWN"])).strip()
+            min_conf = float(data.get("min_confidence", default_conf))
+            return ingestion, {"UP": up, "DOWN": down}, min_conf
+    except Exception:
+        pass
+
+    return default_ingestion, default_crit, default_conf
+
+
+def format_laya_curated_prompt_content(
+    ingestion_prompt: str,
+    criteria: dict[str, str],
+    min_confidence: float = 54.0,
+) -> str:
+    """Format Laya double-ratchet ingestion prompt, criteria, and min_confidence as JSON for prompt_experiments."""
+    import json
+
+    payload = {
+        "ingestion_prompt": ingestion_prompt.strip(),
+        "criteria": {
+            "UP": criteria.get("UP", JEV_DEFAULT_CRITERIA["UP"]).strip(),
+            "DOWN": criteria.get("DOWN", JEV_DEFAULT_CRITERIA["DOWN"]).strip(),
+        },
+        "min_confidence": round(float(min_confidence), 1),
     }
     return json.dumps(payload, indent=2)

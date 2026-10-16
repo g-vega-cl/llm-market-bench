@@ -81,10 +81,10 @@ class JevCriteriaConfig(BaseModel):
         description="Conditions under which SPY closes LOWER (DOWN) at 4:00 PM ET vs 9:30 AM ET Open.",
     )
     min_confidence: float = Field(
-        default=50.0,
-        ge=50.0,
+        default=0.0,
+        ge=0.0,
         le=100.0,
-        description="Confidence threshold below which the prediction is routed as NO_TRADE / NEUTRAL.",
+        description="Optional legacy confidence threshold (0.0 implies no gating, 100% binary decisions).",
     )
 
 
@@ -96,6 +96,23 @@ class AutoresearchMutation(BaseModel):
     hypothesis: str = Field(
         ...,
         description="Clear causal hypothesis explaining why this criteria + manifest combination will improve out-of-sample performance.",
+    )
+
+
+class DoubleRatchetMutation(BaseModel):
+    """An atomic paired mutation of Prompt 1 (Qwen Ingestion) and Prompt 2 (Laya Criteria)."""
+
+    ingestion_prompt: str = Field(
+        ...,
+        description="Prompt 1: Instructs Qwen how to summarize raw pre-market feeds into the daily predictor document.",
+    )
+    criteria: JevCriteriaConfig = Field(
+        ...,
+        description="Prompt 2: Decision criteria and min_confidence gating for Laya.",
+    )
+    hypothesis: str = Field(
+        ...,
+        description="Unified causal hypothesis explaining how Prompt 1 extraction and Prompt 2 criteria interact to improve out-of-sample directional edge.",
     )
 
 

@@ -28,7 +28,7 @@ export function SegmentedPromptInspector({ promptContent }: SegmentedPromptInspe
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                                🔒 1. Engine Constraints & Anti-Bias Mandate
+                                🔒 1. Trader Identity & Market Context
                             </span>
                             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                                 (Header)
@@ -42,8 +42,8 @@ export function SegmentedPromptInspector({ promptContent }: SegmentedPromptInspe
                         </Badge>
                     </div>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                        Unchangeable system rules (price injection rules, tool requirements,
-                        zero-mean base rate mandate). Autoresearch cannot edit this.
+                        Unchangeable system framing (trader identity and the market context provided
+                        to the model). Autoresearch cannot edit this.
                     </p>
                     <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words">
                         {header}

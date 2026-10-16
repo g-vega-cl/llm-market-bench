@@ -418,8 +418,9 @@ async def generate_new_daily_prompt(
         f"The current prompt strategy achieved a ratchet score of {baseline_score:.2f}.\n\n"
         f"{postmortem_context}\n\n"
         "### STRUCTURAL PROMPT SECTIONS & MUTATION RULES:\n"
-        "1. STRUCTURAL SECTIONS ARE FROZEN: System constraints (trader identity, available market context injection, zero-mean anti-bias mandate, and required JSON output format) are FROZEN and managed automatically by the engine.\n"
-        "2. Do NOT include system header rules, context definitions, zero-mean mandates, or JSON schemas in your output. You are modifying ONLY the analytical reasoning and strategy section.\n"
+        "1. STRUCTURAL SECTIONS ARE FROZEN: System constraints (trader identity, available market context injection, and required JSON output format) are FROZEN and managed automatically by the engine.\n"
+        "2. Do NOT include system header rules, context definitions, or JSON schemas in your output. You are modifying ONLY the analytical reasoning and strategy section. "
+        "Base-rate, directional-bias, and symmetry guidance are part of that strategy: you may keep, rewrite, or remove them as the evidence supports.\n"
         "3. Prioritize Directional Accuracy (55% weight) and Intraday Hit Rate (35% weight) first and foremost.\n"
         "4. Learn from Cause & Effect: Analyze the correlation between recent market catalysts, newsletters, and prediction failures/successes. "
         "Incorporate concrete cause-and-effect reasoning heuristics (e.g., how SPY reacts to yield shifts, tech capex surges, or pre-market gap-downs).\n"
@@ -504,8 +505,7 @@ async def generate_new_jev_criteria(
         "1. Question structure, choices ('UP', 'DOWN'), and instructions are FROZEN.\n"
         "2. You are modifying ONLY `criteria_up` and `criteria_down`.\n"
         "3. Keep each criteria concise, specific, and actionable (2-4 sentences describing technical VWAP behavior, catalyst follow-through, yield moves, or overnight gap dynamics).\n"
-        "4. Both criteria MUST be symmetric and balanced. Avoid bullish drift.\n"
-        "5. Provide a concise `research_insight` (1-2 sentences) summarizing what misled Jev this week.\n\n"
+        "4. Provide a concise `research_insight` (1-2 sentences) summarizing what misled Jev this week.\n\n"
         f"{criteria_block}"
     )
 

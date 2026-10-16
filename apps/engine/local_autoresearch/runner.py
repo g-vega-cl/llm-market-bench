@@ -747,6 +747,9 @@ def main() -> None:
     parser.add_argument("--reset", action="store_true", help="Reset local database to start fresh from clean sheet")
     parser.add_argument("--cache-db", type=str, default=DEFAULT_CACHE_DB, help="Cache SQLite path")
     parser.add_argument("--local-db", type=str, default=DEFAULT_LOCAL_DB, help="Local DB path")
+    parser.add_argument(
+        "--seed", type=int, default=None, help="Random seed for data partition (default None: randomized per run)"
+    )
     parser.add_argument("--artifact-path", type=str, default=DEFAULT_ARTIFACT_PATH, help="Path for session artifact")
     # Historical downloader & vault flags
     parser.add_argument("--download-raw", action="store_true", help="Download raw historical data via APIs & IMAP")
@@ -788,6 +791,52 @@ def main() -> None:
         action="store_true",
         help="Terminate Strata daemon upon tournament completion",
     )
+    parser.add_argument(
+        "--double-ratchet",
+        action="store_true",
+        help="Run Strata (Qwen) + Laya (ModernBERT-large) double-ratchet tournament",
+    )
+    parser.add_argument(
+        "--laya-url",
+        type=str,
+        default="http://127.0.0.1:8081/v1/systemone",
+        help="Laya decision server endpoint",
+    )
+    parser.add_argument(
+        "--check-laya",
+        action="store_true",
+        help="Probe Laya local server health",
+    )
+    parser.add_argument(
+        "--max-eval-days",
+        type=int,
+        default=None,
+        help="Limit number of evaluation days for quick testing passes",
+    )
+
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        default=True,
+        help="Generate fresh daily briefings for every session day on every mutation (no cache reuse, default True)",
+    )
+    parser.add_argument(
+        "--use-cache",
+        action="store_true",
+        default=False,
+        help="Reuse cached daily briefings if available (default False)",
+    )
+    parser.add_argument(
+        "--curriculum-weeks",
+        type=int,
+        default=None,
+        help="Run tournament over an atomic multi-week curriculum (e.g. 5 or 10 weeks) with Friday mini-cycles",
+    )
+    parser.add_argument(
+        "--dry-run-set",
+        action="store_true",
+        help="Run a single baseline curriculum pass (~50 days) to verify pipeline health without mutations",
+    )
 
     args = parser.parse_args()
 
@@ -798,6 +847,95 @@ def main() -> None:
     if args.check_strata:
         is_up = asyncio.run(is_strata_available(args.strata_url))
         print(f"Strata at {args.strata_url} is {'UP and RESPONDING' if is_up else 'OFFLINE or NOT REACHABLE'}")
+        return
+
+    if args.check_laya:
+        from local_autoresearch.laya_client import is_laya_available
+
+        health_url = args.laya_url.replace("/v1/systemone", "/health")
+        is_up = asyncio.run(is_laya_available(health_url))
+        print(f"Laya at {args.laya_url} is {'UP and RESPONDING' if is_up else 'OFFLINE or NOT REACHABLE'}")
+        return
+
+    if args.double_ratchet:
+        cached_weeks = load_cached_weeks(args.cache_db)
+
+        if args.curriculum_weeks or args.dry_run_set:
+            from local_autoresearch.double_ratchet import run_double_ratchet_curriculum_tournament
+
+            num_weeks = args.curriculum_weeks or 10
+            its = 0 if args.dry_run_set else args.iterations
+            no_cache_flag = not args.use_cache
+            print("=" * 60)
+            print(f"STARTING DOUBLE-RATCHET CURRICULUM ({num_weeks} WEEKS, {its} ITERATIONS)")
+            print(f"Dry-run baseline only: {args.dry_run_set}")
+            print(f"Random seed: {args.seed} ({'deterministic' if args.seed is not None else 'randomized per run'})")
+            print(f"Fresh newsletter ingestion (no-cache): {no_cache_flag}")
+            print("=" * 60)
+
+            summary = asyncio.run(
+                run_double_ratchet_curriculum_tournament(
+                    all_weeks=cached_weeks,
+                    num_curriculum_weeks=num_weeks,
+                    iterations=its,
+                    strata_url=args.strata_url,
+                    laya_url=args.laya_url,
+                    seed=args.seed,
+                    cache_db_path=args.cache_db,
+                    no_cache=no_cache_flag,
+                )
+            )
+            print("=" * 60)
+            print("DOUBLE-RATCHET CURRICULUM RUN COMPLETE")
+            print(f"Baseline Score: {summary['baseline_score']:.2f}")
+            print(f"Champion Score: {summary['champion_score']:.2f}")
+            if summary.get("stashed_test_metrics"):
+                st_m = summary["stashed_test_metrics"]
+                print(
+                    f"Stashed Test Score (Unseen {summary.get('stashed_test_weeks_count', 0)} weeks): "
+                    f"{st_m['score']:.2f} | Win Rate: {st_m['traded_win_rate_pct']:.1f}% | "
+                    f"Traded: {st_m['traded_days']}/{st_m['total_days']}"
+                )
+            print(f"Total History Steps: {len(summary['history'])}")
+            if len(summary["history"]) > 1:
+                print("\n" + "=" * 30 + " AUTORESEARCHED PROMPT MUTATIONS " + "=" * 30)
+                for h in summary["history"][1:]:
+                    print(f"\n[Iteration {h['iteration']} - Accepted: {h['accepted']}]")
+                    print(f"Hypothesis: {h.get('hypothesis', 'N/A')}")
+                    print(f"Score: {h['score']:.2f} (Win Rate: {h['metrics']['traded_win_rate_pct']:.1f}%)")
+                print("\n--- CHAMPION CRITERIA (PROMPT 2) ---")
+                print(f"Criteria UP: {summary['champion_criteria']['criteria_up']}")
+                print(f"Criteria DOWN: {summary['champion_criteria']['criteria_down']}")
+                print(f"Min Confidence: {summary['champion_criteria']['min_confidence']:.1f}%")
+                print("\n--- CHAMPION INGESTION PROMPT (PROMPT 1) ---")
+                print(summary["champion_ingestion_prompt"].strip())
+            print("=" * 60)
+            return
+
+        from local_autoresearch.double_ratchet import run_double_ratchet_tournament
+
+        all_days = [day for days in cached_weeks.values() for day in days]
+        if args.max_eval_days and len(all_days) > args.max_eval_days:
+            all_days = all_days[: args.max_eval_days]
+
+        summary = asyncio.run(
+            run_double_ratchet_tournament(
+                all_days=all_days,
+                iterations=args.iterations,
+                strata_url=args.strata_url,
+                laya_url=args.laya_url,
+                held_out_ratio=0.15,
+                seed=args.seed,
+                cache_db_path=args.cache_db,
+                no_cache=args.no_cache,
+            )
+        )
+        print("=" * 60)
+        print("DOUBLE-RATCHET TOURNAMENT COMPLETE")
+        print(f"Baseline Score: {summary['baseline_score']:.2f}")
+        print(f"Champion Score: {summary['champion_score']:.2f}")
+        print(f"Held-Out Score: {summary['held_out_metrics']['score']:.2f}")
+        print("=" * 60)
         return
 
     if args.download_raw:

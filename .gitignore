@@ -40,3 +40,6 @@ git-history/
 .scratch/
 apps/engine/scratch/
 
+# Tournament State
+.*_state.json
+*.state.json

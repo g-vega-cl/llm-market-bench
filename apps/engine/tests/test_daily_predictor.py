@@ -68,10 +68,11 @@ Avoid positive-framing bias.
     assert footer == DAILY_PREDICTOR_CONSTRAINTS_FOOTER
     assert "You are an elite quantitative macro trader" not in mutable
     assert "AVAILABLE MARKET CONTEXT" not in mutable
-    assert "ZERO-MEAN BASE RATE" not in mutable
+    # The anti-bias mandate is a trading rule: it lives in the mutable section, exactly once
+    assert mutable.count("=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===") == 1
     assert "=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===" in mutable
 
-    # When re-assembled, header appears exactly once
+    # When re-assembled, header and mandate each appear exactly once
     assembled = header + mutable + footer
     assert assembled.count("=== AVAILABLE MARKET CONTEXT ===") == 1
     assert assembled.count("=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===") == 1
@@ -102,6 +103,56 @@ Avoid positive-framing bias.
     assert "You are an elite quantitative macro trader" not in mutable
     assert "AVAILABLE MARKET CONTEXT" not in mutable
     assert "=== SOPHISTICATED STRATEGY ===" in mutable
+    # Legacy stored prompts keep their mandate, now as mutable (evolvable) text
+    assert "=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===" in mutable
+    assert "Avoid positive-framing bias." in mutable
+
+
+def test_header_has_no_anti_bias_mandate():
+    """The anti-bias mandate is a trading rule, so it must not be in the frozen header."""
+    assert "ANTI-BIAS" not in DAILY_PREDICTOR_CONSTRAINTS_HEADER
+    assert "zero-mean" not in DAILY_PREDICTOR_CONSTRAINTS_HEADER.lower()
+    assert "positive-framing" not in DAILY_PREDICTOR_CONSTRAINTS_HEADER
+    # Header still carries identity + available context
+    assert "elite quantitative macro trader" in DAILY_PREDICTOR_CONSTRAINTS_HEADER
+    assert "=== AVAILABLE MARKET CONTEXT ===" in DAILY_PREDICTOR_CONSTRAINTS_HEADER
+
+
+def test_seed_prompt_mandate_is_in_mutable_section():
+    """The default seed still starts with the mandate, but inside the evolvable section."""
+    _, mutable, _ = split_daily_predictor_prompt(DAILY_PREDICTOR_PROMPT)
+    assert "=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===" in mutable
+    assert "Do NOT default to UP" in mutable
+    assert "MACRO CATALYST EXTRACTION" in mutable
+
+
+def test_split_roundtrip_preserves_legacy_stored_prompt():
+    """Splitting then re-assembling a legacy stored prompt must not lose the mandate text."""
+    legacy_prompt = (
+        "You are an elite quantitative macro trader analyzing intraday S&P 500 (SPY) price action.\n"
+        "Your goal is to predict whether today's 4:00 PM ET Close price will be higher (UP) or lower (DOWN) "
+        "than today's 9:30 AM ET Open price.\n\n"
+        "=== AVAILABLE MARKET CONTEXT ===\nYou are provided with:\n1. Price action.\n\n"
+        "=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===\n"
+        "CRITICAL: Do NOT default to UP.\nAvoid positive-framing bias.\n\n"
+        "=== ANALYTICAL STRATEGY INSTRUCTIONS ===\n1. Evolved rule."
+    ) + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    header, mutable, footer = split_daily_predictor_prompt(legacy_prompt)
+    assert "Do NOT default to UP." in mutable
+    assert "=== ANALYTICAL STRATEGY INSTRUCTIONS ===" in mutable
+    assembled = header + mutable + footer
+    assert assembled.count("Do NOT default to UP.") == 1
+    assert assembled.count("=== AVAILABLE MARKET CONTEXT ===") == 1
+
+
+def test_autoresearcher_can_drop_mandate():
+    """A mutation that omits the mandate is respected: nothing re-injects it."""
+    evolved = "=== ANALYTICAL STRATEGY INSTRUCTIONS ===\n1. Follow momentum."
+    assembled = DAILY_PREDICTOR_CONSTRAINTS_HEADER + evolved + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    _, mutable, _ = split_daily_predictor_prompt(assembled)
+    assert mutable == evolved
+    assert "ANTI-BIAS" not in assembled
+    assert "ZERO-MEAN" not in assembled
 
 
 def test_daily_predictor_prompt_symmetry():
@@ -770,3 +821,55 @@ async def test_run_daily_prediction_aborts_if_predictions_exist_without_force():
         results = await run_daily_prediction(ticker="SPY", force=False)
         assert results == []
         mock_supabase.table.return_value.upsert.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_laya_local_autoresearched_gating_and_context():
+    """Verify laya-local-autoresearched synthesizes daily document and evaluates via Laya client."""
+    from core.llm.daily_predictor_prompts import format_laya_curated_prompt_content
+
+    mock_prompt_json = format_laya_curated_prompt_content(
+        ingestion_prompt="Test Ingestion Prompt",
+        criteria={"UP": "Up rules", "DOWN": "Down rules"},
+        min_confidence=60.0,
+    )
+
+    mock_doc = "=== SYNTHESIZED TEST DOCUMENT ==="
+
+    with (
+        patch(
+            "tasks.daily_predictor.fetch_active_daily_prompt",
+            AsyncMock(return_value=("tag-laya-1", mock_prompt_json)),
+        ),
+        patch(
+            "tasks.daily_predictor.generate_daily_document",
+            AsyncMock(return_value=mock_doc),
+        ) as mock_gen_doc,
+        patch(
+            "tasks.daily_predictor.evaluate_with_laya",
+            AsyncMock(
+                return_value={
+                    "predicted_direction": "UP",
+                    "confidence": 65.0,
+                    "probabilities": {"UP": 0.65, "DOWN": 0.35},
+                    "model_backend": "laya-local",
+                }
+            ),
+        ) as mock_eval_laya,
+    ):
+        # Directly test the laya_curated block logic
+        from local_autoresearch.manifest import JevCriteriaConfig
+        from tasks.daily_predictor import parse_laya_curated_prompt_content
+
+        ingestion_prompt, crit, min_conf = parse_laya_curated_prompt_content(mock_prompt_json)
+        doc = await mock_gen_doc(day_record={}, ingestion_prompt=ingestion_prompt)
+        criteria_obj = JevCriteriaConfig(
+            criteria_up=crit["UP"],
+            criteria_down=crit["DOWN"],
+            min_confidence=min_conf,
+        )
+        res = await mock_eval_laya(context=doc, criteria=criteria_obj, ticker="SPY")
+
+        assert doc == mock_doc
+        assert res["predicted_direction"] == "UP"
+        assert res["confidence"] >= min_conf

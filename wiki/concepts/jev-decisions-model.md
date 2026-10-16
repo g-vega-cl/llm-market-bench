@@ -9,7 +9,7 @@ category: concept
 
 ## Why It Is Different
 
-Jev does not receive a natural-language strategy prompt. Instead, its behavior is fully determined by a pair of symmetric, human-readable **classification criteria** (`criteria_up`, `criteria_down`) that describe the technical/catalyst/macro conditions under which the market should be expected to close higher or lower. The question structure, choice labels (`UP`, `DOWN`), and instructions are **frozen** — only the criteria text is evolved.
+Jev does not receive a natural-language strategy prompt. Instead, its behavior is fully determined by a pair of human-readable **classification criteria** (`criteria_up`, `criteria_down`) that describe the technical/catalyst/macro conditions under which the market should be expected to close higher or lower. The question structure, choice labels (`UP`, `DOWN`), and instructions are **frozen** — only the criteria text is evolved. How balanced the two criteria are is a trading decision left to the researcher; the meta-prompt does not enforce symmetry.
 
 ## Architecture & Specs
 

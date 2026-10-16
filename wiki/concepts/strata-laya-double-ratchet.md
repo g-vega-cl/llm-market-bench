@@ -60,7 +60,10 @@ The tournament co-evolves two distinct, tightly-coupled prompts:
 ### Model 2: Predictive Decision Arbiter (`AUTORESEARCHED_PROMPT_2`)
 - **Input**: The dense catalyst briefing synthesized by Model 1 **plus** point-in-time historical memories from `cached_memories` created strictly before the target date.
 - **Reasoning**: Qwen executes native chain-of-thought reasoning (`<think>...</think>`), weighing the catalyst brief and past lessons to resolve directional tension.
-- **Zero Abstention Contract**: Every day the model **must choose either `UP` or `DOWN`**. There is no `NO_TRADE` or abstention.
+- **Zero Abstention Contract (MANDATORY)**: Every single trading session the model **must choose either `UP` or `DOWN`**. There is **no minimum confidence threshold (`min_confidence`), no confidence gating, and no `NO_TRADE`**.
+- **Deterministic Fallback Arbitration**: When market conditions present conflicting evidence, Prompt 2 applies explicit fallback rules referencing Section 5:
+  - *If full UP not met*: Use Section 5 dominant signal favoring trend continuation over mean-reversion.
+  - *If full DOWN not met*: Use Section 5 dominant signal favoring bearish positioning or yield divergence.
 - **Output**: Pure structured JSON committing to binary direction:
   ```json
   {
@@ -108,7 +111,7 @@ To prevent overfitting and guarantee true out-of-sample evaluation:
 3. **Weekly Friday Mini-Autoresearch Cycles**:
    - At each week's Friday close (16:00 ET), a local mini-cycle reviews the week's daily predictions against actual close direction.
    - Strata generates 1–2 dense, actionable tactical lessons.
-   - Appends lessons to local SQLite `cached_memories` timestamped at Friday 20:00 UTC (`{friday}T20:00:00Z`).
+   - Appends lessons to local SQLite `cached_memories` timestamped at Friday 20:00 UTC (`{friday}T20:00:00Z`), explicitly categorized as `memory_type: LOCAL_AUTORESEARCH_LESSON` and prefixed with `[Local Autoresearch]`.
    - Subsequent weeks query these newly compounded lessons point-in-time (`WHERE created_at < target_date`).
 4. **Post-Autoresearch Out-of-Sample Test Evaluation**:
    - Upon completion of all tournament iterations, the champion prompt pair is automatically evaluated against the untouched **10% stashed test weeks** to establish an honest out-of-sample benchmark.
@@ -124,7 +127,7 @@ While Qwen 32B serves as the teacher and primary reasoning engine during autores
    - The two-pass Qwen 32B tournament generates a high-quality dataset of paired examples across hundreds of historical sessions:
      - `Input`: High-density daily briefing (~240 words) + point-in-time trend/memory vector.
      - `CoT Target`: Qwen 32B's successful reasoning trajectories (`<think>...</think>`).
-     - `Label`: Verified winning directional calls (`UP`, `DOWN`, `NO_TRADE`) with empirical PnL confirmation.
+     - `Label`: Verified winning binary directional calls (`UP`, `DOWN`) with empirical close confirmation.
 2. **Student Model Fine-Tuning (3B Parameters)**:
    - Fine-tune a lightweight 3B parameter model (e.g. `Qwen2.5-3B-Instruct` or `Llama-3.2-3B` using LoRA/QLoRA).
    - The 3B student model is trained specifically on **Pass 2 (Prediction)**: consuming the teacher's dense briefing and reproducing calibrated, high-conviction directional decisions.
@@ -135,19 +138,21 @@ While Qwen 32B serves as the teacher and primary reasoning engine during autores
 
 ---
 
-## Unconstrained Reasoning Budget Contract
+## Unconstrained Reasoning Budget & 16k Token Capacity
 
 > [!IMPORTANT]
 > **Hard Requirement**: Qwen's thinking budget must NEVER be artificially capped or throttled during distillation or decision passes (`STRATA_REASONING_BUDGET_TOKENS = -1`).
-> High-conviction financial decisions require deep, unconstrained analytical reasoning to distinguish between genuine continuation and bull-trap exhaustion.
+> Client request payloads must allocate at least 16,384 output tokens (`STRATA_MAX_TOKENS = 16384`) with up to 3 local retries and progressive backoff.
+> During meta-autoresearch and failure audit evaluation, Qwen 32B typically generates 3,500 to 7,000 tokens of intermediate `<think>` chain-of-thought before emitting structured JSON; artificially low limits (e.g., 3,000 tokens) result in null payload truncation errors.
 
 ---
 
-## Zero External API Calls (MANDATORY HARD REQUIREMENT)
+## Zero External Cloud API Calls & Local SQLite Isolation (MANDATORY)
 
 > [!CAUTION]
 > All inference for Pass 1 (Ingestion), Pass 2 (Prediction), and Weekly Mini-Cycles must run **100% locally on dedicated hardware** (Strata on port 8080).
-> Zero calls to external cloud LLM APIs (Anthropic, OpenAI, OpenRouter Jev). All tournament state and synthesized lessons remain strictly in local SQLite (`.local_autoresearch_cache.db`).
+> Zero calls to external cloud LLM APIs (Anthropic, OpenAI, OpenRouter Jev).
+> All tournament state, mini-cycle lessons (`memory_type: 'LOCAL_AUTORESEARCH_LESSON'`), and synthesized prompt mutations remain strictly in local SQLite (`.local_autoresearch_cache.db`), resulting in **0 writes to Supabase**.
 
 ---
 

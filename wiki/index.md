@@ -174,8 +174,8 @@
 - [[concepts/api-data-verification]] — Auto-indexed page
 - [[concepts/hallucination-audit]] — Auto-indexed page
 - [[concepts/release-and-canary-deployments]] — Auto-indexed page
-- [[concepts/hybrid-database-archival]] — Auto-indexed page
-- [[concepts/code-hotspots]] — Auto-indexed page
+- [[concepts/hybrid-database-archival]] — Unified self-hosted PostgreSQL, PostgREST, and Cloudflare Tunnel infrastructure replacing cloud egress dependencies
+- [[concepts/code-hotspots]] — Git churn, bug density, and temporal coupling analysis for targeted regression testing
 - [[concepts/unslop-editing]] — Structured editing skill for removing AI pattern tells and injecting human voice
 - [[concepts/wayfinder]] — Planning methodology for decomposing large work into tracked decision tickets
 - [[concepts/system-portfolios]] — Mechanical and rule-based systematic trading strategies (sector L/S, benchmarks, daily SPY target & 3:50 close exits)

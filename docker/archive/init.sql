@@ -10,11 +10,33 @@ BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
         CREATE ROLE authenticated NOLOGIN;
     END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
+        CREATE ROLE service_role NOLOGIN BYPASSRLS;
+    ELSE
+        ALTER ROLE service_role BYPASSRLS;
+    END IF;
 END
 $$;
 
+-- Create auth schema mock for compatibility with Supabase RLS policies
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE OR REPLACE FUNCTION auth.role() RETURNS text AS $$
+    SELECT coalesce(
+        current_setting('request.jwt.claim.role', true),
+        (current_setting('request.jwt.claims', true)::jsonb ->> 'role')
+    );
+$$ LANGUAGE sql STABLE;
+
+CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+    SELECT coalesce(
+        nullif(current_setting('request.jwt.claim.sub', true), '')::uuid,
+        nullif(current_setting('request.jwt.claims', true)::jsonb ->> 'sub', '')::uuid
+    );
+$$ LANGUAGE sql STABLE;
+
 -- Grant schema usage
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO anon, authenticated, service_role;
 
 -- Create LLM Reasoning Logs table
 CREATE TABLE IF NOT EXISTS public.llm_reasoning_logs (

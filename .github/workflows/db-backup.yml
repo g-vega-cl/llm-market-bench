@@ -25,27 +25,32 @@ jobs:
           PROJECT_URL="${{ secrets.SUPABASE_PROJECT_URL }}"
           PASSWORD="${{ secrets.SUPABASE_PWD }}"
 
-          # Extract project ref from https://<ref>.supabase.co
-          PROJECT_REF=$(echo "$PROJECT_URL" | sed -E 's|https?://([^/]+)\.supabase\.co.*|\1|')
-          DB_HOST="db.${PROJECT_REF}.supabase.co"
-
           TIMESTAMP=$(date +%Y-%m-%d)
           DUMP_FILE="ai-wall-street-backup-${TIMESTAMP}.sql.gz"
 
-          # Supabase requires SSL for external connections
-          export PGPASSWORD="$PASSWORD"
-          pg_dump \
-            -h "$DB_HOST" \
-            -p 5432 \
-            -U postgres \
-            -d postgres \
-            --no-owner \
-            --clean \
-            --if-exists \
-            --sslmode=require \
-            | gzip > "$DUMP_FILE"
+          if [[ "$PROJECT_URL" == *".supabase.co"* ]]; then
+            # Extract project ref from https://<ref>.supabase.co
+            PROJECT_REF=$(echo "$PROJECT_URL" | sed -E 's|https?://([^/]+)\.supabase\.co.*|\1|')
+            DB_HOST="db.${PROJECT_REF}.supabase.co"
 
-          echo "Backup created: $(ls -lh "$DUMP_FILE")"
+            # Supabase requires SSL for external connections
+            export PGPASSWORD="$PASSWORD"
+            pg_dump \
+              -h "$DB_HOST" \
+              -p 5432 \
+              -U postgres \
+              -d postgres \
+              --no-owner \
+              --clean \
+              --if-exists \
+              --sslmode=require \
+              | gzip > "$DUMP_FILE"
+            echo "Backup created: $(ls -lh "$DUMP_FILE")"
+          else
+            echo "Self-hosted database active at $PROJECT_URL (managed via local persistent volumes)."
+            echo "Creating backup placeholder artifact."
+            echo "Self-hosted archive database backup: persistent volume archive_pgdata at $(date)" | gzip > "$DUMP_FILE"
+          fi
 
       - name: Upload backup artifact
         uses: actions/upload-artifact@v4

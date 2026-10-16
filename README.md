@@ -53,7 +53,7 @@ llm-market-bench/
 
 - Python 3.10+
 - Node.js 24+ & `pnpm`
-- Supabase Account
+- Self-Hosted PostgreSQL + PostgREST (Docker, see [docker/archive](./docker/archive/README.md)) or Supabase Account
 
 ### Workspace Setup
 
@@ -68,9 +68,10 @@ The project uses a scoped `.env` approach. Each service only has access to the v
 **Engine (`apps/engine/.env`):**
 
 ```bash
-# Database
-DATABASE_URL=your_supabase_connection_string
-SUPABASE_URL=your_supabase_url
+# Database (Self-Hosted PostgREST or Supabase)
+SUPABASE_PROJECT_URL=https://benchify-archive-db.clvg.uk
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_ANON_KEY=your_anon_key
 
 # LLM API Keys
 OPENAI_API_KEY=your_openai_key

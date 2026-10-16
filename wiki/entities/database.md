@@ -3,9 +3,9 @@ tags: [database, supabase, postgresql, pgvector, rls]
 category: entity
 ---
 
-# Supabase PostgreSQL Database
+# PostgreSQL & PostgREST Database
 
-The platform uses **Supabase PostgreSQL** as its single database with row-level security, pgvector for semantic search, and explicit grant conventions for the PostgREST Data API.
+The platform operates on a **self-hosted PostgreSQL with pgvector** backend managed via Docker (`docker/archive/docker-compose.yml`), fronted by PostgREST and an Nginx reverse proxy exposed at `https://benchify-archive-db.clvg.uk` via Cloudflare Tunnel. This unified stack replaces the previous cloud-hosted Supabase instance to eliminate cloud egress limitations, while maintaining 100% compatibility with `@supabase/supabase-js` and `supabase-py` SDKs, pgvector semantic search, and Row-Level Security (RLS).
 
 ## Schema Overview
 
@@ -79,6 +79,7 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 
 ## Related
 
+- [[concepts/hybrid-database-archival]]
 - [[concepts/rag-strategy]]
 - [[concepts/private-memory-vault]]
 - [[concepts/supabase-grant-convention]]

@@ -85,7 +85,7 @@ to `~/.cache/qmd/models/`. `qmd search` and `qmd get` work immediately with no m
 qmd query "your question"          # hybrid search + reranking (best quality, needs model)
 qmd search "keywords"              # fast BM25 keyword search (no model needed)
 qmd vsearch "semantic query"       # vector similarity search (needs model)
-qmd get "path/to/page"             # retrieve full document (no model needed)
+qmd get "path/to/page.md"          # retrieve full document (no model needed; .md required)
 qmd multi-get "entities/*.md"      # batch retrieve by glob (no model needed)
 ```
 

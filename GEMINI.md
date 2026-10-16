@@ -174,7 +174,7 @@ to `~/.cache/qmd/models/`. `qmd search` and `qmd get` work immediately with no m
 qmd query "question"              # hybrid + reranking (best, needs model)
 qmd search "keywords"             # fast BM25 keyword (no model needed)
 qmd vsearch "semantic query"      # vector similarity (needs model)
-qmd get "entities/engine"         # get full document (no model needed)
+qmd get "entities/engine.md"        # get full document (no model needed; .md required, full qmd://wiki/... URI also works)
 qmd multi-get "concepts/*.md"     # batch retrieve by glob (no model needed)
 ```
 
@@ -191,6 +191,9 @@ qmd embed                          # regenerate embeddings
 # Requires Node.js >= 22 AND <= 25 (better-sqlite3 doesn't support 26+).
 # If your system default is Node 26+, use nvm:
 #   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24
+# npm 11+ blocks install scripts by default; allow qmd's native parsers
+# (tree-sitter-*, node-llama-cpp for AST chunking + local embeddings) first:
+#   npm config set allow-scripts=node-llama-cpp,tree-sitter-go,tree-sitter-python,tree-sitter-rust,tree-sitter-typescript,tree-sitter-javascript --location=user
 npm install -g @tobilu/qmd
 
 # Add wiki as a collection

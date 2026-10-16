@@ -48,7 +48,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
 - [ ] - Benchify: a bond trader?
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
-- [ ] - Benchify: why has sys future forces or sys max pain or haiku 5.5 not done a single trade?
+- [x] - Benchify: why has sys future forces or sys max pain or haiku 5.5 not done a single trade? (Resolved: sys-future-forces had unexpected 'reason' kwarg in execute_trade fixed; sys-max-pain requires >=0.25% strike discount which hasn't triggered on tight ETF pinning; haiku-5-5 buy proposals were blocked by verifier requiring single-stock DCF audits for ETFs, fixed with ETF exemption clause in verifier SOP).
 - [ ] - Benchify; the portfolios should all run with 10k and no margin. Easier to get and also no dealing with interest
 - [ ] - Benchify: move newsletter generator and predictor closer to 9:30 maybe 9:24
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?

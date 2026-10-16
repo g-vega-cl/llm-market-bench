@@ -175,3 +175,85 @@ async def test_run_future_forces_task_bootstraps_portfolio():
     assert "rebalance_orders" in res
     assert res["rebalance_orders"]["remaining_cash"] == 10000.0
     mock_portfolio.initialize.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_portfolio_execute_trade_accepts_reason_and_persists():
+    """Reproduction test: Verify execute_trade accepts 'reason' without TypeError and writes to reasoning column."""
+    from execution.portfolio import Portfolio
+
+    mock_db = MagicMock()
+    mock_table = MagicMock()
+    mock_db.table.return_value = mock_table
+    mock_table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-test-1"}])
+    mock_table.upsert.return_value.execute.return_value = MagicMock(data=[])
+    mock_table.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+
+    p = Portfolio("sys-future-forces")
+    p.id = "portfolio-ff-123"
+    p.cash_balance = 10000.0
+
+    with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
+        trade_id = await p.execute_trade(
+            ticker="AVAV",
+            quantity=6,
+            price=120.0,
+            signal="BUY",
+            reason="future_force_buy: Autonomous Warfare & Defense Modernization",
+            skip_alpaca_mirror=True,
+        )
+
+    assert trade_id == "trade-test-1"
+    insert_call = mock_table.insert.call_args[0][0]
+    assert insert_call["ticker"] == "AVAV"
+    assert insert_call["reasoning"] == "future_force_buy: Autonomous Warfare & Defense Modernization"
+
+
+@pytest.mark.asyncio
+async def test_run_future_forces_task_live_rebalance_executes_buys_cleanly():
+    """Verify run_future_forces_task rebalance executes trades with reason argument."""
+    from tasks.future_forces_task import run_future_forces_task
+
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = (
+        MagicMock(
+            data=[
+                {
+                    "id": "force-1",
+                    "force_title": "Autonomous Defense",
+                    "archetype": "government_agenda",
+                    "tickers": ["AVAV"],
+                    "conviction_score": 5,
+                    "status": "active",
+                }
+            ]
+        )
+    )
+
+    mock_portfolio = MagicMock()
+    mock_portfolio.id = "port-ff-1"
+    mock_portfolio.initialize = AsyncMock()
+    mock_portfolio.positions = {}
+    mock_portfolio.cash_balance = 10000.0
+    mock_portfolio.total_equity = 10000.0
+    mock_portfolio.execute_trade = AsyncMock(return_value="trade-123")
+
+    with (
+        patch("tasks.future_forces_task.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.future_forces_task.Portfolio", return_value=mock_portfolio),
+        patch("tasks.future_forces_task.is_market_open_with_logging", new_callable=AsyncMock, return_value=True),
+        patch("tasks.future_forces_task.seed_baseline_future_forces", new_callable=AsyncMock, return_value=[]),
+        patch("tasks.future_forces_task.fetch_ticker_quote", return_value={"price": 100.0}),
+    ):
+        res = await run_future_forces_task(mode="rebalance", dry_run=False, force_market=True)
+
+    assert "rebalance_orders" in res
+    assert len(res["rebalance_orders"]["new_buys"]) == 1
+    mock_portfolio.execute_trade.assert_awaited_once_with(
+        ticker="AVAV",
+        signal="BUY",
+        quantity=7,
+        price=100.05,
+        reason="future_force_buy: Autonomous Defense",
+        skip_alpaca_mirror=False,
+    )

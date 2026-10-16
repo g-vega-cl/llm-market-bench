@@ -63,6 +63,10 @@ In alignment with **Principle 8 (Tool-First, Agency-Driven Architecture)**, veri
 3. If invoked, `execute_inspect_verifier_rules_tool` returns the verbatim `VERIFIER_SYSTEM_PROMPT` SOP, recent `REJECTED_VERIFICATION` decisions, and an actionable prompt engineering nudge.
 4. Non-Claude tracks (`track_default`, `track_openai`) strictly bypass this tool.
 
+## ETF and Index Fund Valuation Exemption
+
+Single-stock intrinsic valuation (`audit_financial_valuation` DCF and peer multiples) cannot run against ETFs (such as `SPY`, `QQQ`, `XLV`, `XLE`) because funds do not file GAAP income or cash-flow statements. The `VERIFIER_SYSTEM_PROMPT` explicitly exempts ETFs and index funds from single-stock DCF requirements, evaluating them instead via macroeconomic regime alignment, moving average trend, and sector concentration.
+
 ## Related
 
 - [[concepts/execution]] — Pre-market validation, Reg T checks, trade settlement

@@ -96,6 +96,8 @@
 
 ## Concepts
 
+- [[concepts/trade-reasoning]] — optional `reason` persisted on each trade for auditability
+- [[concepts/etf-valuation-exemption]] — verifier SOP rule exempting ETFs/index funds from single-stock DCF audits
 - [[concepts/strata-laya-double-ratchet]] — Two-pass co-evolutionary prompt optimization pairing Qwen 32B ingestion with Qwen 32B predictive reasoning over a 10-week curriculum with 3B student distillation roadmap
 - [[concepts/daily-directional-predictability-limits]] — Auto-indexed page
 - [[concepts/pure-directional-scoring]] — Auto-indexed page

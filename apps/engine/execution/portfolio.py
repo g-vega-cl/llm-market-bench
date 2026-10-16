@@ -318,6 +318,7 @@ class Portfolio:
         decision_id: str | None = None,
         current_prices: dict[str, float] = None,
         skip_alpaca_mirror: bool = False,
+        reason: str | None = None,
     ) -> UUID | None:
         """Executes the trade by updating cash, positions, and ledger.
 
@@ -328,6 +329,8 @@ class Portfolio:
             signal: "BUY" or "SELL".
             decision_id: Optional ID of the decision that triggered this trade.
             current_prices: Optional map of all portfolio prices to avoid re-fetching.
+            skip_alpaca_mirror: Whether to bypass Alpaca paper order mirroring.
+            reason: Optional explanation or catalyst justifying this trade.
 
         Returns:
             The UUID of the generated trade record, or None if failed.
@@ -427,6 +430,9 @@ class Portfolio:
                 "executed_at": "now()",
                 "decision_id": decision_id,
             }
+
+            if reason:
+                trade_data["reasoning"] = reason
 
             # Enrich with PnL for SELL trades
             if signal.upper() == "SELL" and old_avg_cost is not None:

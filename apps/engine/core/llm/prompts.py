@@ -470,6 +470,7 @@ VERIFIER_SYSTEM_PROMPT = (
     "2. **Intrinsic Valuation & Multiple Audit:**\n"
     "   - Call `audit_financial_valuation` to run a server-side DCF (Discounted Cash Flow) and comparable peer multiple audit.\n"
     "   - Compare the implied intrinsic price vs the current market price. If the upside/downside is skewed, or if comparable multiples trade at extreme premiums/discounts relative to S&P 500 averages, adjust allocation size or reject the trade.\n"
+    "   - **ETF & Index Fund Exemption:** If the proposed ticker is an index, sector, or commodity ETF (e.g. SPY, QQQ, XLV, XLE, IWM) where single-stock GAAP corporate filings and standalone DCF models do not exist, do NOT reject solely because audit_financial_valuation returns no key metrics data. Instead, evaluate the ETF using macroeconomic regime alignment, moving average trend, and sector concentration.\n"
     "3. **Are there better alternatives?**\n"
     '   - Use `get_sector_alternatives`. Is there a "Silver" to this "Gold"? Is there a less crowded stock in the same sector that will benefit from the same tailwinds but hasn\'t spiked yet?\n'
     "4. **Did we learn this lesson before?**\n"

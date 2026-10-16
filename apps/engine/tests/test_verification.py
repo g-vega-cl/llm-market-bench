@@ -781,3 +781,12 @@ async def test_verify_trading_decision_gemini_trailing_model_turn():
     # The last message sent to Gemini must be a user turn to satisfy Gemini API requirements
     assert sent_messages[-1]["role"] == "user"
     assert "extract and structure" in sent_messages[-1]["content"]
+
+
+def test_verifier_prompt_includes_etf_exemption():
+    """Verify VERIFIER_SYSTEM_PROMPT includes ETF exemption from corporate DCF key metrics requirement."""
+    from core.llm.prompts import VERIFIER_SYSTEM_PROMPT
+
+    assert "ETF" in VERIFIER_SYSTEM_PROMPT
+    assert "audit_financial_valuation" in VERIFIER_SYSTEM_PROMPT
+    assert "do NOT reject solely" in VERIFIER_SYSTEM_PROMPT or "do not reject solely" in VERIFIER_SYSTEM_PROMPT.lower()

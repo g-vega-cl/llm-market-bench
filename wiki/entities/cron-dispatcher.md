@@ -15,7 +15,7 @@ The dispatcher supports multiple workflows beyond `daily-predictor.yml`. It eval
 
 | UTC Time | ET Time (EDT / EST) | Minute | Workflow File | Inputs | Downstream Chaining |
 |----------|----------------------|--------|---------------|--------|---------------------|
-| 13:12 / 14:12 | 9:12 AM ET | 12 | `generate-newsletter.yml` | `{"session": "open"}` | Triggers `daily-predictor.yml` (`daily-predictor`) on completion |
+| 13:17 / 14:17 | 9:17 AM ET | 17 | `generate-newsletter.yml` | `{"session": "open"}` | Triggers `daily-predictor.yml` (`daily-predictor`) on completion |
 | 13:35, 14:35, 15:35, 16:35 | 9:35, 11:35 AM ET | 35 | `ingest.yml` | none | None |
 | 19:30 / 20:30 | 3:30 PM ET | 30 | `ingest.yml` | none | None |
 | 21:00 / 22:00 | 5:00 PM ET | 0 | `generate-newsletter.yml` | `{"session": "close"}` | Triggers `daily-predictor.yml` (`evaluate-daily-predictions`) on completion |
@@ -27,7 +27,7 @@ The dispatcher supports multiple workflows beyond `daily-predictor.yml`. It eval
 
 The Worker exposes 4 consolidated edge cron expressions (respecting Cloudflare Free plan's 5 cron trigger limit):
 
-- `12 13,14 * * MON-FRI` — 9:12 AM ET (generate-newsletter open -> chains daily-predictor)
+- `17 13,14 * * MON-FRI` — 9:17 AM ET (generate-newsletter open -> chains daily-predictor)
 - `35 13-16 * * MON-FRI` — 9:35, 11:35 AM ET (ingest)
 - `30 19,20 * * MON-FRI` — 3:30 PM ET (ingest)
 - `0 21,22 * * MON-FRI` — 5:00 PM ET (market close newsletter -> chains evaluate-daily-predictions)

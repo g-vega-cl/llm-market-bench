@@ -88,6 +88,10 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
     - During local autoresearch, double-ratchet tournaments, and offline backtests, calling external or cloud LLM APIs (Anthropic, OpenAI, OpenRouter Jev, etc.) is **STRICTLY PROHIBITED**.
     - Iterating across hundreds of trading sessions over multiple generations causes catastrophic API credit drain. All inference for distillation and decision classification must run 100% locally on dedicated hardware (Strata and Laya).
     - If a local server encounters transient engine stalls or reload cycles, pipelines must execute local retries with progressive backoff. Cloud fallbacks must remain disabled.
+16. **Avoid New Dependencies (MANDATORY)**:
+    - Do not add new packages (pip, pnpm/npm, or otherwise), dev dependencies, test runners, or lockfile changes without explicit user approval. This includes adding a test framework to a package that has none.
+    - Prefer the standard library and tooling already in the repo. Reuse existing binaries and configs before introducing new ones.
+    - If a new dependency seems necessary, state the reason and the lighter alternatives in the plan, and wait for approval before installing.
 
 
 

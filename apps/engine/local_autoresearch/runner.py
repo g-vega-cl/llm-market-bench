@@ -837,6 +837,12 @@ def main() -> None:
         action="store_true",
         help="Run a single baseline curriculum pass (~50 days) to verify pipeline health without mutations",
     )
+    parser.add_argument(
+        "--sequential-curriculum",
+        action="store_true",
+        default=False,
+        help="Batch curriculum weeks chronologically/sequentially rather than randomized multi-regime cross-sections (default False)",
+    )
 
     args = parser.parse_args()
 
@@ -866,10 +872,14 @@ def main() -> None:
             num_weeks = args.curriculum_weeks or 10
             its = 0 if args.dry_run_set else args.iterations
             no_cache_flag = not args.use_cache
+            shuffle_flag = not args.sequential_curriculum
             print("=" * 60)
             print(f"STARTING DOUBLE-RATCHET CURRICULUM ({num_weeks} WEEKS, {its} ITERATIONS)")
             print(f"Dry-run baseline only: {args.dry_run_set}")
             print(f"Random seed: {args.seed} ({'deterministic' if args.seed is not None else 'randomized per run'})")
+            print(
+                f"Batch distribution: {'Randomized multi-regime cross-sections' if shuffle_flag else 'Sequential calendar blocks'}"
+            )
             print(f"Fresh newsletter ingestion (no-cache): {no_cache_flag}")
             print("=" * 60)
 
@@ -883,6 +893,7 @@ def main() -> None:
                     seed=args.seed,
                     cache_db_path=args.cache_db,
                     no_cache=no_cache_flag,
+                    shuffle_weeks=shuffle_flag,
                 )
             )
             print("=" * 60)

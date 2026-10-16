@@ -219,13 +219,18 @@ def partition_into_curriculum_batches(
     weeks_per_batch: int | None = None,
     stashed_ratio: float = 0.10,
     seed: int | None = 42,
+    shuffle_weeks: bool = True,
 ) -> tuple[list[list[tuple[str, list[dict[str, Any]]]]], dict[str, list[dict[str, Any]]]]:
-    """Partition calendar weeks into a stashed test set and N chronological curriculum batches.
+    """Partition calendar weeks into a stashed test set and N curriculum batches.
 
     1. Stashes test_ratio (default 10%) of complete weeks (>= 4 sessions) as a sequestered test set.
-    2. Sorts remaining active weeks chronologically.
-    3. Partitions active weeks into num_batches sequential batches of weeks_per_batch weeks.
-       Each batch contains a list of (week_key, sorted_days) tuples sorted chronologically.
+    2. If shuffle_weeks is True (default), active weeks are pseudo-randomly shuffled before batching
+       so each batch is a multi-regime cross-section spanning disparate market conditions across
+       the entire multi-year timeline (rather than a single contiguous month).
+       If shuffle_weeks is False, active weeks are batched chronologically in contiguous blocks.
+    3. Partitions active weeks into num_batches batches of weeks_per_batch weeks.
+       Within each batch, the weeks are sorted chronologically so point-in-time Friday mini-cycle
+       lessons compound consistently.
     """
     eligible_keys = sorted([w for w, days in all_weeks.items() if len(days) >= 4])
     if not eligible_keys:
@@ -236,8 +241,10 @@ def partition_into_curriculum_batches(
     stashed_keys = set(rng.sample(eligible_keys, num_test))
 
     active_keys = [k for k in eligible_keys if k not in stashed_keys]
-    # Active weeks strictly sorted chronologically for walk-forward time consistency
-    active_keys.sort()
+    if shuffle_weeks:
+        rng.shuffle(active_keys)
+    else:
+        active_keys.sort()
 
     stashed_weeks: dict[str, list[dict[str, Any]]] = {
         k: sorted(all_weeks[k], key=lambda d: str(d.get("target_date", ""))) for k in sorted(stashed_keys)
@@ -257,7 +264,10 @@ def partition_into_curriculum_batches(
         batch_keys = active_keys[start:end]
         if not batch_keys:
             continue
-        batch_weeks = [(k, sorted(all_weeks[k], key=lambda d: str(d.get("target_date", "")))) for k in batch_keys]
+        # Ensure chronological order within the batch for forward mini-cycle lesson compounding
+        batch_weeks = [
+            (k, sorted(all_weeks[k], key=lambda d: str(d.get("target_date", "")))) for k in sorted(batch_keys)
+        ]
         batches.append(batch_weeks)
 
     return batches, stashed_weeks
@@ -643,11 +653,13 @@ async def run_double_ratchet_curriculum_tournament(
     no_cache: bool = True,
     stashed_test_ratio: float = 0.10,
     state_path: str | None = None,
+    shuffle_weeks: bool = True,
 ) -> dict[str, Any]:
     """Execute iterative double-ratchet tournament across walk-forward batches with Friday mini-cycles.
 
     1. Sequesters 10% of weeks into a stashed test set (never seen by autoresearch).
     2. Partitions active weeks into N walk-forward batches (e.g. 10 batches x ~10 weeks = 100 weeks).
+       If shuffle_weeks is True (default), batches sample multi-regime cross-sections across all years.
     3. Batch 0 evaluates baseline prompts, creating point-in-time memories and Friday lessons.
     4. Iterations 1..N-1 mutate Prompt 1 & Prompt 2 using accumulated memories and evaluate on Batch 1..N-1.
     5. Evaluates champion on stashed test set after tournament completion.
@@ -659,13 +671,15 @@ async def run_double_ratchet_curriculum_tournament(
         weeks_per_batch=num_curriculum_weeks,
         stashed_ratio=stashed_test_ratio,
         seed=seed if seed is not None else 42,
+        shuffle_weeks=shuffle_weeks,
     )
     stashed_eval_days = sum(len(days) for _, days in stashed_weeks.items())
     total_active_days = sum(len(days) for b in batches for _, days in b)
 
     logger.info(
         f"Starting Walk-Forward Double-Ratchet Tournament: {len(batches)} batches "
-        f"({total_active_days} trading sessions total across batches), "
+        f"({total_active_days} trading sessions total across batches, "
+        f"distribution={'randomized multi-regime' if shuffle_weeks else 'sequential calendar blocks'}), "
         f"{len(stashed_weeks)} stashed test weeks ({stashed_eval_days} sessions, {stashed_test_ratio * 100:.0f}%), "
         f"{iterations} iterations (fresh live generation per day: {no_cache})."
     )

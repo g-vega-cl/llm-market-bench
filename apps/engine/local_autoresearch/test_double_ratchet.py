@@ -368,6 +368,50 @@ def test_partition_into_curriculum_batches():
     assert len(batches_5w[1]) == 5
 
 
+def test_partition_into_curriculum_batches_randomized_multi_regime():
+    from local_autoresearch.double_ratchet import partition_into_curriculum_batches
+
+    # 100 weeks named chronologically
+    all_weeks: dict[str, list[dict]] = {}
+    for w in range(1, 101):
+        w_key = f"2025-W{w:03d}"
+        all_weeks[w_key] = [
+            {"target_date": f"2025-01-{d:02d}", "ticker": "SPY", "open_price": 500.0, "close_price": 505.0}
+            for d in range(1, 6)
+        ]
+
+    # Default shuffle_weeks=True: multi-regime cross-sectional batches
+    batches_shuffled, stashed_shuffled = partition_into_curriculum_batches(
+        all_weeks, num_batches=10, weeks_per_batch=5, stashed_ratio=0.10, seed=42, shuffle_weeks=True
+    )
+    assert len(batches_shuffled) == 10
+    assert len(stashed_shuffled) == 10
+
+    # Ensure each batch contains 5 weeks
+    for b in batches_shuffled:
+        assert len(b) == 5
+        keys = [k for k, _ in b]
+        # Must be chronologically sorted internally for forward lesson compounding
+        assert keys == sorted(keys)
+
+    # First batch must NOT be consecutive weeks (e.g. W001, W002, W003...)
+    batch_0_keys = [k for k, _ in batches_shuffled[0]]
+    # In randomized multi-regime, the span from min week to max week is wide across the timeline
+    min_w = int(batch_0_keys[0].split("-W")[1])
+    max_w = int(batch_0_keys[-1].split("-W")[1])
+    assert max_w - min_w > 10, f"Expected multi-regime wide span, got {min_w} to {max_w}"
+
+    # Sequential mode (shuffle_weeks=False) produces contiguous blocks
+    batches_seq, _ = partition_into_curriculum_batches(
+        all_weeks, num_batches=10, weeks_per_batch=5, stashed_ratio=0.10, seed=42, shuffle_weeks=False
+    )
+    seq_0_keys = [k for k, _ in batches_seq[0]]
+    seq_min = int(seq_0_keys[0].split("-W")[1])
+    seq_max = int(seq_0_keys[-1].split("-W")[1])
+    # In contiguous mode, 5 weeks span exactly 4 or 5 intervals (depending on stashed removal)
+    assert seq_max - seq_min <= 6
+
+
 @pytest.mark.asyncio
 async def test_run_double_ratchet_curriculum_tournament_walk_forward(tmp_path):
     from local_autoresearch.double_ratchet import run_double_ratchet_curriculum_tournament

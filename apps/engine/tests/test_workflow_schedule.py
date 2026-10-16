@@ -206,16 +206,16 @@ def test_generate_newsletter_workflow_auto_session_and_safety():
     assert "810" in content, "Expected downstream trigger step to check for 13:30 UTC (810 mins) cutoff."
 
 
-def test_cron_dispatcher_912_schedule():
-    """Verify apps/cron-dispatcher/src/index.ts targets 9:12 AM ET for open newsletter synthesis and no longer has 9:20 or 5:15 branches."""
+def test_cron_dispatcher_917_schedule():
+    """Verify apps/cron-dispatcher/src/index.ts targets 9:17 AM ET for open newsletter synthesis and no longer has 9:20 or 5:15 branches."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     index_ts_path = root / "apps" / "cron-dispatcher" / "src" / "index.ts"
 
     assert index_ts_path.exists(), f"Could not find index.ts file at {index_ts_path}"
 
     content = index_ts_path.read_text()
-    assert "nyHour === 9 && nyMinute === 12" in content, (
-        "Expected index.ts to check for nyHour === 9 && nyMinute === 12"
+    assert "nyHour === 9 && nyMinute === 17" in content, (
+        "Expected index.ts to check for nyHour === 9 && nyMinute === 17"
     )
     assert "nyHour === 9 && nyMinute === 20" not in content, (
         "Did not expect index.ts to have standalone 9:20 AM check (now chained from newsletter)"
@@ -226,7 +226,7 @@ def test_cron_dispatcher_912_schedule():
 
 
 def test_cron_dispatcher_wrangler_triggers():
-    """Verify apps/cron-dispatcher/wrangler.jsonc has <= 5 triggers including 9:12 AM ET (13:12 / 14:12 UTC)."""
+    """Verify apps/cron-dispatcher/wrangler.jsonc has <= 5 triggers including 9:17 AM ET (13:17 / 14:17 UTC)."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     wrangler_path = root / "apps" / "cron-dispatcher" / "wrangler.jsonc"
 
@@ -238,7 +238,7 @@ def test_cron_dispatcher_wrangler_triggers():
 
     crons = config.get("triggers", {}).get("crons", [])
     assert len(crons) <= 5, f"Expected at most 5 cron triggers for Workers Free plan, found {len(crons)}: {crons}"
-    assert "12 13,14 * * MON-FRI" in crons, f"Expected '12 13,14 * * MON-FRI' in crons, found: {crons}"
+    assert "17 13,14 * * MON-FRI" in crons, f"Expected '17 13,14 * * MON-FRI' in crons, found: {crons}"
     assert "0 21,22 * * MON-FRI" in crons, f"Expected '0 21,22 * * MON-FRI' in crons, found: {crons}"
     assert "35 13-16 * * MON-FRI" in crons, f"Expected '35 13-16 * * MON-FRI' in crons, found: {crons}"
     assert "30 19,20 * * MON-FRI" in crons, f"Expected '30 19,20 * * MON-FRI' in crons, found: {crons}"

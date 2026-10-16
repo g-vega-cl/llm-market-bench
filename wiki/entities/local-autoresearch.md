@@ -119,9 +119,13 @@ When evaluating the 10 batch winners out-of-distribution across the **21 sequest
 
 # 8. Run Strata Two-Pass Double-Ratchet Tournament (see [[concepts/strata-laya-double-ratchet]])
 # Zero external cloud calls (strictly local Qwen 32B via Strata)
-# Evaluates on 10-week curriculum (~50 trading sessions) with Friday mini-cycles
+# Evaluates on multi-regime cross-sectional batches with Friday mini-cycles (default: randomized multi-regime)
 ./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
-  --double-ratchet --curriculum-weeks 10 --iterations 5 --cache-db .local_autoresearch_cache.db
+  --double-ratchet --curriculum-weeks 5 --iterations 10 --cache-db .local_autoresearch_cache.db
+
+# Optional: use legacy sequential/contiguous calendar blocks
+./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+  --double-ratchet --curriculum-weeks 5 --iterations 10 --sequential-curriculum
 ```
 
 ---
@@ -129,6 +133,7 @@ When evaluating the 10 batch winners out-of-distribution across the **21 sequest
 ## 10-Week Curriculum & Cumulative Weekly Mini-Cycles
 
 - **Two Autoresearched Prompts**: Co-evolves `AUTORESEARCHED_PROMPT_1` (Model 1 dynamic catalyst re-generation) and `AUTORESEARCHED_PROMPT_2` (Model 2 prediction arbiter with unconstrained CoT reasoning budget `-1`).
+- **Multi-Regime Cross-Sectional Curriculum Batches (Anti-Clustering Protocol)**: Default batching pseudo-randomly shuffles active weeks across batches (`shuffle_weeks=True`, toggled via `--sequential-curriculum`). Each 5-week batch is a multi-year cross-section (e.g. `2024-W41, 2025-W20, 2025-W50, 2026-W10, 2026-W25`), preventing candidates from overfitting to a single localized monthly market condition. Within each batch, weeks remain strictly chronologically sorted for forward Friday mini-cycle compounding.
 - **Zero Abstention Contract (MANDATORY)**: Predictions enforce 100% binary directional commitments (`UP` or `DOWN`). `min_confidence` is purged (`0.0%`), eliminating `NO_TRADE` abstentions and forcing deterministic fallback arbitration via Section 5 catalyst tensions.
 - **Unconstrained 16k Token Capacity**: Meta-autoresearcher requests use `STRATA_MAX_TOKENS = 16384` to prevent token ceiling truncation during deep multi-thousand token `<think>` chain-of-thought distillation.
 - **Double-Ratchet Safety Ratchet**: Candidates that fail to beat the baseline score on walk-forward batches are automatically discarded (`❌ DISCARDED`), preserving champion integrity across regime shifts.

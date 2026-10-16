@@ -105,9 +105,11 @@ To prevent overfitting and guarantee true out-of-sample evaluation:
 1. **10% Sequestered Stashed Test Set**:
    - 10% of all eligible calendar weeks (~11 complete calendar weeks) are deterministically partitioned into a persistent, held-out test set (`stashed_weeks`).
    - Autoresearch tournaments and baseline training passes **never see or train on any stashed test weeks**.
-2. **Randomized Curriculum Batches per Run**:
-   - The remaining 90% of weeks (~96 weeks) serve as the active training pool.
-   - For each run or iteration, a batch of weeks (e.g. 5 or 10 weeks) is **sampled randomly** across the active pool, preventing the autoresearch loop from memorizing a static sequence of dates.
+2. **Multi-Regime Cross-Sectional Curriculum Batches (Anti-Clustering Protocol)**:
+   - Rather than grouping batches into contiguous chronological blocks (e.g. `2024-W20..W24`, `2024-W25..W29`), which unintentionally couples each candidate's score to a single localized monthly market condition (such as late-summer chop, pre-election uncertainty, or earnings seasonality), the runner partitions active weeks by **pseudo-randomly shuffling active weeks across batches** (`shuffle_weeks=True` by default, toggled via `--sequential-curriculum`).
+   - Each individual 5-week batch is a cross-sectional multi-regime stress test spanning completely disparate timeframes and regimes across multiple years (e.g., `2024-W41, 2025-W20, 2025-W50, 2026-W10, 2026-W25`).
+   - Candidate prompts are forced to generalize across bull rallies, sharp selloffs, rangebound chop, and macro transitions within a single evaluation batch.
+   - Within each batch, the selected weeks are sorted chronologically (`sorted(batch_keys)`) to ensure Friday mini-cycle lessons and point-in-time memories progress sequentially without lookahead bias.
 3. **Weekly Friday Mini-Autoresearch Cycles**:
    - At each week's Friday close (16:00 ET), a local mini-cycle reviews the week's daily predictions against actual close direction.
    - Strata generates 1–2 dense, actionable tactical lessons.

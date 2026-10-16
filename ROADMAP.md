@@ -19,7 +19,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: when remaking and updating design system. Make sure sidebar is only 4 items tops. Maybe change the items based on frequency of use?
-- [ ] - Benchify: Our portfolios comparision graph shows the names of the portfolios twice, once at the selection and once at the top of the chart. We just need to have it once.
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: update today page

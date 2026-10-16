@@ -94,8 +94,8 @@ function resolveScheduledTargets(scheduledTime: Date): DispatchTarget[] {
     return [{ workflowFile: 'ingest.yml' }];
   }
 
-  if (nyHour === 9 && nyMinute === 12) {
-    // 9:12 AM ET -> Market open newsletter synthesis (chains daily-predictor on completion)
+  if (nyHour === 9 && nyMinute === 17) {
+    // 9:17 AM ET -> Market open newsletter synthesis (chains daily-predictor on completion)
     return [{ workflowFile: 'generate-newsletter.yml', inputs: { session: 'open' } }];
   }
 

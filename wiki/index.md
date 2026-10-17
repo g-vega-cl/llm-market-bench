@@ -96,6 +96,7 @@
 
 ## Concepts
 
+- [[concepts/experiment-display-score]] — how the daily-predictions UI resolves an experiment's score from stored metrics or a ratchet fallback over evaluated predictions
 - [[concepts/react-profiling]] — production React profiling build via Vite alias
 - [[concepts/trade-reasoning]] — optional `reason` persisted on each trade for auditability
 - [[concepts/etf-valuation-exemption]] — verifier SOP rule exempting ETFs/index funds from single-stock DCF audits

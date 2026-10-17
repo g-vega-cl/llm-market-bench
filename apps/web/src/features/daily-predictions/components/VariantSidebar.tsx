@@ -1,10 +1,15 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Badge } from '@llm-market-bench/ui-design-system';
 import { isExperimentColdStart } from '../../autoresearch/utils/coldStart';
-import { getSidebarStatusBadge } from '../utils/daily-predictions-helpers';
+import type { DailyPrediction } from '../api/fetch-daily-predictions';
+import {
+    getExperimentDisplayScore,
+    getSidebarStatusBadge,
+} from '../utils/daily-predictions-helpers';
 
 export interface VariantSidebarItemProps {
     exp: PromptExperiment;
+    predictions?: DailyPrediction[];
     isSelected: boolean;
     isActiveVariant?: boolean;
     onSelect: () => void;
@@ -12,11 +17,12 @@ export interface VariantSidebarItemProps {
 
 export function VariantSidebarItem({
     exp,
+    predictions,
     isSelected,
     isActiveVariant,
     onSelect,
 }: VariantSidebarItemProps) {
-    const score = exp.metrics?.score;
+    const score = getExperimentDisplayScore(exp, predictions);
     const isScorePositive = typeof score === 'number' && score > 0;
     const statusBadge = getSidebarStatusBadge(exp.status, isActiveVariant);
 
@@ -79,6 +85,7 @@ export function VariantSidebarItem({
 
 export interface VariantSidebarProps {
     experiments: PromptExperiment[];
+    predictions?: DailyPrediction[];
     selectedExpId: string | null;
     activePromptTag?: string | null;
     onSelectExp: (id: string) => void;
@@ -86,6 +93,7 @@ export interface VariantSidebarProps {
 
 export function VariantSidebar({
     experiments,
+    predictions,
     selectedExpId,
     activePromptTag,
     onSelectExp,
@@ -100,6 +108,7 @@ export function VariantSidebar({
                     <VariantSidebarItem
                         key={exp.id}
                         exp={exp}
+                        predictions={predictions}
                         isSelected={exp.id === selectedExpId}
                         isActiveVariant={exp.variant_tag === activePromptTag}
                         onSelect={() => onSelectExp(exp.id)}

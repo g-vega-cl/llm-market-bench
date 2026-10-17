@@ -8,6 +8,7 @@ import { isExperimentColdStart } from '../../autoresearch/utils/coldStart';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import {
     DEFAULT_DAILY_PREDICTOR_TOOLS,
+    getExperimentDisplayScore,
     getSidebarStatusBadge,
 } from '../utils/daily-predictions-helpers';
 import { DailyLessonsLedgerCard } from './DailyLessonsLedgerCard';
@@ -17,11 +18,17 @@ import { VariantSidebar } from './VariantSidebar';
 
 export interface SelectedVariantHeaderProps {
     experiment: PromptExperiment;
+    predictions?: DailyPrediction[];
     isActiveVariant: boolean;
 }
 
-export function SelectedVariantHeader({ experiment, isActiveVariant }: SelectedVariantHeaderProps) {
+export function SelectedVariantHeader({
+    experiment,
+    predictions,
+    isActiveVariant,
+}: SelectedVariantHeaderProps) {
     const statusBadge = getSidebarStatusBadge(experiment.status, isActiveVariant);
+    const score = getExperimentDisplayScore(experiment, predictions);
 
     return (
         <div className="min-w-0">
@@ -48,10 +55,7 @@ export function SelectedVariantHeader({ experiment, isActiveVariant }: SelectedV
 
             <div className="flex gap-4 text-xs text-zinc-500 dark:text-zinc-400 flex-wrap mt-2 min-w-0">
                 <div>
-                    <strong>Score:</strong>{' '}
-                    {experiment.metrics?.score !== undefined
-                        ? Number(experiment.metrics.score).toFixed(2)
-                        : 'Pending'}
+                    <strong>Score:</strong> {score !== null ? Number(score).toFixed(2) : 'Pending'}
                 </div>
                 {experiment.parent_tag && (
                     <div className="break-all">
@@ -130,6 +134,7 @@ export function AutoresearchHistoryArena({
                 {/* Variant List Sidebar */}
                 <VariantSidebar
                     experiments={experiments}
+                    predictions={predictions}
                     selectedExpId={selectedExperiment?.id ?? null}
                     activePromptTag={activePromptTag}
                     onSelectExp={onSelectExp}
@@ -140,6 +145,7 @@ export function AutoresearchHistoryArena({
                     <div className="w-full flex-[3] basis-96 min-w-0 flex flex-col gap-4">
                         <SelectedVariantHeader
                             experiment={selectedExperiment}
+                            predictions={predictions}
                             isActiveVariant={selectedExperiment.variant_tag === activePromptTag}
                         />
 

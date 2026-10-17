@@ -113,6 +113,7 @@ function isPredictionInExperiment(p: DailyPrediction, experiment: PromptExperime
 
     if (
         experiment.track_id &&
+        experiment.track_id !== 'track_default' &&
         p.model_name &&
         !p.model_name.includes(experiment.track_id) &&
         !experiment.track_id.includes(p.model_name)

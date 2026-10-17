@@ -21,6 +21,7 @@ describe('daily-predictions-helpers', () => {
         expect(PREDICTOR_MODELS).toHaveLength(4);
         const deepseek = PREDICTOR_MODELS[0];
         expect(deepseek.matches('deepseek-v4-flash')).toBe(true);
+        expect(deepseek.matches('track_default')).toBe(true);
         expect(deepseek.matches('MiniMax')).toBe(false);
 
         const minimax = PREDICTOR_MODELS[1];

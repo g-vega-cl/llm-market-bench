@@ -1,6 +1,7 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import { VariantSidebar } from './VariantSidebar';
 
 describe('VariantSidebar', () => {
@@ -76,5 +77,59 @@ describe('VariantSidebar', () => {
 
         fireEvent.click(screen.getByText('daily-variant-2'));
         expect(onSelect).toHaveBeenCalledWith('exp-2');
+    });
+
+    it('renders resolved score when experiment has empty metrics but predictions are provided', () => {
+        const emptyMetricsExp: PromptExperiment = {
+            id: 'exp-baseline',
+            prompt_name: 'DAILY_PREDICTOR_PROMPT',
+            variant_tag: 'daily-pred-baseline',
+            experiment_type: 'baseline',
+            prompt_content: 'Prompt content',
+            change_description: 'Initial baseline',
+            metrics: {},
+            status: 'baseline',
+            week_start: '2026-08-04',
+            week_end: '2026-08-11',
+            created_at: '2026-08-04T00:00:00Z',
+            parent_tag: null,
+            research_output: null,
+            is_backtest: false,
+            track_id: 'deepseek-v4-flash',
+        };
+
+        const mockPredictions = [
+            {
+                id: 'pred-1',
+                prediction_date: '2026-08-04',
+                target_date: '2026-08-04',
+                ticker: 'SPY',
+                model_name: 'deepseek-v4-flash',
+                prompt_variant_tag: 'daily-pred-baseline',
+                status: 'evaluated',
+                predicted_direction: 'UP',
+                confidence: 70,
+                expected_return_pct: 0.1,
+                open_price: 760.63,
+                close_price: 771.33,
+                actual_direction: 'UP',
+                is_correct: true,
+                intraday_hit: true,
+                brier_score: 0.2025,
+            },
+        ];
+
+        render(
+            <VariantSidebar
+                experiments={[emptyMetricsExp]}
+                predictions={mockPredictions as unknown as DailyPrediction[]}
+                selectedExpId="exp-baseline"
+                onSelectExp={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText('daily-pred-baseline')).toBeInTheDocument();
+        expect(screen.getByText('80.6')).toBeInTheDocument();
+        expect(screen.getByText('🏆 BASELINE')).toBeInTheDocument();
     });
 });

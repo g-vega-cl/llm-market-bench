@@ -14,6 +14,7 @@ export const DEFAULT_DAILY_PREDICTOR_TOOLS = [
 ];
 
 import modelsConfig from '@repo/config/models.json';
+import { resolveRatchetMetrics } from '../components/DailyScoreBreakdown';
 
 export type SupportedDailyTicker = 'SPY' | 'TLT';
 
@@ -29,7 +30,8 @@ export const SPY_PREDICTOR_MODELS: ModelConfig[] = [
     {
         id: 'deepseek-v4-flash',
         label: 'DeepSeek Flash',
-        matches: (m: string) => m.toLowerCase().includes('deepseek'),
+        matches: (m: string) =>
+            m.toLowerCase().includes('deepseek') || m.toLowerCase() === 'track_default',
     },
     {
         id: 'MiniMax-M3',
@@ -162,20 +164,39 @@ export function resolveActiveDailyPrompt(modelExperiments: PromptExperiment[]): 
     };
 }
 
-export function computeExperimentMilestones(experiments: PromptExperiment[]) {
+export function getExperimentDisplayScore(
+    exp: PromptExperiment,
+    predictions?: DailyPrediction[],
+): number | null {
+    if (typeof exp.metrics?.score === 'number') {
+        return Number(exp.metrics.score);
+    }
+    if (predictions && predictions.length > 0) {
+        const resolved = resolveRatchetMetrics(exp, predictions);
+        if (resolved && typeof resolved.score === 'number') {
+            return resolved.score;
+        }
+    }
+    return null;
+}
+
+export function computeExperimentMilestones(
+    experiments: PromptExperiment[],
+    predictions?: DailyPrediction[],
+) {
     const { activePrompt, isBaselineAnchor } = resolveActiveDailyPrompt(experiments);
-    const activeScore = activePrompt?.metrics?.score ?? null;
+    const activeScore = activePrompt ? getExperimentDisplayScore(activePrompt, predictions) : null;
 
     let bestBaselineScore: number | null = null;
     for (const exp of experiments) {
-        const s = exp.metrics?.score;
+        const s = getExperimentDisplayScore(exp, predictions);
         if (typeof s === 'number' && (bestBaselineScore === null || s > bestBaselineScore)) {
             bestBaselineScore = s;
         }
     }
 
     const parentExp = experiments.find((e) => e.variant_tag === activePrompt?.parent_tag);
-    const parentScore = parentExp?.metrics?.score ?? null;
+    const parentScore = parentExp ? getExperimentDisplayScore(parentExp, predictions) : null;
     const delta =
         activeScore !== null && parentScore !== null
             ? Number(activeScore) - Number(parentScore)

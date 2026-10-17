@@ -1,6 +1,7 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import type * as React from 'react';
+import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import {
     computeExperimentMilestones,
     formatDeltaText,
@@ -11,6 +12,7 @@ import {
 
 export interface AutoresearchMilestonesProps {
     experiments: PromptExperiment[];
+    predictions?: DailyPrediction[];
 }
 
 interface MilestoneCardProps {
@@ -47,9 +49,12 @@ export function MilestoneCard({
     );
 }
 
-export function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps) {
+export function AutoresearchMilestoneCards({
+    experiments,
+    predictions,
+}: AutoresearchMilestonesProps) {
     const { activeExp, activeScore, bestBaselineScore, delta, isBaselineAnchor } =
-        computeExperimentMilestones(experiments);
+        computeExperimentMilestones(experiments, predictions);
 
     const isEvaluating = activeExp?.status === 'active' && activeScore === null;
     const deltaColor = isEvaluating ? '#64748b' : getDeltaColor(delta);

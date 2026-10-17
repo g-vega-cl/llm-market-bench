@@ -270,7 +270,10 @@ export function DailyPredictionsPage({
                 </>
             ) : (
                 <>
-                    <AutoresearchMilestoneCards experiments={modelExperiments} />
+                    <AutoresearchMilestoneCards
+                        experiments={modelExperiments}
+                        predictions={modelPredictions}
+                    />
                     <AutoresearchHistoryArena
                         experiments={modelExperiments}
                         predictions={modelPredictions}

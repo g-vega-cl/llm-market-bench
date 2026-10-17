@@ -96,6 +96,7 @@
 
 ## Concepts
 
+- [[concepts/react-profiling]] — production React profiling build via Vite alias
 - [[concepts/trade-reasoning]] — optional `reason` persisted on each trade for auditability
 - [[concepts/etf-valuation-exemption]] — verifier SOP rule exempting ETFs/index funds from single-stock DCF audits
 - [[concepts/strata-laya-double-ratchet]] — Two-pass co-evolutionary prompt optimization pairing Qwen 32B ingestion with Qwen 32B predictive reasoning over a 10-week curriculum with 3B student distillation roadmap

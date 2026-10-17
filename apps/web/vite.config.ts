@@ -29,6 +29,11 @@ export default defineConfig({
             },
         },
     },
+    resolve: {
+        alias: {
+            'react-dom/client': 'react-dom/profiling',
+        },
+    },
     plugins: [
         tailwindcss(),
         tsConfigPaths({

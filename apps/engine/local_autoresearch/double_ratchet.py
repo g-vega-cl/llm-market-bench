@@ -768,12 +768,14 @@ async def run_double_ratchet_curriculum_tournament(
 
     # 2. Tournament Iteration Loop Across Batches 1..N-1
     for it in range(1, iterations):
-        curriculum_batch = batches[it]
+        batch_idx = it % len(batches)
+        curriculum_batch = batches[batch_idx]
         cand_run_id = f"batch_{it}_{uuid.uuid4().hex[:6]}"
         batch_days = sum(len(days) for _, days in curriculum_batch)
+        cycle_str = f" [Cycle {it // len(batches)}]" if it >= len(batches) else ""
         logger.info(
             f"\n--- Walk-Forward Iteration {it}/{iterations - 1} "
-            f"(Batch {it}: {len(curriculum_batch)} weeks, {batch_days} sessions, "
+            f"(Batch {batch_idx}{cycle_str}: {len(curriculum_batch)} weeks, {batch_days} sessions, "
             f"{curriculum_batch[0][0]} to {curriculum_batch[-1][0]}, run_id: {cand_run_id}) ---"
         )
 

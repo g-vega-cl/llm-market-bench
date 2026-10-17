@@ -30,6 +30,9 @@ A living document of features and improvements in progress or planned for the pl
 ### Marketing & Building in Public
 - [ ] - Benchify: start building in public. Maybe videos maybe blogs anything but start saying the things you think about that loud critique YouTube videos critique other creators or say something good about them too. Audit audit audit
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
+- [ ] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer.
+- [ ] - Benchify: let people give instructions to the 24/7 trader
+- [ ] - Benchify; can you beat the agent game
 
 ---
 

@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
@@ -40,10 +40,11 @@ async def _call_deepseek_flash(
     options_context: str = "",
     economic_releases_context: str = "",
     fx_context: str = "",
+    date_str: str | None = None,
 ) -> GeneratedNewsletterOutput:
     """Invokes DeepSeek V4 Flash to synthesize ingested daily newsletters, FRED macro indicators, options data, and live economic releases into a proper newsletter."""
     session_label = "Morning Market Open Briefing" if session == "open" else "Evening Market Close Briefing"
-    now_date_str = datetime.now(ZoneInfo("America/New_York")).strftime("%B %d, %Y")
+    now_date_str = date_str or datetime.now(ZoneInfo("America/New_York")).strftime("%B %d, %Y")
 
     if not chunks:
         # Fallback response when no newsletter snapshots exist for the session
@@ -177,11 +178,8 @@ async def get_newsletter_options_context(ticker: str = "SPY") -> str:
     # 1. Options Derivatives Positioning (Macro table covering SPY, QQQ, IWM, GLD)
     try:
         options_sentiment = await execute_get_macro_options_sentiment_tool(primary_ticker=ticker)
-        if (
-            options_sentiment
-            and not options_sentiment.startswith("Error")
-            and not options_sentiment.startswith("No options")
-            and not options_sentiment.startswith("No macro options")
+        if options_sentiment and not any(
+            options_sentiment.startswith(p) for p in ("Error", "No options", "No macro options")
         ):
             sections.append(options_sentiment)
         elif options_sentiment and options_sentiment.startswith("Error"):
@@ -192,10 +190,8 @@ async def get_newsletter_options_context(ticker: str = "SPY") -> str:
     # 2. Options Volatility Surface & Implied Move Cone
     try:
         vol_surface = await execute_options_vol_surface_tool(ticker=ticker)
-        if (
-            vol_surface
-            and not vol_surface.startswith("Error")
-            and not vol_surface.startswith("*(Options volatility surface unavailable")
+        if vol_surface and not any(
+            vol_surface.startswith(p) for p in ("Error", "*(Options volatility surface unavailable")
         ):
             sections.append(vol_surface)
         elif vol_surface and vol_surface.startswith("Error"):
@@ -279,29 +275,45 @@ async def get_newsletter_fx_context(mdm=None) -> str:
     return header + "\n".join(lines)
 
 
-async def generate_daily_newsletter(session: str = "open", sb_client=None) -> dict | None:
+async def generate_daily_newsletter(
+    session: str = "open",
+    sb_client=None,
+    target_date: str | None = None,
+) -> dict | None:
     """Main pipeline task to generate and store a daily newsletter.
 
     Args:
         session: 'open' (9:12 AM ET) or 'close' (17:00 ET)
         sb_client: Optional Supabase client instance
+        target_date: Optional target date string ('YYYY-MM-DD') for deterministic generation/backfills.
 
     Returns:
         The newly inserted record dict from Supabase.
     """
     sb = sb_client or get_supabase_client()
-    now_et = datetime.now(ZoneInfo("America/New_York"))
+    if target_date:
+        target_d = date.fromisoformat(target_date)
+        hour = 9 if session == "open" else 17
+        minute = 12 if session == "open" else 1
+        now_et = datetime(
+            target_d.year, target_d.month, target_d.day, hour, minute, tzinfo=ZoneInfo("America/New_York")
+        )
+        is_historical = target_d < datetime.now(ZoneInfo("America/New_York")).date()
+    else:
+        now_et = datetime.now(ZoneInfo("America/New_York"))
+        is_historical = False
     formatted_time = now_et.strftime("%H:%M ET")
 
     # Step 1: Ingest fresh newsletters from Gmail (idempotent upsert into Supabase)
-    logger.info("Running Gmail newsletter ingestion prior to synthesis...")
-    try:
-        new_items = await ingest_newsletters(newer_than_days=1)
-        if new_items:
-            bulk_upsert_newsletter_snapshots(sb, new_items)
-            logger.info(f"Ingested and upserted {len(new_items)} fresh newsletter snapshots.")
-    except Exception as e:
-        logger.warning(f"Newsletter ingestion step encountered an error: {e}")
+    if not is_historical:
+        logger.info("Running Gmail newsletter ingestion prior to synthesis...")
+        try:
+            new_items = await ingest_newsletters(newer_than_days=1)
+            if new_items:
+                bulk_upsert_newsletter_snapshots(sb, new_items)
+                logger.info(f"Ingested and upserted {len(new_items)} fresh newsletter snapshots.")
+        except Exception as e:
+            logger.warning(f"Newsletter ingestion step encountered an error: {e}")
 
     # Step 2: Query newsletters published within the past 12 hours based on publication date ('date')
     since_iso = (now_et - timedelta(hours=12)).astimezone(UTC).isoformat()
@@ -310,7 +322,11 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
 
     snapshots = []
     try:
-        res = sb.table("newsletter_snapshots").select("*").gte("date", since_iso).execute()
+        query = sb.table("newsletter_snapshots").select("*").gte("date", since_iso)
+        if is_historical:
+            until_iso = (now_et + timedelta(minutes=15)).astimezone(UTC).isoformat()
+            query = query.lte("date", until_iso)
+        res = query.execute()
         snapshots = res.data or []
     except Exception as e:
         logger.warning(f"Could not fetch newsletter snapshots: {e}")
@@ -356,6 +372,7 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
         options_context=options_context,
         economic_releases_context=economic_releases_context,
         fx_context=fx_context,
+        date_str=now_et.strftime("%B %d, %Y"),
     )
 
     # Insert into generated_newsletters table
@@ -377,6 +394,6 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
         saved = {**record, **inserted_data}
         logger.info(f"Successfully generated and stored newsletter: '{output.title}' ({formatted_time})")
         return saved
-    except Exception:
+    except Exception as e:
         logger.exception("Failed to insert generated newsletter into Supabase.")
-        return record
+        raise RuntimeError(f"Failed to insert generated newsletter into database: {e}") from e

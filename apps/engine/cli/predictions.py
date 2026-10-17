@@ -81,7 +81,8 @@ def handle_generate_newsletter(args: argparse.Namespace) -> None:
     """Generate daily market newsletter summary."""
     from tasks.newsletter_generator import generate_daily_newsletter
 
-    asyncio.run(generate_daily_newsletter(session=args.session))
+    target_date = getattr(args, "target_date", None)
+    asyncio.run(generate_daily_newsletter(session=args.session, target_date=target_date))
 
 
 def handle_earnings_predictor(args: argparse.Namespace) -> None:

@@ -476,3 +476,63 @@ async def test_generate_daily_newsletter_passes_fx_context():
         mock_llm_call.assert_called_once()
         assert "fx_context" in mock_llm_call.call_args.kwargs
         assert "FX metrics: UUP $28.52" in mock_llm_call.call_args.kwargs["fx_context"]
+
+
+@pytest.mark.asyncio
+async def test_generate_daily_newsletter_raises_when_insert_fails():
+    """Verify that generate_daily_newsletter raises RuntimeError when DB insert fails so CI catches failures."""
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = []
+    mock_sb.table.return_value.insert.return_value.execute.side_effect = Exception("Cloudflare 403 Challenge")
+
+    mock_llm_response = GeneratedNewsletterOutput(
+        title="Test Briefing",
+        summary="Test Summary",
+        bullet_points=["Point 1"],
+        content="Test content",
+        read_time_minutes=6,
+    )
+
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock, return_value=""),
+        patch("core.economic_releases.get_today_economic_releases_summary", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_fx_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
+    ):
+        with pytest.raises(RuntimeError, match="Failed to insert generated newsletter into database"):
+            await generate_daily_newsletter(session="open", sb_client=mock_sb)
+
+
+@pytest.mark.asyncio
+async def test_generate_daily_newsletter_with_target_date():
+    """Verify generate_daily_newsletter sets historical created_at and skips Gmail ingestion."""
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.gte.return_value.lte.return_value.execute.return_value.data = [
+        {"id": "snap-1", "date": "2026-10-16T12:00:00Z", "sender": "WSJ", "subject": "Macro Update", "content": "..."}
+    ]
+    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "gen-oct16"}]
+
+    mock_llm_response = GeneratedNewsletterOutput(
+        title="Oct 16 Close Briefing",
+        summary="Oct 16 summary",
+        bullet_points=["Point 1"],
+        content="Oct 16 content",
+        read_time_minutes=6,
+    )
+
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]) as mock_ingest,
+        patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock, return_value=""),
+        patch("core.economic_releases.get_today_economic_releases_summary", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_fx_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
+    ):
+        result = await generate_daily_newsletter(session="close", sb_client=mock_sb, target_date="2026-10-16")
+        assert result is not None
+        assert not mock_ingest.called  # Skipped because is_historical
+        assert result["session"] == "close"
+        assert result["created_at"].startswith("2026-10-16T17:01:00")
+        assert mock_llm_call.call_args.kwargs["date_str"] == "October 16, 2026"

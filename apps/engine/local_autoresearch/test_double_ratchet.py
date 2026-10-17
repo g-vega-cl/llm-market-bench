@@ -476,14 +476,16 @@ async def test_run_double_ratchet_curriculum_tournament_walk_forward(tmp_path):
 @pytest.mark.asyncio
 async def test_run_weekly_mini_autoresearch(tmp_path):
     import sqlite3
+    from contextlib import closing
 
     from local_autoresearch.document_builder import get_point_in_time_memories
     from local_autoresearch.double_ratchet import run_weekly_mini_autoresearch
 
     db_path = str(tmp_path / "test_mini_cycle.db")
-    with sqlite3.connect(db_path) as conn:
-        conn.execute(
-            """
+    with closing(sqlite3.connect(db_path)) as conn:
+        with conn:
+            conn.execute(
+                """
             CREATE TABLE cached_memories (
                 id TEXT PRIMARY KEY,
                 content TEXT NOT NULL,
@@ -492,7 +494,7 @@ async def test_run_weekly_mini_autoresearch(tmp_path):
                 created_at TEXT NOT NULL
             )
             """
-        )
+            )
         conn.commit()
 
     week_results = [
@@ -567,7 +569,7 @@ async def test_run_weekly_mini_autoresearch(tmp_path):
     assert "tech divergence" in lessons[1]
 
     # Verify lessons exist in SQLite cached_memories
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT content, created_at FROM cached_memories")
         rows = cursor.fetchall()
@@ -587,13 +589,15 @@ async def test_run_weekly_mini_autoresearch(tmp_path):
 
 def test_query_memories_for_autoresearch(tmp_path):
     import sqlite3
+    from contextlib import closing
 
     from local_autoresearch.double_ratchet import query_memories_for_autoresearch
 
     db_path = str(tmp_path / "test_mem_query.db")
-    with sqlite3.connect(db_path) as conn:
-        conn.execute(
-            """
+    with closing(sqlite3.connect(db_path)) as conn:
+        with conn:
+            conn.execute(
+                """
             CREATE TABLE cached_memories (
                 id TEXT PRIMARY KEY,
                 content TEXT NOT NULL,
@@ -602,7 +606,7 @@ def test_query_memories_for_autoresearch(tmp_path):
                 created_at TEXT NOT NULL
             )
             """
-        )
+            )
         conn.execute(
             """
             INSERT INTO cached_memories VALUES

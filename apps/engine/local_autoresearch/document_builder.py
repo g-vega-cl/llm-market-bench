@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sqlite3
 import sys
+from contextlib import closing
 from typing import Any
 
 import httpx
@@ -113,13 +115,12 @@ def clean_newsletter_text_locally(raw_text: str) -> str:
 
 def get_rolling_trend_vector(target_date: str, db_path: str = DEFAULT_CACHE_DB) -> dict[str, Any]:
     """Compute rolling point-in-time trend vector strictly prior to target_date (zero lookahead)."""
-    import sqlite3
 
     if not os.path.exists(db_path):
         return {"summary": "", "days_available": 0, "prior_date": None, "prior_close": None}
 
     try:
-        with sqlite3.connect(db_path) as conn:
+        with closing(sqlite3.connect(db_path)) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -197,14 +198,13 @@ def get_point_in_time_memories(
     target_date: str, db_path: str = DEFAULT_CACHE_DB, limit: int = 5
 ) -> list[dict[str, Any]]:
     """Retrieve top point-in-time lessons/memories created strictly prior to target_date (zero lookahead)."""
-    import sqlite3
 
     if not os.path.exists(db_path):
         return []
 
     cutoff = f"{target_date}T00:00:00Z"
     try:
-        with sqlite3.connect(db_path) as conn:
+        with closing(sqlite3.connect(db_path)) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute(

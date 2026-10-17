@@ -15,6 +15,7 @@ import random
 import sqlite3
 import sys
 import uuid
+from contextlib import closing
 from typing import Any
 
 import httpx
@@ -52,22 +53,21 @@ class SqliteDocumentCache:
         self._init_db()
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS double_ratchet_documents (
-                    target_date TEXT NOT NULL,
-                    prompt_hash TEXT NOT NULL,
-                    document TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    PRIMARY KEY (target_date, prompt_hash)
-                )
-                """
+                    CREATE TABLE IF NOT EXISTS double_ratchet_documents (
+                        target_date TEXT NOT NULL,
+                        prompt_hash TEXT NOT NULL,
+                        document TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        PRIMARY KEY (target_date, prompt_hash)
+                    )
+                    """
             )
-            conn.commit()
 
     def get(self, target_date: str, prompt_hash: str) -> str | None:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT document FROM double_ratchet_documents WHERE target_date = ? AND prompt_hash = ?",
@@ -77,15 +77,14 @@ class SqliteDocumentCache:
             return row[0] if row else None
 
     def put(self, target_date: str, prompt_hash: str, document: str) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO double_ratchet_documents (target_date, prompt_hash, document, created_at)
-                VALUES (?, ?, ?, datetime('now'))
-                """,
+                    INSERT OR REPLACE INTO double_ratchet_documents (target_date, prompt_hash, document, created_at)
+                    VALUES (?, ?, ?, datetime('now'))
+                    """,
                 (target_date, prompt_hash, document),
             )
-            conn.commit()
 
     def __contains__(self, key: str) -> bool:
         parts = key.split(":", 1)
@@ -356,7 +355,7 @@ async def run_weekly_mini_autoresearch(
         # Persist into SQLite cached_memories
         if os.path.exists(db_path):
             mem_prefix = f"mini_{run_id}_" if run_id else "mini_"
-            with sqlite3.connect(db_path) as conn:
+            with closing(sqlite3.connect(db_path)) as conn, conn:
                 for l_text in lessons:
                     mem_id = f"{mem_prefix}{uuid.uuid4().hex[:8]}"
                     labeled_content = (
@@ -364,12 +363,11 @@ async def run_weekly_mini_autoresearch(
                     )
                     conn.execute(
                         """
-                        INSERT OR REPLACE INTO cached_memories (id, content, memory_type, importance_score, created_at)
-                        VALUES (?, ?, 'LOCAL_AUTORESEARCH_LESSON', 90, ?)
-                        """,
+                            INSERT OR REPLACE INTO cached_memories (id, content, memory_type, importance_score, created_at)
+                            VALUES (?, ?, 'LOCAL_AUTORESEARCH_LESSON', 90, ?)
+                            """,
                         (mem_id, labeled_content, friday_timestamp),
                     )
-                conn.commit()
 
         return lessons
     except Exception as e:
@@ -385,12 +383,11 @@ def cleanup_mini_cycle_memories(db_path: str = ".local_autoresearch_cache.db", r
     if not os.path.exists(db_path):
         return
     try:
-        with sqlite3.connect(db_path) as conn:
+        with closing(sqlite3.connect(db_path)) as conn, conn:
             if run_id:
                 conn.execute("DELETE FROM cached_memories WHERE id LIKE ?", (f"mini_{run_id}_%",))
             else:
                 conn.execute("DELETE FROM cached_memories WHERE id LIKE 'mini_%'")
-            conn.commit()
     except Exception as e:
         logger.debug(f"Error cleaning up mini-cycle memories: {e}")
 
@@ -400,7 +397,7 @@ def query_memories_for_autoresearch(db_path: str = ".local_autoresearch_cache.db
     if not os.path.exists(db_path):
         return ""
     try:
-        with sqlite3.connect(db_path) as conn:
+        with closing(sqlite3.connect(db_path)) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute(

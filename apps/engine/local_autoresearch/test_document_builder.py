@@ -212,13 +212,15 @@ def test_clean_newsletter_text_strips_markdown_urls_and_tracking():
 
 def test_get_rolling_trend_vector_zero_lookahead(tmp_path):
     import sqlite3
+    from contextlib import closing
 
     from local_autoresearch.document_builder import get_rolling_trend_vector
 
     db_path = str(tmp_path / "test_trend.db")
-    with sqlite3.connect(db_path) as conn:
-        conn.execute(
-            """
+    with closing(sqlite3.connect(db_path)) as conn:
+        with conn:
+            conn.execute(
+                """
             CREATE TABLE cached_days (
                 target_date TEXT PRIMARY KEY,
                 open_price REAL,
@@ -226,7 +228,7 @@ def test_get_rolling_trend_vector_zero_lookahead(tmp_path):
                 actual_direction TEXT
             )
             """
-        )
+            )
         # Insert 10 days of prices: 500 to 509
         for i in range(1, 11):
             d_str = f"2026-09-{i:02d}"
@@ -250,13 +252,15 @@ def test_get_rolling_trend_vector_zero_lookahead(tmp_path):
 
 def test_get_point_in_time_memories_filtering(tmp_path):
     import sqlite3
+    from contextlib import closing
 
     from local_autoresearch.document_builder import get_point_in_time_memories
 
     db_path = str(tmp_path / "test_memories.db")
-    with sqlite3.connect(db_path) as conn:
-        conn.execute(
-            """
+    with closing(sqlite3.connect(db_path)) as conn:
+        with conn:
+            conn.execute(
+                """
             CREATE TABLE cached_memories (
                 id INTEGER PRIMARY KEY,
                 content TEXT,
@@ -265,7 +269,7 @@ def test_get_point_in_time_memories_filtering(tmp_path):
                 created_at TEXT
             )
             """
-        )
+            )
         # Memory 1: created prior to target date
         conn.execute(
             "INSERT INTO cached_memories VALUES (1, 'Prior lesson: watch yields', 'LESSON_LEARNED', 0.9, '2026-09-10T12:00:00Z')"

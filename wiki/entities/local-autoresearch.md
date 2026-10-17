@@ -142,5 +142,6 @@ When evaluating the 10 batch winners out-of-distribution across the **21 sequest
 - **Dynamic Point-in-Time RAG**: Model 2 and subsequent weeks query accumulated lessons strictly prior to target date (`WHERE created_at < target_date`), ensuring zero lookahead bias.
 - **Model Fine-Tuning Roadmap**: Historical Qwen 32B CoT reasoning traces and verified binary directional calls serve as the teacher dataset to fine-tune a dedicated 3B student model for sub-second production inference.
 - **Strictly Local & Zero Cloud Storage**: All data, weekly lessons, and prompt mutations remain in `.local_autoresearch_cache.db` and `local_store.db` (0 writes to Supabase). Zero external API calls. See [[concepts/strata-laya-double-ratchet]].
+- **Deterministic SQLite Connection Lifecycle (`contextlib.closing`)**: All SQLite connection contexts across `document_builder.py`, `double_ratchet.py`, and `cache_builder.py` use `contextlib.closing(sqlite3.connect(...))` to guarantee deterministic connection closure upon block exit. This eliminates Python 3.13 `ResourceWarning: unclosed database` leaks during long tournament runs and hermetic pytest sessions.
 
 

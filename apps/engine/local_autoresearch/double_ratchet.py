@@ -684,51 +684,6 @@ async def run_double_ratchet_curriculum_tournament(
     doc_cache: Any = None if no_cache else (SqliteDocumentCache(cache_db_path) if cache_db_path else {})
     baseline_run_id = "batch_0_baseline"
 
-    # 1. Baseline Evaluation on Batch 0
-    curriculum_batch_0 = batches[0]
-    batch_0_days = sum(len(days) for _, days in curriculum_batch_0)
-    logger.info(
-        f"\n=== Evaluating Baseline on Batch 0 "
-        f"({len(curriculum_batch_0)} weeks, {batch_0_days} sessions, {curriculum_batch_0[0][0]} to {curriculum_batch_0[-1][0]}) ==="
-    )
-    baseline_metrics, baseline_results, baseline_lessons = await evaluate_curriculum_batch(
-        curriculum_weeks=curriculum_batch_0,
-        ingestion_prompt=initial_ingestion_prompt,
-        criteria=initial_criteria,
-        strata_url=strata_url,
-        laya_url=laya_url,
-        db_path=cache_db_path,
-        document_cache=doc_cache,
-        api_key=api_key,
-        run_id=baseline_run_id,
-        run_mini_cycles=True,
-    )
-    champion_score = baseline_metrics["score"]
-    champion_prompt = initial_ingestion_prompt
-    champion_criteria = initial_criteria
-    champion_metrics = baseline_metrics
-    champion_results = baseline_results
-
-    logger.info(
-        f"Baseline Batch 0 Score: {champion_score:.2f} | "
-        f"Win Rate: {baseline_metrics['traded_win_rate_pct']:.1f}% | "
-        f"Traded: {baseline_metrics['traded_days']}/{baseline_metrics['total_days']} | "
-        f"Generated Lessons: {len(baseline_lessons)}"
-    )
-
-    history = [
-        {
-            "iteration": 0,
-            "batch_index": 0,
-            "batch_weeks_count": len(curriculum_batch_0),
-            "score": champion_score,
-            "metrics": baseline_metrics,
-            "accepted": True,
-            "hypothesis": "Initial Baseline Pair",
-            "lessons_count": len(baseline_lessons),
-        }
-    ]
-
     checkpoint_file = state_path or os.getenv(
         "DOUBLE_RATCHET_CURRICULUM_STATE", ".double_ratchet_curriculum_state.json"
     )
@@ -749,25 +704,96 @@ async def run_double_ratchet_curriculum_tournament(
         except Exception as err:
             logger.warning(f"Failed to save tournament checkpoint: {err}")
 
-    save_checkpoint(0)
+    start_it = 1
+    # Check if a valid checkpoint exists to resume
+    if os.path.exists(checkpoint_file):
+        try:
+            with open(checkpoint_file, encoding="utf-8") as f:
+                saved_chk = json.load(f)
+            last_done = saved_chk.get("last_completed_iteration", 0)
+            if 0 < last_done < iterations:
+                start_it = last_done + 1
+                champion_score = saved_chk["champion_score"]
+                champion_prompt = saved_chk["champion_ingestion_prompt"]
+                champion_criteria = JevCriteriaConfig(**saved_chk["champion_criteria"])
+                champion_metrics = saved_chk["champion_metrics"]
+                history = saved_chk.get("history", [])
+                champion_results = []
+                baseline_metrics = history[0].get("metrics", champion_metrics) if history else champion_metrics
+                baseline_results = []
+                baseline_lessons = []
+                logger.info(
+                    f"Resuming Double-Ratchet Curriculum Tournament from iteration {start_it} "
+                    f"(Champion Score: {champion_score:.2f}, history steps: {len(history)})"
+                )
+        except Exception as err:
+            logger.warning(f"Failed to load checkpoint from {checkpoint_file}: {err}")
 
-    # If iterations <= 1, this was a single dry run pass!
-    if iterations <= 1:
-        return {
-            "iterations_run": iterations,
-            "baseline_score": champion_score,
-            "champion_score": champion_score,
-            "champion_ingestion_prompt": champion_prompt,
-            "champion_criteria": champion_criteria.model_dump(),
-            "champion_metrics": champion_metrics,
-            "stashed_test_weeks_count": len(stashed_weeks),
-            "history": history,
-            "results": baseline_results,
-            "lessons": baseline_lessons,
-        }
+    if start_it == 1:
+        # 1. Baseline Evaluation on Batch 0
+        curriculum_batch_0 = batches[0]
+        batch_0_days = sum(len(days) for _, days in curriculum_batch_0)
+        logger.info(
+            f"\n=== Evaluating Baseline on Batch 0 "
+            f"({len(curriculum_batch_0)} weeks, {batch_0_days} sessions, {curriculum_batch_0[0][0]} to {curriculum_batch_0[-1][0]}) ==="
+        )
+        baseline_metrics, baseline_results, baseline_lessons = await evaluate_curriculum_batch(
+            curriculum_weeks=curriculum_batch_0,
+            ingestion_prompt=initial_ingestion_prompt,
+            criteria=initial_criteria,
+            strata_url=strata_url,
+            laya_url=laya_url,
+            db_path=cache_db_path,
+            document_cache=doc_cache,
+            api_key=api_key,
+            run_id=baseline_run_id,
+            run_mini_cycles=True,
+        )
+        champion_score = baseline_metrics["score"]
+        champion_prompt = initial_ingestion_prompt
+        champion_criteria = initial_criteria
+        champion_metrics = baseline_metrics
+        champion_results = baseline_results
 
-    # 2. Tournament Iteration Loop Across Batches 1..N-1
-    for it in range(1, iterations):
+        logger.info(
+            f"Baseline Batch 0 Score: {champion_score:.2f} | "
+            f"Win Rate: {baseline_metrics['traded_win_rate_pct']:.1f}% | "
+            f"Traded: {baseline_metrics['traded_days']}/{baseline_metrics['total_days']} | "
+            f"Generated Lessons: {len(baseline_lessons)}"
+        )
+
+        history = [
+            {
+                "iteration": 0,
+                "batch_index": 0,
+                "batch_weeks_count": len(curriculum_batch_0),
+                "score": champion_score,
+                "metrics": baseline_metrics,
+                "accepted": True,
+                "hypothesis": "Initial Baseline Pair",
+                "lessons_count": len(baseline_lessons),
+            }
+        ]
+
+        save_checkpoint(0)
+
+        # If iterations <= 1, this was a single dry run pass!
+        if iterations <= 1:
+            return {
+                "iterations_run": iterations,
+                "baseline_score": champion_score,
+                "champion_score": champion_score,
+                "champion_ingestion_prompt": champion_prompt,
+                "champion_criteria": champion_criteria.model_dump(),
+                "champion_metrics": champion_metrics,
+                "stashed_test_weeks_count": len(stashed_weeks),
+                "history": history,
+                "results": baseline_results,
+                "lessons": baseline_lessons,
+            }
+
+    # 2. Tournament Iteration Loop Across Batches start_it..iterations-1
+    for it in range(start_it, iterations):
         batch_idx = it % len(batches)
         curriculum_batch = batches[batch_idx]
         cand_run_id = f"batch_{it}_{uuid.uuid4().hex[:6]}"

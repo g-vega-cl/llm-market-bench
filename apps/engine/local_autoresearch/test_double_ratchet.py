@@ -474,6 +474,92 @@ async def test_run_double_ratchet_curriculum_tournament_walk_forward(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_run_double_ratchet_curriculum_tournament_resume(tmp_path):
+    import json
+
+    from local_autoresearch.double_ratchet import run_double_ratchet_curriculum_tournament
+
+    all_weeks: dict[str, list[dict]] = {}
+    for w in range(1, 31):
+        w_key = f"2026-W{w:02d}"
+        all_weeks[w_key] = [
+            {"target_date": f"2026-08-{d:02d}", "ticker": "SPY", "open_price": 500.0, "close_price": 505.0}
+            for d in range(1, 6)
+        ]
+
+    state_file = tmp_path / "resume_state.json"
+    dummy_checkpoint = {
+        "last_completed_iteration": 2,
+        "total_iterations": 5,
+        "champion_score": 67.71,
+        "champion_ingestion_prompt": "Saved Champion Ingestion Prompt",
+        "champion_criteria": {
+            "criteria_up": "Saved Criteria UP",
+            "criteria_down": "Saved Criteria DOWN",
+            "min_confidence": 55.0,
+        },
+        "champion_metrics": {
+            "total_days": 15,
+            "traded_days": 15,
+            "no_trade_days": 0,
+            "traded_win_rate_pct": 70.0,
+            "score": 67.71,
+        },
+        "history": [
+            {"iteration": 0, "score": 50.0},
+            {"iteration": 1, "score": 55.0},
+            {"iteration": 2, "score": 67.71},
+        ],
+    }
+    with open(state_file, "w", encoding="utf-8") as f:
+        json.dump(dummy_checkpoint, f)
+
+    evaluated_batches = []
+
+    async def mock_eval_curriculum(curriculum_weeks, ingestion_prompt, criteria, *args, **kwargs):
+        evaluated_batches.append([k for k, _ in curriculum_weeks])
+        score = 50.0
+        metrics = {
+            "total_days": 15,
+            "traded_days": 15,
+            "no_trade_days": 0,
+            "traded_win_rate_pct": 55.0,
+            "score": score,
+        }
+        results = [{"target_date": "2026-08-01", "is_correct": True, "is_traded": True}]
+        lessons = ["Test lesson"]
+        return metrics, results, lessons
+
+    mock_mutation = DoubleRatchetMutation(
+        ingestion_prompt="Mutated Prompt 1",
+        criteria=JevCriteriaConfig(criteria_up="Up", criteria_down="Down", min_confidence=55.0),
+        hypothesis="Test hypothesis",
+    )
+
+    with (
+        patch("local_autoresearch.double_ratchet.evaluate_curriculum_batch", side_effect=mock_eval_curriculum),
+        patch(
+            "local_autoresearch.double_ratchet.generate_double_ratchet_mutation_with_strata",
+            AsyncMock(return_value=mock_mutation),
+        ),
+    ):
+        summary = await run_double_ratchet_curriculum_tournament(
+            all_weeks=all_weeks,
+            num_curriculum_weeks=10,
+            iterations=4,
+            cache_db_path=str(tmp_path / "test.db"),
+            no_cache=True,
+            state_path=str(state_file),
+        )
+
+        # Evaluated batches should only be 1 (iteration 3) + 1 (stashed test) = 2
+        assert len(evaluated_batches) == 2
+        # Champion score loaded from checkpoint
+        assert summary["champion_score"] == 67.71
+        assert summary["champion_ingestion_prompt"] == "Saved Champion Ingestion Prompt"
+
+
+@pytest.mark.asyncio
 async def test_run_weekly_mini_autoresearch(tmp_path):
     import sqlite3
     from contextlib import closing

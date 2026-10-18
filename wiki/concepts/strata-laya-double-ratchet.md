@@ -149,6 +149,26 @@ While Qwen 32B serves as the teacher and primary reasoning engine during autores
 
 ---
 
+## Sampling Defaults & Thinking Mode Hygiene (Strata v0.1.45+)
+
+> [!NOTE]
+> In Strata versions $\le$ 0.1.44, requests omitting sampling parameters defaulted to deterministic greedy decoding (`temperature = 0`). On reasoning models (Qwen3.8-Flash-Next / Qwen 32B), greedy decoding frequently strips exploratory stochasticity and triggers degenerate repetition loops in the `<think>` block.
+> Starting with **Strata v0.1.45**, the engine integrates native model-card sampling presets (`MODEL_CARD_SAMPLING`). The server configuration (`strata-iq2_xs.json`) explicitly enforces Qwen's recommended thinking parameters by default:
+> - **Temperature**: `1.0`
+> - **Top-P**: `0.95`
+> - **Top-K**: `20`
+> In addition, Strata's `reasoning_loop_recovery` detects repetitive token cycles mid-stream, automatically elevating temperature to $\ge 1.0$ and presence penalty to $\ge 1.5$ to break reasoning stalls without manual intervention.
+
+---
+
+## Prefix Prompt Caching (`--prompt-cache 8192`)
+
+> [!TIP]
+> The Strata runtime enables prefix prompt caching (`--prompt-cache 8192`).
+> Because daily catalyst briefings and predictor prompts share static instruction blocks and historical memory headers across successive tournament iterations, KV cache states are held resident in memory. Repeated turns achieve **~15x faster prefill speeds** (dropping latency from ~10–15 seconds down to ~60 ms for 9k+ token prompts).
+
+---
+
 ## Zero External Cloud API Calls & Local SQLite Isolation (MANDATORY)
 
 > [!CAUTION]

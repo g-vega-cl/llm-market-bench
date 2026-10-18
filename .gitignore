@@ -43,3 +43,7 @@ apps/engine/scratch/
 # Tournament State
 .*_state.json
 *.state.json
+
+# Backups
+*.bak
+

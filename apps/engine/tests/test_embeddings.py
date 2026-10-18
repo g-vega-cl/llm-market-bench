@@ -61,6 +61,10 @@ def test_get_embeddings_batch_api_error():
     mock_client = MagicMock()
     mock_client.models.embed_content.side_effect = Exception("API Error")
 
-    with patch("core.config.GEMINI_API_KEY", "fake-key"), patch("google.genai.Client", return_value=mock_client):
+    with (
+        patch("core.config.GEMINI_API_KEY", "fake-key"),
+        patch("google.genai.Client", return_value=mock_client),
+        patch.object(memory.embeddings._call_embed_with_retry.retry, "sleep", return_value=None),
+    ):
         results = get_embeddings_batch(["test text"])
         assert results == []

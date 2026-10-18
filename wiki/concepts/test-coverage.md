@@ -56,8 +56,20 @@ All tests in the repository must be 100% hermetic:
 - **Socket & DNS Enforcement**: `apps/engine/tests/conftest.py` installs a global, session-scoped network guard fixture (`block_external_network_calls`). Any attempt to resolve external DNS or open a non-loopback TCP connection immediately raises a `RuntimeError`, failing the test fast before network packets leave the machine.
 - **Credential Independence**: Tests must never rely on ambient environment variables (`FMP_API_KEY`, `OPENAI_API_KEY`, etc.). When testing functions that check API keys, tests must explicitly mock or patch the key (e.g. `patch("tools.congress_tools.FMP_API_KEY", "test-key")`), ensuring tests pass reliably in clean CI runners.
 
+## Zero Artificial Sleep & Test Latency Policy (MANDATORY)
+
+Test suites must execute cleanly without artificial delays. Slow tests cannot be solved simply by adding parallel compute processes (`pytest -n auto`) if individual tests block on real-time sleeps, rate limiters, or retry backoffs.
+
+- **Zero Unmocked Tenacity Retries**: Tenacity `@retry` decorators must specify exception filters (`retry_if_exception`) to fast-fail non-transient errors (such as `RuntimeError` from the hermetic socket guard or 401/403 HTTP errors) rather than retrying with exponential backoff (e.g., 4s + 4s + 8s). Tests asserting retry behavior must patch retry sleep (`patch.object(func.retry, "sleep", return_value=None)`).
+- **Autouse Rate Limiter & Embedding Fixtures**: Global singletons (like `_MASSIVE_LIMITER` in `apps/engine/execution/market_data.py`) must be neutralized in `apps/engine/tests/conftest.py` via autouse fixtures (`hermetic_massive_rate_limiter`, `hermetic_memory_store_embeddings`) so tests never wait for token bucket replenishment.
+- **Environment-Aware Fallback Delays**: Any loop or fallback logic that sleeps on transient connection failure (e.g. local autoresearch server checks) must detect `os.getenv("PYTEST_CURRENT_TEST")` and set delay to 0.0 seconds.
+- **Latency Regression Suite**: `apps/engine/tests/test_test_suite_latency_guards.py` validates that rate-limited, retried, and fallback code paths execute in under 100ms.
+
+See [[concepts/test-latency-guards]] for the detailed architectural breakdown.
+
 ## Related
 
+- [[concepts/test-latency-guards]]
 - [[sources/engine-testing-source]]
 - [[sources/web-testing-source]]
 

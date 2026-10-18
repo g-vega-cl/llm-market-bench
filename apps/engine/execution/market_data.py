@@ -6,6 +6,7 @@ and data transforms through a modular, unified facade.
 
 import asyncio
 import math
+import os
 
 import core.config as cfg
 from core.config import FMP_API_KEY, logger
@@ -251,7 +252,7 @@ class MarketDataManager:
             except Exception as e:
                 logger.debug(f"Attempt {attempt}/{max_retries} failed for {ticker} via {provider.provider_name}: {e}")
 
-            if attempt < max_retries:
+            if attempt < max_retries and not os.getenv("PYTEST_CURRENT_TEST"):
                 wait_time = 2 ** (attempt - 1)
                 await asyncio.sleep(wait_time)
         return None

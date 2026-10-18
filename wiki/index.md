@@ -208,6 +208,7 @@
 - [[concepts/project-linting]] — Code quality enforcement: Ruff (Python) + Biome (TypeScript) in pre-commit
 - [[concepts/code-reference-validation]] — Deterministic codebase path validation and linter scope analysis
 - [[concepts/test-coverage]] — Enforced coverage thresholds (70% engine / 40% web)
+- [[concepts/test-latency-guards]] — Zero artificial sleep policy, tenacity retry exception filtering, and rate limiter test guarding
 - [[concepts/ingestion]] — Newsletter scraping, economic calendar, government tracking
 - [[concepts/reasoning]] — Parallel LLM analysis with the Reasoning Toolbox (5 Whys, MECE, IS/IS NOT, Ishikawa)
 - [[concepts/consensus]] — Semantic grouping, weighted voting, event promotion

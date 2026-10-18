@@ -3,7 +3,7 @@
 import logging
 
 from google import genai
-from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
+from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from core import config
 from core.config import GEMINI_EMBEDDING_MODEL
@@ -13,6 +13,23 @@ logger = logging.getLogger("engine")
 _client = None
 _last_embed_time = 0.0
 _EMBED_MIN_INTERVAL = 1.2  # ~50 req/min to stay under Vertex 60/min quota
+
+
+def _is_retryable_embedding_error(exc: BaseException) -> bool:
+    """Returns True only for transient network/server/rate-limit errors.
+
+    Explicitly refuses to retry RuntimeError (test network guards), auth/billing errors,
+    or programming mistakes.
+    """
+    if isinstance(exc, (RuntimeError, ValueError, TypeError, KeyError)):
+        return False
+    error_code = getattr(exc, "code", None)
+    if error_code in (400, 401, 402, 403, 404):
+        return False
+    message = str(exc).lower()
+    return not any(
+        non_retryable in message for non_retryable in ("blocked during test", "unauthorized", "prepayment credits")
+    )
 
 
 def get_client():
@@ -26,6 +43,7 @@ def get_client():
 
 
 @retry(
+    retry=retry_if_exception(_is_retryable_embedding_error),
     stop=stop_after_attempt(4),
     wait=wait_exponential(multiplier=2, min=4, max=30),
     before_sleep=before_sleep_log(logger, logging.WARNING),

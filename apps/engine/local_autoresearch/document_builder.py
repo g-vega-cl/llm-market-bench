@@ -323,6 +323,9 @@ async def generate_daily_document(
     Retries locally if Strata encounters transient engine reloads.
     Uses unconstrained max reasoning (reasoning_budget_tokens = -1).
     """
+    if os.getenv("PYTEST_CURRENT_TEST") and retry_delay_seconds >= 1.0:
+        retry_delay_seconds = 0.0
+
     raw_inputs = format_raw_point_in_time_inputs(day_record, db_path=db_path)
     user_prompt = (
         f"Please synthesize the following pre-market observations into a structured briefing document:\n\n{raw_inputs}"

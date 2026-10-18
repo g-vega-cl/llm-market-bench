@@ -68,6 +68,35 @@ def block_external_network_calls():
 
 
 @pytest.fixture(autouse=True)
+def hermetic_memory_store_embeddings():
+    """Autouse fixture providing deterministic mock embeddings at the memory.store boundary.
+
+    Eliminates artificial 16-32s tenacity retry sleep delays in tests invoking
+    retrieve_for_decision, find_potential_ancestors, process_consensus, or verify_trading_decision,
+    without interfering with test_embeddings.py which tests the raw client.
+    """
+    with (
+        patch("memory.store.get_embedding", return_value=[0.1] * 768),
+        patch("memory.store.get_embeddings_batch", return_value=[[0.1] * 768]),
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def hermetic_massive_rate_limiter():
+    """Autouse fixture bypassing Massive options token bucket delay in tests.
+
+    Ensures that mock options tests never wait 12s per contract on depleted token buckets.
+    """
+    from execution.providers.massive import _MASSIVE_LIMITER
+
+    orig_acquire = _MASSIVE_LIMITER.acquire
+    _MASSIVE_LIMITER.acquire = AsyncMock(return_value=None)
+    yield
+    _MASSIVE_LIMITER.acquire = orig_acquire
+
+
+@pytest.fixture(autouse=True)
 def isolate_gmail_test_env(monkeypatch):
     """Ensure unit tests do not hit real Gmail over IMAP by default.
 

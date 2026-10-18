@@ -89,7 +89,10 @@ def test_get_embeddings_batch_retries_on_failure(mock_get_client):
         mock_response,
     ]
 
-    results = get_embeddings_batch(["test text"])
+    import memory.embeddings
+
+    with patch.object(memory.embeddings._call_embed_with_retry.retry, "sleep", return_value=None):
+        results = get_embeddings_batch(["test text"])
 
     assert len(results) == 1
     assert results[0] == [0.1] * 768

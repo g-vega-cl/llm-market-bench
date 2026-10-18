@@ -457,3 +457,88 @@ async def test_execute_daily_close_exits_for_short_trade_updates_entry_pnl(mock_
     entry_update = next((u for u in updated_trades if "realized_pnl" in u), None)
     assert entry_update is not None, "Expected entry SHORT trade to be updated with realized_pnl"
     assert entry_update["realized_pnl"] == cover_trade["realized_pnl"]
+
+
+@pytest.mark.asyncio
+async def test_execute_daily_moo_entries_filters_only_spy_predictions(mock_supabase):
+    """Verify execute_daily_moo_entries strictly filters for SPY ticker and ignores bond/other predictions."""
+    from execution.daily_trading import execute_daily_moo_entries
+
+    target_date = "2026-10-16"
+    pred_spy = {
+        "id": "pred-spy",
+        "model_name": "deepseek-v4-flash",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.50,
+        "target_date": target_date,
+        "ticker": "SPY",
+    }
+    pred_tlt = {
+        "id": "pred-tlt",
+        "model_name": "gpt-5.6-luna",
+        "predicted_direction": "DOWN",
+        "expected_return_pct": -0.50,
+        "target_date": target_date,
+        "ticker": "TLT",
+    }
+
+    inserted_trades = []
+
+    def table_router(table_name):
+        t = MagicMock()
+        t.select.return_value = t
+        t.insert.return_value = t
+        t.upsert.return_value = t
+        t.update.return_value = t
+        t.delete.return_value = t
+        t.eq.return_value = t
+        t.gte.return_value = t
+        t.lte.return_value = t
+        if table_name == "daily_predictions":
+            # If eq was called with ticker=SPY, return only SPY; if not filtered, return both
+            def eq_side_effect(col, val):
+                eq_builder = MagicMock()
+                eq_builder.eq.side_effect = eq_side_effect
+                if col == "ticker" and val == "SPY":
+                    eq_builder.execute.return_value = MagicMock(data=[pred_spy])
+                else:
+                    eq_builder.execute.return_value = MagicMock(data=[pred_spy, pred_tlt])
+                return eq_builder
+
+            t.eq.side_effect = eq_side_effect
+            t.execute.return_value = MagicMock(data=[pred_spy, pred_tlt])
+        elif table_name == "trades":
+            t.execute.return_value = MagicMock(data=[])
+            ib = MagicMock()
+
+            def record_insert(payload):
+                inserted_trades.append(payload)
+                res = MagicMock()
+                res.execute.return_value = MagicMock(data=[payload])
+                return res
+
+            ib.execute.return_value = MagicMock(data=[])
+            t.insert.side_effect = record_insert
+        else:
+            t.execute.return_value = MagicMock(data=[])
+        return t
+
+    mock_supabase.table.side_effect = table_router
+
+    mock_portfolio = MagicMock()
+    mock_portfolio.id = uuid4()
+    mock_portfolio.cash_balance = 10000.0
+
+    with (
+        patch("execution.daily_trading.get_supabase_client", return_value=mock_supabase),
+        patch("execution.daily_trading.get_or_create_system_portfolio", new=AsyncMock(return_value=mock_portfolio)),
+        patch("execution.market_data.MarketDataManager.get_quote", new=AsyncMock(return_value=MagicMock(price=500.0))),
+        patch("execution.alpaca_broker.AlpacaBroker.submit_market_order", new=AsyncMock()),
+    ):
+        result = await execute_daily_moo_entries(target_date=target_date)
+
+    assert result["status"] == "success"
+    # Only SPY prediction should have been entered, not TLT
+    assert all("luna" not in e["owner_id"] for e in result["entries"])
+    assert all(t["ticker"] == "SPY" for t in inserted_trades)
+    assert len([e for e in result["entries"] if "deepseek" in e["owner_id"]]) > 0

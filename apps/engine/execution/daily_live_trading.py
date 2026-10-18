@@ -38,10 +38,10 @@ async def execute_daily_moo_entries(target_date: str | None = None, dry_run: boo
     client = dt.get_supabase_client()
     target_date_str = target_date or date.today().isoformat()
 
-    res = client.table("daily_predictions").select("*").eq("target_date", target_date_str).execute()
+    res = client.table("daily_predictions").select("*").eq("target_date", target_date_str).eq("ticker", "SPY").execute()
     predictions = res.data or []
     if not predictions:
-        logger.info(f"No daily predictions found for {target_date_str}. Skipping MOO entry.")
+        logger.info(f"No daily SPY predictions found for {target_date_str}. Skipping MOO entry.")
         return {"status": "skipped", "reason": "No predictions found", "entries": []}
 
     from execution.market_data import MarketDataManager
@@ -62,9 +62,11 @@ async def execute_daily_moo_entries(target_date: str | None = None, dry_run: boo
     entries = []
 
     for pred in predictions:
+        ticker = str(pred.get("ticker", "SPY")).strip().upper()
+        if ticker != "SPY":
+            continue
         model_name = str(pred.get("model_name", "unknown"))
         direction = str(pred.get("predicted_direction", "UP")).strip().upper()
-        ticker = str(pred.get("ticker", "SPY")).strip().upper()
         expected_ret_raw = pred.get("expected_return_pct")
         expected_return_pct = abs(float(expected_ret_raw)) if expected_ret_raw is not None else 0.0
 

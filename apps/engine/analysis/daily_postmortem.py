@@ -179,8 +179,11 @@ async def diagnose_daily_prediction(
         bullets = "\n".join([f"- {b}" for b in (close_newsletter.get("bullet_points") or [])])
         news_text = f"Title: {title}\nSummary: {summary}\nKey Takeaways:\n{bullets}"
 
+    asset_label = (
+        "20+ Year Treasury Bond ETF (TLT)" if ticker == "TLT" else f"S&P 500 ({ticker})" if ticker == "SPY" else ticker
+    )
     system_prompt = (
-        "You are an elite quantitative trading post-mortem analyst auditing an intraday S&P 500 (SPY) forecast.\n\n"
+        f"You are an elite quantitative trading post-mortem analyst auditing an intraday {asset_label} forecast.\n\n"
         "### STRICT ANTI-HALLUCINATION RULES:\n"
         "1. GROUND TRUTH ONLY: Do NOT invent unverified macro excuses or narratives. You must cite evidence "
         "present in the verified evening market brief or the hourly price tape.\n"
@@ -268,8 +271,7 @@ async def run_daily_postmortem(
         logger.info(f"All predictions for {target_date} already have post-mortems. Use force=True to re-run.")
         return []
 
-    ticker = pending_audit[0].get("ticker", "SPY")
-    rth_bars = await fetch_rth_bars_for_date(ticker, target_date)
+    rth_bars_by_ticker: dict[str, list[dict]] = {}
     close_newsletter = await fetch_evening_newsletter_summary(sb, target_date)
 
     updated_records = []
@@ -278,6 +280,10 @@ async def run_daily_postmortem(
     for pred in pending_audit:
         pred_id = pred["id"]
         model_name = pred.get("model_name", "unknown")
+        ticker = pred.get("ticker", "SPY")
+        if ticker not in rth_bars_by_ticker:
+            rth_bars_by_ticker[ticker] = await fetch_rth_bars_for_date(ticker, target_date)
+        rth_bars = rth_bars_by_ticker[ticker]
         try:
             diagnosis = await diagnose_daily_prediction(
                 prediction=pred,

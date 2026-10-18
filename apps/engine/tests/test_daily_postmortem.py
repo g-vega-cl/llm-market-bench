@@ -315,3 +315,89 @@ async def test_run_daily_postmortem_missing_newsletter_fallback(sample_predictio
         assert results[0]["was_predictable"] is False
         # Not saved to memories because was_predictable=False
         mock_add_mem.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_daily_postmortem_fetches_rth_bars_per_ticker_in_mixed_batch(
+    sample_prediction, sample_close_newsletter
+):
+    """Verify run_daily_postmortem fetches distinct RTH bars for each unique ticker in a mixed batch."""
+    spy_pred = dict(sample_prediction)
+    spy_pred["id"] = "pred-spy-1"
+    spy_pred["ticker"] = "SPY"
+
+    tlt_pred = dict(sample_prediction)
+    tlt_pred["id"] = "pred-tlt-1"
+    tlt_pred["ticker"] = "TLT"
+    tlt_pred["model_name"] = "gpt-5.6-luna"
+
+    mock_supabase = MagicMock()
+    pred_query = MagicMock()
+    pred_query.eq.return_value = pred_query
+    pred_query.order.return_value = pred_query
+    pred_query.limit.return_value = pred_query
+    pred_query.execute.return_value = MagicMock(data=[spy_pred, tlt_pred])
+
+    news_query = MagicMock()
+    news_query.eq.return_value = news_query
+    news_query.gte.return_value = news_query
+    news_query.lte.return_value = news_query
+    news_query.order.return_value = news_query
+    news_query.limit.return_value = news_query
+    news_query.execute.return_value = MagicMock(data=[sample_close_newsletter])
+
+    mock_preds_table = MagicMock()
+    mock_preds_table.select.return_value = pred_query
+    update_mock = MagicMock()
+    update_mock.eq.return_value = update_mock
+    update_mock.execute.return_value = MagicMock(data=[])
+    mock_preds_table.update.return_value = update_mock
+
+    def table_router(table_name):
+        if table_name == "daily_predictions":
+            return mock_preds_table
+        elif table_name == "generated_newsletters":
+            mock_table = MagicMock()
+            mock_table.select.return_value = news_query
+            return mock_table
+        return MagicMock()
+
+    mock_supabase.table.side_effect = table_router
+
+    mock_diagnosis = DailyPredictionDiagnosis(
+        category=PostMortemCategory.ACCURATE_CAPTURE,
+        was_predictable=True,
+        observed_driver="Verified move",
+        flawed_assumption="None",
+        actionable_lesson="Standard move.",
+    )
+
+    mock_luna = MagicMock()
+    mock_luna.chat.completions.create = AsyncMock(return_value=mock_diagnosis)
+
+    spy_bars = [{"date": "2026-09-24 09:30:00", "open": 764.0, "high": 766.0, "low": 764.0, "close": 765.5}]
+    tlt_bars = [{"date": "2026-09-24 09:30:00", "open": 80.0, "high": 80.5, "low": 79.8, "close": 80.2}]
+
+    async def mock_fetch_bars(ticker, target_date_str):
+        if ticker == "TLT":
+            return tlt_bars
+        return spy_bars
+
+    with (
+        patch("analysis.daily_postmortem.get_supabase_client", return_value=mock_supabase),
+        patch("analysis.daily_postmortem.get_luna_client", return_value=mock_luna),
+        patch("analysis.daily_postmortem.fetch_rth_bars_for_date", side_effect=mock_fetch_bars) as mock_fetch,
+        patch("analysis.daily_postmortem.add_memory"),
+    ):
+        results = await run_daily_postmortem(
+            target_date="2026-09-24",
+            force=True,
+            client=mock_supabase,
+            luna_client=mock_luna,
+        )
+
+        assert len(results) == 2
+        # Verify both tickers had their bars fetched
+        fetched_tickers = [call.args[0] for call in mock_fetch.call_args_list]
+        assert "SPY" in fetched_tickers
+        assert "TLT" in fetched_tickers

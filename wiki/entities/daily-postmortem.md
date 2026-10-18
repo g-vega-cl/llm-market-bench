@@ -1,67 +1,86 @@
 ---
-tags: [daily-predictor, postmortem, luna, evaluation, autoresearch]
+tags: [entity, postmortem, analysis, daily-predictor, feedback-loop]
 category: entity
 ---
 
-# Daily Post-Mortem Island
+# Daily Post-Mortem
 
-The **Daily Post-Mortem Island** (`apps/engine/analysis/daily_postmortem.py`) audits intraday S&P 500 (SPY) daily predictions after market close. It is the causal-diagnosis layer of the [[entities/daily-market-predictor]] pipeline: after a prediction is evaluated against the verified price tape, this island explains *why* the forecast succeeded or failed and distills a durable lesson that feeds the weekly prompt-evolution loop.
+`apps/engine/analysis/daily_postmortem.py` — the feedback phase of the daily
+predictor loop. After the session closes, every daily prediction is audited
+against the actual intraday tape and the verified evening market brief, and the
+resulting lesson is written back into agent memory.
 
-## Trigger & Command
+## Entry Point
 
-- CLI: `python main.py daily-postmortem [--target-date YYYY-MM-DD] [--force]` (registered as `COMMAND_DAILY_POSTMORTEM`).
-- Runs automatically at the end of `evaluate_daily_predictions` whenever at least one prediction was evaluated, passing the same `target_date` and `force` flag.
-- When no `target_date` is supplied, it defaults to the most recent evaluated target date.
-- Predictions that already carry a `postmortem_evaluated_at` timestamp are skipped unless `--force` is set.
+`run_daily_postmortem(target_date, force=False, client=None, luna_client=None)`
 
-## Grounding Inputs (Anti-Hallucination)
+1. Loads all `daily_predictions` rows for `target_date` that still lack a
+   post-mortem. If none are pending (and `force` is false) it logs and returns
+   an empty list.
+2. Fetches the evening newsletter summary once via
+   `fetch_evening_newsletter_summary(sb, target_date)`.
+3. Iterates the pending predictions, resolving the ticker per prediction
+   (`pred.get("ticker", "SPY")`) and fetching that ticker's regular-trading-hours
+   bars through `fetch_rth_bars_for_date(ticker, target_date)`.
+4. Calls `diagnose_daily_prediction(...)` for each prediction and persists the
+   diagnosis back onto the prediction row.
 
-The diagnosis is strictly bookended by three verified sources, so the model cannot invent macro excuses:
+### Per-Ticker RTH Bar Cache
 
-1. **Morning prediction** — direction, confidence, target return, cited catalysts, and the original rationale.
-2. **Verified RTH price tape** — hourly bars filtered to regular trading hours (09:30–16:00 ET) and rendered as an intraday path table.
-3. **Evening market close brief** — the `session='close'` newsletter from `generated_newsletters` (title, summary, bullet points), with a fallback to the latest close brief if the date lookup misses.
+A single post-mortem run can span multiple tickers (SPY and TLT predictions are
+audited in the same batch). RTH bars are memoized in a local
+`rth_bars_by_ticker: dict[str, list[dict]]` so each distinct ticker is fetched
+at most once per run, while every prediction is still diagnosed against *its
+own* ticker's tape. Previously the batch assumed a single ticker taken from the
+first pending prediction, which silently graded TLT predictions against SPY
+bars.
 
-The diagnosis is produced by **OpenAI Luna (`gpt-5.6-luna`)** via `instructor.Mode.JSON` with active reasoning (`reasoning_effort="medium"`), returning a structured `DailyPredictionDiagnosis`.
+## Diagnosis
 
-## Root-Cause Taxonomy
+`diagnose_daily_prediction(prediction, rth_bars, close_newsletter, ...)` builds a
+system prompt that frames the model as an elite quantitative post-mortem analyst
+auditing an intraday forecast, then asks for a structured
+`DailyPredictionDiagnosis`.
 
-Every outcome is classified into a closed taxonomy (see [[concepts/daily-postmortem-taxonomy]]):
+The audited asset is named explicitly in the prompt via an `asset_label`
+derived from the prediction's ticker:
 
-| Category | Meaning |
-|---|---|
-| `ACCURATE_CAPTURE` | Direction and magnitude hit cleanly |
-| `TIMID_MAGNITUDE` | Correct direction, but target capped too low on a trend day |
-| `OVERSHOT_TARGET` | Correct direction, but target exceeded session volatility |
-| `CATALYST_INVERSION` | Morning catalyst occurred, but the market reacted opposite |
-| `INTRADAY_REVERSAL` | Thesis worked early, then faded/reversed in the afternoon |
-| `RANGEBOUND_CHOP` | Flat tape with no momentum; direction forced on chop |
-| `UNFORESEEN_SHOCK` | Mid-day news/shock breaking after 9:30 AM |
+| Ticker | Label |
+| :--- | :--- |
+| `TLT` | `20+ Year Treasury Bond ETF (TLT)` |
+| `SPY` | `S&P 500 (SPY)` |
+| other | the raw ticker symbol |
 
-Each diagnosis also records `was_predictable` (foreseeable from pre-market signals vs. random noise/breaking news), the `observed_driver`, the `flawed_assumption`, and a 1–2 sentence `actionable_lesson`.
+This keeps the analyst anchored to the correct instrument instead of assuming
+every forecast is an S&P 500 call.
 
-## Persistence
+### Anti-Hallucination Rules
 
-Results are written directly onto the `daily_predictions` row:
+The prompt enforces ground-truth-only reasoning: no invented macro excuses or
+narratives. Every claimed driver must be citable from the verified evening
+market brief or the hourly price tape.
 
-- `postmortem_category`
-- `postmortem_flawed_assumption`
-- `postmortem_lesson`
-- `was_predictable`
-- `postmortem_evaluated_at`
+### Output Shape
 
-These columns are added by the `20260925120000_add_daily_postmortem_fields.sql` migration.
+`DailyPredictionDiagnosis` carries:
 
-## Memory & Autoresearch Feedback
+- `category` — a `PostMortemCategory` (e.g. `ACCURATE_CAPTURE`)
+- `was_predictable` — whether the move was knowable from available evidence
+- `observed_driver` — the verified cause of the realized move
+- `flawed_assumption` — what the prediction got wrong (`None` when accurate)
+- `actionable_lesson` — the takeaway to feed forward
 
-When a diagnosis is both predictable and actionable (`was_predictable=True` and category is not `ACCURATE_CAPTURE`), the lesson is stored in `memories` as an `AUTORESEARCH_INSIGHT` (importance 8) with `scope='daily_predictor'` and `track_id=model_name`, using similarity checks to avoid duplicates.
+## Memory Feedback
 
-The Sunday `daily-autoresearch` run consumes these via `compute_magnitude_postmortem_summary()`, which surfaces a **VERIFIED DAILY POST-MORTEMS & FAILURE DIAGNOSES (GPT-5.6 LUNA)** section and prefers the Luna category over its own heuristic diagnosis. This lets the weekly prompt-evolution loop compound verified causal lessons without daily recency bias. The exported predictor dataset (`export_daily_predictor_dataset.py`) also carries the post-mortem fields into SFT and DPO samples.
+When `was_predictable` is true, the lesson is written into agent memory via
+`add_memory`. Unpredictable moves are recorded on the prediction row but are not
+promoted into memory, so noise never becomes a learned rule.
 
 ## Related
 
-- [[entities/daily-market-predictor]] — the prediction pipeline this island audits
-- [[entities/autoresearch]] — the weekly prompt-evolution loop that consumes the lessons
-- [[concepts/daily-postmortem-taxonomy]] — the closed root-cause taxonomy
-- [[concepts/hallucination-audit]] — grounding discipline shared across the platform
-- [[entities/database]] — `daily_predictions` schema and migrations
+- [[entities/daily-market-predictor]]
+- [[entities/daily-score-breakdown]]
+- [[concepts/daily-postmortem-taxonomy]]
+- [[concepts/memory-feedback]]
+- [[concepts/daily-spy-live-trading]]
+- [[concepts/daily-tlt-live-trading]]

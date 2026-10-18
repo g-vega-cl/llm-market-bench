@@ -1,58 +1,56 @@
 ---
-tags: [daily-predictor, spy, alpaca, execution, live-trading]
+tags: [concept, execution, daily-predictor, spy, moo]
 category: concept
 ---
 
-# Daily SPY Live Trading Lifecycle
+# Daily SPY Live Trading
 
-The daily SPY systematic portfolios (`sys-daily-spy-{model}` and `sys-daily-spy-close-{model}`) execute a fully live intraday lifecycle against the Alpaca paper broker, replacing the earlier retroactive backfill model. Trades are entered pre-market, managed during the session, and liquidated before the close. The lifecycle is driven by the `daily-trade` command and two `run_ingest` hooks.
+`apps/engine/execution/daily_live_trading.py` — turns the daily SPY directional
+forecasts into real market-on-open (MOO) entries, and later settles the exits.
 
-## Phases
+## MOO Entry Path
 
-### 1. Pre-Market MOO Entry (~9:20 AM ET)
-`main.py daily-trade --action entry` runs in `.github/workflows/daily-predictor.yml` before the 9:28 AM ET Alpaca cutoff. `execute_daily_moo_entries`:
+`execute_daily_moo_entries(target_date=None, dry_run=False)`
 
-- Reads `daily_predictions` for the target date.
-- For `UP` predictions: allocates available cash, inserts a `BUY` trade, upserts the SPY holding in `portfolio_positions`, deducts cash, and submits a `MarketOrderRequest` with `TimeInForce.OPG` for the opening cross.
-- For `DOWN` predictions: logs a virtual `SHORT` trade in `trades` only — no `portfolio_positions` row and no Alpaca order (guardrail against shorting).
-- Target-exit portfolios (`sys-daily-spy-{model}`) only enter when `expected_return_pct > 0` and the model is not Jev; close-exit portfolios (`sys-daily-spy-close-{model}`) always enter.
+1. Resolves the target date (defaults to today) and queries `daily_predictions`
+   for that date **filtered to `ticker = "SPY"`** at the database level.
+2. If no SPY predictions exist, logs `No daily SPY predictions found for
+   <date>. Skipping MOO entry.` and returns
+   `{"status": "skipped", "reason": "No predictions found", "entries": []}`.
+3. Fetches a quote through `MarketDataManager` and resolves the system portfolio
+   via `get_or_create_system_portfolio`.
+4. For each prediction, re-normalizes the ticker
+   (`str(pred.get("ticker", "SPY")).strip().upper()`) and skips anything that is
+   not `SPY` before sizing the position.
+5. Submits the order through `AlpacaBroker.submit_market_order` and records the
+   trade row.
 
-### 2. Session Open Price Reconciliation (~9:35 AM ET)
-`main.py daily-trade --action open` (or `reconcile_daily_open_trades`) runs after the 9:30 AM open once official market prints are established. Pre-market quotes from data providers often report the previous day's close as current price before the 9:30 AM bell.
+### SPY-Only Guarantee
 
-- Resolves canonical session open price ($P_{open}$) via `get_daily_session_open_price()` from `daily_predictions`, FMP intraday 1-minute bars, or FMP quote `open_price`.
-- Reconciles entry `trades.price` and `total_cost` to $P_{open}$ (plus slippage).
-- Adjusts `portfolio_positions.average_cost_basis` and updates portfolio cash balance to reflect actual session entry cost.
+The MOO path is deliberately single-instrument. The ticker filter is applied
+both in the Supabase query (`.eq("ticker", "SPY")`) and again in the Python
+loop, so a mixed batch of SPY and TLT predictions can never leak a bond trade
+into the equity entry path. TLT forecasts are executed by their own pipeline —
+see [[concepts/daily-tlt-live-trading]].
 
-### 3. Target Limit Orders (~9:35 AM ET)
-`place_daily_target_limit_orders` runs from the morning `run_ingest` hook. For each target-exit portfolio holding SPY, it submits an Alpaca limit sell at `cost_basis * (1 + expected_return_pct / 100)`. If touched intraday, Alpaca fills the limit order.
+## Position Sizing
 
-### 4. Afternoon Close Exit (~3:30 PM ET)
-`execute_daily_close_exits` runs from the afternoon `run_ingest` hook (`main.py daily-trade --action exit`). It:
+Direction comes from `predicted_direction` (normalized to upper case). Expected
+return is taken as `abs(expected_return_pct)`, defaulting to `0.0` when the
+field is null, and drives the notional allocated from the system portfolio's
+cash balance.
 
-- Defensively reconciles entry price to $P_{open}$ if unadjusted.
-- Cancels any unfilled target limit orders via `cancel_open_orders_for_agent`.
-- Sells held SPY shares at market, deletes the `portfolio_positions` row, and records a `SELL` trade with realized PnL computed strictly against $P_{open}$.
-- Closes virtual `SHORT` trades with a `COVER` trade and realized PnL.
-- Updates portfolio cash/equity and upserts `portfolio_performance`.
+## Exit Path
 
-## Alpaca Broker Support
-
-- `AlpacaBroker.submit_market_order` — fire-and-forget market order supporting `DAY` and `OPG` time-in-force. Sell orders are capped to the actual Alpaca position; sells with no position are marked `SKIPPED_NO_POSITION`.
-- `AlpacaBroker.cancel_open_orders_for_agent` — cancels open orders whose `client_order_id` is prefixed with the agent id.
-
-## Idempotency & Backfill
-
-- Entry checks for an existing trade on the target date before inserting, so re-runs never double-buy.
-- `evaluate_daily_predictions` no longer executes trades by default; retroactive execution is gated behind `--backfill-trades` (default `False`) because live trades now run during market hours.
-
-## Command Interface
-
-`python main.py daily-trade --action {entry|open|target-orders|exit|close}`
+`execute_daily_close_exits` settles open daily trades at the close, including
+short entries, writing `realized_pnl` back onto the entry trade row so the entry
+and the cover stay reconciled.
 
 ## Related
 
-- [[concepts/system-portfolios]]
-- [[concepts/alpaca-order-sync]]
-- [[concepts/execution]]
 - [[entities/daily-market-predictor]]
+- [[entities/daily-postmortem]]
+- [[concepts/execution]]
+- [[concepts/system-portfolios]]
+- [[concepts/daily-tlt-live-trading]]
+- [[concepts/alpaca-order-sync]]

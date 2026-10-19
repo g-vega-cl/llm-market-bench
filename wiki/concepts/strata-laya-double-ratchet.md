@@ -15,11 +15,13 @@ across process restarts.
 
 ## Tournament Structure
 
+- **Production Newsletter Scale Prompt 1 (~1,000–1,500 words)** — the ingestion prompt (`DEFAULT_INGESTION_SYSTEM_PROMPT` in `apps/engine/local_autoresearch/document_builder.py`) produces comprehensive cross-asset briefings matching the 5 canonical production newsletter sections (Macro & Yield Trajectory, Multi-Day Trend & Overnight Tape, Options Positioning, Institutional Consensus & Lessons, and Directional Tension). It runs without token reasoning caps (`reasoning_budget_tokens: -1`), preserving Qwen 32B's full analytical depth.
 - **Batch 0 baseline** — the initial ingestion prompt + criteria pair is evaluated on
   the first curriculum batch and becomes the starting champion (history entry 0).
 - **Iteration loop** — for `it` in `start_it .. iterations-1`, a batch is selected
   round-robin (`it % len(batches)`), a mutation is generated with Strata, evaluated on
   that batch, and accepted only if it improves the champion score.
+- **Early Pruning** — unviable candidate mutations that exhibit <= 25% win rate after a minimum number of weeks (`early_prune_min_weeks=2`) or that cannot mathematically exceed the champion win rate are aborted early. Pruned candidates are strictly barred from becoming champion. See [[concepts/early-pruning]].
 - **Stashed test weeks** — a held-out slice is evaluated at the end to report
   out-of-sample performance.
 

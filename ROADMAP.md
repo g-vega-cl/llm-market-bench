@@ -7,15 +7,17 @@ A living document of features and improvements in progress or planned for the pl
 ## ⚡ Horizon 1: Immediate Focus (Now)
 
 ### Autoresearch & Prompt Evolution (Local Loop)
+
 - [x] - Set up a local auto researcher with Qwen, Strata, and Jev. Evaluated across 10-batch (300 iterations) tournament on 2-year multi-regime dataset (507 days, 106 weeks). Revealed that unconstrained open-to-close daily direction caps at ~52% due to random walk noise and selectivity subsidy trap. Post-mortem documented at [[concepts/daily-directional-predictability-limits]].
 - [ ] - Benchify: something I can autoresearch daily?
-        Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
-    - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
+      Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
+  - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
 - [ ] - Benchify: remove anti bias from frozen, those are not "format" instructions those affect the prediction so they should be able to be mutated
 - [x] - Benchify: audit that we are passing "weekly or trend" data.to daily predictor
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
+
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: when remaking and updating design system. Make sure sidebar is only 4 items tops. Maybe change the items based on frequency of use?
@@ -28,6 +30,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify : design rules cheat sheet to ground my design system
 
 ### Marketing & Building in Public
+
 - [ ] - Benchify: start building in public. Maybe videos maybe blogs anything but start saying the things you think about that loud critique YouTube videos critique other creators or say something good about them too. Audit audit audit
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
 - [ ] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer.
@@ -39,6 +42,7 @@ A living document of features and improvements in progress or planned for the pl
 ## 🚀 Horizon 2: Near-Term Expansion (Next)
 
 ### Autoresearch Scaling & Local Models
+
 - [ ] - add a local model?
 - [p] - Benchify: set up Laya alongside JEV?
 - [ ] - make an autoresearcher for the verifier
@@ -48,14 +52,14 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
 
 ### Portfolio & Market Execution
+
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
-- [ ] - Benchify: a bond trader?
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 - [ ] - Benchify; the portfolios should all run with 10k and no margin. Easier to get and also no dealing with interest
-- [ ] - Benchify: move newsletter generator and predictor closer to 9:30 maybe 9:24
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 
 ### Database & Performance Polish
+
 - [ ] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`.
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
@@ -65,6 +69,7 @@ A living document of features and improvements in progress or planned for the pl
 ## 🔬 Horizon 3: Quantitative & Alternative Alpha (Medium-Term)
 
 ### Quantitative Models & Statistical Alpha
+
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] - Look for statistical analysis for markets
@@ -75,11 +80,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: train small model?
 
 ### Focused Assets (Single Ticker / ETF)
-- [ ] - Single company focused llm - Did this with LIN, but I don't think it's working as expected. REVISIT.
-        - [ ] - Benchify: "hyperfocus on a mid size company?
-        - [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?
+
+- [ ] - Single company focused llm - Did this with LIN, but I don't think it's working as expected. REVISIT. - [ ] - Benchify: "hyperfocus on a mid size company? - [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?
 
 ### Government, Fiscal & Alternative Data
+
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
 - [ ] - Try to track government stuff again, but make it explicit, make it maybe outside ingestion and consensus.
 - [ ] - Benchify: track specific governments with liquid enough stock markets like Canada and trade based on government deals and pipelines and government money
@@ -89,6 +94,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: Toronto stock market
 
 ### Multimodal & Visual Market Prediction
+
 - [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
 - [ ] - visual predictor- Somethuing like https://huggingface.co/foduucom/stockmarket-pattern-detection-yolov8 or even a minute-by-minute/ or short time x short time predictor of the market. Not necessarily visual, but it would be great to compare results of visual/non-visual.
 
@@ -97,6 +103,7 @@ A living document of features and improvements in progress or planned for the pl
 ## 🌐 Horizon 4: Product, Platform & Community (Long-Term)
 
 ### Community & Multi-Tenant Features
+
 - [ ] - Benchify allow people to use their own models/keys/prompts and compete.
 - [ ] - Benchify: per user log and reasons tracker. This ties to the LLM chat. Each user can track their own trades too and their reasoning.
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
@@ -106,12 +113,14 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 
 ### Gamifying
+
 - [ ] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer.
-    - [ ] - Benchify: let people give instructions to the 24/7 trader
+  - [ ] - Benchify: let people give instructions to the 24/7 trader
 - [ ] - Benchify; can you beat the agent game
-    - [ ] - Benchify: challenge people to predict daily weekly etc to produce sectors to predict etc better than you and if they consistently win give them money and they get half and you get half or you can just like a little fee and to get something etc
+  - [ ] - Benchify: challenge people to predict daily weekly etc to produce sectors to predict etc better than you and if they consistently win give them money and they get half and you get half or you can just like a little fee and to get something etc
 
 ### Autonomous Agents & Meta-Intelligence
+
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
 - [ ] - Benchify: an autoresearch autoresearcher?
 - [ ] **A programming/business buddy?**
@@ -123,20 +132,9 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
-    - same with text
+  - same with text
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.
 
 ---
 
 ## ✅ Completed & Evaluated (Archive)
-
-- [x] **Find trading papers not just investing** - But low sell high?
-  - Couldn't find any.
-- [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
-- [x] - Benchify: Enforce "Zero Compute on Frontend" in `searchMemories()` (`apps/web/src/features/memories/api/fetch-memories.ts`). Replace the unpaginated full-table query (3,144 rows + embeddings = ~18.8MB) and client-side Levenshtein loop with database-level text filtering and pagination.
-- [x] - Benchify; make an statistic if any of our buys were ever profitable. Like what if I followed my agent's buys and decide on the sells myself?
-    - Did this, I think it was basically a 50/50 bet. Even I checked if it ever touched something like .5% or .1% and it didn't change it much.
-- [x] - Benchify: I might already have something like this, try to predict earnings movement. Maybe just up/down from beginning of trading day?
-    - Built Day-1 Earnings Movement Predictor Arena benchmarking GPT Luna (gpt-5.6-luna), DeepSeek Flash (deepseek-chat), and TypeSafe Jev (~typesafe/jev-latest) on Regular Trading Hours Open-to-Close (09:30 to 16:00 ET) continuation vs fade reactions. Created `earnings_predictions` table, `earnings_predictor.py`, `evaluate_earnings_predictions.py`, and `EarningsArenaTab` UI in `/earnings-audit`.
-- [x] - Benchify: 2 week sector predictor and check how different are the weekly/monthly/90d predictions from each other..
-      - Did this.  It's mostly the same.

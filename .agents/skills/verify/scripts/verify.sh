@@ -68,17 +68,12 @@ if command -v qmd >/dev/null 2>&1; then
   qmd embed
 fi
 
-# Database & Remote Supabase Migration Parity
-if command -v npx >/dev/null 2>&1 && [ -d "supabase/migrations" ]; then
-  echo "--> Checking Supabase remote migration parity..."
-  MIGRATION_STATUS=$(npx supabase migration list 2>/dev/null || true)
-  if echo "$MIGRATION_STATUS" | grep -q '"remote":""'; then
-    echo "ERROR: Unapplied Supabase migrations detected! Run 'npx supabase db push --linked' to synchronize remote database schema." >&2
-    exit 1
-  elif echo "$MIGRATION_STATUS" | grep -q '"Migrations listed"'; then
-    echo "    Remote Supabase schema in sync."
-  fi
+# Database & Migration Integrity
+if [ -d "supabase/migrations" ]; then
+  echo "--> Verifying database migration grants and RLS integrity..."
+  ./apps/engine/.venv/bin/python3 -m pytest apps/engine/tests/test_migration_grants.py -q
 fi
+
 
 # Static checks & Hotspots
 if [ "$ENGINE" = true ] || [ "$FAST" = true ]; then

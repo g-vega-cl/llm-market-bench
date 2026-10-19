@@ -67,6 +67,10 @@ class DataManifest(BaseModel):
         default=True,
         description="Whether to include prior session intraday profile (VWAP, CLV, candle archetype).",
     )
+    include_trend_vector: bool = Field(
+        default=True,
+        description="Whether to include multi-day momentum & trend vector (5-day return, SMA20).",
+    )
 
 
 class JevCriteriaConfig(BaseModel):
@@ -126,6 +130,13 @@ def pack_daily_context(day_record: dict[str, Any], manifest: DataManifest) -> st
     target_date = day_record.get("target_date", "UNKNOWN_DATE")
     ticker = day_record.get("ticker", "SPY")
     lines: list[str] = [f"=== POINT-IN-TIME MARKET CONTEXT: {ticker} ({target_date}) ==="]
+
+    # 0. Multi-Day Momentum & Trend Vector
+    if manifest.include_trend_vector:
+        trend = day_record.get("trend_vector")
+        if isinstance(trend, dict) and trend.get("summary"):
+            lines.append("--- Multi-Day Momentum & Trend Vector ---")
+            lines.append(trend["summary"].strip())
 
     # 1. Economic releases
     if manifest.include_economic_calendar:

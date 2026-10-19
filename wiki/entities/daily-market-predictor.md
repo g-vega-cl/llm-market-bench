@@ -19,8 +19,14 @@ The daily predictor arena compares four distinct model architectures:
 
 `get_structured_daily_market_context(ticker, include_full_prior_close)` assembles both the full raw pre-market intelligence string AND a structured data record (`data_record`). Every data source is fetched through the canonical tool dispatcher `core.llm.handlers.base.execute_tool` with `model_name="daily_predictor"`, so each call is measured, logged, and non-blockingly audited to `tool_execution_logs` (see [[entities/tool-audit]]).
 
+Multi-day momentum and trend indicators are calculated by `analytics/trend_profile.py` (`compute_trend_profile`) strictly with zero lookahead (excluding bars on or after the target date) and zero hallucination (SMA20 is strictly `None` when fewer than 20 completed sessions exist). Metrics include:
+- Prior session verified close price.
+- Rolling 5-day return % (weekly cycle).
+- 20-day Simple Moving Average (SMA20) and distance % (monthly cycle, verified history only).
+- 3-day direction sequence (e.g. `UP (+0.3%) -> DOWN (-0.2%) -> UP (+0.6%)`).
+
 For standard models, the full narrative context is passed. For `jev-local-autoresearched`, the raw data record is compiled dynamically through `pack_daily_context(data_record, manifest)` into a lean, noise-pruned "Box of Data" adhering to the winning variant's active manifest:
-- **Included**: Prior session intraday technical profile (VWAP, Close Location Value), high-signal proxies (`QQQ`, `IWM`), options positioning, economic releases, and curated newsletters (`Sherwood News`, `Chartr`).
+- **Included**: Multi-day momentum & trend vector (`include_trend_vector=True`), prior session intraday technical profile (VWAP, Close Location Value), high-signal proxies (`QQQ`, `IWM`), options positioning, economic releases, and curated newsletters (`Sherwood News`, `Chartr`).
 - **Pruned / Excluded**: FX noise (`UUP`), market health barometer, qualitative market feeling.
 
 ## Confidence Gating & Evaluation

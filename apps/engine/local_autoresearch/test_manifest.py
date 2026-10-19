@@ -109,3 +109,27 @@ def test_autoresearch_mutation_schema():
     assert mutation.criteria.min_confidence == 65.0
     assert mutation.manifest.include_currency_uup is True
     assert "Chartr" in mutation.manifest.selected_newsletters
+
+
+def test_pack_daily_context_includes_trend_vector():
+    """Verify pack_daily_context packs trend vector when enabled and excludes when disabled."""
+    day_record = {
+        "target_date": "2026-10-14",
+        "ticker": "SPY",
+        "trend_vector": {
+            "summary": "5-Day Return: +2.15%\n20-Day Simple Moving Average (SMA20): $574.50 (Distance: +0.65%)",
+        },
+    }
+
+    # Enabled by default
+    manifest_enabled = DataManifest(include_trend_vector=True)
+    ctx_enabled = pack_daily_context(day_record, manifest_enabled)
+    assert "--- Multi-Day Momentum & Trend Vector ---" in ctx_enabled
+    assert "5-Day Return: +2.15%" in ctx_enabled
+    assert "20-Day Simple Moving Average" in ctx_enabled
+
+    # Disabled
+    manifest_disabled = DataManifest(include_trend_vector=False)
+    ctx_disabled = pack_daily_context(day_record, manifest_disabled)
+    assert "--- Multi-Day Momentum & Trend Vector ---" not in ctx_disabled
+    assert "5-Day Return" not in ctx_disabled

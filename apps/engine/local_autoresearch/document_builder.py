@@ -235,6 +235,11 @@ def format_raw_point_in_time_inputs(day_record: dict[str, Any], db_path: str = D
     if trend.get("summary"):
         lines.append("--- Multi-Day Momentum & Trend Vector ---")
         lines.append(trend["summary"].strip())
+    elif day_record.get("trend_vector") and isinstance(day_record["trend_vector"], dict):
+        rec_trend = day_record["trend_vector"].get("summary")
+        if rec_trend:
+            lines.append("--- Multi-Day Momentum & Trend Vector ---")
+            lines.append(rec_trend.strip())
 
     # 2. Historical Memories & Lessons Learned (Strictly prior to target_date)
     memories = get_point_in_time_memories(target_date, db_path=db_path, limit=5)

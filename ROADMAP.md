@@ -13,7 +13,7 @@ A living document of features and improvements in progress or planned for the pl
     - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
 - [ ] - Benchify: remove anti bias from frozen, those are not "format" instructions those affect the prediction so they should be able to be mutated
-- [ ] - Benchify: audit that we are passing "weekly or trend" data.to daily predictor
+- [x] - Benchify: audit that we are passing "weekly or trend" data.to daily predictor
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.

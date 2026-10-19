@@ -61,8 +61,13 @@ def get_ny_now() -> datetime:
         return datetime.now()
 
 
-def construct_lean_bond_prompt(ticker: str = "TLT", quote: dict | None = None, date_str: str | None = None) -> str:
-    """Constructs minimal, tool-first prompt containing only temporal and quote context."""
+def construct_lean_bond_prompt(
+    ticker: str = "TLT",
+    quote: dict | None = None,
+    date_str: str | None = None,
+    trend_summary: str | None = None,
+) -> str:
+    """Constructs minimal, tool-first prompt containing only temporal, quote, and trend context."""
     today = date_str or datetime.now(UTC).date().isoformat()
     lines = [
         f"Target Asset: {ticker.upper()} (iShares 20+ Year Treasury Bond ETF)",
@@ -77,6 +82,8 @@ def construct_lean_bond_prompt(ticker: str = "TLT", quote: dict | None = None, d
         lines.append(
             f"Pre-Market / Overnight Quote: ${p:.2f} | Gap: {chg:+.2f} ({chg_pct:+.2f}%) vs Prev Close ${prev:.2f}"
         )
+    if trend_summary:
+        lines.append(f"Trend & Multi-Day Momentum:\n{trend_summary.strip()}")
 
     lines.append(
         "\nTask:\n"
@@ -87,7 +94,12 @@ def construct_lean_bond_prompt(ticker: str = "TLT", quote: dict | None = None, d
     return "\n".join(lines)
 
 
-async def compile_jev_bond_context(ticker: str = "TLT", quote: dict | None = None, date_str: str | None = None) -> str:
+async def compile_jev_bond_context(
+    ticker: str = "TLT",
+    quote: dict | None = None,
+    date_str: str | None = None,
+    trend_summary: str | None = None,
+) -> str:
     """Compiles automated lean tool bundle into market context for single-turn Jev Decisions API."""
     today = date_str or datetime.now(UTC).date().isoformat()
     context_lines = [
@@ -96,6 +108,8 @@ async def compile_jev_bond_context(ticker: str = "TLT", quote: dict | None = Non
     ]
     if quote and quote.get("price") is not None:
         context_lines.append(f"Pre-Market Quote: ${quote['price']:.2f} | Gap: {quote.get('change_pct', 0.0):+.2f}%")
+    if trend_summary:
+        context_lines.append(f"Trend & Multi-Day Momentum:\n{trend_summary.strip()}")
 
     try:
         yc_str = await execute_get_treasury_yield_curve_tool()
@@ -218,7 +232,20 @@ async def run_daily_bond_prediction(ticker: str = "TLT", force: bool = False) ->
 
     mdm = MarketDataManager()
     pm_quote = await mdm.get_premarket_quote(ticker)
-    lean_prompt = construct_lean_bond_prompt(ticker=ticker, quote=pm_quote, date_str=today_str)
+    trend_summary = None
+    try:
+        from analytics.trend_profile import compute_trend_profile
+
+        history = await mdm.get_history(ticker, days=45)
+        trend_prof = compute_trend_profile(history, target_date=today_str)
+        if trend_prof.is_available:
+            trend_summary = trend_prof.summary
+    except Exception as e:
+        logger.debug(f"Could not retrieve trend profile for bond predictor ({ticker}): {e}")
+
+    lean_prompt = construct_lean_bond_prompt(
+        ticker=ticker, quote=pm_quote, date_str=today_str, trend_summary=trend_summary
+    )
     client = get_supabase_client()
     results = []
 
@@ -236,7 +263,9 @@ async def run_daily_bond_prediction(ticker: str = "TLT", force: bool = False) ->
                     tool_names=BOND_TOOLBOX,
                 )
             else:  # Jev single-turn
-                jev_context = await compile_jev_bond_context(ticker=ticker, quote=pm_quote, date_str=today_str)
+                jev_context = await compile_jev_bond_context(
+                    ticker=ticker, quote=pm_quote, date_str=today_str, trend_summary=trend_summary
+                )
                 pred = await predict_daily_with_jev(context=jev_context, ticker=ticker, model_name=model_name)
 
             db_payload = {

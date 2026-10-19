@@ -45,27 +45,30 @@ def test_verify_entity_md_documents_wiki_update():
     assert "qmd" in content or "auto-index" in content
 
 
-def test_verify_skill_mandates_typecheck_and_supabase_parity():
-    """Verify that SKILL.md and wiki entity explicitly mandate TypeScript typecheck and remote Supabase parity."""
+def test_verify_skill_mandates_typecheck_and_db_parity():
+    """Verify that SKILL.md and wiki entity explicitly mandate TypeScript typecheck and self-hosted DB schema parity."""
     assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
     skill_content = VERIFY_SKILL_MD.read_text()
     assert "typecheck" in skill_content, "SKILL.md must mandate pnpm run typecheck"
-    assert "supabase db push" in skill_content or "remote Supabase" in skill_content, (
-        "SKILL.md must mandate remote Supabase state parity"
+    assert "PostgreSQL" in skill_content or "PostgREST" in skill_content or "schema parity" in skill_content, (
+        "SKILL.md must mandate self-hosted DB schema parity"
     )
+    assert "supabase db push" not in skill_content, "SKILL.md must not contain stale supabase db push reference"
 
     assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
     entity_content = VERIFY_ENTITY_MD.read_text()
     assert "typecheck" in entity_content, "wiki/entities/verify-skill.md must document typecheck mandate"
-    assert "supabase db push" in entity_content or "remote Supabase" in entity_content, (
-        "wiki/entities/verify-skill.md must document remote Supabase state parity"
+    assert "PostgreSQL" in entity_content or "PostgREST" in entity_content or "schema parity" in entity_content, (
+        "wiki/entities/verify-skill.md must document self-hosted DB schema parity"
+    )
+    assert "supabase db push" not in entity_content, (
+        "wiki/entities/verify-skill.md must not contain stale supabase db push reference"
     )
 
 
-def test_verify_script_checks_supabase_migration_parity():
-    """Verify that verify.sh executes an automated remote Supabase migration parity check."""
+def test_verify_script_checks_migration_integrity():
+    """Verify that verify.sh executes an automated migration integrity test."""
     assert VERIFY_SCRIPT.exists(), "verify.sh must exist"
     content = VERIFY_SCRIPT.read_text()
-    assert "supabase migration list" in content or "supabase db push" in content, (
-        "verify.sh must inspect Supabase migrations for remote parity"
-    )
+    assert "test_migration_grants.py" in content, "verify.sh must inspect migrations using test_migration_grants.py"
+    assert "supabase migration list" not in content, "verify.sh must not call obsolete supabase migration list"

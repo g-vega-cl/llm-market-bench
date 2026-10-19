@@ -121,10 +121,10 @@ Audit all changed files through these six tiers. Do not skip any tier.
    - Enforce trade idempotency on re-evaluations.
    - Enforce FIFO lot matching on positions.
    - Prevent accidental short positions when submitting exit SELL orders.
-5. **Database migration, RLS, and remote Supabase state parity**:
-   - *RLS enforcement*: Any new table created in `supabase/migrations/*.sql` must explicitly include `ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;`.
-   - *Remote migration push check*: When modifying or adding SQL files in `supabase/migrations/`, verify whether the remote Supabase project has been updated via `supabase db push --linked`. The runner script `verify.sh` automatically audits `npx supabase migration list` to block unapplied migrations.
-   - *System portfolio & entity online verification*: When adding or updating system portfolios (`sys-*`) or baseline benchmark models, run a live read-only verification probe against remote Supabase (via diagnostic scratch script) to ensure initial records are provisioned in the remote `portfolios` table with initial cash balances and Reg T metrics before deployment.
+5. **Database migration, RLS, and self-hosted schema parity**:
+   - *RLS enforcement*: Any new table created in `supabase/migrations/*.sql` must explicitly include `ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;` and explicit `GRANT` statements per `[[concepts/supabase-grant-convention]]` and `[[concepts/rls-enforcement-standard]]`.
+   - *Migration integrity check*: Migrations are version-controlled in `supabase/migrations/` and verified hermetically via `apps/engine/tests/test_migration_grants.py`. Unapplied migrations should be applied to the self-hosted PostgreSQL database (`docker/archive/docker-compose.yml`, `https://benchify-archive-db.clvg.uk`) to maintain schema parity.
+   - *System portfolio & entity online verification*: When adding or updating system portfolios (`sys-*`) or baseline benchmark models, run a live read-only verification probe against the primary PostgREST database (`SUPABASE_PROJECT_URL`, via diagnostic scratch script) to ensure initial records are provisioned in the `portfolios` table with initial cash balances and Reg T metrics before deployment.
 6. **Tool definition parity**:
    - When introducing or altering tools, keep all four locations synchronized:
      1. `packages/config/tools.json`
@@ -167,6 +167,6 @@ Conclude every verification run with a concise status report:
 | **Tier 1** | Static hygiene, LOC ceilings & hotspots | PASS / FAIL | Zero Ruff/Biome warnings; hotspot risk verified |
 | **Tier 2** | Builds & types | PASS / FAIL | TypeScript typecheck (`tsc --noEmit`) and production build status |
 | **Tier 3** | Hermetic tests & coverage | PASS / FAIL | Pytest / Vitest passing; coverage numbers |
-| **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, remote Supabase state |
+| **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, database schema parity |
 | **Tier 5** | Architecture & UI/UX | PASS / FAIL | Zero frontend compute, design system, layout |
 | **Tier 6** | Observability | PASS / FAIL | logger.exception used, zero swallowed exceptions |

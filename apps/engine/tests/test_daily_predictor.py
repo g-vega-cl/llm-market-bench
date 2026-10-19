@@ -317,7 +317,7 @@ async def test_get_daily_market_context_technicals():
         patch("core.llm.tools.execute_market_health_barometer_tool", new_callable=AsyncMock, return_value="Baro test"),
         patch("core.llm.tools.execute_get_market_feeling_tool", new_callable=AsyncMock, return_value="Feeling test"),
     ):
-        ctx = await get_daily_market_context(ticker="SPY")
+        ctx, data_record = await get_daily_market_context(ticker="SPY", return_data_record=True)
         assert "Previous Trading Session" in ctx
         assert "5-Day Return" in ctx
         assert "20-Day Simple Moving Average" in ctx
@@ -328,6 +328,10 @@ async def test_get_daily_market_context_technicals():
         assert "Volatility Index Details" in ctx
         assert "Market Health Barometer" in ctx
         assert "Recent Market Feeling" in ctx
+        assert data_record["trend_vector"] is not None
+        assert data_record["trend_vector"]["is_available"] is True
+        assert data_record["trend_vector"]["return_5d_pct"] is not None
+        assert data_record["trend_vector"]["sma_20"] is not None
 
 
 @pytest.mark.asyncio

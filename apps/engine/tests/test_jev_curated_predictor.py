@@ -88,11 +88,17 @@ def test_pack_daily_context_curation():
         "intraday_profile": "Prior Session VWAP: $578.50 | CLV: +0.65",
         "market_barometer": "50% of stocks above 200 SMA",
         "market_feeling": "Bullish euphoric mood",
+        "trend_vector": {
+            "summary": "Previous Trading Session (2026-10-08) Close: $577.20\n5-Day Return: +1.80%\n20-Day Simple Moving Average (SMA20): $572.10 (Distance: +0.89%)",
+        },
     }
 
     curated_context = pack_daily_context(day_record, manifest)
 
     # Inclusions
+    assert "--- Multi-Day Momentum & Trend Vector ---" in curated_context
+    assert "5-Day Return: +1.80%" in curated_context
+    assert "20-Day Simple Moving Average (SMA20): $572.10" in curated_context
     assert "8:30 AM CPI release" in curated_context
     assert "Tech rally carries momentum" in curated_context
     assert "Sherwood News" in curated_context

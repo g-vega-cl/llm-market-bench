@@ -300,3 +300,21 @@ def test_format_raw_point_in_time_inputs_with_safety_ceiling(sample_day_record: 
     formatted = format_raw_point_in_time_inputs(sample_day_record)
     assert len(formatted) <= 180500
     assert "[INPUT EXCEEDED 180,000 CHAR SAFETY BUFFER" in formatted
+
+
+def test_format_raw_point_in_time_inputs_trend_fallback_when_cache_absent(tmp_path):
+    """Verify that format_raw_point_in_time_inputs falls back to day_record['trend_vector'] when cache DB is absent."""
+    non_existent_db = str(tmp_path / "absent.db")
+    day_record = {
+        "target_date": "2026-10-15",
+        "ticker": "SPY",
+        "trend_vector": {
+            "summary": "5-Day Return: +1.45%\n20-Day Simple Moving Average (SMA20): $578.00 (Distance: +0.42%)",
+        },
+    }
+
+    raw_text = format_raw_point_in_time_inputs(day_record, db_path=non_existent_db)
+
+    assert "--- Multi-Day Momentum & Trend Vector ---" in raw_text
+    assert "5-Day Return: +1.45%" in raw_text
+    assert "20-Day Simple Moving Average (SMA20): $578.00" in raw_text

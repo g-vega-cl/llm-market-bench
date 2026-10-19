@@ -167,3 +167,14 @@ async def test_predict_bond_with_reasoning_model_openai_reasoning_effort_none():
         assert call_kwargs.get("reasoning_effort") == "none", (
             f"Expected reasoning_effort='none' for OpenAI structured extraction, got {call_kwargs.get('reasoning_effort')}"
         )
+
+
+def test_bond_predictor_trend_summary_injection():
+    """Verify that construct_lean_bond_prompt and compile_jev_bond_context include trend summary when present."""
+    quote = {"price": 92.45, "change": -0.35, "change_pct": -0.38, "previous_close": 92.80}
+    trend = "5-Day Return: -1.20%\n20-Day Simple Moving Average (SMA20): $94.10 (Distance: -1.75%)"
+
+    prompt = construct_lean_bond_prompt(ticker="TLT", quote=quote, date_str="2026-10-07", trend_summary=trend)
+    assert "Trend & Multi-Day Momentum:" in prompt
+    assert "5-Day Return: -1.20%" in prompt
+    assert "20-Day Simple Moving Average (SMA20): $94.10" in prompt

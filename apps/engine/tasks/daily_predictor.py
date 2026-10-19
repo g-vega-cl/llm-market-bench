@@ -240,6 +240,7 @@ async def get_structured_daily_market_context(
         "intraday_profile": None,
         "market_barometer": None,
         "market_feeling": None,
+        "trend_vector": None,
     }
 
     # 0. Today's Morning Economic Releases & Macro Indicators (CPI, PPI, Jobs, etc.)
@@ -358,24 +359,13 @@ async def get_structured_daily_market_context(
             context_lines.extend(proxy_lines)
         context_lines.append("=============================================")
 
-        history = await mdm.get_history(ticker, days=30)
-        if history and len(history) >= 2:
-            sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
-            prev_row = sorted_hist[-1]
-            prev_close = float(prev_row["price"])
-            prev_date = str(prev_row.get("fetched_at", ""))[:10]
+        history = await mdm.get_history(ticker, days=45)
+        from analytics.trend_profile import compute_trend_profile
 
-            context_lines.append(f"Previous Trading Session ({prev_date}) Close: ${prev_close:.2f}")
-
-            if len(sorted_hist) >= 5:
-                five_day_first = float(sorted_hist[-5]["price"])
-                five_day_change_pct = ((prev_close - five_day_first) / five_day_first) * 100.0
-                context_lines.append(f"5-Day Return: {five_day_change_pct:+.2f}%")
-
-            if len(sorted_hist) >= 20:
-                recent_prices = [float(r["price"]) for r in sorted_hist[-20:]]
-                sma_20 = sum(recent_prices) / len(recent_prices)
-                context_lines.append(f"20-Day Simple Moving Average (SMA20): ${sma_20:.2f}")
+        trend_prof = compute_trend_profile(history, target_date=today_str)
+        if trend_prof.is_available:
+            context_lines.extend(trend_prof.summary_lines)
+            data_record["trend_vector"] = trend_prof.as_dict()
 
         # Prior Session Intraday Movement Profile (OHLC, True Intraday Return, CLV, Archetype)
         try:

@@ -878,3 +878,73 @@ def test_ingestion_prompt_production_scale_contract():
     assert "## 3. Options Derivatives & Positioning" in DEFAULT_INGESTION_SYSTEM_PROMPT
     assert "## 4. Institutional Consensus & Historical Lessons" in DEFAULT_INGESTION_SYSTEM_PROMPT
     assert "## 5. Directional Tension & Key Levels" in DEFAULT_INGESTION_SYSTEM_PROMPT
+
+
+@pytest.mark.asyncio
+async def test_evaluate_curriculum_batch_directional_collapse_pruning():
+    from local_autoresearch.double_ratchet import evaluate_curriculum_batch
+
+    # Create 4 weeks of 4 days each = 16 days
+    curriculum_weeks = [
+        (
+            f"2026-W0{i + 1}",
+            [
+                {"target_date": f"2026-01-{i * 7 + j + 1:02d}", "ticker": "SPY", "actual_direction": "UP"}
+                for j in range(4)
+            ],
+        )
+        for i in range(4)
+    ]
+
+    criteria = JevCriteriaConfig(criteria_up="Up", criteria_down="Down", min_confidence=0.0)
+
+    # Mock evaluate_single_day_double_ratchet:
+    # 7 out of first 8 calls predict UP (87.5% UP bias).
+    # 4 out of 8 are correct (50.0% win rate).
+    call_count = 0
+
+    async def mock_eval_day(day_record, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        # Calls 1..7 predict UP, call 8 predicts DOWN -> 7/8 = 87.5% UP skew
+        pred_dir = "UP" if call_count != 8 else "DOWN"
+        # Alternate win/loss -> 4 correct out of 8 = 50.0% win rate
+        is_corr = (call_count % 2) == 1
+        return {
+            "target_date": day_record["target_date"],
+            "ticker": "SPY",
+            "predicted_direction": pred_dir,
+            "gated_action": pred_dir,
+            "actual_direction": "UP",
+            "confidence": 65.0,
+            "is_correct": is_corr,
+            "is_traded": True,
+            "brier_score": 0.12 if is_corr else 0.45,
+        }
+
+    with (
+        patch("local_autoresearch.double_ratchet.evaluate_single_day_double_ratchet", side_effect=mock_eval_day),
+        patch(
+            "local_autoresearch.double_ratchet.run_weekly_mini_autoresearch", AsyncMock(return_value=["Test Lesson"])
+        ),
+    ):
+        metrics, results, lessons = await evaluate_curriculum_batch(
+            curriculum_weeks=curriculum_weeks,
+            ingestion_prompt="Test Prompt",
+            criteria=criteria,
+            run_mini_cycles=True,
+            early_prune=True,
+            early_prune_min_weeks=2,
+            early_prune_win_rate_threshold=0.25,
+            early_prune_directional_bias=True,
+            early_prune_max_direction_skew=0.80,
+            early_prune_directional_skew_max_wr=0.52,
+        )
+
+        # Weeks 1 and 2 = 8 sessions total evaluated. Weeks 3 and 4 should be aborted due to directional collapse!
+        assert call_count == 8
+        assert len(results) == 8
+        assert metrics.get("early_pruned") is True
+        assert "directional collapse" in metrics.get("prune_reason", "").lower()
+        assert metrics["traded_win_rate_pct"] == 50.0
+

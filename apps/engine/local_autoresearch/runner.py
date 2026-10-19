@@ -849,6 +849,12 @@ def main() -> None:
         default=True,
         help="Early-prune unviable candidates in multi-week curriculum if early win rate is <=25% or cannot mathematically beat champion (default True)",
     )
+    parser.add_argument(
+        "--early-prune-directional-bias",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Early-prune candidates that collapse into unidirectional bias (>=80% same direction) with <=52% win rate (default True)",
+    )
 
     args = parser.parse_args()
 
@@ -888,6 +894,7 @@ def main() -> None:
             )
             print(f"Fresh newsletter ingestion (no-cache): {no_cache_flag}")
             print(f"Early pruning unviable candidates: {args.early_prune}")
+            print(f"Early pruning directional bias degeneracy: {args.early_prune_directional_bias}")
             print("=" * 60)
 
             summary = asyncio.run(
@@ -902,6 +909,7 @@ def main() -> None:
                     no_cache=no_cache_flag,
                     shuffle_weeks=shuffle_flag,
                     early_prune=args.early_prune,
+                    early_prune_directional_bias=args.early_prune_directional_bias,
                 )
             )
             print("=" * 60)

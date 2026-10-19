@@ -122,8 +122,9 @@ async def test_generate_daily_document_fails_without_cloud_fallback(sample_day_r
 
 
 def test_default_ingestion_prompt_word_ceiling():
-    assert "200 to 240 words" in DEFAULT_INGESTION_SYSTEM_PROMPT
-    assert "under 300 tokens" in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "200 to 240 words" not in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "under 300 tokens" not in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "1,000 to 1,500 words" in DEFAULT_INGESTION_SYSTEM_PROMPT
 
 
 @pytest.mark.asyncio

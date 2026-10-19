@@ -586,11 +586,17 @@ async def evaluate_curriculum_batch(
     api_key: str | None = None,
     run_id: str | None = None,
     run_mini_cycles: bool = True,
+    early_prune: bool = False,
+    early_prune_min_weeks: int = 2,
+    early_prune_win_rate_threshold: float = 0.25,
+    champion_win_rate: float | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[str]]:
     """Evaluate a multi-week curriculum sequentially, executing mini-autoresearch at each Friday close."""
     all_results: list[dict[str, Any]] = []
     all_lessons: list[str] = []
     total_weeks = len(curriculum_weeks)
+    total_sessions = sum(len(days) for _, days in curriculum_weeks)
+    is_pruned = False
 
     async with httpx.AsyncClient(timeout=180.0) as client:
         for w_idx, (week_key, week_days) in enumerate(curriculum_weeks, 1):
@@ -632,7 +638,44 @@ async def evaluate_curriculum_batch(
                     all_lessons.extend(lessons)
                     logger.info(f"  📝 Friday Mini-Cycle Lessons ({len(lessons)}): {lessons}")
 
+            # Check early pruning condition after week completion
+            if early_prune and w_idx >= early_prune_min_weeks and w_idx < total_weeks:
+                current_traded = [r for r in all_results if r.get("is_traded", True)]
+                current_traded_days = len(current_traded)
+                current_correct = sum(1 for r in current_traded if r.get("is_correct") is True)
+                current_wr = (current_correct / current_traded_days) if current_traded_days > 0 else 0.0
+
+                remaining_sessions = total_sessions - len(all_results)
+                max_possible_wr = (
+                    ((current_correct + remaining_sessions) / total_sessions * 100.0) if total_sessions > 0 else 0.0
+                )
+
+                should_prune = False
+                prune_reason = ""
+                if current_wr <= early_prune_win_rate_threshold:
+                    should_prune = True
+                    prune_reason = (
+                        f"early traded win rate {current_wr * 100:.1f}% <= threshold "
+                        f"{early_prune_win_rate_threshold * 100:.1f}% ({current_correct}/{current_traded_days} wins)"
+                    )
+                elif champion_win_rate is not None and max_possible_wr < champion_win_rate:
+                    should_prune = True
+                    prune_reason = (
+                        f"max possible win rate {max_possible_wr:.1f}% cannot beat "
+                        f"champion win rate {champion_win_rate:.1f}% ({current_correct} wins + {remaining_sessions} rem / {total_sessions})"
+                    )
+
+                if should_prune:
+                    logger.info(
+                        f"  ✂️ EARLY PRUNING TRIGGERED after Week {w_idx}/{total_weeks} "
+                        f"({len(all_results)}/{total_sessions} sessions): {prune_reason}. Skipping remaining weeks."
+                    )
+                    is_pruned = True
+                    break
+
     metrics = calculate_metrics(all_results)
+    if is_pruned:
+        metrics["early_pruned"] = True
     return metrics, all_results, all_lessons
 
 
@@ -651,6 +694,9 @@ async def run_double_ratchet_curriculum_tournament(
     stashed_test_ratio: float = 0.10,
     state_path: str | None = None,
     shuffle_weeks: bool = True,
+    early_prune: bool = True,
+    early_prune_min_weeks: int = 2,
+    early_prune_win_rate_threshold: float = 0.25,
 ) -> dict[str, Any]:
     """Execute iterative double-ratchet tournament across walk-forward batches with Friday mini-cycles.
 
@@ -846,13 +892,19 @@ async def run_double_ratchet_curriculum_tournament(
             api_key=api_key,
             run_id=cand_run_id,
             run_mini_cycles=True,
+            early_prune=early_prune,
+            early_prune_min_weeks=early_prune_min_weeks,
+            early_prune_win_rate_threshold=early_prune_win_rate_threshold,
+            champion_win_rate=champion_metrics.get("traded_win_rate_pct"),
         )
 
         cand_score = cand_metrics["score"]
-        is_accepted = cand_score > champion_score
+        is_early_pruned = cand_metrics.get("early_pruned", False)
+        is_accepted = (not is_early_pruned) and (cand_score > champion_score)
 
+        pruned_tag = " [EARLY PRUNED]" if is_early_pruned else ""
         logger.info(
-            f"Candidate Batch {it} Score: {cand_score:.2f} (Delta: {cand_score - champion_score:+.2f}) | "
+            f"Candidate Batch {it} Score: {cand_score:.2f} (Delta: {cand_score - champion_score:+.2f}){pruned_tag} | "
             f"Win Rate: {cand_metrics['traded_win_rate_pct']:.1f}% | "
             f"Traded: {cand_metrics['traded_days']}/{cand_metrics['total_days']} | "
             f"{'🏆 ACCEPTED' if is_accepted else '❌ DISCARDED'}"

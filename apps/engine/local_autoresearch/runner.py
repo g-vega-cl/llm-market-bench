@@ -843,6 +843,12 @@ def main() -> None:
         default=False,
         help="Batch curriculum weeks chronologically/sequentially rather than randomized multi-regime cross-sections (default False)",
     )
+    parser.add_argument(
+        "--early-prune",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Early-prune unviable candidates in multi-week curriculum if early win rate is <=25% or cannot mathematically beat champion (default True)",
+    )
 
     args = parser.parse_args()
 
@@ -881,6 +887,7 @@ def main() -> None:
                 f"Batch distribution: {'Randomized multi-regime cross-sections' if shuffle_flag else 'Sequential calendar blocks'}"
             )
             print(f"Fresh newsletter ingestion (no-cache): {no_cache_flag}")
+            print(f"Early pruning unviable candidates: {args.early_prune}")
             print("=" * 60)
 
             summary = asyncio.run(
@@ -894,6 +901,7 @@ def main() -> None:
                     cache_db_path=args.cache_db,
                     no_cache=no_cache_flag,
                     shuffle_weeks=shuffle_flag,
+                    early_prune=args.early_prune,
                 )
             )
             print("=" * 60)

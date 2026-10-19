@@ -1,13 +1,14 @@
 import asyncio
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import date, datetime, timedelta
 
 # Add the engine root directory to path for sibling package imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import logger
 from core.db import get_supabase_client
+from core.time_utils import EASTERN_TZ
 from execution.providers.factory import get_financial_provider
 
 # Standard universe of major sector ETFs used for benchmarking
@@ -164,20 +165,30 @@ def get_price_for_date(history: list[dict], target_date) -> float | None:
     return closest_price
 
 
-async def run_evaluation(force: bool = False):
+async def run_evaluation(force: bool = False, date_anchor: date | None = None):
     """Find pending sector predictions whose target_date has passed, fetch returns, and score them.
 
-    If force is True, re-evaluates all predictions whose target_date <= today regardless of status.
+    If force is True, re-evaluates all predictions whose target_date <= max_eval_date regardless of status.
     """
     client = get_supabase_client()
-    today = datetime.now(UTC).date()
+    today = date_anchor or datetime.now(EASTERN_TZ).date()
+
+    # On weekend (Sat=5, Sun=6), equity markets are closed until Monday 9:30 AM ET.
+    # Weekly sector predictions maturing on Monday (e.g. 7d target from prior Monday)
+    # have completed their entire trading week at Friday's close and are mature for evaluation.
+    if today.weekday() == 6:  # Sunday
+        max_eval_date = today + timedelta(days=1)
+    elif today.weekday() == 5:  # Saturday
+        max_eval_date = today + timedelta(days=2)
+    else:
+        max_eval_date = today
 
     try:
-        # Fetch pending predictions OR evaluated predictions missing evaluation_audit_data where target_date <= today
+        # Fetch pending predictions OR evaluated predictions missing evaluation_audit_data where target_date <= max_eval_date
         query = client.table("sector_predictions").select("*")
         if not force:
             query = query.or_("status.eq.pending,evaluation_audit_data.is.null")
-        response = query.lte("target_date", today.isoformat()).execute()
+        response = query.lte("target_date", max_eval_date.isoformat()).execute()
     except Exception as e:
         logger.exception(f"Failed to query predictions to evaluate/backfill from DB: {e}")
         return
@@ -379,6 +390,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Evaluate sector predictions")
     parser.add_argument("--force", action="store_true", help="Force re-evaluation of all mature predictions")
+    parser.add_argument("--date", type=str, default=None, help="Explicit date anchor (YYYY-MM-DD)")
     args = parser.parse_args()
 
-    asyncio.run(run_evaluation(force=args.force))
+    date_anchor = datetime.strptime(args.date, "%Y-%m-%d").date() if args.date else None
+    asyncio.run(run_evaluation(force=args.force, date_anchor=date_anchor))

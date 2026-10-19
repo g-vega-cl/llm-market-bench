@@ -1,7 +1,7 @@
 import asyncio
 import os
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -17,6 +17,7 @@ from core.llm.clients import (
 )
 from core.llm.minimax import MiniMaxClient
 from core.llm.predictor_prompts import SECTOR_PREDICTOR_PROMPT
+from core.time_utils import EASTERN_TZ
 
 
 class SectorPredictionResponse(BaseModel):
@@ -146,11 +147,11 @@ async def get_predictor_data() -> str:
         return "Error loading market correlation and returns data."
 
 
-async def run_sector_predictions():
+async def run_sector_predictions(target_model: str | None = None, date_anchor: date | None = None):
     client = get_supabase_client()
     data_block = await get_predictor_data()
 
-    today = datetime.now(UTC).date()
+    today = date_anchor or datetime.now(EASTERN_TZ).date()
     from core.time_utils import get_current_day_info
 
     day_info = get_current_day_info()
@@ -172,6 +173,9 @@ async def run_sector_predictions():
         {"name": GEMINI_MODEL, "client": get_gemini_client(), "type": "instructor", "provider": "gemini"},
         {"name": OPENAI_MODEL, "client": get_openai_client(), "type": "instructor", "provider": "openai"},
     ]
+
+    if target_model:
+        models = [m for m in models if m["name"] == target_model or target_model.lower() in m["name"].lower()]
 
     timeframes = ["7d", "30d", "60d", "90d"]
 
@@ -287,4 +291,12 @@ async def run_sector_predictions():
 
 
 if __name__ == "__main__":
-    asyncio.run(run_sector_predictions())
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run sector predictions")
+    parser.add_argument("--model", type=str, default=None, help="Filter to specific model name")
+    parser.add_argument("--date", type=str, default=None, help="Explicit prediction date (YYYY-MM-DD)")
+    args = parser.parse_args()
+
+    pred_date = datetime.strptime(args.date, "%Y-%m-%d").date() if args.date else None
+    asyncio.run(run_sector_predictions(target_model=args.model, date_anchor=pred_date))

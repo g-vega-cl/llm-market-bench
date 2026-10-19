@@ -170,6 +170,67 @@ async def test_run_evaluation_runner_force():
     mock_chain.update.assert_called_once()
 
 
+@pytest.mark.asyncio
+async def test_run_evaluation_weekend_monday_target():
+    """Verify that when run_evaluation executes on a Sunday, it evaluates predictions maturing through Monday."""
+    from datetime import date
+
+    sunday = date(2026, 10, 18)
+    monday_target = date(2026, 10, 19)
+    prediction_date = date(2026, 10, 12)
+
+    mock_prediction = {
+        "id": "mock-uuid-sunday-1",
+        "prediction_date": prediction_date.isoformat(),
+        "target_date": monday_target.isoformat(),
+        "timeframe": "7d",
+        "model_name": "sunday-model",
+        "prompt_tag": "sunday-tag",
+        "predicted_sector": "XLK",
+        "predicted_pair": ["XLK", "XLU"],
+        "reasoning": "Sunday evaluation test.",
+        "status": "pending",
+    }
+
+    mock_client = MagicMock()
+    mock_chain = MagicMock()
+    mock_select_execute = MagicMock()
+    mock_select_execute.data = [mock_prediction]
+
+    mock_update_execute = MagicMock()
+    mock_update_execute.data = [{"id": "mock-uuid-sunday-1"}]
+
+    mock_chain.select.return_value = mock_chain
+    mock_chain.eq.return_value = mock_chain
+    mock_chain.or_.return_value = mock_chain
+    mock_chain.lte.return_value = mock_chain
+    mock_chain.update.return_value = mock_chain
+
+    def mock_execute_side_effect():
+        if mock_chain.update.called:
+            return mock_update_execute
+        return mock_select_execute
+
+    mock_chain.execute = mock_execute_side_effect
+    mock_client.table.return_value = mock_chain
+
+    mock_provider = AsyncMock()
+    mock_provider.get_history.return_value = [
+        {"price": 110.0, "fetched_at": monday_target.isoformat()},
+        {"price": 100.0, "fetched_at": prediction_date.isoformat()},
+    ]
+
+    with (
+        patch("tasks.evaluate_predictions.get_supabase_client", return_value=mock_client),
+        patch("tasks.evaluate_predictions.get_financial_provider", return_value=mock_provider),
+    ):
+        await run_evaluation(date_anchor=sunday)
+
+    # On Sunday Oct 18, lte must be called with Monday Oct 19 to include mature 7d predictions
+    mock_chain.lte.assert_any_call("target_date", "2026-10-19")
+    mock_chain.update.assert_called_once()
+
+
 def test_get_price_for_date_edge_cases():
     """Verify get_price_for_date handles empty lists, malformed dates, exact hits, and closest fallbacks."""
     from datetime import date

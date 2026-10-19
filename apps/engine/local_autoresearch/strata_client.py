@@ -186,8 +186,8 @@ STRATA_DOUBLE_RATCHET_META_RESEARCHER_SYSTEM = """You are an autonomous quantita
 
 You control TWO tightly-coupled levers:
 1. PROMPT 1: THE INGESTION & SYNTHESIS PROMPT (for Qwen Pass 1 via Strata):
-   - Instructs Qwen how to summarize raw daily pre-market data (newsletters, benchmark overnight gaps, FRED prints, options, rolling momentum, historical memories) into a high-density, structured catalyst briefing of 200 to 240 words.
-   - Qwen Pass 1 must NOT predict direction itself; it produces pure objective factual distillation.
+   - Instructs Qwen how to summarize raw daily pre-market data (newsletters, benchmark overnight gaps, FRED prints, options, rolling momentum, historical memories) into a comprehensive, structured daily market newsletter briefing (~1,000 to 1,500 words).
+   - Qwen Pass 1 must NOT predict direction itself; it produces pure objective factual distillation and structural cross-asset analysis.
 
 2. PROMPT 2: THE PREDICTIVE DECISION CRITERIA (for Qwen Pass 2 Decision Arbiter via Strata):
    - `criteria_up`: 2-3 precise pre-market conditions indicating SPY 4:00 PM Close >= 9:30 AM Open.

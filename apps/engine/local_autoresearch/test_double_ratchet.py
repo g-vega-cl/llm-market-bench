@@ -742,3 +742,139 @@ def test_summarize_recent_errors():
     assert "RECENT PREDICTIVE FAILURES" in summary
     assert "2026-09-02: Predicted UP (56.0%) | Actual was DOWN" in summary
     assert "2026-09-03: NO_TRADE (52.0%) | Actual was UP (Missed trend move)" in summary
+
+
+@pytest.mark.asyncio
+async def test_evaluate_curriculum_batch_early_pruning_triggered():
+    from local_autoresearch.double_ratchet import evaluate_curriculum_batch
+
+    # Create 4 weeks of 4 days each = 16 days
+    curriculum_weeks = [
+        (
+            f"2026-W0{i + 1}",
+            [
+                {"target_date": f"2026-01-{i * 7 + j + 1:02d}", "ticker": "SPY", "actual_direction": "UP"}
+                for j in range(4)
+            ],
+        )
+        for i in range(4)
+    ]
+
+    criteria = JevCriteriaConfig(criteria_up="Up", criteria_down="Down", min_confidence=0.0)
+
+    # Mock evaluate_single_day_double_ratchet: only 1 win across first 2 weeks (8 days) -> 1/8 = 12.5% win rate
+    call_count = 0
+
+    async def mock_eval_day(day_record, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        # Day 1 is correct, all subsequent are incorrect
+        is_corr = call_count == 1
+        return {
+            "target_date": day_record["target_date"],
+            "ticker": "SPY",
+            "predicted_direction": "UP" if is_corr else "DOWN",
+            "gated_action": "UP" if is_corr else "DOWN",
+            "actual_direction": "UP",
+            "confidence": 65.0,
+            "is_correct": is_corr,
+            "is_traded": True,
+            "brier_score": 0.12 if is_corr else 0.45,
+        }
+
+    with (
+        patch("local_autoresearch.double_ratchet.evaluate_single_day_double_ratchet", side_effect=mock_eval_day),
+        patch(
+            "local_autoresearch.double_ratchet.run_weekly_mini_autoresearch", AsyncMock(return_value=["Test Lesson"])
+        ),
+    ):
+        metrics, results, lessons = await evaluate_curriculum_batch(
+            curriculum_weeks=curriculum_weeks,
+            ingestion_prompt="Test Prompt",
+            criteria=criteria,
+            run_mini_cycles=True,
+            early_prune=True,
+            early_prune_min_weeks=2,
+            early_prune_win_rate_threshold=0.25,
+        )
+
+        # Weeks 1 and 2 = 8 sessions total evaluated. Weeks 3 and 4 should be skipped!
+        assert call_count == 8
+        assert len(results) == 8
+        assert metrics.get("early_pruned") is True
+        assert metrics["traded_win_rate_pct"] == 12.5
+        assert len(lessons) >= 1
+
+
+@pytest.mark.asyncio
+async def test_evaluate_curriculum_batch_early_pruning_not_triggered():
+    from local_autoresearch.double_ratchet import evaluate_curriculum_batch
+
+    # Create 4 weeks of 4 days each = 16 days
+    curriculum_weeks = [
+        (
+            f"2026-W0{i + 1}",
+            [
+                {"target_date": f"2026-01-{i * 7 + j + 1:02d}", "ticker": "SPY", "actual_direction": "UP"}
+                for j in range(4)
+            ],
+        )
+        for i in range(4)
+    ]
+
+    criteria = JevCriteriaConfig(criteria_up="Up", criteria_down="Down", min_confidence=0.0)
+
+    # 3 out of 4 correct per week = 75% win rate
+    call_count = 0
+
+    async def mock_eval_day(day_record, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        is_corr = (call_count % 4) != 0
+        return {
+            "target_date": day_record["target_date"],
+            "ticker": "SPY",
+            "predicted_direction": "UP" if is_corr else "DOWN",
+            "gated_action": "UP" if is_corr else "DOWN",
+            "actual_direction": "UP",
+            "confidence": 65.0,
+            "is_correct": is_corr,
+            "is_traded": True,
+            "brier_score": 0.12 if is_corr else 0.45,
+        }
+
+    with (
+        patch("local_autoresearch.double_ratchet.evaluate_single_day_double_ratchet", side_effect=mock_eval_day),
+        patch(
+            "local_autoresearch.double_ratchet.run_weekly_mini_autoresearch", AsyncMock(return_value=["Test Lesson"])
+        ),
+    ):
+        metrics, results, lessons = await evaluate_curriculum_batch(
+            curriculum_weeks=curriculum_weeks,
+            ingestion_prompt="Test Prompt",
+            criteria=criteria,
+            run_mini_cycles=True,
+            early_prune=True,
+            early_prune_min_weeks=2,
+            early_prune_win_rate_threshold=0.25,
+        )
+
+        # All 4 weeks should complete (16 sessions)
+        assert call_count == 16
+        assert len(results) == 16
+        assert metrics.get("early_pruned") is not True
+        assert metrics["traded_win_rate_pct"] == 75.0
+
+
+def test_ingestion_prompt_production_scale_contract():
+    from local_autoresearch.document_builder import DEFAULT_INGESTION_SYSTEM_PROMPT
+
+    # Contract: Prompt 1 must target comprehensive ~1,000-1,500 word briefing and NOT have 200-240 word limit
+    assert "200 to 240 words" not in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "under 300 tokens" not in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "1,000" in DEFAULT_INGESTION_SYSTEM_PROMPT or "1,200" in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "## 1. Macro & Yield Trajectory" in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "## 2. Multi-Day Trend & Overnight Tape" in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "## 3. Options Derivatives & Positioning" in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "## 4. Institutional Consensus & Historical Lessons" in DEFAULT_INGESTION_SYSTEM_PROMPT
+    assert "## 5. Directional Tension & Key Levels" in DEFAULT_INGESTION_SYSTEM_PROMPT

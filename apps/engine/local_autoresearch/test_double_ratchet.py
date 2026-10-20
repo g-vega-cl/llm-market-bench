@@ -947,4 +947,3 @@ async def test_evaluate_curriculum_batch_directional_collapse_pruning():
         assert metrics.get("early_pruned") is True
         assert "directional collapse" in metrics.get("prune_reason", "").lower()
         assert metrics["traded_win_rate_pct"] == 50.0
-

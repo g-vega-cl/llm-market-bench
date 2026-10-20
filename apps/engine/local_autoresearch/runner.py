@@ -855,6 +855,30 @@ def main() -> None:
         default=True,
         help="Early-prune candidates that collapse into unidirectional bias (>=80% same direction) with <=52% win rate (default True)",
     )
+    parser.add_argument(
+        "--escalate-promising",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Escalate candidates with >=58% win rate in Stage 1 to Stage 2 multi-regime expansion (default True)",
+    )
+    parser.add_argument(
+        "--promising-win-rate",
+        type=float,
+        default=0.58,
+        help="Minimum Stage 1 traded win rate required to escalate to Stage 2 (default 0.58)",
+    )
+    parser.add_argument(
+        "--significance-alpha",
+        type=float,
+        default=0.05,
+        help="Significance level alpha for binomial test against 50% null in Stage 2 (default 0.05)",
+    )
+    parser.add_argument(
+        "--stage2-expansion-weeks",
+        type=int,
+        default=10,
+        help="Number of contrasting multi-regime weeks evaluated during Stage 2 escalation (default 10)",
+    )
 
     args = parser.parse_args()
 
@@ -895,6 +919,12 @@ def main() -> None:
             print(f"Fresh newsletter ingestion (no-cache): {no_cache_flag}")
             print(f"Early pruning unviable candidates: {args.early_prune}")
             print(f"Early pruning directional bias degeneracy: {args.early_prune_directional_bias}")
+            print(f"Escalate promising candidates (Stage 2 expansion): {args.escalate_promising}")
+            if args.escalate_promising:
+                print(
+                    f"  Promising threshold: {args.promising_win_rate * 100:.1f}% WR | "
+                    f"Expansion: +{args.stage2_expansion_weeks} weeks | Alpha: {args.significance_alpha}"
+                )
             print("=" * 60)
 
             summary = asyncio.run(
@@ -910,6 +940,10 @@ def main() -> None:
                     shuffle_weeks=shuffle_flag,
                     early_prune=args.early_prune,
                     early_prune_directional_bias=args.early_prune_directional_bias,
+                    escalate_promising=args.escalate_promising,
+                    promising_win_rate=args.promising_win_rate,
+                    significance_alpha=args.significance_alpha,
+                    stage2_expansion_weeks=args.stage2_expansion_weeks,
                 )
             )
             print("=" * 60)

@@ -54,6 +54,8 @@ restored from the checkpoint.
 ## Related
 
 - [[entities/local-autoresearch]]
+- [[concepts/significance-funnel]]
+- [[concepts/early-pruning]]
 - [[entities/autoresearch]]
 - [[concepts/multi-track-autoresearch]]
 - [[concepts/jev-decisions-model]]

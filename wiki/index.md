@@ -96,6 +96,8 @@
 
 ## Concepts
 
+- [[concepts/significance-funnel]] — adaptive two-stage escalation with exact binomial significance testing for double-ratchet candidates
+- [[concepts/significance-funnel]] — Auto-indexed page
 - [[concepts/trend-profile]] — point-in-time multi-day momentum vector (5-day return, SMA20, 3-day sequence) with zero lookahead and zero hallucination
 - [[concepts/weekend-prediction-evaluation]] — evaluates Monday-maturing sector predictions over the weekend
 - [[concepts/early-pruning]] — aborts unviable double-ratchet candidates early to save compute

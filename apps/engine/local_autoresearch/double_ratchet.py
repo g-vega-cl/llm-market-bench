@@ -37,6 +37,12 @@ from local_autoresearch.manifest import (
 from local_autoresearch.qwen_predictor_client import (
     evaluate_with_qwen_predictor,
 )
+from local_autoresearch.significance_funnel import (
+    SignificanceFunnelConfig,
+    evaluate_stage2_escalation,
+    sample_contrasting_regime_weeks,
+    should_escalate_to_stage2,
+)
 from local_autoresearch.strata_client import (
     DEFAULT_STRATA_URL,
     generate_double_ratchet_mutation_with_strata,
@@ -721,6 +727,10 @@ async def run_double_ratchet_curriculum_tournament(
     early_prune_directional_bias: bool = True,
     early_prune_max_direction_skew: float = 0.80,
     early_prune_directional_skew_max_wr: float = 0.52,
+    escalate_promising: bool = True,
+    promising_win_rate: float = 0.58,
+    significance_alpha: float = 0.05,
+    stage2_expansion_weeks: int = 10,
 ) -> dict[str, Any]:
     """Execute iterative double-ratchet tournament across walk-forward batches with Friday mini-cycles.
 
@@ -927,6 +937,54 @@ async def run_double_ratchet_curriculum_tournament(
 
         cand_score = cand_metrics["score"]
         is_early_pruned = cand_metrics.get("early_pruned", False)
+
+        # Adaptive Significance Funnel: Escalate promising Stage 1 candidates to Stage 2 multi-regime testing
+        if escalate_promising and not is_early_pruned and cand_score > champion_score:
+            funnel_config = SignificanceFunnelConfig(
+                promising_win_rate=promising_win_rate,
+                significance_alpha=significance_alpha,
+                stage2_expansion_weeks=stage2_expansion_weeks,
+                early_prune_stage2=early_prune,
+            )
+            if should_escalate_to_stage2(cand_metrics, funnel_config):
+                stage1_keys = {w[0] for w in curriculum_batch}
+                expansion_weeks = sample_contrasting_regime_weeks(
+                    all_weeks=all_weeks,
+                    stage1_week_keys=stage1_keys,
+                    num_weeks=stage2_expansion_weeks,
+                    seed=(seed or 42) + it,
+                )
+                if expansion_weeks:
+                    logger.info(
+                        f"Candidate Batch {it}: STAGE 1 PASSED (WR: {cand_metrics['traded_win_rate_pct']:.1f}%) "
+                        f"──▶ 🚀 ESCALATING TO STAGE 2 MULTI-REGIME EXPANSION ({len(expansion_weeks)} weeks)..."
+                    )
+                    escalation_res = await evaluate_stage2_escalation(
+                        expansion_weeks=expansion_weeks,
+                        stage1_results=cand_results,
+                        ingestion_prompt=mutation.ingestion_prompt,
+                        criteria=mutation.criteria,
+                        config=funnel_config,
+                        strata_url=strata_url,
+                        laya_url=laya_url,
+                        db_path=cache_db_path,
+                        document_cache=cand_doc_cache,
+                        api_key=api_key,
+                        run_id=cand_run_id,
+                    )
+                    if escalation_res["passed"]:
+                        cand_metrics = escalation_res["cumulative_metrics"]
+                        cand_results = escalation_res["combined_results"]
+                        cand_score = cand_metrics["score"]
+                        cand_lessons.extend(escalation_res.get("stage2_lessons", []))
+                    else:
+                        is_early_pruned = True
+                        cand_metrics["early_pruned"] = True
+                        p_val = escalation_res["significance"]["p_value"]
+                        cand_metrics["prune_reason"] = (
+                            f"Stage 2 significance failed (p-value {p_val:.4f} >= alpha {significance_alpha})"
+                        )
+
         is_accepted = (not is_early_pruned) and (cand_score > champion_score)
 
         pruned_reason = f" ({cand_metrics.get('prune_reason')})" if cand_metrics.get("prune_reason") else ""

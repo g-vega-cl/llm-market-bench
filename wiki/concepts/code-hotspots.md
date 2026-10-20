@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **185**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **182**).
 
 ## Top Hotspots
 
@@ -13,21 +13,21 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/engine/tasks/daily_predictor.py` | 23 | 7 | 30.4% | 705 | 161 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 18 | 6 | 33.3% | 264 | 108 | **CRITICAL** |
-| `apps/engine/tests/test_daily_predictor.py` | 13 | 7 | 53.8% | 752 | 91 | **HIGH** |
+| `apps/engine/tasks/daily_predictor.py` | 22 | 5 | 22.7% | 705 | 110 | **CRITICAL** |
 | `apps/engine/tests/test_workflow_schedule.py` | 15 | 6 | 40.0% | 239 | 90 | **CRITICAL** |
 | `apps/engine/main.py` | 21 | 3 | 14.3% | 73 | 63 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 15 | 4 | 26.7% | 264 | 60 | **HIGH** |
+| `apps/engine/tests/test_daily_predictor.py` | 12 | 5 | 41.7% | 752 | 60 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 25 | 2 | 8.0% | 1758 | 50 | **HIGH** |
-| `apps/engine/tasks/daily_autoresearch.py` | 15 | 3 | 20.0% | 735 | 45 | **HIGH** |
 | `apps/engine/autoresearch/program.md` | 22 | 2 | 9.1% | 137 | 44 | **HIGH** |
 | `apps/engine/tasks/evaluate_daily_predictions.py` | 11 | 4 | 36.4% | 290 | 44 | **HIGH** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 11 | 4 | 36.4% | 784 | 44 | **HIGH** |
 | `packages/config/tools.json` | 21 | 2 | 9.5% | 210 | 42 | **HIGH** |
 | `apps/engine/core/config.py` | 19 | 2 | 10.5% | 214 | 38 | **HIGH** |
 | `apps/engine/tests/test_evaluate_daily_predictions.py` | 9 | 4 | 44.4% | 410 | 36 | **HIGH** |
 | `apps/engine/execution/market_data.py` | 7 | 5 | 71.4% | 320 | 35 | **HIGH** |
+| `apps/engine/tasks/daily_autoresearch.py` | 14 | 2 | 14.3% | 735 | 28 | **MEDIUM** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 13 | 2 | 15.4% | 379 | 26 | **MEDIUM** |
+| `apps/engine/tests/test_tools_consistency.py` | 20 | 1 | 5.0% | 164 | 20 | **MEDIUM** |
 
 ## Temporal Coupling (Co-churn)
 

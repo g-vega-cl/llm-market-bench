@@ -43,6 +43,7 @@ The runner exposes `--early-prune` / `--no-early-prune` (default enabled) and `-
 
 ## Related
 
+- [[concepts/significance-funnel]] — multi-stage progressive expansion for statistically sound candidates
 - [[concepts/strata-laya-double-ratchet]] — the tournament this mechanism belongs to
 - [[entities/local-autoresearch]] — the package that hosts the curriculum evaluation
 - [[concepts/multi-track-autoresearch]] — related autoresearch orchestration

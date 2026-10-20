@@ -237,4 +237,87 @@ describe('PortfolioComparisonChart — uses design system', () => {
         )?.parentElement;
         expect(chip?.textContent).toContain('+15.50%');
     });
+
+    it('updates selected portfolios to new default top 5 when timeframe prop changes', () => {
+        const initial90dData = [
+            {
+                portfolioId: 'port-1',
+                ownerId: 'agent-1',
+                performance: [
+                    { date: '2026-05-01', value: 0 },
+                    { date: '2026-05-02', value: 50 },
+                ],
+            },
+            {
+                portfolioId: 'port-2',
+                ownerId: 'agent-2',
+                performance: [
+                    { date: '2026-05-01', value: 0 },
+                    { date: '2026-05-02', value: 30 },
+                ],
+            },
+        ];
+
+        const updated7dData = [
+            {
+                portfolioId: 'port-3',
+                ownerId: 'agent-3',
+                performance: [
+                    { date: '2026-05-01', value: 0 },
+                    { date: '2026-05-02', value: 80 },
+                ],
+            },
+            {
+                portfolioId: 'port-4',
+                ownerId: 'agent-4',
+                performance: [
+                    { date: '2026-05-01', value: 0 },
+                    { date: '2026-05-02', value: 60 },
+                ],
+            },
+        ];
+
+        const { container, rerender } = render(
+            <PortfolioComparisonChart
+                data={initial90dData}
+                benchmarkData={{}}
+                selectedBenchmark=""
+                timeframe="90d"
+                onReset={vi.fn()}
+            />,
+        );
+
+        // Under 90d, agent-1 and agent-2 are selected
+        expect(
+            container.querySelector('button[aria-label="Remove agent 1 from comparison"]'),
+        ).toBeTruthy();
+        expect(
+            container.querySelector('button[aria-label="Remove agent 2 from comparison"]'),
+        ).toBeTruthy();
+        expect(
+            container.querySelector('button[aria-label="Remove agent 3 from comparison"]'),
+        ).toBeNull();
+
+        // Switch timeframe to 7d
+        rerender(
+            <PortfolioComparisonChart
+                data={updated7dData}
+                benchmarkData={{}}
+                selectedBenchmark=""
+                timeframe="7d"
+                onReset={vi.fn()}
+            />,
+        );
+
+        // Under 7d, selection should update to agent-3 and agent-4
+        expect(
+            container.querySelector('button[aria-label="Remove agent 3 from comparison"]'),
+        ).toBeTruthy();
+        expect(
+            container.querySelector('button[aria-label="Remove agent 4 from comparison"]'),
+        ).toBeTruthy();
+        expect(
+            container.querySelector('button[aria-label="Remove agent 1 from comparison"]'),
+        ).toBeNull();
+    });
 });

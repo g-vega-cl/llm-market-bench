@@ -267,6 +267,20 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
             };
         });
 
+        // Rank portfolios descending by trailing return over the selected timeframe
+        const getReturnPct = (p: { performance: { value: number }[] }) => {
+            if (!p.performance || p.performance.length === 0) return -Infinity;
+            const val = p.performance[p.performance.length - 1]?.value;
+            return typeof val === 'number' && !Number.isNaN(val) ? val : -Infinity;
+        };
+
+        portfolios.sort((a, b) => {
+            const aVal = getReturnPct(a);
+            const bVal = getReturnPct(b);
+            if (bVal !== aVal) return bVal - aVal;
+            return a.ownerId.localeCompare(b.ownerId);
+        });
+
         // Slice benchmark price history
         const benchmarkData: Record<string, BenchmarkDataPoint[]> = {};
         if (comparisonData.benchmarkData) {
@@ -369,6 +383,7 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                             data={processedComparisonData.portfolios}
                             benchmarkData={processedComparisonData.benchmarkData}
                             selectedBenchmark={selectedBenchmark}
+                            timeframe={timeframe}
                         />
                     </section>
                 )}

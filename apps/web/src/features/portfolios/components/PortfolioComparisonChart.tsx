@@ -34,6 +34,7 @@ interface PortfolioComparisonChartProps {
     data: PortfolioSeries[];
     benchmarkData?: Record<string, BenchmarkDataPoint[]>;
     selectedBenchmark?: string;
+    timeframe?: string;
     onReset?: () => void;
     maxSelected?: number;
 }
@@ -42,6 +43,7 @@ export function PortfolioComparisonChart({
     data: rawData,
     benchmarkData: rawBenchmarkData,
     selectedBenchmark = 'SPY',
+    timeframe,
     onReset,
     maxSelected = 5,
 }: PortfolioComparisonChartProps) {
@@ -126,6 +128,7 @@ export function PortfolioComparisonChart({
     }, [data, maxSelected]);
 
     const isInitializedRef = React.useRef(defaultSelectedIds.length > 0);
+    const prevTimeframeRef = React.useRef(timeframe);
     const [selectedPortfolioIds, setSelectedPortfolioIds] = React.useState<string[]>(
         () => defaultSelectedIds,
     );
@@ -134,12 +137,16 @@ export function PortfolioComparisonChart({
         if (!isInitializedRef.current && defaultSelectedIds.length > 0) {
             setSelectedPortfolioIds(defaultSelectedIds);
             isInitializedRef.current = true;
+        } else if (prevTimeframeRef.current !== timeframe) {
+            prevTimeframeRef.current = timeframe;
+            setSelectedPortfolioIds(defaultSelectedIds);
+            setClickedData(null);
         } else if (isInitializedRef.current) {
             setSelectedPortfolioIds((prev) =>
                 prev.filter((id) => data.some((p) => p.portfolioId === id)),
             );
         }
-    }, [defaultSelectedIds, data]);
+    }, [defaultSelectedIds, data, timeframe]);
 
     const handleAddPortfolio = React.useCallback(
         (portfolioId: string) => {

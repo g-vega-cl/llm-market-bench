@@ -283,4 +283,102 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
             expect(screen.getByText('+1.50%')).toBeDefined();
         });
     });
+
+    it('re-ranks portfolios by performance when timeframe changes so best performers are first', async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const day7Ago = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+        const day90Ago = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
+
+        const mockPortfolios = [
+            {
+                id: 'p-a',
+                owner_id: 'agent-a',
+                total_equity: 140000,
+                cash_balance: 50000,
+                buying_power: 100000,
+                is_active: true,
+                is_autoresearch: false,
+                created_at: `${day90Ago}T12:00:00.000Z`,
+                updated_at: `${today}T12:00:00.000Z`,
+            },
+            {
+                id: 'p-b',
+                owner_id: 'agent-b',
+                total_equity: 120000,
+                cash_balance: 50000,
+                buying_power: 100000,
+                is_active: true,
+                is_autoresearch: false,
+                created_at: `${day90Ago}T12:00:00.000Z`,
+                updated_at: `${today}T12:00:00.000Z`,
+            },
+        ];
+
+        // p-a: 90d +40% (100k -> 140k), but 7d -6.67% (150k -> 140k)
+        // p-b: 90d +20% (100k -> 120k), but 7d +20% (100k -> 120k)
+        const mockComparisonFetch = vi.fn().mockResolvedValue({
+            portfolios: [
+                {
+                    portfolioId: 'p-a',
+                    ownerId: 'agent-a',
+                    performance: [
+                        { date: day90Ago, value: 0, totalEquity: 100000 },
+                        { date: day7Ago, value: 50, totalEquity: 150000 },
+                        { date: today, value: 40, totalEquity: 140000 },
+                    ],
+                },
+                {
+                    portfolioId: 'p-b',
+                    ownerId: 'agent-b',
+                    performance: [
+                        { date: day90Ago, value: 0, totalEquity: 100000 },
+                        { date: day7Ago, value: 0, totalEquity: 100000 },
+                        { date: today, value: 20, totalEquity: 120000 },
+                    ],
+                },
+            ],
+            startDate: day90Ago,
+            endDate: today,
+            benchmarkData: {
+                SPY: [
+                    { date: day90Ago, price: 500 },
+                    { date: day7Ago, price: 510 },
+                    { date: today, price: 520 },
+                ],
+            },
+        });
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <PortfoliosPage
+                    initialData={
+                        mockPortfolios as unknown as Parameters<
+                            typeof PortfoliosPage
+                        >[0]['initialData']
+                    }
+                    fetchFn={vi.fn()}
+                    comparisonFetchFn={mockComparisonFetch}
+                />
+            </QueryClientProvider>,
+        );
+
+        // Initially on 90D: p-a (+40%) is better than p-b (+20%)
+        await waitFor(() => {
+            expect(lastChartProps).not.toBeNull();
+            expect(lastChartProps.timeframe).toBe('90d');
+            expect(lastChartProps.data[0].portfolioId).toBe('p-a');
+            expect(lastChartProps.data[1].portfolioId).toBe('p-b');
+        });
+
+        // Switch timeframe to 7D
+        const btn7d = screen.getByRole('button', { name: '7D' });
+        fireEvent.click(btn7d);
+
+        // Over 7D: p-b (+20%) is better than p-a (-6.67%), so p-b must be ranked first
+        await waitFor(() => {
+            expect(lastChartProps.timeframe).toBe('7d');
+            expect(lastChartProps.data[0].portfolioId).toBe('p-b');
+            expect(lastChartProps.data[1].portfolioId).toBe('p-a');
+        });
+    });
 });

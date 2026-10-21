@@ -82,6 +82,7 @@ When evaluating the 10 batch winners out-of-distribution across the **21 sequest
 - The gap-fading heuristic failed in persistent trend regimes, repeatedly calling DOWN on morning green opens with only 33.3% accuracy.
 - Conversely, `qwen-jev-ad283a` (Batch 7: `trend-exhaustion`) demonstrated robust out-of-distribution generalization, achieving **55.6% win rate** and a **52.20 vault score** by filtering out 30 low-conviction days via strict confidence gating.
 - For detailed root-cause forensics on market efficiency limits, information horizon asymmetry, and the selectivity scoring trap, see [[concepts/daily-directional-predictability-limits]].
+- For the mathematical, statistical, and architectural blueprint on scaling sample power ($N \ge 60$), return-weighted Sharpe payoff functions, and anti-bear priors, see [[concepts/quant-ml-sp500-directional-blueprint]].
 
 
 
@@ -145,5 +146,38 @@ When evaluating the 10 batch winners out-of-distribution across the **21 sequest
 - **Strictly Local & Zero Cloud Storage**: All data, weekly lessons, and prompt mutations remain in `.local_autoresearch_cache.db` and `local_store.db` (0 writes to Supabase). Zero external API calls. See [[concepts/strata-laya-double-ratchet]].
 - **Deterministic SQLite Connection Lifecycle (`contextlib.closing`)**: All SQLite connection contexts across `document_builder.py`, `double_ratchet.py`, and `cache_builder.py` use `contextlib.closing(sqlite3.connect(...))` to guarantee deterministic connection closure upon block exit. This eliminates Python 3.13 `ResourceWarning: unclosed database` leaks during long tournament runs and hermetic pytest sessions.
 - **Strata v0.1.45 Runtime Environment**: Inference runs on local dedicated hardware (NVIDIA RTX 3060 12GB `sm_86` with 64GB host RAM) hosting `Qwen3.8-Flash-Next-GSQ-RCO-IQ2_XS` via Strata `v0.1.45`. The runtime is tuned with `--prompt-cache 8192` for instant KV prefix reuse, 65k context capacity (`--max-context 65536`), and official model-card sampling defaults (`temperature: 1.0, top_p: 0.95, top_k: 20`) preventing chain-of-thought looping.
+
+---
+
+## Single-Prompt Ground-Truth Ratchet (Strata ORCA)
+
+To eliminate the divergence between historical simulated two-pass newsletters and real-world trading, the local autoresearch architecture evolved into a **Single-Prompt Ground-Truth Ratchet** ([`apps/engine/local_autoresearch/single_prompt_ratchet.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/local_autoresearch/single_prompt_ratchet.py)):
+
+### 1. Direct Production Prompt Evolution
+- Directly mutates and optimizes the production trading prompt (`DAILY_PREDICTOR_PROMPT`), completely eliminating synthetic two-pass newsletter generation.
+- The prompt is split into three sections via `split_daily_predictor_prompt`:
+  - **Frozen Constraints Header**: Identity, available market context, and macro inputs.
+  - **Mutable Strategy Body**: Falsifiable quantitative rules, gap analysis, and asymmetric catalyst weighting evolved by the meta-researcher.
+  - **Frozen Constraints Footer**: JSON schema enforcement (`predicted_direction`, `confidence`, `expected_return_pct`, `rationale`, `catalysts`).
+
+### 2. Hermetic Ground-Truth Session Store ([`live_session_store.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/local_autoresearch/live_session_store.py))
+- Materializes live production runs from Supabase into `.live_production_sessions.db`.
+- Preserves the exact pre-market newsletters, real serialized market contexts, and ground-truth intraday SPY open/close prices.
+- **Premarket Timestamp Guard (`is_premarket_timestamp_clean`)**: Enforces a strict `< 09:30:00 AM EDT` (< 13:30:00 UTC) ceiling, purging post-open sessions recorded during afternoon market hours.
+
+### 3. Strata ORCA Reasoning Token Calibration
+- Inference runs locally on **Strata ORCA** (`orcarouter-qwen3.8-flash-next-uncensored-iq3_xxs`) with unconstrained chain-of-thought reasoning (`reasoning_budget_tokens: -1`).
+- **Thinking Budget Mechanics**: Strata enforces an answer reserve `answer_room = max_tokens // 4`, yielding:
+  - `max_tokens: 32768`: 24,576-token thinking budget. Empirical testing demonstrated an infinite repetitive reasoning loop (~442s/session, triggering HTTP timeouts).
+  - `max_tokens: 16384`: 12,288-token thinking budget with `timeout=500.0`. Enables deep, exhaustive macro deduction with clean convergence (~105s average latency).
+  - Empirical head-to-head testing across 20 non-continuous sessions proved 100% directional agreement between 8k and 16k configurations.
+
+### 4. Four Statistical Leakage & Regime Guards
+See [[concepts/ground-truth-autoresearch-leakage-guards]] for detailed mathematical derivations:
+- **Zero-Lookahead Temporal Purge**: 7 of 51 raw sessions were recorded post-market open (up to 3:18 PM EDT), yielding artificial 84% confidence on known moves. Purging these locked the dataset to 47 strictly pre-market sessions.
+- **Balanced Accuracy & Base-Rate Trap**: The 47 clean sessions are 63.8% DOWN (30 DOWN / 17 UP). A dummy always-down bot achieves a 63.8% win rate but only 50.0% Balanced Accuracy. Optimization mandates Balanced Accuracy $\ge 58.0\%$ and Matthews Correlation Coefficient (MCC) tracking.
+- **Stratified Holdout Gating**: Deterministic split (seed 42) into 31 In-Sample training sessions and 16 Out-of-Sample (OOS) holdout sessions (both preserving the 36% UP / 64% DOWN ratio). Candidates must pass In-Sample AND achieve $\ge 55\%$ Balanced Accuracy on OOS.
+- **Date-Snooping Regex Linter (`lint_mutant_prompt`)**: Anonymizes prediction error summaries into abstract market scenarios and enforces regex validation rejecting calendar years (2024–2026), month names, and day numbers in mutant strategies.
+
 
 

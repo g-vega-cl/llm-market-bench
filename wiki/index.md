@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/compare-8k-vs-16k]] — head-to-head Strata ORCA benchmark of 8k vs 16k reasoning budgets on non-continuous sessions
 - [[entities/historical-downloader]] — rate-limited offline downloader for multi-year EOD/pre-market/news/newsletter/macro data into a local SQLite raw vault
 - [[entities/local-autoresearch]] — Local prompt tournament orchestrator pairing Strata Qwen distillation with two-pass Qwen decision reasoning over multi-regime curriculum batches
 - [[entities/portfolio-comparison-selector]] — agent picker for the performance comparison chart, capped at 5 portfolios
@@ -96,6 +97,11 @@
 
 ## Concepts
 
+- [[concepts/sized-trading-pnl]] — confidence-scaled PnL, Sharpe/drawdown metrics, quant feature vectors, walk-forward splits, and two-sided promotion gates
+- [[concepts/quant-ml-sp500-directional-blueprint]] — Econometric and machine learning blueprint for S&P 500 daily open-to-close directional prediction
+- [[concepts/portfolio-vs-spy-significance]] — Auto-indexed page
+- [[concepts/ground-truth-autoresearch-leakage-guards]] — Auto-indexed page
+- [[concepts/single-prompt-ratchet]] — Auto-indexed page
 - [[concepts/significance-funnel]] — adaptive two-stage escalation with exact binomial significance testing for double-ratchet candidates
 - [[concepts/significance-funnel]] — Auto-indexed page
 - [[concepts/trend-profile]] — point-in-time multi-day momentum vector (5-day return, SMA20, 3-day sequence) with zero lookahead and zero hallucination

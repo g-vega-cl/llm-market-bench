@@ -1,4 +1,4 @@
-import { formatEasternTime } from '~/utils/date';
+import { formatEasternTime, isMidnightUtcOrDateOnly } from '~/utils/date';
 
 /**
  * Centralized list of the 23 macro tickers tracked by the LLM Market Bench daily pipeline.
@@ -90,7 +90,8 @@ export function calculateMacroStats(
     history: HistoricalPricePoint[],
     fetchedAt?: string | null,
 ): MacroStat {
-    const formattedTime = fetchedAt ? formatEasternTime(fetchedAt) : undefined;
+    const formattedTime =
+        fetchedAt && !isMidnightUtcOrDateOnly(fetchedAt) ? formatEasternTime(fetchedAt) : undefined;
 
     if (!history || history.length < 2) {
         return {

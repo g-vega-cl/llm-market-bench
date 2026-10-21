@@ -388,6 +388,49 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(spyStat?.formattedTime).toBe('10:45 AM ET');
     });
 
+    it('handles midnight UTC or date-only fetched_at without formatting as misleading 8:00 PM ET', async () => {
+        const estToday = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+        const mockCacheRows = [
+            {
+                ticker: 'SPY',
+                price: 520.5,
+                today_pct_change: 0.75,
+                stdev_pct: 0.5,
+                regime_flag: 'Normal',
+                market_cap: 500000000,
+                fetched_at: `${estToday}T00:00:00+00:00`,
+            },
+        ];
+
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
+                in: vi.fn().mockImplementation(() => {
+                    if (table === 'market_data_cache') {
+                        return Promise.resolve({ data: mockCacheRows, error: null });
+                    }
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        const result = await fetchTodayData();
+
+        // Must NEVER display 8:00 PM ET for midnight UTC EOD bars
+        expect(result.macroLastUpdated).not.toBe('8:00 PM ET');
+        expect(result.macroLastUpdated).toMatch(/Close$/);
+        const spyStat = result.macroStats.find((s) => s.ticker === 'SPY');
+        expect(spyStat?.formattedTime).toBeUndefined();
+    });
+
     it('queries intraday_market_news and formats items in TodayData payload', async () => {
         const mockNews = [
             {

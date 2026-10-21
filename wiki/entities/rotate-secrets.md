@@ -49,6 +49,7 @@ The stack enforces strict credential separation across deployment targets:
 - Asserts the compose file contains no hardcoded JWT secret or Postgres password and references `${PGRST_JWT_SECRET}` / `${POSTGRES_PASSWORD}`.
 - Round-trips `generate_token` output through `jwt.decode` to confirm HS256 signing and the `role` / `iss` claims.
 - Validates `update_postgres_role_password` docker execution, returncode handling, and `sync_db` behavior.
+- Verifies `.gitguardian.yaml` exists and ignores test credential definitions to prevent false positive security detector alerts. All mock password literals in the test suite are annotated with `# ggignore` and use synthetic placeholders.
 
 
 ## Related

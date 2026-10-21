@@ -27,9 +27,9 @@ def test_minted_jwt_tokens_are_valid():
     """Verify that JWT tokens can be signed and verified with HS256 and expected claims."""
     from docker.archive.rotate_secrets import generate_token
 
-    secret = "test_secret_key_32_bytes_long_minimum!!"
-    anon_token = generate_token(secret, role="anon")
-    service_token = generate_token(secret, role="service_role")
+    secret = "test_secret_key_32_bytes_long_minimum!!"  # ggignore
+    anon_token = generate_token(secret, role="anon")  # ggignore
+    service_token = generate_token(secret, role="service_role")  # ggignore
 
     decoded_anon = jwt.decode(anon_token, secret, algorithms=["HS256"])
     assert decoded_anon["role"] == "anon"
@@ -46,16 +46,17 @@ def test_update_postgres_role_password_success():
 
     mock_res = MagicMock()
     mock_res.returncode = 0
+    dummy_role_pwd = "mock_test_role_password_only"  # ggignore
 
     with patch("subprocess.run", return_value=mock_res) as mock_run:
-        success = update_postgres_role_password("new_secret_pwd_123")
+        success = update_postgres_role_password(dummy_role_pwd)
         assert success is True
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert "docker" in args
         assert "exec" in args
         assert "market-bench-archive-db" in args
-        assert "ALTER USER postgres WITH PASSWORD 'new_secret_pwd_123';" in args[-1]
+        assert f"ALTER USER postgres WITH PASSWORD '{dummy_role_pwd}';" in args[-1]  # ggignore
 
 
 def test_update_postgres_role_password_failure():
@@ -64,14 +65,24 @@ def test_update_postgres_role_password_failure():
 
     mock_res = MagicMock()
     mock_res.returncode = 1
+    dummy_role_pwd = "mock_test_role_password_only"  # ggignore
 
     with patch("subprocess.run", return_value=mock_res):
-        success = update_postgres_role_password("new_secret_pwd_123")
+        success = update_postgres_role_password(dummy_role_pwd)
         assert success is False
 
     with patch("subprocess.run", side_effect=OSError("Docker not found")):
-        success = update_postgres_role_password("new_secret_pwd_123")
+        success = update_postgres_role_password(dummy_role_pwd)
         assert success is False
+
+
+def test_gitguardian_configuration_ignores_secrets_test():
+    """Verify that .gitguardian.yaml exists and ignores test_docker_archive_secrets.py."""
+    gg_config_path = REPO_ROOT / ".gitguardian.yaml"
+    assert gg_config_path.exists(), ".gitguardian.yaml must exist at repo root"
+    content = gg_config_path.read_text(encoding="utf-8")
+    assert "version: 2" in content
+    assert "apps/engine/tests/test_docker_archive_secrets.py" in content
 
 
 def test_rotate_all_sync_db_flag(tmp_path):

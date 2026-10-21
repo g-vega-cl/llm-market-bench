@@ -62,6 +62,7 @@ For pull-based agents (e.g., candidate variants managed by the auto-researcher),
 
 ## History
 
+- **2026-10-21**: Fixed "Last updated 8 PM ET" timestamp bug. Updated `compute_ticker_macro_metrics` in `update_prices.py` to always prioritize live quotes and record current UTC timestamps in `market_data_cache` instead of copying FMP EOD midnight UTC bars. Updated frontend `fetch-today-data.ts` and `date.ts` to convert timestamps to Eastern Time dates and format date-only or midnight UTC bars as calendar closes (e.g. `Oct 21 Close`) rather than synthetic "8:00 PM ET".
 - **2026-09-29**: Added explicit "Last updated" timestamps to the Today page Global Macro Regime section header and individual ticker cards, consuming `fetched_at` from `market_data_cache` via `fetchTodayData` to provide immediate freshness transparency.
 - **2026-09-23**: Decoupled canonical Spot VIX (`^VIX`) from VIX futures ETFs (`VIXY`). Replaced `VIXY` with `^VIX` in the Global Macro Tracker and Today page dashboard to eliminate false complacency signals caused by futures contango roll decay. Refactored `get_volatility_index_details` tool to compute spot volatility levels and percentiles from `^VIX` while reserving `VIXY`/`VIXM` strictly for term structure and roll drag warnings.
 

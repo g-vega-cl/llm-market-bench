@@ -13,6 +13,34 @@ export function normalizeWhitespace(str: string): string {
 }
 
 /**
+ * Checks whether a timestamp is a date-only string ("YYYY-MM-DD")
+ * or a UTC midnight timestamp ("YYYY-MM-DDT00:00:00..."), which represents
+ * an End-Of-Day daily bar rather than an intraday time.
+ */
+export function isMidnightUtcOrDateOnly(dateStr: string | null | undefined): boolean {
+    if (!dateStr) return false;
+    if (!dateStr.includes('T')) return true;
+    return /T00:00:00(\.000)?(\+00:00|Z)?$/.test(dateStr);
+}
+
+/**
+ * Formats a date-only or midnight UTC EOD timestamp to "Mon DD Close", e.g. "Oct 21 Close".
+ */
+export function formatEODDateClose(dateStr: string | null | undefined): string {
+    if (!dateStr) return 'Market Close';
+    const datePart = dateStr.substring(0, 10);
+    const [y, m, d] = datePart.split('-').map(Number);
+    if (!y || !m || !d) return 'Market Close';
+    const noonUtc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    const formatted = noonUtc.toLocaleDateString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'short',
+        day: 'numeric',
+    });
+    return `${normalizeWhitespace(formatted)} Close`;
+}
+
+/**
  * Formats a timestamp into a space-normalized Eastern Time string: e.g. "10:45 AM ET"
  */
 export function formatEasternTime(dateStr: string | null | undefined): string {

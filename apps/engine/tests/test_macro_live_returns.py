@@ -98,3 +98,35 @@ def test_compute_ticker_macro_metrics_with_intraday_eod_lag():
     assert metrics["price"] == 771.1
     assert metrics["today_pct_change"] == pytest.approx(0.65528, abs=1e-3)
     assert metrics["regime_flag"] == "Normal"
+
+
+def test_compute_ticker_macro_metrics_when_history_has_today_date_uses_live_quote_and_current_time():
+    """When history[0] has today's date, compute_ticker_macro_metrics must use live quote and not stale midnight UTC."""
+    base_prices = [766.08] * 32
+    history = [
+        {"price": p, "fetched_at": "2026-08-27T00:00:00+00:00" if i == 0 else f"2026-08-{26 - i:02d}T00:00:00+00:00"}
+        for i, p in enumerate(base_prices)
+    ]
+
+    live_ticker_data = TickerData(
+        ticker="SPY",
+        price=775.5,
+        market_cap=821405196069.0,
+        previous_close=766.08,
+        change_pct=1.23,
+    )
+
+    metrics = compute_ticker_macro_metrics(
+        ticker="SPY",
+        history=history,
+        live_ticker_data=live_ticker_data,
+        today_date_str="2026-08-27",
+    )
+
+    assert metrics is not None
+    # Must prioritize live quote price over historical bar
+    assert metrics["price"] == 775.5
+    assert metrics["today_pct_change"] == pytest.approx(1.23, abs=1e-3)
+    # Must NEVER record midnight UTC (which turns into 8 PM ET on the frontend)
+    assert not metrics["fetched_at"].endswith("T00:00:00+00:00")
+    assert not metrics["fetched_at"].endswith("T00:00:00Z")

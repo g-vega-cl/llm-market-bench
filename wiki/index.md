@@ -98,6 +98,7 @@
 
 ## Concepts
 
+- [[concepts/eod-timestamp-formatting]] — distinguishing EOD daily bars from intraday quotes when rendering timestamps
 - [[concepts/env-based-secrets]] — keeping credentials out of version control via env-var injection and rotation
 - [[concepts/sized-trading-pnl]] — confidence-scaled PnL, Sharpe/drawdown metrics, quant feature vectors, walk-forward splits, and two-sided promotion gates
 - [[concepts/quant-ml-sp500-directional-blueprint]] — Econometric and machine learning blueprint for S&P 500 daily open-to-close directional prediction

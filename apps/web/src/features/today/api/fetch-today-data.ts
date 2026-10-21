@@ -14,6 +14,8 @@ import {
     formatEasternShortDate,
     formatEasternShortTime,
     formatEasternTime,
+    formatEODDateClose,
+    isMidnightUtcOrDateOnly,
 } from '~/utils/date';
 import type { MacroCategory, MacroStat } from '../lib/macro-tickers';
 import { MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
@@ -112,6 +114,40 @@ export function clearTodayDataCache() {
     lastFetchTime = 0;
 }
 
+function buildMacroStat(
+    ticker: string,
+    name: string,
+    category: MacroCategory,
+    cacheMap: Map<string, MarketDataCache>,
+): MacroStat | null {
+    const cacheEntry = cacheMap.get(ticker);
+    if (!cacheEntry) return null;
+
+    const price = Number(cacheEntry.price) || 0;
+    const todayPctChange = Number(cacheEntry.today_pct_change) || 0;
+    const stdevPct = Number(cacheEntry.stdev_pct) || 0;
+    const regimeFlag = (cacheEntry.regime_flag || 'Normal') as
+        | 'Normal'
+        | '❗ UNUSUAL'
+        | '⚠️ HIGHLY UNUSUAL';
+    const fetchedAt = cacheEntry.fetched_at || null;
+    const formattedTime =
+        fetchedAt && !isMidnightUtcOrDateOnly(fetchedAt) ? formatEasternTime(fetchedAt) : undefined;
+
+    return {
+        ticker,
+        name,
+        category,
+        price,
+        todayPctChange,
+        stdevPct,
+        regimeFlag,
+        hasHistory: stdevPct > 0,
+        fetchedAt,
+        formattedTime,
+    };
+}
+
 function computeMacroStatistics(cacheRows: MarketDataCache[] | null): MacroStat[] {
     const macroStats: MacroStat[] = [];
     if (!cacheRows) return macroStats;
@@ -120,31 +156,10 @@ function computeMacroStatistics(cacheRows: MarketDataCache[] | null): MacroStat[
 
     for (const [category, categoryDict] of Object.entries(MACRO_TICKERS)) {
         for (const [ticker, name] of Object.entries(categoryDict)) {
-            const cacheEntry = cacheMap.get(ticker);
-            if (!cacheEntry) continue;
-
-            const price = Number(cacheEntry.price) || 0;
-            const todayPctChange = Number(cacheEntry.today_pct_change) || 0;
-            const stdevPct = Number(cacheEntry.stdev_pct) || 0;
-            const regimeFlag = (cacheEntry.regime_flag || 'Normal') as
-                | 'Normal'
-                | '❗ UNUSUAL'
-                | '⚠️ HIGHLY UNUSUAL';
-            const fetchedAt = cacheEntry.fetched_at || null;
-            const formattedTime = fetchedAt ? formatEasternTime(fetchedAt) : undefined;
-
-            macroStats.push({
-                ticker,
-                name,
-                category: category as MacroCategory,
-                price,
-                todayPctChange,
-                stdevPct,
-                regimeFlag,
-                hasHistory: stdevPct > 0,
-                fetchedAt,
-                formattedTime,
-            });
+            const stat = buildMacroStat(ticker, name, category as MacroCategory, cacheMap);
+            if (stat) {
+                macroStats.push(stat);
+            }
         }
     }
     return macroStats;
@@ -225,9 +240,16 @@ function computeMacroLastUpdated(
         }
     }
     if (!latest) return null;
-    return latest.startsWith(estDateStr)
-        ? formatEasternTime(latest)
-        : formatEasternDateTime(latest);
+
+    if (isMidnightUtcOrDateOnly(latest)) {
+        return formatEODDateClose(latest);
+    }
+
+    const date = new Date(latest);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const latestEstDate = date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    return latestEstDate === estDateStr ? formatEasternTime(latest) : formatEasternDateTime(latest);
 }
 
 function shouldServeCached(nowTime: number, limit: number, tradesLimit: number): boolean {

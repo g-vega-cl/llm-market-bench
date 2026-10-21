@@ -84,4 +84,3 @@ def test_verify_skill_mandates_tier_7_wiki_docs():
     assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
     entity_content = VERIFY_ENTITY_MD.read_text()
     assert "Tier 7" in entity_content or "seven tiers" in entity_content.lower()
-

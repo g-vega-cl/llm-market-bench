@@ -259,30 +259,39 @@ def compute_ticker_macro_metrics(
     # History is ordered descending (newest first)
     history_0_date = str(history[0].get("fetched_at", ""))[:10]
 
-    # Check if history[0] already represents today's date
-    if history_0_date == today_date_str:
-        today_px = float(history[0]["price"])
-        yesterday_close = float(history[1]["price"]) if len(history) > 1 else today_px
-        fetched_at = history[0]["fetched_at"]
-    else:
-        # history[0] is yesterday's close (EOD lag during active trading hours)
-        if live_ticker_data and live_ticker_data.price > 0:
-            today_px = float(live_ticker_data.price)
+    # Prioritize live quote if available
+    if live_ticker_data and live_ticker_data.price > 0:
+        today_px = float(live_ticker_data.price)
+        if history_0_date == today_date_str:
+            yesterday_close = (
+                float(history[1]["price"])
+                if len(history) > 1
+                else (
+                    float(live_ticker_data.previous_close)
+                    if live_ticker_data.previous_close and live_ticker_data.previous_close > 0
+                    else float(history[0]["price"])
+                )
+            )
+        else:
             yesterday_close = (
                 float(live_ticker_data.previous_close)
                 if live_ticker_data.previous_close and live_ticker_data.previous_close > 0
                 else float(history[0]["price"])
             )
-            fetched_at = datetime.now(UTC).isoformat()
+        fetched_at = datetime.now(UTC).isoformat()
+        if live_ticker_data.change_pct is not None:
+            today_pct_change = float(live_ticker_data.change_pct)
         else:
-            today_px = float(history[0]["price"])
-            yesterday_close = float(history[1]["price"]) if len(history) > 1 else today_px
-            fetched_at = history[0]["fetched_at"]
-
-    if live_ticker_data and live_ticker_data.change_pct is not None and history_0_date != today_date_str:
-        today_pct_change = float(live_ticker_data.change_pct)
+            today_pct_change = (today_px - yesterday_close) / yesterday_close * 100 if yesterday_close > 0 else 0.0
     else:
+        # Fallback to historical EOD bar
+        today_px = float(history[0]["price"])
+        yesterday_close = float(history[1]["price"]) if len(history) > 1 else today_px
         today_pct_change = (today_px - yesterday_close) / yesterday_close * 100 if yesterday_close > 0 else 0.0
+
+        hist_fetched = str(history[0].get("fetched_at", ""))
+        is_midnight = "00:00:00" in hist_fetched or len(hist_fetched) <= 10
+        fetched_at = datetime.now(UTC).isoformat() if is_midnight else hist_fetched
 
     # Calculate returns and 30-day volatility metrics
     history_30 = history[:30]

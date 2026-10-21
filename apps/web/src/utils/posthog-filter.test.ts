@@ -87,8 +87,28 @@ describe('posthog-filter CefSharp scanner detection', () => {
     });
 });
 
-describe('posthogBeforeSend event transformation', () => {
-    it('downgrades CefSharp scanner exception to warning severity with scanner tags', () => {
+describe('posthogBeforeSend event filtering', () => {
+    it('drops CefSharp scanner exception with Id:4 (exact PostHog report signature)', () => {
+        const event: CaptureResult = {
+            uuid: 'test-uuid-safelinks-id4',
+            event: '$exception',
+            properties: {
+                $exception_level: 'error',
+                $exception_list: [
+                    {
+                        type: 'UnhandledRejection',
+                        value: 'Non-Error promise rejection captured with value: Object Not Found Matching Id:4, MethodName:update, ParamCount:4',
+                    },
+                ],
+            },
+        };
+
+        const result = posthogBeforeSend(event);
+
+        expect(result).toBeNull();
+    });
+
+    it('drops CefSharp scanner exception across different bridge IDs and property layouts', () => {
         const event: CaptureResult = {
             uuid: 'test-uuid-6',
             event: '$exception',
@@ -105,13 +125,7 @@ describe('posthogBeforeSend event transformation', () => {
 
         const result = posthogBeforeSend(event);
 
-        expect(result).not.toBeNull();
-        expect(result?.event).toBe('$exception');
-        expect(result?.properties?.$exception_level).toBe('warning');
-        expect(result?.properties?.$scanner_detected).toBe(true);
-        expect(result?.properties?.$scanner_type).toBe('cefsharp_safelinks');
-        // Preserves original exception list and stack details
-        expect(result?.properties?.$exception_list).toEqual(event.properties.$exception_list);
+        expect(result).toBeNull();
     });
 
     it('leaves legitimate application errors intact at error severity', () => {

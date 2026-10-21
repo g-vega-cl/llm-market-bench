@@ -72,3 +72,16 @@ def test_verify_script_checks_migration_integrity():
     content = VERIFY_SCRIPT.read_text()
     assert "test_migration_grants.py" in content, "verify.sh must inspect migrations using test_migration_grants.py"
     assert "supabase migration list" not in content, "verify.sh must not call obsolete supabase migration list"
+
+
+def test_verify_skill_mandates_tier_7_wiki_docs():
+    """Verify that SKILL.md and wiki entity explicitly mandate Tier 7 for Wiki and documentation synchronization."""
+    assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
+    skill_content = VERIFY_SKILL_MD.read_text()
+    assert "Tier 7" in skill_content, "SKILL.md must have a dedicated Tier 7"
+    assert "seven tiers" in skill_content.lower() or "7 tiers" in skill_content.lower()
+
+    assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
+    entity_content = VERIFY_ENTITY_MD.read_text()
+    assert "Tier 7" in entity_content or "seven tiers" in entity_content.lower()
+

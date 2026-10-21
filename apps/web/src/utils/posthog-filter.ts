@@ -17,13 +17,27 @@ export function isCefSharpScannerException(event: CaptureResult | null | undefin
     };
 
     if (Array.isArray($exception_list)) {
-        if ($exception_list.some((item) => matchesSignature(item?.value))) {
+        if (
+            $exception_list.some((item) => {
+                if (typeof item === 'string') return matchesSignature(item);
+                return (
+                    matchesSignature(item?.value) ||
+                    matchesSignature(item?.type) ||
+                    matchesSignature(item?.stack)
+                );
+            })
+        ) {
             return true;
         }
     }
 
     if (Array.isArray($exception_values)) {
-        if ($exception_values.some(matchesSignature)) {
+        if (
+            $exception_values.some((item) => {
+                if (typeof item === 'string') return matchesSignature(item);
+                return matchesSignature(item?.value) || matchesSignature(item?.type);
+            })
+        ) {
             return true;
         }
     }
@@ -32,27 +46,28 @@ export function isCefSharpScannerException(event: CaptureResult | null | undefin
         return true;
     }
 
+    try {
+        const serialized = JSON.stringify(event.properties);
+        if (matchesSignature(serialized)) {
+            return true;
+        }
+    } catch {
+        // Safe fallback in case of circular references
+    }
+
     return false;
 }
 
 /**
  * PostHog before_send lifecycle handler.
- * Downgrades synthetic CefSharp crawler exceptions from 'error' to 'warning' severity
- * while preserving the event and telemetry in PostHog for future audit.
+ * Completely drops synthetic CefSharp crawler exceptions by returning null,
+ * preventing external scanner teardown noise from creating PostHog Error Tracking issues.
  */
 export function posthogBeforeSend(event: CaptureResult | null | undefined): CaptureResult | null {
     if (!event) return null;
 
     if (isCefSharpScannerException(event)) {
-        return {
-            ...event,
-            properties: {
-                ...event.properties,
-                $exception_level: 'warning',
-                $scanner_detected: true,
-                $scanner_type: 'cefsharp_safelinks',
-            },
-        };
+        return null;
     }
 
     return event;

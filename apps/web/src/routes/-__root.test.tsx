@@ -167,7 +167,7 @@ describe('RootDocument PostHog configuration', () => {
         });
     });
 
-    it('should initialize PostHogProvider with before_send handler that transforms CefSharp errors to warnings', async () => {
+    it('should initialize PostHogProvider with before_send handler that drops CefSharp scanner errors', async () => {
         vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
 
         const testRoute = createRootRoute({
@@ -197,12 +197,7 @@ describe('RootDocument PostHog configuration', () => {
             mockPostHogProvider.mock.calls.length - 1
         ][0] as {
             options?: {
-                before_send?: (event: unknown) => {
-                    properties?: {
-                        $exception_level?: string;
-                        $scanner_detected?: boolean;
-                    };
-                } | null;
+                before_send?: (event: unknown) => unknown | null;
             };
         };
         expect(props.options?.before_send).toBeDefined();
@@ -221,8 +216,7 @@ describe('RootDocument PostHog configuration', () => {
             },
         });
 
-        expect(transformed?.properties?.$exception_level).toBe('warning');
-        expect(transformed?.properties?.$scanner_detected).toBe(true);
+        expect(transformed).toBeNull();
     });
 });
 

@@ -32,7 +32,9 @@ DEFAULT_STRATA_MODEL = os.getenv("STRATA_MODEL", "orcarouter-qwen3.8-flash-next-
 RESULTS_FILE = ".compare_8k_vs_16k_results.json"
 
 
-def select_non_continuous_sessions(db_path: str = ".live_production_sessions.db", count: int = 20) -> list[dict[str, Any]]:
+def select_non_continuous_sessions(
+    db_path: str = ".live_production_sessions.db", count: int = 20
+) -> list[dict[str, Any]]:
     """Select count strictly non-continuous sessions spanning the dataset."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -155,7 +157,9 @@ async def run_head_to_head_comparison():
             rec_8k["elapsed_sec"] = round(dt_8k, 1)
             rec_8k["thinking_chunks"] = think_8k
             status_8k = "HIT" if rec_8k["is_correct"] else "MISS"
-            print(f" Done in {dt_8k:.1f}s | Pred: {rec_8k['predicted_direction']} ({rec_8k['confidence']:.0f}%) [{status_8k}]")
+            print(
+                f" Done in {dt_8k:.1f}s | Pred: {rec_8k['predicted_direction']} ({rec_8k['confidence']:.0f}%) [{status_8k}]"
+            )
 
             # 2. Run 16k
             print("  Running 16k (budget ~12,288 tokens)...", end="", flush=True)
@@ -171,7 +175,9 @@ async def run_head_to_head_comparison():
             rec_16k["elapsed_sec"] = round(dt_16k, 1)
             rec_16k["thinking_chunks"] = think_16k
             status_16k = "HIT" if rec_16k["is_correct"] else "MISS"
-            print(f" Done in {dt_16k:.1f}s | Pred: {rec_16k['predicted_direction']} ({rec_16k['confidence']:.0f}%) [{status_16k}]")
+            print(
+                f" Done in {dt_16k:.1f}s | Pred: {rec_16k['predicted_direction']} ({rec_16k['confidence']:.0f}%) [{status_16k}]"
+            )
 
             # Summary comparison
             agree = rec_8k["predicted_direction"] == rec_16k["predicted_direction"]
@@ -220,8 +226,12 @@ async def run_head_to_head_comparison():
     print("\n" + "=" * 80)
     print("FINAL HEAD-TO-HEAD BENCHMARK SUMMARY (20 Non-Continuous Sessions)")
     print("=" * 80)
-    print(f"8k Max Tokens:  Win Rate: {bal_8k['win_rate_pct']:.1f}% | Balanced Acc: {bal_8k['balanced_accuracy_pct']:.1f}% | MCC: {bal_8k['mcc']:.3f} | Avg Latency: {state_data['summary_8k']['avg_latency_sec']}s")
-    print(f"16k Max Tokens: Win Rate: {bal_16k['win_rate_pct']:.1f}% | Balanced Acc: {bal_16k['balanced_accuracy_pct']:.1f}% | MCC: {bal_16k['mcc']:.3f} | Avg Latency: {state_data['summary_16k']['avg_latency_sec']}s")
+    print(
+        f"8k Max Tokens:  Win Rate: {bal_8k['win_rate_pct']:.1f}% | Balanced Acc: {bal_8k['balanced_accuracy_pct']:.1f}% | MCC: {bal_8k['mcc']:.3f} | Avg Latency: {state_data['summary_8k']['avg_latency_sec']}s"
+    )
+    print(
+        f"16k Max Tokens: Win Rate: {bal_16k['win_rate_pct']:.1f}% | Balanced Acc: {bal_16k['balanced_accuracy_pct']:.1f}% | MCC: {bal_16k['mcc']:.3f} | Avg Latency: {state_data['summary_16k']['avg_latency_sec']}s"
+    )
     print(f"Directional Agreement: {state_data['agreement_pct']:.1f}%")
     print("=" * 80)
 

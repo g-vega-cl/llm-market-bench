@@ -41,7 +41,7 @@ Or run the bundled verification runner:
 
 ## 2. Verification tiers
 
-Audit all changed files through these six tiers. Do not skip any tier.
+Audit all changed files through these seven tiers. Do not skip any tier.
 
 ### Tier 1. Static hygiene, size ceilings, and hotspot forensics
 
@@ -66,15 +66,6 @@ Audit all changed files through these six tiers. Do not skip any tier.
    - Engine production code (`apps/engine/core/`, `apps/engine/tasks/`, `apps/engine/execution/`, `apps/engine/local_autoresearch/`, etc.) must NEVER import with `from apps.engine.` or `import apps.engine.`. All engine code must use imports relative to the `apps/engine` root (e.g. `from core.`, `from tasks.`, `from local_autoresearch.`).
    - In CI/CD runners, tests run with `working-directory: apps/engine`. Any import assuming `apps` is in `sys.path` will fail with `ModuleNotFoundError: No module named 'apps'`.
    - Packages inside `apps/engine` must contain `__init__.py` files so they are treated as standard Python packages.
-6. **Wiki and documentation synchronization (MANDATORY)**:
-   - **Synchronize changes everywhere**: When code changes alter formulas, scoring, models, tools, UI components, background tasks, schemas, or architectural patterns, YOU MUST proactively audit and update ALL relevant wiki pages (`wiki/concepts/`, `wiki/entities/`) documenting the new behavior, component interfaces, invariants, and the rationale ("the why"). Never leave new features, model tracks, or schemas undocumented.
-   - **Audit all affected surfaces**: Review `git diff --name-only` across backend, frontend, and config to identify every concept and entity page requiring documentation. If a new capability or pattern is introduced, create a new dedicated wiki page.
-   - **Refresh code hotspots**: Refresh the code hotspots wiki page via `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki`.
-   - **Auto-index catalog**: Run `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix` to auto-index new pages into `wiki/index.md`.
-   - **Re-index search embeddings**: Update and regenerate QMD vector embeddings via `qmd update && qmd embed` so knowledge remains discoverable via semantic search.
-   - **Root-relative paths in backticks**: Any backtick string starting with project prefixes (`apps/`, `packages/`, `scripts/`, `supabase/`, `wiki/`, `.github/`) must be an exact valid path from the repository root. Never use relative shorthand (e.g. `scripts/verify.sh` when the file is at `.agents/skills/verify/scripts/verify.sh`).
-   - **Internal link resolution**: Every `[[page-name]]` cross-reference must resolve to an existing markdown page under `wiki/`.
-   - **Config parity**: New models in `packages/config/models.json` and tools in `packages/config/tools.json` must be documented in the wiki.
 
 
 ### Tier 2. Build and type integrity
@@ -156,6 +147,25 @@ Audit all changed files through these six tiers. Do not skip any tier.
 2. **No swallowed errors**:
    - Never write empty `except:` or `except Exception: pass` blocks without logging the traceback.
 
+### Tier 7. Wiki and documentation synchronization (MANDATORY)
+
+1. **Synchronize changes everywhere**:
+   - When code changes alter formulas, scoring, models, tools, UI components, background tasks, schemas, or architectural patterns, YOU MUST proactively audit and update ALL relevant wiki pages (`wiki/concepts/`, `wiki/entities/`) documenting the new behavior, component interfaces, invariants, and the rationale ("the why"). Never leave new features, model tracks, or schemas undocumented.
+2. **Audit all affected surfaces**:
+   - Review `git diff --name-only` across backend, frontend, and config to identify every concept and entity page requiring documentation. If a new capability or pattern is introduced, create a new dedicated wiki page.
+3. **Refresh code hotspots**:
+   - Refresh the code hotspots wiki page via `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki`.
+4. **Auto-index catalog**:
+   - Run `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix` to auto-index new pages into `wiki/index.md`.
+5. **Re-index search embeddings**:
+   - Update and regenerate QMD vector embeddings via `qmd update && qmd embed` so knowledge remains discoverable via semantic search.
+6. **Root-relative paths in backticks**:
+   - Any backtick string starting with project prefixes (`apps/`, `packages/`, `scripts/`, `supabase/`, `wiki/`, `.github/`) must be an exact valid path from the repository root. Never use relative shorthand (e.g. `scripts/verify.sh` when the file is at `.agents/skills/verify/scripts/verify.sh`).
+7. **Internal link resolution**:
+   - Every `[[page-name]]` cross-reference must resolve to an existing markdown page under `wiki/`.
+8. **Config parity**:
+   - New models in `packages/config/models.json` and tools in `packages/config/tools.json` must be documented in the wiki.
+
 ---
 
 ## 3. Verification report format
@@ -170,3 +180,4 @@ Conclude every verification run with a concise status report:
 | **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, database schema parity |
 | **Tier 5** | Architecture & UI/UX | PASS / FAIL | Zero frontend compute, design system, layout |
 | **Tier 6** | Observability | PASS / FAIL | logger.exception used, zero swallowed exceptions |
+| **Tier 7** | Wiki & docs synchronization | PASS / FAIL | Concepts/entities synced, wiki_lint clean, QMD embeddings updated |

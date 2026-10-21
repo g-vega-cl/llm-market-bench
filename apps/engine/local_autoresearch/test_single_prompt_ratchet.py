@@ -496,6 +496,3 @@ Hope this helps!"""
     assert payload is not None
     assert "breadth diverges" in payload["hypothesis"]
     assert "fade toward VWAP" in payload["new_strategy"]
-
-
-

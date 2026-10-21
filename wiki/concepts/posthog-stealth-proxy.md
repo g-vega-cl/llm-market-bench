@@ -54,9 +54,9 @@ These crawlers run in headless **CefSharp** (.NET Chromium Embedded Framework) e
 4. Because `capture_exceptions: true` is enabled in `__root.tsx`, PostHog listens to `window.onunhandledrejection` and captures these synthetic scanner errors.
 
 ### Suppression Strategy
-- **Synchronous `before_send` Downgrade**: To eliminate the race condition where short-lived crawlers terminate and flush events before `/p/decide/` remote config loads, `apps/web/src/utils/posthog-filter.ts` implements a synchronous `before_send` lifecycle filter.
-- **Warning Downgrade over Discard**: Rather than dropping scanner telemetry entirely, `posthogBeforeSend` inspects `$exception` payloads for `Object Not Found Matching Id` and `MethodName:`. When detected, it downgrades `$exception_level` from `'error'` to `'warning'` and tags the event with `$scanner_detected: true` and `$scanner_type: 'cefsharp_safelinks'`. This clears error alerts and keeps error budgets clean while preserving event data for audit.
-- **Console Warning Handler**: A top-level client listener on `window.addEventListener('unhandledrejection')` prevents default browser error logging for CefSharp host bridge rejections, issuing an informational `console.warn` instead.
+- **Synchronous `before_send` Drop**: To eliminate the race condition where short-lived crawlers terminate and flush events before `/p/decide/` remote config loads, `apps/web/src/utils/posthog-filter.ts` implements a synchronous `before_send` lifecycle filter.
+- **Complete Discard via `return null`**: In PostHog, Error Tracking tracks all `$exception` events regardless of `$exception_level`. Merely downgrading severity to `'warning'` still creates issues and triggers weekly error digests. Instead, `posthogBeforeSend` returns `null` when a CefSharp scanner exception signature (`Object Not Found Matching Id` and `MethodName:`) is detected. This completely drops the event at the SDK level, preventing transmission, ingestion, and spurious Error Tracking issues. Genuine application exceptions pass through intact.
+- **Console Warning Handler**: A top-level client listener on `window.addEventListener('unhandledrejection')` prevents default browser error logging for CefSharp host bridge rejections, issuing an informational `console.warn` instead and calling `stopImmediatePropagation()`.
 - **Non-Retroactivity**: Ingested events captured prior to the filter appear in weekly digests until the issue status is set to Suppressed or the retention window expires.
 
 ## Identity resolution and session lifecycle
@@ -71,8 +71,8 @@ To accurately track conversion funnels without splitting user profiles or leakin
 
 ## Testing
 
-- `src/utils/posthog-filter.test.ts` verifies detection of CefSharp unhandled rejections across `$exception_list`, `$exception_values`, and `$exception_message`, confirming that scanner errors are downgraded to warning severity while legitimate errors and analytics events pass unchanged.
-- `src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, enables session recording with privacy masking, sets `disable_surveys: true`, configures `before_send: posthogBeforeSend`, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
+- `src/utils/posthog-filter.test.ts` verifies detection of CefSharp unhandled rejections across `$exception_list`, `$exception_values`, and `$exception_message`, confirming that scanner errors are dropped completely (`return null`) while legitimate errors and analytics events pass unchanged.
+- `src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, enables session recording with privacy masking, sets `disable_surveys: true`, configures `before_send: posthogBeforeSend` dropping scanner errors, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
 - `src/routes/logout.test.tsx` verifies that `LogoutComponent` triggers `posthog.reset()` before executing signout and navigation.
 
 ## Related

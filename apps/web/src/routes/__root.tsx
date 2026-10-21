@@ -17,15 +17,21 @@ import appCss from '../styles/app.css?url';
 if (typeof window !== 'undefined') {
     window.addEventListener('unhandledrejection', (event) => {
         const reason = event?.reason;
-        const text = typeof reason === 'string' ? reason : (reason?.message ?? '');
+        const text =
+            typeof reason === 'string'
+                ? reason
+                : typeof reason?.message === 'string'
+                  ? reason.message
+                  : String(reason ?? '');
         if (
             typeof text === 'string' &&
             text.includes('Object Not Found Matching Id') &&
             text.includes('MethodName:')
         ) {
             event.preventDefault();
+            event.stopImmediatePropagation?.();
             console.warn(
-                '[PostHog] Suppressed CefSharp scanner rejection (handled as warning):',
+                '[PostHog] Suppressed CefSharp scanner rejection (dropped from telemetry):',
                 text,
             );
         }

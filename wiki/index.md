@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/rotate-secrets]] — utility that generates secure secrets and mints PostgREST JWTs for the archive DB stack
 - [[entities/compare-8k-vs-16k]] — head-to-head Strata ORCA benchmark of 8k vs 16k reasoning budgets on non-continuous sessions
 - [[entities/historical-downloader]] — rate-limited offline downloader for multi-year EOD/pre-market/news/newsletter/macro data into a local SQLite raw vault
 - [[entities/local-autoresearch]] — Local prompt tournament orchestrator pairing Strata Qwen distillation with two-pass Qwen decision reasoning over multi-regime curriculum batches
@@ -97,6 +98,7 @@
 
 ## Concepts
 
+- [[concepts/env-based-secrets]] — keeping credentials out of version control via env-var injection and rotation
 - [[concepts/sized-trading-pnl]] — confidence-scaled PnL, Sharpe/drawdown metrics, quant feature vectors, walk-forward splits, and two-sided promotion gates
 - [[concepts/quant-ml-sp500-directional-blueprint]] — Econometric and machine learning blueprint for S&P 500 daily open-to-close directional prediction
 - [[concepts/portfolio-vs-spy-significance]] — Auto-indexed page

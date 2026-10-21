@@ -4,9 +4,9 @@ services:
     container_name: market-bench-archive-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: market_bench_archive
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: archive_secure_password_local
+      POSTGRES_DB: ${POSTGRES_DB:-market_bench_archive}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -26,11 +26,11 @@ services:
       archive-db:
         condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://postgres:archive_secure_password_local@archive-db:5432/market_bench_archive
+      PGRST_DB_URI: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@archive-db:5432/${POSTGRES_DB:-market_bench_archive}
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: 915f2b56f99826c5d433e491c3d22e575836a9116ad040196e93668cad2f36b0
-      PGRST_OPENAPI_SERVER_PROXY_URI: https://benchify-archive-db.clvg.uk
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      PGRST_OPENAPI_SERVER_PROXY_URI: ${PGRST_OPENAPI_SERVER_PROXY_URI:-https://benchify-archive-db.clvg.uk}
     expose:
       - "3000"
 

@@ -2,6 +2,7 @@
 
 import re
 import secrets
+import subprocess
 import time
 from pathlib import Path
 import jwt
@@ -47,16 +48,60 @@ def update_env_file(filepath: Path, updates: dict[str, str]) -> None:
         if key not in keys_updated:
             new_lines.append(f"{key}={val}")
 
+    filepath.parent.mkdir(parents=True, exist_ok=True)
     filepath.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
 
-def rotate_all() -> dict[str, str]:
+def update_postgres_role_password(
+    password: str, container_name: str = "market-bench-archive-db"
+) -> bool:
+    """Execute ALTER USER postgres WITH PASSWORD inside the running container if accessible.
+
+    PostgreSQL container volumes (archive_pgdata) preserve existing user passwords across restarts;
+    changing POSTGRES_PASSWORD in .env does not alter existing database users unless updated via SQL.
+    """
+    try:
+        cmd = [
+            "docker",
+            "exec",
+            container_name,
+            "psql",
+            "-U",
+            "postgres",
+            "-d",
+            "market_bench_archive",
+            "-c",
+            f"ALTER USER postgres WITH PASSWORD '{password}';",
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        return res.returncode == 0
+    except Exception:
+        return False
+
+
+def rotate_all(sync_db: bool = True) -> dict[str, str]:
     """Generate new secrets, write .env files, and return secret summary."""
     new_jwt_secret = secrets.token_hex(32)
-    new_pg_password = secrets.token_urlsafe(32)
+    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    new_pg_password = "".join(secrets.choice(alphabet) for _ in range(32))
 
     anon_jwt = generate_token(new_jwt_secret, role="anon")
     service_jwt = generate_token(new_jwt_secret, role="service_role")
+
+    if sync_db:
+        db_synced = update_postgres_role_password(new_pg_password)
+        if db_synced:
+            print(
+                "Successfully updated postgres role password in running database container."
+            )
+        else:
+            print(
+                "WARNING: Could not update postgres user password in running container."
+            )
+            print("If the database has an existing persistent volume, execute:")
+            print(
+                f"  docker exec market-bench-archive-db psql -U postgres -d market_bench_archive -c \"ALTER USER postgres WITH PASSWORD '{new_pg_password}';\""
+            )
 
     # 1. Write docker/archive/.env
     archive_env = REPO_ROOT / "docker" / "archive" / ".env"
@@ -101,3 +146,18 @@ def rotate_all() -> dict[str, str]:
 if __name__ == "__main__":
     creds = rotate_all()
     print("Secrets rotated successfully.")
+    print("\n--- DEPLOYMENT CHECKLIST ---")
+    print("1. Netlify (Site Settings -> Environment Variables):")
+    print(
+        "   VITE_SUPABASE_ANON_KEY = <SUPABASE_ANON_KEY>  (ANON KEY ONLY - NEVER SERVICE ROLE!)"
+    )
+    print("   SUPABASE_ANON_KEY      = <SUPABASE_ANON_KEY>")
+    print("   (Then trigger 'Clear cache and deploy site')")
+    print("\n2. GitHub Actions Secrets (Repository Settings -> Secrets -> Actions):")
+    print("   SUPABASE_SERVICE_ROLE_KEY = <SUPABASE_SERVICE_ROLE_KEY>")
+    print("   SUPABASE_ANON_KEY         = <SUPABASE_ANON_KEY>")
+    print("   SUPABASE_PROJECT_URL      = https://benchify-archive-db.clvg.uk")
+    print("\n3. Restart local Docker archive stack:")
+    print(
+        "   docker compose -f docker/archive/docker-compose.yml up -d --force-recreate"
+    )

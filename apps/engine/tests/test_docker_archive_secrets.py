@@ -1,6 +1,7 @@
 """Tests for docker archive secret sanitation and JWT token generation."""
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import jwt
 
@@ -37,3 +38,57 @@ def test_minted_jwt_tokens_are_valid():
     decoded_service = jwt.decode(service_token, secret, algorithms=["HS256"])
     assert decoded_service["role"] == "service_role"
     assert decoded_service["iss"] == "supabase"
+
+
+def test_update_postgres_role_password_success():
+    """Verify update_postgres_role_password executes docker exec and returns True on exit 0."""
+    from docker.archive.rotate_secrets import update_postgres_role_password
+
+    mock_res = MagicMock()
+    mock_res.returncode = 0
+
+    with patch("subprocess.run", return_value=mock_res) as mock_run:
+        success = update_postgres_role_password("new_secret_pwd_123")
+        assert success is True
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "docker" in args
+        assert "exec" in args
+        assert "market-bench-archive-db" in args
+        assert "ALTER USER postgres WITH PASSWORD 'new_secret_pwd_123';" in args[-1]
+
+
+def test_update_postgres_role_password_failure():
+    """Verify update_postgres_role_password returns False if docker exec fails or errors."""
+    from docker.archive.rotate_secrets import update_postgres_role_password
+
+    mock_res = MagicMock()
+    mock_res.returncode = 1
+
+    with patch("subprocess.run", return_value=mock_res):
+        success = update_postgres_role_password("new_secret_pwd_123")
+        assert success is False
+
+    with patch("subprocess.run", side_effect=OSError("Docker not found")):
+        success = update_postgres_role_password("new_secret_pwd_123")
+        assert success is False
+
+
+def test_rotate_all_sync_db_flag(tmp_path):
+    """Verify rotate_all respects sync_db parameter."""
+    from docker.archive.rotate_secrets import rotate_all
+
+    with (
+        patch("docker.archive.rotate_secrets.REPO_ROOT", tmp_path),
+        patch("docker.archive.rotate_secrets.update_postgres_role_password") as mock_update,
+    ):
+        mock_update.return_value = True
+
+        # Default sync_db=True
+        rotate_all(sync_db=True)
+        mock_update.assert_called_once()
+
+        mock_update.reset_mock()
+        # sync_db=False
+        rotate_all(sync_db=False)
+        mock_update.assert_not_called()

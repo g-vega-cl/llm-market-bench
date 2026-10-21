@@ -57,3 +57,22 @@ The stack is exposed securely via Cloudflare Tunnel (`cloudflared`) routed to `h
   - `SUPABASE_PROJECT_URL=https://benchify-archive-db.clvg.uk`
   - `SUPABASE_SERVICE_ROLE_KEY=<HS256 JWT with role "service_role">`
   - `SUPABASE_ANON_KEY=<HS256 JWT with role "anon">`
+
+## Secret Rotation & Security
+
+The stack uses cryptographically signed HS256 JWTs with a shared secret (`PGRST_JWT_SECRET`). To rotate secrets:
+
+```bash
+./apps/engine/.venv/bin/python3 docker/archive/rotate_secrets.py
+docker compose -f docker/archive/docker-compose.yml up -d --force-recreate
+```
+
+### Important Operational Considerations:
+
+1. **Persistent PostgreSQL Volumes (`archive_pgdata`)**:
+   Standard PostgreSQL Docker images only read `POSTGRES_PASSWORD` to create the superuser during initial cluster creation. On existing volumes, changing `POSTGRES_PASSWORD` in `.env` does not alter existing database users. `rotate_secrets.py` automatically executes `ALTER USER postgres WITH PASSWORD ...` if `market-bench-archive-db` is running. If rotated while the container is down, run the alter command manually once started, otherwise PostgREST will fail authentication against PostgreSQL.
+
+2. **Frontend Security Boundary (Netlify vs Backend)**:
+   - **Netlify**: `VITE_SUPABASE_ANON_KEY` and `SUPABASE_ANON_KEY` **must only receive the `anon` JWT**. Vite bakes all `VITE_*` environment variables directly into client-side JavaScript bundles served to public browsers.
+   - **GitHub Actions Secrets & Engine**: `SUPABASE_SERVICE_ROLE_KEY` receives the `service_role` JWT (which bypasses RLS for background ingestion and analysis jobs). Never expose `service_role` in public frontend configurations.
+

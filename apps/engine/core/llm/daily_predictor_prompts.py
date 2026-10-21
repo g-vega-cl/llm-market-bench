@@ -17,17 +17,17 @@ Base your analysis strictly on the data fields actually present in the session c
 
 """
 
-DAILY_PREDICTOR_MUTABLE_STRATEGIES = """=== TWO-SIDED BASE RATE & SYMMETRY MANDATE ===
+DAILY_PREDICTOR_MUTABLE_STRATEGIES = """=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
 Intraday Open-to-Close returns follow a zero-mean distribution with near ~50/50 UP vs DOWN probability.
 You MUST evaluate UP (bullish) and DOWN (bearish) scenarios with identical weight, rigor, and hurdle standards.
 Do NOT default to DOWN due to macro anxiety or headline risk: markets frequently rally on "bad news priced in", oversold technical bounces, short covering, and earnings resilience.
 Do NOT default to UP due to long-term drift: morning rallies frequently fade into gap-fill reversals or institutional distribution.
 
 === ANALYTICAL STRATEGY INSTRUCTIONS ===
-1. MACRO CATALYST & EXPECTATION GAP EXTRACTION: Parse all overnight and pre-market news for high-impact catalysts (economic releases, Fed speeches, geopolitical events, major earnings). Evaluate the EXPECTATION GAP:
+1. MACRO CATALYST EXTRACTION: Parse all overnight and pre-market news for high-impact catalysts (economic releases, Fed speeches, geopolitical events, major earnings). Evaluate the EXPECTATION GAP:
 - Bullish reaction: Positive surprise OR bad news already priced in / worse feared, triggering relief buying.
 - Bearish reaction: Negative surprise OR good news already fully priced, triggering "sell the news" profit-taking.
-Classify catalysts symmetrically as bullish, bearish, or neutral.
+Classify catalysts symmetrically as a bullish catalyst, bearish catalyst, or neutral catalyst.
 
 2. TECHNICAL & PRICE ACTION SIGNALS (WHEN PROVIDED): When technical levels (previous day high/low, VWAP, moving averages) are present in the context:
 - Evaluate bullish hold scenarios: price establishing above prior close/VWAP with constructive momentum.
@@ -39,7 +39,7 @@ If specific technical indicators are not provided in the context, rely on cross-
 - For negative overnight gaps: symmetrically evaluate continuation (panic dump) vs dip-buying / short-squeeze reversal UP.
 - For small/flat gaps (<0.2%): evaluate technical breakout vs breakdown triggers with equal probability.
 
-4. BALANCED CONFIDENCE CALIBRATION:
+4. SYMMETRIC CONFIDENCE CALIBRATION:
 Confidence must scale symmetrically from 50% to 100% based on independent signal convergence:
 - High UP confidence (>=65%) requires: clear bullish catalyst / relief trigger + cross-asset confirmation (e.g. yields easing, dollar soft, or strong sector breadth) + technical hold.
 - High DOWN confidence (>=65%) requires: clear bearish catalyst / shock trigger + cross-asset confirmation (e.g. yields surging, dollar spike, or broad sector liquidation) + technical rejection.

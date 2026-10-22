@@ -134,6 +134,52 @@ def test_should_prune_stage1():
     assert should_prune_stage1(evaluated=15, correct=5, min_win_rate=0.52, sieve_size=25) is False
 
 
+def test_should_prune_stage1_prunes_asymmetric_one_sided_mutant():
+    """Verify Stage 1 screening filter prunes one-sided mutants even if raw win rate is >= 52%."""
+    # 15 sessions: 8 UP (all hit), 7 DOWN (all missed because model predicted UP on 15/15 days)
+    # Total correct: 8/15 = 53.3% >= 52.0%
+    # Recall UP = 100%, Recall DOWN = 0.0% -> min class recall < 25% -> MUST PRUNE!
+    records = []
+    for _ in range(8):
+        records.append(
+            {
+                "predicted_direction": "UP",
+                "actual_direction": "UP",
+                "is_correct": True,
+                "confidence": 62.0,
+                "expected_return_pct": 0.2,
+                "open_price": 500.0,
+                "close_price": 501.0,
+            }
+        )
+    for _ in range(7):
+        records.append(
+            {
+                "predicted_direction": "UP",
+                "actual_direction": "DOWN",
+                "is_correct": False,
+                "confidence": 62.0,
+                "expected_return_pct": 0.2,
+                "open_price": 500.0,
+                "close_price": 499.0,
+            }
+        )
+
+    # When min_single_class_recall=25.0 and min_balanced_acc=48.0, this MUST return True (pruned!)
+    assert (
+        should_prune_stage1(
+            evaluated=15,
+            correct=8,
+            min_win_rate=0.52,
+            sieve_size=15,
+            records=records,
+            min_balanced_acc=48.0,
+            min_single_class_recall=25.0,
+        )
+        is True
+    )
+
+
 def test_binomial_significance_filter():
     """Verify binomial significance requires p < alpha against 50% coin flip."""
     # 33 wins out of 51 sessions = 64.7% win rate -> p = 0.0244 < 0.05 (Significant)
@@ -496,3 +542,150 @@ Hope this helps!"""
     assert payload is not None
     assert "breadth diverges" in payload["hypothesis"]
     assert "fade toward VWAP" in payload["new_strategy"]
+
+
+def test_create_balanced_stratified_split_randomizes_dates_across_regimes():
+    """Verify that shuffle_order=True intersperses non-contiguous dates to prevent single-regime traps."""
+    # 15 UP sessions, 15 DOWN sessions with strictly increasing chronological dates
+    sessions = []
+    for month in ["08", "09", "10"]:
+        for day in range(1, 11):
+            dir_val = "UP" if day % 2 == 1 else "DOWN"
+            sessions.append(
+                {
+                    "target_date": f"2026-{month}-{day:02d}",
+                    "actual_direction": dir_val,
+                    "open_price": 500.0,
+                    "close_price": 502.0 if dir_val == "UP" else 498.0,
+                }
+            )
+
+    # When shuffle_order=True (default), dates in train are NOT strictly sorted chronologically
+    train_shuffled, test_shuffled = create_balanced_stratified_split(
+        sessions, train_ratio=0.7, seed=42, shuffle_order=True
+    )
+
+    train_dates = [s["target_date"] for s in train_shuffled]
+    sorted_dates = sorted(train_dates)
+    # Shuffled order must not equal monotonic sorted order
+    assert train_dates != sorted_dates, "Expected non-contiguous shuffled dates across months"
+    # But UP and DOWN counts must still be exactly 1:1 balanced
+    assert sum(1 for s in train_shuffled if s["actual_direction"] == "UP") == sum(
+        1 for s in train_shuffled if s["actual_direction"] == "DOWN"
+    )
+
+    # When shuffle_order=False, dates MUST be strictly sorted
+    train_sorted, _ = create_balanced_stratified_split(sessions, train_ratio=0.7, seed=42, shuffle_order=False)
+    assert [s["target_date"] for s in train_sorted] == sorted([s["target_date"] for s in train_sorted])
+
+
+def test_should_prune_stage1_with_confidence_sized_sharpe():
+    """Verify Stage 1 sieve evaluates risk-adjusted Sharpe return in addition to raw win rate."""
+    # Scenario A: 8/15 hits (53.3% raw WR >= 52.0%), but reckless high-confidence errors yield negative Sharpe
+    records_bad_sharpe = []
+    # 8 correct predictions with small positive returns
+    for i in range(8):
+        records_bad_sharpe.append(
+            {
+                "target_date": f"2026-08-{i + 1:02d}",
+                "open_price": 500.0,
+                "close_price": 501.0,
+                "actual_direction": "UP",
+                "predicted_direction": "UP",
+                "confidence": 53.0,
+                "is_correct": True,
+            }
+        )
+    # 7 incorrect predictions with massive losses and high confidence (85%)
+    for i in range(7):
+        records_bad_sharpe.append(
+            {
+                "target_date": f"2026-08-{i + 9:02d}",
+                "open_price": 500.0,
+                "close_price": 490.0,  # 2% drop
+                "actual_direction": "DOWN",
+                "predicted_direction": "UP",
+                "confidence": 85.0,  # Highly overconfident
+                "is_correct": False,
+            }
+        )
+
+    # Should prune early because annualized Sharpe is deeply negative (< -0.5)
+    assert (
+        should_prune_stage1(
+            evaluated=15,
+            correct=8,
+            min_win_rate=0.52,
+            sieve_size=15,
+            records=records_bad_sharpe,
+            min_sharpe=-0.5,
+        )
+        is True
+    )
+
+    # Scenario B: 8/15 hits with balanced two-sided predictions and disciplined returns -> High Sharpe -> Pass Stage 1!
+    records_good_sharpe = []
+    # 4 TP (Predicted UP, Actual UP, +1.0% gain, sized up at 75%)
+    for i in range(4):
+        records_good_sharpe.append(
+            {
+                "target_date": f"2026-08-{i + 1:02d}",
+                "open_price": 500.0,
+                "close_price": 505.0,
+                "actual_direction": "UP",
+                "predicted_direction": "UP",
+                "confidence": 75.0,
+                "is_correct": True,
+            }
+        )
+    # 4 TN (Predicted DOWN, Actual DOWN, -1.0% drop, sized up at 75%)
+    for i in range(4):
+        records_good_sharpe.append(
+            {
+                "target_date": f"2026-08-{i + 5:02d}",
+                "open_price": 500.0,
+                "close_price": 495.0,
+                "actual_direction": "DOWN",
+                "predicted_direction": "DOWN",
+                "confidence": 75.0,
+                "is_correct": True,
+            }
+        )
+    # 4 FP (Predicted UP, Actual DOWN, -0.1% scratch loss, low conf 52%)
+    for i in range(4):
+        records_good_sharpe.append(
+            {
+                "target_date": f"2026-08-{i + 9:02d}",
+                "open_price": 500.0,
+                "close_price": 499.5,
+                "actual_direction": "DOWN",
+                "predicted_direction": "UP",
+                "confidence": 52.0,
+                "is_correct": False,
+            }
+        )
+    # 3 FN (Predicted DOWN, Actual UP, +0.1% scratch loss, low conf 52%)
+    for i in range(3):
+        records_good_sharpe.append(
+            {
+                "target_date": f"2026-08-{i + 13:02d}",
+                "open_price": 500.0,
+                "close_price": 500.5,
+                "actual_direction": "UP",
+                "predicted_direction": "DOWN",
+                "confidence": 52.0,
+                "is_correct": False,
+            }
+        )
+
+    assert (
+        should_prune_stage1(
+            evaluated=15,
+            correct=8,
+            min_win_rate=0.52,
+            sieve_size=15,
+            records=records_good_sharpe,
+            min_sharpe=-0.5,
+        )
+        is False
+    )

@@ -150,12 +150,38 @@ def should_prune_stage1(
     correct: int,
     min_win_rate: float = 0.52,
     sieve_size: int = 25,
+    records: list[dict[str, Any]] | None = None,
+    min_sharpe: float = -0.5,
+    min_balanced_acc: float = 48.0,
+    min_single_class_recall: float = 25.0,
 ) -> bool:
-    """Determine whether to prune candidate at Stage 1 screening sieve."""
+    """Determine whether to prune candidate at Stage 1 screening sieve.
+
+    Evaluates directional win rate, confidence-sized Sharpe return, and class balance
+    to prune reckless drawdowns and one-sided asymmetric collapses early.
+    """
     if evaluated < sieve_size:
         return False
     win_rate = correct / evaluated if evaluated > 0 else 0.0
-    return win_rate < min_win_rate
+    if win_rate < min_win_rate:
+        return True
+
+    if records and len(records) >= sieve_size:
+        sized_pnl = calculate_sized_trading_pnl(records[:sieve_size])
+        ann_sharpe = float(sized_pnl.get("annualized_sharpe", 0.0))
+        if ann_sharpe < min_sharpe:
+            return True
+
+        bal_metrics = calculate_balanced_accuracy(records[:sieve_size])
+        if bal_metrics["balanced_accuracy_pct"] < min_balanced_acc:
+            return True
+        if (
+            bal_metrics["recall_up_pct"] < min_single_class_recall
+            or bal_metrics["recall_down_pct"] < min_single_class_recall
+        ):
+            return True
+
+    return False
 
 
 def calculate_balanced_accuracy(records: list[dict[str, Any]]) -> dict[str, float]:
@@ -261,8 +287,14 @@ def create_balanced_stratified_split(
     sessions: list[dict[str, Any]],
     train_ratio: float = 0.7,
     seed: int = 42,
+    shuffle_order: bool = True,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Create a strictly balanced (1:1 UP vs DOWN) train and test partition to eliminate base-rate distortion."""
+    """Create a strictly balanced (1:1 UP vs DOWN) train and test partition to eliminate base-rate distortion.
+
+    When shuffle_order is True (default), dates in train and test partitions are pseudo-randomly
+    interleaved to evaluate non-contiguous timeframes, preventing contiguous timeframe regime traps.
+    When False, partitions are strictly sorted chronologically.
+    """
     import random
 
     ups = [s for s in sessions if str(s.get("actual_direction", "")).upper() == "UP"]
@@ -282,8 +314,12 @@ def create_balanced_stratified_split(
     train = balanced_ups[:split_count] + balanced_downs[:split_count]
     test = balanced_ups[split_count:] + balanced_downs[split_count:]
 
-    train.sort(key=lambda s: s.get("target_date", ""))
-    test.sort(key=lambda s: s.get("target_date", ""))
+    if shuffle_order:
+        rng.shuffle(train)
+        rng.shuffle(test)
+    else:
+        train.sort(key=lambda s: s.get("target_date", ""))
+        test.sort(key=lambda s: s.get("target_date", ""))
 
     return train, test
 
@@ -417,12 +453,20 @@ async def evaluate_prompt_on_live_sessions(
                 correct=correct_count,
                 min_win_rate=min_stage1_win_rate,
                 sieve_size=stage1_sieve,
+                records=eval_records,
             ):
                 win_rate = correct_count / (idx + 1)
                 metrics = calculate_daily_ratchet_metrics(eval_records)
+                sized_pnl = calculate_sized_trading_pnl(eval_records)
+                ann_sharpe = sized_pnl.get("annualized_sharpe", 0.0)
+                bal_metrics = calculate_balanced_accuracy(eval_records)
                 return {
                     "pruned": True,
-                    "reason": f"Stage 1 pruned: win rate {win_rate:.1%} < {min_stage1_win_rate:.1%}",
+                    "reason": (
+                        f"Stage 1 pruned: win rate {win_rate:.1%} < {min_stage1_win_rate:.1%}, "
+                        f"Sharpe ({ann_sharpe:.2f}), or asymmetric collapse "
+                        f"(BalAcc {bal_metrics['balanced_accuracy_pct']}%, UP {bal_metrics['recall_up_pct']}%, DOWN {bal_metrics['recall_down_pct']}%)"
+                    ),
                     "evaluated_count": len(eval_records),
                     "metrics": metrics,
                     "records": eval_records,
@@ -523,6 +567,11 @@ Anchor the rules around one of the following high-alpha structural mechanisms:
 1. Cross-Asset Yield Transmission: Priority weighting on 10Y/2Y Treasury yield changes (TLT/IEF momentum) and commodity inflation (GLD/USO) vs equity futures.
 2. Derivatives Positioning & Volatility Skew: Rules derived strictly from 25-delta Put/Call skew, Max Pain strike gravitation, and institutional options flow.
 3. Asymmetric Gap-Fill Reversal: Mandatory fading of large overnight futures gaps when opening market internals or breadth (QQQ/IWM) fail to confirm continuation.
+4. Market Regime Classification: Classify today's pre-market state into 1 of 4 regimes (Low-Vol Pin, Trend Expansion, Mean Reversion, Catalyst Shock) before predicting direction.
+5. Dealer Gamma & Max Pain Pinning: Check options open interest walls and Max Pain strike to avoid mistaking compression for directional breakouts.
+6. Anti-Pessimism Base-Rate Prior: Evaluate historical ~54% green base-rate prior to prevent false DOWN calls on generic macro headlines.
+7. Dialectical Balance-Sheet Deliberation: Mandatory two-column conviction scoring (Bull [1-10] vs Bear [1-10]). If delta <= 1, default to consolidation/pin with low confidence (52-54%).
+8. Regime-Gated Confidence Clamping: Clamp confidence to 52-55% in low-volatility or Max Pain pin environments; reserve >60% confidence strictly for confirmed cross-asset divergence.
 """
 
     meta_prompt = f"""You are an elite quantitative meta-researcher optimizing an intraday SPY directional trading prompt.
@@ -531,13 +580,19 @@ Your goal is to rewrite ONLY the middle strategy section of the system prompt to
 === CURRENT MUTABLE STRATEGY ===
 {mutable}
 {radical_block}
+=== ANTI-WHIPLASH SYMMETRY MANDATE ===
+Do NOT cure missed UP calls by penalizing DOWN calls or raising the hurdle for DOWN to impossible levels.
+Do NOT cure missed DOWN calls by penalizing UP calls or raising the hurdle for UP to impossible levels.
+In an intraday zero-mean market, directional symmetry is non-negotiable. Both UP and DOWN must require identical evidentiary standards.
+Any strategy that produces >70% calls in a single direction will be rejected by the mandatory two-sided recall gate (min 54.0% recall on BOTH sides).
+
 === RECENT ANONYMIZED PREDICTION MISSES & ERRORS (GROUND TRUTH) ===
 {miss_text}
 
 === INSTRUCTIONS ===
 1. Analyze the false predictions above. Identify why the model erred (e.g. failing to respect bond yield moves, misjudging gap-fill exhaustion, positive framing bias).
 2. Formulate a specific causal hypothesis to eliminate these errors.
-3. Rewrite the strategy section with sharp, falsifiable, symmetrical rules for both UP and DOWN days.
+3. Rewrite the strategy section with sharp, falsifiable, symmetrical rules for both UP and DOWN days. Enforce dialectical balance so neither side is suppressed.
 4. CRITICAL: Never include specific dates, years, or day numbers in your strategy. Rules must be universal and macro-driven.
 5. Do NOT output header or JSON schema blocks; they are frozen and appended automatically.
 6. Output MUST be valid JSON formatted as:
@@ -621,6 +676,7 @@ def compute_quant_diagnostics(records: list[dict[str, Any]]) -> dict[str, Any]:
 
     kelly_fraction = max(0.0, 2 * win_rate - 1)
     _, p_val = is_statistically_significant_improvement(wins, total)
+    sized_pnl = calculate_sized_trading_pnl(records)
 
     return {
         "total_evaluated": total,
@@ -639,6 +695,10 @@ def compute_quant_diagnostics(records: list[dict[str, Any]]) -> dict[str, Any]:
         "mean_brier": round(mean_brier, 4),
         "kelly_fraction": round(kelly_fraction, 4),
         "p_value": round(p_val, 4),
+        "annualized_sharpe": sized_pnl.get("annualized_sharpe", 0.0),
+        "sized_cumulative_return_pct": sized_pnl.get("cumulative_return_pct", 0.0),
+        "profit_factor": sized_pnl.get("profit_factor", 0.0),
+        "max_drawdown_pct": sized_pnl.get("max_drawdown_pct", 0.0),
     }
 
 
@@ -674,6 +734,9 @@ def append_quant_journal_entry(
         f"| **Recall UP / Recall DOWN** | `{in_sample_diag.get('recall_up_pct', 0.0):.1f}%` / `{in_sample_diag.get('recall_down_pct', 0.0):.1f}%` |",
         f"| **Precision UP / DOWN** | `{in_sample_diag.get('precision_up_pct', 0.0):.1f}%` / `{in_sample_diag.get('precision_down_pct', 0.0):.1f}%` |",
         f"| **Matthews Corr (MCC)** | `{in_sample_diag.get('mcc', 0.0):.3f}` |",
+        f"| **Annualized Sharpe Ratio** | `{in_sample_diag.get('annualized_sharpe', 0.0):.2f}` |",
+        f"| **Sized Return / Max DD** | `{in_sample_diag.get('sized_cumulative_return_pct', 0.0):+.2f}%` / `{in_sample_diag.get('max_drawdown_pct', 0.0):.2f}%` |",
+        f"| **Profit Factor** | `{in_sample_diag.get('profit_factor', 0.0):.2f}` |",
         f"| **Mean Brier Score** | `{in_sample_diag.get('mean_brier', 0.0):.4f}` |",
         f"| **Kelly Fraction ($f^*$)** | `{in_sample_diag.get('kelly_fraction', 0.0):.4f}` |",
         f"| **Binomial $p$-value** | `{in_sample_diag.get('p_value', 1.0):.4f}` |",

@@ -120,6 +120,56 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "3. Asymmetric Expression: Use the empirical tape and playbook to formulate long/short trade pairs and respect the falsification triggers before executing."
         ),
     },
+    "market_regime_classification": {
+        "title": "MARKET REGIME CLASSIFICATION (4-Quadrant Pre-Forecast Gating)",
+        "content": (
+            "=== FRAMEWORK: MARKET REGIME CLASSIFICATION ===\n"
+            "1. Pre-Forecast State Identification: Before assigning directional conviction, classify today's pre-market environment into 1 of 4 regimes:\n"
+            "- LOW_VOL_PIN: Realized vol low, spot VIX benign, heavy open interest near ATM strikes. Expect range-bound mean reversion and pin behavior; avoid chasing morning breakouts.\n"
+            "- TREND_EXPANSION: Cross-asset confirmation across yields (TLT), dollar (UUP), and broad equity futures (QQQ/IWM). Trade in the direction of the confirmed macro impulse.\n"
+            "- MEAN_REVERSION: Extended overnight gap (>0.4%) with diverging internal breadth or overextended 25-delta put/call skew. Anticipate opening gap-fill toward VWAP.\n"
+            "- CATALYST_EVENT: Major scheduled data (CPI, NFP, FOMC) or geopolitical shock. Sizing must be conservative until initial post-open volatility settles.\n"
+            "2. Regime Alignment Gate: Never assign high directional confidence (>=65%) if your thesis contradicts the dominant intraday regime."
+        ),
+    },
+    "option_pin_gamma_levels": {
+        "title": "OPTION PINNING & DEALER GAMMA LEVELS (Max Pain & Strike Walls)",
+        "content": (
+            "=== DISCIPLINE: OPTION PINNING & DEALER GAMMA ===\n"
+            "1. Strike Wall Gravitation: Inspect options positioning, Put/Call ratios, and Max Pain strike. When spot price is within 0.3% of large open interest clusters or Max Pain, treat magnetic pin pull as the dominant intraday force.\n"
+            "2. False Breakout Filter: Do not forecast aggressive intraday continuation away from major strike walls without heavy, volume-backed catalyst confirmation.\n"
+            "3. Delta-Hedging Dampener: In low-volatility regimes, dealer gamma hedging compresses realized price moves; tighten target returns accordingly."
+        ),
+    },
+    "anti_pessimism_prior_conditioning": {
+        "title": "ANTI-PESSIMISM BASE-RATE PRIOR (Overcoming Macro Headline Alarmism)",
+        "content": (
+            "=== DISCIPLINE: ANTI-PESSIMISM BASE-RATE PRIOR ===\n"
+            "1. S&P 500 Drift Base Rate: Historically, the S&P 500 closes green ~54% of all trading sessions due to structural corporate earnings growth, dividend reinvestment, and systematic equity bid.\n"
+            "2. The 'Bear Porn' Filter: Do NOT default to DOWN simply because financial news highlights macroeconomic debt, geopolitical tensions, or inflation fears. Markets regularly climb a 'wall of worry' and rally on bad news already priced in.\n"
+            "3. Symmetric Hurdle Discipline: Calling DOWN requires a specific, active negative catalyst (fresh hawkish shock, credit spread blowout, or violent technical rejection), not passive ambient anxiety. Likewise, calling UP requires a specific positive catalyst or constructive technical structure, not blind optimism."
+        ),
+    },
+    "dialectical_thesis_deliberation": {
+        "title": "DIALECTICAL THESIS DELIBERATION (Symmetric Bull vs Bear Balance Sheet)",
+        "content": (
+            "=== DISCIPLINE: DIALECTICAL THESIS DELIBERATION ===\n"
+            "1. Two-Column Conviction Scoring: In your internal analysis, score both sides objectively on a 1-to-10 scale:\n"
+            "   - Bull Conviction Score [1-10]: Based on confirmed earnings beats, easing yields, soft dollar, or technical hold.\n"
+            "   - Bear Conviction Score [1-10]: Based on active hawkish catalysts, surging yields, strong dollar, or technical breakdown.\n"
+            "2. Symmetry Invariant: Do NOT hold one direction to an impossible standard while waving the other through on passive assumptions. Both UP and DOWN require identical evidentiary hurdles.\n"
+            "3. Tie-Breaking & Low-Conviction Pinning: If |Bull Score - Bear Score| <= 1, classify today as CONSOLIDATION / RANGE-BOUND. Default to moderate/low confidence (52%-54%) and require cross-asset divergence (TLT yields or Dollar DXY) to justify any directional bias."
+        ),
+    },
+    "regime_gated_confidence_calibration": {
+        "title": "REGIME-GATED CONFIDENCE CALIBRATION (Structural Clamping)",
+        "content": (
+            "=== DISCIPLINE: REGIME-GATED CONFIDENCE CALIBRATION ===\n"
+            "1. Low-Volatility & Pinning Clamping: When market indicators show compressed volatility, flat overnight gaps (<0.2%), or proximity (<0.25%) to Max Pain strike, clamp confidence strictly between 52.0% and 55.0%. Never exceed 56% in range-bound regimes.\n"
+            "2. Moderate Confirmation Range (56.0% - 65.0%): Reserve for single-catalyst clarity or one-sided sector breadth (e.g., QQQ/IWM aligned).\n"
+            "3. Multi-Asset Convergence Ceiling (66.0% - 75.0%): Require independent convergence across macro news, bond yield momentum (TLT/IEF), dollar direction (UUP), and technical levels. Never exceed 80.0% confidence on any intraday prediction."
+        ),
+    },
 }
 
 

@@ -10,6 +10,7 @@ A systematic, daily intraday portfolio that captures options dealer gamma pinnin
 ## Components
 
 - `apps/engine/tasks/max_pain_task.py`: the scheduled daily task orchestrator
+- `apps/engine/execution/providers/alpaca_max_pain.py`: full-chain open-interest Max Pain (see [[concepts/max-pain-data-sources]])
 - `apps/engine/execution/max_pain.py`: holding-exit rules and rebalance order computation
 - `apps/engine/core/llm/max_pain_prompts.py`: Jev question contract and default qualification criteria
 - `apps/web/src/features/portfolios/components/StrategyExplainer.tsx`: the `sys-max-pain` explainer card
@@ -17,7 +18,7 @@ A systematic, daily intraday portfolio that captures options dealer gamma pinnin
 
 ## Pipeline
 
-1. **Snapshot and quote fetch**: `fetch_max_pain_snapshot` queries 0DTE options chains via `MassiveOptionsClient` (with fallback to `options_data_cache`), deriving today's Max Pain strike via `calculate_max_pain`.
+1. **Verified chain fetch**: `fetch_max_pain_snapshot` pulls the *full* same-day chain with OCC open interest from Alpaca (`apps/engine/execution/providers/alpaca_max_pain.py`, `GET /v2/options/contracts`) and derives the strike via `calculate_max_pain`. A thin chain (< 10 strikes with OI), missing credentials, HTTP errors, or a non-0DTE nearest expiration make the task skip the ticker (`data_insufficient`) instead of trading. Every skip reason is logged at info level.
 2. **Quantitative discount filter**: Evaluates the percentage distance from spot price to the Max Pain strike: `(max_pain - spot) / spot`. Candidates must trade at a 0.25% to 2.50% discount below the strike.
 3. **Jev gatekeeper**: Each candidate is submitted to `evaluate_candidate_with_jev`, which POSTs a typed `choice` question (`max_pain_admission`) to OpenRouter's Decisions API (`POST /api/alpha/decisions`). A candidate is admitted only if choice is `QUALIFIED` and confidence `>= 70%`, filtering out runaway macro catalysts.
 4. **Rebalance**: `compute_max_pain_rebalance_orders` frees cash from exiting holdings and allocates deployable cash equally across qualified index buys with 0.01% (1 bps) friction.
@@ -56,6 +57,7 @@ python -m tasks.max_pain_task \
 
 - [[concepts/max-pain-pinning]]
 - [[entities/massive-options]]
+- [[concepts/max-pain-data-sources]]
 - [[entities/macro-options]]
 - [[concepts/jev-decisions-model]]
 - [[concepts/execution]]

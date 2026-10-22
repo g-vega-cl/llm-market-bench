@@ -54,6 +54,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
         run: |
           cd apps/engine
           DRY_RUN_FLAG=""

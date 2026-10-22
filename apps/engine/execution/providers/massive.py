@@ -862,6 +862,24 @@ class MassiveOptionsClient:
             logger.error(f"Massive API error for {ticker}: {resp.status_code} - {resp.text}")
             return {"status": "ERROR", "error": resp.text, "results": []}
 
+    async def _apply_verified_max_pain(
+        self, ticker: str, results: list[dict[str, Any]], metrics: dict[str, Any], min_dte: int | None
+    ) -> None:
+        """Free-tier snapshots hold ~4 contracts, so their Max Pain is meaningless; replace it with
+        the full-chain Alpaca open-interest value for the same expiration (or None when unavailable)."""
+        from execution.providers.alpaca_max_pain import get_verified_max_pain
+
+        exp = next((r.get("details", {}).get("expiration_date") for r in results), None)
+        verified = await get_verified_max_pain(ticker, expiration_date=exp, min_dte=min_dte or 0)
+        if verified:
+            metrics["max_pain"] = verified["max_pain"]
+            metrics["max_pain_source"] = verified["source"]
+            metrics["max_pain_expiration"] = verified["expiration"]
+            metrics["max_pain_open_interest_date"] = verified.get("open_interest_date")
+        else:
+            metrics["max_pain"] = None
+            metrics["max_pain_source"] = "unavailable_free_tier_sample_too_thin"
+
     async def get_options_snapshot(
         self,
         ticker: str,
@@ -933,6 +951,8 @@ class MassiveOptionsClient:
         # 4. Compute derived metrics
         now_iso = datetime.datetime.now(datetime.UTC).isoformat()
         metrics = calculate_options_sentiment(ticker, results, current_price=current_price, as_of_timestamp=now_iso)
+        if MassiveOptionsClient._snapshot_supported is False:
+            await self._apply_verified_max_pain(ticker, results, metrics, min_dte)
 
         payload = {
             "status": "OK",

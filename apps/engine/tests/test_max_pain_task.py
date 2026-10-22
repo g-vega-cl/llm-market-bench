@@ -90,27 +90,75 @@ async def test_evaluate_candidate_with_jev_disqualified():
 
 
 @pytest.mark.asyncio
-async def test_fetch_max_pain_snapshot_fallback():
-    """Verify fetch_max_pain_snapshot falls back to Supabase options_data_cache if Massive client fails."""
-    mock_sb = MagicMock()
-    mock_table = MagicMock()
-    mock_select = MagicMock()
-    mock_eq = MagicMock()
-    mock_exec = MagicMock()
+async def test_fetch_max_pain_snapshot_uses_verified_alpaca_chain():
+    """Max Pain comes only from the full Alpaca open-interest chain, never the Massive free-tier sample."""
+    verified = {
+        "max_pain": 755.0,
+        "expiration": "2026-10-22",
+        "n_strikes": 40,
+        "n_contracts": 80,
+        "put_call_oi_ratio": 1.3,
+        "open_interest_date": "2026-10-21",
+    }
+    with patch("tasks.max_pain_task.get_verified_max_pain", new_callable=AsyncMock, return_value=verified) as gv:
+        metrics = await fetch_max_pain_snapshot("SPY")
+    assert metrics is not None
+    assert metrics["max_pain"] == 755.0
+    assert metrics["expiration"] == "2026-10-22"
+    assert metrics["put_call_oi_ratio"] == 1.3
+    assert gv.await_args.kwargs["min_dte"] == 0
 
-    mock_exec.data = [{"metrics": {"max_pain": 560.0, "put_call_oi_ratio": 1.2}}]
-    mock_eq.execute.return_value = mock_exec
-    mock_select.eq.return_value = mock_eq
-    mock_table.select.return_value = mock_select
-    mock_sb.table.return_value = mock_table
+
+@pytest.mark.asyncio
+async def test_fetch_max_pain_snapshot_returns_none_when_unverified():
+    """No verified chain -> None, so the strategy sits out instead of trading a bogus strike."""
+    with patch("tasks.max_pain_task.get_verified_max_pain", new_callable=AsyncMock, return_value=None):
+        assert await fetch_max_pain_snapshot("SPY") is None
+
+
+@pytest.mark.asyncio
+async def test_run_max_pain_task_skips_non_0dte_expiration_and_logs_reason(caplog):
+    """A max pain strike from a later expiration is not a same-day pin and must not trade."""
+    mock_portfolio = MagicMock()
+    mock_portfolio.positions = {}
+    mock_portfolio.cash_balance = 10000.00
+    mock_portfolio.id = "mock-portfolio-id"
+    mock_portfolio.initialize = AsyncMock()
+    metrics = {"max_pain": 560.0, "expiration": "1999-01-01"}
+    jev = AsyncMock()
 
     with (
-        patch("tasks.max_pain_task.MassiveOptionsClient.get_options_snapshot", side_effect=RuntimeError("API 429")),
-        patch("tasks.max_pain_task.get_supabase_client", return_value=mock_sb),
+        patch("tasks.max_pain_task.Portfolio", return_value=mock_portfolio),
+        patch("tasks.max_pain_task.fetch_max_pain_snapshot", new_callable=AsyncMock, return_value=metrics),
+        patch("tasks.max_pain_task.evaluate_candidate_with_jev", jev),
+        patch("tasks.max_pain_task.fetch_current_price", return_value=555.0),
+        caplog.at_level("INFO", logger="engine"),
     ):
-        metrics = await fetch_max_pain_snapshot("SPY")
-        assert metrics is not None
-        assert metrics["max_pain"] == 560.0
+        res = await run_max_pain_task(dry_run=True, tickers=["SPY"])
+    assert res["buys"] == []
+    jev.assert_not_called()
+    assert "not 0DTE" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_run_max_pain_task_logs_discount_rejection(caplog):
+    """Out-of-range discounts are logged at info level with the numbers involved."""
+    mock_portfolio = MagicMock()
+    mock_portfolio.positions = {}
+    mock_portfolio.cash_balance = 10000.00
+    mock_portfolio.id = "mock-portfolio-id"
+    mock_portfolio.initialize = AsyncMock()
+    metrics = {"max_pain": 555.1}
+
+    with (
+        patch("tasks.max_pain_task.Portfolio", return_value=mock_portfolio),
+        patch("tasks.max_pain_task.fetch_max_pain_snapshot", new_callable=AsyncMock, return_value=metrics),
+        patch("tasks.max_pain_task.fetch_current_price", return_value=555.0),
+        caplog.at_level("INFO", logger="engine"),
+    ):
+        res = await run_max_pain_task(dry_run=True, tickers=["SPY"])
+    assert res["buys"] == []
+    assert "outside 0.25%-2.5%" in caplog.text
 
 
 @pytest.mark.asyncio

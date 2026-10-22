@@ -14,6 +14,7 @@ import os
 import sys
 from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 # Ensure apps/engine is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -38,7 +39,7 @@ from execution.max_pain import (
     evaluate_max_pain_holding_exit,
 )
 from execution.portfolio import Portfolio
-from execution.providers.massive import MassiveOptionsClient
+from execution.providers.alpaca_max_pain import get_verified_max_pain
 
 DEFAULT_TARGET_TICKERS: tuple[str, ...] = ("SPY", "QQQ")
 
@@ -60,26 +61,25 @@ def fetch_current_price(client: httpx.Client, ticker: str, fmp_key: str) -> floa
 
 
 async def fetch_max_pain_snapshot(ticker: str, min_dte: int = 0) -> dict[str, Any] | None:
-    """Retrieve 0DTE options snapshot and Max Pain metrics with error isolation."""
-    try:
-        client = MassiveOptionsClient()
-        snapshot = await client.get_options_snapshot(ticker, min_dte=min_dte)
-        if snapshot.get("status") == "OK" and snapshot.get("metrics"):
-            return snapshot["metrics"]
-    except Exception as e:
-        logger.warning(f"Massive options fetch error for {ticker} (graceful fallback): {e}")
+    """Retrieve Max Pain from the full Alpaca open-interest chain for the nearest expiration.
 
-    # Fallback to Supabase options_data_cache
-    try:
-        sb = get_supabase_client()
-        if sb:
-            res = sb.table("options_data_cache").select("metrics").eq("ticker", ticker.upper()).execute()
-            if res.data and res.data[0].get("metrics"):
-                return res.data[0]["metrics"]
-    except Exception as e:
-        logger.debug(f"options_data_cache lookup failed for {ticker}: {e}")
-
-    return None
+    Returns None (so the strategy sits out) rather than trading on a thin or unavailable chain.
+    The free-tier Massive sample (~4 contracts) and its cached copies are deliberately not used.
+    """
+    verified = await get_verified_max_pain(ticker, min_dte=min_dte)
+    if not verified:
+        logger.warning(f"Max Pain skip {ticker}: data_insufficient (no verified Alpaca open-interest chain).")
+        return None
+    return {
+        "max_pain": verified["max_pain"],
+        "expiration": verified["expiration"],
+        "put_call_oi_ratio": verified.get("put_call_oi_ratio"),
+        "total_contracts_analyzed": verified.get("n_contracts"),
+        "staleness_note": (
+            f"Open interest as of {verified.get('open_interest_date')} "
+            f"({verified.get('n_strikes')} strikes, expiration {verified['expiration']})"
+        ),
+    }
 
 
 async def evaluate_candidate_with_jev(
@@ -238,16 +238,24 @@ async def run_max_pain_task(
                 spot_px = fetch_current_price(client, sym, FMP_API_KEY)
                 metrics = await fetch_max_pain_snapshot(sym, min_dte=0)
                 if not metrics:
-                    logger.debug(f"Skipping {sym}: No options snapshot available.")
+                    logger.info(f"Max Pain skip {sym}: no verified options chain available.")
                     continue
 
                 max_pain_strike = metrics.get("max_pain")
                 if not max_pain_strike or float(max_pain_strike) <= 0:
+                    logger.info(f"Max Pain skip {sym}: no max pain strike in snapshot.")
+                    continue
+
+                expiration = metrics.get("expiration")
+                today_et = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+                if expiration and expiration != today_et:
+                    logger.info(f"Max Pain skip {sym}: nearest expiration {expiration} is not 0DTE ({today_et}).")
                     continue
 
                 if spot_px <= 0:
                     spot_px = float(metrics.get("underlying_price") or 0.0)
                 if spot_px <= 0:
+                    logger.info(f"Max Pain skip {sym}: spot price unavailable.")
                     continue
 
                 current_prices[sym] = spot_px
@@ -269,6 +277,16 @@ async def run_max_pain_task(
                     if jev_res.get("is_qualified"):
                         cand_data["jev_confidence"] = jev_res.get("confidence", 0.0)
                         qualified_candidates.append(cand_data)
+                    else:
+                        logger.info(
+                            f"Max Pain skip {sym}: Jev rejected ({jev_res.get('choice')}, "
+                            f"conf {jev_res.get('confidence')}%)."
+                        )
+                else:
+                    logger.info(
+                        f"Max Pain skip {sym}: spot {spot_px:.2f} vs max pain {float(max_pain_strike):.2f} "
+                        f"(discount {discount_pct:.2f}% outside {min_discount_pct}%-{max_discount_pct}%)."
+                    )
 
     # 3. Compute rebalance orders
     plan = compute_max_pain_rebalance_orders(

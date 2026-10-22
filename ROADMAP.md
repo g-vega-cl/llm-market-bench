@@ -62,6 +62,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`.
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
+- [ ] - Benchify: get the smol server to do API calls 24/7 now that the DB is huge, and set up a distributed DB.
 
 ---
 

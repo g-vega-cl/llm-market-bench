@@ -164,7 +164,9 @@ Audit all changed files through these seven tiers. Do not skip any tier.
 7. **Internal link resolution**:
    - Every `[[page-name]]` cross-reference must resolve to an existing markdown page under `wiki/`.
 8. **Config parity**:
-   - New models in `packages/config/models.json` and tools in `packages/config/tools.json` must be documented in the wiki.
+   - New models in `packages/config/models.json` and tools in `packages/config/tools.json` must be documented in the wiki. Run strict `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` to ensure zero undocumented tools or models exist.
+9. **Auto-wiki preservation mandate and pre-commit emulation**:
+   - Staged code changes trigger `.husky/pre-commit` via `scripts/auto-wiki.sh` and `apps/engine/auto_wiki.py`. Ensure existing tools, schemas, and architecture blocks are preserved in related wiki pages. Emulate auto-wiki in dry-run mode (`auto_wiki.py --diff-file <(git diff --cached) --dry-run`) before committing to prevent pre-commit config parity regressions.
 
 ---
 

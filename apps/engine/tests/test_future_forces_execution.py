@@ -9,6 +9,7 @@ from execution.future_forces import (
     compute_future_forces_rebalance_orders,
     execute_force_invalidation,
 )
+from execution.portfolio import Position
 
 
 def test_sys_future_forces_owner_id():
@@ -257,3 +258,51 @@ async def test_run_future_forces_task_live_rebalance_executes_buys_cleanly():
         reason="future_force_buy: Autonomous Defense",
         skip_alpaca_mirror=False,
     )
+
+
+@pytest.mark.asyncio
+async def test_run_future_forces_task_with_existing_positions():
+    """Reproduction test: Verify run_future_forces_task handles portfolio.positions with Position instances without AttributeError."""
+    from tasks.future_forces_task import run_future_forces_task
+
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = (
+        MagicMock(
+            data=[
+                {
+                    "id": "force-1",
+                    "force_title": "Autonomous Defense",
+                    "archetype": "government_agenda",
+                    "tickers": ["AVAV"],
+                    "conviction_score": 5,
+                    "status": "active",
+                }
+            ]
+        )
+    )
+
+    mock_portfolio = MagicMock()
+    mock_portfolio.id = "port-ff-1"
+    mock_portfolio.initialize = AsyncMock()
+    # Existing holding as a real Position instance
+    mock_portfolio.positions = {
+        "AVAV": Position(ticker="AVAV", quantity=10, average_cost_basis=115.0),
+        "FRO": Position(ticker="FRO", quantity=50, average_cost_basis=25.0),
+    }
+    mock_portfolio.cash_balance = 5000.0
+    mock_portfolio.total_equity = 10000.0
+    mock_portfolio.execute_trade = AsyncMock(return_value="trade-456")
+
+    with (
+        patch("tasks.future_forces_task.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.future_forces_task.Portfolio", return_value=mock_portfolio),
+        patch("tasks.future_forces_task.is_market_open_with_logging", new_callable=AsyncMock, return_value=False),
+        patch("tasks.future_forces_task.seed_baseline_future_forces", new_callable=AsyncMock, return_value=[]),
+        patch("tasks.future_forces_task.fetch_ticker_quote", return_value={"price": 120.0}),
+    ):
+        res = await run_future_forces_task(mode="rebalance", dry_run=True, force_market=False)
+
+    assert "rebalance_orders" in res
+    assert "retained" in res["rebalance_orders"]
+    retained_tickers = [r["ticker"] for r in res["rebalance_orders"]["retained"]]
+    assert "AVAV" in retained_tickers or "FRO" in retained_tickers

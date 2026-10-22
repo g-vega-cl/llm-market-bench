@@ -38,6 +38,22 @@ A viable Future Force requires four structural pillars:
 
 ---
 
+## Tooling & Agent Access
+
+Autonomous agents and analysts access and evaluate future forces via two dedicated pull tools registered in `packages/config/tools.json`:
+
+1. `get_future_forces`:
+   - **Purpose**: Deterministic retrieval of active multi-horizon market forces (2 to 24 months), catalyst milestones, candidate beneficiary tickers, and explicit falsification triggers from the PostgreSQL `future_forces` registry (falling back to vetted baselines).
+   - **Parameters**: `archetype` (optional filter: `geopolitical_chokepoint`, `mega_event`, `government_agenda`, `sleeping_giant`), `max_horizon_months` (default: 24), `limit` (default: 5).
+   - **Returns**: Structured markdown summary of active forces, target dates, transmission chains, and invalidation rules.
+
+2. `research_future_force`:
+   - **Purpose**: Conducts deep-dive adversarial stress-testing of candidate theses, forward catalysts, and falsification criteria using OpenAI Luna with extended thinking.
+   - **Parameters**: `force_title` (required), `archetype` (required), `thesis` (required), `catalyst_event` (required), `invalidation_triggers` (required), `transmission_mechanism` (required), `tickers` (optional list), `horizon_months` (default: 3).
+   - **Returns**: Adversarial red-team rubric audit including priced-in expectation assessment, falsification clarity score (1-5), and audited conviction rating.
+
+---
+
 ## Related
 - [[entities/future-forces-portfolio]] — System portfolio implementation (`sys-future-forces`)
 - [[concepts/system-portfolios]] — Overview of all mechanical execution strategies

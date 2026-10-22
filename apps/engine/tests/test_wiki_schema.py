@@ -147,3 +147,68 @@ def test_auto_wiki_default_model():
     import apps.engine.auto_wiki as aw
 
     assert aw.DEFAULT_MODEL == "~deepseek/deepseek-flash-latest"
+
+
+def test_auto_wiki_preservation_mandate_in_system_prompt():
+    """auto_wiki SYSTEM_PROMPT must mandate preserving existing tools, schemas, and architecture."""
+    import apps.engine.auto_wiki as aw
+
+    prompt = aw.SYSTEM_PROMPT.lower()
+    assert "preserve" in prompt, "SYSTEM_PROMPT must instruct model to preserve existing documentation"
+    assert "tool" in prompt, "SYSTEM_PROMPT must mention preserving tool signatures"
+
+
+def test_auto_wiki_extract_diff_filenames():
+    """extract_diff_filenames must parse paths of modified files from git diff."""
+    import apps.engine.auto_wiki as aw
+
+    diff = """diff --git a/apps/engine/tasks/future_forces_task.py b/apps/engine/tasks/future_forces_task.py
+index 123..456 100644
+--- a/apps/engine/tasks/future_forces_task.py
++++ b/apps/engine/tasks/future_forces_task.py
+@@ -10,3 +10,4 @@
++new_code()
+"""
+    files = aw.extract_diff_filenames(diff)
+    assert files == ["apps/engine/tasks/future_forces_task.py"]
+
+
+def test_auto_wiki_find_related_wiki_pages(tmp_path, monkeypatch):
+    """find_related_wiki_pages must locate existing wiki pages matching modified files."""
+    import apps.engine.auto_wiki as aw
+
+    wiki = tmp_path / "wiki"
+    wiki.mkdir()
+    (wiki / "entities").mkdir()
+    target_page = wiki / "entities" / "future-forces-portfolio.md"
+    target_page.write_text("# Future Forces\nReferences `future_forces_task.py`.\n")
+
+    monkeypatch.setattr(aw, "WIKI_DIR", wiki)
+
+    matches = aw.find_related_wiki_pages(["apps/engine/tasks/future_forces_task.py"])
+    assert "entities/future-forces-portfolio.md" in matches
+    assert "future_forces_task.py" in matches["entities/future-forces-portfolio.md"]
+
+
+def test_auto_wiki_collect_wiki_context_includes_related_pages(tmp_path, monkeypatch):
+    """collect_wiki_context must include related existing wiki pages when diff mentions them."""
+    import apps.engine.auto_wiki as aw
+
+    wiki = tmp_path / "wiki"
+    wiki.mkdir()
+    (wiki / "entities").mkdir()
+    target_page = wiki / "entities" / "future-forces-portfolio.md"
+    target_page.write_text("# Future Forces\nReferences `future_forces_task.py`.\n")
+
+    monkeypatch.setattr(aw, "WIKI_DIR", wiki)
+
+    diff = """diff --git a/apps/engine/tasks/future_forces_task.py b/apps/engine/tasks/future_forces_task.py
+index 123..456 100644
+--- a/apps/engine/tasks/future_forces_task.py
++++ b/apps/engine/tasks/future_forces_task.py
+@@ -10,3 +10,4 @@
++new_code()
+"""
+    context = aw.collect_wiki_context(diff)
+    assert "future-forces-portfolio.md" in context
+    assert "PRESERVE ALL INVARIANTS" in context

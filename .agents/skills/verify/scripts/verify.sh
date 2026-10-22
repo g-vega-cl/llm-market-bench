@@ -61,6 +61,26 @@ echo "--> Synchronizing Wiki (hotspots, indexes, and integrity)..."
 ./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki
 ./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix
 
+# Strict Wiki & Config Parity Linting (MANDATORY)
+echo "--> Verifying strict Wiki integrity and config parity..."
+./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py
+
+# Auto-Wiki Pre-Commit Simulation (if non-doc code changes are staged)
+STAGED_NON_DOC=$(git diff --cached --name-only 2>/dev/null | grep -vE '^(wiki/|raw/|docs/|scripts/auto-wiki|\.husky/)' || true)
+if [ -n "$STAGED_NON_DOC" ]; then
+  echo "--> Staged code changes detected; emulating auto-wiki pre-commit..."
+  DIFF_FILE="$(mktemp /tmp/verify-auto-wiki-diff.XXXXXX)"
+  git diff --cached > "$DIFF_FILE"
+  if [ -s "$DIFF_FILE" ]; then
+    ./apps/engine/.venv/bin/python3 apps/engine/auto_wiki.py --diff-file "$DIFF_FILE" --dry-run || {
+      echo "ERROR: auto_wiki dry-run simulation failed on staged code changes!" >&2
+      rm -f "$DIFF_FILE"
+      exit 1
+    }
+  fi
+  rm -f "$DIFF_FILE"
+fi
+
 # Re-index and embed QMD vector search if available
 if command -v qmd >/dev/null 2>&1; then
   echo "--> Updating QMD vector index and embeddings..."

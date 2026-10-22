@@ -34,9 +34,17 @@ CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
     );
 $$ LANGUAGE sql STABLE;
 
+-- Stub auth.users table for compatibility with user-isolated tables (e.g. chat_memories)
+CREATE TABLE IF NOT EXISTS auth.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Grant schema usage
 GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO anon, authenticated, service_role;
 
 -- Create LLM Reasoning Logs table
 CREATE TABLE IF NOT EXISTS public.llm_reasoning_logs (

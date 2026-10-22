@@ -233,7 +233,7 @@ async def run_future_forces_task(
         if not active_forces:
             active_forces = DEFAULT_FUTURE_FORCES
 
-        # Pull quotes for candidate tickers
+        # Pull quotes for candidate tickers and existing holdings
         quotes: dict[str, dict[str, Any]] = {}
         with httpx.Client(timeout=10.0) as client:
             for force in active_forces:
@@ -243,15 +243,38 @@ async def run_future_forces_task(
                         quotes[ticker_up] = fetch_ticker_quote(client, ticker_up, FMP_API_KEY)
                 force["quotes"] = quotes
 
-        current_holdings = [
-            {
-                "ticker": pos["ticker"],
-                "shares": int(pos["quantity"]),
-                "current_price": float(pos.get("current_price") or pos.get("average_cost_basis") or 100.0),
-            }
-            for pos in portfolio.positions.values()
-            if (pos.get("quantity") or 0) > 0
-        ]
+            for pos in portfolio.positions.values():
+                pos_ticker = (
+                    getattr(pos, "ticker", None) or (pos.get("ticker") if isinstance(pos, dict) else "")
+                ).upper()
+                if pos_ticker and pos_ticker not in quotes:
+                    quotes[pos_ticker] = fetch_ticker_quote(client, pos_ticker, FMP_API_KEY)
+
+        current_holdings = []
+        for pos in portfolio.positions.values():
+            pos_ticker = (getattr(pos, "ticker", None) or (pos.get("ticker") if isinstance(pos, dict) else "")).upper()
+            pos_qty = (
+                getattr(pos, "quantity", None)
+                if hasattr(pos, "quantity")
+                else (pos.get("quantity") if isinstance(pos, dict) else 0)
+            )
+            qty_val = int(pos_qty or 0)
+            if qty_val <= 0:
+                continue
+            quote_data = quotes.get(pos_ticker) or {}
+            avg_cost = (
+                getattr(pos, "average_cost_basis", None)
+                if hasattr(pos, "average_cost_basis")
+                else (pos.get("average_cost_basis") if isinstance(pos, dict) else None)
+            )
+            cur_price = quote_data.get("price") or avg_cost or 100.0
+            current_holdings.append(
+                {
+                    "ticker": pos_ticker,
+                    "shares": qty_val,
+                    "current_price": float(cur_price),
+                }
+            )
 
         holding_evals = {h["ticker"].upper(): {"should_exit": False} for h in current_holdings}
 

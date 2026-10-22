@@ -84,3 +84,26 @@ def test_verify_skill_mandates_tier_7_wiki_docs():
     assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
     entity_content = VERIFY_ENTITY_MD.read_text()
     assert "Tier 7" in entity_content or "seven tiers" in entity_content.lower()
+
+
+def test_verify_script_checks_strict_wiki_lint():
+    """Verify that verify.sh executes strict wiki_lint (ensuring config-parity and integrity)."""
+    assert VERIFY_SCRIPT.exists(), "verify.sh must exist"
+    content = VERIFY_SCRIPT.read_text()
+    # Must run wiki_lint.py as a strict check (in addition to --fix)
+    lines = [line.strip() for line in content.splitlines()]
+    has_strict_lint = any("apps/engine/wiki_lint.py" in line and "--fix" not in line for line in lines)
+    assert has_strict_lint, "verify.sh must execute strict wiki_lint.py to enforce config parity"
+
+
+def test_verify_skill_mandates_config_parity_and_preservation():
+    """Verify that SKILL.md and wiki entity explicitly mandate config-parity and tool preservation."""
+    assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
+    skill_content = VERIFY_SKILL_MD.read_text()
+    assert "config parity" in skill_content.lower()
+    assert "tools.json" in skill_content
+    assert "auto_wiki" in skill_content or "preservation" in skill_content.lower()
+
+    assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
+    entity_content = VERIFY_ENTITY_MD.read_text()
+    assert "config parity" in entity_content.lower() or "tools.json" in entity_content

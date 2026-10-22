@@ -110,8 +110,50 @@ def filter_diff(diff_content: str) -> str:
     return "".join(filtered_parts)
 
 
-def collect_wiki_context() -> str:
-    """Read scaffold wiki files for LLM context (not the full wiki)."""
+def extract_diff_filenames(diff_content: str) -> list[str]:
+    """Parse relative paths of modified files from git diff headers."""
+    matches = re.findall(r"^diff --git a/(.*?) b/", diff_content, flags=re.MULTILINE)
+    seen = set()
+    result = []
+    for m in matches:
+        if m not in seen:
+            seen.add(m)
+            result.append(m)
+    return result
+
+
+def find_related_wiki_pages(filenames: list[str]) -> dict[str, str]:
+    """Locate existing wiki pages referencing or directly related to the modified files."""
+    if not WIKI_DIR.is_dir() or not filenames:
+        return {}
+
+    related: dict[str, str] = {}
+    tokens = set()
+    for f in filenames:
+        p = Path(f)
+        tokens.add(f)
+        tokens.add(p.name)
+        if p.stem:
+            tokens.add(p.stem)
+            tokens.add(p.stem.replace("_", "-"))
+
+    for md_file in sorted(WIKI_DIR.rglob("*.md")):
+        rel = str(md_file.relative_to(WIKI_DIR))
+        if rel in ("SCHEMA.md", "overview.md", "index.md"):
+            continue
+        try:
+            content = md_file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        page_stem = md_file.stem
+        if any(token in content for token in tokens if len(token) > 3) or any(token == page_stem for token in tokens):
+            related[rel] = content
+
+    return related
+
+
+def collect_wiki_context(diff_content: str = "") -> str:
+    """Read scaffold wiki files and related existing pages for LLM context."""
     parts = []
     for fname in ("SCHEMA.md", "overview.md"):
         path = WIKI_DIR / fname
@@ -129,6 +171,22 @@ def collect_wiki_context() -> str:
         rel = str(f.relative_to(WIKI_DIR))
         pages.append(f"  wiki/{rel}")
     parts.append("=== Existing wiki pages ===\n\n" + "\n".join(pages) + "\n")
+
+    # Read existing pages directly related to the modified files to prevent dropped sections
+    if diff_content:
+        filenames = extract_diff_filenames(diff_content)
+        related_pages = find_related_wiki_pages(filenames)
+        if related_pages:
+            related_parts = []
+            for rel_path, content in related_pages.items():
+                related_parts.append(
+                    f"=== Existing wiki/{rel_path} (PRESERVE ALL INVARIANTS, TOOLS, AND SCHEMAS) ===\n\n{content}\n"
+                )
+            parts.append(
+                "=== Related Existing Wiki Pages (Update existing pages, PRESERVE untouched sections/tools/schemas) ===\n\n"
+                + "\n".join(related_parts)
+            )
+
     # Read staged raw/ documents so the LLM sees human-written design intent
     try:
         result = subprocess.run(
@@ -185,11 +243,18 @@ record of what changed and when.
 For pages whose scope (subsystem, entity, concept) has been fully removed from the codebase,
 the page itself must be deleted — add it to `deleted_pages` in your response.
 
+## Preservation Mandate (CRITICAL)
+
+When updating existing wiki pages (providing an updated page under `new_pages`):
+- **PRESERVE ALL EXISTING TOOLS, SCHEMAS, AND ARCHITECTURAL INVARIANTS**: Never drop, truncate, or omit existing tool definitions (`## Tools`), parameter schemas, RPC endpoints, or database tables.
+- If a related existing wiki page is provided in the prompt context, incorporate the new changes while preserving all untouched sections, tool descriptions, and cross-references.
+- Omitting existing tool definitions causes `wiki_lint.py` config-parity failures and blocks git commits.
+
 ## What to Document
 
 - **New modules/packages/apps** → create entity page in entities/
 - **New ideas/patterns/abstractions** → create concept page in concepts/
-- **Updates to existing components** → rewrite or expand their respective wiki pages to match current behavior
+- **Updates to existing components** → rewrite or expand their respective wiki pages to match current behavior, preserving existing tools and schemas
 
 ## What to Skip
 
@@ -528,7 +593,7 @@ def main():
     # 1. Filter out lockfiles and assets
     diff_content = filter_diff(diff_content)
 
-    wiki_context = collect_wiki_context()
+    wiki_context = collect_wiki_context(diff_content)
 
     # 2. Build prompt
     prompt = f"""Analyze this git diff and determine what wiki documentation is needed.

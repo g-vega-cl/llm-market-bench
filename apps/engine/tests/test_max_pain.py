@@ -125,3 +125,64 @@ def test_compute_max_pain_rebalance_orders():
     # Price with 1 bps buy slippage: 555 * (1 + 0.0001) = 555.0555
     assert round(plan["buys"][0]["execution_price"], 4) == 555.0555
     assert plan["buys"][0]["shares"] > 0
+
+
+def test_compute_max_pain_rebalance_orders_uses_target_strike_on_pin_achieved():
+    """When session_high touches the target strike intraday and price pulls back, sale fills at target strike - 1bps."""
+    current_holdings = [
+        {
+            "ticker": "SPY",
+            "shares": 10,
+            "current_price": 765.0,
+            "cost_basis": 763.0,
+            "entry_price": 763.0,
+            "target_strike": 769.0,
+        },
+    ]
+    holding_evaluations = {
+        "SPY": {
+            "should_exit": True,
+            "reason": "Target strike $769.00 reached (pin achieved)",
+        },
+    }
+    plan = compute_max_pain_rebalance_orders(
+        current_holdings=current_holdings,
+        holding_evaluations=holding_evaluations,
+        qualified_candidates=[],
+        available_cash=2000.0,
+        max_holdings=2,
+        slippage_bps=1.0,
+    )
+    assert len(plan["sales"]) == 1
+    # Target strike $769.00 * (1 - 0.0001) = 768.9231 (not pullback price 765.0)
+    assert round(plan["sales"][0]["execution_price"], 4) == round(769.0 * (1.0 - 0.0001), 4)
+
+
+def test_compute_max_pain_rebalance_orders_uses_close_price_when_pin_not_achieved():
+    """When exiting on MOC session close without touching target strike, sale fills at current/close price - 1bps."""
+    current_holdings = [
+        {
+            "ticker": "SPY",
+            "shares": 10,
+            "current_price": 765.0,
+            "cost_basis": 763.0,
+            "entry_price": 763.0,
+            "target_strike": 769.0,
+        },
+    ]
+    holding_evaluations = {
+        "SPY": {
+            "should_exit": True,
+            "reason": "Session close liquidation (3:50 PM MOC)",
+        },
+    }
+    plan = compute_max_pain_rebalance_orders(
+        current_holdings=current_holdings,
+        holding_evaluations=holding_evaluations,
+        qualified_candidates=[],
+        available_cash=2000.0,
+        max_holdings=2,
+        slippage_bps=1.0,
+    )
+    assert len(plan["sales"]) == 1
+    assert round(plan["sales"][0]["execution_price"], 4) == round(765.0 * (1.0 - 0.0001), 4)

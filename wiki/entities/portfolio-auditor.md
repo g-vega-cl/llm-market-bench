@@ -13,6 +13,7 @@ The auditor walks a window of trading sessions (default 5, weekdays only) and ch
 
 - **Daily SPY portfolios** (`sys-daily-spy-*` and `sys-daily-spy-close-*`) — for every `daily_predictions` row on a given date, the matching system portfolio must contain both an entry and an exit trade (2 trades). Fewer than 2 trades is flagged as `MISSING_DAILY_SPY_TRADE`. The close-owner portfolio is always expected; the intraday owner is only expected when the model is not `jev` and the predicted magnitude is non-zero.
 - **Weekly Sector portfolios** (`sys-sector-ls-consensus`, `sys-sector-mean-reversion`, `sys-sector-naive-momentum`, `sys-sector-uncorr-20d`, `sys-sector-uncorr-7d`) — these hold positions from Monday 9:35 AM ET through Friday 15:30 ET and must be flat outside that window. Holding positions when the market should be flat is flagged as `UNLIQUIDATED_WEEKLY_SECTOR_POSITION`; holding zero positions mid-week is flagged as `MISSING_WEEKLY_SECTOR_ENTRY`.
+- **Daily Options Max Pain portfolio** (`sys-max-pain`, see [[entities/max-pain-pinning]]) — 0DTE index positions must be flat after 16:00 ET (or whenever held from a prior trading day). Any remaining open position is flagged as `UNLIQUIDATED_MAX_PAIN_POSITION` and auto-healed in `--fix` mode via `reconcile_unliquidated_max_pain_positions` (`apps/engine/execution/max_pain.py`), which checks the day's RTH high against the verified Alpaca Max Pain strike and backfills the `SELL` at the target strike (if touched intraday) or at the RTH close price.
 
 ## Anomaly Types
 
@@ -23,6 +24,7 @@ The auditor walks a window of trading sessions (default 5, weekdays only) and ch
 | `UNCLOSED_SHORT_DAILY_SPY` | SPY entry `SHORT` trade has `realized_pnl IS NULL` despite a matching session exit trade, risking resurrection as an active open short on read paths. |
 | `UNLIQUIDATED_WEEKLY_SECTOR_POSITION` | A weekly sector portfolio holds open positions during a period it should be flat (Friday post-close, weekend, or Monday pre-open). |
 | `MISSING_WEEKLY_SECTOR_ENTRY` | A weekly sector portfolio has zero positions mid-week, indicating a missed Monday rebalance. |
+| `UNLIQUIDATED_MAX_PAIN_POSITION` | `sys-max-pain` holds an unliquidated 0DTE position after the 16:00 ET close (or from a prior session) and is auto-healed at target strike (if RTH high touched Max Pain) or RTH close. |
 
 ## Auto-Heal Mode
 

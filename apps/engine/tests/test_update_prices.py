@@ -289,11 +289,14 @@ class TestSystematicStrategyHooks:
 
     @pytest.mark.asyncio
     async def test_hooks_max_pain_exit_in_market_close_window(self):
-        """Should trigger Max Pain liquidation exit at 3:45+ PM ET."""
+        """Should trigger Max Pain liquidation exit at 3:25+ PM ET (catching the 3:30 PM ET cron run)."""
         from scripts.update_prices import run_systematic_strategy_hooks
 
-        close_time = datetime(2026, 10, 6, 15, 50, 0, tzinfo=ZoneInfo("America/New_York"))
-        with patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain:
+        close_time = datetime(2026, 10, 6, 15, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain,
+            patch("execution.sector_horizon_trading.execute_horizon_sector_exits", new_callable=AsyncMock),
+        ):
             await run_systematic_strategy_hooks(close_time)
             mock_max_pain.assert_awaited_with(action="exit", dry_run=False)
 

@@ -89,10 +89,10 @@ async def run_systematic_strategy_hooks(now_et: datetime, dry_run: bool = False)
     try:
         from tasks.max_pain_task import run_max_pain_task
 
-        if now_et.hour == 15 and now_et.minute >= 45:
-            logger.info("Market close liquidation window (3:45+ PM ET) — Executing Max Pain exits...")
+        if now_et.hour > 15 or (now_et.hour == 15 and now_et.minute >= 25):
+            logger.info("Market close liquidation window (3:25+ PM ET) — Executing Max Pain exits...")
             await run_max_pain_task(action="exit", dry_run=dry_run)
-        elif 9 <= now_et.hour < 15 or (now_et.hour == 15 and now_et.minute < 45):
+        elif 9 <= now_et.hour < 15 or (now_et.hour == 15 and now_et.minute < 25):
             logger.info("Intraday trading window — Running Max Pain evaluation/entry...")
             await run_max_pain_task(action="entry", dry_run=dry_run)
     except Exception:

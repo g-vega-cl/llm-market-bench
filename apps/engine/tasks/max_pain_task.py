@@ -60,6 +60,50 @@ def fetch_current_price(client: httpx.Client, ticker: str, fmp_key: str) -> floa
     return 0.0
 
 
+def fetch_quote_snapshot(client: httpx.Client, ticker: str, fmp_key: str) -> dict[str, float]:
+    """Fetch real-time price, session high, and session low for an index ticker via FMP /stable/quote."""
+    if not fmp_key:
+        return {"price": 0.0, "day_high": 0.0, "day_low": 0.0}
+    url = f"https://financialmodelingprep.com/stable/quote?symbol={ticker.upper()}&apikey={fmp_key}"
+    try:
+        resp = client.get(url, timeout=10.0)
+        if resp.status_code == 200 and resp.json():
+            data = resp.json()
+            if isinstance(data, list) and data:
+                row = data[0]
+                price = float(row.get("price") or 0.0)
+                day_high = float(row.get("dayHigh") or price)
+                day_low = float(row.get("dayLow") or price)
+                return {"price": price, "day_high": max(price, day_high), "day_low": day_low}
+    except Exception as e:
+        logger.debug(f"Failed to fetch FMP quote snapshot for {ticker}: {e}")
+    return {"price": 0.0, "day_high": 0.0, "day_low": 0.0}
+
+
+def has_entered_today(portfolio_id: Any, ticker: str, today_et: str) -> bool:
+    """Check whether sys-max-pain has already executed a BUY trade for ticker on today_et."""
+    if not portfolio_id or str(portfolio_id).startswith("mock-"):
+        return False
+    try:
+        sb = get_supabase_client()
+        if not sb:
+            return False
+        res = (
+            sb.table("trades")
+            .select("id")
+            .eq("portfolio_id", str(portfolio_id))
+            .eq("ticker", ticker.upper())
+            .eq("signal", "BUY")
+            .gte("executed_at", f"{today_et}T00:00:00Z")
+            .limit(1)
+            .execute()
+        )
+        return bool(res.data)
+    except Exception as e:
+        logger.debug(f"Could not check same-day entry history for {ticker}: {e}")
+        return False
+
+
 async def fetch_max_pain_snapshot(ticker: str, min_dte: int = 0) -> dict[str, Any] | None:
     """Retrieve Max Pain from the full Alpaca open-interest chain for the nearest expiration.
 
@@ -200,13 +244,23 @@ async def run_max_pain_task(
     current_holdings: list[dict[str, Any]] = []
     holding_evaluations: dict[str, dict[str, Any]] = {}
     current_prices: dict[str, float] = {}
+    snapshots_cache: dict[str, dict[str, Any] | None] = {}
+    today_et = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
 
     with httpx.Client(timeout=15.0) as client:
         # 1. Evaluate current positions for exit triggers
         for ticker, pos in list(portfolio.positions.items()):
-            price = fetch_current_price(client, ticker, FMP_API_KEY)
+            sym = ticker.upper().strip()
+            quote = fetch_quote_snapshot(client, sym, FMP_API_KEY)
+            price = quote["price"] if quote["price"] > 0 else fetch_current_price(client, sym, FMP_API_KEY)
             current_p = price if price > 0 else pos.average_cost_basis
+            session_high = max(current_p, float(quote.get("day_high") or 0.0))
             current_prices[ticker] = current_p
+
+            held_metrics = await fetch_max_pain_snapshot(sym, min_dte=0)
+            snapshots_cache[sym] = held_metrics
+            verified_strike = float(held_metrics.get("max_pain") or 0.0) if held_metrics else 0.0
+            target_strike = verified_strike if verified_strike > 0 else pos.average_cost_basis * 1.008
 
             holding_info = {
                 "ticker": ticker,
@@ -214,13 +268,14 @@ async def run_max_pain_task(
                 "current_price": current_p,
                 "cost_basis": pos.average_cost_basis,
                 "entry_price": pos.average_cost_basis,
-                "target_strike": pos.average_cost_basis * 1.008,  # Default or stored target
+                "target_strike": target_strike,
             }
             current_holdings.append(holding_info)
 
             should_exit, reason = evaluate_max_pain_holding_exit(
                 holding_info,
                 current_price=current_p,
+                session_high=session_high,
                 is_market_close_window=is_market_close_window or (action == "exit"),
                 target_proximity_pct=target_proximity_pct,
                 stop_loss_pct=stop_loss_pct,
@@ -235,8 +290,14 @@ async def run_max_pain_task(
                 if sym in portfolio.positions and not holding_evaluations.get(sym, {}).get("should_exit"):
                     continue
 
+                if has_entered_today(portfolio.id, sym, today_et):
+                    logger.info(f"Max Pain skip {sym}: already entered on {today_et}.")
+                    continue
+
                 spot_px = fetch_current_price(client, sym, FMP_API_KEY)
-                metrics = await fetch_max_pain_snapshot(sym, min_dte=0)
+                metrics = (
+                    snapshots_cache[sym] if sym in snapshots_cache else await fetch_max_pain_snapshot(sym, min_dte=0)
+                )
                 if not metrics:
                     logger.info(f"Max Pain skip {sym}: no verified options chain available.")
                     continue
@@ -247,7 +308,6 @@ async def run_max_pain_task(
                     continue
 
                 expiration = metrics.get("expiration")
-                today_et = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
                 if expiration and expiration != today_et:
                     logger.info(f"Max Pain skip {sym}: nearest expiration {expiration} is not 0DTE ({today_et}).")
                     continue

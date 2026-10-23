@@ -19,8 +19,8 @@ The daily price update (`apps/engine/scripts/update_prices.py`) is invoked repea
 |---|---|---|
 | Friday, ≥ 15:25 | `weekday() == 4` | `run_sector_trade(action="exit")` — weekly sector portfolio exit |
 | Mon–Thu, ≥ 15:25 | `weekday() in (0,1,2,3)` | `execute_horizon_sector_exits(...)` — horizon sector exits |
-| ≥ 15:45 | any day | `run_max_pain_task(action="exit")` — market-close Max Pain liquidation |
-| 09:00–15:44 | any day | `run_max_pain_task(action="entry")` — intraday Max Pain evaluation/entry |
+| ≥ 15:25 | any day | `run_max_pain_task(action="exit")` — market-close Max Pain liquidation |
+| 09:00–15:24 | any day | `run_max_pain_task(action="entry")` — intraday Max Pain evaluation/entry |
 | 09:35–10:35 | any day | `run_pead_drift_task(...)` — morning PEAD drift evaluation and rebalance |
 
 ### Sector exits (Friday / horizon)
@@ -29,7 +29,7 @@ After 15:25 ET the hook checks the weekday. Fridays run the weekly sector portfo
 
 ### Options Max Pain ([[concepts/max-pain-pinning]])
 
-Two windows: entries are evaluated during the regular intraday window (09:00–15:44), while the final 15 minutes (≥ 15:45) are reserved for liquidation/exit as the pinning effect resolves into the close.
+Two windows: entries and intraday target/stop checks run during the regular intraday window (09:00–15:24 ET), while `>= 15:25 ET` (aligned with the 15:30 ET cron run, matching sector exits) is reserved for liquidation/exit as the pinning effect resolves into the close. Any position still unliquidated after 16:00 ET is reconciled after the fact by [[entities/portfolio-auditor]].
 
 ### PEAD drift ([[concepts/pead-drift]])
 

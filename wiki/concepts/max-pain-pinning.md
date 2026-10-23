@@ -31,9 +31,11 @@ The quantitative filter is coupled with TypeSafe Jev on the OpenRouter Decisions
 ## Holding Discipline
 
 Positions are strictly intraday with zero overnight exposure:
-- **Take-Profit Target**: Exit immediately when the spot price reaches within 0.05% of the Max Pain strike.
-- **MOC Liquidation**: Mandatory market-on-close liquidation at 3:50 PM ET before the expiration bell.
+- **Take-Profit Target**: Exit immediately when the spot price or the session high (`dayHigh` from the FMP `/stable/quote` snapshot) reaches within 0.05% of the verified Alpaca Max Pain strike. On a pin touch the sale fills at the target strike (less 1 bps slippage) even if price has since pulled back, so a wick through the strike is not forfeited.
+- **MOC Liquidation**: Mandatory exit window at `>= 15:25 ET` before the expiration bell, aligned with the 15:30 ET cron run (same window as the sector exits).
+- **Same-Session Idempotency**: Once a ticker has entered today (`has_entered_today`), it is not re-entered later in the same session, including after a pin-touch exit.
 - **Adverse Stop Loss**: 1.0% drop below entry price to protect against gamma breakdowns.
+- **After-the-Fact Reconciliation**: Any 0DTE position still open after 16:00 ET (or carried from a prior session) is flagged `UNLIQUIDATED_MAX_PAIN_POSITION` by the [[entities/portfolio-auditor]] and auto-healed in `--fix` mode by `reconcile_unliquidated_max_pain_positions`, which backfills the `SELL` at the target strike (if the RTH high touched it) or at the RTH close, tagged `alpaca_status = "BACKFILLED"`.
 
 ## Related
 
@@ -42,3 +44,5 @@ Positions are strictly intraday with zero overnight exposure:
 - [[entities/macro-options]]
 - [[concepts/jev-decisions-model]]
 - [[entities/academic-paper-seeding]]
+- [[concepts/max-pain-data-sources]]
+- [[entities/portfolio-auditor]]

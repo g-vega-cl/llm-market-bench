@@ -6,7 +6,9 @@ Handles:
 3. Generating execution rebalance orders with 0.01% (1 bps) friction.
 """
 
+from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from core.config import logger
 
@@ -76,6 +78,10 @@ def compute_max_pain_rebalance_orders(
         if eval_res.get("should_exit", False):
             shares = int(h.get("shares", 0))
             raw_price = float(h.get("current_price", 0.0) or h.get("cost_basis", 0.0))
+            reason_str = str(eval_res.get("reason", "Exit rule satisfied"))
+            target_strike = float(h.get("target_strike") or 0.0)
+            if "pin achieved" in reason_str.lower() and target_strike > 0:
+                raw_price = max(raw_price, target_strike)
             exec_price = raw_price * (1.0 - slip_factor)
             proceeds = shares * exec_price
             freed_cash += proceeds
@@ -85,7 +91,7 @@ def compute_max_pain_rebalance_orders(
                     "shares": shares,
                     "execution_price": exec_price,
                     "proceeds": proceeds,
-                    "reason": eval_res.get("reason", "Exit rule satisfied"),
+                    "reason": reason_str,
                 }
             )
         else:
@@ -146,3 +152,107 @@ def compute_max_pain_rebalance_orders(
         "freed_cash": freed_cash,
         "remaining_cash": remaining_cash,
     }
+
+
+async def reconcile_unliquidated_max_pain_positions(
+    portfolio_row: dict[str, Any],
+    positions: list[dict[str, Any]],
+    audit_date: str,
+    client: Any,
+    slippage_bps: float = DEFAULT_MAX_PAIN_SLIPPAGE_BPS,
+) -> dict[str, Any]:
+    """Post-close reconciliation for unliquidated 0DTE positions in sys-max-pain.
+
+    Evaluates whether the regular trading session high touched the day's verified Max Pain
+    strike (filling at the target strike) or held into the close (filling at RTH close),
+    records BACKFILLED SELL trades, clears open positions, and updates portfolio equity.
+    """
+    from execution.providers.alpaca_max_pain import get_verified_max_pain
+    from tasks.evaluate_daily_predictions import fetch_intraday_prices
+
+    portfolio_id = str(portfolio_row["id"])
+    current_cash = float(portfolio_row.get("cash_balance") or 0.0)
+    slip_factor = slippage_bps / 10000.0
+    freed_cash = 0.0
+    exited: list[dict[str, Any]] = []
+
+    for pos in positions:
+        ticker = str(pos.get("ticker", "SPY")).upper()
+        qty = int(pos.get("quantity") or 0)
+        if qty <= 0:
+            continue
+        cost_basis = float(pos.get("average_cost_basis") or 0.0)
+        raw_ts = str(pos.get("last_updated_at") or "")
+        pos_date = raw_ts[:10] if len(raw_ts) >= 10 else audit_date
+
+        _, high_p, _, close_p = await fetch_intraday_prices(ticker, pos_date)
+        resolved_close = float(close_p) if close_p and float(close_p) > 0 else cost_basis
+        resolved_high = float(high_p) if high_p and float(high_p) > 0 else resolved_close
+
+        verified = await get_verified_max_pain(ticker, expiration_date=pos_date)
+        target_strike = (
+            float(verified["max_pain"])
+            if verified and verified.get("max_pain") and float(verified["max_pain"]) > 0
+            else cost_basis * 1.008
+        )
+
+        _, reason = evaluate_max_pain_holding_exit(
+            {"ticker": ticker, "entry_price": cost_basis, "target_strike": target_strike},
+            current_price=resolved_close,
+            session_high=resolved_high,
+            is_market_close_window=True,
+        )
+        raw_exit_p = (
+            max(resolved_close, target_strike)
+            if "pin achieved" in reason.lower() and target_strike > 0
+            else resolved_close
+        )
+        exec_price = raw_exit_p * (1.0 - slip_factor)
+        proceeds = qty * exec_price
+        freed_cash += proceeds
+        realized_pnl = (exec_price - cost_basis) * qty
+        realized_pnl_pct = (((exec_price / cost_basis) - 1.0) * 100.0) if cost_basis > 0 else 0.0
+
+        exit_trade = {
+            "id": str(uuid4()),
+            "portfolio_id": portfolio_id,
+            "ticker": ticker,
+            "signal": "SELL",
+            "quantity": qty,
+            "price": exec_price,
+            "total_cost": proceeds,
+            "realized_pnl": realized_pnl,
+            "realized_pnl_pct": realized_pnl_pct,
+            "alpaca_status": "BACKFILLED",
+            "executed_at": f"{pos_date}T20:00:00Z",
+        }
+        client.table("trades").insert(exit_trade).execute()
+        client.table("portfolio_positions").delete().eq("portfolio_id", portfolio_id).eq("ticker", ticker).execute()
+        exited.append({"ticker": ticker, "shares": qty, "exit_price": exec_price, "reason": reason})
+
+    new_cash = max(0.0, current_cash + freed_cash)
+    client.table("portfolios").update(
+        {
+            "cash_balance": new_cash,
+            "total_equity": new_cash,
+            "realized": new_cash,
+            "buying_power": new_cash * 2,
+            "excess_liquidity": new_cash,
+            "last_updated_at": datetime.now(UTC).isoformat(),
+        }
+    ).eq("id", portfolio_id).execute()
+
+    client.table("portfolio_performance").upsert(
+        {
+            "portfolio_id": portfolio_id,
+            "date": audit_date,
+            "total_equity": new_cash,
+            "cash_balance": new_cash,
+            "buying_power": new_cash * 2,
+            "sma": 0.0,
+            "realized": new_cash,
+        },
+        on_conflict="portfolio_id,date",
+    ).execute()
+
+    return {"new_equity": new_cash, "exited": exited}

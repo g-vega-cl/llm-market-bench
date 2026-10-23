@@ -612,3 +612,86 @@ async def test_portfolio_auditor_detects_and_heals_unclosed_short_trade(mock_sup
     assert healed["type"] == "UNCLOSED_SHORT_DAILY_SPY"
     entry_pnl_update = next((u for u in updated_records if u.get("realized_pnl") == 30.40), None)
     assert entry_pnl_update is not None
+
+
+@pytest.mark.asyncio
+async def test_portfolio_auditor_detects_and_heals_unliquidated_max_pain_position(mock_supabase):
+    """After market close, any unliquidated sys-max-pain position is flagged and backfilled at target (if RTH high touched) or RTH close."""
+    from audit.portfolio_auditor import audit_system_portfolios
+
+    target_date = "2026-10-22"
+    portfolio_id = "p-max-pain"
+    mock_portfolios = [
+        {
+            "id": portfolio_id,
+            "owner_id": "sys-max-pain",
+            "cash_balance": 2370.0,
+            "total_equity": 10000.0,
+        }
+    ]
+    mock_positions = [
+        {
+            "id": "pos-1",
+            "portfolio_id": portfolio_id,
+            "ticker": "SPY",
+            "quantity": 10,
+            "average_cost_basis": 763.0,
+            "last_updated_at": f"{target_date}T14:30:00Z",
+        }
+    ]
+    inserted_trades = []
+    deleted_positions = []
+
+    def table_router(table_name):
+        mock_t = MagicMock()
+        mock_t.select.return_value = mock_t
+        mock_t.eq.return_value = mock_t
+        mock_t.gte.return_value = mock_t
+        mock_t.lte.return_value = mock_t
+        mock_t.lt.return_value = mock_t
+        mock_t.like.return_value = mock_t
+        mock_t.order.return_value = mock_t
+        mock_t.limit.return_value = mock_t
+        mock_t.update.return_value = mock_t
+        mock_t.upsert.return_value = mock_t
+        mock_t.insert.side_effect = lambda payload: inserted_trades.append(payload) or mock_t
+        mock_t.delete.side_effect = lambda: deleted_positions.append(table_name) or mock_t
+
+        if table_name == "portfolios":
+            mock_t.execute.return_value = MagicMock(data=mock_portfolios)
+        elif table_name == "portfolio_positions":
+            mock_t.execute.return_value = MagicMock(data=mock_positions)
+        else:
+            mock_t.execute.return_value = MagicMock(data=[])
+        return mock_t
+
+    mock_supabase.table.side_effect = table_router
+
+    # RTH high (769.20) touched Max Pain strike ($769.00), while RTH close was 764.50
+    with (
+        patch(
+            "tasks.evaluate_daily_predictions.fetch_intraday_prices",
+            return_value=(763.0, 769.20, 762.0, 764.50),
+        ),
+        patch(
+            "execution.providers.alpaca_max_pain.get_verified_max_pain",
+            return_value={"max_pain": 769.0, "expiration": target_date},
+        ),
+    ):
+        report = await audit_system_portfolios(
+            target_date=target_date,
+            lookback_days=1,
+            auto_heal=True,
+            supabase_client=mock_supabase,
+        )
+
+    assert report["status"] == "healed"
+    assert any(a["type"] == "UNLIQUIDATED_MAX_PAIN_POSITION" for a in report["anomalies"])
+    assert any(h["owner_id"] == "sys-max-pain" for h in report["healed"])
+    assert len(inserted_trades) == 1
+    exit_trade = inserted_trades[0]
+    assert exit_trade["signal"] == "SELL"
+    assert exit_trade["alpaca_status"] == "BACKFILLED"
+    # Should exit at target strike ($769.00 * (1 - 1bps)) since RTH high touched $769.00
+    assert round(exit_trade["price"], 4) == round(769.0 * (1.0 - 0.0001), 4)
+    assert "portfolio_positions" in deleted_positions

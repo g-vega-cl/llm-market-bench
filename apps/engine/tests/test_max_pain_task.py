@@ -298,3 +298,90 @@ async def test_evaluate_candidate_with_jev_network_error():
         res = await evaluate_candidate_with_jev({"ticker": "SPY"})
         assert res["is_qualified"] is False
         assert res["choice"] == "DISQUALIFIED"
+
+
+@pytest.mark.asyncio
+async def test_run_max_pain_task_exits_at_target_strike_when_session_high_touches_max_pain():
+    """Verify held position uses verified Alpaca Max Pain strike and session_high, selling at target strike on touch."""
+    mock_pos = MagicMock()
+    mock_pos.quantity = 10
+    mock_pos.average_cost_basis = 763.00
+    mock_pos.last_updated_at = "2026-10-23T14:00:00Z"
+
+    mock_portfolio = MagicMock()
+    mock_portfolio.positions = {"SPY": mock_pos}
+    mock_portfolio.cash_balance = 2370.00
+    mock_portfolio.id = "mock-portfolio-id"
+    mock_portfolio.initialize = AsyncMock()
+
+    mock_metrics = {
+        "max_pain": 769.00,
+        "expiration": None,
+        "put_call_oi_ratio": 1.1,
+    }
+    mock_quote = {"price": 765.00, "day_high": 769.10, "day_low": 762.50}
+
+    with (
+        patch("tasks.max_pain_task.Portfolio", return_value=mock_portfolio),
+        patch("tasks.max_pain_task.fetch_max_pain_snapshot", new_callable=AsyncMock, return_value=mock_metrics),
+        patch("tasks.max_pain_task.fetch_quote_snapshot", return_value=mock_quote),
+        patch("tasks.max_pain_task.has_entered_today", return_value=True),
+    ):
+        res = await run_max_pain_task(dry_run=True, action="entry", tickers=["SPY"])
+        assert res["status"] == "success"
+        assert len(res["sales"]) == 1
+        assert res["sales"][0]["ticker"] == "SPY"
+        assert "Target strike $769.00 reached" in res["sales"][0]["reason"]
+        assert round(res["sales"][0]["execution_price"], 4) == round(769.00 * (1.0 - 0.0001), 4)
+        # Should not re-enter SPY on the same session after exiting
+        assert res["buys"] == []
+
+
+@pytest.mark.asyncio
+async def test_run_max_pain_task_skips_same_day_reentry(caplog):
+    """Once a ticker has already entered today, it must not re-enter later the same session."""
+    mock_portfolio = MagicMock()
+    mock_portfolio.positions = {}
+    mock_portfolio.cash_balance = 10000.00
+    mock_portfolio.id = "mock-portfolio-id"
+    mock_portfolio.initialize = AsyncMock()
+    jev = AsyncMock()
+
+    with (
+        patch("tasks.max_pain_task.Portfolio", return_value=mock_portfolio),
+        patch("tasks.max_pain_task.has_entered_today", return_value=True),
+        patch("tasks.max_pain_task.evaluate_candidate_with_jev", jev),
+        caplog.at_level("INFO", logger="engine"),
+    ):
+        res = await run_max_pain_task(dry_run=True, action="entry", tickers=["SPY"])
+    assert res["buys"] == []
+    jev.assert_not_called()
+    assert "already entered" in caplog.text
+
+
+def test_fetch_quote_snapshot_and_has_entered_today():
+    """Verify fetch_quote_snapshot extracts price/dayHigh/dayLow and has_entered_today queries trades safely."""
+    from tasks.max_pain_task import fetch_quote_snapshot, has_entered_today
+
+    mock_client = MagicMock()
+    assert fetch_quote_snapshot(mock_client, "SPY", "") == {"price": 0.0, "day_high": 0.0, "day_low": 0.0}
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [{"symbol": "SPY", "price": 765.0, "dayHigh": 769.2, "dayLow": 762.1}]
+    mock_client.get.return_value = mock_resp
+    snap = fetch_quote_snapshot(mock_client, "SPY", "key")
+    assert snap == {"price": 765.0, "day_high": 769.2, "day_low": 762.1}
+
+    mock_client.get.side_effect = RuntimeError("timeout")
+    assert fetch_quote_snapshot(mock_client, "SPY", "key") == {"price": 0.0, "day_high": 0.0, "day_low": 0.0}
+
+    assert has_entered_today(None, "SPY", "2026-10-23") is False
+    assert has_entered_today("mock-portfolio-id", "SPY", "2026-10-23") is False
+
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.gte.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "t-1"}]
+    )
+    with patch("tasks.max_pain_task.get_supabase_client", return_value=mock_sb):
+        assert has_entered_today("real-uuid-123", "SPY", "2026-10-23") is True

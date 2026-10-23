@@ -347,6 +347,64 @@ async def audit_system_portfolios(
             anomalies.append(anomaly)
             flagged_for_review.append(anomaly)
 
+    # 3. Check Daily Options Max Pain Portfolio (sys-max-pain)
+    # 0DTE positions must be flat after 16:00 ET or whenever held from a prior trading date.
+    from execution.max_pain import SYS_MAX_PAIN_OWNER_ID, reconcile_unliquidated_max_pain_positions
+
+    mp_port = port_by_owner.get(SYS_MAX_PAIN_OWNER_ID)
+    if mp_port:
+        mp_pid = mp_port["id"]
+        mp_pos_res = (
+            client.table("portfolio_positions")
+            .select("ticker, quantity, average_cost_basis, last_updated_at")
+            .eq("portfolio_id", mp_pid)
+            .execute()
+        )
+        mp_positions = [pos for pos in (mp_pos_res.data or []) if int(pos.get("quantity") or 0) > 0]
+        if mp_positions:
+            today_ny_str = now_ny.date().isoformat()
+            is_after_daily_close = (
+                now_ny.hour >= 16
+                or now_ny.weekday() in (5, 6)
+                or now_ny.hour < 9
+                or (now_ny.hour == 9 and now_ny.minute < 30)
+                or bool(target_date and target_date < today_ny_str)
+                or any(str(pos.get("last_updated_at") or "")[:10] < today_ny_str for pos in mp_positions)
+            )
+            if is_after_daily_close:
+                mp_audit_date = target_date or (dates_to_check[-1] if dates_to_check else today_ny_str)
+                anomaly = {
+                    "date": mp_audit_date,
+                    "portfolio_id": mp_pid,
+                    "owner_id": SYS_MAX_PAIN_OWNER_ID,
+                    "type": "UNLIQUIDATED_MAX_PAIN_POSITION",
+                    "details": (
+                        f"Max Pain portfolio holds {len(mp_positions)} unliquidated 0DTE position(s) "
+                        f"after session close: {[x['ticker'] for x in mp_positions]}"
+                    ),
+                }
+                anomalies.append(anomaly)
+                if auto_heal:
+                    rec = await reconcile_unliquidated_max_pain_positions(
+                        portfolio_row=mp_port,
+                        positions=mp_positions,
+                        audit_date=mp_audit_date,
+                        client=client,
+                    )
+                    healed.append(
+                        {
+                            "date": mp_audit_date,
+                            "portfolio_id": mp_pid,
+                            "owner_id": SYS_MAX_PAIN_OWNER_ID,
+                            "type": "UNLIQUIDATED_MAX_PAIN_POSITION",
+                            "action": "AUTO_HEALED_MAX_PAIN_EXIT",
+                            "new_equity": rec.get("new_equity"),
+                            "alpaca_status": "BACKFILLED",
+                        }
+                    )
+                else:
+                    flagged_for_review.append(anomaly)
+
     status = "clean"
     if anomalies and auto_heal and len(healed) == len(anomalies):
         status = "healed"

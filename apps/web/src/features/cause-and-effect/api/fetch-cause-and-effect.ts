@@ -10,11 +10,13 @@ export interface CauseAndEffectEntry {
     created_at: string;
 }
 
+export const CAUSE_AND_EFFECT_SELECT = '*, event:memories(id, content, created_at)';
+
 export async function fetchCauseAndEffect(limit?: number): Promise<CauseAndEffectEntry[]> {
     const supabase = getSupabaseBrowserClient();
     let query = supabase
         .from('cause_and_effect')
-        .select('*, event:memories(*)')
+        .select(CAUSE_AND_EFFECT_SELECT)
         .order('created_at', { ascending: false });
 
     if (limit) {
@@ -33,7 +35,7 @@ export async function fetchCauseAndEffectByEventId(
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
         .from('cause_and_effect')
-        .select('*, event:memories(*)')
+        .select(CAUSE_AND_EFFECT_SELECT)
         .eq('event_id', eventId)
         .maybeSingle();
 

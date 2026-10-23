@@ -13,7 +13,7 @@ A living document of features and improvements in progress or planned for the pl
       Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
   - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
-- [ ] - Benchify: remove anti bias from frozen, those are not "format" instructions those affect the prediction so they should be able to be mutated
+- [x] - Benchify: remove anti bias from frozen, those are not "format" instructions those affect the prediction so they should be able to be mutated. Completed via `split_daily_predictor_prompt` isolating frozen constraints and keeping trading rules mutable (verified in `test_daily_autoresearch.py`).
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 
@@ -54,12 +54,12 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
-- [ ] - Benchify; the portfolios should all run with 10k and no margin. Easier to get and also no dealing with interest
+- [x] - Benchify; the portfolios should all run with 10k and no margin. Easier to get and also no dealing with interest. Portfolios initialized with default 10,000 cash balance and no margin interest (verified in `20260117000000_create_investor_portfolios_tables.sql`).
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 
 ### Database & Performance Polish
 
-- [ ] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`.
+- [x] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`. Completed via `MEMORY_SCALAR_COLUMNS`, `DECISION_SCALAR_COLUMNS`, `TRADES_TODAY_SELECT`, and `CAUSE_AND_EFFECT_SELECT`.
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - Benchify: get the smol server to do API calls 24/7 now that the DB is huge, and set up a distributed DB.

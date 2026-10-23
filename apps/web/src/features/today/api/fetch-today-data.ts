@@ -7,6 +7,7 @@ import type {
     NewsletterSnapshot,
     Trade,
 } from '@llm-market-bench/database';
+import { MEMORY_SCALAR_COLUMNS } from '~/features/memories/api/fetch-memories';
 import { getSupabaseServerClient } from '~/lib/supabase';
 import {
     formatEasternDate,
@@ -19,6 +20,11 @@ import {
 } from '~/utils/date';
 import type { MacroCategory, MacroStat } from '../lib/macro-tickers';
 import { MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
+
+export const DECISION_SCALAR_COLUMNS =
+    'id, source_id, ticker, signal, confidence, reasoning, model_provider, model_name, created_at, price, status, trade_id, limit_price, metadata';
+
+export const TRADES_TODAY_SELECT = `*, portfolios(owner_id), decisions(${DECISION_SCALAR_COLUMNS})`;
 
 export interface TodayData {
     newsletters: (NewsletterSnapshot & { formattedTime: string })[];
@@ -283,25 +289,25 @@ async function executeTodayQueries(
             .limit(20),
         supabase
             .from('trades')
-            .select('*, portfolios(owner_id), decisions(*)')
+            .select(TRADES_TODAY_SELECT)
             .gte('executed_at', startOfDay)
             .order('executed_at', { ascending: false })
             .limit(effectiveTradesLimit),
         supabase
             .from('decisions')
-            .select('*')
+            .select(DECISION_SCALAR_COLUMNS)
             .gte('created_at', startOfDay)
             .order('created_at', { ascending: false })
             .limit(limit),
         supabase
             .from('memories')
-            .select('*')
+            .select(MEMORY_SCALAR_COLUMNS)
             .gte('created_at', startOfDay)
             .order('created_at', { ascending: false })
             .limit(limit),
         supabase
             .from('memories')
-            .select('*')
+            .select(MEMORY_SCALAR_COLUMNS)
             .eq('status', 'ACTIVE')
             .gte('importance_score', 8)
             .eq('metadata->is_future_catalyst', true)

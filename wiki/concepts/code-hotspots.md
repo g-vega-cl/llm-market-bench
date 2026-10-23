@@ -25,9 +25,9 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 13 | 3 | 23.1% | 392 | 39 | **HIGH** |
 | `apps/engine/core/config.py` | 19 | 2 | 10.5% | 214 | 38 | **HIGH** |
 | `apps/engine/tests/test_evaluate_daily_predictions.py` | 9 | 4 | 44.4% | 410 | 36 | **HIGH** |
-| `apps/engine/tasks/daily_autoresearch.py` | 12 | 2 | 16.7% | 735 | 24 | **MEDIUM** |
-| `apps/engine/scripts/update_prices.py` | 6 | 4 | 66.7% | 335 | 24 | **MEDIUM** |
+| `apps/engine/scripts/update_prices.py` | 7 | 4 | 57.1% | 335 | 28 | **MEDIUM** |
 | `apps/engine/execution/market_data.py` | 6 | 4 | 66.7% | 320 | 24 | **MEDIUM** |
+| `apps/engine/tasks/daily_autoresearch.py` | 11 | 2 | 18.2% | 735 | 22 | **MEDIUM** |
 
 ## Temporal Coupling (Co-churn)
 

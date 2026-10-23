@@ -98,6 +98,7 @@
 
 ## Concepts
 
+- [[concepts/vector-egress-stripping]] — Explicit scalar column projections that strip invisible pgvector `embedding` egress from web queries
 - [[concepts/max-pain-data-sources]] — Auto-indexed page
 - [[concepts/eod-timestamp-formatting]] — distinguishing EOD daily bars from intraday quotes when rendering timestamps
 - [[concepts/env-based-secrets]] — keeping credentials out of version control via env-var injection and rotation

@@ -11,6 +11,7 @@ import {
     clearTodayDataCache,
     fetchLatestMarketFeeling,
     fetchTodayData,
+    TRADES_TODAY_SELECT,
 } from './fetch-today-data';
 
 beforeEach(() => {
@@ -135,6 +136,53 @@ describe('fetchTodayData zero-load TDD checks', () => {
 
         // ASSERT: price_history queries should be exactly 0 (fully database-driven pre-calculation)
         expect(priceHistoryQueries.length).toBe(0);
+    });
+
+    it('uses explicit scalar column projections on memories and decisions to strip vector embedding egress', async () => {
+        const selectCalls: Record<string, string[]> = {};
+        const fromSpy = vi.fn().mockImplementation((table: string) => {
+            selectCalls[table] = selectCalls[table] || [];
+            const chain = {
+                select: vi.fn().mockImplementation((cols: string) => {
+                    selectCalls[table].push(cols);
+                    return chain;
+                }),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
+                in: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        await fetchTodayData();
+
+        // Check memories calls
+        expect(selectCalls.memories).toBeDefined();
+        for (const call of selectCalls.memories) {
+            expect(call).not.toBe('*');
+            expect(call).not.toContain('embedding');
+            expect(call).toContain('id');
+            expect(call).toContain('content');
+        }
+
+        // Check decisions calls
+        expect(selectCalls.decisions).toBeDefined();
+        for (const call of selectCalls.decisions) {
+            expect(call).not.toBe('*');
+            expect(call).not.toContain('embedding');
+            expect(call).toContain('reasoning');
+        }
+
+        // Check trades join on decisions
+        expect(selectCalls.trades).toBeDefined();
+        for (const call of selectCalls.trades) {
+            expect(call).not.toContain('decisions(*)');
+        }
     });
 
     it('maps pre-calculated macro volatility fields correctly from market_data_cache rows', async () => {
@@ -283,7 +331,7 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(result).toEqual({ sentiment_label: 'Bullish' });
     });
 
-    it('queries trades table with joined decisions (*, portfolios(owner_id), decisions(*))', async () => {
+    it('queries trades table with joined decisions using explicit scalar projection', async () => {
         const selectQueries: Record<string, string> = {};
         const fromSpy = vi.fn().mockImplementation((table) => {
             const chain = {
@@ -304,7 +352,7 @@ describe('fetchTodayData zero-load TDD checks', () => {
         mockSupabaseClient = { from: fromSpy };
 
         await fetchTodayData();
-        expect(selectQueries.trades).toBe('*, portfolios(owner_id), decisions(*)');
+        expect(selectQueries.trades).toBe(TRADES_TODAY_SELECT);
     });
 
     it('allows tradesLimit to specifically control the trades query limit independently of the general feed limit', async () => {

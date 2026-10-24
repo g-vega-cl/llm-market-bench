@@ -423,7 +423,7 @@ async def evaluate_prompt_on_live_sessions(
 
     owns_client = False
     if client is None:
-        client = httpx.AsyncClient(timeout=600.0)
+        client = httpx.AsyncClient(timeout=600.0, trust_env=False)
         owns_client = True
 
     eval_records: list[dict[str, Any]] = []
@@ -801,7 +801,7 @@ async def run_single_prompt_tournament(
         with contextlib.suppress(Exception), open(state_path) as f:
             state = json.load(f)
 
-    async with httpx.AsyncClient(timeout=600.0) as client:
+    async with httpx.AsyncClient(timeout=600.0, trust_env=False) as client:
         # 1. Establish or load baseline
         if not state.get("champion_prompt"):
             logger.info(

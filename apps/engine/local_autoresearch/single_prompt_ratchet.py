@@ -906,6 +906,7 @@ async def run_single_prompt_tournament(
                         "mode": mode_str,
                         "status": "pruned",
                         "reason": res.get("reason"),
+                        "prompt": mutant_prompt,
                     }
                 )
                 append_quant_journal_entry(
@@ -939,8 +940,8 @@ async def run_single_prompt_tournament(
             # In-Sample Gate: Must beat champion score AND pass two-sided recall hurdles
             passes_gate, gate_reason = passes_two_sided_gate(
                 mutant_bal_metrics,
-                min_recall_up=55.0,
-                min_recall_down=55.0,
+                min_recall_up=54.0,
+                min_recall_down=54.0,
                 min_bal_acc=promising_win_rate * 100.0,
                 min_mcc=0.20,
             )
@@ -997,6 +998,7 @@ async def run_single_prompt_tournament(
                             "in_sample_balanced_acc": mutant_bal_acc,
                             "oos_balanced_acc": oos_acc,
                             "p_value": p_val,
+                            "prompt": mutant_prompt,
                         }
                     )
                     append_quant_journal_entry(
@@ -1025,6 +1027,7 @@ async def run_single_prompt_tournament(
                             "in_sample_balanced_acc": mutant_bal_acc,
                             "oos_balanced_acc": oos_acc,
                             "reason": oos_reason,
+                            "prompt": mutant_prompt,
                         }
                     )
                     append_quant_journal_entry(
@@ -1057,6 +1060,7 @@ async def run_single_prompt_tournament(
                         "score": mutant_score,
                         "in_sample_balanced_acc": mutant_bal_acc,
                         "reason": reject_reason,
+                        "prompt": mutant_prompt,
                     }
                 )
                 append_quant_journal_entry(

@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **186**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **182**).
 
 ## Top Hotspots
 
@@ -14,20 +14,20 @@ Files with high churn and high bug fix density represent code where changes freq
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/engine/tests/test_workflow_schedule.py` | 15 | 6 | 40.0% | 239 | 90 | **CRITICAL** |
-| `apps/engine/tasks/daily_predictor.py` | 21 | 4 | 19.0% | 705 | 84 | **HIGH** |
-| `apps/engine/main.py` | 21 | 3 | 14.3% | 73 | 63 | **HIGH** |
+| `apps/engine/tasks/daily_predictor.py` | 20 | 4 | 20.0% | 705 | 80 | **HIGH** |
+| `apps/engine/main.py` | 20 | 3 | 15.0% | 73 | 60 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 14 | 4 | 28.6% | 264 | 56 | **HIGH** |
-| `apps/engine/core/llm/tools.py` | 25 | 2 | 8.0% | 1758 | 50 | **HIGH** |
+| `apps/engine/core/llm/tools.py` | 24 | 2 | 8.3% | 1758 | 48 | **HIGH** |
 | `apps/engine/autoresearch/program.md` | 22 | 2 | 9.1% | 137 | 44 | **HIGH** |
 | `packages/config/tools.json` | 21 | 2 | 9.5% | 210 | 42 | **HIGH** |
 | `apps/engine/tests/test_daily_predictor.py` | 10 | 4 | 40.0% | 752 | 40 | **HIGH** |
 | `apps/engine/tasks/evaluate_daily_predictions.py` | 10 | 4 | 40.0% | 290 | 40 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 13 | 3 | 23.1% | 392 | 39 | **HIGH** |
-| `apps/engine/core/config.py` | 19 | 2 | 10.5% | 214 | 38 | **HIGH** |
+| `apps/engine/core/config.py` | 18 | 2 | 11.1% | 214 | 36 | **HIGH** |
 | `apps/engine/tests/test_evaluate_daily_predictions.py` | 9 | 4 | 44.4% | 410 | 36 | **HIGH** |
 | `apps/engine/scripts/update_prices.py` | 7 | 4 | 57.1% | 335 | 28 | **MEDIUM** |
-| `apps/engine/execution/market_data.py` | 6 | 4 | 66.7% | 320 | 24 | **MEDIUM** |
 | `apps/engine/tasks/daily_autoresearch.py` | 11 | 2 | 18.2% | 735 | 22 | **MEDIUM** |
+| `apps/engine/execution/providers/massive.py` | 7 | 3 | 42.9% | 826 | 21 | **MEDIUM** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -42,8 +42,8 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 12 | 55% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 12 | 55% |
 | `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/handlers/base.py` | 12 | 50% |
+| `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/tools.py` | 12 | 50% |
 | `apps/engine/core/llm/handlers/base.py` | `apps/engine/core/llm/tools.py` | 12 | 50% |
-| `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/tools.py` | 12 | 48% |
 | `apps/engine/autoresearch/researcher.py` | `apps/engine/tests/test_tools_consistency.py` | 11 | 55% |
 | `apps/engine/core/llm/handlers/base.py` | `apps/engine/tests/test_tools_consistency.py` | 11 | 55% |
 | `apps/engine/core/llm/tools.py` | `apps/engine/tests/test_tools_consistency.py` | 11 | 55% |

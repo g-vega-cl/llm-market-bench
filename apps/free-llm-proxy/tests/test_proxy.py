@@ -1,0 +1,206 @@
+"""TDD test suite for Free LLM Proxy."""
+
+import pytest
+from fastapi.testclient import TestClient
+
+from apps.free_llm_proxy.server import app
+from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
+from apps.free_llm_proxy.router import Router
+from apps.free_llm_proxy.db import AuditDB
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+def test_auth_missing_header(client):
+    """Verify 401 Unauthorized when no Authorization header is provided."""
+    resp = client.post(
+        "/v1/chat/completions",
+        json={"model": "free-auto", "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert resp.status_code == 401
+    assert "Invalid or missing master API key" in resp.text
+
+
+def test_auth_invalid_key(client):
+    """Verify 401 Unauthorized when an incorrect Bearer token is provided."""
+    headers = {"Authorization": "Bearer wrong-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "free-auto", "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert resp.status_code == 401
+
+
+def test_health_endpoint(client):
+    """Verify health endpoint is accessible without authentication."""
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert "active_providers" in data
+
+
+def test_circuit_breaker_trips_on_429():
+    """Verify circuit breaker trips when receiving 429 and honors cooldown."""
+    cb = CircuitBreaker(default_cooldown_seconds=60)
+    assert cb.is_healthy("groq")
+
+    # Trip breaker on 429
+    cb.record_failure("groq", status_code=429, retry_after=120)
+    assert not cb.is_healthy("groq")
+    assert cb.get_cooldown_remaining("groq") > 60
+
+    # Reset
+    cb.reset("groq")
+    assert cb.is_healthy("groq")
+
+
+def test_router_model_alias_resolution():
+    """Verify virtual aliases resolve against provider catalogs."""
+    router = Router()
+    resolved = router.resolve_model_for_provider(
+        "groq", "free-auto", ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+    )
+    assert resolved == "openai/gpt-oss-120b"
+
+    resolved_fast = router.resolve_model_for_provider(
+        "groq", "free-fast", ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+    )
+    assert resolved_fast == "openai/gpt-oss-20b"
+
+
+def test_failover_when_primary_fails(client, monkeypatch):
+    """Verify router automatically fails over to secondary provider when primary returns 429."""
+    call_history = []
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        prov_name = provider_cfg["name"]
+        call_history.append(prov_name)
+        if prov_name == "Groq":
+            # Simulate 429 rate limit
+            return (
+                429,
+                {"error": {"message": "Rate limit exceeded"}},
+                {"retry-after": "30"},
+            )
+        # Secondary provider succeeds
+        mock_response = {
+            "id": "chatcmpl-mock",
+            "object": "chat.completion",
+            "created": 1700000000,
+            "model": "gemini-3.8-flash",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": "Success from fallback!",
+                    },
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+        }
+        return 200, mock_response, {}
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "free-auto", "messages": [{"role": "user", "content": "test"}]},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["choices"][0]["message"]["content"] == "Success from fallback!"
+    assert len(call_history) >= 2
+
+
+def test_streaming_sse_pass_through(client, monkeypatch):
+    """Verify streaming response delivers SSE chunks."""
+
+    async def mock_stream_execute(provider_cfg, payload, stream=True):
+        async def mock_chunks():
+            yield b'data: {"choices": [{"delta": {"content": "Hello"}}]}\n\n'
+            yield b'data: {"choices": [{"delta": {"content": " World"}}]}\n\n'
+            yield b"data: [DONE]\n\n"
+
+        return 200, mock_chunks(), {}
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.execute_completion", mock_stream_execute
+    )
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "free-auto",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": True,
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/event-stream")
+    body_text = resp.text
+    assert "Hello" in body_text
+    assert "World" in body_text
+    assert "[DONE]" in body_text
+
+
+def test_metrics_endpoint(client):
+    """Verify metrics endpoint returns counts and circuit status."""
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.get("/v1/metrics", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "total_requests" in data
+    assert "circuit_breaker" in data
+    assert "providers" in data
+
+
+def test_models_endpoint(client, monkeypatch):
+    """Verify models endpoint returns aliases and discovered provider models."""
+
+    async def mock_fetch(provider_id, base_url, headers):
+        return ["model-v1", "model-v2"]
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.get("/v1/models", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    model_ids = [m["id"] for m in data["data"]]
+    assert "free-auto" in model_ids
+    assert "free-fast" in model_ids
+    assert any("groq/" in m for m in model_ids)
+
+
+def test_audit_db_logging():
+    """Verify SQLite audit database records calls and calculates metrics."""
+    db = AuditDB(db_path=":memory:")
+    db.log_call(
+        requested_model="free-auto",
+        routed_provider="groq",
+        routed_model="openai/gpt-oss-120b",
+        prompt_tokens=20,
+        completion_tokens=10,
+        total_tokens=30,
+        latency_ms=85.5,
+        status_code=200,
+        failover_chain=["gemini (429)", "groq (200)"],
+    )
+
+    metrics = db.get_metrics()
+    assert metrics["total_requests"] == 1
+    assert metrics["total_tokens"] == 30
+    assert metrics["providers"]["groq"]["requests"] == 1

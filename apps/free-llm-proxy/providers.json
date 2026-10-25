@@ -1,0 +1,106 @@
+{
+  "providers": {
+    "groq": {
+      "name": "Groq",
+      "base_url": "https://api.groq.com/openai/v1",
+      "env_key": "GROQ_API_KEY",
+      "tier": 1,
+      "requires_auth": true,
+      "models_endpoint": "/models",
+      "preferred_patterns": [
+        "*gpt-oss-120b*",
+        "*qwen3.8-27b*",
+        "*-20b*",
+        "*allam-2-7b*"
+      ]
+    },
+    "gemini": {
+      "name": "Google Gemini",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "env_key": "GEMINI_API_KEY",
+      "tier": 1,
+      "requires_auth": true,
+      "models_endpoint": "/models",
+      "preferred_patterns": [
+        "*gemini-3.8-flash*",
+        "*gemini-3.5-flash-lite*",
+        "*gemini-2.5-flash-lite*",
+        "*flash*"
+      ]
+    },
+    "kilo": {
+      "name": "Kilo Code",
+      "base_url": "https://api.kilo.ai/api/gateway",
+      "env_key": null,
+      "tier": 1,
+      "requires_auth": false,
+      "models_endpoint": "/models",
+      "preferred_patterns": [
+        "kilo-auto/free",
+        "*nemotron*",
+        "*:free"
+      ]
+    },
+    "openrouter": {
+      "name": "OpenRouter",
+      "base_url": "https://openrouter.ai/api/v1",
+      "env_key": "OPENROUTER_API_KEY",
+      "tier": 2,
+      "requires_auth": true,
+      "models_endpoint": "/models",
+      "preferred_patterns": [
+        "*:free"
+      ],
+      "extra_headers": {
+        "HTTP-Referer": "https://github.com/mnfst/awesome-free-llm-apis",
+        "X-Title": "Free LLM Proxy"
+      }
+    },
+    "ovhcloud": {
+      "name": "OVHcloud",
+      "base_url": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
+      "env_key": null,
+      "tier": 2,
+      "requires_auth": false,
+      "models_endpoint": "/models",
+      "preferred_patterns": [
+        "gpt-oss-120b",
+        "gpt-oss-20b",
+        "Meta-Llama-3_3-70B-Instruct",
+        "Qwen3.8-27B"
+      ]
+    },
+    "nvidia": {
+      "name": "NVIDIA NIM",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "env_key": "NVIDIA_API_KEY",
+      "tier": 2,
+      "requires_auth": true,
+      "models_endpoint": "/models",
+      "preferred_patterns": [
+        "*gpt-oss-20b*",
+        "*minimax-m3.1-flash*",
+        "*nemotron-3.5*",
+        "*"
+      ]
+    },
+    "mistral": {
+      "name": "Mistral AI",
+      "base_url": "https://api.mistral.ai/v1",
+      "env_key": "MISTRAL_API_KEY",
+      "tier": 2,
+      "requires_auth": true,
+      "models_endpoint": "/models",
+      "preferred_patterns": [
+        "*mistral-small*",
+        "*open-mistral-nemo*",
+        "*codestral*"
+      ]
+    }
+  },
+  "virtual_aliases": {
+    "free-auto": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
+    "free-fast": ["*-20b*", "*:20b*", "*8b*", "*flash-lite*", "*7b*", "*"],
+    "free-reasoning": ["*r1*", "*reasoning*", "*flint*", "*beam*", "*"]
+  }
+}

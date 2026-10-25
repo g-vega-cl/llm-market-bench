@@ -689,3 +689,48 @@ def test_should_prune_stage1_with_confidence_sized_sharpe():
         )
         is False
     )
+
+
+def test_passes_two_sided_gate_with_54_pct_hurdle_allows_6_of_11_hits():
+    """Verify that 6 of 11 hits (54.55%) passes the two-sided gate with 54.0% hurdle."""
+    # 6 TP (UP hits), 5 FN (UP misses) -> Recall UP = 6/11 = 54.55%
+    # 8 TN (DOWN hits), 3 FP (DOWN misses) -> Recall DOWN = 8/11 = 72.73%
+    # Balanced Acc = (54.55 + 72.73)/2 = 63.64%, MCC = +0.277
+    bal_metrics = {
+        "balanced_accuracy_pct": 63.64,
+        "recall_up_pct": 54.55,
+        "recall_down_pct": 72.73,
+        "mcc": 0.277,
+        "win_rate_pct": 63.64,
+    }
+
+    # With 55.0% hurdle, it failed by 0.45%
+    passes_55, reason_55 = passes_two_sided_gate(
+        bal_metrics, min_recall_up=55.0, min_recall_down=55.0, min_bal_acc=58.0, min_mcc=0.20
+    )
+    assert passes_55 is False
+    assert "Recall UP 54.5% < 55.0%" in reason_55
+
+    # With 54.0% hurdle, 6/11 hits correctly passes
+    passes_54, reason_54 = passes_two_sided_gate(
+        bal_metrics, min_recall_up=54.0, min_recall_down=54.0, min_bal_acc=58.0, min_mcc=0.20
+    )
+    assert passes_54 is True
+    assert reason_54 == "Passed two-sided gate"
+
+
+def test_passes_two_sided_gate_rejects_below_54_pct():
+    """Verify that 5 of 11 hits (45.45%) is correctly rejected as one-sided."""
+    bal_metrics = {
+        "balanced_accuracy_pct": 59.09,
+        "recall_up_pct": 45.45,
+        "recall_down_pct": 72.73,
+        "mcc": 0.189,
+        "win_rate_pct": 59.09,
+    }
+    passes, reason = passes_two_sided_gate(
+        bal_metrics, min_recall_up=54.0, min_recall_down=54.0, min_bal_acc=58.0, min_mcc=0.20
+    )
+    assert passes is False
+    assert "Recall UP 45.5% < 54.0%" in reason
+

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/free-llm-proxy]] — Auto-indexed page
 - [[entities/rotate-secrets]] — utility that generates secure secrets and mints PostgREST JWTs for the archive DB stack
 - [[entities/compare-8k-vs-16k]] — head-to-head Strata ORCA benchmark of 8k vs 16k reasoning budgets on non-continuous sessions
 - [[entities/historical-downloader]] — rate-limited offline downloader for multi-year EOD/pre-market/news/newsletter/macro data into a local SQLite raw vault

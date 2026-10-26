@@ -55,15 +55,19 @@ $$\text{MCC} = \frac{TP \times TN - FP \times FN}{\sqrt{(TP + FP)(TP + FN)(TN + 
 ### The Vulnerability
 With 47 trading sessions, iterating a meta-researcher over 20+ mutation cycles allows the prompt to overfit to localized idiosyncrasies of specific calendar dates (e.g. "If today is August 12, fade the CPI print").
 
-### The Guard (Stratified Holdout Gating)
+### The Guard (Stratified Holdout Gating & 1:1 Balanced Partitioning)
 Sessions are deterministically partitioned (seed 42) into two isolated sets:
-- **In-Sample Training Set (31 sessions)**: 11 UP (35.5%) / 20 DOWN (64.5%).
-- **Out-of-Sample Holdout Set (16 sessions)**: 6 UP (37.5%) / 10 DOWN (62.5%).
+- **Default 1:1 Balanced Split (`create_balanced_stratified_split`)**: 34 clean sessions paired to strictly equal UP/DOWN base rates:
+  - **In-Sample Training Set (22 sessions)**: 11 UP (50.0%) / 11 DOWN (50.0%).
+  - **Out-of-Sample Holdout Set (12 sessions)**: 6 UP (50.0%) / 6 DOWN (50.0%).
+- **Full Stratified Split (`create_stratified_split`)**: All 47 clean sessions preserving raw empirical base rates:
+  - **In-Sample Training Set (31 sessions)**: 11 UP (35.5%) / 20 DOWN (64.5%).
+  - **Out-of-Sample Holdout Set (16 sessions)**: 6 UP (37.5%) / 10 DOWN (62.5%).
 
 A candidate prompt must:
-1. Pass the Stage 1 sieve on training sessions.
-2. Beat the current champion's in-sample score.
-3. Pass the **OOS Holdout Gate**: achieve $\ge 55.0\%$ Balanced Accuracy on the 16 holdout sessions. Candidates failing OOS are rejected as overfit.
+1. Pass the Stage 1 sieve on training sessions (win rate $\ge 52.0\%$).
+2. Beat the current champion's in-sample composite score.
+3. Pass the **OOS Holdout Gate**: achieve $\ge 55.0\%$ Balanced Accuracy on the holdout sessions. Candidates failing OOS are rejected as overfit. See [[concepts/single-prompt-ratchet]].
 
 ---
 

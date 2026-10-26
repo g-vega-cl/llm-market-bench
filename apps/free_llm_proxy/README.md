@@ -10,7 +10,7 @@ A high-performance, model-agnostic OpenAI-compatible proxy that unifies free LLM
 - **Dynamic Model-Agnostic Discovery**: Queries live provider `/v1/models` catalogs. No broken model strings when providers release or retire checkpoints.
 - **Smart Tiered Failover**:
   - **Tier 1 (High Performance)**: Groq (ultra-fast 120B/27B), Gemini (Flash 3.8 / 2.5), Kilo Code (no key needed).
-  - **Tier 2 (Fallback Pool)**: OVHcloud (anonymous EU), OpenRouter (17 `:free` models), SambaNova, Mistral.
+  - **Tier 2 (Fallback Pool)**: OVHcloud (anonymous EU), OpenRouter (17 `:free` models), NVIDIA NIM.
 - **Circuit Breaker**: On HTTP 429 (rate limit) or 5xx downtime, automatically cools down the provider and retries next candidate seamlessly.
 - **Streaming & SSE**: Full pass-through token streaming (`stream: true`) with pre-flight failover protection.
 - **Reasoning Token Preservation**: Preserves `reasoning` and thinking blocks for thinking models (`gpt-oss-120b`, `flint`, `beam`).

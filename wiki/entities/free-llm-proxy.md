@@ -35,7 +35,7 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
        │  Tier 1: [Groq] ⇄ [Gemini] ⇄ [Kilo Code] (Round-Robin)      │
        │           │ 429 / 5xx / Timeout                             │
        │           ▼ (Trip Circuit Breaker)                          │
-       │  Tier 2: [OVHcloud] ⇄ [OpenRouter] ⇄ [NVIDIA NIM] ⇄ [Mistral]│
+       │  Tier 2: [OVHcloud] ⇄ [OpenRouter] ⇄ [NVIDIA NIM]          │
        └──────────────────────────────┬──────────────────────────────┘
                                       │
                                       ▼
@@ -95,7 +95,7 @@ Environment variables (loaded from `apps/free_llm_proxy/.env`, falling back to `
 | `DEFAULT_COOLDOWN_SECONDS` | `60` | Circuit-breaker cooldown when no `Retry-After` is sent |
 | `MAX_FAILOVER_RETRIES` | `4` | Failover retry budget |
 | `SQLITE_DB_PATH` | `data/free_llm_proxy.db` | Audit database location (`:memory:` supported for tests) |
-| `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`, `MISTRAL_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool |
+| `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool |
 
 ---
 

@@ -83,19 +83,6 @@
         "*nemotron-3.5*",
         "*"
       ]
-    },
-    "mistral": {
-      "name": "Mistral AI",
-      "base_url": "https://api.mistral.ai/v1",
-      "env_key": "MISTRAL_API_KEY",
-      "tier": 2,
-      "requires_auth": true,
-      "models_endpoint": "/models",
-      "preferred_patterns": [
-        "*mistral-small*",
-        "*open-mistral-nemo*",
-        "*codestral*"
-      ]
     }
   },
   "virtual_aliases": {

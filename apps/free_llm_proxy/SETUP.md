@@ -52,12 +52,6 @@ You do **not** need to register or configure keys for these; they are active in 
 * **Env Variable**: Set `NVIDIA_API_KEY=nvapi-...` in `apps/free_llm_proxy/.env`.
 * **Limits**: 40 RPM, 10,000 requests/day, 100+ models (`openai/gpt-oss-20b`, `google/gemma-4-31b-it`, `nvidia/nemotron-3-ultra-550b`).
 
-### Mistral AI
-* **Signup URL**: [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys/)
-* **Generate**: Sign in -> Under Free / Experimentation plan -> **Create New Key**.
-* **Env Variable**: Set `MISTRAL_API_KEY=...` in `apps/free_llm_proxy/.env`.
-* **Models**: `Mistral Medium 3.5 (128B)`, `Mistral Small 4`, `Codestral`.
-
 ### Cohere
 * **Signup URL**: [dashboard.cohere.com/api-keys](https://dashboard.cohere.com/api-keys)
 * **Limits**: 1,000 API calls/month, 20 RPM.

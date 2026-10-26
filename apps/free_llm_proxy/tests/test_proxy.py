@@ -5,8 +5,9 @@ from fastapi.testclient import TestClient
 
 from apps.free_llm_proxy.server import app
 from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
-from apps.free_llm_proxy.router import Router
+from apps.free_llm_proxy.config import load_providers_config
 from apps.free_llm_proxy.db import AuditDB
+from apps.free_llm_proxy.router import Router
 
 
 @pytest.fixture
@@ -204,3 +205,9 @@ def test_audit_db_logging():
     assert metrics["total_requests"] == 1
     assert metrics["total_tokens"] == 30
     assert metrics["providers"]["groq"]["requests"] == 1
+
+
+def test_mistral_not_in_providers():
+    """Verify Mistral is excluded from proxy provider catalog due to lack of free tier."""
+    config = load_providers_config()
+    assert "mistral" not in config.get("providers", {})

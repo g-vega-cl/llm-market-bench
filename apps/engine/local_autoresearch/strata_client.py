@@ -24,7 +24,7 @@ from local_autoresearch.manifest import (
 )
 
 DEFAULT_STRATA_URL = os.getenv("STRATA_BASE_URL", "http://localhost:8080/v1")
-DEFAULT_STRATA_MODEL = os.getenv("STRATA_MODEL", "qwen3.8-flash-next-iq2_xs")
+DEFAULT_STRATA_MODEL = os.getenv("STRATA_MODEL", "orcarouter-qwen3.8-flash-next-uncensored-iq3_xxs")
 
 STRATA_META_RESEARCHER_SYSTEM = f"""You are an autonomous quantitative meta-researcher optimizing an intraday S&P 500 (SPY) prediction machine.
 You control two critical levers:

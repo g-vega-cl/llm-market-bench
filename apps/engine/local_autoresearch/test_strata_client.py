@@ -184,3 +184,9 @@ async def test_generate_double_ratchet_mutation_with_strata():
     assert mutation.criteria.min_confidence == 0.0
     assert mutation.criteria.criteria_up == "Treasury yield drop and tech bid"
     assert mutation.hypothesis == "Aligned yield extraction with directional rules."
+
+
+def test_default_strata_model_is_orca():
+    from local_autoresearch.strata_client import DEFAULT_STRATA_MODEL
+
+    assert DEFAULT_STRATA_MODEL == "orcarouter-qwen3.8-flash-next-uncensored-iq3_xxs"

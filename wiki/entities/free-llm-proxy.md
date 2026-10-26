@@ -5,7 +5,7 @@ category: entity
 
 # Free LLM Proxy
 
-A model-agnostic, OpenAI-compatible proxy server located at `apps/free-llm-proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, and full token usage logging.
+A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, and full token usage logging.
 
 ---
 
@@ -18,7 +18,7 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
                  │  POST /v1/chat/completions
                  ▼
        ┌──────────────────────┐
-       │     FastAPI App      │ (apps/free-llm-proxy/server.py)
+       │     FastAPI App      │ (apps/free_llm_proxy/server.py)
        │ (Master Key Auth)    │
        └──────────┬───────────┘
                   │
@@ -51,12 +51,12 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ## Key Components
 
-- **Dynamic Catalog Discovery (`apps/free-llm-proxy/discovery.py`)**: Queries each active provider's `GET /models` endpoint at runtime. Avoids hardcoded model IDs so provider version rollouts (e.g. `qwen3.8-27b`, `gpt-oss-120b`) work automatically without code edits. Results are cached per provider (`ModelDiscovery`, default 3600s TTL) and matched against prioritized `fnmatch` patterns.
-- **Circuit Breaker (`apps/free-llm-proxy/circuit_breaker.py`)**: Reacts to HTTP 429 rate limits or repeated 5xx errors by placing the failed provider into cooldown (respecting `Retry-After` if sent). A 429 trips the breaker immediately; two consecutive 5xx errors trip it. `record_success` resets the consecutive-failure counter, and `get_status_overview` exposes per-provider health, cooldown remaining, failure count, and rate-limit hit count.
-- **Tiered Router (`apps/free-llm-proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; cooling providers are used only as a last resort when no healthy candidate remains. An explicit `provider/model` prefix in the request moves that provider to the front of the chain.
-- **Audit Database (`apps/free-llm-proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, and failover chains to a local SQLite database (`data/free_llm_proxy.db`). `get_metrics()` aggregates total/successful requests, success rate, token totals, average latency, per-provider stats, and the 10 most recent calls.
-- **Streaming & SSE (`apps/free-llm-proxy/client.py`)**: Streams `text/event-stream` chunks directly to chat clients with pre-flight failover protection — the connection is probed first so an initial 429/5xx fails over before any chunk is yielded.
-- **Provider Registry (`apps/free-llm-proxy/providers.json`)**: Declarative provider definitions (`base_url`, `env_key`, `tier`, `requires_auth`, `preferred_patterns`, optional `extra_headers`) plus the virtual alias pattern map. Providers with `requires_auth: false` (Kilo Code, OVHcloud) are active with zero keys; keyed providers activate automatically when their env var is present.
+- **Dynamic Catalog Discovery (`apps/free_llm_proxy/discovery.py`)**: Queries each active provider's `GET /models` endpoint at runtime. Avoids hardcoded model IDs so provider version rollouts (e.g. `qwen3.8-27b`, `gpt-oss-120b`) work automatically without code edits. Results are cached per provider (`ModelDiscovery`, default 3600s TTL) and matched against prioritized `fnmatch` patterns.
+- **Circuit Breaker (`apps/free_llm_proxy/circuit_breaker.py`)**: Reacts to HTTP 429 rate limits or repeated 5xx errors by placing the failed provider into cooldown (respecting `Retry-After` if sent). A 429 trips the breaker immediately; two consecutive 5xx errors trip it. `record_success` resets the consecutive-failure counter, and `get_status_overview` exposes per-provider health, cooldown remaining, failure count, and rate-limit hit count.
+- **Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; cooling providers are used only as a last resort when no healthy candidate remains. An explicit `provider/model` prefix in the request moves that provider to the front of the chain.
+- **Audit Database (`apps/free_llm_proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, and failover chains to a local SQLite database (`data/free_llm_proxy.db`). `get_metrics()` aggregates total/successful requests, success rate, token totals, average latency, per-provider stats, and the 10 most recent calls.
+- **Streaming & SSE (`apps/free_llm_proxy/client.py`)**: Streams `text/event-stream` chunks directly to chat clients with pre-flight failover protection — the connection is probed first so an initial 429/5xx fails over before any chunk is yielded.
+- **Provider Registry (`apps/free_llm_proxy/providers.json`)**: Declarative provider definitions (`base_url`, `env_key`, `tier`, `requires_auth`, `preferred_patterns`, optional `extra_headers`) plus the virtual alias pattern map. Providers with `requires_auth: false` (Kilo Code, OVHcloud) are active with zero keys; keyed providers activate automatically when their env var is present.
 
 ---
 
@@ -85,7 +85,7 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ## Configuration
 
-Environment variables (loaded from `apps/free-llm-proxy/.env`, falling back to `apps/engine/.env`):
+Environment variables (loaded from `apps/free_llm_proxy/.env`, falling back to `apps/engine/.env`):
 
 | Variable | Default | Meaning |
 | :--- | :--- | :--- |
@@ -103,10 +103,10 @@ Environment variables (loaded from `apps/free-llm-proxy/.env`, falling back to `
 
 ```bash
 # Start the server
-./apps/engine/.venv/bin/python3 apps/free-llm-proxy/main.py [--port 8086] [--host 0.0.0.0] [--reload]
+./apps/engine/.venv/bin/python3 apps/free_llm_proxy/main.py [--port 8086] [--host 0.0.0.0] [--reload]
 
 # Hermetic test suite (no external network; loopback only)
-./apps/engine/.venv/bin/python3 -m pytest apps/free-llm-proxy/tests/test_proxy.py -v
+./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
 ```
 
 The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].

@@ -23,7 +23,7 @@ A high-performance, model-agnostic OpenAI-compatible proxy that unifies free LLM
 
 ### 1. Configure `.env`
 
-Copy `.env.example` to `.env` (already initialized in `apps/free-llm-proxy/.env`):
+Copy `.env.example` to `.env` (already initialized in `apps/free_llm_proxy/.env`):
 
 ```bash
 PORT=8086
@@ -38,7 +38,7 @@ OPENROUTER_API_KEY=...
 ### 2. Start the Server
 
 ```bash
-./apps/engine/.venv/bin/python3 apps/free-llm-proxy/main.py
+./apps/engine/.venv/bin/python3 apps/free_llm_proxy/main.py
 ```
 
 Server will start on `http://0.0.0.0:8086`.
@@ -111,5 +111,5 @@ print(response.choices[0].message.content)
 ## Running Hermetic Tests
 
 ```bash
-./apps/engine/.venv/bin/python3 -m pytest apps/free-llm-proxy/tests/test_proxy.py -v
+./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
 ```

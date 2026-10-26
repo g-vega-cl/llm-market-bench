@@ -35,8 +35,18 @@ OPENROUTER_API_KEY=...
 
 *Note: The proxy automatically activates whichever providers have keys configured in `.env`. Kilo Code and OVHcloud work out of the box with zero keys!*
 
-### 2. Start the Server
+### 2. Start the Server (Docker or Local)
 
+#### Option A: Docker (Recommended - Auto-starts on boot)
+```bash
+docker compose -f apps/free_llm_proxy/docker-compose.yml up -d
+```
+To view logs:
+```bash
+docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
+```
+
+#### Option B: Local Python
 ```bash
 ./apps/engine/.venv/bin/python3 apps/free_llm_proxy/main.py
 ```

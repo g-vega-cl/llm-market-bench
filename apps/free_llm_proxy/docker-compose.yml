@@ -1,0 +1,17 @@
+services:
+  free-llm-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: free-llm-proxy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8086:8086"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/apps/free_llm_proxy/data
+    deploy:
+      resources:
+        limits:
+          memory: 128M

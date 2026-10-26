@@ -1,5 +1,5 @@
 ---
-tags: [llm, proxy, inference, router, failover]
+tags: [llm, proxy, inference, router, failover, docker]
 category: entity
 ---
 
@@ -101,13 +101,32 @@ Environment variables (loaded from `apps/free_llm_proxy/.env`, falling back to `
 
 ## Running & Testing
 
+### Docker (recommended — auto-starts on boot)
+
+The proxy ships a self-contained container stack:
+
+- **`apps/free_llm_proxy/Dockerfile`** — `python:3.13-slim` base with pinned dependencies (`fastapi==0.115.11`, `uvicorn[standard]==0.34.0`, `httpx==0.28.1`, `pydantic==2.10.6`, `python-dotenv==1.0.1`). Code is copied to `/app/apps/free_llm_proxy` to preserve the package layout, exposes port `8086`, and launches `python main.py --host 0.0.0.0 --port 8086`.
+- **`apps/free_llm_proxy/docker-compose.yml`** — service `free-llm-proxy`, `restart: unless-stopped`, binds `127.0.0.1:8086:8086` (loopback only), loads `.env` via `env_file`, mounts `./data` to persist the SQLite audit database, and caps memory at `128M`.
+- **`apps/free_llm_proxy/.dockerignore`** — excludes `__pycache__`, compiled bytecode, `.pytest_cache`, `tests/`, `.env`, and `data/*.db` from the build context.
+
 ```bash
 # Start via Docker (auto-starts on boot with 128MB limit)
 docker compose -f apps/free_llm_proxy/docker-compose.yml up -d
 
+# Follow logs
+docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
+```
+
+### Local Python
+
+```bash
 # Or start the local server directly
 ./apps/engine/.venv/bin/python3 apps/free_llm_proxy/main.py [--port 8086] [--host 0.0.0.0] [--reload]
+```
 
+### Tests
+
+```bash
 # Hermetic test suite (no external network; loopback only)
 ./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
 ```
@@ -122,3 +141,4 @@ The test suite covers master-key auth rejection, the unauthenticated health prob
 - [[entities/tool-registry]]
 - [[entities/wiki-linter]]
 - [[concepts/test-coverage]]
+- [[concepts/env-based-secrets]]

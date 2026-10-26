@@ -1,8 +1,16 @@
 """CLI Entrypoint for Free LLM Proxy server."""
 
 import argparse
+from pathlib import Path
+import sys
 import uvicorn
-from apps.free_llm_proxy import config
+
+# Ensure repository root is in sys.path when invoked directly as a script
+repo_root = Path(__file__).resolve().parent.parent.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
+from apps.free_llm_proxy import config  # noqa: E402
 
 
 def main() -> None:

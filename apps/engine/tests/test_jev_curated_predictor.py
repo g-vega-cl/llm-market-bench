@@ -118,14 +118,14 @@ def test_pack_daily_context_curation():
 
 @pytest.mark.asyncio
 async def test_run_daily_prediction_jev_curated_high_confidence():
-    """Verify jev-local-autoresearched predicts direction when confidence exceeds threshold."""
+    """Verify jev-four-regime-champion predicts direction when confidence exceeds threshold."""
     from tasks.daily_predictor import run_daily_prediction
 
     mock_sb = MagicMock()
     # No existing predictions
     mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
 
-    # Mock active prompt experiment for jev-local-autoresearched
+    # Mock active prompt experiment for jev-four-regime-champion
     curated_payload = json.dumps(
         {
             "criteria": {"UP": "Up rule", "DOWN": "Down rule"},
@@ -186,8 +186,8 @@ async def test_run_daily_prediction_jev_curated_high_confidence():
         # Run with force=True to bypass time-of-day checks
         results = await run_daily_prediction(ticker="SPY", force=True)
 
-        # Assert jev-local-autoresearched was included and predicted UP with 74%
-        jev_curated_res = [r for r in results if r["model_name"] == "jev-local-autoresearched"]
+        # Assert jev-four-regime-champion was included and predicted UP with 74%
+        jev_curated_res = [r for r in results if r["model_name"] == "jev-four-regime-champion"]
         assert len(jev_curated_res) == 1
         assert jev_curated_res[0]["predicted_direction"] == "UP"
         assert jev_curated_res[0]["confidence"] == 74.0
@@ -196,7 +196,7 @@ async def test_run_daily_prediction_jev_curated_high_confidence():
 
 @pytest.mark.asyncio
 async def test_run_daily_prediction_jev_curated_gated_no_trade():
-    """Verify jev-local-autoresearched gates to NO_TRADE when confidence is below min_confidence."""
+    """Verify jev-four-regime-champion gates to NO_TRADE when confidence is below min_confidence."""
     from tasks.daily_predictor import run_daily_prediction
 
     mock_sb = MagicMock()
@@ -258,7 +258,7 @@ async def test_run_daily_prediction_jev_curated_gated_no_trade():
 
         results = await run_daily_prediction(ticker="SPY", force=True)
 
-        jev_curated_res = [r for r in results if r["model_name"] == "jev-local-autoresearched"]
+        jev_curated_res = [r for r in results if r["model_name"] == "jev-four-regime-champion"]
         assert len(jev_curated_res) == 1
         assert jev_curated_res[0]["predicted_direction"] == "NO_TRADE"
         assert jev_curated_res[0]["confidence"] == 56.5

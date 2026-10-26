@@ -29,11 +29,11 @@ The available newsletter senders are enumerated in `KNOWN_NEWSLETTER_SENDERS`.
 
 `pack_daily_context(day_record, manifest)` deterministically compiles the manifest against a point-in-time daily record into a formatted context string. It enforces the **zero-lookahead guarantee**: only fields captured before 09:15 AM ET on the target date are eligible. The same `day_record` plus `manifest` always produces identical text.
 
-The live version of this record is assembled by `get_structured_daily_market_context()` in `apps/engine/tasks/daily_predictor.py`, which returns both the full narrative context and a structured `data_record` (economic calendar, synthetic newsletter, newsletters, proxies, options sentiment, intraday profile, barometer, market feeling). Standard models receive the full narrative; `jev-local-autoresearched` receives only the manifest-filtered subset.
+The live version of this record is assembled by `get_structured_daily_market_context()` in `apps/engine/tasks/daily_predictor.py`, which returns both the full narrative context and a structured `data_record` (economic calendar, synthetic newsletter, newsletters, proxies, options sentiment, intraday profile, barometer, market feeling). Standard models receive the full narrative; `jev-four-regime-champion` receives only the manifest-filtered subset.
 
 ## Role in Autoresearch
 
-The manifest is one of two levers the meta-researcher mutates (the other being [[concepts/confidence-gating]]) via the `AutoresearchMutation` schema. Pruning noisy inputs — dropping FX (`UUP`), lower-signal newsletter senders, or the barometer — is often as valuable as adding signals. The seeded local champion pruned 13 of 15 newsletter senders down to `Sherwood News` and `Chartr`, kept `QQQ`/`IWM`, and excluded `UUP`, the barometer, and market feeling.
+The manifest is one of two levers the meta-researcher mutates (the other being [[concepts/confidence-gating]]) via the `AutoresearchMutation` schema. Pruning noisy inputs — dropping FX (`UUP`), lower-signal newsletter senders, or the barometer — is often as valuable as adding signals. The `jev-four-regime-champion` manifest pruned the newsletter set down to `Sherwood News` and `Chartr`, kept `QQQ`/`IWM`, and excluded `UUP`, the barometer, and market feeling.
 
 ## Presentation
 

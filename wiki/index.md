@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/daily-market-predictor]] — Daily S&P 500 predictor arena with four-model comparison including DeepSeek Flash, MiniMax-M3, Jev Baseline, and Jev Four-Regime Champion
 - [[entities/free-llm-proxy]] — Auto-indexed page
 - [[entities/rotate-secrets]] — utility that generates secure secrets and mints PostgREST JWTs for the archive DB stack
 - [[entities/compare-8k-vs-16k]] — head-to-head Strata ORCA benchmark of 8k vs 16k reasoning budgets on non-continuous sessions

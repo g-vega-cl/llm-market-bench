@@ -47,10 +47,9 @@ export const SPY_PREDICTOR_MODELS: ModelConfig[] = [
             !m.toLowerCase().includes('autoresearch'),
     },
     {
-        id: 'jev-local-autoresearched',
-        label: 'Jev (Local Champion)',
-        matches: (m: string) =>
-            m.toLowerCase().includes('local-autoresearch') || m.toLowerCase().includes('jev-local'),
+        id: 'jev-four-regime-champion',
+        label: 'Jev (Four-Regime Champion)',
+        matches: (m: string) => m.toLowerCase().includes('four-regime'),
     },
 ];
 

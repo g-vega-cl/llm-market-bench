@@ -5,7 +5,7 @@ category: concept
 
 # Confidence Gating (NO_TRADE)
 
-Confidence gating lets a directional model refuse to trade when its own conviction is too low. It was introduced with the `jev-local-autoresearched` champion track, where the autoresearch loop co-evolves a `min_confidence` threshold alongside the decision criteria.
+Confidence gating lets a directional model refuse to trade when its own conviction is too low. It is carried by the curated Jev champion track (`jev-four-regime-champion`), where the autoresearch loop co-evolves a `min_confidence` threshold alongside the decision criteria.
 
 ## Mechanism
 
@@ -19,7 +19,7 @@ else:
     pred_dir = raw_dir
 ```
 
-The raw decision and confidence are still recorded; only the stored `predicted_direction` is gated. The champion variant ships with a `61.0%` gate. The default curated seed uses `61.0%`, while the plain `~typesafe/jev-latest` baseline does not gate.
+The raw decision and confidence are still recorded; only the stored `predicted_direction` is gated. The `jev-four-regime-champion` variant ships with a `55.0%` gate, reflecting its four-regime classifier where *Balanced Pinning* and *Catalyst Shock* states are deliberately low-conviction. The plain `~typesafe/jev-latest` baseline does not gate.
 
 ## Evaluation Semantics
 
@@ -34,7 +34,7 @@ Aggregate accuracy and Brier metrics therefore exclude gated days, so the model 
 
 ## Rationale
 
-Close-to-open returns are near 50/50, so forcing a directional bet on every session dilutes win rate and Sharpe. Gating preserves capital and win rate during ambiguous regimes while keeping the model exposed on high-conviction days. Because the threshold is a mutation lever, the meta-researcher can discover the trade-off empirically — the champion settled at a level that retained ~80% traded win rate.
+Close-to-open returns are near 50/50, so forcing a directional bet on every session dilutes win rate and Sharpe. Gating preserves capital and win rate during ambiguous regimes while keeping the model exposed on high-conviction days. Because the threshold is a mutation lever, the meta-researcher can discover the trade-off empirically — the champion settled at a level that retained a high traded win rate while abstaining on balanced/pinning sessions.
 
 ## Presentation
 

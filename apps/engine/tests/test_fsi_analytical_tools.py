@@ -240,6 +240,11 @@ async def test_options_surface_no_dummy_fallback_when_spot_missing():
     """Test get_options_vol_surface_report does NOT fallback to 100.0 or 15% IV when spot is missing."""
     with (
         patch("execution.market_data.MarketDataManager.get_quote", new_callable=AsyncMock, return_value=None),
+        patch(
+            "execution.providers.massive.MassiveOptionsClient.get_spot_price",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
         patch("execution.market_data.MarketDataManager.provider") as mock_provider,
         patch(
             "execution.providers.massive.MassiveOptionsClient.get_options_snapshot", new_callable=AsyncMock

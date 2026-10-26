@@ -13,7 +13,7 @@ The daily predictor arena compares four distinct model architectures:
 1. **DeepSeek Flash** (`deepseek-v4-flash`) — Direct thinking/reasoning prompt with structured output via Instructor.
 2. **MiniMax** (`MiniMax-M3`) — High-context reasoning LLM with JSON format output.
 3. **Jev Baseline** (`~typesafe/jev-latest`) — Direct System One typed classification via OpenRouter Decisions API.
-4. **Jev Local Champion** (`jev-local-autoresearched`) — Evolved via local Strata/Qwen autoresearch (`qwen-jev-243de1`). Uses a tailored **Curated Manifest** ("Box of Data") compiled by `pack_daily_context()`, observable multi-signal criteria, and **Confidence Gating** below 61.0% routing to `⚡ NO TRADE` (`predicted_direction = 'NO_TRADE'`).
+4. **Jev Four-Regime Champion** (`jev-four-regime-champion`) — Evolved via Strata single-prompt ratchet tournament (Iteration 43 Champion, Score 54.34, Win Rate 72.73%, $p = 0.0262$). Promoted to replace deprecated `jev-local-autoresearched`. Uses a tailored **Curated Manifest** ("Box of Data") compiled by `pack_daily_context()`, symmetrical four-regime classification criteria (*Risk-On Expansion*, *Risk-Off Expansion*, *Balanced Pinning*, *Catalyst Shock*), and **Confidence Gating** below 55.0% routing to `⚡ NO TRADE` (`predicted_direction = 'NO_TRADE'`).
 
 ## Market Context Compilation & Curated Manifests
 
@@ -25,7 +25,7 @@ Multi-day momentum and trend indicators are calculated by `analytics/trend_profi
 - 20-day Simple Moving Average (SMA20) and distance % (monthly cycle, verified history only).
 - 3-day direction sequence (e.g. `UP (+0.3%) -> DOWN (-0.2%) -> UP (+0.6%)`).
 
-For standard models, the full narrative context is passed. For `jev-local-autoresearched`, the raw data record is compiled dynamically through `pack_daily_context(data_record, manifest)` into a lean, noise-pruned "Box of Data" adhering to the winning variant's active manifest:
+For standard models, the full narrative context is passed. For `jev-four-regime-champion`, the raw data record is compiled dynamically through `pack_daily_context(data_record, manifest)` into a lean, noise-pruned "Box of Data" adhering to the winning variant's active manifest:
 - **Included**: Multi-day momentum & trend vector (`include_trend_vector=True`), prior session intraday technical profile (VWAP, Close Location Value), high-signal proxies (`QQQ`, `IWM`), options positioning, economic releases, and curated newsletters (`Sherwood News`, `Chartr`).
 - **Pruned / Excluded**: FX noise (`UUP`), market health barometer, qualitative market feeling.
 

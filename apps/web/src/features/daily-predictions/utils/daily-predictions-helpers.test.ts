@@ -31,9 +31,10 @@ describe('daily-predictions-helpers', () => {
         expect(jev.matches('~typesafe/jev-latest')).toBe(true);
 
         const jevLocal = PREDICTOR_MODELS[3];
-        expect(jevLocal.id).toBe('jev-local-autoresearched');
-        expect(jevLocal.label).toBe('Jev (Local Champion)');
-        expect(jevLocal.matches('jev-local-autoresearched')).toBe(true);
+        expect(jevLocal.id).toBe('jev-four-regime-champion');
+        expect(jevLocal.label).toBe('Jev (Four-Regime Champion)');
+        expect(jevLocal.matches('jev-four-regime-champion')).toBe(true);
+        expect(jevLocal.matches('jev-local-autoresearched')).toBe(false);
     });
 
     it('defines getPredictorModelsForTicker with SPY and TLT models', () => {
@@ -42,7 +43,7 @@ describe('daily-predictions-helpers', () => {
         expect(spyModels[0].id).toBe('deepseek-v4-flash');
         expect(spyModels[1].id).toBe('MiniMax-M3');
         expect(spyModels[2].id).toBe('~typesafe/jev-latest');
-        expect(spyModels[3].id).toBe('jev-local-autoresearched');
+        expect(spyModels[3].id).toBe('jev-four-regime-champion');
 
         const bondModels = getPredictorModelsForTicker('TLT');
         expect(bondModels).toHaveLength(3);

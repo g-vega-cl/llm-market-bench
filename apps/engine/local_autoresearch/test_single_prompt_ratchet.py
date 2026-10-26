@@ -733,4 +733,3 @@ def test_passes_two_sided_gate_rejects_below_54_pct():
     )
     assert passes is False
     assert "Recall UP 45.5% < 54.0%" in reason
-

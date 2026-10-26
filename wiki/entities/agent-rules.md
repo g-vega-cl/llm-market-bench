@@ -34,6 +34,32 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 9. **Zero Compute on Frontend**: Pre-materialize all heavy calculations in background pipelines (`[[concepts/zero-frontend-compute]]`).
 10. **Vertical Slice Islands & File Size Ceiling**: 400 LOC soft ceiling, 800 LOC hard limit, colocated tests (`[[concepts/vertical-slice-islands]]`).
 11. **Design System & UI Consistency**: Strict primitive consumption from `@llm-market-bench/ui-design-system` with zero arbitrary utility escapes (`[[entities/design-system]]`).
+12. **Dependency Restraint**: Do not add new packages, dev dependencies, test runners, or lockfile changes without explicit user approval; prefer the standard library and tooling already in the repo.
+13. **Targeted Git Staging & Multi-Agent Isolation**: Never blanket-stage; stage only the files touched by the active task (`[[entities/agent-rules]]`).
+
+## Git Staging & Commit Protocol (MANDATORY)
+
+### Targeted Staging Only (Multi-Agent Safety)
+
+- **Explicit File Staging**: Agents MUST only stage the exact files modified or created for their specific task (e.g. `git add path/to/file1.py path/to/file2.ts`).
+- **Zero Blanket Staging**: Running `git add -A`, `git add .`, `git add -u`, or `git commit -a` / `git commit -am` is **STRICTLY PROHIBITED**.
+- **Multi-Agent Isolation**: Multiple agents and human developers often work concurrently on the same branch. Blanket staging captures incomplete changes from sibling sessions, pollutes commit scopes, and causes pre-commit hooks to fail on unrelated dirty files.
+- **Pre-Commit Verification**: Before committing, always check `git status --short` or `git diff --cached --stat` to confirm that only task-relevant changes are staged.
+
+### Commit Message Validation
+
+All commit messages are strictly validated by `.husky/commit-msg` via `apps/engine/commit_msg_lint.py`. Commits must follow Conventional Commits formatting; `feat`, `fix`, `perf`, and `refactor` commits must include a descriptive body explaining context and reasoning so the git log serves as a clear historical record (`[[entities/commit-msg-lint]]`).
+
+## Verification Gate
+
+After every code change, lint and coverage must pass before work is marked complete. The pre-commit hook blocks commits with lint errors, low coverage, or broken wiki links:
+
+- `ruff check` on changed Python files (`ruff check --fix` / `--unsafe-fixes` to auto-fix)
+- `biome check` on changed TS files (`biome check --write` to auto-fix)
+- `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` whenever any file in `wiki/` is created or modified
+- All backtick code references in wiki markdown must match existing paths on disk
+
+A passing test suite with failing lint or low coverage is not done.
 
 ## Related
 
@@ -44,3 +70,4 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 - [[concepts/zero-frontend-compute]]
 - [[entities/design-system]]
 - [[entities/commit-msg-lint]]
+- [[concepts/wiki-synchronization]]

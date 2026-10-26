@@ -30,7 +30,16 @@
 
 **After every code change, verify lint and coverage pass before marking work complete.** The pre-commit hook will block commits with lint errors, low coverage, or broken wiki links. Run `ruff check` on changed Python files, `biome check` on changed TS files, and `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` whenever any file in `wiki/` is created or modified. Validate that all backtick code references in wiki markdown match existing paths on disk. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint or low coverage is not done.
 
-## Commit Message Protocol (MANDATORY)
+## Git Staging & Commit Protocol (MANDATORY)
+
+### Targeted Staging Only (Multi-Agent Safety)
+
+- **Explicit File Staging**: Agents MUST only stage the exact files modified or created for their specific task (e.g. `git add path/to/file1.py path/to/file2.ts`).
+- **Zero Blanket Staging**: Running `git add -A`, `git add .`, `git add -u`, or `git commit -a` / `git commit -am` is **STRICTLY PROHIBITED**.
+- **Multi-Agent Isolation**: Multiple agents and human developers often work concurrently on the same branch. Blanket staging captures incomplete changes from sibling sessions, pollutes commit scopes, and causes pre-commit hooks to fail on unrelated dirty files.
+- **Pre-Commit Verification**: Before committing, always check `git status --short` or `git diff --cached --stat` to confirm that only task-relevant changes are staged.
+
+### Commit Message Validation
 
 All commit messages are strictly validated by `.husky/commit-msg` via `apps/engine/commit_msg_lint.py`. When drafting or suggesting git commits:
 
@@ -93,6 +102,10 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
     - Do not add new packages (pip, pnpm/npm, or otherwise), dev dependencies, test runners, or lockfile changes without explicit user approval. This includes adding a test framework to a package that has none.
     - Prefer the standard library and tooling already in the repo. Reuse existing binaries and configs before introducing new ones.
     - If a new dependency seems necessary, state the reason and the lighter alternatives in the plan, and wait for approval before installing.
+17. **Targeted Git Staging & Multi-Agent Isolation (MANDATORY)**:
+    - Never use blanket staging commands (`git add -A`, `git add .`, `git add -u`, or `git commit -a` / `-am`).
+    - Explicitly stage only files touched by your active task (`git add <file1> <file2>`).
+    - When multiple agents or developers work on the same branch, blanket staging scoops up in-flight intermediate work from other sessions, corrupts change attribution, and breaks hermetic pre-commit gates.
 
 
 

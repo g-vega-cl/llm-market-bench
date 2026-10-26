@@ -102,7 +102,10 @@ Environment variables (loaded from `apps/free_llm_proxy/.env`, falling back to `
 ## Running & Testing
 
 ```bash
-# Start the server
+# Start via Docker (auto-starts on boot with 128MB limit)
+docker compose -f apps/free_llm_proxy/docker-compose.yml up -d
+
+# Or start the local server directly
 ./apps/engine/.venv/bin/python3 apps/free_llm_proxy/main.py [--port 8086] [--host 0.0.0.0] [--reload]
 
 # Hermetic test suite (no external network; loopback only)

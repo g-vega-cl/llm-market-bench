@@ -298,7 +298,7 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 8192,
+        "max_tokens": 16384,
         "reasoning": {
             "max_tokens": 2048,
         },
@@ -312,7 +312,7 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
         "X-Title": "llm-market-bench auto wiki",
     }
 
-    resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=120)
+    resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=180)
     resp.raise_for_status()
     content = resp.json()["choices"][0]["message"]["content"]
     if content is None:

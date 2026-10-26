@@ -31,7 +31,7 @@ Bypassed models receive an automatic `APPROVED` verification result with reasoni
 
 Bypassing the LLM verifier step does not bypass execution risk controls. All portfolios continue to undergo:
 1. Current quote and price sanity bounds
-2. Reg T initial margin and buying power checks
+2. Cash balance and buying power checks (buying power equals cash under the Cash-Only model — see [[concepts/execution]])
 3. 10% minimum position enforcement
 4. Slippage simulation and trade settlement
 
@@ -69,7 +69,7 @@ Single-stock intrinsic valuation (`audit_financial_valuation` DCF and peer multi
 
 ## Related
 
-- [[concepts/execution]] — Pre-market validation, Reg T checks, trade settlement
+- [[concepts/execution]] — Pre-market validation, cash-only capacity checks, trade settlement
 - [[concepts/minimax-portfolio]] — Simplified execution model for MiniMax-M3
 - [[entities/autoresearch]] — Multi-track prompt optimization
 - [[concepts/multi-track-autoresearch]] — Isolated prompt lineage per track

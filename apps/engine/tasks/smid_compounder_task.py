@@ -284,7 +284,7 @@ async def run_smid_compounder_task(
                 "date": today_str,
                 "total_equity": total_equity,
                 "cash_balance": portfolio.cash_balance,
-                "buying_power": portfolio.cash_balance * 2,
+                "buying_power": portfolio.cash_balance,
                 "sma": 0.0,
                 "realized": total_equity,
             },

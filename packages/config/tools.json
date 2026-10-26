@@ -1,7 +1,7 @@
 [
   {
     "name": "get_portfolio_ledger",
-    "desc": "Pull portfolio ledger XML, cash, SMA & positions"
+    "desc": "Pull portfolio ledger XML, cash, buying power & positions"
   },
   {
     "name": "get_todays_news_menu",

@@ -304,7 +304,7 @@ async def run_pead_drift_task(
                 "date": today_str,
                 "total_equity": total_equity,
                 "cash_balance": portfolio.cash_balance,
-                "buying_power": portfolio.metrics.buying_power if portfolio.metrics else portfolio.cash_balance * 2,
+                "buying_power": portfolio.metrics.buying_power if portfolio.metrics else portfolio.cash_balance,
                 "sma": portfolio.sma,
                 "realized": portfolio.metrics.realized if portfolio.metrics else total_equity,
             },

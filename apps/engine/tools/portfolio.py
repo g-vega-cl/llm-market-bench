@@ -64,7 +64,7 @@ async def execute_buy_quantity_tool(ticker: str, owner_id: str, percentage: int)
 
         if final_target_usd > metrics.buying_power:
             final_target_usd = metrics.buying_power
-            compliance_note += f"\nWARNING: Insufficient Buying Power to meet the preferred allocation. Capped at ${metrics.buying_power:,.2f}."
+            compliance_note += f"\nWARNING: Insufficient Buying Power (Cash) to meet the preferred allocation. Capped at ${metrics.buying_power:,.2f}."
 
         quantity = int(final_target_usd / price)
 
@@ -73,12 +73,16 @@ async def execute_buy_quantity_tool(ticker: str, owner_id: str, percentage: int)
 
         actual_cost = quantity * price
 
-        status = "COMPLIANT ✅" if actual_cost >= equity_floor_usd else "INSUFFICIENT FUNDS ❌"
+        status = (
+            "COMPLIANT ✅"
+            if actual_cost >= equity_floor_usd and actual_cost <= metrics.buying_power
+            else "INSUFFICIENT FUNDS ❌"
+        )
 
         return (
             f"BUY CALCULATION COMPLETE for {ticker}:\n"
             f"- Current Price: ${price:.2f}\n"
-            f"- Total Buying Power: ${metrics.buying_power:,.2f}\n"
+            f"- Total Buying Power (Available Cash): ${metrics.buying_power:,.2f}\n"
             f"- 10% Total Equity Floor: ${equity_floor_usd:,.2f}\n"
             f"- Recommended BUY Quantity: {quantity} shares (Est. Cost: ${actual_cost:,.2f})\n"
             f"- Status: {status}{compliance_note}\n\n"
@@ -160,7 +164,6 @@ async def execute_get_portfolio_ledger_tool(owner_id: str) -> str:
 
         p_data = p_res.data[0]
         cash = float(p_data.get("cash_balance", 0.0))
-        sma = float(p_data.get("sma", 0.0))
         buying_power = float(p_data.get("buying_power", 0.0))
         total_equity = float(p_data.get("total_equity", 0.0))
 
@@ -196,8 +199,7 @@ async def execute_get_portfolio_ledger_tool(owner_id: str) -> str:
             f"Account Owner: {owner_id}\n"
             f"Total Account Equity: ${total_equity:,.2f}\n"
             f"Cash Balance: ${cash:,.2f}\n"
-            f"Buying Power (SMA): ${buying_power:,.2f}\n"
-            f"SMA High Water Mark: ${sma:,.2f}\n"
+            f"Buying Power: ${buying_power:,.2f}\n"
             f"{positions_str}"
             f"{ledger_str}"
         )

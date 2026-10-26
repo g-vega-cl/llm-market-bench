@@ -81,55 +81,14 @@ def calculate_reg_t_metrics(
 
     total_equity = cash_balance + stock_value
 
-    # Standard Reg T Requirements
-    # Initial Margin is usually 50% for new trades, but for existing portfolio state
-    # we often track Maintenance Margin (25%).
-
-    # For Buying Power calculations, BP = 4 * Excess Liquidity.
-    # Excess Liquidity = Equity - Maintenance Margin.
-
-    maintenance_margin_req = abs_stock_value * 0.33
-    initial_margin_req = abs_stock_value * 0.57
-
-    # Excess Liquidity = Equity - Maintenance Margin
-    excess_liquidity = total_equity - maintenance_margin_req
-
-    # Available Funds = Equity - Initial Margin (Regulation T Requirement)
-    available_funds = total_equity - initial_margin_req
-
-    # SMA Calculation (The Ratchet)
-    # SMA is the greater of:
-    # 1. Existing SMA (previous state)
-    # 2. Current Equity - Initial Margin Requirement (a.k.a current surplus)
-    # Note: This logic handles the "Market Gain" (ratchet up) and "Market Loss" (hold steady).
-    # It does NOT handle the "Spend" (buying stock reduces SMA). The "Spend" logic happens at Trade Execution.
-    # Here we are just calculating the state given current holdings/cash.
-
-    # However, if cash changed (deposit/withdrawal), SMA changes.
-    # But here we assume we are calculating "Current State" based on holdings.
-    # If the user just deposited cash, total_equity increased, so Eq-IM increased.
-
-    # NOTE: In a strict simulation, SMA is a separate ledger.
-    # But for this "snapshot" logic, we follow the "Greater of" rule to determine
-    # if the market move improved our condition.
-
-    current_surplus = total_equity - initial_margin_req
-    sma = max(previous_sma, current_surplus)
-
-    # Buying Power
-    # Buying Power = 4 * Available Funds (Equity - IM).
-
-    buying_power = max(0.0, available_funds * 4.0)
-
-    # SANITY GUARDRAIL: Buying power cannot exceed 4x Total Equity (Theoretical limit)
-    # This prevents corrupted states (negative margin) from inflating BP.
-    theoretical_limit = max(0.0, total_equity * 4.0)
-    if buying_power > theoretical_limit:
-        logger.warning(
-            f"Reg T Anomaly Detected: Calculated Buying Power (${buying_power:,.2f}) exceeds "
-            f"theoretical limit (${theoretical_limit:,.2f}) for equity (${total_equity:,.2f}). Capping."
-        )
-        buying_power = theoretical_limit
+    # Cash-Only Architecture (No Margin Borrowing or Leverage)
+    # Buying power is strictly bounded by available cash. Margin requirements are 0.
+    maintenance_margin_req = 0.0
+    initial_margin_req = 0.0
+    available_funds = max(0.0, cash_balance)
+    excess_liquidity = max(0.0, cash_balance)
+    sma = max(0.0, cash_balance)
+    buying_power = max(0.0, cash_balance)
 
     # Realized Value = Cash + Total Cost Basis
     # We need to sum cost basis from positions
@@ -193,17 +152,16 @@ def validate_trade_compliance(
         return ValidationResult(
             passed=False,
             reason=(
-                f"Insufficient Buying Power for {ticker}. "
+                f"Insufficient Buying Power (Cash Balance) for {ticker}. "
                 f"Required: ${estimated_trade_cost:,.2f}, "
-                f"Available BP: ${portfolio_metrics.buying_power:,.2f}"
+                f"Available Cash: ${portfolio_metrics.buying_power:,.2f}"
             ),
             max_affordable_shares=int(portfolio_metrics.buying_power // price) if price > 0 else 0,
         )
 
     # --- Dynamic Minimum Trade Value Guardrail (BUY only) ---
     if signal == "BUY":
-        # Rule: 10% of Total Equity (not buying power) - per user request
-        # This ensures meaningful position sizing based on actual account equity
+        # Rule: 10% of Total Equity - ensures meaningful position sizing based on actual account equity
         dynamic_floor = 0.10 * portfolio_metrics.total_equity
         # Ensure it doesn't drop below the global constant MIN_TRADE_VALUE ($1,000)
         final_floor = max(MIN_TRADE_VALUE, dynamic_floor)
@@ -228,27 +186,6 @@ def validate_trade_compliance(
                     f"Proposed proceeds: ${estimated_trade_cost:,.2f}. "
                     "Bypass this guardrail by using a specific sell percentage tool (e.g., sell 25%)."
                 ),
-            )
-
-    # --- SMA Floor Guardrail (BUY only) ---
-    if signal == "BUY":
-        # Rule: Projected SMA after trade must be >= 10% of Total Equity.
-        # Buying stock reduces SMA by 57% of the cost.
-        projected_sma = portfolio_metrics.sma - (estimated_trade_cost * 0.57)
-        sma_floor = portfolio_metrics.total_equity * 0.10
-
-        if projected_sma < sma_floor:
-            return ValidationResult(
-                passed=False,
-                reason=(
-                    f"SMA Floor Violation for {ticker}. "
-                    f"Projected SMA: ${projected_sma:,.2f}, "
-                    f"Required Floor (10% Equity): ${sma_floor:,.2f}. "
-                    "This trade would risk Reg T compliance."
-                ),
-                max_affordable_shares=int(max(0, (portfolio_metrics.sma - sma_floor) // (price * 0.57)))
-                if price > 0
-                else 0,
             )
 
     return ValidationResult(passed=True)

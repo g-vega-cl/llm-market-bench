@@ -924,7 +924,7 @@ GET_PORTFOLIO_LEDGER_TOOL = {
     "type": "function",
     "function": {
         "name": "get_portfolio_ledger",
-        "description": "Retrieve the current portfolio cash, total equity, buying power (SMA), and details of all stock holdings including their average cost basis and current market value.",
+        "description": "Retrieve the current portfolio cash, total equity, buying power, and details of all stock holdings including their average cost basis and current market value.",
         "parameters": {
             "type": "object",
             "properties": {},

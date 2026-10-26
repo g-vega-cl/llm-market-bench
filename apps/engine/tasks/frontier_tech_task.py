@@ -157,7 +157,7 @@ async def run_frontier_tech_task(
                     "owner_id": SYS_FRONTIER_TECH_OWNER_ID,
                     "cash_balance": 10000.00,
                     "total_equity": 10000.00,
-                    "buying_power": 20000.00,
+                    "buying_power": 10000.00,
                     "sma": 0.0,
                 }
             )
@@ -335,7 +335,7 @@ async def run_frontier_tech_task(
                     "date": today_str,
                     "total_equity": updated_equity,
                     "cash_balance": portfolio.cash_balance,
-                    "buying_power": portfolio.cash_balance * 2,
+                    "buying_power": portfolio.cash_balance,
                     "sma": 0.0,
                     "realized": updated_equity,
                 },

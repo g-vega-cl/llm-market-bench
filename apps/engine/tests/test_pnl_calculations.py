@@ -34,7 +34,7 @@ class TestAverageCostBasisBUY:
 
         with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
             # Initialize with empty positions
-            p.cash_balance = 10000.00
+            p.cash_balance = 20000.00
             p.positions = {}
 
             # BUY 100 shares @ $150
@@ -60,7 +60,7 @@ class TestAverageCostBasisBUY:
 
         with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
             # Start with existing position: 100 shares @ $150
-            p.cash_balance = 10000.00
+            p.cash_balance = 25000.00
             p.positions = {"AAPL": Position(ticker="AAPL", quantity=100, average_cost_basis=150.00)}
 
             # BUY 100 more shares @ $200
@@ -84,7 +84,7 @@ class TestAverageCostBasisBUY:
         mock_table.update.return_value.execute.return_value = MagicMock()
 
         with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
-            p.cash_balance = 50000.00
+            p.cash_balance = 100000.00
             p.positions = {}
 
             # BUY 1: 50 shares @ $100
@@ -263,7 +263,7 @@ class TestComplexScenarios:
         mock_table.update.return_value.execute.return_value = MagicMock()
 
         with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
-            p.cash_balance = 50000.00
+            p.cash_balance = 100000.00
             p.positions = {}
 
             # BUY 1: 1000 shares @ $50 = $50,000

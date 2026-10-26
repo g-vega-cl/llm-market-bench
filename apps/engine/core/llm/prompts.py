@@ -105,12 +105,11 @@ SYSTEM_PROMPT_MUTABLE_STRATEGIES = (
 )
 
 SYSTEM_PROMPT_CONSTRAINTS_FOOTER = (
-    "=== SMA MANAGEMENT RULES ===\n"
-    '1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".\n'
-    "2. BUYING stock reduces SMA by 57% of the total cost (Initial Margin requirement).\n"
-    "3. SELLING stock increases SMA by 57% of the proceeds.\n"
-    "4. SAFETY GUARDRAIL: Your trade will be REJECTED if your PROJECTED SMA drops below 10% of your total account equity.\n"
-    "5. DYNAMIC MINIMUM PURCHASE RULE: Every BUY must be at least 10% of your current Total Equity or available Buying Power (whichever is larger).\n\n"
+    "=== CASH TRADING RULES ===\n"
+    "1. CASH ACCOUNT (NO MARGIN): You can only trade with available cash. Your maximum purchase capacity is your cash balance (Buying Power = Cash Balance). No margin borrowing or leverage.\n"
+    "2. BUYING stock reduces cash by 100% of the total cost.\n"
+    "3. SELLING stock increases cash by 100% of the proceeds.\n"
+    "4. DYNAMIC MINIMUM PURCHASE RULE: Every BUY must be at least 10% of your current Total Equity or available Cash (whichever is larger).\n\n"
     "=== OUTPUT FORMAT: TRADING SIGNALS ===\n"
     "1. Signal Types: BUY, SELL, HOLD.\n"
     "2. ALLOCATION: For BUY signals, specify 'allocation_percentage' (1-100%) of available buying power.\n"
@@ -141,9 +140,11 @@ def split_prompt(prompt_text: str) -> tuple[str, str, str]:
         return header, mutable, footer
 
     # Fuzzy matching for robustness
-    # Find start of SMA Management Rules (which is the beginning of the footer)
-    footer_marker = "=== SMA MANAGEMENT RULES ==="
-    footer_idx = prompt_text.find(footer_marker)
+    # Find start of Cash Trading Rules or legacy SMA Management Rules (which is the beginning of the footer)
+    footer_idx = prompt_text.find("=== CASH TRADING RULES ===")
+    if footer_idx == -1:
+        footer_idx = prompt_text.find("=== SMA MANAGEMENT RULES ===")
+
     if footer_idx != -1:
         footer_part = prompt_text[footer_idx:]
         remaining = prompt_text[:footer_idx]

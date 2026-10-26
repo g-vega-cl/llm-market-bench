@@ -187,7 +187,7 @@ async def run_future_forces_task(
                     "owner_id": SYS_FUTURE_FORCES_OWNER_ID,
                     "cash_balance": 10000.00,
                     "total_equity": 10000.00,
-                    "buying_power": 20000.00,
+                    "buying_power": 10000.00,
                     "sma": 0.0,
                 }
             )

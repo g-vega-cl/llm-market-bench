@@ -12,13 +12,13 @@ from execution.portfolio import Portfolio, Position, RegTMetrics
 def test_reg_t_scenario_1_no_leverage():
     """
     Scenario 1: Basic Cash-Backed Purchase
-    Cash: 10,000. Buy $9,950.24 stock.
-    Expected (from raw/docs/engine/account-buying-power-reg-t4-calculations.md):
+    Cash: 49.76. Buy $9,950.24 stock.
+    Cash-Only Model:
     - Equity: 10,000
-    - Maint Margin (25%): 2,487.56
-    - Excess Liquidity: 7,512.44
-    - Available Funds: 5,024.88
-    - Buying Power: 20,099.52 (4x Available Funds)
+    - Maint Margin: 0.0
+    - Excess Liquidity: 49.76
+    - Available Funds: 49.76
+    - Buying Power: 49.76 (Cash Balance)
     """
     p = Portfolio("test_agent")
     p.cash_balance = 49.76
@@ -29,22 +29,17 @@ def test_reg_t_scenario_1_no_leverage():
     metrics = p.calculate_reg_t_metrics(current_prices)
 
     assert metrics.total_equity == pytest.approx(10000.00, abs=0.10)
-    assert metrics.maintenance_margin_req == pytest.approx(3283.58, abs=0.10)
-    assert metrics.excess_liquidity == pytest.approx(6716.42, abs=0.10)
-    assert metrics.buying_power == pytest.approx(17313.44, abs=1.0)
+    assert metrics.maintenance_margin_req == 0.0
+    assert metrics.excess_liquidity == pytest.approx(49.76, abs=0.10)
+    assert metrics.buying_power == pytest.approx(49.76, abs=0.10)
     assert metrics.realized == pytest.approx(10000.00, abs=0.10)
 
 
 def test_reg_t_scenario_2_leveraged_profitable():
     """
-    Scenario 2: Leveraged Position (Profitable)
+    Scenario 2: Negative Cash Boundary (Overdraft / Legacy Deficit)
     Cash: -2000. Stock Value: 12437.80.
-    Expected (from raw/docs/engine/account-buying-power-reg-t4-calculations.md):
-    - Equity: 10,437.80
-    - Maint Margin: 3,109.45
-    - Excess: 7,328.35
-    - Available Funds: 4,218.90
-    - BP: 16,875.60 (4x Available Funds)
+    In Cash-Only: Buying power is 0.0 when cash is negative. Margin requirements are 0.0.
     """
     p = Portfolio("test_agent")
     p.cash_balance = -2000.00
@@ -55,22 +50,17 @@ def test_reg_t_scenario_2_leveraged_profitable():
     metrics = p.calculate_reg_t_metrics(current_prices)
 
     assert metrics.total_equity == pytest.approx(10437.80, abs=0.10)
-    assert metrics.maintenance_margin_req == pytest.approx(4104.47, abs=0.10)
-    assert metrics.excess_liquidity == pytest.approx(6333.33, abs=0.10)
-    assert metrics.buying_power == pytest.approx(13393.00, abs=1.0)
+    assert metrics.maintenance_margin_req == 0.0
+    assert metrics.excess_liquidity == 0.0
+    assert metrics.buying_power == 0.0
     assert metrics.realized == pytest.approx(10000.00, abs=0.10)
 
 
 def test_reg_t_scenario_3_leveraged_loss():
     """
-    Scenario 3: Leveraged Position (Unrealized Loss)
+    Scenario 3: Negative Cash Deficit at a Loss
     Cash: -3000. Stock Value: 12437.80.
-    Expected (from raw/docs/engine/account-buying-power-reg-t4-calculations.md):
-    - Equity: 9,437.80
-    - Maint Margin: 3,109.45
-    - Excess: 6,328.35
-    - Available Funds: 3,218.90
-    - BP: 12,875.60 (4x Available Funds)
+    In Cash-Only: Buying power is 0.0.
     """
     p = Portfolio("test_agent")
     p.cash_balance = -3000.00
@@ -81,27 +71,24 @@ def test_reg_t_scenario_3_leveraged_loss():
     metrics = p.calculate_reg_t_metrics(current_prices)
 
     assert metrics.total_equity == pytest.approx(9437.80, abs=0.10)
-    assert metrics.maintenance_margin_req == pytest.approx(4104.47, abs=0.10)
-    assert metrics.excess_liquidity == pytest.approx(5333.33, abs=0.10)
-    assert metrics.buying_power == pytest.approx(9393.00, abs=1.0)
+    assert metrics.maintenance_margin_req == 0.0
+    assert metrics.excess_liquidity == 0.0
+    assert metrics.buying_power == 0.0
     assert metrics.realized == pytest.approx(10000.00, abs=0.10)
 
 
 def test_reg_t_scenario_5_liquidation():
     """
-    Scenario 5: High Leverage / Boundary Test
+    Scenario 5: High Deficit Boundary Test
     Cash: -28000. Stock Value: 30400.
     Expected:
     - Equity: 2,400.00
-    - Maint Margin: 7,600.00
-    - Excess: -5,200.00
+    - Maint Margin: 0.0
+    - Excess: 0.0
     - BP: 0.00
     """
     p = Portfolio("test_agent")
     p.cash_balance = -28000.00
-    # Price dropped 20% from cost basis implies we hold $38k cost basis?
-    # Scenario says "Buy $38,000 worth". Let's say 380 shares @ $100.
-    # Now price is $80. Value = 380 * 80 = 30400.
     p.positions = {"STK": Position("STK", 380, 100.00)}
 
     current_prices = {"STK": 80.00}
@@ -109,8 +96,8 @@ def test_reg_t_scenario_5_liquidation():
     metrics = p.calculate_reg_t_metrics(current_prices)
 
     assert metrics.total_equity == pytest.approx(2400.00, abs=0.10)
-    assert metrics.maintenance_margin_req == pytest.approx(10032.00, abs=0.10)
-    assert metrics.excess_liquidity == pytest.approx(-7632.00, abs=0.10)
+    assert metrics.maintenance_margin_req == 0.0
+    assert metrics.excess_liquidity == 0.0
     assert metrics.buying_power == 0.00
 
 
@@ -250,7 +237,7 @@ async def test_initialize_new_portfolio():
                 "cash_balance": 10000.00,
                 "sma": 10000.00,
                 "total_equity": 10000.00,
-                "buying_power": 40000.00,
+                "buying_power": 10000.00,
                 "excess_liquidity": 10000.00,
                 "maintenance_margin": 0.0,
                 "realized": 10000.00,
@@ -261,7 +248,7 @@ async def test_initialize_new_portfolio():
     assert p.cash_balance == 10000.00
     assert p.total_equity == 10000.00
     assert p.metrics is not None
-    assert p.metrics.buying_power == 40000.00
+    assert p.metrics.buying_power == 10000.00
 
 
 @pytest.mark.asyncio
@@ -303,7 +290,7 @@ async def test_initialize_existing_portfolio_with_null_metrics():
     assert p.total_equity == 10000.00
     assert p.metrics is not None
     assert p.metrics.total_equity == 10000.00
-    assert p.metrics.buying_power == 40000.00
+    assert p.metrics.buying_power == 10000.00
 
 
 @pytest.mark.asyncio
@@ -360,4 +347,5 @@ def test_calculate_reg_t_metrics_with_positions():
     metrics = p.calculate_reg_t_metrics(current_prices)
 
     assert metrics.total_equity == 8200.0
-    assert metrics.maintenance_margin_req == 1056.0
+    assert metrics.maintenance_margin_req == 0.0
+    assert metrics.buying_power == 5000.0

@@ -5,7 +5,8 @@ category: source
 
 # Source: Reg T Margin Account Calculations
 
-Synthesized from `raw/docs/engine/account-buying-power-reg-t4-calculations.md`.
+> [!NOTE]
+> **Historical Reference**: The engine has transitioned from Reg T margin borrowing to a simplified **Cash-Only model** (`buying_power = max(0.0, cash_balance)`). See [[concepts/execution]]. The formulas below preserve the historical Reg T specification synthesized from `raw/docs/engine/account-buying-power-reg-t4-calculations.md`.
 
 ## Takeaways
 

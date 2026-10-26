@@ -13,17 +13,17 @@ For each MiniMax market order, a corresponding limit order is placed on the Alpa
 
 ## Rationale
 
-MiniMax-M3 does not support native function calling for order placement, so the engine parses raw JSON decisions and executes them directly. The market order with buffer provides a pragmatic fallback that still respects risk limits and Reg T constraints. 
+MiniMax-M3 does not support native function calling for order placement, so the engine parses raw JSON decisions and executes them directly. The market order with buffer provides a pragmatic fallback that still respects risk limits and cash constraints.
 
 To ensure the model remains cognitively aligned with real-time portfolio metrics, it is prepended with a special system prompt protocol prefix that nudges it to call the `calculate_buy_quantity`/`calculate_sell_quantity` tools during the analysis phase. However, to prevent execution failures due to tool execution loop discrepancies, verification and tool-use rejections are bypassed at execution time.
 
-## Margin & Sizing Hazards
+## Sizing Behavior Under Cash-Only Execution
 
-Because MiniMax-M3 bypasses standard verifier tool loops and JIT checks, it does not dynamically downsize its allocations based on real-time feedback. 
+Because MiniMax-M3 bypasses standard verifier tool loops and JIT checks, it does not dynamically downsize its allocations based on real-time feedback.
 
-* **The Sizing Risk**: If MiniMax signals a `BUY` with a high allocation percentage (e.g., 100% of available buying power), the engine sizes the transaction using gross leveraged buying power (4x excess liquidity).
-* **The Violation**: Highly leveraged purchases generate a massive margin loan (since the actual cash balance is much lower). Under Regulation T, this trade reduces the Special Memorandum Account (SMA) by 57% of the total cost. This reduction easily wipes out the SMA balance, driving it below the mandatory **10% SMA-to-equity floor** and resulting in an immediate `REJECTED_MARGIN` status.
-* **Mitigation**: When MiniMax suggests purchases, it should specify a low `allocation_percentage` (e.g. 5–30% of buying power) to stay within the SMA compliance floor. By default, the engine falls back to `20%` allocation (formerly `100%` or `5%`) if no explicit percentage is provided by the model or parsed from decisions.
+* **Cash-Bounded Sizing**: Buying power equals the portfolio's cash balance, so a `BUY` at 100% allocation spends the entire cash balance and cannot create a margin loan. `Portfolio.execute_trade` rejects any `BUY` whose total cost exceeds available cash and returns `None` without mutating the ledger.
+* **Default Allocation**: When the model provides no explicit percentage, the engine falls back to a `20%` allocation.
+* **No SMA Floor**: The former Reg T SMA ratchet and the 10%-of-equity SMA floor no longer exist. The remaining sizing guardrail is the dynamic minimum purchase rule — every `BUY` must be at least `max($1,000, 10% of total equity)`.
 
 ## Auto-Research Integration
 
@@ -39,5 +39,3 @@ As of **2026-07-02**, MiniMax-M3 is integrated into the auto-research experiment
 - [[concepts/execution]]
 - [[concepts/tool-enforcement]]
 - [[entities/autoresearch]]
-
-

@@ -242,7 +242,7 @@ async def get_or_create_system_portfolio(owner_id: str) -> Portfolio:
                     "sma": 0.0,
                     "total_equity": INITIAL_PORTFOLIO_CASH,
                     "realized": INITIAL_PORTFOLIO_CASH,
-                    "buying_power": INITIAL_PORTFOLIO_CASH * 4,
+                    "buying_power": INITIAL_PORTFOLIO_CASH,
                     "excess_liquidity": INITIAL_PORTFOLIO_CASH,
                 }
             )
@@ -408,7 +408,7 @@ async def execute_system_sector_rebalance(
             "cash_balance": new_cash,
             "total_equity": new_cash,
             "realized": new_cash,
-            "buying_power": new_cash * 4,
+            "buying_power": new_cash,
             "excess_liquidity": new_cash,
             "last_updated_at": datetime.now(UTC).isoformat(),
         }
@@ -420,7 +420,7 @@ async def execute_system_sector_rebalance(
             "date": week_end_date,
             "total_equity": new_cash,
             "cash_balance": new_cash,
-            "buying_power": new_cash * 4,
+            "buying_power": new_cash,
             "sma": 0.0,
             "realized": new_cash,
         },
@@ -544,7 +544,7 @@ async def execute_mechanical_sector_rebalance(
             "cash_balance": new_cash,
             "total_equity": new_cash,
             "realized": new_cash,
-            "buying_power": new_cash * 4,
+            "buying_power": new_cash,
             "excess_liquidity": new_cash,
             "last_updated_at": datetime.now(UTC).isoformat(),
         }
@@ -556,7 +556,7 @@ async def execute_mechanical_sector_rebalance(
             "date": week_end_date,
             "total_equity": new_cash,
             "cash_balance": new_cash,
-            "buying_power": new_cash * 4,
+            "buying_power": new_cash,
             "sma": 0.0,
             "realized": new_cash,
         },

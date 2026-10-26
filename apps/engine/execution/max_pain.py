@@ -236,7 +236,7 @@ async def reconcile_unliquidated_max_pain_positions(
             "cash_balance": new_cash,
             "total_equity": new_cash,
             "realized": new_cash,
-            "buying_power": new_cash * 2,
+            "buying_power": new_cash,
             "excess_liquidity": new_cash,
             "last_updated_at": datetime.now(UTC).isoformat(),
         }
@@ -248,7 +248,7 @@ async def reconcile_unliquidated_max_pain_positions(
             "date": audit_date,
             "total_equity": new_cash,
             "cash_balance": new_cash,
-            "buying_power": new_cash * 2,
+            "buying_power": new_cash,
             "sma": 0.0,
             "realized": new_cash,
         },

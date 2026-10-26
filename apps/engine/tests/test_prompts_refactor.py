@@ -24,7 +24,7 @@ async def test_system_heavy_prompt_structure():
     user_msg = next(m["content"] for m in messages if m["role"] == "user")
 
     # --- Assertions for System Prompt (The Rulebook) ---
-    assert "SMA MANAGEMENT RULES" in system_msg, "SMA rules should be in System Prompt"
+    assert "CASH TRADING RULES" in system_msg, "Cash trading rules should be in System Prompt"
     assert "5 WHYS" in system_msg, "5-Whys logic should be in System Prompt"
     assert "MANDATORY QUANTITY CALCULATION" in system_msg, "Tool enforcement should be in System Prompt"
     assert "CALENDAR & SEASONAL STRATEGIES" in system_msg, "Calendar knowledge should be in System Prompt"

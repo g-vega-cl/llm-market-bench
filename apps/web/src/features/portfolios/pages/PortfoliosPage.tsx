@@ -126,7 +126,7 @@ function PortfolioCard({
     const isSystem = portfolio.is_system ?? isSystemPortfolio(portfolio.owner_id);
     const subtitle = getSystemPortfolioSubtitle(portfolio.owner_id);
     const totalEquity = Number(portfolio.total_equity ?? portfolio.cash_balance ?? 0);
-    const buyingPower = Number(portfolio.buying_power ?? Number(portfolio.cash_balance || 0) * 2);
+    const buyingPower = Number(portfolio.buying_power ?? portfolio.cash_balance ?? 0);
 
     return (
         <Link

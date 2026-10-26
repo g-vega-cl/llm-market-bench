@@ -84,7 +84,7 @@ class Portfolio:
             self._await_load_positions(supabase)
         else:
             # Create new portfolio with full initial metrics
-            self.sma = 10000.00
+            self.sma = self.cash_balance
             self.calculate_reg_t_metrics({})
 
             res = (
@@ -95,7 +95,7 @@ class Portfolio:
                         "cash_balance": self.cash_balance,
                         "sma": self.sma,
                         "total_equity": self.metrics.total_equity if self.metrics else self.cash_balance,
-                        "buying_power": self.metrics.buying_power if self.metrics else self.cash_balance * 4.0,
+                        "buying_power": self.metrics.buying_power if self.metrics else self.cash_balance,
                         "excess_liquidity": self.metrics.excess_liquidity if self.metrics else self.cash_balance,
                         "maintenance_margin": self.metrics.maintenance_margin_req if self.metrics else 0.0,
                         "realized": self.metrics.realized if self.metrics else self.cash_balance,
@@ -154,9 +154,7 @@ class Portfolio:
             f"Cash Balance: ${self.cash_balance:,.2f}",
             f"Total Equity: ${metrics.total_equity:,.2f}",
             f"Buying Power: ${metrics.buying_power:,.2f}",
-            f"SMA: ${metrics.sma:,.2f}",
             f"Realized Value (Cash + Cost Basis): ${metrics.realized:,.2f}",
-            f"Maintenance Margin: ${metrics.maintenance_margin_req:,.2f}",
             "\nCurrent Positions:",
         ]
 
@@ -351,6 +349,13 @@ class Portfolio:
 
         # Update local state first
         if signal.upper() == "BUY":
+            if total_cost > self.cash_balance:
+                logger.error(
+                    f"REJECTED: Cannot buy {quantity} {ticker} for ${total_cost:,.2f}. "
+                    f"Available cash balance is only ${self.cash_balance:,.2f}."
+                )
+                return None
+
             self.cash_balance -= total_cost
 
             # Update Position
@@ -362,10 +367,8 @@ class Portfolio:
                 pos.average_cost_basis = new_cost / pos.quantity
             else:
                 self.positions[ticker] = Position(ticker=ticker, quantity=quantity, average_cost_basis=price)
-            # Update SMA: Buying reduces SMA by 57% of the trade value (Since Reg T IM is 57%)
-            # Reg T Rule: SMA is reduced by the Margin Requirement of the new trade.
-            margin_req = total_cost * 0.57
-            self.sma -= margin_req
+            # Cash-only: SMA is simply available cash
+            self.sma = max(0.0, self.cash_balance)
 
         elif signal.upper() == "SELL":
             # Update Position
@@ -391,13 +394,8 @@ class Portfolio:
                 logger.warning(f"REJECTED: Selling {ticker} but not held in portfolio.")
                 return None
 
-            # Update SMA: Selling releases margin. SMA increases by 57% of proceeds?
-            # Or rather, SMA state is recalculated?
-            # If we sell, Cash increases.
-            # Reg T: SMA increases by amount of line released?
-            # Let's simplify: SMA += 57% of Proceeds (since we got cash back and released 57% req).
-            margin_released = total_cost * 0.57
-            self.sma += margin_released
+            # Cash-only: SMA is simply available cash
+            self.sma = max(0.0, self.cash_balance)
 
         # Persist changes
         try:
@@ -533,9 +531,8 @@ class Portfolio:
                 if dust_ticker in self.positions:
                     del self.positions[dust_ticker]
 
-                # Update SMA
-                margin_released = (dust_price * dust_qty) * 0.57
-                self.sma += margin_released
+                # Cash-only: SMA tracks available cash
+                self.sma = max(0.0, self.cash_balance)
 
                 # Delete position from DB
                 supabase.table("portfolio_positions").delete().match(

@@ -23,9 +23,13 @@ The pre-market price is then compared to the previous close to compute the overn
 
 For the daily predictor's market context, pre-market quotes for macro proxies (QQQ, DIA, IWM, IEF, GLD, USO, UUP) are fetched concurrently using `asyncio.gather`. Partial failures are handled gracefully — failed proxies are skipped without breaking the entire context. This ensures robustness against transient API failures.
 
-## Reg T Checks
+## Cash-Only Trade Capacity & Guardrails
 
-Regulation T margin requirements are enforced before trade settlement. The system checks that the portfolio has sufficient buying power and that the trade does not exceed margin limits. See [[sources/reg-t-calculations-source]] for detailed formulas.
+The execution engine operates under a simplified **Cash-Only model** (zero margin borrowing or leverage):
+1. **Cash Bounded Buying Power**: A portfolio's purchase capacity is strictly limited by its liquid cash balance (`buying_power = max(0.0, cash_balance)`). Negative cash balances and margin loans are prohibited.
+2. **Trade Validation**: Proposed `BUY` orders must not exceed available cash balance.
+3. **Dynamic Position Floor**: Every `BUY` trade must be $\ge \max(\$1,000, 10\% \text{ Total Equity})$ to guarantee meaningful position sizing.
+4. **Zero Margin Requirements**: Initial margin, maintenance margin, and SMA ratchet deductions are retired; SMA tracks available cash. Historical Reg T calculations are preserved in [[sources/reg-t-calculations-source]].
 
 ## Trade Settlement
 

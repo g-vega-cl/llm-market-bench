@@ -61,7 +61,7 @@ async def backfill_daily_close_portfolios(
                 "cash_balance": INITIAL_PORTFOLIO_CASH,
                 "total_equity": INITIAL_PORTFOLIO_CASH,
                 "realized": INITIAL_PORTFOLIO_CASH,
-                "buying_power": INITIAL_PORTFOLIO_CASH * 4,
+                "buying_power": INITIAL_PORTFOLIO_CASH,
                 "excess_liquidity": INITIAL_PORTFOLIO_CASH,
                 "last_updated_at": datetime.now(UTC).isoformat(),
             }

@@ -142,7 +142,7 @@ async def execute_system_sector_entry(
             {
                 "cash_balance": remaining_cash,
                 "total_equity": current_cash,
-                "buying_power": current_cash * 4,
+                "buying_power": current_cash,
                 "excess_liquidity": current_cash,
                 "last_updated_at": datetime.now(UTC).isoformat(),
             }
@@ -254,7 +254,7 @@ async def execute_mechanical_sector_entry(
             {
                 "cash_balance": remaining_cash,
                 "total_equity": current_cash,
-                "buying_power": current_cash * 4,
+                "buying_power": current_cash,
                 "excess_liquidity": current_cash,
                 "last_updated_at": datetime.now(UTC).isoformat(),
             }
@@ -415,7 +415,7 @@ async def execute_system_sector_exit(
                 "cash_balance": new_cash,
                 "total_equity": new_cash,
                 "realized": new_cash,
-                "buying_power": new_cash * 4,
+                "buying_power": new_cash,
                 "excess_liquidity": new_cash,
                 "last_updated_at": datetime.now(UTC).isoformat(),
             }
@@ -427,7 +427,7 @@ async def execute_system_sector_exit(
                 "date": week_end_date,
                 "total_equity": new_cash,
                 "cash_balance": new_cash,
-                "buying_power": new_cash * 4,
+                "buying_power": new_cash,
                 "sma": 0.0,
                 "realized": new_cash,
             },
@@ -554,7 +554,7 @@ async def execute_mechanical_sector_exit(
                 "cash_balance": new_cash,
                 "total_equity": new_cash,
                 "realized": new_cash,
-                "buying_power": new_cash * 4,
+                "buying_power": new_cash,
                 "excess_liquidity": new_cash,
                 "last_updated_at": datetime.now(UTC).isoformat(),
             }
@@ -566,7 +566,7 @@ async def execute_mechanical_sector_exit(
                 "date": week_end_date,
                 "total_equity": new_cash,
                 "cash_balance": new_cash,
-                "buying_power": new_cash * 4,
+                "buying_power": new_cash,
                 "sma": 0.0,
                 "realized": new_cash,
             },

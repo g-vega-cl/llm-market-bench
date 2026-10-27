@@ -42,10 +42,24 @@ class AuditDB:
                 latency_ms REAL NOT NULL,
                 status_code INTEGER NOT NULL,
                 failover_chain TEXT,
-                error_message TEXT
+                error_message TEXT,
+                client_ip TEXT,
+                user_agent TEXT,
+                purpose TEXT,
+                prompt_preview TEXT
             )
             """
         )
+        conn.commit()
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(call_logs)")
+        existing_cols = {
+            row["name"] if isinstance(row, sqlite3.Row) else row[1]
+            for row in cursor.fetchall()
+        }
+        for col in ["client_ip", "user_agent", "purpose", "prompt_preview"]:
+            if col not in existing_cols:
+                conn.execute(f"ALTER TABLE call_logs ADD COLUMN {col} TEXT")
         conn.commit()
         if self._persistent_conn is None:
             conn.close()
@@ -62,6 +76,10 @@ class AuditDB:
         status_code: int = 200,
         failover_chain: list[str] | None = None,
         error_message: str | None = None,
+        client_ip: str | None = None,
+        user_agent: str | None = None,
+        purpose: str | None = None,
+        prompt_preview: str | None = None,
     ) -> str:
         call_id = f"call_{uuid.uuid4().hex[:12]}"
         now_iso = datetime.now(UTC).isoformat()
@@ -73,8 +91,9 @@ class AuditDB:
             INSERT INTO call_logs (
                 id, timestamp, requested_model, routed_provider, routed_model,
                 prompt_tokens, completion_tokens, total_tokens, latency_ms,
-                status_code, failover_chain, error_message
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                status_code, failover_chain, error_message,
+                client_ip, user_agent, purpose, prompt_preview
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 call_id,
@@ -89,6 +108,10 @@ class AuditDB:
                 status_code,
                 chain_json,
                 error_message,
+                client_ip,
+                user_agent,
+                purpose,
+                prompt_preview,
             ),
         )
         conn.commit()
@@ -128,7 +151,14 @@ class AuditDB:
             }
 
         recent_rows = conn.execute(
-            "SELECT id, timestamp, requested_model, routed_provider, routed_model, total_tokens, latency_ms, status_code, failover_chain FROM call_logs ORDER BY timestamp DESC LIMIT 10"
+            """
+            SELECT id, timestamp, requested_model, routed_provider, routed_model,
+                   total_tokens, latency_ms, status_code, failover_chain,
+                   client_ip, user_agent, purpose, prompt_preview
+            FROM call_logs
+            ORDER BY timestamp DESC
+            LIMIT 10
+            """
         ).fetchall()
         recent_logs = [dict(r) for r in recent_rows]
 

@@ -207,6 +207,55 @@ def test_audit_db_logging():
     assert metrics["providers"]["groq"]["requests"] == 1
 
 
+def test_audit_db_schema_migration(tmp_path):
+    """Verify AuditDB auto-migrates existing SQLite tables lacking attribution columns."""
+    import sqlite3
+
+    db_file = str(tmp_path / "legacy.db")
+    # Create old table without new columns
+    conn = sqlite3.connect(db_file)
+    conn.execute(
+        """
+        CREATE TABLE call_logs (
+            id TEXT PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            requested_model TEXT NOT NULL,
+            routed_provider TEXT NOT NULL,
+            routed_model TEXT NOT NULL,
+            prompt_tokens INTEGER DEFAULT 0,
+            completion_tokens INTEGER DEFAULT 0,
+            total_tokens INTEGER DEFAULT 0,
+            latency_ms REAL NOT NULL,
+            status_code INTEGER NOT NULL,
+            failover_chain TEXT,
+            error_message TEXT
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    # Initializing AuditDB should detect and alter table with new columns
+    migrated_db = AuditDB(db_path=db_file)
+    migrated_db.log_call(
+        requested_model="free-fast",
+        routed_provider="groq",
+        routed_model="llama-3.1-8b-instant",
+        client_ip="1.2.3.4",
+        user_agent="legacy-test",
+        purpose="migration-check",
+        prompt_preview="Short prompt",
+    )
+
+    metrics = migrated_db.get_metrics()
+    assert len(metrics["recent_calls"]) == 1
+    call = metrics["recent_calls"][0]
+    assert call["client_ip"] == "1.2.3.4"
+    assert call["user_agent"] == "legacy-test"
+    assert call["purpose"] == "migration-check"
+    assert call["prompt_preview"] == "Short prompt"
+
+
 def test_mistral_not_in_providers():
     """Verify Mistral is excluded from proxy provider catalog due to lack of free tier."""
     config = load_providers_config()
@@ -331,3 +380,76 @@ def test_structured_array_message_content(client, monkeypatch):
     assert executed[0]["messages"][0]["content"] == [
         {"type": "text", "text": "Structured message test"}
     ]
+
+
+def test_caller_attribution_and_purpose_logging(client, monkeypatch):
+    """Verify caller IP, user agent, purpose, and 60-char prompt preview are logged."""
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        return (
+            200,
+            {
+                "id": "chatcmpl-test-attribution",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": "test-model",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": "Attribution logged successfully.",
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                },
+            },
+            {},
+        )
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {
+        "Authorization": "Bearer sk-test-master-key",
+        "User-Agent": "pi/1.4.0 (darwin-arm64)",
+        "CF-Connecting-IP": "198.51.100.42",
+        "X-Purpose": "code-refactor",
+    }
+    long_prompt = "Refactor this function to improve latency and maintain hermetic test isolation across all suites"
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "free-auto",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": long_prompt,
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 200
+
+    metrics_resp = client.get(
+        "/v1/metrics", headers={"Authorization": "Bearer sk-test-master-key"}
+    )
+    assert metrics_resp.status_code == 200
+    metrics = metrics_resp.json()
+    assert len(metrics["recent_calls"]) > 0
+    latest_call = metrics["recent_calls"][0]
+
+    assert latest_call.get("client_ip") == "198.51.100.42"
+    assert latest_call.get("user_agent") == "pi/1.4.0 (darwin-arm64)"
+    assert latest_call.get("purpose") == "code-refactor"
+    # Prompt snippet must be at most 60 chars + "..." if truncated
+    assert latest_call.get("prompt_preview") is not None
+    assert latest_call["prompt_preview"].startswith(
+        "Refactor this function to improve latency"
+    )
+    assert len(latest_call["prompt_preview"]) <= 63  # 60 chars + "..."

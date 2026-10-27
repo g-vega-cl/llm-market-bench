@@ -36,7 +36,7 @@ The secondary MiniPC server (`cv-minipc@minipc`) acts as a 24/7 dedicated edge g
      - `archive-db-replica` (`ankane/pgvector:latest`): Read-only standby PostgreSQL instance attached to physical replication slot `minipc_standby_slot`.
      - `archive-postgrest` (`postgrest/postgrest:latest`): Connected locally to `archive-db-replica:5432` for fast read querying.
      - `archive-proxy` (`nginx:alpine`): Nginx reverse proxy listening on port 3001, executing method-based routing and upstream failover.
-     - `free-llm-proxy`: OpenAI-compatible model-agnostic proxy listening on port 8086.
+     - `free-llm-proxy` (`archive-free-llm-proxy:latest`): OpenAI-compatible model-agnostic proxy listening on port 8086 with automated circuit-breaking, caller attribution ("Who": client IP, User-Agent) and intent telemetry ("Why": purpose, prompt preview).
 
 2. **Smart Method-Based Nginx Routing (`docker/archive/nginx.secondary.conf`)**:
    - Reads (`GET`, `HEAD`, `OPTIONS`) route immediately to the local PostgREST replica without network latency.

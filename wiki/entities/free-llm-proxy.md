@@ -60,6 +60,30 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ---
 
+## Model Resolution & Provider Targeting
+
+`Router.resolve_model_for_provider(provider_id, requested_model, available_models)` maps the client-supplied `model` string onto a concrete provider model ID. Resolution order:
+
+1. **Virtual alias** — if `requested_model` is a key in `virtual_aliases` (e.g. `free-auto`), its pattern list is used.
+2. **Default/auto** — `default`, `auto`, or the empty string resolve to the `free-auto` patterns.
+3. **Exact preferred pattern** — if `requested_model` appears verbatim in the provider's `preferred_patterns`, it is returned unchanged (no catalog lookup required).
+4. **Exact catalog match** — if `requested_model` is present in the discovered `available_models`, it is returned unchanged.
+5. **Explicit `provider/model` prefix** — the prefix is stripped and the remainder matched against the catalog. The literal `openrouter/free` is special-cased and returned as-is (it is a real OpenRouter model ID, not a `provider/model` pair, so it must never be stripped down to `free`).
+6. **Pattern fallback** — otherwise the first `preferred_patterns` entry matching the catalog is used.
+
+`Router.get_candidate_chain(requested_model)` builds the ordered provider attempt list. A request is treated as **explicitly provider-targeted** when either:
+
+- the model contains a `/` and the prefix matches an active provider ID (e.g. `groq/qwen...`), or
+- the model string itself equals an active provider ID (e.g. `openrouter`).
+
+In both cases that provider is moved to the front of the candidate chain, with normal tiered failover behind it.
+
+### OpenRouter Free Tier
+
+The `openrouter` provider declares `preferred_patterns: ["openrouter/free", "*:free"]`, so `openrouter/free` is prioritized ahead of generic `:free`-suffixed models when OpenRouter is selected. Requests for `model: "openrouter/free"` route directly to OpenRouter with the model ID passed through unchanged, even before the dynamic catalog has been populated.
+
+---
+
 ## Virtual Model Aliases
 
 | Alias | Description | Target Family |
@@ -69,6 +93,8 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 | `free-reasoning` | Deep reasoning / thinking models | R1, reasoning, Flint, Beam |
 | Any custom name | Pass-through if present on the provider, otherwise falls back to `free-auto` patterns | — |
 | `provider/model` | Explicitly targets a provider first, with normal failover behind it | — |
+| `provider` (bare) | Bare active provider ID (e.g. `openrouter`) targets that provider first | — |
+| `openrouter/free` | Passed through verbatim to OpenRouter; never stripped to `free` | — |
 
 ---
 
@@ -131,7 +157,7 @@ docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
 ./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
 ```
 
-The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
+The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
 
 ---
 

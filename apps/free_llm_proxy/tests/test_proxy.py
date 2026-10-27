@@ -211,3 +211,69 @@ def test_mistral_not_in_providers():
     """Verify Mistral is excluded from proxy provider catalog due to lack of free tier."""
     config = load_providers_config()
     assert "mistral" not in config.get("providers", {})
+
+
+def test_openrouter_free_model_resolution():
+    """Verify openrouter/free resolves to 'openrouter/free' even when catalog is not yet populated."""
+    router = Router()
+    # 1. When available_models is None/empty, 'openrouter/free' must NOT be stripped down to 'free'
+    assert (
+        router.resolve_model_for_provider("openrouter", "openrouter/free", None)
+        == "openrouter/free"
+    )
+    # 2. When openrouter is the provider, preferred_patterns prioritizes openrouter/free
+    assert router.providers["openrouter"]["preferred_patterns"][0] == "openrouter/free"
+    # 3. Direct request with explicit provider prefix prioritizes openrouter
+    candidates = router.get_candidate_chain("openrouter/free")
+    assert len(candidates) > 0
+    assert candidates[0][0] == "openrouter"
+
+
+def test_openrouter_free_chat_completion(client, monkeypatch):
+    """Verify chat completion request with model 'openrouter/free' routes correctly to OpenRouter."""
+    executed_requests = []
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        executed_requests.append((provider_cfg["name"], payload.get("model")))
+        return (
+            200,
+            {
+                "id": "chatcmpl-openrouter-free",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": "openrouter/free",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": "Hello from OpenRouter Free!",
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 5,
+                    "total_tokens": 10,
+                },
+            },
+            {},
+        )
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "openrouter/free",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["choices"][0]["message"]["content"] == "Hello from OpenRouter Free!"
+    assert len(executed_requests) == 1
+    assert executed_requests[0] == ("OpenRouter", "openrouter/free")

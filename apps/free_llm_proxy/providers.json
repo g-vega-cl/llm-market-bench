@@ -49,6 +49,7 @@
       "requires_auth": true,
       "models_endpoint": "/models",
       "preferred_patterns": [
+        "openrouter/free",
         "*:free"
       ],
       "extra_headers": {

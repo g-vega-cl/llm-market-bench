@@ -57,9 +57,15 @@ class Router:
             patterns = self.virtual_aliases[requested_model]
         elif requested_model in {"default", "auto", ""}:
             patterns = self.virtual_aliases.get("free-auto", preferred_patterns)
+        elif requested_model in preferred_patterns:
+            return requested_model
+        elif available_models and requested_model in available_models:
+            return requested_model
         elif "/" in requested_model and requested_model.startswith(f"{provider_id}/"):
             # Explicit provider prefix passed by client: strip prefix
             stripped = requested_model.split("/", 1)[1]
+            if provider_id == "openrouter" and requested_model == "openrouter/free":
+                return "openrouter/free"
             if available_models:
                 if stripped in available_models:
                     return stripped
@@ -89,12 +95,14 @@ class Router:
         if not active:
             return []
 
-        # If client explicitly specified a provider (e.g. 'groq/qwen...')
+        # If client explicitly specified a provider (e.g. 'groq/qwen...' or 'openrouter')
         explicit_provider = None
         if "/" in requested_model:
             prefix = requested_model.split("/", 1)[0].lower()
             if prefix in active:
                 explicit_provider = prefix
+        elif requested_model.lower() in active:
+            explicit_provider = requested_model.lower()
 
         tier1 = []
         tier2 = []

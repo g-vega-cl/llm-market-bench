@@ -128,12 +128,12 @@ async def seed_daily_predictor_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) ->
     is_jev = "jev" in model_name.lower() and not is_jev_curated
     if is_laya_curated:
         prompt_content = format_laya_curated_prompt_content(
-            DEFAULT_INGESTION_SYSTEM_PROMPT, JEV_DEFAULT_CRITERIA, min_confidence=54.0
+            DEFAULT_INGESTION_SYSTEM_PROMPT, JEV_DEFAULT_CRITERIA, min_confidence=0.0
         )
         change_desc = f"Seeded baseline ingestion prompt and decision criteria for {model_name}."
     elif is_jev_curated:
         prompt_content = format_jev_curated_prompt_content(
-            JEV_DEFAULT_CRITERIA, min_confidence=61.0, manifest=DataManifest().model_dump()
+            JEV_DEFAULT_CRITERIA, min_confidence=0.0, manifest=DataManifest().model_dump()
         )
         change_desc = f"Seeded baseline decision criteria and curated manifest for {model_name}."
     elif is_jev:
@@ -691,15 +691,8 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                     confidence = float(jev_res["confidence"])
                     expected_return_pct = float(jev_res["expected_return_pct"])
                     catalysts = jev_res["catalysts"]
-                    if confidence < min_conf:
-                        pred_dir = "NO_TRADE"
-                        rationale = (
-                            f"⚡ Confidence ({confidence:.1f}%) below gating threshold ({min_conf:.1f}%). "
-                            f"Gated to NO_TRADE. Raw decision was: {raw_dir}."
-                        )
-                    else:
-                        pred_dir = raw_dir
-                        rationale = jev_res["rationale"]
+                    pred_dir = raw_dir
+                    rationale = jev_res["rationale"]
                     model_context = curated_context
 
                 elif m_type == "laya_curated":
@@ -724,19 +717,12 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                     confidence = float(laya_res["confidence"])
                     expected_return_pct = 0.0
                     catalysts = []
-                    if confidence < min_conf:
-                        pred_dir = "NO_TRADE"
-                        rationale = (
-                            f"⚡ Confidence ({confidence:.1f}%) below gating threshold ({min_conf:.1f}%). "
-                            f"Gated to NO_TRADE. Raw decision was: {raw_dir}."
-                        )
-                    else:
-                        pred_dir = raw_dir
-                        backend_note = laya_res.get("model_backend", "laya-local")
-                        rationale = (
-                            f"Laya Decision ({backend_note}): {raw_dir} (Confidence: {confidence:.1f}%, "
-                            f"distribution={laya_res.get('probabilities', {})})"
-                        )
+                    pred_dir = raw_dir
+                    backend_note = laya_res.get("model_backend", "laya-local")
+                    rationale = (
+                        f"Laya Decision ({backend_note}): {raw_dir} (Confidence: {confidence:.1f}%, "
+                        f"distribution={laya_res.get('probabilities', {})})"
+                    )
                     model_context = daily_doc
 
                 prediction_row = {

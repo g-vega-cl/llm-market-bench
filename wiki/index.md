@@ -135,7 +135,7 @@
 - [[concepts/zero-lookahead-materialization]] — strict 09:15 ET point-in-time contract when compiling raw data into feature caches
 - [[concepts/regime-vault]] — held-out out-of-distribution evaluation set for cross-regime stress testing
 - [[concepts/curated-data-manifest]] — the evolvable "Box of Data" manifest controlling which pre-market inputs a predictor sees
-- [[concepts/confidence-gating]] — gating low-conviction Jev predictions to NO_TRADE, with abstention-aware evaluation semantics
+- [[concepts/confidence-gating]] — historical confidence gating deprecation and enforcement of mandatory Zero Abstention binary classification
 - [[concepts/locked-vault-kfold]] — non-chronological weekly grouped K-fold with an overfit penalty and a hidden Locked Vault that rejects pool-only winners
 - [[concepts/anthropic-adaptive-thinking]] — Haiku 5.5 adaptive thinking + effort levels via `get_anthropic_thinking_kwargs`
 - [[concepts/macroeconomic-data-fred]] — macroeconomic data (FRED) series aliases, curated dashboard, and dollar index integration

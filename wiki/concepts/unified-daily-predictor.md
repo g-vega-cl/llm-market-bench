@@ -34,11 +34,11 @@ The OpenAI model id is read from `@repo/config/models.json` (`OPENAI_MODEL`, fal
 
 Each `ModelConfig` carries a `matches(modelName)` predicate. The curated Jev entry matches only on `four-regime`, so the deprecated `jev-local-autoresearched` tag no longer groups under the champion tab (its historical predictions remain in the database but are not surfaced under the active champion). The baseline Jev entry matches `jev` while explicitly excluding names containing `autoresearch`.
 
-## Curated Manifest & Confidence Gating UI
+## Curated Manifest & Zero Abstention
 
 For the `jev-four-regime-champion` model, the UI renders specialized visual components:
 - **Curated Manifest Card** (`CuratedManifestCard.tsx`): Displays the model's active "Box of Data" configuration, breaking down included/pruned proxies, selected newsletter senders, options positioning, and technical intraday profiles.
-- **NO_TRADE Amber Gating Badge**: In `HeroPredictionCard.tsx`, predictions where confidence was below the gating threshold render in high-contrast amber with lightning badge styling (`⚡ NO TRADE`), clearly communicating why capital was preserved.
+- **Zero Abstention Binary Classification**: The model commits strictly to `UP` or `DOWN` on every session (see [[concepts/confidence-gating]]). Amber `NO_TRADE` gating is deprecated and preserved only as a backwards-compatible parser fallback for legacy historical data.
 
 ## Filtering and Routing
 

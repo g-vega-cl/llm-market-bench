@@ -13,7 +13,7 @@ The daily predictor arena compares four distinct model architectures:
 1. **DeepSeek Flash** (`deepseek-v4-flash`) — Direct thinking/reasoning prompt with structured output via Instructor.
 2. **MiniMax** (`MiniMax-M3`) — High-context reasoning LLM with JSON format output.
 3. **Jev Baseline** (`~typesafe/jev-latest`) — Direct System One typed classification via OpenRouter Decisions API.
-4. **Jev Four-Regime Champion** (`jev-four-regime-champion`) — Evolved via Strata single-prompt ratchet tournament (Iteration 43 Champion, Score 54.34, Win Rate 72.73%, $p = 0.0262$). Promoted to replace deprecated `jev-local-autoresearched`. Uses a tailored **Curated Manifest** ("Box of Data") compiled by `pack_daily_context()`, symmetrical four-regime classification criteria (*Risk-On Expansion*, *Risk-Off Expansion*, *Balanced Pinning*, *Catalyst Shock*), and **Confidence Gating** below 55.0% routing to `⚡ NO TRADE` (`predicted_direction = 'NO_TRADE'`).
+4. **Jev Four-Regime Champion** (`jev-four-regime-champion`) — Evolved via Strata single-prompt ratchet tournament (Iteration 43 Champion, Score 54.34, Win Rate 72.73%, $p = 0.0262$). Promoted to replace deprecated `jev-local-autoresearched`. Uses a tailored **Curated Manifest** ("Box of Data") compiled by `pack_daily_context()`, symmetrical four-regime classification criteria (*Risk-On Expansion*, *Risk-Off Expansion*, *Balanced Pinning*, *Catalyst Shock*), and **Zero Abstention** (forces a binary directional prediction `UP` or `DOWN` on every session).
 
 ## Market Context Compilation & Curated Manifests
 
@@ -29,9 +29,9 @@ For standard models, the full narrative context is passed. For `jev-four-regime-
 - **Included**: Multi-day momentum & trend vector (`include_trend_vector=True`), prior session intraday technical profile (VWAP, Close Location Value), high-signal proxies (`QQQ`, `IWM`), options positioning, economic releases, and curated newsletters (`Sherwood News`, `Chartr`).
 - **Pruned / Excluded**: FX noise (`UUP`), market health barometer, qualitative market feeling.
 
-## Confidence Gating & Evaluation
+## Zero Abstention & Binary Direction Enforcement
 
-Predictions with confidence below the model's threshold (e.g. $61.0\%$ for the local champion) are classified as `NO_TRADE`. In `apps/engine/tasks/evaluate_daily_predictions.py`, `NO_TRADE` outcomes are recorded with `is_correct = None` and `brier_score = None`, protecting portfolio capital and win rate during low-conviction market regimes.
+Per the Zero Abstention invariant (see [[concepts/confidence-gating]]), all models in the arena are strictly required to predict either `UP` or `DOWN`. Confidence gating to `NO_TRADE` is deprecated and prohibited across the live pipeline. Low-conviction regimes are reflected through lower confidence percentages (e.g. $51\%–54\%$), while database integrity is preserved against the canonical schema constraint `CHECK (predicted_direction IN ('UP', 'DOWN'))`.
 
 
 ## Daily Bond Predictor (`TLT`)

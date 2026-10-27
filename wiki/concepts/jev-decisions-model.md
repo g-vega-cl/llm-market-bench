@@ -29,11 +29,11 @@ The question shape is fixed in `apps/engine/core/llm/daily_predictor_prompts.py`
 
 Criteria are serialized to JSON via `format_jev_prompt_content()` and recovered via `parse_jev_prompt_content()` when stored in and read back from `prompt_experiments.prompt_content` (falling back to the defaults on missing/invalid JSON).
 
-### Curated Manifest & Confidence Gating (`jev-four-regime-champion`)
+### Curated Manifest & Zero Abstention (`jev-four-regime-champion`)
 
 For the evolved champion track (`jev-four-regime-champion`, replacing the deprecated `jev-local-autoresearched`), the criteria schema is extended via `format_jev_curated_prompt_content()` and `parse_jev_curated_prompt_content()` to package:
 1. **Four-Regime Decision Criteria**: Symmetrical classification criteria based on the tournament Iteration 43 champion prompt (*Risk-On Expansion*, *Risk-Off Expansion*, *Balanced Pinning*, *Catalyst Shock*), requiring cross-asset internal confirmation (small caps, defensives, credit spreads, commodities).
-2. **Confidence Gating (`min_confidence`)**: Lower bound threshold ($55.0\%$). Decisions where Jev's output confidence is below this threshold automatically gate to `⚡ NO TRADE` (`predicted_direction = 'NO_TRADE'`), preserving portfolio capital and win rate during ambiguous or balanced regimes.
+2. **Zero Abstention Contract**: Forced binary classification (`predicted_direction IN ('UP', 'DOWN')`). Confidence gating to `NO_TRADE` is deprecated and eliminated (see [[concepts/confidence-gating]]). Ambiguous or balanced market regimes are signaled through lower calibrated confidence scores (e.g. $51\%–54\%$), but the model always commits to a direction.
 3. **Data Manifest ("Box of Data")**: JSON manifest specifying curated information inputs compiled by `pack_daily_context()`, including narrative newsletters (`Sherwood News`, `Chartr`), macro proxies (`QQQ`, `IWM`), options positioning, and technical intraday profiles, while strictly pruning noise sources (`UUP`, market barometer, market feeling).
 
 ## Inference Path

@@ -195,8 +195,8 @@ async def test_run_daily_prediction_jev_curated_high_confidence():
 
 
 @pytest.mark.asyncio
-async def test_run_daily_prediction_jev_curated_gated_no_trade():
-    """Verify jev-four-regime-champion gates to NO_TRADE when confidence is below min_confidence."""
+async def test_run_daily_prediction_jev_curated_zero_abstention_forced_direction():
+    """Verify jev-four-regime-champion enforces Zero Abstention and commits to direction even at low confidence."""
     from tasks.daily_predictor import run_daily_prediction
 
     mock_sb = MagicMock()
@@ -205,7 +205,7 @@ async def test_run_daily_prediction_jev_curated_gated_no_trade():
     curated_payload = json.dumps(
         {
             "criteria": {"UP": "Up rule", "DOWN": "Down rule"},
-            "min_confidence": 61.0,
+            "min_confidence": 0.0,
             "manifest": {"selected_newsletters": ["Sherwood News"]},
         }
     )
@@ -250,7 +250,7 @@ async def test_run_daily_prediction_jev_curated_gated_no_trade():
         mock_ctx.return_value = ("Monolithic text", {"ticker": "SPY", "target_date": "2026-10-09", "proxies": {}})
         mock_jev.return_value = {
             "predicted_direction": "UP",
-            "confidence": 56.5,  # Below 61.0%!
+            "confidence": 52.5,  # Low confidence, but zero abstention forces direction
             "expected_return_pct": 0.0,
             "rationale": "Borderline signal.",
             "catalysts": [],
@@ -260,6 +260,6 @@ async def test_run_daily_prediction_jev_curated_gated_no_trade():
 
         jev_curated_res = [r for r in results if r["model_name"] == "jev-four-regime-champion"]
         assert len(jev_curated_res) == 1
-        assert jev_curated_res[0]["predicted_direction"] == "NO_TRADE"
-        assert jev_curated_res[0]["confidence"] == 56.5
-        assert "NO_TRADE" in jev_curated_res[0]["rationale"]
+        assert jev_curated_res[0]["predicted_direction"] == "UP"
+        assert jev_curated_res[0]["confidence"] == 52.5
+        assert jev_curated_res[0]["predicted_direction"] != "NO_TRADE"

@@ -1,48 +1,39 @@
 ---
-tags: [concept, daily-predictor, jev, risk-management, no-trade]
+tags: [concept, daily-predictor, jev, risk-management, zero-abstention, deprecated]
 category: concept
 ---
 
-# Confidence Gating (NO_TRADE)
+# Confidence Gating & Zero Abstention (Historical Deprecation)
 
-Confidence gating lets a directional model refuse to trade when its own conviction is too low. It is carried by the curated Jev champion track (`jev-four-regime-champion`), where the autoresearch loop co-evolves a `min_confidence` threshold alongside the decision criteria.
+> [!WARNING]
+> **DEPRECATED & PROHIBITED**: Confidence gating to `NO_TRADE` has been permanently superseded by the **Zero Abstention Contract (MANDATORY)**. Every single trading session, all daily predictor models (including `jev-four-regime-champion`) MUST commit to a binary directional call (`UP` or `DOWN`).
 
-## Mechanism
+## Historical Background
 
-`JevCriteriaConfig` (`apps/engine/local_autoresearch/manifest.py`) carries a `min_confidence` field bounded to `[50.0, 100.0]`. During a live prediction in `apps/engine/tasks/daily_predictor.py`:
+In early iterations of local autoresearch (`jev-local-autoresearched`), an experimental `min_confidence` lever (e.g. $55.0\%$ or $61.0\%$) was introduced. If Jev's output confidence fell below that threshold, the task attempted to gate the decision to `NO_TRADE` under the hypothesis that abstaining during low-conviction regimes would preserve capital.
 
-```
-raw_dir = Jev's chosen direction
-if confidence < min_conf:
-    pred_dir = 'NO_TRADE'
-else:
-    pred_dir = raw_dir
-```
+## Why Confidence Gating Failed (The Selectivity Trap)
 
-The raw decision and confidence are still recorded; only the stored `predicted_direction` is gated. The `jev-four-regime-champion` variant ships with a `55.0%` gate, reflecting its four-regime classifier where *Balanced Pinning* and *Catalyst Shock* states are deliberately low-conviction. The plain `~typesafe/jev-latest` baseline does not gate.
+As detailed in [[concepts/daily-directional-predictability-limits]] and the Locked Vault stress tests:
+1. **The Selectivity Trap / Cowardice**: Gating created perverse incentives in evolutionary ratchet loops where models learned to abstain on choppy or ambiguous regimes, artificially inflating reported win rate while refusing to trade when real market decisions were needed.
+2. **Database Invariant Conflict**: The canonical database schema for `daily_predictions` strictly enforces binary classification:
+   ```sql
+   predicted_direction TEXT NOT NULL CHECK (predicted_direction IN ('UP', 'DOWN'))
+   ```
+   Emitting `NO_TRADE` caused database insert failures during live production runs.
+3. **Training Parity Gap**: The reigning tournament champion (`jev-four-regime-champion`, Iteration 43) was trained and evaluated under the **Zero Abstention Rule** in [[concepts/single-prompt-ratchet]] across 34 real pre-market sessions with 100% binary participation. Leftover `NO_TRADE` code in the runner violated training-production parity.
 
-## Evaluation Semantics
+## Current Architecture: Zero Abstention & Forced Direction
 
-In `apps/engine/tasks/evaluate_daily_predictions.py`, a `NO_TRADE` prediction is treated as *abstention*, not a wrong answer:
-
-- `is_correct = None`
-- `brier_score = None`
-- `intraday_hit = None`
-- `intraday_dir_hit = None`
-
-Aggregate accuracy and Brier metrics therefore exclude gated days, so the model is neither rewarded nor punished for staying flat. Selectivity (the fraction of days actually traded) is tracked separately by `calculate_metrics()` in `jev_evaluator.py` as `selectivity_pct`.
-
-## Rationale
-
-Close-to-open returns are near 50/50, so forcing a directional bet on every session dilutes win rate and Sharpe. Gating preserves capital and win rate during ambiguous regimes while keeping the model exposed on high-conviction days. Because the threshold is a mutation lever, the meta-researcher can discover the trade-off empirically — the champion settled at a level that retained a high traded win rate while abstaining on balanced/pinning sessions.
-
-## Presentation
-
-The web arena surfaces the abstention state explicitly. `HeroPredictionCard.tsx` detects `predicted_direction === 'NO_TRADE'` (or zero confidence) and renders an amber `⚡ NO TRADE` label instead of the emerald/rose UP/DOWN coloring, and `computeDailyPredictionStats()` filters `NO_TRADE` rows out of the evaluated-accuracy calculation.
+Under the **Zero Abstention Contract** (defined in `apps/engine/local_autoresearch/strata_client.py` and [[entities/local-autoresearch]]):
+- `min_confidence` is purged (`0.0%`).
+- No model is permitted to output `NO_TRADE`.
+- On ambiguous or balanced days, the four-regime classifier assigns lower confidence (e.g. $51\%–54\%$), but **strictly commits to either `UP` or `DOWN`**.
+- Evaluation in `apps/engine/tasks/evaluate_daily_predictions.py` scores all sessions based on pure directional correctness.
 
 ## Related
 
-- [[entities/local-autoresearch]] — evolves the gate
-- [[entities/daily-market-predictor]] — the arena that runs gated predictions
-- [[concepts/locked-vault-kfold]] — sibling mutation lever
-- [[concepts/jev-decisions-model]] — the decision model being gated
+- [[entities/daily-market-predictor]] — production prediction runner enforcing forced binary direction
+- [[entities/local-autoresearch]] — the local optimization loop enforcing Zero Abstention
+- [[concepts/single-prompt-ratchet]] — tournament architecture producing the binary champion
+- [[concepts/pure-directional-scoring]] — directional scoring without abstention artifacts

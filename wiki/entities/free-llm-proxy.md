@@ -161,6 +161,63 @@ The test suite covers master-key auth rejection, the unauthenticated health prob
 
 ---
 
+## Pi Assistant Integration
+
+Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configuring a custom OpenAI-compatible provider in `~/.pi/agent/models.json`:
+
+```json
+{
+  "providers": {
+    "free-llm": {
+      "baseUrl": "http://127.0.0.1:8086/v1",
+      "api": "openai-completions",
+      "apiKey": "sk-free-bf2f76aa1b930536367c26c52d86f677814c1fa7e9ac263c",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false
+      },
+      "models": [
+        {
+          "id": "free-auto",
+          "name": "Free LLM: Auto (Best Available)",
+          "input": ["text"],
+          "contextWindow": 128000,
+          "maxTokens": 8192,
+          "type": "chat"
+        },
+        {
+          "id": "free-fast",
+          "name": "Free LLM: Fast (Low Latency)",
+          "input": ["text"],
+          "contextWindow": 32768,
+          "maxTokens": 4096,
+          "type": "chat"
+        },
+        {
+          "id": "free-reasoning",
+          "name": "Free LLM: Reasoning (Thinking/R1)",
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 8192,
+          "type": "chat"
+        }
+      ]
+    }
+  }
+}
+```
+
+### Usage in Pi
+
+- **Interactive Cycle**: Press `Ctrl+P` in the Pi TUI to cycle between local quantized models (`strata`, `orcarouter`) and the free models (`free-auto`, `free-fast`, `free-reasoning`).
+- **Direct CLI Invocation**:
+  ```bash
+  pi --provider free-llm --model free-auto "Help refactor this function"
+  ```
+- **Tool Calling Support**: `free-auto` prioritizes tool-capable models (e.g. Groq Llama 3.3 70B, Google Gemini Flash) so Pi's built-in coding tools (`read`, `bash`, `edit`, `write`) function seamlessly. Structured array message formats (`content: [{"type": "text", ...}]`) are natively parsed in `apps/free_llm_proxy/models.py`.
+
+---
+
 ## Related
 
 - [[concepts/tool-first-agency]]

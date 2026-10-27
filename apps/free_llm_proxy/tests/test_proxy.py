@@ -277,3 +277,57 @@ def test_openrouter_free_chat_completion(client, monkeypatch):
     assert data["choices"][0]["message"]["content"] == "Hello from OpenRouter Free!"
     assert len(executed_requests) == 1
     assert executed_requests[0] == ("OpenRouter", "openrouter/free")
+
+
+def test_structured_array_message_content(client, monkeypatch):
+    """Verify that OpenAI-compatible structured array content (Pi format) is accepted."""
+    executed = []
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        executed.append(payload)
+        return (
+            200,
+            {
+                "id": "chatcmpl-structured",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": payload.get("model"),
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "Structured OK"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                },
+            },
+            {},
+        )
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "free-auto",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": "Structured message test"}],
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["choices"][0]["message"]["content"] == "Structured OK"
+    assert len(executed) == 1
+    assert executed[0]["messages"][0]["content"] == [
+        {"type": "text", "text": "Structured message test"}
+    ]

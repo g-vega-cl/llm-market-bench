@@ -114,7 +114,18 @@ async def chat_completions(
 ) -> Response:
     verify_master_key(authorization)
     raw_body = await request.json()
-    req = ChatCompletionRequest(**raw_body)
+    try:
+        req = ChatCompletionRequest(**raw_body)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "message": f"Invalid request payload: {e}",
+                    "type": "invalid_request_error",
+                }
+            },
+        ) from e
 
     candidate_chain = router.get_candidate_chain(req.model)
     if not candidate_chain:

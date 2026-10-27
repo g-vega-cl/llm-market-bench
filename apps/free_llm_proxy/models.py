@@ -8,7 +8,7 @@ class ChatMessage(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     role: Literal["system", "user", "assistant", "function", "tool"] = "user"
-    content: str | None = None
+    content: str | list[dict[str, Any]] | None = None
     name: str | None = None
     reasoning: str | None = None
     tool_calls: list[dict[str, Any]] | None = None
@@ -46,7 +46,7 @@ class ChoiceMessage(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     role: str = "assistant"
-    content: str | None = None
+    content: str | list[dict[str, Any]] | None = None
     reasoning: str | None = None
     tool_calls: list[dict[str, Any]] | None = None
 

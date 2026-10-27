@@ -1,0 +1,76 @@
+services:
+  archive-db-replica:
+    image: ankane/pgvector:latest
+    container_name: market-bench-archive-db-replica
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-market_bench_archive}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PRIMARY_HOST: ${PRIMARY_HOST:-primary-workstation}
+      PRIMARY_PORT: ${PRIMARY_PORT:-5433}
+      REPLICATION_USER: ${REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+      REPLICATION_SLOT: ${REPLICATION_SLOT:-minipc_standby_slot}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - archive_pgdata_replica:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d market_bench_archive"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  archive-postgrest:
+    image: postgrest/postgrest:latest
+    container_name: market-bench-archive-postgrest-replica
+    restart: unless-stopped
+    depends_on:
+      archive-db-replica:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@archive-db-replica:5432/${POSTGRES_DB:-market_bench_archive}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_CHANNEL_ENABLED: "false"
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      PGRST_OPENAPI_SERVER_PROXY_URI: ${PGRST_OPENAPI_SERVER_PROXY_URI:-https://benchify-archive-db.clvg.uk}
+    expose:
+      - "3000"
+
+  archive-proxy:
+    image: nginx:alpine
+    container_name: market-bench-archive-proxy-replica
+    restart: unless-stopped
+    depends_on:
+      - archive-postgrest
+    extra_hosts:
+      - "primary-workstation:${PRIMARY_WORKSTATION_IP:-127.0.0.1}"
+    ports:
+      - "3001:80"
+    volumes:
+      - ./nginx.secondary.conf:/etc/nginx/nginx.conf:ro
+
+  free-llm-proxy:
+    build:
+      context: ../../apps/free_llm_proxy
+      dockerfile: Dockerfile
+    container_name: free-llm-proxy-secondary
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    env_file:
+      - ../../apps/free_llm_proxy/.env
+    volumes:
+      - free_llm_proxy_data:/app/apps/free_llm_proxy/data
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+volumes:
+  archive_pgdata_replica:
+    name: archive_pgdata_replica
+  free_llm_proxy_data:
+    name: free_llm_proxy_data

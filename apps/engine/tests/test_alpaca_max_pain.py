@@ -67,7 +67,9 @@ async def test_max_pain_matches_brute_force_and_is_not_atm():
     seen: list[httpx.Request] = []
     async with _mock_client([chain[:20], chain[20:]], seen) as client:
         with patch.object(amp, "ALPACA_API_KEY", "k"), patch.object(amp, "ALPACA_SECRET_KEY", "s"):
-            res = await amp.get_verified_max_pain("SPY", expiration_date=EXP, client=client)
+            res = await amp.get_verified_max_pain(
+                "SPY", expiration_date=EXP, today=datetime.date(2026, 10, 22), client=client
+            )
     assert res is not None
     assert res["max_pain"] == expected
     assert res["expiration"] == EXP

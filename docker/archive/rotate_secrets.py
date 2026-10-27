@@ -84,6 +84,7 @@ def rotate_all(sync_db: bool = True) -> dict[str, str]:
     new_jwt_secret = secrets.token_hex(32)
     alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     new_pg_password = "".join(secrets.choice(alphabet) for _ in range(32))
+    new_repl_password = "".join(secrets.choice(alphabet) for _ in range(32))
 
     anon_jwt = generate_token(new_jwt_secret, role="anon")
     service_jwt = generate_token(new_jwt_secret, role="service_role")
@@ -111,6 +112,9 @@ def rotate_all(sync_db: bool = True) -> dict[str, str]:
         "POSTGRES_PASSWORD": new_pg_password,
         "PGRST_JWT_SECRET": new_jwt_secret,
         "PGRST_OPENAPI_SERVER_PROXY_URI": "https://benchify-archive-db.clvg.uk",
+        "REPLICATION_USER": "replicator",
+        "REPLICATION_PASSWORD": new_repl_password,
+        "REPLICATION_SLOT": "minipc_standby_slot",
     }
     update_env_file(archive_env, archive_updates)
 
@@ -138,6 +142,7 @@ def rotate_all(sync_db: bool = True) -> dict[str, str]:
     return {
         "POSTGRES_PASSWORD": new_pg_password,
         "PGRST_JWT_SECRET": new_jwt_secret,
+        "REPLICATION_PASSWORD": new_repl_password,
         "SUPABASE_ANON_KEY": anon_jwt,
         "SUPABASE_SERVICE_ROLE_KEY": service_jwt,
     }

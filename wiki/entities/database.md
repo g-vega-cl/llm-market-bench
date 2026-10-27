@@ -79,6 +79,7 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 
 ## Related
 
+- [[entities/secondary-minipc-edge]]
 - [[concepts/hybrid-database-archival]]
 - [[concepts/rag-strategy]]
 - [[concepts/private-memory-vault]]

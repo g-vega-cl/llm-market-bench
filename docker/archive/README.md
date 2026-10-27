@@ -48,11 +48,54 @@ To stop the stack:
 docker compose -f docker/archive/docker-compose.yml down
 ```
 
-## Public Ingress (Cloudflare Tunnel)
+## Secondary Edge Server (MiniPC) & Streaming Replica
 
-The stack is exposed securely via Cloudflare Tunnel (`cloudflared`) routed to `http://localhost:3001`:
+For 24/7 uptime and edge isolation, a secondary MiniPC (`cv-minipc@minipc`) runs as an edge gateway and streaming read-replica connected to the primary workstation over Tailscale.
 
-- Public URL: `https://benchify-archive-db.clvg.uk`
+### Edge Topology
+1. **`archive-db-replica` (`ankane/pgvector:latest`)**:
+   - Streaming standby replica receiving WAL records asynchronously via physical replication slot `minipc_standby_slot`.
+   - Read-only queries execute locally on MiniPC with `<1ms` latency.
+2. **`archive-proxy` (`nginx:alpine` on port `3001`)**:
+   - Inspects HTTP methods (`GET`/`HEAD`/`OPTIONS` routed locally to PostgREST; `POST`/`PATCH`/`PUT`/`DELETE` reverse-proxied over Tailscale to the Primary Workstation).
+   - If the Primary Workstation is offline or rebooting, all reads continue serving without interruption while mutations return HTTP 503.
+3. **`free-llm-proxy` (port `8086`)**:
+   - 24/7 model-agnostic failover proxy running alongside on MiniPC.
+
+### Deployment & Operations
+
+1. **Configure Primary for Replication** (run once on primary workstation):
+   ```bash
+   ./docker/archive/setup_primary_replication.sh
+   ```
+
+2. **Sync and Deploy to MiniPC** (run from workstation):
+   ```bash
+   ./docker/archive/deploy_secondary.sh cv-minipc@minipc
+   ```
+
+3. **Bootstrap Replica** (run on MiniPC via SSH):
+   ```bash
+   cd ~/llm-market-bench/docker/archive && ./bootstrap_replica.sh
+   ```
+
+4. **Emergency Failover (1-Command Promotion)** (run on MiniPC if primary is permanently down):
+   ```bash
+   cd ~/llm-market-bench/docker/archive && ./promote_to_primary.sh
+   ```
+
+---
+
+## Public Ingress (Dual-Connector Cloudflare Anycast HA)
+
+The stack is exposed securely via an **Active-Active Dual-Connector Cloudflare Tunnel** running concurrently on both machines:
+- **Fedora Big PC** (Primary connector)
+- **MiniPC Server** (Secondary edge connector)
+
+Cloudflare Anycast automatically load-balances and routes incoming traffic to the nearest/healthiest connector. If either node reboots or goes offline, traffic routes to the survivor seamlessly with zero DNS propagation delay:
+
+- Public Archive DB API: `https://benchify-archive-db.clvg.uk`
+- Public Free LLM Proxy: `https://llm.clvg.uk`
 - Client SDKs connect seamlessly using standard Supabase configuration:
   - `SUPABASE_PROJECT_URL=https://benchify-archive-db.clvg.uk`
   - `SUPABASE_SERVICE_ROLE_KEY=<HS256 JWT with role "service_role">`

@@ -24,5 +24,5 @@ Synthesized from `raw/docs/engine/testing.md`.
 - [[concepts/test-coverage]]
 - [[concepts/test-latency-guards]]
 - [[concepts/tool-enforcement]]
-- [core/llm/clients.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/clients.py) — `CLIENT_FACTORIES` dict and the dict-patching convention warning
-- [tests/test_verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_verification.py) — canonical example of the pattern
+- `apps/engine/core/llm/clients.py` — `CLIENT_FACTORIES` dict and the dict-patching convention warning
+- `apps/engine/tests/test_verification.py` — canonical example of the pattern

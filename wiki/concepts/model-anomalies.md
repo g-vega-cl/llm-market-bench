@@ -55,12 +55,12 @@ When an anomaly is flagged, follow these resolution steps:
    - Anthropic Status: [status.anthropic.com](https://status.anthropic.com/)
    - DeepSeek Status: [status.deepseek.com](https://status.deepseek.com/)
 2. **Verify Context Window & Token Usage**:
-   - Review the stdout/stderr console logs of the pipeline runner. The log entries are formatted based on the standard `LOG_FORMAT` defined in [config.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/config.py).
+   - Review the stdout/stderr console logs of the pipeline runner. The log entries are formatted based on the standard `LOG_FORMAT` defined in `apps/engine/core/config.py`.
    - Check the injected context (newsletters, database metrics) to ensure it does not exceed the model's token limits.
 3. **Analyze Prompt Misalignment**:
    - Check if recent prompt mutations from auto-research introduced confusing logic. Inspect the active prompt variant in the database table `prompt_experiments` where `status = 'active'`.
 4. **Trigger Provider Failover**:
-   - If the provider issue is persistent, edit [models.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/packages/config/models.json) to switch the affected agent (e.g. `GEMINI_MODEL`, `DEEPSEEK_MODEL`) to a different fallback model name.
+   - If the provider issue is persistent, edit `packages/config/models.json` to switch the affected agent (e.g. `GEMINI_MODEL`, `DEEPSEEK_MODEL`) to a different fallback model name.
    - Update the API keys if needed in the local engine environment configuration file `.env` (located at `apps/engine/.env`).
 5. **Document Incident**:
     - Record the incident date, affected model version, error logs, and the specific mitigation steps applied in the Git commit message body when committing the fix.

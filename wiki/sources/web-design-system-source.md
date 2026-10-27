@@ -7,16 +7,15 @@ category: source
 
 This source page documents the UI design system used across the TanStack Start dashboard. It is a collection of primitives and patterns that enforce visual financial data with a high-tech, polished look.
 
-## Recent Changes (May 2025)
+## Recent Changes
 
-The following items have been **removed** as part of a design system simplification:
+The design system standardizes on high-contrast dark primitives and patterns:
 
-- Select primitive (deleted entirely)
-- Badge severity levels `critical` and `low` (now only `high` and `medium`)
-- LoadingSpinner sizes `xs` and `lg` (now only `sm` and `md`)
-- Card variant `elevated` (now only `default`, `outlined`, `ghost`, `glass`)
-- Card props `accentBorder` and `accentBorderColor`
-- Gradient `alert` removed from HeroBackground, SectionHeading, and Card gradient options
+- Badge severity levels are standardized to `high` and `medium`
+- LoadingSpinner sizes are `sm` and `md`
+- Card variants are `default`, `outlined`, `glass`, and `glass-warning`
+- Card props `accentBorder` and `accentBorderColor` are deprecated in favor of semantic glass variants
+- Select is maintained as a core form primitive
 
 ---
 
@@ -25,7 +24,7 @@ The following items have been **removed** as part of a design system simplificat
 ### Badge
 - **Variants:** `solid`, `soft`, `outline`, `glass`
 - **Options:** `showDot` (boolean) to render an indicator dot
-- **Sizes:** `sm`, `md`
+- **Sizes:** `xs`, `sm`, `md`
 - **Color schemes:** `accent`, `success`, `danger`, `info`, `warning`, `neutral`
 - **Severity:** `high`, `medium` (overrides colorScheme when provided)
 - **Radius:** `full`, `lg`, `md`
@@ -34,13 +33,13 @@ The following items have been **removed** as part of a design system simplificat
 - **LoadingSpinner sizes:** `sm`, `md`
 
 ### Card
-- **Variants:** `default`, `outlined`, `ghost`, `glass`, `glass-warning`
+- **Variants:** `default`, `outlined`, `glass`, `glass-warning`
 - **Padding:** `none`, `sm`, `md`, `lg`
-- **Gradients:** `electric`, `success`, `catalyst`, `ai`
-- Note: `accentBorder` and `accentBorderColor` props have been removed.
+- **Gradients:** `electric`, `success`, `alert`, `catalyst`, `ai`
+- Note: `accentBorder` and `accentBorderColor` props have been removed in favor of semantic `colorScheme`.
 
 ### Select
-- This primitive has been completely removed from the design system.
+- Standard select component with full styling and design token integration.
 
 ### Input / Label
 - Unchanged.

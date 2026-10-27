@@ -5,7 +5,7 @@ category: concept
 
 # Execution
 
-The execution phase handles pre-market validation, Reg T checks, trade settlement, and attribution. It ensures that all trades are valid, margin-compliant, and properly recorded.
+The execution phase handles pre-market validation, cash-only capacity checks, trade settlement, and attribution. It ensures that all trades are valid, fully funded, and properly recorded.
 
 ## Pre-Market Validation
 

@@ -14,7 +14,7 @@ The engine is a modular monorepo under `apps/engine/` with these key modules:
 - **analysis/**: Consensus, event synthesis, discovery
 - **core/llm/**: LLM client wrappers, prompt factory, event synthesis with structured `HistoricalParallelDetail`
 - **core/models/**: Pydantic models for events, trades, portfolios
-- **execution/**: Trade validation, Reg T checks, settlement
+- **execution/**: Trade validation, cash-only capacity checks, settlement
 - **ingestion/**: Newsletter scraping, economic calendar, government data
 
 ## Key Components

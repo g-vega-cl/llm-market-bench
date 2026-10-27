@@ -22,6 +22,19 @@ def default_mock_premarket_time(monkeypatch):
     monkeypatch.setattr("tasks.daily_predictor.get_ny_now", lambda: fake_time)
 
 
+@pytest.fixture(autouse=True)
+def mock_unconfigured_arena_models():
+    """Hermetic test fixture: isolate daily predictor tests from unconfigured Jev/Laya models and external calls."""
+    with (
+        patch("tasks.daily_predictor.predict_daily_with_jev", side_effect=RuntimeError("Jev disabled for unit test")),
+        patch(
+            "tasks.daily_predictor.generate_daily_document", side_effect=RuntimeError("Strata disabled for unit test")
+        ),
+        patch("tasks.daily_predictor.evaluate_with_laya", side_effect=RuntimeError("Laya disabled for unit test")),
+    ):
+        yield
+
+
 def test_split_daily_predictor_prompt():
     header, mutable, footer = split_daily_predictor_prompt(DAILY_PREDICTOR_PROMPT)
     assert header == DAILY_PREDICTOR_CONSTRAINTS_HEADER

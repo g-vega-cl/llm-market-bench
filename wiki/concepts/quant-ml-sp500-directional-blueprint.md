@@ -85,7 +85,7 @@ Single prompts suffer from high sample variance. A single prompt optimized acros
 2. **Agent Beta (Cross-Asset & Breadth Specialist)**: Focuses on Treasury yield curve shifts (10Y/2Y), US Dollar (DXY/UUP), and tech/small-cap breadth (`QQQ`/`IWM`).
 3. **Agent Gamma (Macro Catalyst & Expectation Specialist)**: Focuses on 8:30 AM ET economic prints (CPI, PPI, NFP) vs consensus forecasts.
 
-**Consensus Mechanism**: If 2 of 3 agents agree with high confidence, execute directional trade. If agents diverge, issue `NO_TRADE` (cash preservation).
+**Consensus Mechanism**: Majority voting determines directional commitment. If 2 of 3 agents agree on direction, execute with their averaged confidence. If agents diverge or balance across indicators, arbitrator breaks ties using prevailing structural market drift (UP default) with baseline confidence (51%–53%), strictly adhering to the Zero Abstention Contract (binary UP/DOWN, see [[concepts/confidence-gating]]).
 
 ---
 

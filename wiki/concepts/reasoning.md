@@ -34,7 +34,7 @@ The engine runs multiple agents in parallel, each utilizing the same **System-He
 
 ## Integration with System-Heavy Prompts
 
-By placing the **Reasoning SOP** (including the 5 Whys instructions and the Reasoning Toolbox) inside the **System Prompt**, we treat "Thinking Style" as an evolvable trait. The Meta-Researcher (via the Auto-Researcher instruction set in [program.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/program.md)) can strategically inject, refine, or combine these mental models based on performance reports, tracking how these changes impact risk-adjusted returns.
+By placing the **Reasoning SOP** (including the 5 Whys instructions and the Reasoning Toolbox) inside the **System Prompt**, we treat "Thinking Style" as an evolvable trait. The Meta-Researcher (via the Auto-Researcher instruction set in `apps/engine/autoresearch/program.md`) can strategically inject, refine, or combine these mental models based on performance reports, tracking how these changes impact risk-adjusted returns.
 
 See [[concepts/system-heavy-prompt]] for the architectural split and [[entities/autoresearch]] for the evolution loop.
 

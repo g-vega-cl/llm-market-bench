@@ -45,7 +45,7 @@ Polygon bar downloads are idempotent per month — a month with more than 100 al
 The module is runnable standalone:
 
 ```sh
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.historical_downloader \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.historical_downloader \
   --start-date 2024-10-01 --end-date 2026-10-10 --include-news --include-newsletters --sync-postgres
 ```
 

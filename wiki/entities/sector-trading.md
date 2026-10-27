@@ -5,7 +5,7 @@ category: entity
 
 # Systematic Weekly Sector Trading
 
-Live execution engine for 5 weekly sector strategy portfolios: long/short consensus, 20-day uncorrelated momentum, 7-day uncorrelated momentum, naive momentum benchmark, and mean reversion. Enters positions Monday at market open (9:35 AM ET) and exits Friday before market close (3:30 PM ET).
+Live execution engine for 7 systematic sector strategy portfolios across weekly and multi-horizon cycles: 5 weekly strategies (long/short consensus, 20-day uncorrelated momentum, 7-day uncorrelated momentum, naive momentum benchmark, and mean reversion) plus 2 multi-horizon strategies (30-day and 90-day long/short consensus). Enters positions Monday at market open (9:35 AM ET) and exits Friday before market close (3:30 PM ET).
 
 ## Architecture
 

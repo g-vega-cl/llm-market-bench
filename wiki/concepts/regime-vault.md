@@ -24,12 +24,12 @@ Candidates that beat the primary-arena baseline are re-evaluated on the vault. A
 
 ```sh
 # Compile the held-out vault cache (no pre-market tape leakage)
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --build-historical-cache --regime-vault --vault-cache-db .regime_vault_cache.db \
   --start-date 2021-02-15 --end-date 2024-09-30
 
 # Score the current active baseline against the vault
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --eval-vault --vault-cache-db .regime_vault_cache.db
 ```
 

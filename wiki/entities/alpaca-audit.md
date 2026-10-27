@@ -32,10 +32,10 @@ The `render_terminal_report()` method produces a structured Unicode-box report w
 python main.py audit-alpaca
 
 # Audit a specific model with custom lookback
-python main.py audit-alpaca --model claude-haiku-4-5 --days 30
+python main.py audit-alpaca --model claude-haiku-5-5 --days 30
 
 # JSON output for programmatic consumption
-python main.py audit-alpaca --model gpt-4o --days 14 --json
+python main.py audit-alpaca --model gpt-5.6-luna --days 14 --json
 ```
 
 ## Related

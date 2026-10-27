@@ -28,7 +28,7 @@ llm-market-bench/
 │       ├── core/            # LLM clients, tools, and config
 │       ├── ingest/          # Newsletter & Government data
 │       ├── analysis/        # Momentum, Post-Mortems
-│       ├── execution/       # Validation (Reg T) & Trade Settlement
+│       ├── execution/       # Validation (Cash-Only) & Trade Settlement
 │       ├── attribution/     # Decision mapping
 │       ├── memory/          # pgvector store & embeddings
 │       ├── main.py          # Pipeline entry point
@@ -156,7 +156,7 @@ cd apps/web && pnpm test -- --coverage
 
 1. **Ingestion & Normalization**: Newsletter scraping, economic calendar fetch, data snapshotting
 2. **Consensus & Attribution**: Parallel LLM analysis with RAG context retrieval, decision attribution
-3. **Execution & Guardrails**: Second-step verification, hard tool enforcement, Reg T margin validation
+3. **Execution & Guardrails**: Second-step verification, hard tool enforcement, cash-only capacity validation
 4. **Frontend & Feedback**: Interactive dashboard, memory embedding, post-analysis
 5. **Specialized Agents**: Government tracking, cause & effect analysis
 6. **Discovery Agent**: Converts market themes into a high-conviction "Investable Assets" list using `run_stock_screener` and web search in a tool-calling reasoning loop
@@ -177,11 +177,11 @@ For a detailed step-by-step walkthrough, see **[Pipeline & Data Flow](./wiki/ent
 
 ### Guardrails & Validation
 
-- **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`, `run_stock_screener`) were actually called
+- **Hard Tool Enforcement**: Server-side verification that required quantity calculation tools (`calculate_buy_quantity` for BUYs, `calculate_sell_quantity` for SELLs) were actually executed in conversation history before trade output
 - **Reasoning Rigor (5 Whys)**: Forced recursive causal analysis across all reasoning agents (Manager, Cause & Effect, Analysis) to identify root drivers and profit mechanisms
 - **Catalyst Logic Synchronization**: Strict filtering of vague "future catalysts" (no themes/broad years) to prevent Horizon Watch dashboard pollution
 - **Pre-Market Validation**: FMP-verified market hours, symbol existence, price-deviation banding, liquidity floor
-- **Reg T Margin Validation**: Buying power and minimum-trade-value checks (constants in `apps/engine/core/config.py`)
+- **Cash-Only Trade Validation**: Non-negative cash balance enforcement, buying power equal to liquid cash balance (zero margin borrowing or leverage), and 10% equity position floor (constants in `apps/engine/core/config.py`)
 - **Ownership Pre-Validation**: SELL signals for unheld tickers are rejected before execution
 - **Semantic Redundancy**: Overtrading prevention via pgvector deduplication
 
@@ -199,7 +199,7 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 - [Database & Schema](./wiki/entities/database.md) — Supabase PostgreSQL, pgvector, RLS
 - [Pipeline & Data Flow](./wiki/entities/pipeline.md) — All 6 phases
 - [Consensus & Reasoning](./wiki/concepts/consensus.md) — Semantic grouping, voting
-- [Execution & Guardrails](./wiki/concepts/execution.md) — Pre-market validation, Reg T
+- [Execution & Guardrails](./wiki/concepts/execution.md) — Pre-market validation, Cash-Only capacity
 - [Tool Enforcement](./wiki/concepts/tool-enforcement.md) — 4-layer hallucination prevention
 - [RAG Strategy](./wiki/concepts/rag-strategy.md) — Tiered context injection
 - [Memory & Feedback](./wiki/concepts/memory-feedback.md) — Post-mortem analysis
@@ -223,11 +223,11 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 
 ### Utilities & Maintenance
 
-- **Reset State**: `python apps/engine/reset_state.py`
-- **Clear Database**: `python apps/engine/clear_db.py`
+- **Reset State**: `python apps/engine/scripts/reset_state.py`
+- **Clear Database**: `python apps/engine/scripts/clear_db.py`
 - **Economic Calendar**: `python apps/engine/main.py calendar`
-- **Schema Docs**: `python apps/engine/generate_schema_docs.py`
-- **Cleanup Catalysts**: `python apps/engine/cleanup_catalysts.py`
+- **Schema Docs**: `python apps/engine/scripts/generate_schema_docs.py`
+- **Cleanup Catalysts**: `python apps/engine/scripts/cleanup_catalysts.py`
 
 ## Technology Stack
 

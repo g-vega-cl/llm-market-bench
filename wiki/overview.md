@@ -39,8 +39,10 @@ The daily pipeline runs on a cron schedule during US market hours in six phases:
 
 ## Key Design Decisions
 
-- **Pre-injected market data**: Prices are fetched and injected into prompts
-  before the LLM reasons, eliminating price hallucination entirely
+- **Dual Context Delivery**: Trading agents operate under an interactive, **Pull-Based**
+  architecture where agents pull market data and news on demand via tools (Principle 8), while the
+  Daily S&P 500 Predictor arena utilizes deterministic **Push-Based** pre-compilation (point-in-time
+  feature cache compiled at 09:15 ET) for reproducible benchmarking (see [[concepts/system-heavy-prompt]])
 - **Tiered context**: Analysis agents get lightweight context; the verifier gets
   targeted per-trade RAG scoped to the same agent's past decisions
 - **Atomic settlement**: "Commit at the End" pattern prevents phantom deductions

@@ -62,7 +62,7 @@ graph TD
 
 ### Post-Deployment Lighthouse CI Workflow
 
-The pipeline utilizes `@lhci/cli` triggered automatically on deployment successes in [.github/workflows/lighthouse.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/lighthouse.yml). Threshold budgets are managed dynamically inside [lighthouserc.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/lighthouserc.json).
+The pipeline utilizes `@lhci/cli` triggered automatically on deployment successes in `.github/workflows/lighthouse.yml`. Threshold budgets are managed dynamically inside `lighthouserc.json`.
 
 #### lighthouserc.json Configuration:
 ```json
@@ -224,8 +224,8 @@ describe('fetchTodayData zero-load TDD checks', () => {
 ### TDD Hydration Regression Testing
 To guarantee that pages render symmetrically between server-side generation (SSR) and client-side hydration without needing heavy E2E tests, write unit tests leveraging our unified hydration test helper:
 
-1. **Test Helper**: [assertHydrationSymmetry](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/test/hydration-test-helper.tsx) simulates the edge SSR step via `ReactDOMServer.renderToString()` and client-side hydration via `hydrateRoot()` in JSDOM. It registers a global event listener to intercept React 19's asynchronous scheduler mismatch exceptions, returning a list of caught errors.
-2. **Regression Suite**: Add test cases to [hydration.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/test/hydration.test.tsx) wrapping your components inside necessary providers (e.g. `QueryClientProvider`).
+1. **Test Helper**: `apps/web/src/test/hydration-test-helper.tsx` (`assertHydrationSymmetry`) simulates the edge SSR step via `ReactDOMServer.renderToString()` and client-side hydration via `hydrateRoot()` in JSDOM. It registers a global event listener to intercept React 19's asynchronous scheduler mismatch exceptions, returning a list of caught errors.
+2. **Regression Suite**: Add test cases to `apps/web/src/test/hydration.test.tsx` wrapping your components inside necessary providers (e.g. `QueryClientProvider`).
 3. **Execution**: Runs automatically as part of the `pnpm test` script triggered by Husky before every local git commit.
 
 Example hydration check block:
@@ -243,7 +243,7 @@ describe('MarketStatusHero Hydration Check', () => {
 
 #### ICU Space Simulation Testing
 To guarantee date formatters do not leak unnormalized narrow non-breaking spaces, our test runner runs in JSDOM where both SSR and hydration normally execute under Node.js's same standard whitespace formatting environment.
-To address this testing blindspot, [hydration.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/test/hydration.test.tsx) implements an **ICU Space Simulation Test**. It spies on `ReactDOMServer.renderToString` and `Date.prototype.toLocaleDateString` to dynamically replace all standard spaces with browser-specific narrow non-breaking spaces (`\u202f`) during client hydration, asserting that components like `FutureCatalysts` hydrate flawlessly under browser-like whitespace deltas.
+To address this testing blindspot, `apps/web/src/test/hydration.test.tsx` implements an **ICU Space Simulation Test**. It spies on `ReactDOMServer.renderToString` and `Date.prototype.toLocaleDateString` to dynamically replace all standard spaces with browser-specific narrow non-breaking spaces (`\u202f`) during client hydration, asserting that components like `FutureCatalysts` hydrate flawlessly under browser-like whitespace deltas.
 
 
 ### Bypassing in Emergencies

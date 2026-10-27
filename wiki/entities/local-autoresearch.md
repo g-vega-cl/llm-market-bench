@@ -42,7 +42,7 @@ When transitioning from the initial 115-day development dataset (April–October
 - **Discovered Champion (`qwen-jev-9b7a55`)**: Discovered on Iteration 9 of Batch 1:
   - **Effective Score**: **59.41** (+3.43 improvement over calibrated baseline).
   - **Overfit Penalty**: **0.0%** (Train: 42.98%, Test: 59.41%), demonstrating zero memorization and true held-out out-of-sample edge.
-  - **Confidence Gate**: Filter threshold set at `min_confidence = 62.0%`.
+  - **Historical Confidence Gate**: In early Batch 1 experiments, an experimental filter threshold was tested at `min_confidence = 62.0%` (permanently retired under the mandatory [[concepts/confidence-gating]] Zero Abstention Contract).
   - **Mechanical Confirmation Rules**: Requires SPY overnight gap $\ge \pm 0.30\%$ confirmed by QQQ gap in the same direction by $\ge \pm 0.15\%$, prior session SPY close relative to VWAP with positive/negative CLV, plus either candle archetype continuation or two independent risk-on/off triggers from economic surprises and options skew.
   - **Pruned Manifest**: Pruned synthetic narrative commentary and currency noise (`UUP`), retaining only mechanical newsletters (`Sherwood News`, `Chartr`), pre-market proxies (`QQQ`, `IWM`), options skew, FRED economic prints, and prior intraday technical profiles.
 
@@ -90,42 +90,42 @@ When evaluating the 10 batch winners out-of-distribution across the **21 sequest
 
 ```bash
 # 1. Download multi-year historical data into local raw SQLite vault
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.historical_downloader \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.historical_downloader \
   --start-date 2024-10-01 --end-date 2026-10-10 --include-news --include-newsletters
 
 # 2. Compile raw data into zero-lookahead feature cache (Primary Arena)
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --build-historical-cache --start-date 2024-10-01 --end-date 2026-10-10
 
 # 3. Compile held-out Regime Vault cache (2021-2024, no pre-market tape leakage)
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --build-historical-cache --regime-vault --vault-cache-db .regime_vault_cache.db \
   --start-date 2021-02-15 --end-date 2024-09-30
 
 # 4. Calibrate baseline and run 100-iteration tournament from calibrated champion
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --iterations 100 --calibrate-baseline --strata-url http://localhost:8080/v1
 
 # 5. Launch a 100-iteration tournament starting from a specific quantitative archetype seed
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --iterations 100 --seed-archetype mean-reversion --local-db .local_autoresearch_meanrev.db \
   --strata-url http://localhost:8080/v1
 
 # 6. Evaluate winning champion against held-out Regime Vault
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --eval-vault --vault-cache-db .regime_vault_cache.db
 
 # 7. Promote champion to remote Supabase under track jev-local-autoresearched
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner --promote-best
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner --promote-best
 
 # 8. Run Strata Two-Pass Double-Ratchet Tournament (see [[concepts/strata-laya-double-ratchet]])
 # Zero external cloud calls (strictly local Qwen 32B via Strata)
 # Evaluates on multi-regime cross-sectional batches with Friday mini-cycles and early pruning (default: randomized multi-regime, early-prune=True)
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --double-ratchet --curriculum-weeks 5 --iterations 10 --cache-db .local_autoresearch_cache.db --early-prune
 
 # Optional: use legacy sequential/contiguous calendar blocks
-./apps/engine/.venv/bin/python3 -m apps.engine.local_autoresearch.runner \
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m local_autoresearch.runner \
   --double-ratchet --curriculum-weeks 5 --iterations 10 --sequential-curriculum
 ```
 

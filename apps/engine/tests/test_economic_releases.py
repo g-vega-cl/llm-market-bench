@@ -249,6 +249,7 @@ async def test_generate_daily_newsletter_passes_economic_releases_context():
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
         patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch(
             "core.economic_releases.get_today_economic_releases_summary",
             new_callable=AsyncMock,

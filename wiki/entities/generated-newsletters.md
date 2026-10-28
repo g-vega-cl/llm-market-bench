@@ -11,7 +11,7 @@ The newsletter generator (`apps/engine/tasks/newsletter_generator.py`) synthesiz
 
 1. **Ingestion** — pulls fresh newsletters from Gmail (`ingest_newsletters`) and upserts them into `newsletter_snapshots`. Skipped for historical/backfill runs.
 2. **Snapshot query** — selects snapshots published within the past 12 hours (`date >= since_iso`). For historical runs an upper bound (`date <= now_et + 15min`) is also applied so only snapshots available at the target time are used.
-3. **Context assembly** — gathers macro dashboard, economic releases, options sentiment/volatility surface, and FX context. Context helpers tolerate `Error` / `No options` / `No macro options` / unavailable prefixes by omitting those sections.
+3. **Context assembly** — gathers macro dashboard, economic releases, options sentiment/volatility surface, FX context, and multi-horizon reference matrices (`apps/engine/analytics/market_reference.py`). Multi-horizon anchors provide tactical (20d), intermediate (60d), and structural (52w) percentiles, moving averages (20/50/200-DMA), realized volatility regimes, and Z-scores for macro core assets (`UUP`, `EURUSD`, `USDJPY`, `SPY`, `QQQ`, `TLT`, `GLD`, `USO`) and mentioned single stocks. Context helpers tolerate `Error` / `No options` / `No macro options` / unavailable prefixes by omitting those sections.
 4. **Synthesis** — `_call_deepseek_flash` produces a `GeneratedNewsletterOutput` (title, summary, bullet points, content, read time). The date string shown to the model is derived from the run's effective timestamp.
 5. **Persistence** — inserts the record into `generated_newsletters`.
 

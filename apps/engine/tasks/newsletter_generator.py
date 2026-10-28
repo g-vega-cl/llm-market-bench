@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
+from analytics.market_reference import get_newsletter_reference_context
 from core.config import DEEPSEEK_FLASH_MODEL
 from core.db import bulk_upsert_newsletter_snapshots, get_supabase_client
 from core.fred import get_curated_macro_dashboard
@@ -40,6 +41,7 @@ async def _call_deepseek_flash(
     options_context: str = "",
     economic_releases_context: str = "",
     fx_context: str = "",
+    reference_context: str = "",
     date_str: str | None = None,
 ) -> GeneratedNewsletterOutput:
     """Invokes DeepSeek V4 Flash to synthesize ingested daily newsletters, FRED macro indicators, options data, and live economic releases into a proper newsletter."""
@@ -56,6 +58,11 @@ async def _call_deepseek_flash(
         macro_text = f"\n\n**Key Economic Readings (FRED):**\n{macro_context}" if macro_context else ""
         options_text = f"\n\n**Key Options & Volatility Readings:**\n{options_context}" if options_context else ""
         fx_text = f"\n\n**Foreign Exchange & US Dollar (FX):**\n{fx_context}" if fx_context else ""
+        ref_text = (
+            f"\n\n**Multi-Horizon Reference & Statistical Regime Matrix:**\n{reference_context}"
+            if reference_context
+            else ""
+        )
         return GeneratedNewsletterOutput(
             title=f"{session_label} — {now_date_str}",
             summary=f"No new financial newsletters were ingested prior to the {session} session.",
@@ -82,7 +89,7 @@ async def _call_deepseek_flash(
                 f"- **Bear Scenario**: Watch downside support levels if unexpected catalyst drives volatility expansion.\n\n"
                 f"### 🗓️ The Catalyst Radar & Key Levels\n\n"
                 f"- **Economic Calendar**: Key macroeconomic releases and central bank commentary scheduled for upcoming sessions.\n"
-                f"- **Pivot Levels**: Watch SPX and NDX key support and resistance zones for directional confirmation."
+                f"- **Pivot Levels**: Watch SPX and NDX key support and resistance zones for directional confirmation.{ref_text}"
             ),
             read_time_minutes=6,
         )
@@ -113,7 +120,8 @@ async def _call_deepseek_flash(
         "   - `### 🗓️ The Catalyst Radar & Key Levels`: Upcoming economic data releases, earnings calendar timeline, and critical technical pivot levels.\n"
         "   Use subheadings, bullet points, and bold key tickers and metrics (e.g., **NVDA**, **SPX**, **10Y Yield 4.25%**, **CPI +0.2%**, **Fed Funds 5.25%**).\n"
         "5. Tone must be professional, analytical, objective, and developer/investor friendly, delivering deep substance without fluff. "
-        "Ground all market and currency commentary strictly in the provided data. If a specific metric or ticker is unavailable, discuss macro implications naturally without referencing 'packet', 'prompt', 'context', or missing data feeds."
+        "Ground all market and currency commentary strictly in the provided data. If a specific metric or ticker is unavailable, discuss macro implications naturally without referencing 'packet', 'prompt', 'context', or missing data feeds.\n"
+        "6. **Historical Reference & Statistical Context Mandate**: Never state nominal prices, yields, or levels in isolation (e.g. avoid 'UUP is at $29.12' or 'BA dropped to $168.16'). Ground all asset and single-stock commentary in their multi-horizon context: always specify whether the level is high or low relative to its 52-week range (percentile rank), distance from key moving averages (20/50/200-DMA), whether the move is statistically uncommon (Z-score/regime tag), and the prevailing realized volatility regime (compressed vs expanding). In `### 🗓️ The Catalyst Radar & Key Levels`, include the Markdown Multi-Horizon Reference Table provided in the prompt to ensure complete statistical transparency for readers."
     )
 
     economic_block = (
@@ -126,6 +134,11 @@ async def _call_deepseek_flash(
         f"Official Options Derivatives & Volatility Structure:\n{options_context}\n\n" if options_context else ""
     )
     fx_block = f"Live Foreign Exchange & US Dollar (FX) Dynamics:\n{fx_context}\n\n" if fx_context else ""
+    reference_block = (
+        f"Official Multi-Horizon Positioning & Volatility Reference Matrix:\n{reference_context}\n\n"
+        if reference_context
+        else ""
+    )
 
     user_prompt = (
         f"Session Window: {session.upper()} ({session_label})\n"
@@ -134,6 +147,7 @@ async def _call_deepseek_flash(
         f"{macro_block}"
         f"{options_block}"
         f"{fx_block}"
+        f"{reference_block}"
         f"Ingested Newsletters ({len(chunks)} sources):\n"
         f"{compiled_sources}"
     )
@@ -363,6 +377,16 @@ async def generate_daily_newsletter(
     except Exception as e:
         logger.warning(f"Could not fetch FX context for newsletter: {e}")
 
+    # Step 4.6: Fetch Multi-Horizon Reference & Statistical Regime Context
+    reference_context = ""
+    try:
+        reference_context = await get_newsletter_reference_context(
+            chunks=snapshots,
+            target_date=target_date,
+        )
+    except Exception as e:
+        logger.warning(f"Could not fetch market reference context for newsletter: {e}")
+
     # Generate newsletter content via DeepSeek V4 Flash
     output = await _call_deepseek_flash(
         snapshots,
@@ -372,6 +396,7 @@ async def generate_daily_newsletter(
         options_context=options_context,
         economic_releases_context=economic_releases_context,
         fx_context=fx_context,
+        reference_context=reference_context,
         date_str=now_et.strftime("%B %d, %Y"),
     )
 

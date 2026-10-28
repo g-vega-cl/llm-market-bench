@@ -13,9 +13,9 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/engine/tasks/daily_predictor.py` | 22 | 5 | 22.7% | 693 | 110 | **CRITICAL** |
-| `apps/engine/tests/test_workflow_schedule.py` | 14 | 5 | 35.7% | 239 | 70 | **HIGH** |
+| `apps/engine/tasks/daily_predictor.py` | 21 | 5 | 23.8% | 693 | 105 | **CRITICAL** |
 | `apps/engine/main.py` | 20 | 3 | 15.0% | 73 | 60 | **HIGH** |
+| `apps/engine/tests/test_workflow_schedule.py` | 12 | 5 | 41.7% | 239 | 60 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 14 | 4 | 28.6% | 264 | 56 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 25 | 2 | 8.0% | 1758 | 50 | **HIGH** |
 | `packages/config/tools.json` | 22 | 2 | 9.1% | 210 | 44 | **HIGH** |
@@ -27,7 +27,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tasks/daily_autoresearch.py` | 11 | 2 | 18.2% | 735 | 22 | **MEDIUM** |
 | `apps/engine/execution/daily_trading.py` | 7 | 3 | 42.9% | 304 | 21 | **MEDIUM** |
 | `apps/engine/execution/providers/massive.py` | 7 | 3 | 42.9% | 826 | 21 | **MEDIUM** |
-| `apps/engine/tests/test_verify_skill.py` | 7 | 3 | 42.9% | 82 | 21 | **MEDIUM** |
+| `apps/engine/tests/test_verify_skill.py` | 7 | 3 | 42.9% | 93 | 21 | **MEDIUM** |
 
 ## Temporal Coupling (Co-churn)
 

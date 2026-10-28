@@ -24,17 +24,20 @@ qmd update && qmd embed
 cd apps/web && pnpm run typecheck
 cd apps/web && pnpm run build
 
-# Hermetic test suites with coverage
-./apps/engine/.venv/bin/python3 -m pytest -n auto --cov=. --cov-config=.coveragerc
-cd apps/web && pnpm test -- --coverage
+# Hermetic test suites with coverage (Parallel vs Sequential)
+./apps/engine/.venv/bin/python3 -m pytest -n auto --cov=. --cov-config=.coveragerc # Parallel (fast)
+./apps/engine/.venv/bin/python3 -m pytest --cov=. --cov-config=.coveragerc         # Sequential (1 worker, minimal CPU/RAM)
+cd apps/web && pnpm test -- --coverage                                            # Web tests (parallel)
+cd apps/web && pnpm test -- --maxWorkers=1 --coverage                             # Web tests (sequential)
 ```
 
 Or run the bundled verification runner:
 
 ```bash
-./.agents/skills/verify/scripts/verify.sh          # Full suite
-./.agents/skills/verify/scripts/verify.sh --fast   # Lint, format, types, and wiki
-./.agents/skills/verify/scripts/verify.sh --hotspots # Hotspot forensics & coupling
+./.agents/skills/verify/scripts/verify.sh              # Full suite (parallel, -n auto)
+./.agents/skills/verify/scripts/verify.sh --sequential # Full suite (strictly 1 worker, low CPU/RAM)
+./.agents/skills/verify/scripts/verify.sh --fast       # Lint, format, types, and wiki (no tests)
+./.agents/skills/verify/scripts/verify.sh --hotspots   # Hotspot forensics & coupling
 ```
 
 ---

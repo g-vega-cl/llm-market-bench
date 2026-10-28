@@ -107,3 +107,18 @@ def test_verify_skill_mandates_config_parity_and_preservation():
     assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
     entity_content = VERIFY_ENTITY_MD.read_text()
     assert "config parity" in entity_content.lower() or "tools.json" in entity_content
+
+
+def test_verify_script_supports_sequential():
+    """Verify that verify.sh and SKILL.md document and support sequential execution with 1 worker."""
+    assert VERIFY_SCRIPT.exists(), "verify.sh must exist"
+    content = VERIFY_SCRIPT.read_text()
+    assert "--sequential" in content
+    assert "pytest --cov=. --cov-config=.coveragerc" in content
+    assert "--maxWorkers=1" in content
+
+    skill_content = VERIFY_SKILL_MD.read_text()
+    assert "--sequential" in skill_content
+
+    entity_content = VERIFY_ENTITY_MD.read_text()
+    assert "--sequential" in entity_content

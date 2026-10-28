@@ -64,7 +64,7 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`. Completed via `MEMORY_SCALAR_COLUMNS`, `DECISION_SCALAR_COLUMNS`, `TRADES_TODAY_SELECT`, and `CAUSE_AND_EFFECT_SELECT`.
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
-- [ ] - Benchify: for newsletter. It's a good idea to always have a reference. When you say dollar UUP (or anything) is at X price. We need to know if that's uncommon. Is that price high or low relative to history? What about volatility? Etc...
+- [x] - Benchify: for newsletter. It's a good idea to always have a reference. When you say dollar UUP (or anything) is at X price. We need to know if that's uncommon. Is that price high or low relative to history? What about volatility? Etc... Completed via multi-horizon reference matrix (tactical 20d, intermediate 60d, structural 52w) and volatility regimes in apps/engine/analytics/market_reference.py.
 - [ ] - Benchify: get the smol server to do API calls 24/7 now that the DB is huge, and set up a distributed DB.
 
 ---

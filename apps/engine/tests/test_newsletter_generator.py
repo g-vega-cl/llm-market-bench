@@ -65,6 +65,7 @@ Markets opened on a bullish footing today, propelled by massive momentum in the 
     with (
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
         patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
     ):
         result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
@@ -103,6 +104,7 @@ async def test_generate_daily_newsletter_fallback_when_no_snapshots():
     with (
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
         patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
     ):
         result = await generate_daily_newsletter(session="close", sb_client=mock_sb)
@@ -150,6 +152,7 @@ async def test_generate_daily_newsletter_triggers_ingest_and_uses_12h_date_windo
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=fake_ingested_snapshots) as mock_ingest,
         patch("tasks.newsletter_generator.bulk_upsert_newsletter_snapshots") as mock_upsert,
         patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
     ):
         result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
@@ -196,6 +199,7 @@ async def test_generate_daily_newsletter_with_fred_macro_context():
         patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
         patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock) as mock_fred_dash,
         patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
     ):
         mock_fred_dash.return_value = "=== Macro & Economic Context (FRED) ===\n- Fed Funds: 5.25%"
@@ -325,6 +329,7 @@ async def test_generate_daily_newsletter_passes_options_context():
             new_callable=AsyncMock,
             return_value="Options metrics: Max Pain $590",
         ) as mock_get_opts,
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
     ):
         result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
@@ -402,6 +407,37 @@ async def test_call_deepseek_flash_includes_fx_context():
 
 
 @pytest.mark.asyncio
+async def test_call_deepseek_flash_includes_reference_context():
+    """Verify that _call_deepseek_flash forwards reference_context in the prompt."""
+    from tasks.newsletter_generator import _call_deepseek_flash
+
+    mock_client = MagicMock()
+    mock_output = GeneratedNewsletterOutput(
+        title="Reference Test Briefing",
+        summary="Test Summary",
+        bullet_points=["Point 1"],
+        content="Test content",
+    )
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_output)
+
+    with (
+        patch("core.llm.clients.get_deepseek_client", return_value=mock_client),
+        patch("core.llm.clients.close_client", new_callable=AsyncMock),
+    ):
+        resp = await _call_deepseek_flash(
+            chunks=[{"sender": "WSJ", "subject": "Market Open", "content": "Stocks rising"}],
+            session="open",
+            formatted_time="09:12 ET",
+            reference_context="| **UUP** | $29.12 | 52W: 99% | Vol: Compressed |",
+        )
+        assert resp.title == "Reference Test Briefing"
+        create_args = mock_client.chat.completions.create.call_args[1]
+        user_msg = next(m["content"] for m in create_args["messages"] if m["role"] == "user")
+        assert "Official Multi-Horizon Positioning & Volatility Reference Matrix:" in user_msg
+        assert "| **UUP** | $29.12 | 52W: 99% | Vol: Compressed |" in user_msg
+
+
+@pytest.mark.asyncio
 async def test_get_newsletter_fx_context_success():
     """Verify that get_newsletter_fx_context formats UUP, EURUSD, and USDJPY properly."""
     from tasks.newsletter_generator import get_newsletter_fx_context
@@ -468,6 +504,7 @@ async def test_generate_daily_newsletter_passes_fx_context():
             new_callable=AsyncMock,
             return_value="FX metrics: UUP $28.52",
         ) as mock_get_fx,
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
     ):
         result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
@@ -476,6 +513,45 @@ async def test_generate_daily_newsletter_passes_fx_context():
         mock_llm_call.assert_called_once()
         assert "fx_context" in mock_llm_call.call_args.kwargs
         assert "FX metrics: UUP $28.52" in mock_llm_call.call_args.kwargs["fx_context"]
+
+
+@pytest.mark.asyncio
+async def test_generate_daily_newsletter_passes_reference_context():
+    """Verify that generate_daily_newsletter fetches multi-horizon reference context and forwards it to _call_deepseek_flash."""
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = []
+    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "ref-gen-id"}]
+
+    mock_llm_response = GeneratedNewsletterOutput(
+        title="Reference Aware Briefing",
+        summary="Positioning anchors macro cross-asset flows",
+        bullet_points=["UUP prints $29.12 (99th %-tile)"],
+        content="Market briefing with multi-horizon reference context",
+        read_time_minutes=6,
+    )
+
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock, return_value="Macro"),
+        patch(
+            "tasks.newsletter_generator.get_newsletter_options_context",
+            new_callable=AsyncMock,
+            return_value="Options",
+        ),
+        patch("tasks.newsletter_generator.get_newsletter_fx_context", new_callable=AsyncMock, return_value="FX"),
+        patch(
+            "tasks.newsletter_generator.get_newsletter_reference_context",
+            new_callable=AsyncMock,
+            return_value="### 📊 Multi-Horizon Reference Matrix\n| **UUP** | $29.12 |",
+        ) as mock_get_ref,
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
+    ):
+        result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
+        assert result is not None
+        mock_get_ref.assert_called_once()
+        mock_llm_call.assert_called_once()
+        assert "reference_context" in mock_llm_call.call_args.kwargs
+        assert "| **UUP** | $29.12 |" in mock_llm_call.call_args.kwargs["reference_context"]
 
 
 @pytest.mark.asyncio
@@ -499,6 +575,7 @@ async def test_generate_daily_newsletter_raises_when_insert_fails():
         patch("core.economic_releases.get_today_economic_releases_summary", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator.get_newsletter_fx_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
     ):
         with pytest.raises(RuntimeError, match="Failed to insert generated newsletter into database"):
@@ -528,6 +605,7 @@ async def test_generate_daily_newsletter_with_target_date():
         patch("core.economic_releases.get_today_economic_releases_summary", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator.get_newsletter_fx_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
     ):
         result = await generate_daily_newsletter(session="close", sb_client=mock_sb, target_date="2026-10-16")

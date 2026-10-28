@@ -29,11 +29,12 @@ The protocol audits every changed file through seven tiers; none may be skipped.
 The runner script supports flags to scope the suite:
 
 ```sh
-./.agents/skills/verify/scripts/verify.sh            # full suite
-./.agents/skills/verify/scripts/verify.sh --fast     # lint, format, types, wiki (no builds/tests)
-./.agents/skills/verify/scripts/verify.sh --engine   # engine-only
-./.agents/skills/verify/scripts/verify.sh --web      # web-only
-./.agents/skills/verify/scripts/verify.sh --hotspots # hotspot & churn forensics only
+./.agents/skills/verify/scripts/verify.sh              # full suite (parallel, -n auto)
+./.agents/skills/verify/scripts/verify.sh --sequential # full suite (strictly 1 worker, low CPU/RAM)
+./.agents/skills/verify/scripts/verify.sh --fast       # lint, format, types, wiki (no builds/tests)
+./.agents/skills/verify/scripts/verify.sh --engine     # engine-only
+./.agents/skills/verify/scripts/verify.sh --web        # web-only
+./.agents/skills/verify/scripts/verify.sh --hotspots   # hotspot & churn forensics only
 ```
 
 It synchronizes the wiki (`hotspots.py --write-wiki`, `wiki_lint.py --fix`, `qmd update && qmd embed`), verifies database migration grants and RLS integrity (`apps/engine/tests/test_migration_grants.py`), runs Ruff (`check` and `format --check`), Biome, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage.

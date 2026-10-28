@@ -10,6 +10,7 @@ FAST=false
 ENGINE=false
 WEB=false
 HOTSPOTS_ONLY=false
+SEQUENTIAL=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -33,9 +34,13 @@ while [[ $# -gt 0 ]]; do
       RUN_ALL=false
       shift
       ;;
+    --sequential)
+      SEQUENTIAL=true
+      shift
+      ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: $0 [--fast] [--engine] [--web] [--hotspots]"
+      echo "Usage: $0 [--fast] [--engine] [--web] [--hotspots] [--sequential]"
       exit 1
       ;;
   esac
@@ -132,13 +137,23 @@ fi
 # Tests & Coverage
 if [ "$FAST" = false ]; then
   if [ "$ENGINE" = true ]; then
-    echo "--> Running Hermetic Engine tests with coverage (matching CI working-directory: apps/engine)..."
-    (cd apps/engine && "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest -n auto --cov=. --cov-config=.coveragerc)
+    if [ "$SEQUENTIAL" = true ]; then
+      echo "--> Running Hermetic Engine tests sequentially (1 worker, minimal CPU/RAM)..."
+      (cd apps/engine && "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest --cov=. --cov-config=.coveragerc)
+    else
+      echo "--> Running Hermetic Engine tests with coverage (matching CI working-directory: apps/engine)..."
+      (cd apps/engine && "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest -n auto --cov=. --cov-config=.coveragerc)
+    fi
   fi
 
   if [ "$WEB" = true ]; then
-    echo "--> Running Web tests with coverage..."
-    (cd apps/web && pnpm test -- --coverage)
+    if [ "$SEQUENTIAL" = true ]; then
+      echo "--> Running Web tests sequentially (1 worker, minimal CPU/RAM)..."
+      (cd apps/web && pnpm test -- --maxWorkers=1 --coverage)
+    else
+      echo "--> Running Web tests with coverage..."
+      (cd apps/web && pnpm test -- --coverage)
+    fi
   fi
 fi
 

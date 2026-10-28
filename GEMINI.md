@@ -22,7 +22,7 @@
 
 - Python (engine): Ruff with rules E, F, I, UP, B, SIM. Config at `apps/engine/ruff.toml`.
 - TypeScript (web + packages): Biome with recommended rules + organize imports. Config at `biome.json`.
-- **Test Coverage**: Enforced in `.husky/pre-commit` (70% engine, 40% web).
+- **Test Coverage**: Enforced in `.husky/pre-commit` (70% engine, 40% web). Supports sequential execution (1 worker, low CPU/RAM) via `SEQUENTIAL=1 git commit` or `git config benchify.sequential true`.
 - Both run in `.husky/pre-commit` before tests (fail-fast).
 - Format with `ruff format` / `biome check --write`.
 - **Zero External Network Calls in Tests (MANDATORY)**: Unit and integration tests MUST NEVER make outbound network calls (HTTP/HTTPS, external sockets, or external DNS resolution). All external APIs, SDK clients, and databases must be strictly mocked (`httpx`, `requests`, `AsyncAnthropic`, `AsyncOpenAI`, Supabase, FMP, Massive, FRED, Gmail IMAP). Tests must be 100% hermetic and run successfully without internet access or ambient API keys. An autouse session fixture in `apps/engine/tests/conftest.py` intercepts socket connects and DNS lookups, throwing a `RuntimeError` if an unmocked network connection is attempted.

@@ -22,7 +22,7 @@ These thresholds are intentionally set near baseline levels to act as a "ratchet
 
 Enforcement happens at two levels:
 
-1.  **Local (Pre-commit)**: Controlled by `.husky/pre-commit`. Commits will fail if coverage drops below the threshold.
+1.  **Local (Pre-commit)**: Controlled by `.husky/pre-commit`. Commits will fail if coverage drops below the threshold. Supports sequential 1-worker mode to reduce CPU and RAM usage via `SEQUENTIAL=1 git commit` or permanently via `git config benchify.sequential true`.
 2.  **CI/CD**: Full test suites run on every PR.
 
 ## Configuration

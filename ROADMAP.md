@@ -13,7 +13,6 @@ A living document of features and improvements in progress or planned for the pl
       Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
   - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
-- [ ] - Benchify daily predictor Oct 16th for bonds didn't review the trade or I can't see it on my app
 - [x] - Benchify: remove anti bias from frozen, those are not "format" instructions those affect the prediction so they should be able to be mutated. Completed via `split_daily_predictor_prompt` isolating frozen constraints and keeping trading rules mutable (verified in `test_daily_autoresearch.py`).
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)

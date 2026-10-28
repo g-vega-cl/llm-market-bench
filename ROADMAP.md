@@ -13,6 +13,7 @@ A living document of features and improvements in progress or planned for the pl
       Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
   - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
+- [ ] - Benchify daily predictor Oct 16th for bonds didn't review the trade or I can't see it on my app
 - [x] - Benchify: remove anti bias from frozen, those are not "format" instructions those affect the prediction so they should be able to be mutated. Completed via `split_daily_predictor_prompt` isolating frozen constraints and keeping trading rules mutable (verified in `test_daily_autoresearch.py`).
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
@@ -20,6 +21,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: when remaking and updating design system. Make sure sidebar is only 4 items tops. Maybe change the items based on frequency of use?
+- [ ] - Benchify: at most 4 in navbar..maybe less. Home, portfolios, live, data/experiments. They can be icons too
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: update today page
@@ -35,6 +37,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer.
 - [ ] - Benchify: let people give instructions to the 24/7 trader
 - [ ] - Benchify; can you beat the agent game
+  - [ ] - Benchify: challenge people to predict daily weekly etc to produce sectors to predict etc better than you and if they consistently win give them money and they get half and you get half or you can just like a little fee and to get something etc
 
 ---
 
@@ -62,6 +65,7 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: Strip invisible vector egress (`embedding` column) from `apps/web`. Replace `.select('*')` with explicit scalar column projections across `memories` and `decisions` queries in `fetch-memories.ts`, `fetch-today-data.ts`, and `fetch-cause-and-effect.ts`. Completed via `MEMORY_SCALAR_COLUMNS`, `DECISION_SCALAR_COLUMNS`, `TRADES_TODAY_SELECT`, and `CAUSE_AND_EFFECT_SELECT`.
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
+- [ ] - Benchify: for newsletter. It's a good idea to always have a reference. When you say dollar UUP (or anything) is at X price. We need to know if that's uncommon. Is that price high or low relative to history? What about volatility? Etc...
 - [ ] - Benchify: get the smol server to do API calls 24/7 now that the DB is huge, and set up a distributed DB.
 
 ---
@@ -131,6 +135,8 @@ A living document of features and improvements in progress or planned for the pl
 ## 🎨 Horizon 5: Creative Labs & Experiments (Moonshots)
 
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
+- [ ] - Strata + upwork
+- [ ] - Idea: A article site like medium or dev.to but it allows for html canvasses (AI native)
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
   - same with text
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.

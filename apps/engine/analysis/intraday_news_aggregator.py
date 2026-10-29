@@ -43,9 +43,7 @@ def normalize_headline(headline: str) -> set[str]:
     return {w for w in words if w not in stops and len(w) > 2}
 
 
-def deduplicate_news(
-    items: list[dict[str, Any]], similarity_threshold: float = 0.5
-) -> list[dict[str, Any]]:
+def deduplicate_news(items: list[dict[str, Any]], similarity_threshold: float = 0.5) -> list[dict[str, Any]]:
     """Deduplicate news articles across providers using Jaccard word overlap."""
     unique: list[dict[str, Any]] = []
     seen_token_sets: list[set[str]] = []
@@ -73,9 +71,7 @@ def deduplicate_news(
     return unique
 
 
-async def fetch_alpaca_news(
-    alpaca_news_client: Any, limit: int = 10, symbols: str = "SPY"
-) -> list[dict[str, Any]]:
+async def fetch_alpaca_news(alpaca_news_client: Any, limit: int = 10, symbols: str = "SPY") -> list[dict[str, Any]]:
     """Fetch recent headlines from the Alpaca Benzinga wire."""
     if not alpaca_news_client:
         return []
@@ -113,9 +109,7 @@ async def fetch_alpaca_news(
         return []
 
 
-async def fetch_polygon_news(
-    http_client: httpx.AsyncClient, api_key: str, limit: int = 10
-) -> list[dict[str, Any]]:
+async def fetch_polygon_news(http_client: httpx.AsyncClient, api_key: str, limit: int = 10) -> list[dict[str, Any]]:
     """Fetch reference market news from Polygon."""
     if not api_key:
         return []
@@ -125,9 +119,7 @@ async def fetch_polygon_news(
     try:
         resp = await http_client.get(url, params=params)
         if resp.status_code != 200:
-            logger.warning(
-                f"Polygon news returned HTTP {resp.status_code}: {resp.text[:120]}"
-            )
+            logger.warning(f"Polygon news returned HTTP {resp.status_code}: {resp.text[:120]}")
             return []
 
         articles: list[dict[str, Any]] = []
@@ -207,9 +199,7 @@ async def aggregate_intraday_news(
         tasks = [
             fetch_alpaca_news(alpaca_client, limit=limit_per_source, symbols=symbols),
             fetch_polygon_news(http_client, api_key=massive_api_key, limit=limit_per_source),
-            fetch_fmp_news(
-                http_client, api_key=fmp_api_key, symbols=symbols, limit=limit_per_source
-            ),
+            fetch_fmp_news(http_client, api_key=fmp_api_key, symbols=symbols, limit=limit_per_source),
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 

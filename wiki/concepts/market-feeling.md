@@ -16,9 +16,16 @@ The `market_feeling` table records each sentiment snapshot with:
 - `analysis_method` (text) – distinguishes daily vs. weekend analysis.
 - `created_at` (timestamptz) – automatic timestamp.
 
+## Today Data Gathering (`gather_today_data`)
+
+`gather_today_data(sb_client, weekend_mode=False)` in `apps/engine/analysis/market_feeling.py` assembles the day's context for the sentiment synthesis. Two invariants keep the signal clean:
+
+1. **Mechanical `sys-*` portfolios are excluded.** Trades are filtered by `portfolios.owner_id` and decisions by `model_name`; anything whose identifier starts with `sys-` (case-insensitive) is dropped. This prevents mechanical strategies (e.g. `sys-pead-drift`, `sys-max-pain`) from dominating the AI sentiment narrative.
+2. **Canonical trades are not double-counted.** Executed activity is taken from the `trades` table when it has rows, falling back to `EXECUTED` decisions only when the trades table is empty. Previously the two sources were concatenated, which double-counted the same execution.
+
 ## Usage
 - The **daily predictor** (`[[entities/daily-market-predictor]]`) queries the latest `sentiment_label` and `news_summary` to supply emotional context for its directional prediction prompt.
-- The **web dashboard** (`[[entities/ai-feeling-card]]`) displays the most recent sentiment as a visual AI feeling card.
+- The **web dashboard** (`[[entities/ai-feeling-card]]`) displays the most recent sentiment as a visual AI feeling card. Its buy/sell counts are also restricted to non-`sys-*` portfolios.
 
 ## Related
 - [[entities/ai-feeling-card]]

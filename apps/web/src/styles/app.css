@@ -17,108 +17,134 @@
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  /* Semantic color tokens */
-  --color-accent: #2563eb;
-  --color-accent-hover: #1d4ed8;
-  --color-accent-light: #dbeafe;
-  --color-accent-dark: #172554;
+  /* Matcha & Cedar / Cheddar Boxel Tokens */
+  --color-boxel-canvas: #141c18;
+  --color-boxel-surface: #1d2822;
+  --color-boxel-elevated: #26362e;
+  --color-boxel-trough: #101713;
+  --color-boxel-bevel-hi: #3f574a;
+  --color-boxel-bevel-lo: #090d0b;
+  --color-boxel-ink: #f2ead3;
+  --color-boxel-muted: #9eb0a3;
 
-  --color-success: #22c55e;
+  /* Semantic color tokens (Matcha & Cedar / Cheddar) */
+  --color-accent: #f0a830;
+  --color-accent-hover: #d99220;
+  --color-accent-light: #fdf3d7;
+  --color-accent-dark: #3a280a;
+
+  --color-success: #68d391;
   --color-success-light: #dcfce7;
-  --color-success-dark: #052e16;
+  --color-success-dark: #102a1b;
 
-  --color-danger: #ef4444;
+  --color-danger: #e56b55;
   --color-danger-light: #fee2e2;
-  --color-danger-dark: #450a0a;
+  --color-danger-dark: #381510;
 
-  --color-info: #a855f7;
-  --color-info-light: #f3e8ff;
-  --color-info-dark: #3b0764;
+  --color-info: #7ab89e;
+  --color-info-light: #e0f2ea;
+  --color-info-dark: #142e23;
 
-  --color-warning: #eab308;
+  --color-warning: #f0a830;
   --color-warning-light: #fef9c3;
-  --color-warning-dark: #422006;
+  --color-warning-dark: #3a280a;
 
-  --color-void-900: #0f172a;
-  --color-void-950: #020617;
+  --color-void-900: #1d2822;
+  --color-void-950: #141c18;
 
-  --color-steel-400: #94a3b8;
-  --color-steel-500: #64748b;
-  --color-steel-600: #475569;
+  --color-steel-400: #9eb0a3;
+  --color-steel-500: #769181;
+  --color-steel-600: #3f574a;
 
-  --color-glass-dark: #1a1e23;
+  --color-glass-dark: #1d2822;
 
-  /* Legacy physical colors for backward compatibility until full migration */
-  --color-electric-blue-50: #eff6ff;
-  --color-electric-blue-100: #dbeafe;
-  --color-electric-blue-200: #bfdbfe;
-  --color-electric-blue-300: #93c5fd;
-  --color-electric-blue-400: #60a5fa;
-  --color-electric-blue-500: #3b82f6;
-  --color-electric-blue-600: #2563eb;
-  --color-electric-blue-700: #1d4ed8;
-  --color-electric-blue-800: #1e40af;
-  --color-electric-blue-900: #1e3a8a;
-  --color-electric-blue-950: #172554;
+  /* Map zinc ramp to Warm Matcha & Cedar / Tatami Cream so all legacy views harmonize */
+  --color-zinc-50: #f8f4e8;
+  --color-zinc-100: #f2ead3;
+  --color-zinc-200: #dcd8c8;
+  --color-zinc-300: #c2cfc5;
+  --color-zinc-400: #9eb0a3;
+  --color-zinc-500: #769181;
+  --color-zinc-600: #597565;
+  --color-zinc-700: #3f574a;
+  --color-zinc-800: #26362e;
+  --color-zinc-900: #1d2822;
+  --color-zinc-950: #141c18;
+
+  /* Legacy physical colors mapped to Matcha & Cedar equivalents */
+  --color-electric-blue-50: #fdf3d7;
+  --color-electric-blue-100: #fae6b1;
+  --color-electric-blue-200: #f6d482;
+  --color-electric-blue-300: #f3c155;
+  --color-electric-blue-400: #f0a830;
+  --color-electric-blue-500: #f0a830;
+  --color-electric-blue-600: #d99220;
+  --color-electric-blue-700: #b87714;
+  --color-electric-blue-800: #8f5b0f;
+  --color-electric-blue-900: #66400a;
+  --color-electric-blue-950: #3a280a;
 
   --color-neon-green-50: #f0fdf4;
   --color-neon-green-100: #dcfce7;
   --color-neon-green-200: #bbf7d0;
   --color-neon-green-300: #86efac;
-  --color-neon-green-400: #4ade80;
-  --color-neon-green-500: #22c55e;
-  --color-neon-green-600: #16a34a;
-  --color-neon-green-700: #15803d;
-  --color-neon-green-800: #166534;
-  --color-neon-green-900: #14532d;
-  --color-neon-green-950: #052e16;
+  --color-neon-green-400: #68d391;
+  --color-neon-green-500: #68d391;
+  --color-neon-green-600: #48bb78;
+  --color-neon-green-700: #2f855a;
+  --color-neon-green-800: #276749;
+  --color-neon-green-900: #22543d;
+  --color-neon-green-950: #102a1b;
 
   --color-alert-red-50: #fef2f2;
   --color-alert-red-100: #fee2e2;
   --color-alert-red-200: #fecaca;
-  --color-alert-red-300: #fca5a5;
-  --color-alert-red-400: #f87171;
-  --color-alert-red-500: #ef4444;
-  --color-alert-red-600: #dc2626;
-  --color-alert-red-700: #b91c1c;
-  --color-alert-red-800: #991b1b;
-  --color-alert-red-900: #7f1d1d;
-  --color-alert-red-950: #450a0a;
+  --color-alert-red-300: #f29b8b;
+  --color-alert-red-400: #eb826f;
+  --color-alert-red-500: #e56b55;
+  --color-alert-red-600: #cc523d;
+  --color-alert-red-700: #a83f2d;
+  --color-alert-red-800: #823022;
+  --color-alert-red-900: #5c2218;
+  --color-alert-red-950: #381510;
 
-  --color-deep-purple-50: #faf5ff;
-  --color-deep-purple-100: #f3e8ff;
-  --color-deep-purple-200: #e9d5ff;
-  --color-deep-purple-300: #d8b4fe;
-  --color-deep-purple-400: #c084fc;
-  --color-deep-purple-500: #a855f7;
-  --color-deep-purple-600: #9333ea;
-  --color-deep-purple-700: #7e22ce;
-  --color-deep-purple-800: #6b21a8;
-  --color-deep-purple-900: #581c87;
-  --color-deep-purple-950: #3b0764;
+  --color-deep-purple-50: #e0f2ea;
+  --color-deep-purple-100: #c2e5d6;
+  --color-deep-purple-200: #a3d8c2;
+  --color-deep-purple-300: #8ec7af;
+  --color-deep-purple-400: #7ab89e;
+  --color-deep-purple-500: #64a389;
+  --color-deep-purple-600: #4f8770;
+  --color-deep-purple-700: #3d6b58;
+  --color-deep-purple-800: #2c4f40;
+  --color-deep-purple-900: #1e362c;
+  --color-deep-purple-950: #142e23;
 
   --color-cyber-yellow-50: #fefce8;
   --color-cyber-yellow-100: #fef9c3;
   --color-cyber-yellow-200: #fef08a;
-  --color-cyber-yellow-300: #fde047;
-  --color-cyber-yellow-400: #facc15;
-  --color-cyber-yellow-500: #eab308;
-  --color-cyber-yellow-600: #ca8a04;
+  --color-cyber-yellow-300: #f6c967;
+  --color-cyber-yellow-400: #f3b84b;
+  --color-cyber-yellow-500: #f0a830;
+  --color-cyber-yellow-600: #d99220;
   --color-cyber-yellow-700: #a16207;
   --color-cyber-yellow-800: #854d0e;
   --color-cyber-yellow-900: #713f12;
-  --color-cyber-yellow-950: #422006;
+  --color-cyber-yellow-950: #3a280a;
 }
 
 @layer base {
     html {
-        color-scheme: light dark;
+        color-scheme: dark;
         font-family: var(--font-body);
+        background-color: var(--color-boxel-canvas);
+        color: var(--color-boxel-ink);
     }
 
     body {
         font-family: var(--font-body);
-        @apply text-zinc-900 bg-zinc-50 dark:bg-zinc-950 dark:text-zinc-100;
+        background-color: var(--color-boxel-canvas);
+        color: var(--color-boxel-ink);
     }
 
     h1,
@@ -138,7 +164,7 @@
     }
 
     * {
-        @apply border-zinc-200 dark:border-zinc-800;
+        border-color: var(--color-boxel-bevel-hi);
     }
 
     .using-mouse * {
@@ -147,6 +173,44 @@
 }
 
 @layer utilities {
+    /* Voxel / Boxel 3D Tactile Surface Utilities */
+    .voxel-card {
+        background-color: var(--color-boxel-surface);
+        border-top: 2px solid var(--color-boxel-bevel-hi);
+        border-left: 2px solid var(--color-boxel-bevel-hi);
+        border-right: 2px solid var(--color-boxel-bevel-lo);
+        border-bottom: 2px solid var(--color-boxel-bevel-lo);
+        box-shadow: 4px 4px 0px var(--color-boxel-bevel-lo);
+    }
+
+    .voxel-trough {
+        background-color: var(--color-boxel-trough);
+        border-top: 2px solid var(--color-boxel-bevel-lo);
+        border-left: 2px solid var(--color-boxel-bevel-lo);
+        border-right: 2px solid var(--color-boxel-bevel-hi);
+        border-bottom: 2px solid var(--color-boxel-bevel-hi);
+    }
+
+    .voxel-btn {
+        border-top: 2px solid var(--color-boxel-bevel-hi);
+        border-left: 2px solid var(--color-boxel-bevel-hi);
+        border-right: 2px solid var(--color-boxel-bevel-lo);
+        border-bottom: 2px solid var(--color-boxel-bevel-lo);
+        box-shadow: 2px 2px 0px var(--color-boxel-bevel-lo);
+        transition: transform 80ms ease, box-shadow 80ms ease, background-color 120ms ease;
+    }
+
+    .voxel-btn:active:not(:disabled) {
+        transform: translate(2px, 2px);
+        box-shadow: 0px 0px 0px var(--color-boxel-bevel-lo);
+    }
+
+    .voxel-badge {
+        border-top: 1px solid var(--color-boxel-bevel-hi);
+        border-left: 1px solid var(--color-boxel-bevel-hi);
+        border-right: 1px solid var(--color-boxel-bevel-lo);
+        border-bottom: 1px solid var(--color-boxel-bevel-lo);
+    }
     /* Animation Utilities */
     .animate-slow-fade {
         animation: fade 1s ease-in-out;

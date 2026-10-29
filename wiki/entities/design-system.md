@@ -5,78 +5,72 @@ category: entity
 
 # Design System
 
-The `@llm-market-bench/ui-design-system` package provides the shared UI component library for the web dashboard. It enforces the "Bloomberg Terminal meets Wired" aesthetic with consistent dark mode support.
+The `@llm-market-bench/ui-design-system` package provides the shared UI component library for the web dashboard. It enforces the tactile **Matcha & Cedar / Cheddar Boxel** aesthetic inspired by voxel hardware geometry and editorial clarity.
+
+## Design rules cheat sheet
+
+1. **Topbar 3-item budget**: The global navigation bar in `apps/web/src/routes/__root.tsx` displays strictly 3 items: `Home`, `Portfolios`, and `Lab`. Zero sidebars are allowed.
+2. **Page 3-block budget**: Any page may render at most 3 major blocks. `Home` renders 2 blocks, `Portfolios` renders 3 blocks, and `Lab` renders 3 category blocks.
+3. **Row 3-stat budget**: Every table row or card slot displays at most 3 data points.
+4. **Zero cards inside cards**: Raised `.voxel-card` surfaces never nest inside another `.voxel-card`. Inner metrics use recessed `.voxel-trough` slots.
+5. **Zero collapsibles or accordions**: Content that belongs on a page renders flat and visible immediately. Secondary telemetry lives in `/lab`.
+6. **Zero decorative emojis in UI chrome**: Section headers, metric labels, and buttons use crisp typography and square pixel indicators instead of emojis.
+7. **Sharp boxel geometry**: Corners use `rounded-none` with 2px directional bevels (`border-boxel-bevel-hi` on top and left, `border-boxel-bevel-lo` on right and bottom) and hard `4px 4px 0px` offset shadows.
+
+## Matcha & Cedar / Cheddar palette tokens
+
+Defined in `apps/web/src/styles/app.css` via `@theme inline`:
+
+- `--color-boxel-canvas`: `#141c18` Deep Forest Moss page background
+- `--color-boxel-surface`: `#1d2822` Stepped Moss Terrace card surface
+- `--color-boxel-elevated`: `#26362e` Spruce Highlight hover surface
+- `--color-boxel-trough`: `#101713` Dark Carved Slot recessed cell
+- `--color-boxel-bevel-hi`: `#3f574a` Top and left 3D voxel highlight edge
+- `--color-boxel-bevel-lo`: `#090d0b` Bottom and right 3D voxel shadow edge
+- `--color-boxel-ink`: `#f2ead3` Warm Tatami Cream primary text that prevents halation in dark rooms
+- `--color-boxel-muted`: `#9eb0a3` Lichen Sage secondary text
+- `--color-accent`: `#f0a830` Cheddar Gold primary action and active state
+- `--color-success`: `#68d391` Sprout Emerald buy and gain signal
+- `--color-danger`: `#e56b55` Terracotta Clay sell and loss signal
+- `--color-info`: `#7ab89e` Celadon Sage secondary tag color
 
 ## Primitives
 
-Composable base components that handle styling, dark mode, and accessibility:
+Composable base components that handle styling and accessibility:
 
-- **Button** — 5 variants (solid, soft, outline, ghost, glass), loading state
-- **Card** — 4 variants (default, outlined, glass, glass-warning) with gradient support, customizable `radius` (xl, 2xl, 3xl, none; default is 3xl), `padding` options, and `isHoverable` toggle for `.card-lift` animation. Supported gradients: electric, success, alert, catalyst, ai. Supports the `group` class for child hover effects. The `glass` variant supports a semantic `colorScheme` (`neutral`, `success`, `warning`, `danger`, `info`) which renders performance-colored glass styling (border colors, glow intensities, and tinted backdrops) natively.
-- **Badge** — 4 variants (solid, soft, outline, glass) with severity levels (high, medium), radius options, and optional `showDot` boolean. Includes specific support for **Auto-Research** status using `info` (purple) to denote AI-driven prompt improvement experiments.
-- **Table** — Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) with built-in dark mode, alignment (`left`/`center`/`right`), optional hover on rows, and `containerClassName` for the wrapper
-- **Input**, **Label**, **ErrorMessage** — Form controls with error state and addon support
-- **Select** — Standard select styled to match the design system
-- **Skeleton** — 3 variants (rect, circle, text) for loading states
-- **ErrorBoundary** — React error boundary with fallback UI
-- **LoadingSpinner** — Spinner with size variants
+- **Button**: Tactile `.voxel-btn` primitive with 2px raised bevels, sharp `rounded-none` corners, and physical `translate(2px, 2px)` click depression.
+- **Card**: Raised `.voxel-card` block with `rounded-none` geometry, stepped moss surface, and hard offset shadow.
+- **Badge**: Sharp `.voxel-badge` tag with optional square pixel dot indicator.
+- **Table**: Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container.
+- **Input**, **Label**, **Select**, **LoadingSpinner**: Standard form and status primitives.
 
 ## Patterns
 
 Higher-level compound components for specific UI patterns:
 
-- **SectionHeading** — Primary section title with gradient decorator bar and gradient text
-- **SubHeading** — Secondary heading for subsections, with optional `withDivider` (horizontal rule), `uppercase` (smaller tracking-wider style), and `rightElement` (e.g., count badges)
-- **ConfidenceBar** — Percentage bar with label, color scheme, and hero variant
-- **StatPill** — Clickable filter pill with colored dot and count
-- **MetricTile** — Compact stat display with icon, label, and value
-- **EmptyState** — Standardized empty state with icon and message
-- **LoadingBoundary** — Suspense wrapper with skeleton loading
-- **ErrorCard** — Error display with retry action
+- **SectionHeading**: Uppercase display title paired with a solid square cheddar-gold block marker.
+- **SubHeading**: Secondary heading for subsections with optional divider and right element.
+- **ConfidenceBar**: 10 discrete block segments (`data-testid="confidence-segment"`) inside a recessed `.voxel-trough` slot.
+- **StatPill**, **MetricTile**, **EmptyState**, **LoadingBoundary**, **ErrorCard**: Shared layout and feedback patterns.
 
 ## Layouts
 
-- **PageLayout** — Full-page container with max-width constraints
-- **HeroBackground** — Decorative gradient background for hero sections (used on Market Overview; removed from Today in favour of `TodayStatusBar`)
-- **TodayStatusBar** — Slim sticky info bar for the Today page; shows market open/closed, sentiment, confidence, buy/sell counts, and last-analysis timestamp in a single scrollable row
+- **PageLayout**: Full-page container with max-width constraints.
+- **GlobalBackground**: Deep Forest Moss canvas with a subtle warm dot grid matrix.
+- **TodayStatusBar**: Slim sticky info bar for the Today view that filters out mechanical `sys-*` portfolios from AI buy and sell counts.
 
-## Utilities
+## Governance and verification protocol
 
-- **cn** — clsx-based className merging utility
-
-## Design Tokens
-
-- **Colors**: Electric Blue (primary), Neon Green (BUY), Alert Red (SELL), Deep Purple (AI), Cyber Yellow (catalysts)
-- **Typography**: Space Grotesk headlines, Satoshi body, JetBrains Mono data
-- **Semantic Gradients**: electric, success, alert, catalyst, ai
-- **Motion**: slide-up, scale-in, staggered delays (100-500ms), float, pulse-glow — all respect `prefers-reduced-motion`
-
-## Usage
-
-All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memories, Audits) import from this package. 
-
-### Unified Theme & Conventions
-
-1. **Unified Theme (No Light/Dark Toggle)**: The application is standardized on a single premium high-contrast theme ("Bloomberg Terminal meets Wired"). Primitives like `Badge` and `Button` render their high-contrast dark styles directly without relying on custom `dark:` classes, toggles, or fallback media queries.
-2. **Prefer Default Styles**: Developers MUST always favor default styles provided by the design system primitives (e.g. using standard `colorScheme` and `variant` properties) rather than writing custom `className` override styles. This prevents visual inconsistency, ensures correct contrast automatically, and simplifies maintenance.
-3. **Clashing Styles Pitfall (`truncate` + `bg-clip-text`)**: Never apply the Tailwind `truncate` class directly to headings or elements using `bg-clip-text` and text transparency. Browsers render the resulting ellipsis (`…`) using the transparent fill color, making it invisible and causing background gradient bleed. Always wrap the text inside a separate `overflow-hidden` container, using `whitespace-nowrap` on the gradient text element.
-4. **Card Performance Heatmap**: On dashboard overview grids, cards apply performance-based dynamic styles mapping the daily return percentage (`todayPct`) to visual indicators. High-gain cards shift toward gold/amber, mild gains to emerald, neutral states to sky blue, mild losses to rose, and high losses to deep crimson. This styling overrides the glass border/glow in a standardized fashion to create a natural heatmap effect.
-
-## Governance & Verification Protocol
-
-1. **No Arbitrary Values**: Avoid square-bracket utility escapes (such as `w-[230px]` or `bg-[#1a2b3c]`) in web application code. All styles must use defined theme spacing, typography, and color tokens.
-2. **Typecheck Gate**: Any update to `@llm-market-bench/ui-design-system` requires running `pnpm run typecheck` across `apps/web` to ensure no downstream breaking changes or missing props.
-3. **Closed Variant Props**: Components must accept only design-system-defined variants and color schemes. Do not override background colors, borders, or text sizing with ad-hoc `className` utilities.
-4. **Mandatory State Coverage**: Any new primitive or pattern component must account for empty, loading, error, and long-text overflow states.
-5. **Fluent Responsive Layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72`/`basis-96`, and `repeat(auto-fit, minmax(min(100%, 15rem), 1fr))`). See [[concepts/fluent-responsive-design]].
-6. **Cumulative Layout Shift (CLS) Prevention**: Strictly eliminate skeleton loaders, pulse shimmers, and unmounting tables on refetch. Enforce silent Suspense fallbacks (`fallback={null}`), `keepPreviousData` on timeframe queries, and cached in-memory fallbacks on network drop. See [[concepts/cumulative-layout-shift]].
+1. **No arbitrary values**: Avoid square-bracket utility escapes in web application code. All styles must use defined theme spacing, typography, and color tokens.
+2. **Typecheck gate**: Any update to `@llm-market-bench/ui-design-system` requires running `pnpm run typecheck` across `apps/web` to ensure no downstream breaking changes.
+3. **Closed variant props**: Components must accept only design-system-defined variants and color schemes.
+4. **Fluent responsive layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72` and `basis-96`). See [[concepts/fluent-responsive-design]].
+5. **Cumulative layout shift prevention**: Enforce silent Suspense fallbacks (`fallback={null}`) and `keepPreviousData` on timeframe queries. See [[concepts/cumulative-layout-shift]].
 
 ## Related
 
-- [[entities/web-app]] — The dashboard that consumes this design system
-- [[concepts/fluent-responsive-design]] — Principles of fluid and reactive layout architecture
-- [[concepts/cumulative-layout-shift]] — Zero layout shift standards and skeleton-free transitions
-- [[concepts/type-safety]] — All components are strictly typed without `any`
-- [[sources/web-design-system-source]] — Original design spec
-
-
+- [[entities/web-app]]
+- [[concepts/fluent-responsive-design]]
+- [[concepts/cumulative-layout-shift]]
+- [[concepts/type-safety]]
+- [[sources/web-design-system-source]]

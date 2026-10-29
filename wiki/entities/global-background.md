@@ -5,7 +5,7 @@ category: entity
 
 # Global Background
 
-A fixed-position background component that renders ambient glowing orbs and a dot grid pattern across the entire application. Added to the root layout for consistent visual depth, replacing per-page backgrounds like the old CSS variant and ShaderBackground on the HomePage.
+A fixed-position background component that renders the Deep Forest Moss canvas with a subtle warm dot-grid matrix across the entire application. Added to the root layout for consistent visual depth, replacing per-page backgrounds like the old CSS variant and ShaderBackground on the HomePage.
 
 ## Purpose
 
@@ -14,8 +14,8 @@ Before `GlobalBackground`, each page managed its own backdrop — the HomePage h
 ## Implementation
 
 - **Position:** `fixed inset-0` with `z-[-1]` so it sits behind all content.
-- **Orbs:** Three radial gradients at top-right (`rgba(0,242,254,0.1)`), bottom-left (`rgba(74,222,128,0.07)`), and center (`rgba(246,224,94,0.05)`) cast colored ambient light without overwhelming the layout.
-- **Dot grid:** A repeating `radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px)` with `background-size: 24px 24px` creates a fine dot pattern at 40% opacity.
+- **Canvas:** `bg-boxel-canvas` (`#141c18`, Deep Forest Moss) fills the viewport.
+- **Dot grid:** A repeating `radial-gradient(rgba(242, 234, 211, 0.25) 1px, transparent 1px)` with `background-size: 20px 20px` at 20% opacity creates a fine warm (Tatami Cream) dot pattern.
 - **No interactivity:** `pointer-events-none` ensures clicks pass through to the actual UI.
 
 ## Usage

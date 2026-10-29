@@ -120,14 +120,17 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
         start_date = f"{est_date_str}T00:00:00"
         date_label = "today"
 
-    # 1. Fetch trades
+    # 1. Fetch trades (excluding mechanical sys-* portfolios)
     trades_res = (
         sb_client.table("trades")
         .select("id, ticker, signal, quantity, price, total_cost, executed_at, portfolios(owner_id)")
         .gte("executed_at", start_date)
         .execute()
     )
-    trades = trades_res.data or []
+    raw_trades = trades_res.data or []
+    trades = [
+        t for t in raw_trades if not ((t.get("portfolios") or {}).get("owner_id") or "").lower().startswith("sys-")
+    ]
 
     # 2. Fetch memories (events, lessons, incentives)
     memories_res = sb_client.table("memories").select("*").gte("created_at", start_date).execute()
@@ -137,22 +140,22 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
     lessons = [m for m in memories if m.get("memory_type") == "LESSON_LEARNED"]
     events = [m for m in memories if m.get("memory_type") in ("MARKET_EVENT", "GOVERNMENT_INCENTIVE")]
 
-    # 3. Fetch decisions for reasoning context and separate executed vs rejected
+    # 3. Fetch decisions for reasoning context and separate executed vs rejected (excluding sys-*)
     decisions_res = (
         sb_client.table("decisions")
         .select("id, ticker, signal, confidence, reasoning, model_name, status")
         .gte("created_at", start_date)
         .execute()
     )
-    decisions = decisions_res.data or []
+    raw_decisions = decisions_res.data or []
+    decisions = [d for d in raw_decisions if not (d.get("model_name") or "").lower().startswith("sys-")]
 
     # Separate executed trades (from decisions table) vs rejected attempts
     executed_from_decisions = [d for d in decisions if d.get("status") == "EXECUTED"]
     rejected_attempts = [d for d in decisions if d.get("status", "").startswith("REJECTED_")]
 
-    # Also include trades from the trades table (executed trades)
-    # Combine: trades from trades table + executed decisions = all executed activity
-    executed_trades = trades + executed_from_decisions
+    # Prefer canonical trades table rows; fall back to executed decisions only if trades table is empty
+    executed_trades = trades if trades else executed_from_decisions
 
     # Use all decisions for reasoning context (includes executed, rejected, and validated)
     all_decisions = decisions

@@ -84,8 +84,9 @@ const sizeMap = {
 };
 
 const roundedMap: Record<string, string> = {
-    xl: 'rounded-xl',
-    full: 'rounded-full',
+    none: 'rounded-none',
+    xl: 'rounded-none',
+    full: 'rounded-none',
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -107,12 +108,12 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref,
     ) => {
         const base =
-            'inline-flex items-center justify-center gap-2 font-bold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+            'voxel-btn inline-flex items-center justify-center gap-2 font-bold focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
         const colorClasses = gradient
             ? (gradientMap[colorScheme] ?? gradientMap.accent)
             : (colorSchemeMap[colorScheme]?.[variant] ?? colorSchemeMap.accent.solid);
         const sizeClasses = sizeMap[size];
-        const roundedClasses = roundedMap[rounded];
+        const roundedClasses = roundedMap[rounded] ?? 'rounded-none';
 
         return (
             <button

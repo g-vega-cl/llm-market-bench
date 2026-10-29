@@ -1,5 +1,6 @@
 import type { MarketFeeling, Trade } from '@llm-market-bench/database';
 import { Badge, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { isSystemPortfolio } from '~/features/portfolios/lib/config';
 
 interface AIFeelingCardProps {
     marketFeeling: (MarketFeeling & { formattedTime?: string }) | null;
@@ -154,9 +155,10 @@ export function AIFeelingCard({ marketFeeling, trades, isSentimentStale }: AIFee
         primaryConcern: marketFeeling?.primary_concern || null,
     };
 
-    const buyCount = trades.filter((t) => t.signal === 'BUY').length;
-    const sellCount = trades.filter((t) => t.signal === 'SELL').length;
-    const totalTrades = trades.length;
+    const llmTrades = trades.filter((t) => !isSystemPortfolio(t.portfolios?.owner_id));
+    const buyCount = llmTrades.filter((t) => t.signal === 'BUY').length;
+    const sellCount = llmTrades.filter((t) => t.signal === 'SELL').length;
+    const totalTrades = llmTrades.length;
 
     return (
         <section className="space-y-8 animate-slide-up">

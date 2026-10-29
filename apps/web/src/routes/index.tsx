@@ -4,23 +4,74 @@ import { fetchLatestMarketBarometer } from '~/features/home/api/fetch-barometer'
 import type { HomePageData } from '~/features/home/pages/HomePage';
 import { HomePage } from '~/features/home/pages/HomePage';
 import {
+    type BenchmarkDataPoint,
     fetchAllActivePortfolioPerformance,
     fetchBenchmarkHistory,
+    type PortfolioPerformanceItem,
 } from '~/features/portfolios/api/fetch-portfolios';
 import { isAutoresearchPortfolio, isSystemPortfolio } from '~/features/portfolios/lib/config';
 import { fetchLatestMarketFeeling } from '~/features/today/api/fetch-today-data';
 import { formatEasternTime } from '~/utils/date';
 
+function mapPortfolioPerformance(p: PortfolioPerformanceItem): HomePageData['portfolios'][number] {
+    let todayPct = 0;
+    let weekPct = 0;
+    let totalEquity = 0;
+
+    if (p.performance.length > 0) {
+        const len = p.performance.length;
+        const last = p.performance[len - 1].totalEquity;
+        const prev = len >= 2 ? p.performance[len - 2].totalEquity : last;
+        const first = p.performance[0].totalEquity;
+
+        totalEquity = last;
+        todayPct = prev > 0 ? ((last - prev) / prev) * 100 : 0;
+        weekPct = first > 0 ? ((last - first) / first) * 100 : 0;
+    }
+
+    const cleanName = p.ownerId.split('/').pop() || p.ownerId;
+    const displayName = cleanName.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+    return {
+        name: displayName,
+        todayPct: Number(todayPct.toFixed(2)),
+        weekPct: Number(weekPct.toFixed(2)),
+        totalEquity,
+        isActive: true,
+        isAutoResearch: isAutoresearchPortfolio(p.ownerId),
+        isSystem: isSystemPortfolio(p.ownerId),
+    };
+}
+
+function calculateBenchmarkMoves(benchmarkData: BenchmarkDataPoint[]): {
+    todayPct: number;
+    weekPct: number;
+} {
+    if (benchmarkData.length < 2) {
+        return { todayPct: 0, weekPct: 0 };
+    }
+    const sortedBench = [...benchmarkData].sort((a, b) => a.date.localeCompare(b.date));
+    const last = sortedBench[sortedBench.length - 1].price;
+    const prev = sortedBench[sortedBench.length - 2].price;
+    const first = sortedBench[0].price;
+
+    const benchToday = prev > 0 ? ((last - prev) / prev) * 100 : 0;
+    const benchWeek = first > 0 ? ((last - first) / first) * 100 : 0;
+
+    return {
+        todayPct: Number(benchToday.toFixed(2)),
+        weekPct: Number(benchWeek.toFixed(2)),
+    };
+}
+
 const getHomepageData = createServerFn({ method: 'GET' }).handler(
     async (): Promise<HomePageData> => {
-        // Fetch initial data concurrently
         const [marketFeeling, portfoliosData, barometer] = await Promise.all([
             fetchLatestMarketFeeling(),
             fetchAllActivePortfolioPerformance(7),
             fetchLatestMarketBarometer(),
         ]);
 
-        // Fetch benchmark now that we have the dates
         const benchmarkRecord = await fetchBenchmarkHistory(
             ['SPY'],
             portfoliosData.startDate,
@@ -28,62 +79,17 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
         );
         const benchmarkData = benchmarkRecord.SPY || [];
 
-        // Calculate Individual Portfolio Performance
-        const portfoliosList = portfoliosData.portfolios.map((p) => {
-            let todayPct = 0;
-            let weekPct = 0;
-            let totalEquity = 0;
+        const portfoliosList = portfoliosData.portfolios
+            .filter((p) => !isSystemPortfolio(p.ownerId))
+            .map(mapPortfolioPerformance);
 
-            if (p.performance.length > 0) {
-                // performance is sorted by date ascending from fetchAllActivePortfolioPerformance
-                const len = p.performance.length;
-                const last = p.performance[len - 1].totalEquity;
-                const prev = len >= 2 ? p.performance[len - 2].totalEquity : last;
-                const first = p.performance[0].totalEquity;
-
-                totalEquity = last;
-                todayPct = prev > 0 ? ((last - prev) / prev) * 100 : 0;
-                weekPct = first > 0 ? ((last - first) / first) * 100 : 0;
-            }
-
-            // Extract a clean name from ownerId if it contains slashes (e.g., 'org/Claude-3-Opus' -> 'Claude-3-Opus')
-            const cleanName = p.ownerId.split('/').pop() || p.ownerId;
-            // Add spaces before numbers and capitalize to make it look like a model name
-            const displayName = cleanName
-                .replace(/-/g, ' ')
-                .replace(/\b\w/g, (c) => c.toUpperCase());
-
-            return {
-                name: displayName,
-                todayPct: Number(todayPct.toFixed(2)),
-                weekPct: Number(weekPct.toFixed(2)),
-                totalEquity,
-                isActive: true,
-                isAutoResearch: isAutoresearchPortfolio(p.ownerId),
-                isSystem: isSystemPortfolio(p.ownerId),
-            };
-        });
-
-        // Calculate Benchmark Performance
-        let benchToday = 0;
-        let benchWeek = 0;
-        if (benchmarkData.length >= 2) {
-            // Sort by date just in case
-            const sortedBench = [...benchmarkData].sort((a, b) => a.date.localeCompare(b.date));
-            const last = sortedBench[sortedBench.length - 1].price;
-            const prev = sortedBench[sortedBench.length - 2].price;
-            const first = sortedBench[0].price;
-
-            benchToday = prev > 0 ? ((last - prev) / prev) * 100 : 0;
-            benchWeek = first > 0 ? ((last - first) / first) * 100 : 0;
-        }
+        const benchmark = calculateBenchmarkMoves(benchmarkData);
+        const tradesSummary =
+            (marketFeeling?.trades_summary as { buys?: number; sells?: number } | null) ?? null;
 
         return {
             portfolios: portfoliosList,
-            benchmark: {
-                todayPct: Number(benchToday.toFixed(2)),
-                weekPct: Number(benchWeek.toFixed(2)),
-            },
+            benchmark,
             feeling: {
                 sentiment: marketFeeling?.market_direction || 'NEUTRAL',
                 summary: marketFeeling?.why_explanation || 'No market feeling available.',
@@ -96,6 +102,8 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
                 lastAnalyzed: marketFeeling?.created_at
                     ? formatEasternTime(marketFeeling.created_at)
                     : undefined,
+                buyCount: tradesSummary?.buys,
+                sellCount: tradesSummary?.sells,
             },
             barometer,
         };

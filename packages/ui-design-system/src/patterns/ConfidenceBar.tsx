@@ -8,13 +8,15 @@ export interface ConfidenceBarProps {
     className?: string;
 }
 
-const barBg: Record<string, string> = {
+const segmentBg: Record<string, string> = {
     accent: 'bg-accent',
-    success: 'bg-neon-green-500',
-    danger: 'bg-alert-red-500',
-    info: 'bg-deep-purple-500',
-    warning: 'bg-amber-500',
+    success: 'bg-success',
+    danger: 'bg-danger',
+    info: 'bg-info',
+    warning: 'bg-warning',
 };
+
+const SEGMENT_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export function ConfidenceBar({
     label,
@@ -24,7 +26,8 @@ export function ConfidenceBar({
     className,
 }: ConfidenceBarProps) {
     const clampedValue = Math.max(0, Math.min(100, value));
-    const barColorClass = barBg[colorScheme] ?? barBg.accent;
+    const filledSegments = Math.round(clampedValue / 10);
+    const activeColorClass = segmentBg[colorScheme] ?? segmentBg.accent;
     const isHero = textStyle === 'hero';
 
     return (
@@ -32,29 +35,31 @@ export function ConfidenceBar({
             <span
                 className={cn(
                     'text-[10px] font-black uppercase tracking-wider',
-                    isHero ? 'text-white/70' : 'text-zinc-400',
+                    isHero ? 'text-boxel-ink' : 'text-boxel-muted',
                 )}
             >
                 {label}
             </span>
-            <div
-                className={cn(
-                    'flex-1 h-2 rounded-full overflow-hidden shadow-inner max-w-[120px]',
-                    isHero ? 'bg-white/10' : 'bg-zinc-100 dark:bg-zinc-800',
-                )}
-            >
-                <div
-                    className={cn(
-                        'h-full rounded-full transition-all duration-1000 shadow-lg',
-                        barColorClass,
-                    )}
-                    style={{ width: `${clampedValue}%` }}
-                />
+            <div className="voxel-trough grid grid-cols-10 gap-0.5 p-1 flex-1 min-w-24 max-w-36">
+                {SEGMENT_INDICES.map((idx) => {
+                    const isFilled = idx < filledSegments;
+                    return (
+                        <span
+                            key={idx}
+                            data-testid="confidence-segment"
+                            data-filled={isFilled ? 'true' : 'false'}
+                            className={cn(
+                                'h-2.5 rounded-none transition-colors',
+                                isFilled ? activeColorClass : 'bg-boxel-surface/50',
+                            )}
+                        />
+                    );
+                })}
             </div>
             <span
                 className={cn(
-                    'text-xs font-bold tabular-nums',
-                    isHero ? 'text-white' : 'text-zinc-500 dark:text-zinc-300',
+                    'text-xs font-bold font-mono tabular-nums',
+                    isHero ? 'text-boxel-ink' : 'text-boxel-ink',
                 )}
             >
                 {clampedValue}%

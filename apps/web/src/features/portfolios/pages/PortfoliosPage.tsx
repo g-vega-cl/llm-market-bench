@@ -3,10 +3,8 @@ import {
     Badge,
     Button,
     Card,
-    MetricTile,
     PageLayout,
     SectionHeading,
-    SubHeading,
 } from '@llm-market-bench/ui-design-system';
 import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -68,9 +66,9 @@ export function getSystemPortfolioSubtitle(ownerId: string): string | undefined 
 function PortfolioLastUpdated({ timestamp }: { timestamp?: string | null }) {
     if (!timestamp) return null;
     return (
-        <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="pt-2 border-t border-boxel-bevel-hi/50 flex items-center justify-between text-xs text-boxel-muted">
             <span>Last updated</span>
-            <span className="font-mono text-zinc-400">{formatEasternDateTime(timestamp)}</span>
+            <span className="font-mono text-boxel-muted">{formatEasternDateTime(timestamp)}</span>
         </div>
     );
 }
@@ -79,23 +77,20 @@ function PortfolioBadges({
     portfolio,
     isSystem,
     track,
-    deprecated,
 }: {
     portfolio: PortfolioWithActive;
     isSystem: boolean;
     track: ReturnType<typeof getPortfolioTrack>;
-    deprecated: boolean;
 }) {
-    if (deprecated) return null;
     return (
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-1.5 mb-3">
             {isSystem && (
-                <Badge variant="glass" size="xs" colorScheme="warning" showDot>
+                <Badge variant="soft" size="xs" colorScheme="warning" showDot>
                     System
                 </Badge>
             )}
             {portfolio.is_autoresearch && (
-                <Badge variant="glass" size="xs" colorScheme="info" showDot>
+                <Badge variant="soft" size="xs" colorScheme="info" showDot>
                     Auto-Research
                 </Badge>
             )}
@@ -105,7 +100,7 @@ function PortfolioBadges({
                 </Badge>
             )}
             {!isSystem && !hasVerifier(portfolio.owner_id) && (
-                <Badge variant="glass" size="xs" colorScheme="warning">
+                <Badge variant="outline" size="xs" colorScheme="warning">
                     No Verifier
                 </Badge>
             )}
@@ -116,43 +111,33 @@ function PortfolioBadges({
 function PortfolioCard({
     portfolio,
     todayPct,
-    deprecated = false,
 }: {
     portfolio: PortfolioWithActive;
     todayPct?: number;
-    deprecated?: boolean;
 }) {
     const track = getPortfolioTrack(portfolio.owner_id);
     const isSystem = portfolio.is_system ?? isSystemPortfolio(portfolio.owner_id);
     const subtitle = getSystemPortfolioSubtitle(portfolio.owner_id);
     const totalEquity = Number(portfolio.total_equity ?? portfolio.cash_balance ?? 0);
     const buyingPower = Number(portfolio.buying_power ?? portfolio.cash_balance ?? 0);
+    const cashBalance = Number(portfolio.cash_balance ?? 0);
 
     return (
         <Link
             key={portfolio.id}
             to="/portfolios/$portfolioId"
             params={{ portfolioId: portfolio.id }}
-            className="block group h-full"
+            className="block group h-full flex-1 basis-72 min-w-0"
         >
-            <Card
-                padding="md"
-                variant="glass"
-                isHoverable={!deprecated}
-                className={`h-full flex flex-col ${deprecated ? 'opacity-60 hover:opacity-80' : ''}`}
-            >
-                <div className="flex justify-between items-start mb-4">
-                    <h3
-                        className={`text-xl font-bold capitalize ${
-                            deprecated ? 'text-zinc-500' : 'text-zinc-900 dark:text-white'
-                        }`}
-                    >
+            <Card padding="md" isHoverable className="h-full flex flex-col">
+                <div className="flex justify-between items-start gap-2 mb-2">
+                    <h3 className="text-lg font-black capitalize text-boxel-ink group-hover:text-accent transition-colors">
                         {portfolio.owner_id.replace(/-/g, ' ')}
                     </h3>
-                    <div className="flex items-center gap-2">
-                        {todayPct !== undefined && !deprecated && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {todayPct !== undefined && (
                             <Badge
-                                variant="glass"
+                                variant="solid"
                                 size="sm"
                                 colorScheme={todayPct >= 0 ? 'success' : 'danger'}
                             >
@@ -160,48 +145,53 @@ function PortfolioCard({
                                 {todayPct.toFixed(2)}%
                             </Badge>
                         )}
-                        <Badge
-                            variant="glass"
-                            size="sm"
-                            colorScheme={deprecated ? 'neutral' : 'success'}
-                            showDot={!deprecated}
-                        >
-                            {deprecated ? 'Retired' : 'Active'}
-                        </Badge>
                     </div>
                 </div>
 
                 {subtitle && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3 font-medium">
-                        {subtitle}
-                    </p>
+                    <p className="text-xs text-boxel-muted mb-3 font-medium">{subtitle}</p>
                 )}
 
-                <PortfolioBadges
-                    portfolio={portfolio}
-                    isSystem={isSystem}
-                    track={track}
-                    deprecated={deprecated}
-                />
+                <PortfolioBadges portfolio={portfolio} isSystem={isSystem} track={track} />
 
-                <div className="space-y-4 mt-auto">
-                    <MetricTile
-                        icon="💰"
-                        label="Total Equity"
-                        value={`$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    />
+                <div className="space-y-3 mt-auto">
+                    <div className="voxel-trough p-3 flex items-baseline justify-between gap-2">
+                        <span className="text-xs font-black uppercase tracking-widest text-boxel-muted">
+                            Total Equity
+                        </span>
+                        <span className="text-xl font-black font-mono text-boxel-ink tabular-nums">
+                            $
+                            {totalEquity.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            })}
+                        </span>
+                    </div>
 
-                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                        <MetricTile
-                            icon="💵"
-                            label="Cash"
-                            value={`$${Number(portfolio.cash_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        />
-                        <MetricTile
-                            icon="📊"
-                            label="Buying Power"
-                            value={`$${buyingPower.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        />
+                    <div className="voxel-trough px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                        <div>
+                            <span className="text-boxel-muted mr-1.5 uppercase font-sans font-bold">
+                                Cash
+                            </span>
+                            <span className="text-boxel-ink font-bold tabular-nums">
+                                $
+                                {cashBalance.toLocaleString('en-US', {
+                                    maximumFractionDigits: 0,
+                                })}
+                            </span>
+                        </div>
+                        <span className="text-boxel-bevel-hi">|</span>
+                        <div>
+                            <span className="text-boxel-muted mr-1.5 uppercase font-sans font-bold">
+                                Buying Power
+                            </span>
+                            <span className="text-boxel-ink font-bold tabular-nums">
+                                $
+                                {buyingPower.toLocaleString('en-US', {
+                                    maximumFractionDigits: 0,
+                                })}
+                            </span>
+                        </div>
                     </div>
 
                     <PortfolioLastUpdated timestamp={portfolio.last_updated_at} />
@@ -240,7 +230,6 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
             );
         })();
 
-        // Slice portfolios and re-normalize relative to first date in sliced window
         const portfolios = comparisonData.portfolios.map((portfolio) => {
             const filteredPerf = portfolio.performance.filter(
                 (p) => new Date(p.date) >= cutoffDate,
@@ -267,7 +256,6 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
             };
         });
 
-        // Rank portfolios descending by trailing return over the selected timeframe
         const getReturnPct = (p: { performance: { value: number }[] }) => {
             if (!p.performance || p.performance.length === 0) return -Infinity;
             const val = p.performance[p.performance.length - 1]?.value;
@@ -281,7 +269,6 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
             return a.ownerId.localeCompare(b.ownerId);
         });
 
-        // Slice benchmark price history
         const benchmarkData: Record<string, BenchmarkDataPoint[]> = {};
         if (comparisonData.benchmarkData) {
             for (const [ticker, points] of Object.entries(comparisonData.benchmarkData)) {
@@ -309,61 +296,49 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
     }, [comparisonData]);
 
     const active = data?.filter((p) => p.is_active !== false) ?? [];
-    const deprecated = data?.filter((p) => p.is_active === false) ?? [];
+    const activeLlm = active.filter((p) => !(p.is_system ?? isSystemPortfolio(p.owner_id)));
+    const activeSystematic = active.filter((p) => p.is_system ?? isSystemPortfolio(p.owner_id));
 
     const hasComparison = processedComparisonData.portfolios?.some((p) => p.performance.length > 0);
 
     return (
-        <div className="min-h-screen">
-            <PageLayout>
-                <header className="mb-12">
+        <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+            <PageLayout maxWidth="xl">
+                <header className="mb-8 pb-4 border-b-2 border-boxel-bevel-hi">
                     <SectionHeading gradient="electric">Agent Portfolios</SectionHeading>
-                    <p className="text-zinc-500 dark:text-zinc-400 text-lg leading-relaxed mt-2">
-                        Live performance and current holdings of our AI trading agents.
+                    <p className="text-boxel-muted text-sm mt-1">
+                        Live equity curves, active LLM agents, and systematic strategies.
                     </p>
                 </header>
 
-                {/* Active agents */}
-                <section className="mb-16">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {active.map((portfolio) => (
-                            <PortfolioCard
-                                key={portfolio.id}
-                                portfolio={portfolio}
-                                todayPct={todayPctMap.get(portfolio.id)}
-                            />
-                        ))}
-                    </div>
-                </section>
-
-                {/* Performance Comparison Chart */}
+                {/* Block 1: Performance Comparison Chart */}
                 {hasComparison && (
-                    <section className="mb-16">
-                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 w-full">
+                    <section data-testid="portfolios-block-chart" className="mb-12">
+                        <div className="flex flex-wrap items-center justify-between gap-4 mb-4 w-full">
                             <div>
                                 <SectionHeading gradient="success">
                                     Performance Comparison
                                 </SectionHeading>
-                                <p className="text-sm text-zinc-500 mt-1">
+                                <p className="text-xs text-boxel-muted mt-1">
                                     Normalized percentage returns over{' '}
                                     {timeframe === 'all'
                                         ? 'all available days'
                                         : `the last ${timeframe}`}
                                 </p>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                                <div className="flex gap-1 p-1 bg-white/80 dark:bg-zinc-900/80 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="voxel-trough flex gap-1 p-1">
                                     {(['7d', '30d', '90d', 'all'] as const).map((tf) => (
                                         <Button
                                             key={tf}
                                             variant={timeframe === tf ? 'solid' : 'ghost'}
-                                            colorScheme={timeframe === tf ? 'success' : 'neutral'}
+                                            colorScheme={timeframe === tf ? 'accent' : 'neutral'}
                                             onClick={() => {
                                                 startTransition(() => {
                                                     setTimeframe(tf);
                                                 });
                                             }}
-                                            className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150"
+                                            className="px-3 py-1 text-xs font-bold"
                                         >
                                             {tf.toUpperCase()}
                                         </Button>
@@ -388,31 +363,42 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                     </section>
                 )}
 
-                {/* Deprecated / retired agents */}
-                {deprecated.length > 0 && (
-                    <section>
-                        <SubHeading
-                            uppercase
-                            withDivider
-                            rightElement={
-                                <Badge variant="soft" size="sm" colorScheme="neutral">
-                                    No longer trading
-                                </Badge>
-                            }
-                        >
-                            Retired Agents
-                        </SubHeading>
-                        <p className="text-sm text-zinc-400 mb-6">
-                            These portfolios are preserved for historical reference. They no longer
-                            receive new trade decisions but their full audit trail remains
-                            accessible.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {deprecated.map((portfolio) => (
+                {/* Block 2: Active LLM Agents */}
+                <section data-testid="portfolios-block-llm" className="mb-12">
+                    <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b-2 border-boxel-bevel-hi">
+                        <SectionHeading gradient="electric">Active LLM Agents</SectionHeading>
+                        <Badge colorScheme="accent" variant="solid" size="xs">
+                            {activeLlm.length} Models
+                        </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-6">
+                        {activeLlm.map((portfolio) => (
+                            <PortfolioCard
+                                key={portfolio.id}
+                                portfolio={portfolio}
+                                todayPct={todayPctMap.get(portfolio.id)}
+                            />
+                        ))}
+                    </div>
+                </section>
+
+                {/* Block 3: Systematic Strategies */}
+                {activeSystematic.length > 0 && (
+                    <section data-testid="portfolios-block-systematic" className="mb-12">
+                        <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b-2 border-boxel-bevel-hi">
+                            <SectionHeading gradient="catalyst">
+                                Systematic Strategies
+                            </SectionHeading>
+                            <Badge colorScheme="warning" variant="soft" size="xs">
+                                {activeSystematic.length} Rules
+                            </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-6">
+                            {activeSystematic.map((portfolio) => (
                                 <PortfolioCard
                                     key={portfolio.id}
                                     portfolio={portfolio}
-                                    deprecated
+                                    todayPct={todayPctMap.get(portfolio.id)}
                                 />
                             ))}
                         </div>

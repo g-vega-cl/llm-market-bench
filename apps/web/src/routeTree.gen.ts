@@ -14,6 +14,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RenkoRouteImport } from './routes/renko'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LabRouteImport } from './routes/lab'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
 import { Route as EarningsAuditRouteImport } from './routes/earnings-audit'
@@ -62,6 +63,11 @@ const LogoutRoute = LogoutRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabRoute = LabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/renko': typeof RenkoRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/renko': typeof RenkoRoute
@@ -256,6 +264,7 @@ export interface FileRoutesById {
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/renko': typeof RenkoRoute
@@ -288,6 +297,7 @@ export interface FileRouteTypes {
     | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
+    | '/lab'
     | '/login'
     | '/logout'
     | '/renko'
@@ -318,6 +328,7 @@ export interface FileRouteTypes {
     | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
+    | '/lab'
     | '/login'
     | '/logout'
     | '/renko'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
+    | '/lab'
     | '/login'
     | '/logout'
     | '/renko'
@@ -381,6 +393,7 @@ export interface RootRouteChildren {
   EarningsAuditRoute: typeof EarningsAuditRoute
   GeneratedNewslettersRoute: typeof GeneratedNewslettersRoute
   HowItWorksRoute: typeof HowItWorksRoute
+  LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   RenkoRoute: typeof RenkoRoute
@@ -437,6 +450,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lab': {
+      id: '/lab'
+      path: '/lab'
+      fullPath: '/lab'
+      preLoaderRoute: typeof LabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-it-works': {
@@ -631,6 +651,7 @@ const rootRouteChildren: RootRouteChildren = {
   EarningsAuditRoute: EarningsAuditRoute,
   GeneratedNewslettersRoute: GeneratedNewslettersRoute,
   HowItWorksRoute: HowItWorksRoute,
+  LabRoute: LabRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   RenkoRoute: RenkoRoute,

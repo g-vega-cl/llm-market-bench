@@ -1,9 +1,8 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { HomePageData } from './HomePage';
 import { HomePage } from './HomePage';
 
-// Mock PostHog
 const mockGetFeatureFlag = vi.fn();
 vi.mock('@posthog/react', () => ({
     usePostHog: () => ({
@@ -12,7 +11,6 @@ vi.mock('@posthog/react', () => ({
     }),
 }));
 
-// Mock Router
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
         <a href={to}>{children}</a>
@@ -54,130 +52,66 @@ const baseData: HomePageData = {
         sentiment: 'BULLISH',
         summary: 'The market is experiencing positive momentum due to strong tech earnings.',
         sentimentLabel: 'Risk-On Rally',
-        sentimentEmoji: '🚀',
         confidence: 85,
         primaryConcern: 'Inflation risks',
         secondaryConcern: 'Yield curve steepening',
         modelUsed: 'MiniMax-Text-01',
         lastAnalyzed: '14:30:00 ET',
+        buyCount: 4,
+        sellCount: 1,
     },
 };
 
-describe('HomePage Dashboard', () => {
-    it('renders the unified dashboard with header, sentiment info, S&P 500 benchmark, and portfolio table', () => {
+describe('HomePage 2-Block Boxel Dashboard', () => {
+    it('renders strictly 2 blocks (AI Market Feeling and Active Agent Portfolios) without collapsibles', () => {
         render(<HomePage data={baseData} />);
 
         const dashboard = screen.getByTestId('dashboard');
+        const feelingBlock = within(dashboard).getByTestId('home-block-feeling');
+        const portfoliosBlock = within(dashboard).getByTestId('home-block-portfolios');
 
-        // Page title
-        expect(screen.getByText('Market Overview')).toBeDefined();
+        expect(feelingBlock).toBeInTheDocument();
+        expect(portfoliosBlock).toBeInTheDocument();
 
-        // Sentiment header
-        expect(within(dashboard).getByText('Live Overview')).toBeDefined();
-        expect(within(dashboard).getByText('BULLISH')).toBeDefined();
-        expect(within(dashboard).getByText('🚀')).toBeDefined();
-        expect(within(dashboard).getByText('Risk-On Rally')).toBeDefined();
-
-        // S&P 500 benchmark inline row
-        expect(within(dashboard).getByText('S&P 500 Benchmark')).toBeDefined();
-        expect(within(dashboard).getByText('+1.2%')).toBeDefined();
-        expect(within(dashboard).getByText('+2.5%')).toBeDefined();
-
-        // Portfolio table header
-        expect(within(dashboard).getByText('Active Agent Portfolios')).toBeDefined();
-        expect(within(dashboard).getByText('Model')).toBeDefined();
-        expect(within(dashboard).getByText('Equity')).toBeDefined();
-        expect(within(dashboard).getByText('Today / Wk')).toBeDefined();
-
-        // Portfolio rows
-        expect(within(dashboard).getByText('Claude 3 Opus')).toBeDefined();
-        expect(within(dashboard).getByText('$32.98')).toBeDefined();
-        expect(within(dashboard).getByText('-4.5%')).toBeDefined();
-        expect(within(dashboard).getByText('-1.2% wk')).toBeDefined();
-
-        expect(within(dashboard).getByText('Llama 3 70B')).toBeDefined();
-        expect(within(dashboard).getByText('$23.89')).toBeDefined();
-        expect(within(dashboard).getByText('+2%')).toBeDefined();
-        expect(within(dashboard).getByText('+5.1% wk')).toBeDefined();
-
-        expect(within(dashboard).getByText('Gpt 5.4 Nano')).toBeDefined();
-        expect(within(dashboard).getByText('$3.19')).toBeDefined();
-        expect(within(dashboard).getByText('-0.8%')).toBeDefined();
-        expect(within(dashboard).getByText('+1.5% wk')).toBeDefined();
-    });
-
-    it('renders the market feeling collapsible toggle and shows a preview when collapsed', () => {
-        render(<HomePage data={baseData} />);
-
-        const dashboard = screen.getByTestId('dashboard');
-
-        // Collapsible button present and shows "Expand" by default
-        const toggleBtn = within(dashboard).getByText('🧠 Market Feeling Analysis');
-        expect(toggleBtn).toBeDefined();
-        expect(within(dashboard).getByText('Expand Details ▼')).toBeDefined();
-
-        // Preview (truncated summary) visible when collapsed
+        // Sentiment block is flat and always visible (zero collapsibles)
+        expect(within(feelingBlock).getByText('AI Market Feeling')).toBeInTheDocument();
+        expect(within(feelingBlock).getByText('BULLISH')).toBeInTheDocument();
+        expect(within(feelingBlock).getByText('Risk-On Rally')).toBeInTheDocument();
         expect(
-            within(dashboard).getByText(/positive momentum due to strong tech earnings/),
-        ).toBeDefined();
+            within(feelingBlock).getByText(/positive momentum due to strong tech earnings/),
+        ).toBeInTheDocument();
+        expect(within(feelingBlock).getByText('Inflation risks')).toBeInTheDocument();
+        expect(within(feelingBlock).getByText('Yield curve steepening')).toBeInTheDocument();
+        expect(within(feelingBlock).getByText(/Last: 14:30:00 ET/)).toBeInTheDocument();
+        expect(within(feelingBlock).getByText(/Model: MiniMax-Text-01/)).toBeInTheDocument();
+        expect(within(feelingBlock).queryByText(/Expand Details/i)).toBeNull();
+
+        // Segmented confidence bar is rendered
+        expect(within(feelingBlock).getAllByTestId('confidence-segment')).toHaveLength(10);
+
+        // S&P 500 benchmark inline trough in Block 2
+        expect(within(portfoliosBlock).getByText('S&P 500 Benchmark')).toBeInTheDocument();
+        expect(within(portfoliosBlock).getByText('+1.2%')).toBeInTheDocument();
+        expect(within(portfoliosBlock).getByText('+2.5%')).toBeInTheDocument();
+
+        // Portfolio table header and rows
+        expect(within(portfoliosBlock).getByText('Active Agent Portfolios')).toBeInTheDocument();
+        expect(within(portfoliosBlock).getByText('Claude 3 Opus')).toBeInTheDocument();
+        expect(within(portfoliosBlock).getByText('$32.98')).toBeInTheDocument();
+        expect(within(portfoliosBlock).getByText('-4.5%')).toBeInTheDocument();
+        expect(within(portfoliosBlock).getByText('-1.2% wk')).toBeInTheDocument();
+
+        expect(within(portfoliosBlock).getByText('Llama 3 70B')).toBeInTheDocument();
+        expect(within(portfoliosBlock).getByText('$23.89')).toBeInTheDocument();
     });
 
-    it('expands market feeling details when the toggle is clicked', () => {
-        render(<HomePage data={baseData} />);
-
-        const dashboard = screen.getByTestId('dashboard');
-        const toggleBtn = within(dashboard).getByRole('button', {
-            name: /Market Feeling Analysis/,
-        });
-
-        fireEvent.click(toggleBtn);
-
-        // Full summary visible
-        expect(within(dashboard).getByText(/strong tech earnings/)).toBeDefined();
-
-        // Concerns
-        expect(within(dashboard).getByText('⚠️ Inflation risks')).toBeDefined();
-        expect(within(dashboard).getByText('🔍 Yield curve steepening')).toBeDefined();
-
-        // Metadata
-        expect(within(dashboard).getByText(/Last: 14:30:00 ET/)).toBeDefined();
-        expect(within(dashboard).getByText(/Model: MiniMax-Text-01/)).toBeDefined();
-
-        // Button now shows Collapse
-        expect(within(dashboard).getByText('Collapse ▲')).toBeDefined();
-    });
-
-    it('does not render a separate mobile or desktop dashboard — only a single unified dashboard', () => {
-        render(<HomePage data={baseData} />);
-
-        expect(screen.queryByTestId('mobile-dashboard')).toBeNull();
-        expect(screen.queryByTestId('desktop-dashboard')).toBeNull();
-        expect(screen.getByTestId('dashboard')).toBeDefined();
-    });
-
-    it('marks auto-research portfolios with a purple dot and manual ones with slate', () => {
-        render(<HomePage data={baseData} />);
-
-        const dashboard = screen.getByTestId('dashboard');
-
-        // Claude 3 Opus is auto-research → purple dot shown as "Auto-Res"
-        const claudeRow = within(dashboard).getByText('Claude 3 Opus').closest('tr');
-        expect(claudeRow).toBeDefined();
-        if (claudeRow) expect(within(claudeRow).getByText('Auto-Res')).toBeDefined();
-
-        // Llama is manual → "Manual"
-        const llamaRow = within(dashboard).getByText('Llama 3 70B').closest('tr');
-        expect(llamaRow).toBeDefined();
-        if (llamaRow) expect(within(llamaRow).getByText('Manual')).toBeDefined();
-    });
-
-    it('marks system portfolios with an amber dot and System label', () => {
+    it('excludes mechanical system (sys-*) portfolios from the Home Active Agent Portfolios block', () => {
         const dataWithSystem: HomePageData = {
             ...baseData,
             portfolios: [
                 ...baseData.portfolios,
                 {
-                    name: 'Sys Daily Spy Deepseek V4 Flash',
+                    name: 'Sys Pead Drift',
                     todayPct: 0.52,
                     weekPct: 1.15,
                     totalEquity: 10052.0,
@@ -189,60 +123,29 @@ describe('HomePage Dashboard', () => {
         };
         render(<HomePage data={dataWithSystem} />);
 
-        const dashboard = screen.getByTestId('dashboard');
-        const sysRow = within(dashboard).getByText('Sys Daily Spy Deepseek V4 Flash').closest('tr');
-        expect(sysRow).toBeDefined();
-        if (sysRow) {
-            expect(within(sysRow).getByText('System')).toBeDefined();
-            expect(within(sysRow).getByText('+0.52%')).toBeDefined();
-            expect(within(sysRow).getByText('+1.15% wk')).toBeDefined();
-        }
+        const portfoliosBlock = screen.getByTestId('home-block-portfolios');
+        expect(within(portfoliosBlock).getByText('Claude 3 Opus')).toBeInTheDocument();
+        expect(within(portfoliosBlock).queryByText('Sys Pead Drift')).toBeNull();
     });
 
-    it('applies desktop responsive styling classes for layout, fonts, and table padding', () => {
+    it('marks auto-research portfolios as Auto-Res and standard ones as Manual', () => {
         render(<HomePage data={baseData} />);
 
         const dashboard = screen.getByTestId('dashboard');
-        const container = dashboard.parentElement;
-        expect(container?.className).toContain('md:max-w-4xl');
-        expect(dashboard.className).toContain('md:px-8');
-        expect(dashboard.className).toContain('md:py-8');
-        expect(dashboard.className).toContain('md:rounded-2xl');
-        expect(dashboard.className).toContain('md:border');
+        const claudeRow = within(dashboard).getByText('Claude 3 Opus').closest('tr');
+        expect(claudeRow).toBeDefined();
+        if (claudeRow) expect(within(claudeRow).getByText('Auto-Res')).toBeInTheDocument();
 
-        const title = screen.getByText('Market Overview');
-        expect(title.className).toContain('md:text-4xl');
+        const llamaRow = within(dashboard).getByText('Llama 3 70B').closest('tr');
+        expect(llamaRow).toBeDefined();
+        if (llamaRow) expect(within(llamaRow).getByText('Manual')).toBeInTheDocument();
     });
 
-    it('renders the Market Health Barometer card when barometer data is provided', () => {
-        const barometerData = {
-            date: '2026-06-17',
-            pe_ratio: 28.362798,
-            forward_pe: 13.609154,
-            pb_ratio: 6.701241,
-            ps_ratio: 4.73962,
-            pfcf_ratio: 24.5,
-            earnings_surprise_momentum: 92.929292,
-            updated_at: '2026-06-17T14:19:15Z',
-            constituents_data: [],
-        };
-        const dataWithBarometer = {
-            ...baseData,
-            barometer: barometerData,
-        };
-        render(<HomePage data={dataWithBarometer} />);
+    it('uses intrinsic flex-wrap layout on dashboard without media query breakpoints', () => {
+        render(<HomePage data={baseData} />);
 
         const dashboard = screen.getByTestId('dashboard');
-
-        // Assert barometer section is rendered
-        expect(within(dashboard).getByText('MARKET HEALTH BAROMETER (S&P 500)')).toBeDefined();
-        expect(within(dashboard).getByText('28.36')).toBeDefined();
-        expect(within(dashboard).getByText('Price-to-Book')).toBeDefined();
-        expect(within(dashboard).getByText('6.70')).toBeDefined();
-        expect(within(dashboard).getByText('Price-to-Sales')).toBeDefined();
-        expect(within(dashboard).getByText('4.74')).toBeDefined();
-        expect(within(dashboard).getByText('Price-to-FCF')).toBeDefined();
-        expect(within(dashboard).getByText('24.50')).toBeDefined();
-        expect(within(dashboard).getByText('As of 2026-06-17')).toBeDefined();
+        expect(dashboard.className).toContain('flex-wrap');
+        expect(dashboard.className).not.toMatch(/\b(sm|md|lg|xl):/);
     });
 });

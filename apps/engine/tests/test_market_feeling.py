@@ -370,6 +370,74 @@ class TestGatherTodayData:
             assert "decisions" in result
             assert isinstance(result["trades"], list)
 
+    @pytest.mark.asyncio
+    async def test_gather_today_data_excludes_systematic_portfolios_and_deduplicates(self):
+        """Test that mechanical sys-* portfolios are excluded from trades/decisions and trades are not double-counted."""
+        from analysis.market_feeling import gather_today_data
+
+        mock_sb = MagicMock()
+
+        def table_router(table_name: str):
+            tbl = MagicMock()
+            if table_name == "trades":
+                tbl.select.return_value.gte.return_value.execute.return_value.data = [
+                    {
+                        "id": "t-llm",
+                        "ticker": "NVDA",
+                        "signal": "BUY",
+                        "quantity": 10,
+                        "price": 140.0,
+                        "total_cost": 1400.0,
+                        "portfolios": {"owner_id": "claude-3-5-sonnet"},
+                    },
+                    {
+                        "id": "t-sys",
+                        "ticker": "SPY",
+                        "signal": "BUY",
+                        "quantity": 50,
+                        "price": 580.0,
+                        "total_cost": 29000.0,
+                        "portfolios": {"owner_id": "sys-pead-drift"},
+                    },
+                ]
+            elif table_name == "decisions":
+                tbl.select.return_value.gte.return_value.execute.return_value.data = [
+                    {
+                        "id": "d-llm",
+                        "ticker": "NVDA",
+                        "signal": "BUY",
+                        "confidence": 85,
+                        "reasoning": "Strong AI capex",
+                        "model_name": "claude-3-5-sonnet",
+                        "status": "EXECUTED",
+                    },
+                    {
+                        "id": "d-sys",
+                        "ticker": "SPY",
+                        "signal": "BUY",
+                        "confidence": 100,
+                        "reasoning": "Mechanical drift rule",
+                        "model_name": "sys-pead-drift",
+                        "status": "EXECUTED",
+                    },
+                ]
+            else:
+                tbl.select.return_value.gte.return_value.execute.return_value.data = []
+                tbl.select.return_value.gte.return_value.order.return_value.execute.return_value.data = []
+                tbl.select.return_value.order.return_value.limit.return_value.execute.return_value.data = []
+                tbl.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = []
+                tbl.select.return_value.in_.return_value.gte.return_value.order.return_value.execute.return_value.data = []
+            return tbl
+
+        mock_sb.table.side_effect = table_router
+
+        result = await gather_today_data(mock_sb)
+
+        assert len(result["trades"]) == 1
+        assert result["trades"][0]["ticker"] == "NVDA"
+        assert len(result["decisions"]) == 1
+        assert result["decisions"][0]["model_name"] == "claude-3-5-sonnet"
+
 
 class TestAnalyzeMarketFeeling:
     """Tests for analyze_market_feeling function."""

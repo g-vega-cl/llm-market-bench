@@ -276,4 +276,50 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         expect(screen.getByText(/Last updated:/i)).toBeInTheDocument();
         expect(screen.getAllByText('10:45 AM ET').length).toBeGreaterThanOrEqual(1);
     });
+
+    it('excludes systematic (sys-*) portfolio trades from AIFeelingCard buy/sell counts', () => {
+        const testData = {
+            ...emptyTodayData,
+            trades: [
+                {
+                    id: 't-llm-1',
+                    ticker: 'NVDA',
+                    signal: 'BUY',
+                    price: 140,
+                    executed_at: '2026-05-29T14:00:00Z',
+                    portfolios: { owner_id: 'claude-3-5-sonnet' },
+                    formattedTime: '10:00 AM',
+                },
+                {
+                    id: 't-sys-1',
+                    ticker: 'SPY',
+                    signal: 'SELL',
+                    price: 580,
+                    executed_at: '2026-05-29T14:01:00Z',
+                    portfolios: { owner_id: 'sys-pead-drift' },
+                    formattedTime: '10:01 AM',
+                },
+                {
+                    id: 't-sys-2',
+                    ticker: 'QQQ',
+                    signal: 'SELL',
+                    price: 480,
+                    executed_at: '2026-05-29T14:02:00Z',
+                    portfolios: { owner_id: 'sys-max-pain' },
+                    formattedTime: '10:02 AM',
+                },
+            ],
+        } as unknown as TodayData;
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <TodayPage initialData={testData} fetchFn={vi.fn().mockResolvedValue(testData)} />
+            </QueryClientProvider>,
+        );
+
+        const buysLabel = screen.getAllByText('Buys')[0];
+        const sellsLabel = screen.getAllByText('Sells')[0];
+        expect(buysLabel.previousElementSibling?.textContent).toBe('1');
+        expect(sellsLabel.previousElementSibling?.textContent).toBe('0');
+    });
 });

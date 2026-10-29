@@ -83,6 +83,18 @@ const mockPortfolios = [
         updated_at: '2026-05-25T12:00:00.000Z',
     },
     {
+        id: 'p-sys',
+        owner_id: 'sys-pead-drift',
+        total_equity: 105000,
+        cash_balance: 25000,
+        buying_power: 50000,
+        is_active: true,
+        is_autoresearch: false,
+        is_system: true,
+        created_at: '2026-05-25T12:00:00.000Z',
+        updated_at: '2026-05-25T12:00:00.000Z',
+    },
+    {
         id: 'p2',
         owner_id: 'gpt-4-retired',
         total_equity: 80000,
@@ -95,8 +107,8 @@ const mockPortfolios = [
     },
 ] as unknown as (Portfolio & { is_active: boolean; is_autoresearch: boolean })[];
 
-describe('PortfoliosPage Card Heights & Layout', () => {
-    it('should style portfolio cards and links to ensure equal heights and aligned metrics', async () => {
+describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
+    it('separates Active LLM Agents and Systematic Strategies into distinct blocks and moves Retired to /lab', async () => {
         const fetchFn = vi.fn().mockResolvedValue(mockPortfolios);
         const comparisonFetchFn = vi.fn().mockResolvedValue({
             portfolios: [],
@@ -114,23 +126,23 @@ describe('PortfoliosPage Card Heights & Layout', () => {
         );
 
         await waitFor(() => {
-            // Retrieve the links wrapping the cards
+            expect(screen.getByTestId('portfolios-block-llm')).toBeInTheDocument();
+            expect(screen.getByTestId('portfolios-block-systematic')).toBeInTheDocument();
+
+            // Only the 2 active portfolios (1 LLM + 1 Systematic) are rendered as portfolio-link cards; retired is in /lab
             const links = screen.getAllByTestId('portfolio-link');
             expect(links.length).toBe(2);
+            expect(screen.queryByText(/gpt 4 retired/i)).toBeNull();
 
             for (const link of links) {
-                // 1. The wrapper Link should have `h-full` to stretch in the CSS grid cell
                 expect(link.className).toContain('h-full');
-
-                // 2. The inner Card component (first child of the Link element) should have `h-full` and `flex flex-col`
                 const cardElement = link.firstChild as HTMLElement;
                 expect(cardElement).toBeDefined();
                 expect(cardElement.className).toContain('h-full');
                 expect(cardElement.className).toContain('flex');
                 expect(cardElement.className).toContain('flex-col');
 
-                // 3. The metrics block container inside Card should have `mt-auto` to align items at the bottom
-                const metricsContainer = cardElement.querySelector('.space-y-4');
+                const metricsContainer = cardElement.querySelector('.space-y-3');
                 expect(metricsContainer).not.toBeNull();
                 expect(metricsContainer?.className).toContain('mt-auto');
             }

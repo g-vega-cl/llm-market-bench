@@ -16,7 +16,7 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps>(
     ({ className, containerClassName, children, ...props }, ref) => (
         <div
             className={cn(
-                'overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-sm',
+                'overflow-x-auto voxel-trough rounded-none bg-boxel-trough',
                 containerClassName,
             )}
         >

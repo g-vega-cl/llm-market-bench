@@ -83,9 +83,10 @@ const dotColors: Record<string, string> = {
 };
 
 const radiusMap: Record<string, string> = {
-    full: 'rounded-full',
-    lg: 'rounded-lg',
-    md: 'rounded-md',
+    none: 'rounded-none',
+    full: 'rounded-none',
+    lg: 'rounded-none',
+    md: 'rounded-none',
 };
 
 export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
@@ -104,14 +105,14 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
         ref,
     ) => {
         const scheme = severity ?? colorScheme ?? 'neutral';
-        const base = 'inline-flex items-center font-black uppercase tracking-widest';
+        const base = 'voxel-badge inline-flex items-center font-black uppercase tracking-widest';
         const sizeClasses = {
             xs: 'px-1.5 py-0.5 text-[9px]',
             sm: 'px-2 py-0.5 text-[10px]',
             md: 'px-2.5 py-1 text-xs',
         }[size];
         const colorClasses = badgeColors[scheme]?.[variant] ?? badgeColors.neutral.soft;
-        const radiusClasses = radiusMap[radius];
+        const radiusClasses = radiusMap[radius] ?? 'rounded-none';
 
         return (
             <span
@@ -122,7 +123,7 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
                 {showDot && (
                     <span
                         className={cn(
-                            'mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
+                            'mr-1.5 h-1.5 w-1.5 shrink-0 rounded-none',
                             dotColors[scheme] ?? dotColors.neutral,
                         )}
                     />

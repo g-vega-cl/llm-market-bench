@@ -7,6 +7,7 @@ import type {
     Trade,
 } from '@llm-market-bench/database';
 import { Badge, ConfidenceBar } from '@llm-market-bench/ui-design-system';
+import { isSystemPortfolio } from '~/features/portfolios/lib/config';
 
 interface TodayStatusBarProps {
     data: {
@@ -154,10 +155,13 @@ function AnalysisTimestamp({
 export function TodayStatusBar({ data }: TodayStatusBarProps) {
     const { isMarketOpen, isSentimentStale, todayDateString, marketFeeling } = data;
 
-    const totalTrades = data.trades?.length ?? 0;
+    const llmTrades = (
+        (data.trades ?? []) as (Trade & { portfolios?: { owner_id?: string | null } })[]
+    ).filter((t) => !isSystemPortfolio(t.portfolios?.owner_id ?? null));
+    const totalTrades = llmTrades.length;
     const activeMemories = data.memories?.filter((m) => m.status === 'ACTIVE').length ?? 0;
-    const buyCount = data.trades?.filter((t) => t.signal === 'BUY').length ?? 0;
-    const sellCount = data.trades?.filter((t) => t.signal === 'SELL').length ?? 0;
+    const buyCount = llmTrades.filter((t) => t.signal === 'BUY').length;
+    const sellCount = llmTrades.filter((t) => t.signal === 'SELL').length;
     const newsletterCount = data.newsletters?.length ?? 0;
 
     const sentiment = {

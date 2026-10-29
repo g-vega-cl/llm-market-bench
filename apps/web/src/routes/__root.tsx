@@ -103,44 +103,25 @@ function RootComponent() {
 }
 
 export const navItems = [
-    { to: '/portfolios', label: 'Portfolios' },
     { to: '/', label: 'Home', exact: true },
-    { to: '/memories', label: 'Memories' },
-    { to: '/today', label: 'Today' },
-    { to: '/autoresearch', label: 'Auto-Research' },
-    { to: '/chat', label: 'AI Chat Gateway' },
-    { to: '/daily-predictions', label: 'Daily Predictor' },
-    { to: '/ai-predictions', label: 'AI Sector Predictions' },
-    { to: '/generated-newsletters', label: 'Newsletters' },
-    { to: '/reasoning', label: 'Reasoning' },
-    { to: '/concepts', label: 'Concepts' },
-    { to: '/market-overview', label: 'Market Overview' },
-    { to: '/barometer-audit', label: 'Barometer Audit' },
-    { to: '/leaderboard', label: 'Leaderboard' },
-    { to: '/renko', label: 'LIN Renko Agent' },
-    { to: '/how-it-works', label: 'How it Works' },
-    { to: '/cause-and-effect', label: 'Cause & Effect' },
-    { to: '/audits', label: 'Audits' },
-    { to: '/autoresearch-backtest', label: 'Backtests' },
-    { to: '/daily-predictions-backtest', label: 'Daily Backtest' },
+    { to: '/portfolios', label: 'Portfolios' },
+    { to: '/lab', label: 'Lab' },
 ];
 
 export function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {
     return (
         <Link
             to={to}
-            activeProps={{ className: 'text-accent' }}
+            activeProps={{
+                className: 'bg-accent text-boxel-trough',
+            }}
+            inactiveProps={{
+                className: 'bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated',
+            }}
             activeOptions={{ exact }}
-            className="hover:text-accent-hover transition-colors relative shrink-0"
+            className="voxel-btn px-3.5 py-1.5 text-xs font-black uppercase tracking-widest shrink-0"
         >
-            {({ isActive }) => (
-                <>
-                    {label}
-                    {isActive && (
-                        <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent rounded-full" />
-                    )}
-                </>
-            )}
+            {label}
         </Link>
     );
 }
@@ -219,13 +200,24 @@ export function RootDocument({ children }: { children: ReactNode }) {
                     <PostHogAuthSync user={user} />
                     <nav
                         className={cn(
-                            'flex flex-nowrap overflow-x-auto whitespace-nowrap items-center gap-x-6 px-6 py-4',
-                            '[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]',
-                            'bg-white/80 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800',
-                            'sticky top-0 z-50 backdrop-blur-md',
+                            'flex flex-wrap items-center gap-3 px-6 py-3',
+                            'bg-boxel-surface border-b-2 border-boxel-bevel-lo shadow-md',
+                            'sticky top-0 z-50',
                             'text-sm font-bold uppercase tracking-widest',
                         )}
                     >
+                        <Link
+                            to="/"
+                            className="flex items-center gap-2 mr-2 shrink-0 text-boxel-ink hover:text-accent transition-colors"
+                        >
+                            <span className="voxel-badge bg-accent text-boxel-trough px-2 py-0.5 font-mono font-black text-xs">
+                                B
+                            </span>
+                            <span className="font-display font-black tracking-tight text-base">
+                                BENCHIFY
+                            </span>
+                        </Link>
+
                         {user && (
                             <Link
                                 to="/profile"
@@ -242,27 +234,29 @@ export function RootDocument({ children }: { children: ReactNode }) {
                             </Link>
                         )}
 
-                        {navItems.map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                label={item.label}
-                                exact={item.exact}
-                            />
-                        ))}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {navItems.map((item) => (
+                                <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    label={item.label}
+                                    exact={item.exact}
+                                />
+                            ))}
+                        </div>
 
-                        <div className="ml-auto flex items-center gap-4 shrink-0">
+                        <div className="ml-auto flex items-center gap-3 shrink-0">
                             {user ? (
                                 <Link
                                     to="/logout"
-                                    className="inline-flex items-center justify-center font-bold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-xl text-danger hover:bg-danger/10 focus:ring-danger/40 px-3 py-1.5 text-sm uppercase tracking-widest"
+                                    className="voxel-btn inline-flex items-center justify-center font-bold bg-boxel-trough text-danger hover:bg-danger/10 px-3 py-1.5 text-xs uppercase tracking-widest"
                                 >
                                     Logout
                                 </Link>
                             ) : (
                                 <Link
                                     to="/login"
-                                    className="inline-flex items-center justify-center font-bold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-xl bg-accent text-white hover:bg-accent-hover focus:ring-accent/40 px-3 py-1.5 text-sm uppercase tracking-widest"
+                                    className="voxel-btn inline-flex items-center justify-center font-bold bg-accent text-boxel-trough hover:bg-accent-hover px-3 py-1.5 text-xs uppercase tracking-widest"
                                 >
                                     Login
                                 </Link>

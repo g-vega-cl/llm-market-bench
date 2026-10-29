@@ -23,12 +23,11 @@ vi.mock('@posthog/react', () => ({
 }));
 
 describe('Root layout navigation', () => {
-    it('navItems should be ordered by PostHog pageview popularity (Portfolios, Home, Memories, Today, Auto-Research)', () => {
-        expect(navItems[0].label).toBe('Portfolios');
-        expect(navItems[1].label).toBe('Home');
-        expect(navItems[2].label).toBe('Memories');
-        expect(navItems[3].label).toBe('Today');
-        expect(navItems[4].label).toBe('Auto-Research');
+    it('navItems should strictly contain 3 topbar items: Home, Portfolios, and Lab', () => {
+        expect(navItems).toHaveLength(3);
+        expect(navItems[0]).toEqual({ to: '/', label: 'Home', exact: true });
+        expect(navItems[1]).toEqual({ to: '/portfolios', label: 'Portfolios' });
+        expect(navItems[2]).toEqual({ to: '/lab', label: 'Lab' });
     });
 
     it('NavLink should render with correct properties and shrink-0 class', async () => {
@@ -52,9 +51,8 @@ describe('Root layout navigation', () => {
         expect(link).toBeInTheDocument();
         expect(link.tagName.toLowerCase()).toBe('a');
         expect(link).toHaveAttribute('href', '/portfolios');
-        // Validate our specific responsive requirement class
         expect(link).toHaveClass('shrink-0');
-        expect(link).toHaveClass('hover:text-accent-hover');
+        expect(link).toHaveClass('voxel-btn');
     });
 });
 

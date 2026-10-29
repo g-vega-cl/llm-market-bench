@@ -16,12 +16,16 @@ The component consumes data already present on the `TodayData` type:
 
 No additional fetching is required; the data is passed from the parent `TodayPage`.
 
+## LLM-Only Trade Attribution
+
+The buy/sell split counts **only autonomous LLM trades**. Before counting, the component filters out mechanical system portfolios using `isSystemPortfolio(t.portfolios?.owner_id)` (imported from `~/features/portfolios/lib/config`), so `sys-*` strategies (e.g. `sys-pead-drift`, `sys-max-pain`) never inflate the AI buy/sell counts. The same exclusion is applied in `TodayStatusBar` so the sticky status bar and the feeling card agree.
+
 ## Sub-Components
 
 To keep cognitive complexity ≤ 15 (Biome rule), the card is split into three internal sub-components:
 
 - **`SentimentHeader`** — Renders the emoji (with `animate-float`), sentiment label with direction-based color (`text-neon-green-500` for BULLISH, `text-alert-red-500` for BEARISH), direction `Badge`, and optional STALE warning pill.
-- **`TradeSplit`** — A 2-column grid showing buy/sell counts with neon-green and alert-red themed boxes. Only renders when `totalTrades > 0`.
+- **`TradeSplit`** — A 2-column grid showing buy/sell counts with neon-green and alert-red themed boxes. Only renders when `totalTrades > 0` (after the `sys-*` exclusion).
 - **`CardFooter`** — Renders the last-analyzed timestamp (or "Waiting for analysis..." fallback), model name, and a link to the full `/market-overview` page.
 
 ## Color Scheme Helpers

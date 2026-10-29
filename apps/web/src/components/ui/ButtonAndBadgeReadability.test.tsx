@@ -1,9 +1,9 @@
-import { Badge, Button } from '@llm-market-bench/ui-design-system';
-import { render } from '@testing-library/react';
+import { Badge, Button, Card, ConfidenceBar } from '@llm-market-bench/ui-design-system';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-describe('Button and Badge Contrast Compliance (A11y Checks)', () => {
-    it('verifies neutral ghost Button uses responsive high-contrast classes instead of hardcoded zinc-100', () => {
+describe('Button, Badge, Card, and ConfidenceBar Boxel Compliance', () => {
+    it('verifies neutral ghost Button uses high-contrast classes', () => {
         const { container } = render(
             <Button colorScheme="neutral" variant="ghost">
                 Test Ghost
@@ -11,14 +11,13 @@ describe('Button and Badge Contrast Compliance (A11y Checks)', () => {
         );
         const button = container.querySelector('button');
         expect(button).toBeInTheDocument();
-        // Check for light-mode text contrast and dark-mode text contrast
         expect(button?.className).toContain('text-zinc-900');
         expect(button?.className).toContain('dark:text-zinc-100');
         expect(button?.className).toContain('hover:bg-zinc-100');
         expect(button?.className).toContain('dark:hover:bg-zinc-800');
     });
 
-    it('verifies neutral outline Button uses responsive high-contrast border and text classes', () => {
+    it('verifies neutral outline Button uses high-contrast border and text classes', () => {
         const { container } = render(
             <Button colorScheme="neutral" variant="outline">
                 Test Outline
@@ -55,5 +54,21 @@ describe('Button and Badge Contrast Compliance (A11y Checks)', () => {
         expect(badge?.className).toContain('dark:text-zinc-400');
         expect(badge?.className).toContain('bg-zinc-100');
         expect(badge?.className).toContain('dark:bg-zinc-800/40');
+    });
+
+    it('verifies Card defaults to sharp boxel geometry (rounded-none and voxel-card)', () => {
+        const { container } = render(<Card>Boxel Block</Card>);
+        const card = container.firstElementChild;
+        expect(card?.className).toContain('rounded-none');
+        expect(card?.className).toContain('voxel-card');
+    });
+
+    it('verifies ConfidenceBar renders 10 discrete voxel segments', () => {
+        render(<ConfidenceBar label="Confidence" value={76} />);
+        const segments = screen.getAllByTestId('confidence-segment');
+        expect(segments).toHaveLength(10);
+        const filled = segments.filter((el) => el.getAttribute('data-filled') === 'true');
+        expect(filled).toHaveLength(8);
+        expect(screen.getByText('76%')).toBeInTheDocument();
     });
 });

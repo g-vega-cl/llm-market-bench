@@ -15,17 +15,10 @@ export interface SectionHeadingProps {
 }
 
 const decoratorMap: Record<string, string> = {
-    electric: 'bg-gradient-to-b from-electric-blue-500 to-blue-600',
-    success: 'bg-gradient-to-b from-neon-green-500 to-emerald-600',
-    catalyst: 'bg-gradient-to-b from-cyber-yellow-500 to-amber-600',
-    ai: 'bg-gradient-to-b from-deep-purple-500 to-electric-blue-500',
-};
-
-const textGradientMap: Record<string, string> = {
-    electric: 'text-gradient-electric',
-    success: 'text-gradient-success',
-    catalyst: 'text-gradient-catalyst',
-    ai: 'text-gradient-electric',
+    electric: 'bg-accent',
+    success: 'bg-success',
+    catalyst: 'bg-warning',
+    ai: 'bg-info',
 };
 
 export function SectionHeading({
@@ -36,12 +29,17 @@ export function SectionHeading({
     return (
         <h2
             className={cn(
-                'text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-4 text-display',
+                'text-2xl font-black text-boxel-ink flex items-center gap-3 text-display uppercase tracking-tight',
                 className,
             )}
         >
-            <span className={cn('w-3 h-10 rounded-full shadow-lg', decoratorMap[gradient])} />
-            <span className={cn('text-gradient', textGradientMap[gradient])}>{children}</span>
+            <span
+                className={cn(
+                    'w-3 h-6 rounded-none voxel-badge shrink-0',
+                    decoratorMap[gradient] ?? decoratorMap.electric,
+                )}
+            />
+            <span>{children}</span>
         </h2>
     );
 }

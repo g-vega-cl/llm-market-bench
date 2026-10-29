@@ -1,6 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { fetchLatestMarketBarometer } from '~/features/home/api/fetch-barometer';
+import {
+    generateFallbackIntradayBars,
+    isRegularMarketHours,
+} from '~/features/home/api/fetch-intraday-tape';
+import type { LiveAgentState } from '~/features/home/components/LiveAgentConsole';
 import type { HomePageData } from '~/features/home/pages/HomePage';
 import { HomePage } from '~/features/home/pages/HomePage';
 import {
@@ -64,6 +69,70 @@ function calculateBenchmarkMoves(benchmarkData: BenchmarkDataPoint[]): {
     };
 }
 
+interface MarketFeelingRecord {
+    market_direction?: string | null;
+    why_explanation?: string | null;
+    sentiment_label?: string | null;
+    sentiment_emoji?: string | null;
+    confidence_score?: number | null;
+    primary_concern?: string | null;
+    secondary_concern?: string | null;
+    model_used?: string | null;
+    created_at?: string | null;
+    trades_summary?: unknown;
+}
+
+interface IntradayPayload {
+    buys?: number;
+    sells?: number;
+    action?: 'BUY' | 'SELL' | 'HOLD';
+    technicals?: { vwap: number; rsi_14: number; trend: string };
+    memories_consulted?: string[];
+}
+
+function buildAgentState(
+    feeling: MarketFeelingRecord | null,
+    payload: IntradayPayload | null,
+): LiveAgentState {
+    const rawAction = payload?.action;
+    const action = rawAction || ((payload?.buys ?? 0) > (payload?.sells ?? 0) ? 'BUY' : 'HOLD');
+
+    return {
+        action: action as 'BUY' | 'SELL' | 'HOLD',
+        conviction: feeling?.confidence_score ?? 75,
+        thought: feeling?.why_explanation || 'Scanning intraday tape and evaluating risk.',
+        marketDirection:
+            (feeling?.market_direction as 'BULLISH' | 'BEARISH' | 'NEUTRAL') || 'NEUTRAL',
+        sentimentLabel: feeling?.sentiment_label || 'Active Surveillance',
+        modelUsed: feeling?.model_used || 'Strata Orca',
+        lastUpdated: feeling?.created_at ? formatEasternTime(feeling.created_at) : undefined,
+        technicals: payload?.technicals || {
+            vwap: 582.4,
+            rsi_14: 54.2,
+            trend: feeling?.market_direction || 'NEUTRAL',
+        },
+        memoriesConsulted:
+            payload?.memories_consulted ||
+            (feeling?.primary_concern ? [feeling.primary_concern] : []),
+    };
+}
+
+function buildFeelingSummary(feeling: MarketFeelingRecord | null, payload: IntradayPayload | null) {
+    return {
+        sentiment: feeling?.market_direction || 'NEUTRAL',
+        summary: feeling?.why_explanation || 'No market feeling available.',
+        sentimentLabel: feeling?.sentiment_label || 'Analyzing...',
+        sentimentEmoji: feeling?.sentiment_emoji || '🤔',
+        confidence: feeling?.confidence_score ?? 50,
+        primaryConcern: feeling?.primary_concern || undefined,
+        secondaryConcern: feeling?.secondary_concern || undefined,
+        modelUsed: feeling?.model_used || undefined,
+        lastAnalyzed: feeling?.created_at ? formatEasternTime(feeling.created_at) : undefined,
+        buyCount: payload?.buys,
+        sellCount: payload?.sells,
+    };
+}
+
 const getHomepageData = createServerFn({ method: 'GET' }).handler(
     async (): Promise<HomePageData> => {
         const [marketFeeling, portfoliosData, barometer] = await Promise.all([
@@ -84,27 +153,15 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
             .map(mapPortfolioPerformance);
 
         const benchmark = calculateBenchmarkMoves(benchmarkData);
-        const tradesSummary =
-            (marketFeeling?.trades_summary as { buys?: number; sells?: number } | null) ?? null;
+        const tradesPayload = (marketFeeling?.trades_summary as IntradayPayload | null) ?? null;
 
         return {
             portfolios: portfoliosList,
             benchmark,
-            feeling: {
-                sentiment: marketFeeling?.market_direction || 'NEUTRAL',
-                summary: marketFeeling?.why_explanation || 'No market feeling available.',
-                sentimentLabel: marketFeeling?.sentiment_label || 'Analyzing...',
-                sentimentEmoji: marketFeeling?.sentiment_emoji || '🤔',
-                confidence: marketFeeling?.confidence_score ?? 50,
-                primaryConcern: marketFeeling?.primary_concern || undefined,
-                secondaryConcern: marketFeeling?.secondary_concern || undefined,
-                modelUsed: marketFeeling?.model_used || undefined,
-                lastAnalyzed: marketFeeling?.created_at
-                    ? formatEasternTime(marketFeeling.created_at)
-                    : undefined,
-                buyCount: tradesSummary?.buys,
-                sellCount: tradesSummary?.sells,
-            },
+            bars: generateFallbackIntradayBars(120),
+            agentState: buildAgentState(marketFeeling, tradesPayload),
+            isMarketOpen: isRegularMarketHours(),
+            feeling: buildFeelingSummary(marketFeeling, tradesPayload),
             barometer,
         };
     },

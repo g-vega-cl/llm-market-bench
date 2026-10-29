@@ -73,16 +73,15 @@ describe('HomePage 2-Block Boxel Dashboard', () => {
         expect(feelingBlock).toBeInTheDocument();
         expect(portfoliosBlock).toBeInTheDocument();
 
-        // Sentiment block is flat and always visible (zero collapsibles)
-        expect(within(feelingBlock).getByText('AI Market Feeling')).toBeInTheDocument();
-        expect(within(feelingBlock).getByText('BULLISH')).toBeInTheDocument();
+        // Live Trader Console is flat and always visible (zero collapsibles)
+        expect(within(feelingBlock).getByText('24/7 Autonomous SPY Trader')).toBeInTheDocument();
+        expect(within(feelingBlock).getAllByText('BULLISH').length).toBeGreaterThanOrEqual(1);
         expect(within(feelingBlock).getByText('Risk-On Rally')).toBeInTheDocument();
         expect(
             within(feelingBlock).getByText(/positive momentum due to strong tech earnings/),
         ).toBeInTheDocument();
         expect(within(feelingBlock).getByText('Inflation risks')).toBeInTheDocument();
-        expect(within(feelingBlock).getByText('Yield curve steepening')).toBeInTheDocument();
-        expect(within(feelingBlock).getByText(/Last: 14:30:00 ET/)).toBeInTheDocument();
+        expect(within(feelingBlock).getByText(/Turn: 14:30:00 ET/)).toBeInTheDocument();
         expect(within(feelingBlock).getByText(/Model: MiniMax-Text-01/)).toBeInTheDocument();
         expect(within(feelingBlock).queryByText(/Expand Details/i)).toBeNull();
 

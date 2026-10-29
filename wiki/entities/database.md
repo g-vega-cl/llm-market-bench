@@ -14,6 +14,7 @@ The database is organized into several functional areas:
 ### Core Tables
 - `agents` — Registered LLM agents and their model configurations
 - `agents_tool_use` — Tool execution logs per agent
+- `agent_chat_queue` — Audience-submitted questions for the live intraday agent's next thinking turn (`status` ∈ `pending`/`injected`/`archived`/`rejected`, plus `injected_turn_at` and `agent_response`); see [[entities/live-agent-trader]]
 - `analysis_sessions` — Top-level grouping for each analysis cycle
 - `catalyst_radar` — Pre-computed collisions between narrative concepts and calendar events for the Keep an Eye radar (see [[concepts/catalyst-radar]])
 - `chat_memories` — User-curated private research theses with full RLS isolation (see [[concepts/private-memory-vault]])
@@ -22,7 +23,7 @@ The database is organized into several functional areas:
 - `frontier_themes` — Qualified frontier technology supercycle themes and constituent pure-play tickers (see [[entities/frontier-tech-portfolio]])
 - `generated_newsletters` — Daily AI market briefings
 - `government_incentives` — High-impact policy tracking
-- `market_feeling` — Daily and weekly market sentiment assessments
+- `market_feeling` — Daily and weekly market sentiment assessments (also receives each live intraday agent turn)
 - `memory_hooks` — Contrarian analysis and causal chain entries
 - `memory_tags` — Tagged memory cards
 - `meta_prompt_experiments` — Auto-research prompt experiment logs
@@ -66,7 +67,7 @@ These two tables form the market data persistence layer used by `MarketDataManag
 
 ## Row-Level Security (RLS)
 
-Applied to 100% of tables in the `public` schema without exception. All tables enforce RLS (`ALTER TABLE public.<table> ENABLE ROW LEVEL SECURITY;`) with explicit access policies, verified continuously in CI via `apps/engine/tests/test_migration_grants.py`. User-facing tables like `chat_memories` use user-isolated policies (`auth.uid() = user_id`), while benchmark cache tables provide public read and service-role write policies.
+Applied to 100% of tables in the `public` schema without exception. All tables enforce RLS (`ALTER TABLE public.<table> ENABLE ROW LEVEL SECURITY;`) with explicit access policies, verified continuously in CI via `apps/engine/tests/test_migration_grants.py`. User-facing tables like `chat_memories` use user-isolated policies (`auth.uid() = user_id`), while benchmark cache tables provide public read and service-role write policies. `agent_chat_queue` grants public `SELECT`/`INSERT` (visitor submissions) plus full `service_role` access.
 
 ## Grant Convention
 
@@ -84,4 +85,5 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 - [[concepts/rag-strategy]]
 - [[concepts/private-memory-vault]]
 - [[concepts/supabase-grant-convention]]
+- [[entities/live-agent-trader]]
 - [[entities/engine]]

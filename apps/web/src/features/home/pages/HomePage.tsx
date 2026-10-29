@@ -1,12 +1,10 @@
 import type { MarketBarometer } from '@llm-market-bench/database';
-import {
-    Badge,
-    Card,
-    ConfidenceBar,
-    PageLayout,
-    SectionHeading,
-} from '@llm-market-bench/ui-design-system';
+import { Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
+import * as React from 'react';
+import { generateFallbackIntradayBars, isRegularMarketHours } from '../api/fetch-intraday-tape';
+import { LiveAgentConsole, type LiveAgentState } from '../components/LiveAgentConsole';
+import type { CandlestickBar, ChartTradeMarker } from '../components/SPYCandlestickChart';
 
 export interface HomePageData {
     portfolios: {
@@ -19,7 +17,11 @@ export interface HomePageData {
         isSystem?: boolean;
     }[];
     benchmark: { todayPct: number; weekPct: number };
-    feeling: {
+    bars?: CandlestickBar[];
+    trades?: ChartTradeMarker[];
+    agentState?: LiveAgentState;
+    isMarketOpen?: boolean;
+    feeling?: {
         sentiment: string;
         summary: string;
         sentimentLabel?: string;
@@ -135,125 +137,6 @@ function SPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
     );
 }
 
-function getConfidenceColor(score: number): 'success' | 'warning' | 'danger' {
-    if (score >= 70) return 'success';
-    if (score >= 40) return 'warning';
-    return 'danger';
-}
-
-function FeelingConcerns({
-    primaryConcern,
-    secondaryConcern,
-}: {
-    primaryConcern?: string;
-    secondaryConcern?: string;
-}) {
-    if (!primaryConcern && !secondaryConcern) return null;
-    return (
-        <div className="flex flex-wrap gap-3">
-            {primaryConcern && (
-                <div className="voxel-trough p-3 flex-1 basis-48 min-w-0">
-                    <span className="block text-xs text-boxel-muted uppercase tracking-widest font-black mb-1">
-                        Primary Concern
-                    </span>
-                    <span className="text-xs text-danger font-bold">{primaryConcern}</span>
-                </div>
-            )}
-            {secondaryConcern && (
-                <div className="voxel-trough p-3 flex-1 basis-48 min-w-0">
-                    <span className="block text-xs text-boxel-muted uppercase tracking-widest font-black mb-1">
-                        Secondary Concern
-                    </span>
-                    <span className="text-xs text-boxel-ink font-medium">{secondaryConcern}</span>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function FeelingTradesSummary({ buyCount, sellCount }: { buyCount?: number; sellCount?: number }) {
-    const hasTrades =
-        (buyCount !== undefined && buyCount > 0) || (sellCount !== undefined && sellCount > 0);
-    if (!hasTrades) return null;
-    return (
-        <div className="grid grid-cols-2 gap-3">
-            <div className="voxel-trough p-2.5 flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-widest text-boxel-muted">
-                    LLM Buys
-                </span>
-                <span className="font-mono text-sm font-black text-success">{buyCount ?? 0}</span>
-            </div>
-            <div className="voxel-trough p-2.5 flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-widest text-boxel-muted">
-                    LLM Sells
-                </span>
-                <span className="font-mono text-sm font-black text-danger">{sellCount ?? 0}</span>
-            </div>
-        </div>
-    );
-}
-
-function FeelingBlock({ feeling }: { feeling: HomePageData['feeling'] }) {
-    const isBullish = feeling.sentiment === 'BULLISH';
-    const isBearish = feeling.sentiment === 'BEARISH';
-    const badgeScheme = isBullish ? 'success' : isBearish ? 'danger' : 'accent';
-
-    return (
-        <Card
-            data-testid="home-block-feeling"
-            padding="md"
-            className="flex-1 basis-80 min-w-0 flex flex-col gap-4"
-        >
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-boxel-bevel-hi">
-                <SectionHeading className="text-lg">AI Market Feeling</SectionHeading>
-                <Badge colorScheme={badgeScheme} variant="solid" size="sm" showDot>
-                    {feeling.sentiment}
-                </Badge>
-            </div>
-
-            {feeling.sentimentLabel && (
-                <div className="text-xl font-black text-boxel-ink tracking-tight">
-                    {feeling.sentimentLabel}
-                </div>
-            )}
-
-            {feeling.confidence !== undefined && (
-                <ConfidenceBar
-                    label="Confidence"
-                    value={feeling.confidence}
-                    colorScheme={getConfidenceColor(feeling.confidence)}
-                    textStyle="hero"
-                    className="w-full"
-                />
-            )}
-
-            <div className="voxel-trough p-3.5 text-sm leading-relaxed text-boxel-ink">
-                &quot;{feeling.summary}&quot;
-            </div>
-
-            <FeelingConcerns
-                primaryConcern={feeling.primaryConcern}
-                secondaryConcern={feeling.secondaryConcern}
-            />
-
-            <FeelingTradesSummary buyCount={feeling.buyCount} sellCount={feeling.sellCount} />
-
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-boxel-bevel-hi pt-3 text-xs text-boxel-muted font-mono">
-                <div className="flex flex-wrap items-center gap-2">
-                    {feeling.lastAnalyzed && <span>Last: {feeling.lastAnalyzed}</span>}
-                    {feeling.modelUsed && <span>• Model: {feeling.modelUsed}</span>}
-                </div>
-                <Link
-                    to="/lab"
-                    className="text-accent hover:text-accent-hover font-bold uppercase tracking-wider"
-                >
-                    Telemetry →
-                </Link>
-            </div>
-        </Card>
-    );
-}
-
 function PortfoliosBlock({
     portfolios,
     benchmark,
@@ -306,6 +189,31 @@ function PortfoliosBlock({
 }
 
 export function HomePage({ data }: { data: HomePageData }) {
+    const defaultBars = React.useMemo(() => generateFallbackIntradayBars(120), []);
+    const bars = data.bars && data.bars.length > 0 ? data.bars : defaultBars;
+
+    const agentState: LiveAgentState = data.agentState || {
+        action: (data.feeling?.buyCount ?? 0) > (data.feeling?.sellCount ?? 0) ? 'BUY' : 'HOLD',
+        conviction: data.feeling?.confidence ?? 75,
+        thought:
+            data.feeling?.summary ||
+            'Scanning 120-minute intraday tape and evaluating risk parameters.',
+        marketDirection:
+            (data.feeling?.sentiment as 'BULLISH' | 'BEARISH' | 'NEUTRAL') || 'NEUTRAL',
+        sentimentLabel: data.feeling?.sentimentLabel || 'Live Surveillance',
+        modelUsed: data.feeling?.modelUsed || 'Strata Orca',
+        lastUpdated: data.feeling?.lastAnalyzed || '09:30 ET',
+        technicals: {
+            vwap: 582.4,
+            rsi_14: 54.2,
+            trend: data.feeling?.sentiment || 'NEUTRAL',
+        },
+        memoriesConsulted: data.feeling?.primaryConcern ? [data.feeling.primaryConcern] : [],
+    };
+
+    const isMarketOpen =
+        data.isMarketOpen !== undefined ? data.isMarketOpen : isRegularMarketHours();
+
     return (
         <div className="min-h-screen w-full bg-boxel-canvas text-boxel-ink overflow-x-hidden">
             <PageLayout maxWidth="xl">
@@ -315,13 +223,23 @@ export function HomePage({ data }: { data: HomePageData }) {
                             Market Overview
                         </h1>
                         <p className="text-xs text-boxel-muted font-mono mt-1">
-                            LIVE AUTONOMOUS LLM BENCHMARK • TODAY &amp; SESSION LEADERBOARD
+                            LIVE AUTONOMOUS LLM BENCHMARK • 24/7 TRADER &amp; SESSION LEADERBOARD
                         </p>
                     </div>
                 </header>
 
                 <div data-testid="dashboard" className="flex flex-wrap gap-6 items-start w-full">
-                    <FeelingBlock feeling={data.feeling} />
+                    <div
+                        data-testid="home-block-feeling"
+                        className="flex-1 basis-96 min-w-0 flex flex-col"
+                    >
+                        <LiveAgentConsole
+                            bars={bars}
+                            trades={data.trades}
+                            agentState={agentState}
+                            isMarketOpen={isMarketOpen}
+                        />
+                    </div>
                     <PortfoliosBlock portfolios={data.portfolios} benchmark={data.benchmark} />
                 </div>
             </PageLayout>

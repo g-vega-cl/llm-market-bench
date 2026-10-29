@@ -86,6 +86,15 @@ PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 apps/engine/scripts/audit
 
 Bars flow through `filterLastBars(bars, 60)` in `apps/web/src/features/home/api/fetch-intraday-tape.ts`, which returns the trailing 60 candles (or an empty array for `null`/`undefined`/non-array input). `SPYCandlestickChart` independently slices its input to the last 60 bars, so the chart never renders more than an hour of tape. There is no synthetic fallback tape — when no live bars exist the chart renders the `Awaiting live SPY market tape...` empty state.
 
+### Latest-Bars Fallback Resolution
+Because the newest `market_feeling` row can be written by a turn that persisted no tape (or by a non-trader writer), the homepage loader resolves bars through `fetchLatestIntradayBars(marketFeeling)` rather than reading only the newest row's payload:
+
+1. **Direct payload first** — `filterLastBars(marketFeeling.trades_summary.bars, 60)` is returned immediately when it yields at least one bar.
+2. **Most-recent-populated fallback** — otherwise the server client (`getSupabaseServerClient()`) queries `market_feeling` for `trades_summary`, filtered with `.not('trades_summary->bars', 'is', null)` and ordered `created_at` descending with `limit(1)`, then runs the same `filterLastBars(..., 60)` over that payload.
+3. **Fail-soft** — any query error is caught and resolves to an empty bar array, so the console degrades to the `Awaiting live SPY market tape...` empty state instead of failing the homepage render.
+
+This keeps the last real session tape visible across row churn without ever fabricating candles.
+
 ## Related
 
 - [[entities/intraday-news]]

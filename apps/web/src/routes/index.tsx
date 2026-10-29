@@ -14,6 +14,7 @@ import {
 } from '~/features/portfolios/api/fetch-portfolios';
 import { isAutoresearchPortfolio, isSystemPortfolio } from '~/features/portfolios/lib/config';
 import { fetchLatestMarketFeeling } from '~/features/today/api/fetch-today-data';
+import { getSupabaseServerClient } from '~/lib/supabase';
 import { formatEasternTime } from '~/utils/date';
 
 function mapPortfolioPerformance(p: PortfolioPerformanceItem): HomePageData['portfolios'][number] {
@@ -132,6 +133,29 @@ function buildFeelingSummary(feeling: MarketFeelingRecord | null, payload: Intra
     };
 }
 
+async function fetchLatestIntradayBars(
+    marketFeeling: MarketFeelingRecord | null,
+): Promise<CandlestickBar[]> {
+    const directPayload = (marketFeeling?.trades_summary as IntradayPayload | null) ?? null;
+    const directBars = filterLastBars(directPayload?.bars, 60);
+    if (directBars.length > 0) return directBars;
+
+    try {
+        const supabase = getSupabaseServerClient();
+        const { data } = await supabase
+            .from('market_feeling')
+            .select('trades_summary')
+            .not('trades_summary->bars', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        const fallbackPayload = data?.[0]?.trades_summary as IntradayPayload | null;
+        return filterLastBars(fallbackPayload?.bars, 60);
+    } catch {
+        return [];
+    }
+}
+
 const getHomepageData = createServerFn({ method: 'GET' }).handler(
     async (): Promise<HomePageData> => {
         const [marketFeeling, portfoliosData, barometer] = await Promise.all([
@@ -153,7 +177,7 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
 
         const benchmark = calculateBenchmarkMoves(benchmarkData);
         const tradesPayload = (marketFeeling?.trades_summary as IntradayPayload | null) ?? null;
-        const bars = filterLastBars(tradesPayload?.bars, 60);
+        const bars = await fetchLatestIntradayBars(marketFeeling);
 
         return {
             portfolios: portfoliosList,

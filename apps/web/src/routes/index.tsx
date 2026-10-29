@@ -1,11 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { fetchLatestMarketBarometer } from '~/features/home/api/fetch-barometer';
-import {
-    generateFallbackIntradayBars,
-    isRegularMarketHours,
-} from '~/features/home/api/fetch-intraday-tape';
+import { filterLastBars, isRegularMarketHours } from '~/features/home/api/fetch-intraday-tape';
 import type { LiveAgentState } from '~/features/home/components/LiveAgentConsole';
+import type { CandlestickBar } from '~/features/home/components/SPYCandlestickChart';
 import type { HomePageData } from '~/features/home/pages/HomePage';
 import { HomePage } from '~/features/home/pages/HomePage';
 import {
@@ -88,6 +86,7 @@ interface IntradayPayload {
     action?: 'BUY' | 'SELL' | 'HOLD';
     technicals?: { vwap: number; rsi_14: number; trend: string };
     memories_consulted?: string[];
+    bars?: CandlestickBar[];
 }
 
 function buildAgentState(
@@ -154,11 +153,12 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
 
         const benchmark = calculateBenchmarkMoves(benchmarkData);
         const tradesPayload = (marketFeeling?.trades_summary as IntradayPayload | null) ?? null;
+        const bars = filterLastBars(tradesPayload?.bars, 60);
 
         return {
             portfolios: portfoliosList,
             benchmark,
-            bars: generateFallbackIntradayBars(120),
+            bars,
             agentState: buildAgentState(marketFeeling, tradesPayload),
             isMarketOpen: isRegularMarketHours(),
             feeling: buildFeelingSummary(marketFeeling, tradesPayload),

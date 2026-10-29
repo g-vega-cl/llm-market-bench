@@ -10,10 +10,9 @@ Autonomous intraday model trader console on the Home page (`apps/web/src/feature
 ## Architecture
 
 ### 1. Market Data and Tape Execution
-- **1-Minute SPY Candlestick Tape**: Handled by `apps/web/src/features/home/components/SPYCandlestickChart.tsx` using `d3: ^7.9.0`. Renders 120 minutes of 1-minute candlestick bars with trade execution markers (`.trade-marker` triangles, BUY below the bar, SELL above) and a volume sub-panel (22% of plot height). A `ResizeObserver` keeps the SVG width in sync with its container, and hovering a candle swaps the summary strip to that bar's OHLC and volume.
-- **Active Candle Polling**: Real-time 10-second polling pulls the forming 1-minute bar from Alpaca (`fetch_active_candle` in `apps/engine/trading/live_intraday_agent.py`) using `Sort.DESC` with `limit=1`.
-- **Rolling Tape Fetch**: `fetch_intraday_bars` pulls a 120-minute window of 1-minute bars (`StockBarsRequest`, `TimeFrame.Minute`) and normalizes them into dictionary structures.
-- **Fallback Tape**: `generateFallbackIntradayBars(count, basePrice)` in `apps/web/src/features/home/api/fetch-intraday-tape.ts` synthesizes a deterministic pseudo-random 120-bar tape so the console always renders a chart when no live bars are available.
+- **1-Minute SPY Candlestick Tape**: Handled by `apps/web/src/features/home/components/SPYCandlestickChart.tsx` using `d3: ^7.9.0`. Renders strictly the last 60 minutes of real 1-minute candlestick bars at an expanded 380px plot height with trade execution markers (`.trade-marker` triangles, BUY below the bar, SELL above) and a volume sub-panel. An interactive HUD above the chart displays live Open, High, Low, Close, Volume, and Eastern Time.
+- **Active Candle Polling**: Real-time polling pulls the forming 1-minute bar from Alpaca (`fetch_active_candle` in `apps/engine/trading/live_intraday_agent.py`) using `Sort.DESC` with `DataFeed.IEX`.
+- **Rolling Tape Fetch**: `fetch_intraday_bars` pulls rolling 60-minute 1-minute bars using `DataFeed.IEX` for zero-delay real-time execution and persists the full array of real bars into `market_feeling.trades_summary.bars`. Zero synthetic or fake data is ever generated.
 - **Trading Hours**: `isRegularMarketHours(date)` in `fetch-intraday-tape.ts` gates the console: weekdays only, 14:30 to 21:00 UTC (09:30 AM to 04:00 PM ET). Outside market hours the interface preserves the latest completed session tape with a `MARKET CLOSED` banner and `Next Session 09:30 ET` label.
 
 ### 2. Technical Snapshot
@@ -34,7 +33,7 @@ Empty input returns a neutral snapshot (`vwap 0.0`, `rsi_14 50.0`, `trend NEUTRA
 ### 4. Cascading LLM Inference and Network Topology
 `query_multi_tier_llm` implements a two-tier cascade:
 - **Tier 1 (Local Strata)**: Primary inference server at `STRATA_BASE_URL` (default `http://primary-workstation:8080/v1`), model `STRATA_MODEL` (default `orcarouter-qwen3.8-flash-next-uncensored-iq3_xxs`), 12s timeout. When running on the edge MiniPC server, Tailscale routes `primary-workstation:8080` to the developer machine.
-- **Tier 2 (Centralized CLVG Free Proxy)**: Fallback proxy at `FREE_LLM_PROXY_URL` (default `https://llm.clvg.uk/v1`), model `FREE_PROXY_MODEL` (default `deepseek-chat`), 20s timeout, invoked on non-200, connection failure, or timeout.
+- **Tier 2 (Centralized CLVG Free Proxy)**: Fallback proxy at `FREE_LLM_PROXY_URL` (default `https://llm.clvg.uk/v1`), model `FREE_PROXY_MODEL` (default `free-auto`), 20s timeout, invoked on non-200, connection failure, or timeout. Requests are authenticated with an `Authorization: Bearer <master key>` header. The master key is resolved by `_get_free_proxy_master_key()`: it first reads the `FREE_PROXY_MASTER_KEY` environment variable, and if unset, falls back to parsing `FREE_PROXY_MASTER_KEY=` out of `apps/free_llm_proxy/.env` (checked at both `apps/free_llm_proxy/.env` and `../../apps/free_llm_proxy/.env` relative paths). If no key is found, the request is sent without an `Authorization` header.
 - **Terminal Fallback**: If both tiers fail, a neutral `HOLD` decision JSON is returned so the loop never crashes.
 
 ### 5. Agent Turn and Order Routing
@@ -45,7 +44,7 @@ Empty input returns a neutral snapshot (`vwap 0.0`, `rsi_14 50.0`, `trend NEUTRA
 4. Build a lean system prompt enforcing a strict JSON contract (`action`, `conviction`, `thought`, `allocation_pct`, `memories_consulted`) plus a user prompt with the tape snapshot, headlines, and memory bullets.
 5. Parse the response with `_extract_json_decision`, which strips code fences, falls back to a greedy regex match, and finally to a neutral `HOLD`.
 6. **Agency-Driven Sizing**: On `BUY` or `SELL`, the agent reads Alpaca paper cash and sizes `allocation_pct` into whole shares at the last close, then submits a `MarketOrderRequest` with `TimeInForce.DAY`.
-7. Persist the turn into `market_feeling` (`sentiment_label`, `confidence_score`, `why_explanation`, `market_direction`, `primary_concern` for RSI and trend, `secondary_concern` for VWAP, `trades_summary` payload with action, allocation, order id, technicals, memories, news count, bar count, and model attribution).
+7. Persist the turn into `market_feeling` (`sentiment_label`, `confidence_score`, `why_explanation`, `market_direction`, `primary_concern` for RSI and trend, `secondary_concern` for VWAP, `trades_summary` payload with action, allocation, order id, technicals, memories, news count, bar count, and model attribution). The `trades_summary` payload also carries the full `bars` array of real 1-minute candles, which is what the Home page chart renders from.
 
 ### 6. Edge Daemon Runner and Deployment
 `apps/engine/trading/runner.py` drives the background loop:
@@ -65,8 +64,27 @@ Empty input returns a neutral snapshot (`vwap 0.0`, `rsi_14 50.0`, `trend NEUTRA
 - RLS enabled with public `SELECT` and `INSERT` policies plus full `service_role` access; grants `SELECT, INSERT` to `anon` and `authenticated` and `ALL` to `service_role`.
 - Allows human visitors to submit questions or market hypotheses to be injected into the agent's upcoming 5-minute thinking turn. The console card currently renders as a teaser.
 
+### 9. 30-Minute Audit Harness
+`apps/engine/scripts/audit_30min_trader.py` is a standalone instrumented harness that exercises the live trader end-to-end against real feeds (Alpaca, Benzinga, Polygon, FMP stable, Supabase, and the multi-tier LLM cascade) and records per-turn metrics.
+
+- **Turn loop**: `run_30min_audit` computes `total_turns = total_minutes * 60 // turn_interval` (defaults: 30 minutes, 300s interval, ticker `SPY`) and calls `run_single_audit_turn` for each turn, sleeping `turn_interval` seconds between turns.
+- **Per-turn instrumentation**: fetches the active candle via `fetch_active_candle` (timed), runs the full `execute_intraday_agent_step`, then verifies persistence by reading back the newest `market_feeling` row (`id`, `created_at`, `market_direction`, `sentiment_label`, `model_used`).
+- **Recorded fields**: `turn`, `timestamp_et`, `timestamp_utc`, `ticker`, `active_candle`, `step_duration_seconds`, `action`, `conviction`, `thought`, `order_id`, `technicals`, `db_verified`.
+- **Resilience**: an exception in any turn is logged via `logger.exception` and recorded as an error entry rather than aborting the run; intermediate results are written to the output JSON after every turn.
+- **Output**: prints a per-turn summary table (Turn, Time ET, Price, Trend, Action, Conviction, Latency, DB) and persists the full JSON to `--output` (default `audit_30min_results.json`).
+
+```sh
+PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 apps/engine/scripts/audit_30min_trader.py \
+  --total-minutes 30 --turn-interval 300 --ticker SPY \
+  --output audit_30min_results.json \
+  --strata-url http://primary-workstation:8080/v1 \
+  --cheap-proxy-url https://llm.clvg.uk/v1
+```
+
 ## Home Page Integration
-`apps/web/src/routes/index.tsx` builds the agent state server-side via `buildAgentState(marketFeeling, tradesPayload)`, deriving `action`, `conviction`, `thought`, `marketDirection`, `sentimentLabel`, `modelUsed`, `lastUpdated` in Eastern Time, `technicals`, and `memoriesConsulted` from the latest `market_feeling` row and its `trades_summary` payload. `buildFeelingSummary` retains the legacy feeling shape for other consumers. The Home page's first block now renders `LiveAgentConsole` inside the `home-block-feeling` test id, with `generateFallbackIntradayBars(120)` and `isRegularMarketHours()` supplying defaults.
+`apps/web/src/routes/index.tsx` builds the agent state server-side via `buildAgentState(marketFeeling, tradesPayload)`, deriving `action`, `conviction`, `thought`, `marketDirection`, `sentimentLabel`, `modelUsed`, `lastUpdated` in Eastern Time, `technicals`, and `memoriesConsulted` from the latest `market_feeling` row and its `trades_summary` payload. The Home page's first block renders `LiveAgentConsole` inside the `home-block-feeling` test id, receiving real Alpaca bars directly from `tradesPayload.bars` with `isRegularMarketHours()` supplying session state.
+
+Bars flow through `filterLastBars(bars, 60)` in `apps/web/src/features/home/api/fetch-intraday-tape.ts`, which returns the trailing 60 candles (or an empty array for `null`/`undefined`/non-array input). `SPYCandlestickChart` independently slices its input to the last 60 bars, so the chart never renders more than an hour of tape. There is no synthetic fallback tape — when no live bars exist the chart renders the `Awaiting live SPY market tape...` empty state.
 
 ## Related
 

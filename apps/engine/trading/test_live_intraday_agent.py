@@ -129,6 +129,14 @@ async def test_query_multi_tier_llm_fallback_to_cheap_proxy():
     assert data["conviction"] == 60
     assert len(mock_http.post.call_args_list) == 2
 
+    # Verify fallback call headers and model
+    fallback_call = mock_http.post.call_args_list[1]
+    headers = fallback_call.kwargs.get("headers", {})
+    assert "Authorization" in headers
+    assert headers["Authorization"].startswith("Bearer ")
+    payload = fallback_call.kwargs.get("json", {})
+    assert payload.get("model") == "free-auto"
+
 
 @pytest.mark.asyncio
 async def test_execute_intraday_agent_step_end_to_end_hermetic():

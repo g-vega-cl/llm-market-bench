@@ -29,7 +29,7 @@ function drawGridAndAxes(
     yScale: d3.ScaleLinear<number, number>,
     width: number,
 ) {
-    const yTicks = yScale.ticks(4);
+    const yTicks = yScale.ticks(5);
     g.append('g')
         .selectAll('line.grid-line')
         .data(yTicks)
@@ -106,7 +106,7 @@ function drawCandlesticks(
         .attr('x', (d) => xScale(d.time) ?? 0)
         .attr('y', (d) => yScale(Math.max(d.open, d.close)))
         .attr('width', xScale.bandwidth())
-        .attr('height', (d) => Math.max(2, Math.abs(yScale(d.open) - yScale(d.close))))
+        .attr('height', (d) => Math.max(3, Math.abs(yScale(d.open) - yScale(d.close))))
         .attr('fill', (d) => (d.close >= d.open ? '#68d391' : '#e56b55'))
         .attr('stroke', (d) => (d.close >= d.open ? '#48bb78' : '#c53030'))
         .attr('stroke-width', 1)
@@ -150,12 +150,85 @@ function drawTradeMarkers(
     }
 }
 
+interface ChartHeaderHUDProps {
+    activeDisplay: CandlestickBar | null;
+    priceChange: number;
+    pctChange: number;
+}
+
+function ChartHeaderHUD({ activeDisplay, priceChange, pctChange }: ChartHeaderHUDProps) {
+    const timeET = React.useMemo(() => {
+        if (!activeDisplay?.time) return null;
+        try {
+            return new Date(activeDisplay.time).toLocaleTimeString('en-US', {
+                timeZone: 'America/New_York',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+            });
+        } catch {
+            return null;
+        }
+    }, [activeDisplay?.time]);
+
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-mono">
+            <div className="flex items-center gap-2.5">
+                <span className="text-boxel-muted uppercase font-black tracking-wider bg-boxel-surface border border-boxel-border px-1.5 py-0.5">
+                    SPY 1M
+                </span>
+                {activeDisplay && (
+                    <span className="font-bold text-boxel-ink text-sm">
+                        ${activeDisplay.close.toFixed(2)}
+                    </span>
+                )}
+                <span className={`font-bold ${priceChange >= 0 ? 'text-success' : 'text-danger'}`}>
+                    {priceChange >= 0 ? '+' : ''}
+                    {priceChange.toFixed(2)} ({pctChange >= 0 ? '+' : ''}
+                    {pctChange.toFixed(2)}%)
+                </span>
+            </div>
+            {activeDisplay && (
+                <div className="flex flex-wrap items-center gap-2.5 text-boxel-muted">
+                    <span>
+                        <strong className="text-boxel-ink font-bold">O:</strong> $
+                        {activeDisplay.open.toFixed(2)}
+                    </span>
+                    <span>
+                        <strong className="text-boxel-ink font-bold">H:</strong> $
+                        {activeDisplay.high.toFixed(2)}
+                    </span>
+                    <span>
+                        <strong className="text-boxel-ink font-bold">L:</strong> $
+                        {activeDisplay.low.toFixed(2)}
+                    </span>
+                    <span>
+                        <strong className="text-boxel-ink font-bold">C:</strong> $
+                        {activeDisplay.close.toFixed(2)}
+                    </span>
+                    <span className="border-l border-boxel-border pl-2">
+                        <strong className="text-boxel-ink font-bold">Vol:</strong>{' '}
+                        {activeDisplay.volume.toLocaleString('en-US')}
+                    </span>
+                    {timeET && (
+                        <span className="border-l border-boxel-border pl-2 text-[11px]">
+                            {timeET} ET
+                        </span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function SPYCandlestickChart({
-    bars,
+    bars: inputBars,
     trades = [],
-    height = 260,
+    height = 380,
     className = '',
 }: SPYCandlestickChartProps) {
+    const bars = React.useMemo(() => (inputBars ? inputBars.slice(-60) : []), [inputBars]);
     const svgRef = React.useRef<SVGSVGElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = React.useState(600);
@@ -186,11 +259,11 @@ export function SPYCandlestickChart({
     React.useEffect(() => {
         if (!svgRef.current || bars.length === 0) return;
 
-        const margin = { top: 16, right: 54, bottom: 24, left: 12 };
+        const margin = { top: 16, right: 60, bottom: 24, left: 12 };
         const width = Math.max(containerWidth, 240) - margin.left - margin.right;
         const plotHeight = height - margin.top - margin.bottom;
-        const volumeHeight = Math.floor(plotHeight * 0.22);
-        const candleHeight = plotHeight - volumeHeight - 8;
+        const volumeHeight = Math.floor(plotHeight * 0.2);
+        const candleHeight = plotHeight - volumeHeight - 10;
 
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
@@ -203,8 +276,8 @@ export function SPYCandlestickChart({
             .range([0, width])
             .padding(0.25);
 
-        const minLow = d3.min(bars, (b) => b.low) ?? 580;
-        const maxHigh = d3.max(bars, (b) => b.high) ?? 590;
+        const minLow = d3.min(bars, (b) => b.low) ?? 760;
+        const maxHigh = d3.max(bars, (b) => b.high) ?? 770;
         const pricePadding = (maxHigh - minLow) * 0.08 || 0.5;
 
         const yScale = d3
@@ -229,7 +302,7 @@ export function SPYCandlestickChart({
             <div
                 className={`voxel-trough flex items-center justify-center p-8 text-xs text-boxel-muted font-mono ${className}`}
             >
-                Awaiting intraday market tape...
+                Awaiting live SPY market tape...
             </div>
         );
     }
@@ -237,35 +310,12 @@ export function SPYCandlestickChart({
     const activeDisplay = hoveredBar || lastBar;
 
     return (
-        <div ref={containerRef} className={`flex flex-col gap-2 w-full ${className}`}>
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-mono">
-                <div className="flex items-center gap-3">
-                    <span className="text-boxel-muted uppercase font-black tracking-wider">
-                        SPY 1M
-                    </span>
-                    {activeDisplay && (
-                        <span className="font-bold text-boxel-ink text-sm">
-                            ${activeDisplay.close.toFixed(2)}
-                        </span>
-                    )}
-                    <span
-                        className={`font-bold ${priceChange >= 0 ? 'text-success' : 'text-danger'}`}
-                    >
-                        {priceChange >= 0 ? '+' : ''}
-                        {priceChange.toFixed(2)} ({pctChange >= 0 ? '+' : ''}
-                        {pctChange.toFixed(2)}%)
-                    </span>
-                </div>
-                {activeDisplay && (
-                    <div className="flex items-center gap-2 text-boxel-muted">
-                        <span>O: {activeDisplay.open.toFixed(2)}</span>
-                        <span>H: {activeDisplay.high.toFixed(2)}</span>
-                        <span>L: {activeDisplay.low.toFixed(2)}</span>
-                        <span>Vol: {activeDisplay.volume.toLocaleString('en-US')}</span>
-                    </div>
-                )}
-            </div>
-
+        <div ref={containerRef} className={`flex flex-col gap-2.5 w-full ${className}`}>
+            <ChartHeaderHUD
+                activeDisplay={activeDisplay}
+                priceChange={priceChange}
+                pctChange={pctChange}
+            />
             <div className="voxel-trough overflow-hidden w-full relative">
                 <svg ref={svgRef} width={containerWidth} height={height} className="block w-full" />
             </div>

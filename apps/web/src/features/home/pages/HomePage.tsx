@@ -2,7 +2,7 @@ import type { MarketBarometer } from '@llm-market-bench/database';
 import { Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
-import { generateFallbackIntradayBars, isRegularMarketHours } from '../api/fetch-intraday-tape';
+import { isRegularMarketHours } from '../api/fetch-intraday-tape';
 import { LiveAgentConsole, type LiveAgentState } from '../components/LiveAgentConsole';
 import type { CandlestickBar, ChartTradeMarker } from '../components/SPYCandlestickChart';
 
@@ -189,8 +189,10 @@ function PortfoliosBlock({
 }
 
 export function HomePage({ data }: { data: HomePageData }) {
-    const defaultBars = React.useMemo(() => generateFallbackIntradayBars(120), []);
-    const bars = data.bars && data.bars.length > 0 ? data.bars : defaultBars;
+    const bars = React.useMemo(
+        () => (data.bars && data.bars.length > 0 ? data.bars.slice(-60) : []),
+        [data.bars],
+    );
 
     const agentState: LiveAgentState = data.agentState || {
         action: (data.feeling?.buyCount ?? 0) > (data.feeling?.sellCount ?? 0) ? 'BUY' : 'HOLD',

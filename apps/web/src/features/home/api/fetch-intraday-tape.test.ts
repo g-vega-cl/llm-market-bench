@@ -1,16 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { generateFallbackIntradayBars, isRegularMarketHours } from './fetch-intraday-tape';
+import type { CandlestickBar } from '../components/SPYCandlestickChart';
+import { filterLastBars, isRegularMarketHours } from './fetch-intraday-tape';
 
 describe('fetch-intraday-tape utilities', () => {
-    it('generates expected count of candlestick bars with positive volumes', () => {
-        const bars = generateFallbackIntradayBars(60, 580);
-        expect(bars).toHaveLength(60);
-        expect(bars[0].open).toBe(580);
-        for (const b of bars) {
-            expect(b.high).toBeGreaterThanOrEqual(b.low);
-            expect(b.volume).toBeGreaterThan(0);
-            expect(new Date(b.time).getTime()).toBeGreaterThan(0);
-        }
+    it('filters strictly the last maxBars items', () => {
+        const dummyBars: CandlestickBar[] = Array.from({ length: 80 }, (_, i) => ({
+            time: `2026-10-29T15:${i.toString().padStart(2, '0')}:00Z`,
+            open: 767.0 + i * 0.05,
+            high: 767.5 + i * 0.05,
+            low: 766.8 + i * 0.05,
+            close: 767.2 + i * 0.05,
+            volume: 1000 + i * 50,
+        }));
+
+        const filtered = filterLastBars(dummyBars, 60);
+        expect(filtered).toHaveLength(60);
+        expect(filtered[filtered.length - 1].close).toBe(dummyBars[dummyBars.length - 1].close);
+    });
+
+    it('returns empty array when bars is null or empty', () => {
+        expect(filterLastBars(null)).toEqual([]);
+        expect(filterLastBars(undefined)).toEqual([]);
+        expect(filterLastBars([])).toEqual([]);
     });
 
     it('identifies market hours correctly', () => {

@@ -28,6 +28,22 @@ DEFAULT_STRATA_URL = os.getenv("STRATA_BASE_URL", "http://localhost:8080/v1")
 DEFAULT_CHEAP_PROXY_URL = os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1")
 
 
+def _get_free_proxy_master_key() -> str:
+    """Retrieve master API key for the free LLM proxy fallback."""
+    key = os.getenv("FREE_PROXY_MASTER_KEY", "")
+    if not key:
+        for env_path in ("apps/free_llm_proxy/.env", "../../apps/free_llm_proxy/.env"):
+            if os.path.exists(env_path):
+                try:
+                    with open(env_path) as f:
+                        for line in f:
+                            if line.startswith("FREE_PROXY_MASTER_KEY="):
+                                return line.split("=", 1)[1].strip()
+                except Exception:
+                    pass
+    return key
+
+
 def calculate_technical_snapshot(bars: list[dict[str, Any]]) -> dict[str, Any]:
     """Calculate rolling VWAP, RSI-14, and EMA-20/50 from intraday 1m bars."""
     if not bars:
@@ -150,12 +166,14 @@ async def query_multi_tier_llm(
         try:
             url_fallback = f"{cheap_proxy_url.rstrip('/')}/chat/completions"
             payload_fallback = {
-                "model": os.getenv("FREE_PROXY_MODEL", "deepseek-chat"),
+                "model": os.getenv("FREE_PROXY_MODEL", "free-auto"),
                 "messages": messages,
                 "temperature": 0.3,
                 "max_tokens": 600,
             }
-            resp = await http_client.post(url_fallback, json=payload_fallback, timeout=20.0)
+            master_key = _get_free_proxy_master_key()
+            headers = {"Authorization": f"Bearer {master_key}"} if master_key else {}
+            resp = await http_client.post(url_fallback, json=payload_fallback, headers=headers, timeout=20.0)
             if resp.status_code == 200:
                 data = resp.json()
                 return data["choices"][0]["message"]["content"]
@@ -179,12 +197,13 @@ async def query_multi_tier_llm(
 
 
 async def fetch_intraday_bars(
-    alpaca_data_client: Any, ticker: str = "SPY", window_minutes: int = 120
+    alpaca_data_client: Any, ticker: str = "SPY", window_minutes: int = 60
 ) -> list[dict[str, Any]]:
-    """Fetch rolling 120m 1m bars from Alpaca."""
+    """Fetch rolling 60m 1m real-time bars from Alpaca using IEX feed."""
     if not alpaca_data_client:
         return []
     try:
+        from alpaca.data.enums import DataFeed
         from alpaca.data.requests import StockBarsRequest
         from alpaca.data.timeframe import TimeFrame
 
@@ -192,8 +211,9 @@ async def fetch_intraday_bars(
         req = StockBarsRequest(
             symbol_or_symbols=ticker,
             timeframe=TimeFrame.Minute,
-            start=now_utc - timedelta(minutes=window_minutes + 60),
-            limit=window_minutes + 30,
+            start=now_utc - timedelta(minutes=window_minutes + 15),
+            limit=window_minutes,
+            feed=DataFeed.IEX,
         )
         loop = asyncio.get_running_loop()
         resp = await loop.run_in_executor(None, alpaca_data_client.get_stock_bars, req)
@@ -207,7 +227,7 @@ async def fetch_intraday_bars(
                 bars = resp[ticker]
             except Exception:
                 bars = []
-        return [
+        parsed = [
             {
                 "time": b.timestamp.isoformat() if hasattr(b.timestamp, "isoformat") else str(b.timestamp),
                 "open": float(b.open),
@@ -218,17 +238,19 @@ async def fetch_intraday_bars(
             }
             for b in bars
         ]
+        return parsed[-window_minutes:]
     except Exception:
         logger.exception(f"Failed to fetch intraday bars for {ticker}")
         return []
 
 
 async def fetch_active_candle(alpaca_data_client: Any, ticker: str = "SPY") -> dict[str, Any] | None:
-    """Fetch the active forming 1m candle from Alpaca using Sort.DESC."""
+    """Fetch the active forming 1m candle from Alpaca using Sort.DESC and IEX feed."""
     if not alpaca_data_client:
         return None
     try:
         from alpaca.common.enums import Sort
+        from alpaca.data.enums import DataFeed
         from alpaca.data.requests import StockBarsRequest
         from alpaca.data.timeframe import TimeFrame
 
@@ -236,9 +258,10 @@ async def fetch_active_candle(alpaca_data_client: Any, ticker: str = "SPY") -> d
         req = StockBarsRequest(
             symbol_or_symbols=ticker,
             timeframe=TimeFrame.Minute,
-            start=now_utc - timedelta(hours=2),
+            start=now_utc - timedelta(hours=1),
             sort=Sort.DESC,
             limit=1,
+            feed=DataFeed.IEX,
         )
         loop = asyncio.get_running_loop()
         resp = await loop.run_in_executor(None, alpaca_data_client.get_stock_bars, req)
@@ -384,6 +407,7 @@ async def execute_intraday_agent_step(
         "memories_consulted": decision.get("memories_consulted", []),
         "news_count": len(news_items),
         "bars_count": len(bars),
+        "bars": bars,
     }
 
     try:

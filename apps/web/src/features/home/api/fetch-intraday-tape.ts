@@ -1,33 +1,11 @@
 import type { CandlestickBar } from '../components/SPYCandlestickChart';
 
-export function generateFallbackIntradayBars(count = 120, basePrice = 582.5): CandlestickBar[] {
-    const bars: CandlestickBar[] = [];
-    const now = new Date();
-    let currentPrice = basePrice;
-
-    for (let i = count; i >= 1; i--) {
-        const barTime = new Date(now.getTime() - i * 60 * 1000);
-        // Deterministic pseudo-random variation based on minute index
-        const delta = Math.sin(i * 0.15) * 0.35 + Math.cos(i * 0.08) * 0.2;
-        const open = currentPrice;
-        const close = Number((open + delta).toFixed(2));
-        const high = Number((Math.max(open, close) + 0.25).toFixed(2));
-        const low = Number((Math.min(open, close) - 0.2).toFixed(2));
-        const volume = Math.floor(10000 + Math.abs(Math.sin(i)) * 25000);
-
-        bars.push({
-            time: barTime.toISOString(),
-            open,
-            high,
-            low,
-            close,
-            volume,
-        });
-
-        currentPrice = close;
-    }
-
-    return bars;
+export function filterLastBars(
+    bars: CandlestickBar[] | null | undefined,
+    maxBars = 60,
+): CandlestickBar[] {
+    if (!bars || !Array.isArray(bars)) return [];
+    return bars.slice(-maxBars);
 }
 
 export function isRegularMarketHours(date = new Date()): boolean {

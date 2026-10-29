@@ -38,7 +38,7 @@ class ModelDiscovery:
         url = f"{base_url.rstrip('/')}/models"
         should_close = False
         if client is None:
-            client = httpx.AsyncClient(timeout=10.0)
+            client = httpx.AsyncClient(timeout=httpx.Timeout(4.0, connect=2.0))
             should_close = True
 
         try:
@@ -55,6 +55,13 @@ class ModelDiscovery:
                     elif isinstance(item, str):
                         models.append(item)
                 if models:
+                    # OpenRouter is a mixed marketplace; strictly filter to zero-cost models
+                    if provider_id == "openrouter":
+                        models = [
+                            m
+                            for m in models
+                            if m.endswith(":free") or m == "openrouter/free"
+                        ]
                     self.set_cached_models(provider_id, models)
                     return models
         except Exception:

@@ -53,8 +53,8 @@
         "*:free"
       ],
       "extra_headers": {
-        "HTTP-Referer": "https://github.com/mnfst/awesome-free-llm-apis",
-        "X-Title": "Free LLM Proxy"
+        "HTTP-Referer": "https://llm.clvg.uk",
+        "X-Title": "Pi / Free LLM Proxy"
       }
     },
     "ovhcloud": {
@@ -84,10 +84,25 @@
         "*nemotron-3.5*",
         "*"
       ]
+    },
+    "strata": {
+      "name": "Strata (Local)",
+      "base_url": "http://localhost:8080/v1",
+      "env_key": null,
+      "tier": 1,
+      "requires_auth": false,
+      "enabled_in_auto": false,
+      "models_endpoint": "/models",
+      "preferred_patterns": [
+        "*"
+      ]
     }
   },
   "virtual_aliases": {
     "free-auto": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
+    "strata-auto": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
+    "auto-strata": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
+    "strata": ["*"],
     "free-fast": ["*-20b*", "*:20b*", "*8b*", "*flash-lite*", "*7b*", "*"],
     "free-reasoning": ["*r1*", "*reasoning*", "*flint*", "*beam*", "*"]
   }

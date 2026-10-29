@@ -49,8 +49,35 @@ class Router:
         available_models: list[str] | None = None,
     ) -> str:
         """Resolves requested model or alias to an actual model string on the provider."""
+        # Generic local strata handling: use whichever model is live, or generic 'strata'
+        if provider_id == "strata":
+            if "/" in requested_model and requested_model.startswith("strata/"):
+                stripped = requested_model.split("/", 1)[1]
+                if available_models and stripped in available_models:
+                    return stripped
+                return stripped
+            if available_models:
+                if requested_model in available_models:
+                    return requested_model
+                return available_models[0]
+            return "strata"
+
         p_cfg = self.providers.get(provider_id, {})
         preferred_patterns = p_cfg.get("preferred_patterns", ["*"])
+
+        # OpenRouter safety guard: strictly filter available models to free tier
+        if provider_id == "openrouter":
+            if available_models:
+                available_models = [
+                    m
+                    for m in available_models
+                    if m.endswith(":free") or m == "openrouter/free"
+                ]
+            preferred_patterns = [
+                p
+                for p in preferred_patterns
+                if p.endswith(":free") or p == "openrouter/free"
+            ] or ["openrouter/free"]
 
         # Check virtual alias patterns first
         if requested_model in self.virtual_aliases:
@@ -64,8 +91,15 @@ class Router:
         elif "/" in requested_model and requested_model.startswith(f"{provider_id}/"):
             # Explicit provider prefix passed by client: strip prefix
             stripped = requested_model.split("/", 1)[1]
-            if provider_id == "openrouter" and requested_model == "openrouter/free":
-                return "openrouter/free"
+            if provider_id == "openrouter":
+                if (
+                    requested_model == "openrouter/free"
+                    or stripped == "openrouter/free"
+                ):
+                    return "openrouter/free"
+                if not stripped.endswith(":free"):
+                    # Non-free model requested for OpenRouter: strictly disallow and fall back
+                    return "openrouter/free"
             if available_models:
                 if stripped in available_models:
                     return stripped
@@ -82,7 +116,12 @@ class Router:
 
         candidates = available_models or preferred_patterns
         best = self.discovery.match_best_model(candidates, patterns)
-        return best or (candidates[0] if candidates else requested_model)
+        resolved = best or (candidates[0] if candidates else requested_model)
+        if provider_id == "openrouter" and not (
+            resolved.endswith(":free") or resolved == "openrouter/free"
+        ):
+            return "openrouter/free"
+        return resolved
 
     def get_candidate_chain(self, requested_model: str) -> list[tuple[str, dict]]:
         """Returns ordered list of (provider_id, provider_cfg) to attempt for a request.
@@ -95,19 +134,45 @@ class Router:
         if not active:
             return []
 
+        model_lower = requested_model.lower().strip()
+
+        # Strict local Strata targeting (never falls back to free pool)
+        is_strict_strata = model_lower == "strata" or (
+            "/" in model_lower and model_lower.startswith("strata/")
+        )
+        if is_strict_strata:
+            if "strata" in active:
+                return [("strata", active["strata"])]
+            return []
+
+        include_strata_in_auto = model_lower in {"auto-strata", "free-auto-strata"}
+        is_strata_primary = model_lower == "strata-auto"
+
         # If client explicitly specified a provider (e.g. 'groq/qwen...' or 'openrouter')
         explicit_provider = None
         if "/" in requested_model:
             prefix = requested_model.split("/", 1)[0].lower()
             if prefix in active:
                 explicit_provider = prefix
-        elif requested_model.lower() in active:
-            explicit_provider = requested_model.lower()
+        elif model_lower in active:
+            explicit_provider = model_lower
+        elif is_strata_primary and "strata" in active:
+            explicit_provider = "strata"
 
         tier1 = []
         tier2 = []
 
         for p_id, p_cfg in active.items():
+            enabled_in_auto = p_cfg.get("enabled_in_auto", True)
+            if not enabled_in_auto:
+                if p_id == "strata" and include_strata_in_auto:
+                    # Include strata in tier 1 rotation
+                    tier1.append((p_id, p_cfg))
+                elif p_id == explicit_provider:
+                    # Explicitly targeted: include in tier 1 so it can be prioritized
+                    tier1.append((p_id, p_cfg))
+                continue
+
             tier = p_cfg.get("tier", 2)
             if tier == 1:
                 tier1.append((p_id, p_cfg))
@@ -139,6 +204,7 @@ class Router:
         # If explicit provider was requested, move it to the front
         if explicit_provider:
             healthy_chain.sort(key=lambda x: 0 if x[0] == explicit_provider else 1)
+            cooling_chain.sort(key=lambda x: 0 if x[0] == explicit_provider else 1)
 
         # Fall back to cooling providers only if no healthy candidates remain
         return healthy_chain if healthy_chain else cooling_chain

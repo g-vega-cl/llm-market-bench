@@ -25,7 +25,7 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
                   ▼
        ┌──────────────────────┐
        │    Model Resolver    │ (free-auto, free-fast, free-reasoning,
-       │  (discovery.py)      │  or dynamic provider models)
+       │  (discovery.py)      │  strata-auto, auto-strata, strata, or dynamic provider models)
        └──────────┬───────────┘
                   │
                   ▼
@@ -51,12 +51,13 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ## Key Components
 
-- **Dynamic Catalog Discovery (`apps/free_llm_proxy/discovery.py`)**: Queries each active provider's `GET /models` endpoint at runtime. Avoids hardcoded model IDs so provider version rollouts (e.g. `qwen3.8-27b`, `gpt-oss-120b`) work automatically without code edits. Results are cached per provider (`ModelDiscovery`, default 3600s TTL) and matched against prioritized `fnmatch` patterns.
+- **Dynamic Catalog Discovery (`apps/free_llm_proxy/discovery.py`)**: Queries each active provider's `GET /models` endpoint at runtime. Avoids hardcoded model IDs so provider version rollouts (e.g. `qwen3.8-27b`, `gpt-oss-120b`) work automatically without code edits. Results are cached per provider (`ModelDiscovery`, default 3600s TTL) and matched against prioritized `fnmatch` patterns. Discovery requests use a short connect timeout (`httpx.Timeout(4.0, connect=2.0)`) so an offline provider (e.g. local Strata) fails fast instead of stalling the catalog refresh.
 - **Circuit Breaker (`apps/free_llm_proxy/circuit_breaker.py`)**: Reacts to HTTP 429 rate limits or repeated 5xx errors by placing the failed provider into cooldown (respecting `Retry-After` if sent). A 429 trips the breaker immediately; two consecutive 5xx errors trip it. `record_success` resets the consecutive-failure counter, and `get_status_overview` exposes per-provider health, cooldown remaining, failure count, and rate-limit hit count.
-- **Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; cooling providers are used only as a last resort when no healthy candidate remains. An explicit `provider/model` prefix in the request moves that provider to the front of the chain.
+- **Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; cooling providers are used only as a last resort when no healthy candidate remains. An explicit `provider/model` prefix in the request moves that provider to the front of the chain. Providers declaring `enabled_in_auto: false` (such as local Strata) are excluded from the standard auto rotation unless explicitly targeted or opted in via `auto-strata`.
 - **Audit Database (`apps/free_llm_proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, failover chains, and caller attribution to a local SQLite database (`data/free_llm_proxy.db`). Captures "Who" (`client_ip` via Cloudflare `CF-Connecting-IP`, `X-Forwarded-For`, or socket host, and `user_agent`) and "Why" (`purpose` via `X-Purpose` / `X-Client-Id` and `prompt_preview` containing a 60-character snippet of the user prompt). `get_metrics()` aggregates total/successful requests, success rate, token totals, average latency, per-provider stats, and the 10 most recent calls. Auto-migrates existing tables seamlessly.
 - **Streaming & SSE (`apps/free_llm_proxy/client.py`)**: Streams `text/event-stream` chunks directly to chat clients with pre-flight failover protection — the connection is probed first so an initial 429/5xx fails over before any chunk is yielded.
-- **Provider Registry (`apps/free_llm_proxy/providers.json`)**: Declarative provider definitions (`base_url`, `env_key`, `tier`, `requires_auth`, `preferred_patterns`, optional `extra_headers`) plus the virtual alias pattern map. Providers with `requires_auth: false` (Kilo Code, OVHcloud) are active with zero keys; keyed providers activate automatically when their env var is present.
+- **Connection Error Resilience (`apps/free_llm_proxy/client.py`)**: `execute_completion` wraps both the non-streaming `POST` and the streaming `build_request`/`send` probe in `try/except httpx.RequestError`. A connection refusal, DNS failure, or connect timeout is converted into a structured `503` response (`{"error": {"message": "Provider connection error: ...", "type": "connection_error"}}`) rather than propagating an unhandled exception. This lets the router cleanly fail over to the next candidate provider (e.g. `strata-auto` falling back to the auto pool when local Strata is offline). The default client uses `httpx.Timeout(60.0, connect=3.0)` so an unreachable provider is detected within 3 seconds.
+- **Provider Registry (`apps/free_llm_proxy/providers.json`)**: Declarative provider definitions (`base_url`, `env_key`, `tier`, `requires_auth`, `preferred_patterns`, optional `extra_headers`, optional `enabled_in_auto`) plus the virtual alias pattern map. Providers with `requires_auth: false` (Kilo Code, OVHcloud, local Strata) are active with zero keys; keyed providers activate automatically when their env var is present.
 
 ---
 
@@ -64,12 +65,13 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 `Router.resolve_model_for_provider(provider_id, requested_model, available_models)` maps the client-supplied `model` string onto a concrete provider model ID. Resolution order:
 
-1. **Virtual alias** — if `requested_model` is a key in `virtual_aliases` (e.g. `free-auto`), its pattern list is used.
-2. **Default/auto** — `default`, `auto`, or the empty string resolve to the `free-auto` patterns.
-3. **Exact preferred pattern** — if `requested_model` appears verbatim in the provider's `preferred_patterns`, it is returned unchanged (no catalog lookup required).
-4. **Exact catalog match** — if `requested_model` is present in the discovered `available_models`, it is returned unchanged.
-5. **Explicit `provider/model` prefix** — the prefix is stripped and the remainder matched against the catalog. The literal `openrouter/free` is special-cased and returned as-is (it is a real OpenRouter model ID, not a `provider/model` pair, so it must never be stripped down to `free`).
-6. **Pattern fallback** — otherwise the first `preferred_patterns` entry matching the catalog is used.
+1. **Local Strata** — when `provider_id == "strata"`, a `strata/<model>` prefix is stripped and matched against the live catalog; otherwise the requested model is used if present in the catalog, else the first live model, else the literal `"strata"`. This lets the proxy target whichever model the local Strata server currently has loaded.
+2. **Virtual alias** — if `requested_model` is a key in `virtual_aliases` (e.g. `free-auto`), its pattern list is used.
+3. **Default/auto** — `default`, `auto`, or the empty string resolve to the `free-auto` patterns.
+4. **Exact preferred pattern** — if `requested_model` appears verbatim in the provider's `preferred_patterns`, it is returned unchanged (no catalog lookup required).
+5. **Exact catalog match** — if `requested_model` is present in the discovered `available_models`, it is returned unchanged.
+6. **Explicit `provider/model` prefix** — the prefix is stripped and the remainder matched against the catalog. The literal `openrouter/free` is special-cased and returned as-is (it is a real OpenRouter model ID, not a `provider/model` pair, so it must never be stripped down to `free`).
+7. **Pattern fallback** — otherwise the first `preferred_patterns` entry matching the catalog is used.
 
 `Router.get_candidate_chain(requested_model)` builds the ordered provider attempt list. A request is treated as **explicitly provider-targeted** when either:
 
@@ -78,9 +80,24 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 In both cases that provider is moved to the front of the candidate chain, with normal tiered failover behind it.
 
-### OpenRouter Free Tier
+### Local Strata Targeting
 
-The `openrouter` provider declares `preferred_patterns: ["openrouter/free", "*:free"]`, so `openrouter/free` is prioritized ahead of generic `:free`-suffixed models when OpenRouter is selected. Requests for `model: "openrouter/free"` route directly to OpenRouter with the model ID passed through unchanged, even before the dynamic catalog has been populated.
+Local Strata (`strata` provider, `base_url` from `STRATA_BASE_URL`, default `http://localhost:8080/v1`) is a Tier 1 provider with `requires_auth: false` and `enabled_in_auto: false`, so it is excluded from the standard `free-auto` rotation. Three aliases control how it participates:
+
+- **`strata-auto`** — Strata is placed first in the candidate chain; if Strata is offline or cooling down, the request fails over cleanly to the normal auto pool.
+- **`auto-strata`** — Strata is added into the standard Tier 1 round-robin rotation alongside the cloud providers.
+- **`strata`** (and `strata/<model>`) — strict targeting: the candidate chain contains **only** Strata. If Strata is offline the request fails (HTTP 502) with zero silent cloud fallback.
+
+When Strata is in circuit-breaker cooldown, `strata-auto` skips it immediately and routes to healthy auto providers.
+
+### OpenRouter Zero-Cost Isolation
+
+The `openrouter` provider operates as a mixed marketplace of paid and free models. To guarantee that no account credits are ever billed unintentionally:
+- **Discovered Catalog Filtering (`discovery.py`)**: Models fetched from OpenRouter's live `/models` endpoint are strictly filtered at ingestion time to keep only zero-cost variants ending with `:free` or equaling `openrouter/free`. Paid models are stripped before pattern matching can evaluate them.
+- **Resolution Safety Gate (`router.py`)**: Virtual aliases (such as `free-auto`) and provider patterns are restricted to `:free` variants. If an explicit paid model is targeted or no pattern matches, the router coerces the model to `openrouter/free`.
+- **Server Dispatch Guard (`server.py`)**: Pre-flight verification enforces that requests dispatched to OpenRouter must end with `:free` or equal `openrouter/free`, ensuring 100% hermetic zero-cost inference.
+- **Attribution Headers**: Requests to OpenRouter pass `HTTP-Referer: https://llm.clvg.uk` and `X-Title: Pi / Free LLM Proxy`.
+
 
 ---
 
@@ -88,12 +105,15 @@ The `openrouter` provider declares `preferred_patterns: ["openrouter/free", "*:f
 
 | Alias | Description | Target Family |
 | :--- | :--- | :--- |
-| `free-auto` (default) | Best overall model across the healthy active pool | 120B / 70B / Flash / 27B |
+| `free-auto` (default) | Best overall model across the healthy active pool (Strata excluded) | 120B / 70B / Flash / 27B |
+| `strata-auto` | Prioritizes local Strata (localhost:8080); fails over cleanly to auto pool when offline | Local live model / Strata ➔ Auto fallback |
+| `auto-strata` | Adds Strata into the standard Tier 1 round-robin auto rotation pool | Local Strata + Tier 1 providers |
+| `strata` | Strictly targets local Strata; fails fast with error if offline (zero silent cloud fallback) | Whichever model is live on localhost:8080 |
 | `free-fast` | Sub-second ultra-low latency models | 20B / 8B / Flash-Lite / 7B |
 | `free-reasoning` | Deep reasoning / thinking models | R1, reasoning, Flint, Beam |
 | Any custom name | Pass-through if present on the provider, otherwise falls back to `free-auto` patterns | — |
 | `provider/model` | Explicitly targets a provider first, with normal failover behind it | — |
-| `provider` (bare) | Bare active provider ID (e.g. `openrouter`) targets that provider first | — |
+| `provider` (bare) | Bare active provider ID (e.g. `openrouter`) targets that provider first (`strata` is strict with no fallback) | — |
 | `openrouter/free` | Passed through verbatim to OpenRouter; never stripped to `free` | — |
 
 ---
@@ -121,7 +141,11 @@ Environment variables (loaded from `apps/free_llm_proxy/.env`, falling back to `
 | `DEFAULT_COOLDOWN_SECONDS` | `60` | Circuit-breaker cooldown when no `Retry-After` is sent |
 | `MAX_FAILOVER_RETRIES` | `4` | Failover retry budget |
 | `SQLITE_DB_PATH` | `data/free_llm_proxy.db` | Audit database location (`:memory:` supported for tests) |
+| `STRATA_BASE_URL` | `http://localhost:8080/v1` | Local Strata OpenAI-compatible endpoint URL |
+| `ENABLE_STRATA` | `true` | Toggle inclusion of local Strata provider in proxy pool |
 | `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool |
+
+`ENABLE_STRATA` is parsed leniently — `0`, `false`, and `no` (case-insensitive) disable the provider. When disabled, `load_providers_config()` removes the `strata` entry from the provider map entirely. When enabled, `STRATA_BASE_URL` overrides the `strata` provider's `base_url` at load time.
 
 ---
 
@@ -157,7 +181,7 @@ docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
 ./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
 ```
 
-The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
+The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, and graceful `503` handling of `httpx.RequestError` connection failures. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
 
 ---
 
@@ -182,6 +206,22 @@ Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configu
           "name": "Free LLM: Auto (Best Available)",
           "input": ["text"],
           "contextWindow": 128000,
+          "maxTokens": 8192,
+          "type": "chat"
+        },
+        {
+          "id": "strata-auto",
+          "name": "Free LLM: Strata Primary (Auto Fallback)",
+          "input": ["text"],
+          "contextWindow": 65536,
+          "maxTokens": 8192,
+          "type": "chat"
+        },
+        {
+          "id": "auto-strata",
+          "name": "Free LLM: Auto with Strata Rotated",
+          "input": ["text"],
+          "contextWindow": 65536,
           "maxTokens": 8192,
           "type": "chat"
         },

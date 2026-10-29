@@ -35,12 +35,24 @@ async def execute_completion(
 
     should_close = False
     if client is None:
-        client = httpx.AsyncClient(timeout=60.0)
+        client = httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=3.0))
         should_close = True
 
     try:
         if not stream:
-            resp = await client.post(url, headers=headers, json=payload)
+            try:
+                resp = await client.post(url, headers=headers, json=payload)
+            except httpx.RequestError as exc:
+                return (
+                    503,
+                    {
+                        "error": {
+                            "message": f"Provider connection error: {exc}",
+                            "type": "connection_error",
+                        }
+                    },
+                    {},
+                )
             resp_headers = dict(resp.headers)
             try:
                 body = resp.json()
@@ -52,8 +64,20 @@ async def execute_completion(
 
         else:
             # For streaming, probe the connection first to catch initial 429/5xx before yielding chunks
-            req = client.build_request("POST", url, headers=headers, json=payload)
-            resp = await client.send(req, stream=True)
+            try:
+                req = client.build_request("POST", url, headers=headers, json=payload)
+                resp = await client.send(req, stream=True)
+            except httpx.RequestError as exc:
+                return (
+                    503,
+                    {
+                        "error": {
+                            "message": f"Provider connection error: {exc}",
+                            "type": "connection_error",
+                        }
+                    },
+                    {},
+                )
             resp_headers = dict(resp.headers)
 
             if resp.status_code != 200:

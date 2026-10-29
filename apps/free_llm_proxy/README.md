@@ -102,7 +102,10 @@ print(response.choices[0].message.content)
 
 | Alias | Description | Target Family |
 | :--- | :--- | :--- |
-| **`free-auto`** (Default) | Best overall model available across healthy active pool | 120B / 70B / Flash models |
+| **`free-auto`** (Default) | Best overall model available across healthy active pool (Strata excluded) | 120B / 70B / Flash models |
+| **`strata-auto`** | Prioritizes local Strata (localhost:8080); fails over cleanly to auto pool when offline | Local live model / Orcarouter ➔ Auto pool fallback |
+| **`auto-strata`** | Adds Strata into the standard Tier 1 round-robin auto rotation pool | Local Strata + Tier 1 providers |
+| **`strata`** | Strictly targets local Strata; fails fast with error if offline (zero silent cloud fallback) | Whichever model is live on localhost:8080 |
 | **`free-fast`** | Sub-second ultra-low latency models | 20B / 8B / Flash-Lite models |
 | **`free-reasoning`** | Deep reasoning / thinking models | DeepSeek-R1, Flint, Beam, QwQ |
 | **Any Custom Name** | Pass-through or fallback (e.g. `deepseek-chat`, `gpt-4o`) | Automatically routes via `free-auto` |

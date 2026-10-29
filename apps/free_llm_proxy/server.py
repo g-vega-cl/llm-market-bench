@@ -195,6 +195,10 @@ async def chat_completions(
         target_model = router.resolve_model_for_provider(
             p_id, req.model, available_models
         )
+        if p_id == "openrouter" and not (
+            target_model.endswith(":free") or target_model == "openrouter/free"
+        ):
+            target_model = "openrouter/free"
 
         # Build payload copy with resolved target model
         payload = dict(raw_body)

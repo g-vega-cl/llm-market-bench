@@ -1,0 +1,24 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# Install system dependencies if required
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install python dependencies
+COPY apps/engine/requirements.txt /app/apps/engine/requirements.txt
+RUN pip install --no-cache-dir -r /app/apps/engine/requirements.txt
+
+# Copy engine application and package configurations
+COPY apps/engine /app/apps/engine
+COPY packages/config /app/packages/config
+
+WORKDIR /app/apps/engine
+
+ENV PYTHONPATH=/app/apps/engine
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python3", "-m", "trading.runner", "--loop"]

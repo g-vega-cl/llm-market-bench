@@ -69,6 +69,31 @@ services:
         limits:
           memory: 128M
 
+  live-spy-trader:
+    build:
+      context: ../..
+      dockerfile: docker/archive/Dockerfile.trader
+    container_name: market-bench-live-spy-trader
+    restart: unless-stopped
+    extra_hosts:
+      - "primary-workstation:${PRIMARY_WORKSTATION_IP:-127.0.0.1}"
+    environment:
+      STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:8080/v1}
+      FREE_LLM_PROXY_URL: https://llm.clvg.uk/v1
+      SUPABASE_PROJECT_URL: ${SUPABASE_PROJECT_URL:-https://benchify-archive-db.clvg.uk}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      ALPACA_API_KEY: ${ALPACA_API_KEY:-}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
+      ALPACA_PAPER_ENDPOINT: ${ALPACA_PAPER_ENDPOINT:-https://paper-api.alpaca.markets}
+      FMP_API_KEY: ${FMP_API_KEY:-}
+      MASSIVE_API_KEY: ${MASSIVE_API_KEY:-}
+      POLYGON_API_KEY: ${POLYGON_API_KEY:-}
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
 volumes:
   archive_pgdata_replica:
     name: archive_pgdata_replica

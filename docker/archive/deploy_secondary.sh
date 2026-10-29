@@ -19,9 +19,9 @@ fi
 echo "SSH connection verified."
 
 echo "=== [2/4] Ensuring remote workspace directories exist ==="
-ssh "${TARGET_HOST}" "mkdir -p ${REMOTE_DIR}/docker/archive ${REMOTE_DIR}/apps/free_llm_proxy"
+ssh "${TARGET_HOST}" "mkdir -p ${REMOTE_DIR}/docker/archive ${REMOTE_DIR}/apps/free_llm_proxy ${REMOTE_DIR}/apps/engine ${REMOTE_DIR}/packages/config"
 
-echo "=== [3/4] Syncing configurations and Docker compose files via rsync ==="
+echo "=== [3/4] Syncing configurations, trader engine, and Docker files via rsync ==="
 rsync -avz --delete \
     --exclude '__pycache__' \
     --exclude '*.pyc' \
@@ -30,6 +30,7 @@ rsync -avz --delete \
     "${SCRIPT_DIR}/nginx.secondary.conf" \
     "${SCRIPT_DIR}/bootstrap_replica.sh" \
     "${SCRIPT_DIR}/promote_to_primary.sh" \
+    "${SCRIPT_DIR}/Dockerfile.trader" \
     "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/"
 
 rsync -avz --delete \
@@ -39,10 +40,29 @@ rsync -avz --delete \
     "${REPO_ROOT}/apps/free_llm_proxy/" \
     "${TARGET_HOST}:${REMOTE_DIR}/apps/free_llm_proxy/"
 
+rsync -avz --delete \
+    --exclude '__pycache__' \
+    --exclude '*.pyc' \
+    --exclude '.venv' \
+    --exclude 'market' \
+    --exclude '.pytest_cache' \
+    --exclude 'tests' \
+    "${REPO_ROOT}/apps/engine/" \
+    "${TARGET_HOST}:${REMOTE_DIR}/apps/engine/"
+
+rsync -avz --delete \
+    "${REPO_ROOT}/packages/config/" \
+    "${TARGET_HOST}:${REMOTE_DIR}/packages/config/"
+
 # Sync .env if present
 if [[ -f "${SCRIPT_DIR}/.env" ]]; then
     echo "Syncing docker/archive/.env..."
     rsync -avz "${SCRIPT_DIR}/.env" "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/.env"
+fi
+
+if [[ -f "${REPO_ROOT}/apps/engine/.env" ]]; then
+    echo "Syncing apps/engine/.env..."
+    rsync -avz "${REPO_ROOT}/apps/engine/.env" "${TARGET_HOST}:${REMOTE_DIR}/apps/engine/.env"
 fi
 
 if [[ -f "${REPO_ROOT}/apps/free_llm_proxy/.env" ]]; then
@@ -54,5 +74,5 @@ echo "=== [4/4] Setting execution permissions on remote helper scripts ==="
 ssh "${TARGET_HOST}" "chmod +x ${REMOTE_DIR}/docker/archive/*.sh"
 
 echo "=== Deployment sync to ${TARGET_HOST} complete! ==="
-echo "To initialize replication on MiniPC, SSH into ${TARGET_HOST} and run:"
-echo "  cd ${REMOTE_DIR}/docker/archive && ./bootstrap_replica.sh"
+echo "To initialize or restart containers on MiniPC, SSH into ${TARGET_HOST} and run:"
+echo "  cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build"

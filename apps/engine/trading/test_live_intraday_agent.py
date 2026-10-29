@@ -231,4 +231,3 @@ async def test_fetch_active_candle_hermetic():
 
     # None client
     assert await fetch_active_candle(None, "SPY") is None
-

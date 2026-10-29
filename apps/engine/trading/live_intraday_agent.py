@@ -164,19 +164,23 @@ async def query_multi_tier_llm(
             logger.warning(f"Fallback proxy call failed: {e}")
 
         # Default fallback decision
-        return json.dumps({
-            "action": "HOLD",
-            "conviction": 50,
-            "thought": "All LLM endpoints currently unavailable; holding neutral position.",
-            "memories_consulted": [],
-            "allocation_pct": 0,
-        })
+        return json.dumps(
+            {
+                "action": "HOLD",
+                "conviction": 50,
+                "thought": "All LLM endpoints currently unavailable; holding neutral position.",
+                "memories_consulted": [],
+                "allocation_pct": 0,
+            }
+        )
     finally:
         if should_close:
             await http_client.aclose()
 
 
-async def fetch_intraday_bars(alpaca_data_client: Any, ticker: str = "SPY", window_minutes: int = 120) -> list[dict[str, Any]]:
+async def fetch_intraday_bars(
+    alpaca_data_client: Any, ticker: str = "SPY", window_minutes: int = 120
+) -> list[dict[str, Any]]:
     """Fetch rolling 120m 1m bars from Alpaca."""
     if not alpaca_data_client:
         return []
@@ -299,7 +303,9 @@ async def execute_intraday_agent_step(
 
     # 4. Formulate lean prompt
     news_bullets = "\n".join([f"- [{n['source']}] {n['headline']}" for n in news_items[:5]]) or "- No breaking news"
-    memory_bullets = "\n".join([f"- [{m.get('id', '')}] {m.get('content', '')[:100]}" for m in memories[:3]]) or "- No prior lessons"
+    memory_bullets = (
+        "\n".join([f"- [{m.get('id', '')}] {m.get('content', '')[:100]}" for m in memories[:3]]) or "- No prior lessons"
+    )
 
     system_prompt = (
         "You are an autonomous intraday quantitative trader managing a paper portfolio in SPY.\n"
@@ -359,8 +365,16 @@ async def execute_intraday_agent_step(
             logger.exception("Failed to submit Alpaca paper order")
 
     # 6. Persist step into market_feeling table
-    sentiment_label = "Accumulating Dips" if decision.get("action") == "BUY" else "Defensive Cash" if decision.get("action") == "HOLD" else "Reducing Risk"
-    market_direction = "BULLISH" if decision.get("action") == "BUY" else "BEARISH" if decision.get("action") == "SELL" else "NEUTRAL"
+    sentiment_label = (
+        "Accumulating Dips"
+        if decision.get("action") == "BUY"
+        else "Defensive Cash"
+        if decision.get("action") == "HOLD"
+        else "Reducing Risk"
+    )
+    market_direction = (
+        "BULLISH" if decision.get("action") == "BUY" else "BEARISH" if decision.get("action") == "SELL" else "NEUTRAL"
+    )
 
     trades_payload = {
         "action": decision.get("action"),
@@ -373,17 +387,19 @@ async def execute_intraday_agent_step(
     }
 
     try:
-        sb.table("market_feeling").insert({
-            "sentiment_label": sentiment_label,
-            "sentiment_emoji": "⚡",
-            "confidence_score": int(decision.get("conviction", 50)),
-            "why_explanation": decision.get("thought", ""),
-            "market_direction": market_direction,
-            "primary_concern": f"RSI: {technicals['rsi_14']} | Trend: {technicals['trend']}",
-            "secondary_concern": f"VWAP: ${technicals['vwap']:.2f}",
-            "trades_summary": trades_payload,
-            "model_used": "Strata / Cheap-LLM-Cascade",
-        }).execute()
+        sb.table("market_feeling").insert(
+            {
+                "sentiment_label": sentiment_label,
+                "sentiment_emoji": "⚡",
+                "confidence_score": int(decision.get("conviction", 50)),
+                "why_explanation": decision.get("thought", ""),
+                "market_direction": market_direction,
+                "primary_concern": f"RSI: {technicals['rsi_14']} | Trend: {technicals['trend']}",
+                "secondary_concern": f"VWAP: ${technicals['vwap']:.2f}",
+                "trades_summary": trades_payload,
+                "model_used": "Strata / Cheap-LLM-Cascade",
+            }
+        ).execute()
     except Exception:
         logger.exception("Failed to persist intraday agent thought to market_feeling")
 

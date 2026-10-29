@@ -21,6 +21,7 @@ from execution.daily_bond_trading import (
     execute_system_daily_bond_close_trade,
 )
 from execution.daily_trading import (
+    INITIAL_PORTFOLIO_CASH,
     SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
     SYS_DAILY_SPY_OWNER_PREFIX,
     execute_system_daily_close_trade,
@@ -122,7 +123,7 @@ async def audit_system_portfolios(
                 portfolio_id = p["id"]
                 trades_res = (
                     client.table("trades")
-                    .select("id, signal, price, quantity, executed_at, alpaca_status")
+                    .select("id, signal, price, quantity, executed_at, alpaca_status, realized_pnl")
                     .eq("portfolio_id", portfolio_id)
                     .gte("executed_at", f"{d}T00:00:00Z")
                     .lte("executed_at", f"{d}T23:59:59Z")
@@ -239,7 +240,7 @@ async def audit_system_portfolios(
                                 prior_perf_data
                                 and isinstance(prior_perf_data[0].get("total_equity"), (int, float, str))
                             )
-                            else float(p.get("cash_balance") or 10000.0)
+                            else INITIAL_PORTFOLIO_CASH
                         )
 
                         # Clean any existing trades for date d before executing
@@ -291,6 +292,86 @@ async def audit_system_portfolios(
                             }
                         )
                         logger.info(f"Auto-healed {owner_id} for {d}: New equity ${(res.get('new_equity') or 0):,.2f}")
+
+                elif not is_missing_trades and not has_invalid_entry:
+                    # Check if recorded performance for date d has desynced from prior_equity + session realized PnL
+                    prior_perf_res = (
+                        client.table("portfolio_performance")
+                        .select("total_equity")
+                        .eq("portfolio_id", portfolio_id)
+                        .lt("date", d)
+                        .order("date", desc=True)
+                        .limit(1)
+                        .execute()
+                    )
+                    prior_perf_data = prior_perf_res.data if isinstance(prior_perf_res.data, list) else []
+                    prior_equity = (
+                        float(prior_perf_data[0]["total_equity"])
+                        if (prior_perf_data and isinstance(prior_perf_data[0].get("total_equity"), (int, float, str)))
+                        else INITIAL_PORTFOLIO_CASH
+                    )
+                    closing_trades = [t for t in trades if t.get("signal") in ("SELL", "COVER")]
+                    if closing_trades:
+                        session_pnl = sum(
+                            float(t["realized_pnl"]) for t in closing_trades if t.get("realized_pnl") is not None
+                        )
+                        expected_equity = round(prior_equity + session_pnl, 2)
+                        curr_perf_res = (
+                            client.table("portfolio_performance")
+                            .select("total_equity")
+                            .eq("portfolio_id", portfolio_id)
+                            .eq("date", d)
+                            .execute()
+                        )
+                        curr_perf_data = curr_perf_res.data if isinstance(curr_perf_res.data, list) else []
+                        if curr_perf_data:
+                            rec_equity = float(curr_perf_data[0]["total_equity"])
+                            if abs(rec_equity - expected_equity) > 2.00:
+                                anomaly = {
+                                    "date": d,
+                                    "portfolio_id": portfolio_id,
+                                    "owner_id": owner_id,
+                                    "type": "DESYNCED_EQUITY_DAILY_SPY",
+                                    "model_name": model_name,
+                                    "details": (
+                                        f"Performance equity ${rec_equity:,.2f} on {d} desynced from cumulative equity "
+                                        f"${expected_equity:,.2f} (drift ${rec_equity - expected_equity:+,.2f})"
+                                    ),
+                                }
+                                anomalies.append(anomaly)
+                                logger.warning(f"Portfolio health anomaly: {anomaly['details']} on {owner_id} ({d})")
+
+                                if auto_heal:
+                                    client.table("portfolio_performance").update(
+                                        {
+                                            "total_equity": expected_equity,
+                                            "cash_balance": expected_equity,
+                                            "buying_power": expected_equity,
+                                            "realized": expected_equity,
+                                        }
+                                    ).eq("portfolio_id", portfolio_id).eq("date", d).execute()
+                                    p["cash_balance"] = expected_equity
+                                    p["total_equity"] = expected_equity
+                                    if d == dates_to_check[-1]:
+                                        client.table("portfolios").update(
+                                            {
+                                                "cash_balance": expected_equity,
+                                                "total_equity": expected_equity,
+                                                "buying_power": expected_equity,
+                                                "realized": expected_equity,
+                                            }
+                                        ).eq("id", portfolio_id).execute()
+                                    healed.append(
+                                        {
+                                            "date": d,
+                                            "portfolio_id": portfolio_id,
+                                            "owner_id": owner_id,
+                                            "type": "DESYNCED_EQUITY_DAILY_SPY",
+                                            "action": "HEALED_DESYNCED_EQUITY",
+                                            "new_equity": expected_equity,
+                                            "details": f"Corrected performance equity to ${expected_equity:,.2f}",
+                                        }
+                                    )
 
     # 2. Check Weekly Sector Portfolios
     # Weekly Sector Portfolios hold positions from Monday 9:35 AM ET through Friday 15:30 ET.

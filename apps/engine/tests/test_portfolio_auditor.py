@@ -695,3 +695,209 @@ async def test_portfolio_auditor_detects_and_heals_unliquidated_max_pain_positio
     # Should exit at target strike ($769.00 * (1 - 1bps)) since RTH high touched $769.00
     assert round(exit_trade["price"], 4) == round(769.0 * (1.0 - 0.0001), 4)
     assert "portfolio_positions" in deleted_positions
+
+
+@pytest.mark.asyncio
+async def test_audit_auto_heal_anchors_to_initial_capital_when_no_prior_history(mock_supabase):
+    """Verify auto-healing an initial session anchors to INITIAL_PORTFOLIO_CASH ($10,000), not dirty portfolio cash."""
+    from audit.portfolio_auditor import audit_system_portfolios
+
+    target_date = "2026-10-27"
+    pred = {
+        "id": "pred-jev-1",
+        "model_name": "jev-four-regime-champion",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.0,
+        "target_date": target_date,
+        "open_price": 767.39,
+        "high_price": 769.80,
+        "low_price": 767.00,
+        "close_price": 769.66,
+    }
+
+    portfolio_updates = []
+    performance_upserts = []
+
+    def table_router(table_name):
+        mock_t = MagicMock()
+        mock_t.select.return_value = mock_t
+        mock_t.insert.return_value = mock_t
+        mock_t.upsert.side_effect = lambda payload, **kwargs: performance_upserts.append(payload) or mock_t
+        mock_t.update.side_effect = lambda payload: portfolio_updates.append(payload) or mock_t
+        mock_t.delete.return_value = mock_t
+        mock_t.eq.return_value = mock_t
+        mock_t.gte.return_value = mock_t
+        mock_t.lte.return_value = mock_t
+        mock_t.lt.return_value = mock_t
+        mock_t.like.return_value = mock_t
+        mock_t.order.return_value = mock_t
+        mock_t.limit.return_value = mock_t
+
+        if table_name == "daily_predictions":
+            mock_t.execute.return_value = MagicMock(data=[pred])
+        elif table_name == "portfolios":
+            # Dirty cash balance representing Day 2 state ($10,025.21)
+            mock_t.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": str(uuid4()),
+                        "owner_id": "sys-daily-spy-close-jev-four-regime-champion",
+                        "cash_balance": 10025.21,
+                        "total_equity": 10025.21,
+                    },
+                ]
+            )
+        elif table_name == "portfolio_performance":
+            # No prior performance record before 2026-10-27
+            mock_t.execute.return_value = MagicMock(data=[])
+        elif table_name == "trades":
+            # Missing trades for 2026-10-27
+            mock_t.execute.return_value = MagicMock(data=[])
+        elif table_name == "portfolio_positions":
+            mock_t.execute.return_value = MagicMock(data=[])
+        else:
+            mock_t.execute.return_value = MagicMock(data=[])
+        return mock_t
+
+    mock_supabase.table.side_effect = table_router
+
+    with patch("execution.daily_trading.get_supabase_client", return_value=mock_supabase):
+        report = await audit_system_portfolios(
+            target_date=target_date,
+            lookback_days=1,
+            auto_heal=True,
+            supabase_client=mock_supabase,
+        )
+
+    assert report["status"] == "healed"
+    healed = [h for h in report["healed"] if h["owner_id"] == "sys-daily-spy-close-jev-four-regime-champion"][0]
+
+    # Starting from $10,000, 13 shares bought at 767.54, sold at 769.51 -> +$25.51 profit.
+    # Total equity MUST be ~10,025.51, NOT 10,050.72 (which was 10,025.21 + 25.51).
+    assert healed["new_equity"] is not None
+    assert round(healed["new_equity"], 2) == 10025.51
+    assert healed["new_equity"] < 10040.0
+
+
+@pytest.mark.asyncio
+async def test_audit_detects_and_heals_desynced_performance_equity(mock_supabase):
+    """Verify that when performance equity drifts from prior equity + trade realized PnL, it is detected and healed."""
+    from audit.portfolio_auditor import audit_system_portfolios
+
+    target_date = "2026-10-28"
+    pred = {
+        "id": "pred-jev-2",
+        "model_name": "jev-four-regime-champion",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.0,
+        "target_date": target_date,
+        "open_price": 771.45,
+        "high_price": 773.00,
+        "low_price": 770.00,
+        "close_price": 771.17,
+    }
+
+    trades = [
+        {
+            "id": "t-buy",
+            "signal": "BUY",
+            "quantity": 13,
+            "price": 771.45,
+            "realized_pnl": None,
+            "executed_at": f"{target_date}T13:30:00Z",
+        },
+        {
+            "id": "t-sell",
+            "signal": "SELL",
+            "quantity": 13,
+            "price": 771.17,
+            "realized_pnl": -3.64,
+            "executed_at": f"{target_date}T19:30:00Z",
+        },
+    ]
+
+    performance_updates = []
+
+    def table_router(table_name):
+        mock_t = MagicMock()
+        mock_t.select.return_value = mock_t
+        mock_t.update.side_effect = lambda payload: performance_updates.append(payload) or mock_t
+        mock_t.eq.return_value = mock_t
+        mock_t.gte.return_value = mock_t
+        mock_t.lte.return_value = mock_t
+        mock_t.lt.return_value = mock_t
+        mock_t.like.return_value = mock_t
+        mock_t.order.return_value = mock_t
+        mock_t.limit.return_value = mock_t
+
+        if table_name == "daily_predictions":
+            mock_t.execute.return_value = MagicMock(data=[pred])
+        elif table_name == "portfolios":
+            mock_t.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": "p-jev",
+                        "owner_id": "sys-daily-spy-close-jev-four-regime-champion",
+                        "cash_balance": 10050.72,
+                        "total_equity": 10050.72,
+                    },
+                ]
+            )
+        elif table_name == "trades":
+            mock_t.execute.return_value = MagicMock(data=trades)
+        elif table_name == "portfolio_performance":
+            # If lt("date", target_date): returns Day 1 equity: 10025.51
+            # If eq("date", target_date): returns desynced Day 2 equity: 10025.21 (expected is 10025.51 - 3.64 = 10021.87)
+            # We can mock this dynamically by inspecting call args or returning based on call
+            class PerfMock:
+                def __init__(self):
+                    self.is_lt = False
+
+                def select(self, *a, **kw):
+                    return self
+
+                def eq(self, col, val):
+                    return self
+
+                def lt(self, col, val):
+                    self.is_lt = True
+                    return self
+
+                def order(self, *a, **kw):
+                    return self
+
+                def limit(self, *a, **kw):
+                    return self
+
+                def update(self, payload):
+                    performance_updates.append(payload)
+                    return self
+
+                def execute(self):
+                    if self.is_lt:
+                        return MagicMock(data=[{"total_equity": 10025.51}])
+                    else:
+                        return MagicMock(data=[{"total_equity": 10025.21}])
+
+            return PerfMock()
+        elif table_name == "portfolio_positions":
+            mock_t.execute.return_value = MagicMock(data=[])
+        else:
+            mock_t.execute.return_value = MagicMock(data=[])
+        return mock_t
+
+    mock_supabase.table.side_effect = table_router
+
+    report = await audit_system_portfolios(
+        target_date=target_date,
+        lookback_days=1,
+        auto_heal=True,
+        supabase_client=mock_supabase,
+    )
+
+    assert report["status"] == "healed"
+    assert any(a["type"] == "DESYNCED_EQUITY_DAILY_SPY" for a in report["anomalies"])
+    healed = [h for h in report["healed"] if h["type"] == "DESYNCED_EQUITY_DAILY_SPY"][0]
+    # 10025.51 - 3.64 = 10021.87
+    assert healed["new_equity"] == 10021.87
+    assert any(u.get("total_equity") == 10021.87 for u in performance_updates)

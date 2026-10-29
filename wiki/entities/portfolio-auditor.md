@@ -11,7 +11,7 @@ The Portfolio Auditor (`apps/engine/audit/portfolio_auditor.py`) is a health-che
 
 The auditor walks a window of trading sessions (default 5, weekdays only) and checks two families of portfolios:
 
-- **Daily SPY portfolios** (`sys-daily-spy-*` and `sys-daily-spy-close-*`) — for every `daily_predictions` row on a given date, the matching system portfolio must contain both an entry and an exit trade (2 trades). Fewer than 2 trades is flagged as `MISSING_DAILY_SPY_TRADE`. The close-owner portfolio is always expected; the intraday owner is only expected when the model is not `jev` and the predicted magnitude is non-zero.
+- **Daily SPY portfolios** (`sys-daily-spy-*` and `sys-daily-spy-close-*`) — for every `daily_predictions` row on a given date, the matching system portfolio must contain both an entry and an exit trade (2 trades). Fewer than 2 trades is flagged as `MISSING_DAILY_SPY_TRADE`. The close-owner portfolio is always expected; the intraday owner is only expected when the model is not `jev` and the predicted magnitude is non-zero. When trades are present and entry prices are valid, the auditor additionally verifies that the recorded `portfolio_performance` equity for the date matches cumulative equity (prior closing equity + session realized PnL), flagging drift as `DESYNCED_EQUITY_DAILY_SPY`.
 - **Weekly Sector portfolios** (`sys-sector-ls-consensus`, `sys-sector-mean-reversion`, `sys-sector-naive-momentum`, `sys-sector-uncorr-20d`, `sys-sector-uncorr-7d`) — these hold positions from Monday 9:35 AM ET through Friday 15:30 ET and must be flat outside that window. Holding positions when the market should be flat is flagged as `UNLIQUIDATED_WEEKLY_SECTOR_POSITION`; holding zero positions mid-week is flagged as `MISSING_WEEKLY_SECTOR_ENTRY`.
 - **Daily Options Max Pain portfolio** (`sys-max-pain`, see [[entities/max-pain-pinning]]) — 0DTE index positions must be flat after 16:00 ET (or whenever held from a prior trading day). Any remaining open position is flagged as `UNLIQUIDATED_MAX_PAIN_POSITION` and auto-healed in `--fix` mode via `reconcile_unliquidated_max_pain_positions` (`apps/engine/execution/max_pain.py`), which checks the day's RTH high against the verified Alpaca Max Pain strike and backfills the `SELL` at the target strike (if touched intraday) or at the RTH close price.
 
@@ -22,6 +22,7 @@ The auditor walks a window of trading sessions (default 5, weekdays only) and ch
 | `MISSING_DAILY_SPY_TRADE` | A daily prediction exists but the system portfolio has fewer than 2 trades for that date. |
 | `INVALID_ENTRY_PRICE_DAILY_SPY` | SPY entry trade price desynced from session open price ($P_{open}$) by > 0.2% (e.g. taking previous close). |
 | `UNCLOSED_SHORT_DAILY_SPY` | SPY entry `SHORT` trade has `realized_pnl IS NULL` despite a matching session exit trade, risking resurrection as an active open short on read paths. |
+| `DESYNCED_EQUITY_DAILY_SPY` | Performance snapshot equity drifts from cumulative equity (prior closing equity + session realized PnL) by > $2.00, auto-healed in `--fix` mode. |
 | `UNLIQUIDATED_WEEKLY_SECTOR_POSITION` | A weekly sector portfolio holds open positions during a period it should be flat (Friday post-close, weekend, or Monday pre-open). |
 | `MISSING_WEEKLY_SECTOR_ENTRY` | A weekly sector portfolio has zero positions mid-week, indicating a missed Monday rebalance. |
 | `UNLIQUIDATED_MAX_PAIN_POSITION` | `sys-max-pain` holds an unliquidated 0DTE position after the 16:00 ET close (or from a prior session) and is auto-healed at target strike (if RTH high touched Max Pain) or RTH close. |
@@ -29,6 +30,10 @@ The auditor walks a window of trading sessions (default 5, weekdays only) and ch
 ## Auto-Heal Mode
 
 When run with `--fix` (`auto_heal=True`), the auditor reconstructs missing Daily SPY executions, replaces trades with invalid entry prices using session OHLC prints stored on the prediction (`open_price`, `high_price`, `low_price`, `close_price`) and standard model slippage, and reconciles `UNCLOSED_SHORT_DAILY_SPY` anomalies by computing and mutating `realized_pnl` / `realized_pnl_pct` on the unclosed entry `SHORT` trade. When auto-healing desynced entry prices, the auditor resets portfolio cash to prior-day closing equity from `portfolio_performance`, removes stale trades and positions, and re-executes chronologically to preserve accurate compounded returns. Reconstructed trades are written with `alpaca_status = "BACKFILLED"` so they are transparently distinguishable from live Alpaca executions. See [[concepts/backfilled-trades]] and [[concepts/short-position-display]].
+
+When no prior `portfolio_performance` history exists (the portfolio's first session), the auditor anchors the starting equity to `INITIAL_PORTFOLIO_CASH` ($10,000) rather than the portfolio's current `cash_balance`, so a dirty or already-drifted cash figure cannot compound into the healed equity.
+
+For `DESYNCED_EQUITY_DAILY_SPY` anomalies, auto-heal rewrites the date's `portfolio_performance` row (`total_equity`, `cash_balance`, `buying_power`, `realized`) to the expected cumulative equity (prior closing equity + summed `realized_pnl` of the session's `SELL`/`COVER` trades). When the corrected date is the most recent session in the lookback window, the live `portfolios` row is updated to the same values so the portfolio's current state matches the healed history.
 
 Weekly sector anomalies are flagged for review but not auto-healed — they require manual reconciliation.
 

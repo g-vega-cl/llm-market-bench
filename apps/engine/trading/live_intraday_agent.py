@@ -203,6 +203,7 @@ async def fetch_intraday_bars(
     if not alpaca_data_client:
         return []
     try:
+        from alpaca.common.enums import Sort
         from alpaca.data.enums import DataFeed
         from alpaca.data.requests import StockBarsRequest
         from alpaca.data.timeframe import TimeFrame
@@ -211,7 +212,8 @@ async def fetch_intraday_bars(
         req = StockBarsRequest(
             symbol_or_symbols=ticker,
             timeframe=TimeFrame.Minute,
-            start=now_utc - timedelta(minutes=window_minutes + 15),
+            start=now_utc - timedelta(days=5),
+            sort=Sort.DESC,
             limit=window_minutes,
             feed=DataFeed.IEX,
         )
@@ -238,6 +240,7 @@ async def fetch_intraday_bars(
             }
             for b in bars
         ]
+        parsed.reverse()
         return parsed[-window_minutes:]
     except Exception:
         logger.exception(f"Failed to fetch intraday bars for {ticker}")

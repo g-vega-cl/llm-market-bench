@@ -1,5 +1,6 @@
 import { Badge, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
+import { fetchLiveIntradayTape } from '../api/fetch-intraday-tape';
 import {
     type CandlestickBar,
     type ChartTradeMarker,
@@ -41,11 +42,15 @@ function ConsoleHeaderRibbon({
     countdownSeconds,
     marketDirection,
     action,
+    isPolling = false,
+    onRefresh,
 }: {
     isMarketOpen: boolean;
     countdownSeconds: number;
     marketDirection: LiveAgentState['marketDirection'];
     action: LiveAgentState['action'];
+    isPolling?: boolean;
+    onRefresh?: () => void;
 }) {
     const directionBadgeScheme =
         marketDirection === 'BULLISH'
@@ -76,10 +81,23 @@ function ConsoleHeaderRibbon({
                             ? `Next evaluation in ${formatCountdown(countdownSeconds)}`
                             : 'Next Session 09:30 ET'}
                     </span>
+                    <span>•</span>
+                    <span className="text-boxel-muted/80">Polling 20s</span>
                 </div>
             </div>
 
             <div className="flex items-center gap-2">
+                {onRefresh && (
+                    <button
+                        type="button"
+                        onClick={onRefresh}
+                        disabled={isPolling}
+                        className="voxel-btn text-[10px] font-mono uppercase px-2 py-0.5 text-boxel-muted hover:text-boxel-ink disabled:opacity-50"
+                        title="Poll latest intraday tape"
+                    >
+                        {isPolling ? 'Polling...' : 'Refresh'}
+                    </button>
+                )}
                 <Badge colorScheme={directionBadgeScheme} variant="solid" size="sm" showDot>
                     {marketDirection}
                 </Badge>
@@ -193,15 +211,66 @@ function ConsoleQueueCard({
     );
 }
 
+async function updateLiveTape(
+    setIsPolling: (v: boolean) => void,
+    setBars: (bars: CandlestickBar[]) => void,
+    setAgentState: (state: LiveAgentState) => void,
+    onRefreshTape?: () => void,
+) {
+    try {
+        setIsPolling(true);
+        if (onRefreshTape) onRefreshTape();
+        const snapshot = await fetchLiveIntradayTape();
+        if (snapshot.bars && snapshot.bars.length > 0) {
+            setBars(snapshot.bars);
+        }
+        if (snapshot.agentState) {
+            setAgentState(snapshot.agentState);
+        }
+    } catch {
+        // Non-blocking background poll failure
+    } finally {
+        setIsPolling(false);
+    }
+}
+
 export function LiveAgentConsole({
     bars,
     trades = [],
     agentState,
     isMarketOpen = true,
+    onRefreshTape,
 }: LiveAgentConsoleProps) {
+    const [currentBars, setCurrentBars] = React.useState<CandlestickBar[]>(bars);
+    const [currentAgentState, setCurrentAgentState] = React.useState<LiveAgentState>(agentState);
+    const [isPolling, setIsPolling] = React.useState(false);
     const [userQuestion, setUserQuestion] = React.useState('');
     const [queueSubmitted, setQueueSubmitted] = React.useState(false);
     const [countdownSeconds, setCountdownSeconds] = React.useState(285);
+
+    React.useEffect(() => {
+        if (bars && bars.length > 0) {
+            setCurrentBars(bars);
+        }
+    }, [bars]);
+
+    React.useEffect(() => {
+        if (agentState) {
+            setCurrentAgentState(agentState);
+        }
+    }, [agentState]);
+
+    const handleManualRefresh = React.useCallback(() => {
+        updateLiveTape(setIsPolling, setCurrentBars, setCurrentAgentState, onRefreshTape);
+    }, [onRefreshTape]);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            updateLiveTape(setIsPolling, setCurrentBars, setCurrentAgentState);
+        }, 20000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     React.useEffect(() => {
         if (!isMarketOpen) return;
@@ -227,29 +296,35 @@ export function LiveAgentConsole({
             <ConsoleHeaderRibbon
                 isMarketOpen={isMarketOpen}
                 countdownSeconds={countdownSeconds}
-                marketDirection={agentState.marketDirection}
-                action={agentState.action}
+                marketDirection={currentAgentState.marketDirection}
+                action={currentAgentState.action}
+                isPolling={isPolling}
+                onRefresh={handleManualRefresh}
             />
 
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
-                {agentState.sentimentLabel && (
+                {currentAgentState.sentimentLabel && (
                     <div className="text-base font-black text-boxel-ink tracking-tight">
-                        {agentState.sentimentLabel}
+                        {currentAgentState.sentimentLabel}
                     </div>
                 )}
                 <div className="flex items-center gap-2 text-boxel-muted">
-                    {agentState.modelUsed && <span>Model: {agentState.modelUsed}</span>}
-                    {agentState.lastUpdated && <span>• Turn: {agentState.lastUpdated}</span>}
+                    {currentAgentState.modelUsed && (
+                        <span>Model: {currentAgentState.modelUsed}</span>
+                    )}
+                    {currentAgentState.lastUpdated && (
+                        <span>• Turn: {currentAgentState.lastUpdated}</span>
+                    )}
                 </div>
             </div>
 
             <ConfidenceBar
                 label="Agent Conviction"
-                value={agentState.conviction}
+                value={currentAgentState.conviction}
                 colorScheme={
-                    agentState.conviction >= 70
+                    currentAgentState.conviction >= 70
                         ? 'success'
-                        : agentState.conviction >= 45
+                        : currentAgentState.conviction >= 45
                           ? 'warning'
                           : 'danger'
                 }
@@ -257,21 +332,21 @@ export function LiveAgentConsole({
                 className="w-full"
             />
 
-            <SPYCandlestickChart bars={bars} trades={trades} height={250} />
+            <SPYCandlestickChart bars={currentBars} trades={trades} height={320} />
 
             <div className="voxel-trough p-3.5 flex flex-col gap-2">
                 <div className="flex items-center justify-between text-xs font-black tracking-wider uppercase text-boxel-muted border-b border-boxel-bevel-hi/50 pb-1.5">
                     <span>Intraday Thought Trace</span>
-                    <span className="text-accent">{agentState.action} DECISION</span>
+                    <span className="text-accent">{currentAgentState.action} DECISION</span>
                 </div>
                 <div className="text-sm leading-relaxed text-boxel-ink">
-                    &quot;{agentState.thought}&quot;
+                    &quot;{currentAgentState.thought}&quot;
                 </div>
             </div>
 
             <ConsoleTechnicalsRow
-                technicals={agentState.technicals}
-                memoriesConsulted={agentState.memoriesConsulted}
+                technicals={currentAgentState.technicals}
+                memoriesConsulted={currentAgentState.memoriesConsulted}
             />
 
             <ConsoleQueueCard

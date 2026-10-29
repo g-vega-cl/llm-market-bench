@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CandlestickBar } from '../components/SPYCandlestickChart';
-import { filterLastBars, isRegularMarketHours } from './fetch-intraday-tape';
+import { buildAgentState, filterLastBars, isRegularMarketHours } from './fetch-intraday-tape';
 
 describe('fetch-intraday-tape utilities', () => {
     it('filters strictly the last maxBars items', () => {
@@ -36,5 +36,28 @@ describe('fetch-intraday-tape utilities', () => {
         // Wednesday 02:00 UTC -> closed
         const nightTime = new Date('2026-10-28T02:00:00Z');
         expect(isRegularMarketHours(nightTime)).toBe(false);
+    });
+
+    it('builds live agent state from feeling and trades payload', () => {
+        const feeling = {
+            confidence_score: 88,
+            why_explanation: 'Holding support above 20 EMA',
+            market_direction: 'BULLISH',
+            sentiment_label: 'Momentum Breakout',
+            model_used: 'Strata Orca',
+            created_at: '2026-10-29T19:30:00Z',
+        };
+        const payload = {
+            action: 'BUY' as const,
+            technicals: { vwap: 582.5, rsi_14: 61.2, trend: 'BULLISH' },
+            memories_consulted: ['Memory 1'],
+        };
+
+        const state = buildAgentState(feeling, payload);
+        expect(state.action).toBe('BUY');
+        expect(state.conviction).toBe(88);
+        expect(state.marketDirection).toBe('BULLISH');
+        expect(state.sentimentLabel).toBe('Momentum Breakout');
+        expect(state.technicals?.vwap).toBe(582.5);
     });
 });

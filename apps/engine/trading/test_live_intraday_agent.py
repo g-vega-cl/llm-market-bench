@@ -12,6 +12,7 @@ from trading.live_intraday_agent import (
     calculate_technical_snapshot,
     execute_intraday_agent_step,
     fetch_active_candle,
+    fetch_intraday_bars,
     query_multi_tier_llm,
 )
 
@@ -239,3 +240,48 @@ async def test_fetch_active_candle_hermetic():
 
     # None client
     assert await fetch_active_candle(None, "SPY") is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_intraday_bars_sort_descending_and_chronological():
+    from alpaca.common.enums import Sort
+
+    mock_alpaca = MagicMock()
+    captured_req = None
+
+    def fake_get_stock_bars(req):
+        nonlocal captured_req
+        captured_req = req
+        # Alpaca returns bars in Sort.DESC order: newest first
+        b_latest = MagicMock()
+        b_latest.timestamp = MagicMock()
+        b_latest.timestamp.isoformat.return_value = "2026-10-29T16:00:00Z"
+        b_latest.open = 582.5
+        b_latest.high = 582.9
+        b_latest.low = 582.4
+        b_latest.close = 582.8
+        b_latest.volume = 12000.0
+
+        b_earlier = MagicMock()
+        b_earlier.timestamp = MagicMock()
+        b_earlier.timestamp.isoformat.return_value = "2026-10-29T15:59:00Z"
+        b_earlier.open = 582.1
+        b_earlier.high = 582.6
+        b_earlier.low = 582.0
+        b_earlier.close = 582.5
+        b_earlier.volume = 9500.0
+
+        return {"SPY": [b_latest, b_earlier]}
+
+    mock_alpaca.get_stock_bars.side_effect = fake_get_stock_bars
+
+    bars = await fetch_intraday_bars(mock_alpaca, "SPY", window_minutes=60)
+
+    # 1. Verify sort was set to Sort.DESC so we get newest bars, not oldest
+    assert captured_req is not None
+    assert getattr(captured_req, "sort", None) == Sort.DESC
+
+    # 2. Verify returned list was reversed into ascending chronological order
+    assert len(bars) == 2
+    assert bars[0]["time"] == "2026-10-29T15:59:00Z"
+    assert bars[1]["time"] == "2026-10-29T16:00:00Z"

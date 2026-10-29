@@ -1,9 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { fetchLatestMarketBarometer } from '~/features/home/api/fetch-barometer';
-import { filterLastBars, isRegularMarketHours } from '~/features/home/api/fetch-intraday-tape';
-import type { LiveAgentState } from '~/features/home/components/LiveAgentConsole';
-import type { CandlestickBar } from '~/features/home/components/SPYCandlestickChart';
+import {
+    buildAgentState,
+    fetchLatestIntradayBars,
+    type IntradayPayload,
+    isRegularMarketHours,
+    type MarketFeelingRecord,
+} from '~/features/home/api/fetch-intraday-tape';
 import type { HomePageData } from '~/features/home/pages/HomePage';
 import { HomePage } from '~/features/home/pages/HomePage';
 import {
@@ -14,7 +18,6 @@ import {
 } from '~/features/portfolios/api/fetch-portfolios';
 import { isAutoresearchPortfolio, isSystemPortfolio } from '~/features/portfolios/lib/config';
 import { fetchLatestMarketFeeling } from '~/features/today/api/fetch-today-data';
-import { getSupabaseServerClient } from '~/lib/supabase';
 import { formatEasternTime } from '~/utils/date';
 
 function mapPortfolioPerformance(p: PortfolioPerformanceItem): HomePageData['portfolios'][number] {
@@ -68,55 +71,6 @@ function calculateBenchmarkMoves(benchmarkData: BenchmarkDataPoint[]): {
     };
 }
 
-interface MarketFeelingRecord {
-    market_direction?: string | null;
-    why_explanation?: string | null;
-    sentiment_label?: string | null;
-    sentiment_emoji?: string | null;
-    confidence_score?: number | null;
-    primary_concern?: string | null;
-    secondary_concern?: string | null;
-    model_used?: string | null;
-    created_at?: string | null;
-    trades_summary?: unknown;
-}
-
-interface IntradayPayload {
-    buys?: number;
-    sells?: number;
-    action?: 'BUY' | 'SELL' | 'HOLD';
-    technicals?: { vwap: number; rsi_14: number; trend: string };
-    memories_consulted?: string[];
-    bars?: CandlestickBar[];
-}
-
-function buildAgentState(
-    feeling: MarketFeelingRecord | null,
-    payload: IntradayPayload | null,
-): LiveAgentState {
-    const rawAction = payload?.action;
-    const action = rawAction || ((payload?.buys ?? 0) > (payload?.sells ?? 0) ? 'BUY' : 'HOLD');
-
-    return {
-        action: action as 'BUY' | 'SELL' | 'HOLD',
-        conviction: feeling?.confidence_score ?? 75,
-        thought: feeling?.why_explanation || 'Scanning intraday tape and evaluating risk.',
-        marketDirection:
-            (feeling?.market_direction as 'BULLISH' | 'BEARISH' | 'NEUTRAL') || 'NEUTRAL',
-        sentimentLabel: feeling?.sentiment_label || 'Active Surveillance',
-        modelUsed: feeling?.model_used || 'Strata Orca',
-        lastUpdated: feeling?.created_at ? formatEasternTime(feeling.created_at) : undefined,
-        technicals: payload?.technicals || {
-            vwap: 582.4,
-            rsi_14: 54.2,
-            trend: feeling?.market_direction || 'NEUTRAL',
-        },
-        memoriesConsulted:
-            payload?.memories_consulted ||
-            (feeling?.primary_concern ? [feeling.primary_concern] : []),
-    };
-}
-
 function buildFeelingSummary(feeling: MarketFeelingRecord | null, payload: IntradayPayload | null) {
     return {
         sentiment: feeling?.market_direction || 'NEUTRAL',
@@ -131,29 +85,6 @@ function buildFeelingSummary(feeling: MarketFeelingRecord | null, payload: Intra
         buyCount: payload?.buys,
         sellCount: payload?.sells,
     };
-}
-
-async function fetchLatestIntradayBars(
-    marketFeeling: MarketFeelingRecord | null,
-): Promise<CandlestickBar[]> {
-    const directPayload = (marketFeeling?.trades_summary as IntradayPayload | null) ?? null;
-    const directBars = filterLastBars(directPayload?.bars, 60);
-    if (directBars.length > 0) return directBars;
-
-    try {
-        const supabase = getSupabaseServerClient();
-        const { data } = await supabase
-            .from('market_feeling')
-            .select('trades_summary')
-            .not('trades_summary->bars', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-        const fallbackPayload = data?.[0]?.trades_summary as IntradayPayload | null;
-        return filterLastBars(fallbackPayload?.bars, 60);
-    } catch {
-        return [];
-    }
 }
 
 const getHomepageData = createServerFn({ method: 'GET' }).handler(

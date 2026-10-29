@@ -21,8 +21,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: when remaking and updating design system. Make sure sidebar is only 4 items tops. Maybe change the items based on frequency of use?
 - [ ] - Benchify: at most 4 in navbar..maybe less. Home, portfolios, live, data/experiments. They can be icons too
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
-- [ ] - Benchify: update today page
-- [ ] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios
+- [x] - Benchify: update today page: Replaced static AI Market Feeling overview with the 24/7 Autonomous SPY Trader console, D3 candlestick tape, and real-time HUD
+- [x] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios: Excluded mechanical sys-* strategies so only autonomous LLM agents appear on Home overview
 - [ ] - Benchify: design rules cheat sheet to ground my design system
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
@@ -32,8 +32,8 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - Benchify: start building in public. Maybe videos maybe blogs anything but start saying the things you think about that loud critique YouTube videos critique other creators or say something good about them too. Audit audit audit
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
-- [ ] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer.
-- [ ] - Benchify: let people give instructions to the 24/7 trader
+- [x] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer: Implemented trading runner edge daemon for MiniPC deployment, cascading Strata with centralized free proxy fallback, and 20-second client tape polling
+- [x] - Benchify: let people give instructions to the 24/7 trader: Created agent_chat_queue database table and audience interactive queue card in LiveAgentConsole
 - [ ] - Benchify; can you beat the agent game
   - [ ] - Benchify: challenge people to predict daily weekly etc to produce sectors to predict etc better than you and if they consistently win give them money and they get half and you get half or you can just like a little fee and to get something etc
 
@@ -113,8 +113,8 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Gamifying
 
-- [ ] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer.
-  - [ ] - Benchify: let people give instructions to the 24/7 trader
+- [x] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer.
+  - [x] - Benchify: let people give instructions to the 24/7 trader
 - [ ] - Benchify; can you beat the agent game
   - [ ] - Benchify: challenge people to predict daily weekly etc to produce sectors to predict etc better than you and if they consistently win give them money and they get half and you get half or you can just like a little fee and to get something etc
 
@@ -139,3 +139,9 @@ A living document of features and improvements in progress or planned for the pl
 ---
 
 ## ✅ Completed & Evaluated (Archive)
+
+### 24/7 Autonomous SPY Trader & Live Tape (October 2026)
+- **Live Agent Console**: Replaced static Market Feeling with a live quantitative trader console on the Home page, rendering rolling 60-minute 1-minute real-time SPY bars, execution markers, interactive HUD, technical snapshot, conviction bar, and thought trace.
+- **Client-Side Tape Poller**: Implemented 20-second background polling via TanStack Start server function while preserving full SSR for the outer page and leaderboards.
+- **MiniPC Edge Daemon**: Built `apps/engine/trading/runner.py` with multi-tier LLM fallback routing (local Strata Tier 1, centralized CLVG free proxy Tier 2) and automated paper order execution via Alpaca.
+- **Audience Interactive Queue**: Provisioned `agent_chat_queue` table with Row Level Security to accept community instructions and questions for upcoming agent turns.

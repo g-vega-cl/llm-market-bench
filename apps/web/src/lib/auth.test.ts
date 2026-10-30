@@ -51,12 +51,12 @@ describe('auth client (Supabase Cloud Only)', () => {
     });
 
     it('should create server auth client using SUPABASE_AUTH_URL and pass cookie options to setCookie', () => {
-        process.env.SUPABASE_AUTH_URL = 'https://xfnrckoylmvoyccdrthx.supabase.co';
+        process.env.SUPABASE_AUTH_URL = 'https://mock-auth-project.supabase.co';
         process.env.SUPABASE_AUTH_ANON_KEY = 'cloud-anon-key';
 
         const client = getAuthServerClient() as unknown as MockServerClient;
         expect(createServerClient).toHaveBeenCalledWith(
-            'https://xfnrckoylmvoyccdrthx.supabase.co',
+            'https://mock-auth-project.supabase.co',
             'cloud-anon-key',
             expect.any(Object),
         );
@@ -88,12 +88,12 @@ describe('auth client (Supabase Cloud Only)', () => {
     });
 
     it('should create browser auth client using VITE_SUPABASE_AUTH_URL', () => {
-        vi.stubEnv('VITE_SUPABASE_AUTH_URL', 'https://xfnrckoylmvoyccdrthx.supabase.co');
+        vi.stubEnv('VITE_SUPABASE_AUTH_URL', 'https://mock-auth-project.supabase.co');
         vi.stubEnv('VITE_SUPABASE_AUTH_ANON_KEY', 'cloud-anon-key');
 
         getAuthBrowserClient();
         expect(createBrowserClient).toHaveBeenCalledWith(
-            'https://xfnrckoylmvoyccdrthx.supabase.co',
+            'https://mock-auth-project.supabase.co',
             'cloud-anon-key',
         );
     });

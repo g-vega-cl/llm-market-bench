@@ -113,8 +113,8 @@ def test_rotate_all_writes_decoupled_archive_db_keys_to_web_env(tmp_path):
     web_env_dir.mkdir(parents=True)
     web_env_file = web_env_dir / ".env"
     web_env_file.write_text(
-        "SUPABASE_AUTH_URL=https://xfnrckoylmvoyccdrthx.supabase.co\n"
-        "VITE_SUPABASE_AUTH_URL=https://xfnrckoylmvoyccdrthx.supabase.co\n",
+        "SUPABASE_AUTH_URL=https://mock-auth-project.supabase.co\n"
+        "VITE_SUPABASE_AUTH_URL=https://mock-auth-project.supabase.co\n",
         encoding="utf-8",
     )
 
@@ -127,5 +127,5 @@ def test_rotate_all_writes_decoupled_archive_db_keys_to_web_env(tmp_path):
     assert "ARCHIVE_DB_ANON_KEY=" in updated
     assert "VITE_ARCHIVE_DB_ANON_KEY=" in updated
     assert "ARCHIVE_DB_SERVICE_ROLE_KEY=" in updated
-    assert "SUPABASE_AUTH_URL=https://xfnrckoylmvoyccdrthx.supabase.co" in updated
+    assert "SUPABASE_AUTH_URL=https://mock-auth-project.supabase.co" in updated
     assert "SUPABASE_URL=https://benchify-archive-db.clvg.uk" not in updated

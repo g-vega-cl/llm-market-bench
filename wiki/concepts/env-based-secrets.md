@@ -1,9 +1,9 @@
 ---
-tags: [security, secrets, configuration, docker, twelve-factor]
+tags: [security, secrets, configuration, docker, twelve-factor, netlify]
 category: concept
 ---
 
-The project keeps credentials out of version control by treating them as environment variables injected at runtime, rather than literals embedded in configuration files. This applies to the self-hosted archive database stack (`docker/archive/`) and the Supabase credentials consumed by the engine and web app.
+The project keeps credentials out of version control by treating them as environment variables injected at runtime, rather than literals embedded in configuration files. This applies to the self-hosted archive database stack (`docker/archive/`), the Supabase credentials consumed by the engine and web app, and the Netlify build environment.
 
 ## The Rule
 
@@ -16,6 +16,17 @@ No secret value — database password, JWT signing secret, service-role key — 
 - **Rotation** — [[entities/rotate-secrets]] generates fresh secrets and mints matching PostgREST JWTs, then writes them into the `.env` files for the archive stack, engine, and web app in one pass.
 - **Regression guard** — `apps/engine/tests/test_docker_archive_secrets.py` fails the build if a known leaked secret reappears in the compose file or if the `${...}` references are removed.
 
+## Netlify Secrets Scanning
+
+Netlify runs a build-time secret scanner that fails deploys when it detects values matching known secret patterns in the build output or repository. Because this project intentionally references many credential *names* (and ships test fixtures, wiki pages, and docker configs that contain placeholder or example values), the scanner would otherwise produce false positives that block deploys.
+
+`apps/web/netlify.toml` configures the scanner via two `[build.environment]` variables:
+
+- **`SECRETS_SCAN_OMIT_KEYS`** — a comma-separated list of environment-variable *names* the scanner should not treat as leaked secrets. It covers the archive DB and Supabase Auth URL/key pairs (`ARCHIVE_DB_URL`, `VITE_ARCHIVE_DB_URL`, `SUPABASE_AUTH_URL`, `VITE_SUPABASE_AUTH_URL`, `SUPABASE_URL`, `VITE_SUPABASE_URL`, `ARCHIVE_DB_ANON_KEY`, `VITE_ARCHIVE_DB_ANON_KEY`, `SUPABASE_AUTH_ANON_KEY`, `VITE_SUPABASE_AUTH_ANON_KEY`) plus the PostHog public host and project token (`VITE_PUBLIC_POSTHOG_HOST`, `VITE_PUBLIC_POSTHOG_PROJECT_TOKEN`). These are public/anon-tier values or names that legitimately appear in the bundle and config.
+- **`SECRETS_SCAN_OMIT_PATHS`** — a comma-separated glob list of paths excluded from scanning: `wiki/**`, `docker/**`, `apps/engine/tests/**`, and `apps/web/src/lib/*.test.ts`. These contain documentation, compose templates, and test fixtures with synthetic placeholder credentials that must not trip the scanner.
+
+This is a false-positive suppression layer, not a relaxation of the rule: real secret *values* still never appear in tracked files, and the omit lists reference only variable names and non-secret paths.
+
 ## Auth vs Data Credential Separation
 
 The web app consumes two independent credential sets (see [[concepts/auth-db-client-separation]]):
@@ -27,7 +38,7 @@ The web app consumes two independent credential sets (see [[concepts/auth-db-cli
 
 ## Why It Matters
 
-Secrets committed to a repo are effectively permanent — they persist in git history even after removal. Env-based injection plus a rotation utility means a leaked value can be replaced by re-running the rotation script and redeploying, without editing tracked files. The test suite enforces the invariant so a future edit cannot silently reintroduce a hardcoded credential.
+Secrets committed to a repo are effectively permanent — they persist in git history even after removal. Env-based injection plus a rotation utility means a leaked value can be replaced by re-running the rotation script and redeploying, without editing tracked files. The test suite enforces the invariant so a future edit cannot silently reintroduce a hardcoded credential, and the Netlify scanner omit lists keep the deploy pipeline green without weakening that guarantee.
 
 ## Related
 
@@ -35,3 +46,4 @@ Secrets committed to a repo are effectively permanent — they persist in git hi
 - [[entities/database]]
 - [[concepts/auth-db-client-separation]]
 - [[concepts/auditability]]
+- [[sources/web-deployment-source]]

@@ -75,7 +75,7 @@ Following [[concepts/supabase-grant-convention]], all tables exposed via the Pos
 
 ## RPC Functions
 
-- `pop_next_queue_item()` — Atomic FIFO dequeue for the live intraday agent's audience queue (migration `20261029220000_add_pop_next_queue_item_rpc.sql`). Uses `SELECT ... FOR UPDATE SKIP LOCKED` to atomically transition the oldest `pending` row to `injected` (stamping `injected_turn_at = NOW()`) and returns it, avoiding race conditions between concurrent runner turns. Declared `SECURITY DEFINER` and granted `EXECUTE` to `authenticated` and `service_role`.
+- `pop_next_queue_item()` — Atomic FIFO dequeue for the live intraday agent's audience queue (migration `20261029220000_add_pop_next_queue_item_rpc.sql`). Uses `SELECT ... FOR UPDATE SKIP LOCKED` to atomically transition the oldest `pending` row to `injected` (stamping `injected_turn_at = NOW()`) and returns it, avoiding race conditions between concurrent runner turns. Declared `SECURITY DEFINER` and granted `EXECUTE` to `anon`, `authenticated`, and `service_role`.
 
 ## Migrations
 

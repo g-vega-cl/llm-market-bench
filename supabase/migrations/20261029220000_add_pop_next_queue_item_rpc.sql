@@ -29,4 +29,4 @@ END;
 $$;
 
 -- Explicit grants
-GRANT EXECUTE ON FUNCTION public.pop_next_queue_item() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.pop_next_queue_item() TO anon, authenticated, service_role;

@@ -53,17 +53,17 @@ async def retrieve_read_only_market_data(
 
     # 1. Memories (vector or recent priority)
     try:
-        mem_builder = sb_client.table("memories").select("id, content, ticker, importance_score")
+        mem_builder = sb_client.table("memories").select("id, content, importance_score, metadata")
         if ticker:
-            mem_builder = mem_builder.ilike("ticker", f"%{ticker}%")
-        mem_resp = mem_builder.order("created_at", desc=True).limit(limit_per_domain).execute()
+            mem_builder = mem_builder.ilike("content", f"%{ticker}%")
+        mem_resp = mem_builder.order("importance_score", desc=True).limit(limit_per_domain).execute()
         results["memories"] = mem_resp.data or []
     except Exception:
         logger.exception("Failed to retrieve read-only memories")
 
     # 2. Causal Chains (cause_and_effect)
     try:
-        ce_builder = sb_client.table("cause_and_effect").select("id, cause, effect")
+        ce_builder = sb_client.table("cause_and_effect").select("id, analysis, market_outcome, confidence, tags")
         ce_resp = ce_builder.order("created_at", desc=True).limit(limit_per_domain).execute()
         results["cause_and_effect"] = ce_resp.data or []
     except Exception:
@@ -71,17 +71,17 @@ async def retrieve_read_only_market_data(
 
     # 3. Recent Trades
     try:
-        trades_builder = sb_client.table("trades").select("id, ticker, action, execution_price, reasoning")
+        trades_builder = sb_client.table("trades").select("id, ticker, signal, price, reasoning")
         if ticker:
             trades_builder = trades_builder.ilike("ticker", f"%{ticker}%")
-        trades_resp = trades_builder.order("created_at", desc=True).limit(limit_per_domain).execute()
+        trades_resp = trades_builder.order("executed_at", desc=True).limit(limit_per_domain).execute()
         results["trades"] = trades_resp.data or []
     except Exception:
         logger.exception("Failed to retrieve read-only trades")
 
     # 4. Recent Decisions
     try:
-        dec_builder = sb_client.table("decisions").select("id, ticker, action, confidence_score, reasoning")
+        dec_builder = sb_client.table("decisions").select("id, ticker, signal, confidence, reasoning")
         if ticker:
             dec_builder = dec_builder.ilike("ticker", f"%{ticker}%")
         dec_resp = dec_builder.order("created_at", desc=True).limit(limit_per_domain).execute()
@@ -89,25 +89,25 @@ async def retrieve_read_only_market_data(
     except Exception:
         logger.exception("Failed to retrieve read-only decisions")
 
-    # 5. Market Barometer (Breadth / Macro)
+    # 5. Market Barometer (Breadth / Macro from market_barometer_history)
     try:
         baro_resp = (
-            sb_client.table("market_barometer")
-            .select("id, score, status, regime")
-            .order("created_at", desc=True)
+            sb_client.table("market_barometer_history")
+            .select("date, pe_ratio, forward_pe, pb_ratio, ps_ratio, earnings_surprise_momentum, pfcf_ratio")
+            .order("date", desc=True)
             .limit(1)
             .execute()
         )
         if baro_resp.data and len(baro_resp.data) > 0:
             results["barometer"] = baro_resp.data[0]
     except Exception:
-        logger.exception("Failed to retrieve read-only market_barometer")
+        logger.exception("Failed to retrieve read-only market_barometer_history")
 
     # 6. Catalyst Radar
     try:
         radar_resp = (
             sb_client.table("catalyst_radar")
-            .select("id, narrative, catalyst, urgency")
+            .select("id, concept_name, catalyst_title, impact, memory_content, target_date")
             .order("created_at", desc=True)
             .limit(3)
             .execute()
@@ -135,10 +135,11 @@ def format_read_only_grounding(data: dict[str, Any], max_items_per_section: int 
     # Causal chains
     ces = data.get("cause_and_effect", [])
     if ces:
-        ce_lines = [
-            f"- Cause: {c.get('cause', '')[:80]} -> Effect: {c.get('effect', '')[:80]}"
-            for c in ces[:max_items_per_section]
-        ]
+        ce_lines = []
+        for c in ces[:max_items_per_section]:
+            cause = c.get("analysis") or c.get("cause", "")
+            outcome = c.get("market_outcome") or c.get("effect", "")
+            ce_lines.append(f"- Cause: {cause[:80]} -> Outcome: {outcome[:80]}")
         sections.append("### CAUSAL CHAINS (cause_and_effect):\n" + "\n".join(ce_lines))
 
     # Recent trades & decisions
@@ -147,13 +148,13 @@ def format_read_only_grounding(data: dict[str, Any], max_items_per_section: int 
     if trades or decs:
         td_lines = []
         for t in trades[:2]:
-            td_lines.append(
-                f"- Trade: {t.get('action')} {t.get('ticker')} @ ${t.get('execution_price', 0):.2f} - {t.get('reasoning', '')[:100]}"
-            )
+            act = t.get("signal") or t.get("action", "TRADE")
+            price = t.get("price") if t.get("price") is not None else t.get("execution_price", 0)
+            td_lines.append(f"- Trade: {act} {t.get('ticker')} @ ${float(price):.2f} - {t.get('reasoning', '')[:100]}")
         for d in decs[:2]:
-            td_lines.append(
-                f"- Decision: {d.get('action')} {d.get('ticker')} (Conv: {d.get('confidence_score')}%) - {d.get('reasoning', '')[:100]}"
-            )
+            act = d.get("signal") or d.get("action", "DECISION")
+            conf = d.get("confidence") if d.get("confidence") is not None else d.get("confidence_score", 0)
+            td_lines.append(f"- Decision: {act} {d.get('ticker')} (Conv: {conf}%) - {d.get('reasoning', '')[:100]}")
         sections.append("### RECENT TRADES & AUDIT DECISIONS:\n" + "\n".join(td_lines))
 
     # Barometer and Catalyst Radar
@@ -161,11 +162,20 @@ def format_read_only_grounding(data: dict[str, Any], max_items_per_section: int 
     radars = data.get("catalyst_radar", [])
     macro_lines = []
     if baro:
-        macro_lines.append(
-            f"- Barometer: Score {baro.get('score')} ({baro.get('status')}) | Regime: {baro.get('regime')}"
-        )
+        if "pe_ratio" in baro:
+            dt = baro.get("date", "Latest")
+            macro_lines.append(
+                f"- Barometer ({dt}): P/E {baro.get('pe_ratio')} | Fwd P/E {baro.get('forward_pe')} | Momentum {baro.get('earnings_surprise_momentum')}"
+            )
+        elif "score" in baro:
+            macro_lines.append(
+                f"- Barometer: Score {baro.get('score')} ({baro.get('status')}) | Regime: {baro.get('regime')}"
+            )
     for r in radars[:2]:
-        macro_lines.append(f"- Catalyst: [{r.get('urgency')}] {r.get('narrative')} ({r.get('catalyst')})")
+        concept = r.get("concept_name") or r.get("narrative", "")
+        cat = r.get("catalyst_title") or r.get("catalyst", "")
+        impact = r.get("impact") or r.get("urgency", "NEUTRAL")
+        macro_lines.append(f"- Catalyst: [{impact}] {concept} ({cat})")
     if macro_lines:
         sections.append("### MACRO & CATALYST CONTEXT:\n" + "\n".join(macro_lines))
 

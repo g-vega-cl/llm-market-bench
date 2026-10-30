@@ -1,5 +1,30 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('../api/fetch-intraday-tape', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../api/fetch-intraday-tape')>();
+    return {
+        ...actual,
+        fetchLiveIntradayTape: vi.fn().mockResolvedValue({
+            bars: [],
+            agentState: null,
+            isMarketOpen: true,
+        }),
+    };
+});
+
+vi.mock('../api/fetch-agent-queue', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../api/fetch-agent-queue')>();
+    return {
+        ...actual,
+        fetchAgentQueueStatus: vi.fn().mockResolvedValue({
+            pendingCount: 0,
+            latestAnswered: null,
+        }),
+    };
+});
+
+import { fetchLiveIntradayTape } from '../api/fetch-intraday-tape';
 import { LiveAgentConsole } from './LiveAgentConsole';
 
 const mockBars = [
@@ -86,5 +111,44 @@ describe('LiveAgentConsole', () => {
             <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={false} />,
         );
         expect(screen.getByText(/MARKET CLOSED/i)).toBeInTheDocument();
+    });
+
+    it('does not start a background interval polling fetchLiveIntradayTape', () => {
+        vi.useFakeTimers();
+        const mockFetch = vi.mocked(fetchLiveIntradayTape);
+        mockFetch.mockClear();
+
+        render(
+            <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
+        );
+
+        expect(mockFetch).not.toHaveBeenCalled();
+
+        // Advance 60 seconds (what would have been 3 intervals under 20s polling)
+        vi.advanceTimersByTime(60000);
+
+        expect(mockFetch).not.toHaveBeenCalled();
+        vi.useRealTimers();
+    });
+
+    it('triggers manual refresh when Refresh Tape button is clicked', async () => {
+        const mockFetch = vi.mocked(fetchLiveIntradayTape);
+        mockFetch.mockClear();
+        const onRefreshTape = vi.fn();
+
+        render(
+            <LiveAgentConsole
+                bars={mockBars}
+                agentState={mockAgentState}
+                isMarketOpen={true}
+                onRefreshTape={onRefreshTape}
+            />,
+        );
+
+        const refreshBtn = screen.getByRole('button', { name: /refresh/i });
+        fireEvent.click(refreshBtn);
+
+        expect(onRefreshTape).toHaveBeenCalledTimes(1);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 });

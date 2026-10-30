@@ -84,8 +84,6 @@ function ConsoleHeaderRibbon({
                             ? `Next evaluation in ${formatCountdown(countdownSeconds)}`
                             : 'Next Session 09:30 ET'}
                     </span>
-                    <span>•</span>
-                    <span className="text-boxel-muted/80">Polling 20s</span>
                 </div>
             </div>
 
@@ -95,10 +93,10 @@ function ConsoleHeaderRibbon({
                         type="button"
                         onClick={onRefresh}
                         disabled={isPolling}
-                        className="voxel-btn text-[10px] font-mono uppercase px-2 py-0.5 text-boxel-muted hover:text-boxel-ink disabled:opacity-50"
-                        title="Poll latest intraday tape"
+                        className="voxel-btn text-[10px] font-mono uppercase px-2.5 py-1 text-boxel-ink hover:text-accent disabled:opacity-50 flex items-center gap-1"
+                        title="Refresh intraday tape from server"
                     >
-                        {isPolling ? 'Polling...' : 'Refresh'}
+                        <span>{isPolling ? 'Refreshing...' : 'Refresh Tape'}</span>
                     </button>
                 )}
                 <Badge colorScheme={directionBadgeScheme} variant="solid" size="sm" showDot>
@@ -250,18 +248,7 @@ export function LiveAgentConsole({
                 setLatestAnswered(status.latestAnswered);
             })
             .catch(() => {});
-
-        const interval = setInterval(() => {
-            updateLiveTape(
-                setIsPolling,
-                setCurrentBars,
-                setCurrentAgentState,
-                handleQueueStatusUpdate,
-            );
-        }, 20000);
-
-        return () => clearInterval(interval);
-    }, [handleQueueStatusUpdate]);
+    }, []);
 
     React.useEffect(() => {
         if (!isMarketOpen) return;

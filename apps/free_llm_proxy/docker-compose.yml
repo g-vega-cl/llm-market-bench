@@ -5,10 +5,14 @@ services:
       dockerfile: Dockerfile
     container_name: free-llm-proxy
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:8086:8086"
     env_file:
       - .env
+    environment:
+      STRATA_BASE_URL: ${STRATA_BASE_URL:-http://host.docker.internal:8080/v1}
     volumes:
       - ./data:/app/apps/free_llm_proxy/data
     deploy:

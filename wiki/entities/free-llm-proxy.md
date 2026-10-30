@@ -90,6 +90,8 @@ Local Strata (`strata` provider, `base_url` from `STRATA_BASE_URL`, default `htt
 
 When Strata is in circuit-breaker cooldown, `strata-auto` skips it immediately and routes to healthy auto providers.
 
+In the dual-connector edge topology (MiniPC edge gateway and primary Fedora workstation), the MiniPC proxy container routes Strata requests over Tailscale to `http://primary-workstation:3001/strata/v1`. The primary workstation's Nginx reverse proxy forwards `/strata/` to `http://172.17.0.1:8080/` with `Host: localhost` to satisfy Strata's DNS rebinding protection while bypassing host firewall restrictions. On the primary workstation, the local Docker proxy reaches Strata via `http://host.docker.internal:8080/v1`.
+
 ### OpenRouter Zero-Cost Isolation
 
 The `openrouter` provider operates as a mixed marketplace of paid and free models. To guarantee that no account credits are ever billed unintentionally:

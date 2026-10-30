@@ -58,10 +58,14 @@ services:
       dockerfile: Dockerfile
     container_name: free-llm-proxy-secondary
     restart: unless-stopped
+    extra_hosts:
+      - "primary-workstation:${PRIMARY_WORKSTATION_IP:-127.0.0.1}"
     ports:
       - "8086:8086"
     env_file:
       - ../../apps/free_llm_proxy/.env
+    environment:
+      STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
     volumes:
       - free_llm_proxy_data:/app/apps/free_llm_proxy/data
     deploy:
@@ -78,7 +82,7 @@ services:
     extra_hosts:
       - "primary-workstation:${PRIMARY_WORKSTATION_IP:-127.0.0.1}"
     environment:
-      STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:8080/v1}
+      STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
       FREE_LLM_PROXY_URL: https://llm.clvg.uk/v1
       SUPABASE_PROJECT_URL: ${SUPABASE_PROJECT_URL:-https://benchify-archive-db.clvg.uk}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}

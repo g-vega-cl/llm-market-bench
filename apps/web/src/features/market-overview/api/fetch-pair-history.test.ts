@@ -9,8 +9,8 @@ interface MockSupabaseChain {
 
 let mockSupabaseClient: MockSupabaseChain | null = null;
 
-vi.mock('~/lib/supabase-client', () => ({
-    getSupabaseBrowserClient: vi.fn(() => mockSupabaseClient),
+vi.mock('~/lib/db', () => ({
+    getDbBrowserClient: vi.fn(() => mockSupabaseClient),
 }));
 
 import { fetchPairHistory } from './fetch-pair-history';

@@ -1,5 +1,5 @@
 import type { IntradayMarketNews } from '@llm-market-bench/database';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 import { formatEasternDate, formatEasternShortTime } from '~/utils/date';
 
 export type FormattedIntradayNews = IntradayMarketNews & {
@@ -8,7 +8,7 @@ export type FormattedIntradayNews = IntradayMarketNews & {
 };
 
 export async function fetchIntradayNews(limit = 20): Promise<FormattedIntradayNews[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     const { data, error } = await supabase
         .from('intraday_market_news')
         .select('*')

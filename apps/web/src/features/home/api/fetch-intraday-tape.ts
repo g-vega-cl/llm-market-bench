@@ -113,8 +113,8 @@ export async function fetchLatestIntradayBars(
     if (directBars.length > 0) return directBars;
 
     try {
-        const { getSupabaseServerClient } = await import('~/lib/supabase');
-        const supabase = getSupabaseServerClient();
+        const { getDbServerClient } = await import('~/lib/db');
+        const supabase = getDbServerClient();
         const { data } = await supabase
             .from('market_feeling')
             .select('trades_summary')
@@ -138,8 +138,8 @@ export interface LiveTapeSnapshot {
 export const fetchLiveIntradayTape = createServerFn({ method: 'GET' }).handler(
     async (): Promise<LiveTapeSnapshot> => {
         try {
-            const { getSupabaseServerClient } = await import('~/lib/supabase');
-            const supabase = getSupabaseServerClient();
+            const { getDbServerClient } = await import('~/lib/db');
+            const supabase = getDbServerClient();
             const { data } = await supabase
                 .from('market_feeling')
                 .select('*')

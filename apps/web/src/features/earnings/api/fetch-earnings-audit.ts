@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 
 export interface EarningsAlphaSnapshot {
     id: string;
@@ -52,7 +52,7 @@ export interface SectorBellwetherSignal {
  */
 export async function fetchEarningsAlphaSnapshots(): Promise<EarningsAlphaSnapshot[]> {
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getDbServerClient();
         const { data, error } = await supabase
             .from('earnings_alpha_snapshots')
             .select('*')
@@ -75,7 +75,7 @@ export async function fetchEarningsAlphaSnapshots(): Promise<EarningsAlphaSnapsh
  */
 export async function fetchSectorBellwethers(): Promise<SectorBellwetherSignal[]> {
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getDbServerClient();
         const { data, error } = await supabase
             .from('sector_bellwether_signals')
             .select('*')

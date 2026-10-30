@@ -1,5 +1,5 @@
 import type { MarketFeeling } from '@llm-market-bench/database';
-import { getSupabaseBrowserClient } from '~/lib/supabase-client';
+import { getDbBrowserClient } from '~/lib/db';
 
 export interface CorrelationRun {
     id: string;
@@ -41,7 +41,7 @@ export interface MarketOverviewData {
 }
 
 export async function fetchMarketOverviewData(limit?: number): Promise<MarketOverviewData> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
 
     // Fetch latest correlation run
     const { data: runs, error: runsError } = await supabase

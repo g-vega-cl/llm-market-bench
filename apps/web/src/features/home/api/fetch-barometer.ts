@@ -1,5 +1,5 @@
 import type { MarketBarometer } from '@llm-market-bench/database';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 
 let cachedLatestBarometer: MarketBarometer | null = null;
 
@@ -8,7 +8,7 @@ let cachedLatestBarometer: MarketBarometer | null = null;
  */
 export async function fetchLatestMarketBarometer(): Promise<MarketBarometer | null> {
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getDbServerClient();
         const { data, error } = await supabase
             .from('market_barometer_history')
             .select('*')
@@ -36,7 +36,7 @@ export async function fetchLatestMarketBarometer(): Promise<MarketBarometer | nu
  */
 export async function fetchMarketBarometerDates(): Promise<string[]> {
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getDbServerClient();
         const { data, error } = await supabase
             .from('market_barometer_history')
             .select('date')
@@ -59,7 +59,7 @@ export async function fetchMarketBarometerDates(): Promise<string[]> {
  */
 export async function fetchMarketBarometerForDate(date: string): Promise<MarketBarometer | null> {
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getDbServerClient();
         const { data, error } = await supabase
             .from('market_barometer_history')
             .select('*')

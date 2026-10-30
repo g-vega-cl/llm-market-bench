@@ -17,7 +17,7 @@ category: entity
 4. **Write env files** — `update_env_file()` rewrites or appends keys in place (regex-matched per key, preserving unrelated lines) across:
    - `docker/archive/.env` — `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `PGRST_JWT_SECRET`, `PGRST_OPENAPI_SERVER_PROXY_URI`, and the replication trio `REPLICATION_USER` (`replicator`), `REPLICATION_PASSWORD`, `REPLICATION_SLOT` (`minipc_standby_slot`)
    - `apps/engine/.env` — `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_PROJECT_URL`
-   - `apps/web/.env` — `SUPABASE_ANON_KEY`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `VITE_SUPABASE_URL`
+   - `apps/web/.env` — `ARCHIVE_DB_ANON_KEY`, `VITE_ARCHIVE_DB_ANON_KEY`, `ARCHIVE_DB_SERVICE_ROLE_KEY`, `ARCHIVE_DB_URL`, `VITE_ARCHIVE_DB_URL` (strictly decoupled from Supabase Cloud `SUPABASE_AUTH_*` credentials)
 
 Engine and web env files are only touched if they already exist. The returned dict includes `REPLICATION_PASSWORD` alongside the Postgres password, JWT secret, and minted anon/service-role tokens.
 
@@ -35,7 +35,7 @@ Rotating secrets therefore also rotates the replication credential; the replica 
 
 The stack enforces strict credential separation across deployment targets:
 
-- **Frontend / Netlify**: `apps/web` and Netlify must strictly use `VITE_SUPABASE_ANON_KEY` mapped to the `anon` token. Vite compiles `VITE_*` variables directly into public static JavaScript bundles.
+- **Frontend / Netlify**: `apps/web` and Netlify must strictly use `VITE_ARCHIVE_DB_ANON_KEY` mapped to the `anon` token for local PostgREST data access (`apps/web/src/lib/db.ts`), and `VITE_SUPABASE_AUTH_URL` / `VITE_SUPABASE_AUTH_ANON_KEY` for Supabase Cloud authentication (`apps/web/src/lib/auth.ts`). Vite compiles `VITE_*` variables directly into public static JavaScript bundles.
 - **Backend / Pipelines**: GitHub Actions Secrets and `apps/engine/.env` use `SUPABASE_SERVICE_ROLE_KEY`. In `docker/archive/init.sql`, `service_role` has `BYPASSRLS` privileges for ingestion and analysis pipelines. Leaking this token grants unrestricted write and delete capabilities.
 - **Replication**: `REPLICATION_PASSWORD` grants WAL-streaming access to the primary and must never be exposed to the web bundle or committed to git.
 

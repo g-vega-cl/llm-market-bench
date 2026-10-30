@@ -24,8 +24,8 @@ vi.mock('@tanstack/react-router', async () => {
     };
 });
 
-vi.mock('~/lib/supabase-client', () => ({
-    getSupabaseBrowserClient: () => ({
+vi.mock('~/lib/auth-client', () => ({
+    getAuthBrowserClient: () => ({
         auth: {
             signOut: vi.fn().mockResolvedValue({ error: null }),
         },

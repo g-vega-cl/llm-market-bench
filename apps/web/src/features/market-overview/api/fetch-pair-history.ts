@@ -1,4 +1,4 @@
-import { getSupabaseBrowserClient } from '~/lib/supabase-client';
+import { getDbBrowserClient } from '~/lib/db';
 
 export interface PairHistoryPoint {
     run_date: string;
@@ -24,7 +24,7 @@ export async function fetchPairHistory(
     tickerA: string,
     tickerB: string,
 ): Promise<PairHistoryPoint[]> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
 
     // Query correlation_data joining with correlation_runs for run_date.
     // Since the database stores pairs as either order depending on the pipeline execution,

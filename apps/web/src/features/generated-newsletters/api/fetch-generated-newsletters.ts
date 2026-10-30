@@ -1,5 +1,5 @@
 import type { GeneratedNewsletter } from '@llm-market-bench/database';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 import { formatEasternDate, formatEasternShortTime } from '~/utils/date';
 
 export type FormattedGeneratedNewsletter = GeneratedNewsletter & {
@@ -11,7 +11,7 @@ export async function fetchGeneratedNewsletters(
     limit: number = 20,
     sessionFilter?: 'open' | 'close' | 'all',
 ): Promise<FormattedGeneratedNewsletter[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
 
     let query = supabase
         .from('generated_newsletters')

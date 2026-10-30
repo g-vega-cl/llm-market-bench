@@ -10,11 +10,16 @@ import { executeGetMySavedThesesTool, executeSearchMemoriesTool } from './chat-t
 const mockGetUser = vi.fn();
 const mockFrom = vi.fn();
 
-vi.mock('~/lib/supabase', () => ({
-    getSupabaseServerClient: () => ({
+vi.mock('~/lib/auth', () => ({
+    getAuthServerClient: () => ({
         auth: {
             getUser: mockGetUser,
         },
+    }),
+}));
+
+vi.mock('~/lib/db', () => ({
+    getDbServerClient: () => ({
         from: mockFrom,
     }),
 }));

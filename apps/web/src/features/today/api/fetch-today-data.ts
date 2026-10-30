@@ -8,7 +8,7 @@ import type {
     Trade,
 } from '@llm-market-bench/database';
 import { MEMORY_SCALAR_COLUMNS } from '~/features/memories/api/fetch-memories';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 import {
     formatEasternDate,
     formatEasternDateTime,
@@ -273,7 +273,7 @@ async function executeTodayQueries(
     startOfDay: string,
     estDateStr: string,
 ) {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     return Promise.all([
         supabase
             .from('newsletter_snapshots')
@@ -486,7 +486,7 @@ let cachedMarketFeeling: MarketFeeling | null = null;
 
 export async function fetchLatestMarketFeeling(): Promise<MarketFeeling | null> {
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getDbServerClient();
         const { data, error } = await supabase
             .from('market_feeling')
             .select('*')

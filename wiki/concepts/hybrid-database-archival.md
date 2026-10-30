@@ -82,6 +82,15 @@ The platform operates on a unified self-hosted PostgreSQL database with pgvector
    - Target: `http://localhost:3001`
    - Provides TLS termination and global ingress without opening router ports or exposing IP addresses.
 
+## Auth Decoupling (Supabase Cloud + Local Data)
+
+The archive stack serves the **Data API only** — it does not run an Auth (GoTrue) service. Authentication remains on Supabase Cloud. The web app therefore uses two separate client families (see [[concepts/auth-db-client-separation]]):
+
+- **Auth client** (`apps/web/src/lib/auth.ts`, `apps/web/src/lib/auth-client.ts`) → Supabase Cloud (`SUPABASE_AUTH_URL` / `VITE_SUPABASE_AUTH_URL`).
+- **DB client** (`apps/web/src/lib/db.ts`) → the archive PostgREST endpoint (`ARCHIVE_DB_URL` / `VITE_ARCHIVE_DB_URL`, default `https://benchify-archive-db.clvg.uk`).
+
+`assertValidAuthUrl` rejects any Auth URL containing `benchify-archive-db`, preventing `PGRST125` auth misrouting. Because Auth lives in the cloud while `chat_memories` lives in the archive DB, the `chat_memories.user_id` foreign key to the local `auth.users` stub was dropped (migration `20261030150000_decouple_chat_memories_auth_fk.sql`); cloud-authenticated user UUIDs are stored directly and RLS still enforces `auth.uid() = user_id`.
+
 ## Secondary MiniPC Edge Replica
 
 A second node (`cv-minipc@minipc`) runs a streaming read-replica and edge gateway so read traffic and public ingress survive primary-workstation reboots and heavy autoresearch workloads. Full topology and operational runbooks live in [[entities/secondary-minipc-edge]].
@@ -132,5 +141,6 @@ ssh cv-minipc@minipc \
 - [[entities/secondary-minipc-edge]] — MiniPC streaming replica, method-based routing, and failover runbooks
 - [[entities/rotate-secrets]] — secret generation including replication credentials
 - [[concepts/env-based-secrets]] — env-var injection rules for the archive stack
+- [[concepts/auth-db-client-separation]] — Auth (cloud) vs DB (archive) client split
 - [[entities/tool-audit]] — Tool execution audit logging
 - [[entities/daily-market-predictor]] — Market prediction pipeline consuming database storage

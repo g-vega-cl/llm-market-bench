@@ -1,5 +1,5 @@
 import type { Memory } from '@llm-market-bench/database';
-import { getSupabaseBrowserClient } from '~/lib/supabase-client';
+import { getDbBrowserClient } from '~/lib/db';
 
 const PAGE_SIZE = 50;
 
@@ -40,7 +40,7 @@ export async function fetchMemories(
     pageSize: number = PAGE_SIZE,
     category?: string,
 ): Promise<PaginatedMemories> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
 
     let query = supabase.from('memories').select(MEMORY_SCALAR_COLUMNS);
 
@@ -74,7 +74,7 @@ export async function fetchMemories(
 }
 
 export async function fetchAllMemories(): Promise<Memory[]> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     const { data, error } = await supabase
         .from('memories')
         .select(MEMORY_SCALAR_COLUMNS)
@@ -85,7 +85,7 @@ export async function fetchAllMemories(): Promise<Memory[]> {
 }
 
 export async function fetchNewMemories(since: string): Promise<Memory[]> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     const { data, error } = await supabase
         .from('memories')
         .select(MEMORY_SCALAR_COLUMNS)
@@ -106,7 +106,7 @@ export interface CacheValidationResult {
  * Used for self-healing delta-sync checks on page mount.
  */
 export async function validateCacheState(cachedId: string): Promise<CacheValidationResult> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
 
     // 1. Fetch newest timestamp
     const timestampQuery = supabase
@@ -133,7 +133,7 @@ export async function validateCacheState(cachedId: string): Promise<CacheValidat
 }
 
 export async function fetchMemoryById(memoryId: string): Promise<Memory | null> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     const { data, error } = await supabase
         .from('memories')
         .select(MEMORY_SCALAR_COLUMNS)
@@ -150,7 +150,7 @@ export async function fetchMemoryById(memoryId: string): Promise<Memory | null> 
 }
 
 export async function fetchMemoryChain(memoryId: string): Promise<Memory[]> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     const { data, error } = await supabase.rpc('get_memory_chain', {
         target_id: memoryId,
     });
@@ -172,7 +172,7 @@ export async function fetchReferencedNewsletters(
 ): Promise<NewsletterSnapshot[]> {
     if (!sourceIds || sourceIds.length === 0) return [];
 
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     const { data, error } = await supabase.rpc('get_referenced_newsletter_snapshots', {
         target_source_ids: sourceIds,
     });
@@ -182,7 +182,7 @@ export async function fetchReferencedNewsletters(
 }
 
 export async function fetchChildResolutionEvent(parentId: string): Promise<Memory | null> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     const { data, error } = await supabase
         .from('memories')
         .select(MEMORY_SCALAR_COLUMNS)
@@ -198,7 +198,7 @@ export async function searchMemories(queryText: string, limit: number = 50): Pro
     const queryClean = queryText.trim();
     if (!queryClean) return [];
 
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
 
     const { data, error } = await supabase
         .from('memories')

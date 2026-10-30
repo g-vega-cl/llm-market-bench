@@ -1,5 +1,5 @@
 import type { LLMReasoningLog } from '@llm-market-bench/database';
-import { getSupabaseBrowserClient } from '~/lib/supabase-client';
+import { getDbBrowserClient } from '~/lib/db';
 
 const PAGE_SIZE = 50;
 
@@ -46,7 +46,7 @@ export async function fetchReasoningLogs(
     cursor?: string,
     pageSize: number = PAGE_SIZE,
 ): Promise<PaginatedReasoningLogs> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
 
     let query = supabase
         .from('llm_reasoning_logs')
@@ -96,7 +96,7 @@ export async function fetchReasoningLogs(
 }
 
 export async function fetchAllReasoningLogs(): Promise<LLMReasoningLog[]> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     const { data, error } = await supabase
         .from('llm_reasoning_logs')
         .select('*')

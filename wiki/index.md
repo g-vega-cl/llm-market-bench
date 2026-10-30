@@ -95,6 +95,7 @@
 
 ## Concepts
 
+- [[concepts/auth-db-client-separation]] — Auth (Supabase Cloud) vs DB (self-hosted PostgREST archive) client split
 - [[concepts/multi-horizon-reference]] — multi-horizon percentile, moving-average, Z-score, and volatility regime context for newsletter assets
 - [[concepts/vector-egress-stripping]] — Explicit scalar column projections that strip invisible pgvector `embedding` egress from web queries
 - [[concepts/max-pain-data-sources]] — Auto-indexed page

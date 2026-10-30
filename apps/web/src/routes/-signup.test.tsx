@@ -40,8 +40,8 @@ vi.mock('@tanstack/react-query', async () => {
     };
 });
 
-vi.mock('~/lib/supabase-client', () => ({
-    getSupabaseBrowserClient: () => ({
+vi.mock('~/lib/auth-client', () => ({
+    getAuthBrowserClient: () => ({
         auth: {
             signInWithOAuth: vi.fn(),
         },

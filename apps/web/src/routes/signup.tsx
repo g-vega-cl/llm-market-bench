@@ -2,7 +2,7 @@ import { usePostHog } from '@posthog/react';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getAuthServerClient } from '~/lib/auth';
 import { Auth } from '~/shared/auth';
 
 type SignupVariables = { email: string; password: string; redirectUrl?: string };
@@ -14,8 +14,8 @@ type AuthResult =
 export const signupFn = createServerFn({ method: 'POST' })
     .inputValidator((d: SignupVariables) => d)
     .handler(async ({ data }) => {
-        const supabase = getSupabaseServerClient();
-        const { data: authData, error } = await supabase.auth.signUp({
+        const authClient = getAuthServerClient();
+        const { data: authData, error } = await authClient.auth.signUp({
             email: data.email,
             password: data.password,
         });

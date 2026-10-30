@@ -8,9 +8,9 @@ import { createServerFn } from '@tanstack/react-start';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
 import { NotFound } from '~/components/ui/NotFound';
+import { getAuthServerClient } from '~/lib/auth';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
 import { seo } from '~/lib/seo';
-import { getSupabaseServerClient } from '~/lib/supabase';
 import { posthogBeforeSend } from '~/utils/posthog-filter';
 import appCss from '../styles/app.css?url';
 
@@ -44,8 +44,8 @@ export type AuthUser = {
 };
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async (): Promise<AuthUser | null> => {
-    const supabase = getSupabaseServerClient();
-    const { data, error: _error } = await supabase.auth.getUser();
+    const authClient = getAuthServerClient();
+    const { data, error: _error } = await authClient.auth.getUser();
 
     if (!data.user?.id || !data.user?.email) {
         return null;

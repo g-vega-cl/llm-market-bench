@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { createClient } from '@supabase/supabase-js';
+import { getDbServerClient } from '~/lib/db';
 
 export interface DailyPrediction {
     id: string;
@@ -34,16 +34,9 @@ export interface DailyPrediction {
 }
 
 export async function fetchDailyPredictions(): Promise<DailyPrediction[]> {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
+    const db = getDbServerClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase credentials not found');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('daily_predictions')
         .select('*')
         .or('prompt_variant_tag.is.null,prompt_variant_tag.not.ilike.%backtest%')
@@ -58,16 +51,9 @@ export async function fetchDailyPredictions(): Promise<DailyPrediction[]> {
 }
 
 export async function fetchDailyPredictorExperiments(): Promise<PromptExperiment[]> {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
+    const db = getDbServerClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase credentials not found');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('prompt_experiments')
         .select('*')
         .eq('prompt_name', 'DAILY_PREDICTOR_PROMPT')
@@ -82,16 +68,9 @@ export async function fetchDailyPredictorExperiments(): Promise<PromptExperiment
 }
 
 export async function fetchDailyPredictorBacktestExperiments(): Promise<PromptExperiment[]> {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
+    const db = getDbServerClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase credentials not found');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('prompt_experiments')
         .select('*')
         .eq('prompt_name', 'DAILY_PREDICTOR_PROMPT')
@@ -106,16 +85,9 @@ export async function fetchDailyPredictorBacktestExperiments(): Promise<PromptEx
 }
 
 export async function fetchDailyPredictorBacktestPredictions(): Promise<DailyPrediction[]> {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
+    const db = getDbServerClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase credentials not found');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('daily_predictions')
         .select('*')
         .ilike('prompt_variant_tag', '%backtest%')
@@ -123,7 +95,7 @@ export async function fetchDailyPredictorBacktestPredictions(): Promise<DailyPre
 
     if (error) {
         // Fallback: return all predictions if ilike query fails or is empty
-        const { data: allData } = await supabase
+        const { data: allData } = await db
             .from('daily_predictions')
             .select('*')
             .order('created_at', { ascending: false });

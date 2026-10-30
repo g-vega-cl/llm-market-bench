@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Module-level mock for Supabase client
 let mockSupabaseClient: Record<string, unknown> | null = null;
-vi.mock('~/lib/supabase', () => ({
-    getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
+vi.mock('~/lib/db', () => ({
+    getDbServerClient: vi.fn(() => mockSupabaseClient),
 }));
 
 import {

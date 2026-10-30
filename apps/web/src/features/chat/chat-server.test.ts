@@ -4,11 +4,16 @@ import { handleChatMessage } from './chat-server';
 // Mock Supabase Server Client
 const mockGetUser = vi.fn();
 const mockFrom = vi.fn();
-vi.mock('~/lib/supabase', () => ({
-    getSupabaseServerClient: () => ({
+vi.mock('~/lib/auth', () => ({
+    getAuthServerClient: () => ({
         auth: {
             getUser: mockGetUser,
         },
+    }),
+}));
+
+vi.mock('~/lib/db', () => ({
+    getDbServerClient: () => ({
         from: mockFrom,
     }),
 }));

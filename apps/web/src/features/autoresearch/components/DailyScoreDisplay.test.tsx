@@ -61,8 +61,8 @@ const mockSupabaseClient = {
     from: vi.fn().mockImplementation((table: string) => createQueryBuilder(table)),
 };
 
-vi.mock('~/lib/supabase-client', () => ({
-    getSupabaseBrowserClient: () => mockSupabaseClient,
+vi.mock('~/lib/db', () => ({
+    getDbBrowserClient: () => mockSupabaseClient,
 }));
 
 describe('DailyScoreDisplay', () => {

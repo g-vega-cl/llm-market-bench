@@ -7,6 +7,9 @@ category: entity
 
 The platform operates on a **self-hosted PostgreSQL with pgvector** backend managed via Docker (`docker/archive/docker-compose.yml`), fronted by PostgREST and an Nginx reverse proxy exposed at `https://benchify-archive-db.clvg.uk` via Cloudflare Tunnel. This unified stack replaces the previous cloud-hosted Supabase instance to eliminate cloud egress limitations, while maintaining 100% compatibility with `@supabase/supabase-js` and `supabase-py` SDKs, pgvector semantic search, and Row-Level Security (RLS).
 
+> [!IMPORTANT]
+> This archive DB serves the **Data API only** — it does not run an Auth (GoTrue) service. Authentication remains on Supabase Cloud. The web app uses separate Auth and DB clients (see [[concepts/auth-db-client-separation]]).
+
 ## Schema Overview
 
 The database is organized into several functional areas:
@@ -17,7 +20,7 @@ The database is organized into several functional areas:
 - `agent_chat_queue` — Audience-submitted questions for the live intraday agent's next thinking turn (`status` ∈ `pending`/`injected`/`answered`/`archived`/`rejected`, plus `injected_turn_at` and `agent_response`); see [[entities/live-agent-trader]]
 - `analysis_sessions` — Top-level grouping for each analysis cycle
 - `catalyst_radar` — Pre-computed collisions between narrative concepts and calendar events for the Keep an Eye radar (see [[concepts/catalyst-radar]])
-- `chat_memories` — User-curated private research theses with full RLS isolation (see [[concepts/private-memory-vault]])
+- `chat_memories` — User-curated private research theses with full RLS isolation (see [[concepts/private-memory-vault]]). `user_id UUID NOT NULL` stores the Supabase Cloud user UUID directly; the foreign key to the local `auth.users` stub was dropped in migration `20261030150000_decouple_chat_memories_auth_fk.sql` because Auth lives in Supabase Cloud while data lives in this archive DB.
 - `decisions` — Agent buy/sell decisions (1 row per agent per ticker per session)
 - `economic_calendar_events` — Parsed economic indicator data
 - `frontier_themes` — Qualified frontier technology supercycle themes and constituent pure-play tickers (see [[entities/frontier-tech-portfolio]])
@@ -85,6 +88,7 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 
 - [[entities/secondary-minipc-edge]]
 - [[concepts/hybrid-database-archival]]
+- [[concepts/auth-db-client-separation]]
 - [[concepts/rag-strategy]]
 - [[concepts/private-memory-vault]]
 - [[concepts/supabase-grant-convention]]

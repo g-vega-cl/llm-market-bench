@@ -31,6 +31,15 @@ The authenticated user's email badge (linking to `/profile`) and the login/logou
 - Uses TanStack Query for data fetching with SSR-safe QueryClient.
 - Styled with Tailwind CSS v4 and `@llm-market-bench/ui-design-system`.
 
+## Auth / DB client separation
+
+The web app uses two strictly separated Supabase client families (see [[concepts/auth-db-client-separation]]):
+
+- **Auth client** — `apps/web/src/lib/auth.ts` (`getAuthServerClient`) and `apps/web/src/lib/auth-client.ts` (`getAuthBrowserClient`) talk to **Supabase Cloud** for password login, Google OAuth, session cookies, and `auth.getUser()`. `assertValidAuthUrl` rejects any URL containing `benchify-archive-db` to prevent `PGRST125` auth misrouting.
+- **DB client** — `apps/web/src/lib/db.ts` (`getDbServerClient`, `getDbBrowserClient`) talks to the **self-hosted PostgREST archive DB** (`https://benchify-archive-db.clvg.uk`) for all data reads/writes, using stateless `createClient` options (`persistSession: false`, `autoRefreshToken: false`, `detectSessionInUrl: false`). `getDbServerClient({ useServiceRole: true })` is used for privileged server-side operations (chat schema introspection, `chat_memories` writes).
+
+All feature data fetchers import `getDbServerClient` / `getDbBrowserClient` from `~/lib/db`; auth routes import `getAuthServerClient` from `~/lib/auth`. The former `~/lib/supabase` and `~/lib/supabase-client` modules have been removed.
+
 ## Related
 
 - [[entities/autoresearch-arena]]
@@ -39,6 +48,7 @@ The authenticated user's email badge (linking to `/profile`) and the login/logou
 - [[entities/investment-chat-gateway]]
 - [[entities/live-agent-trader]]
 - [[entities/design-system]]
+- [[concepts/auth-db-client-separation]]
 - [[concepts/vertical-slice-islands]]
 - [[concepts/zero-frontend-compute]]
 - [[concepts/tanstack-query]]

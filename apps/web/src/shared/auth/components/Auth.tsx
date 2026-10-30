@@ -1,5 +1,5 @@
 import { Button, Input, Label } from '@llm-market-bench/ui-design-system';
-import { getSupabaseBrowserClient } from '~/lib/supabase-client';
+import { getAuthBrowserClient } from '~/lib/auth-client';
 
 function GoogleIcon() {
     return (
@@ -37,8 +37,8 @@ export function Auth({
     afterSubmit?: React.ReactNode;
 }) {
     const handleGoogleLogin = async () => {
-        const supabase = getSupabaseBrowserClient();
-        await supabase.auth.signInWithOAuth({
+        const authClient = getAuthBrowserClient();
+        await authClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
                 redirectTo: `${window.location.origin}/auth/callback`,

@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 import type { Concept, ConceptCatalyst } from '../components/ConceptMap';
 
 export type { Concept, ConceptCatalyst };
@@ -202,7 +202,7 @@ export async function fetchConcepts(options?: { forceFresh?: boolean }): Promise
         return cachedConcepts;
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     try {
         const [conceptsResp, radarResp] = await Promise.all([
             supabase
@@ -249,7 +249,7 @@ export async function fetchConcepts(options?: { forceFresh?: boolean }): Promise
 }
 
 export async function fetchConceptMemories(conceptId: string): Promise<ConceptMemory[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
 
     // 1. Fetch the concept vector
     const { data: conceptData, error: conceptError } = await supabase

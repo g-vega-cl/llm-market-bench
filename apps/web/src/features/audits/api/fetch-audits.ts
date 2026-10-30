@@ -1,4 +1,4 @@
-import { getSupabaseBrowserClient } from '~/lib/supabase-client';
+import { getDbBrowserClient } from '~/lib/db';
 
 const PAGE_SIZE = 50;
 
@@ -24,7 +24,7 @@ export async function fetchAudits(
     cursor?: string,
     pageSize: number = PAGE_SIZE,
 ): Promise<PaginatedAudits> {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
 
     let query = supabase
         .from('system_audits')

@@ -4,7 +4,7 @@ import type {
     PositionWithReasoning,
     TradeWithReasoning,
 } from '@llm-market-bench/database';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 import {
     getActiveOwnerIds,
     isAutoresearchPortfolio,
@@ -15,7 +15,7 @@ import {
 export async function fetchPortfolios(): Promise<
     (Portfolio & { is_active: boolean; is_autoresearch: boolean; is_system: boolean })[]
 > {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     const { data, error } = await supabase
         .from('portfolios')
         .select('*')
@@ -38,7 +38,7 @@ export async function fetchPortfolios(): Promise<
 export async function fetchPortfolioById(
     id: string,
 ): Promise<Portfolio & { is_autoresearch: boolean }> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     const { data, error } = await supabase.from('portfolios').select('*').eq('id', id).single();
 
     if (error) throw error;
@@ -51,7 +51,7 @@ export async function fetchPortfolioById(
 export async function fetchPortfolioByOwnerId(
     ownerId: string,
 ): Promise<(Portfolio & { is_autoresearch: boolean }) | null> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     const { data, error } = await supabase
         .from('portfolios')
         .select('*')
@@ -67,7 +67,7 @@ export async function fetchPortfolioByOwnerId(
 }
 
 export async function fetchPositions(portfolioId: string): Promise<PositionWithReasoning[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
 
     const [posRes, tradesRes] = await Promise.all([
         supabase
@@ -230,7 +230,7 @@ export async function fetchPositions(portfolioId: string): Promise<PositionWithR
 }
 
 export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoning[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
 
     const { data: trades, error: tradeError } = await supabase
         .from('trades')
@@ -325,7 +325,7 @@ export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoni
 export async function fetchPerformanceHistory(
     portfolioId: string,
 ): Promise<PortfolioPerformance[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     const { data, error } = await supabase
         .from('portfolio_performance')
         .select('*')
@@ -352,7 +352,7 @@ export async function fetchAllActivePortfolioPerformance(maxDays: number = 90): 
     startDate: string;
     endDate: string;
 }> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
 
     const { data: portfolios, error: portfoliosError } = await supabase
         .from('portfolios')
@@ -461,7 +461,7 @@ export async function fetchBenchmarkHistory(
 ): Promise<Record<string, BenchmarkDataPoint[]>> {
     if (tickers.length === 0) return {};
 
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     const allData: { ticker: string; price: number; fetched_at: string }[] = [];
     const limit = 1000;
     let from = 0;
@@ -524,7 +524,7 @@ export interface FrontierTheme {
 }
 
 export async function fetchFrontierThemes(portfolioId: string): Promise<FrontierTheme[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     try {
         const { data, error } = await supabase
             .from('frontier_themes')
@@ -563,7 +563,7 @@ export interface FutureForce {
 }
 
 export async function fetchFutureForces(portfolioId?: string): Promise<FutureForce[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     try {
         let query = supabase
             .from('future_forces')

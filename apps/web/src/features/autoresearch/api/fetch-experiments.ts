@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 
 /**
  * Fetch all prompt experiments from the database.
@@ -8,7 +8,7 @@ import { getSupabaseServerClient } from '~/lib/supabase';
  * This function is intended to be used within a TanStack Start server function.
  */
 export async function fetchExperiments(): Promise<PromptExperiment[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     const { data, error } = await supabase
         .from('prompt_experiments')
         .select('*')
@@ -31,7 +31,7 @@ export async function fetchExperiments(): Promise<PromptExperiment[]> {
  * This function is intended to be used within a TanStack Start server function.
  */
 export async function fetchBacktestExperiments(): Promise<PromptExperiment[]> {
-    const supabase = getSupabaseServerClient();
+    const supabase = getDbServerClient();
     const { data, error } = await supabase
         .from('prompt_experiments')
         .select('*')

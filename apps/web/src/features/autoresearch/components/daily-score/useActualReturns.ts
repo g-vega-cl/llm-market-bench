@@ -1,6 +1,6 @@
 import modelsConfig from '@repo/config/models.json';
 import { useEffect, useState } from 'react';
-import { getSupabaseBrowserClient } from '~/lib/supabase-client';
+import { getDbBrowserClient } from '~/lib/db';
 import {
     type ActualReturns,
     calculateSpyReturn,
@@ -15,7 +15,7 @@ export async function fetchPortfolioPerformanceData(
     ownerIds?: string[],
 ) {
     if (portfolioIds.length === 0 && (!ownerIds || ownerIds.length === 0)) return null;
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     let query = supabase
         .from('portfolio_performance')
         .select('portfolio_id, total_equity, date, portfolios!inner(owner_id)')
@@ -43,7 +43,7 @@ export async function fetchActiveWeekData(
     isActive: boolean,
     ownerIds?: string[],
 ) {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getDbBrowserClient();
     return Promise.all([
         fetchPortfolioPerformanceData(portfolioIds, weekStart, weekEnd, ownerIds),
         isActive

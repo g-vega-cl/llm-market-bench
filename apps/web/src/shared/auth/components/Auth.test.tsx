@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Auth } from './Auth';
 
-vi.mock('~/lib/supabase-client', () => ({
-    getSupabaseBrowserClient: () => ({
+vi.mock('~/lib/auth-client', () => ({
+    getAuthBrowserClient: () => ({
         auth: {
             signInWithOAuth: vi.fn(),
         },

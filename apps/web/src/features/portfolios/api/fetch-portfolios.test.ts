@@ -12,8 +12,8 @@ interface MockSupabaseChain {
 
 let mockSupabaseClient: MockSupabaseChain | null = null;
 
-vi.mock('~/lib/supabase', () => ({
-    getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
+vi.mock('~/lib/db', () => ({
+    getDbServerClient: vi.fn(() => mockSupabaseClient),
 }));
 
 import {

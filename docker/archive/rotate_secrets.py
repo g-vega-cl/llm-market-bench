@@ -128,14 +128,15 @@ def rotate_all(sync_db: bool = True) -> dict[str, str]:
         }
         update_env_file(engine_env, engine_updates)
 
-    # 3. Update apps/web/.env
+    # 3. Update apps/web/.env (Archive DB keys only — never overwrite Supabase Cloud Auth keys!)
     web_env = REPO_ROOT / "apps" / "web" / ".env"
     if web_env.exists():
         web_updates = {
-            "SUPABASE_ANON_KEY": anon_jwt,
-            "VITE_SUPABASE_ANON_KEY": anon_jwt,
-            "SUPABASE_URL": "https://benchify-archive-db.clvg.uk",
-            "VITE_SUPABASE_URL": "https://benchify-archive-db.clvg.uk",
+            "ARCHIVE_DB_ANON_KEY": anon_jwt,
+            "VITE_ARCHIVE_DB_ANON_KEY": anon_jwt,
+            "ARCHIVE_DB_SERVICE_ROLE_KEY": service_jwt,
+            "ARCHIVE_DB_URL": "https://benchify-archive-db.clvg.uk",
+            "VITE_ARCHIVE_DB_URL": "https://benchify-archive-db.clvg.uk",
         }
         update_env_file(web_env, web_updates)
 
@@ -143,6 +144,8 @@ def rotate_all(sync_db: bool = True) -> dict[str, str]:
         "POSTGRES_PASSWORD": new_pg_password,
         "PGRST_JWT_SECRET": new_jwt_secret,
         "REPLICATION_PASSWORD": new_repl_password,
+        "ARCHIVE_DB_ANON_KEY": anon_jwt,
+        "ARCHIVE_DB_SERVICE_ROLE_KEY": service_jwt,
         "SUPABASE_ANON_KEY": anon_jwt,
         "SUPABASE_SERVICE_ROLE_KEY": service_jwt,
     }
@@ -153,10 +156,19 @@ if __name__ == "__main__":
     print("Secrets rotated successfully.")
     print("\n--- DEPLOYMENT CHECKLIST ---")
     print("1. Netlify (Site Settings -> Environment Variables):")
+    print("   # Local PostgREST Archive DB (Data API):")
+    print("   ARCHIVE_DB_URL              = https://benchify-archive-db.clvg.uk")
+    print("   VITE_ARCHIVE_DB_URL         = https://benchify-archive-db.clvg.uk")
     print(
-        "   VITE_SUPABASE_ANON_KEY = <SUPABASE_ANON_KEY>  (ANON KEY ONLY - NEVER SERVICE ROLE!)"
+        "   VITE_ARCHIVE_DB_ANON_KEY    = <ARCHIVE_DB_ANON_KEY>  (ANON KEY ONLY - NEVER SERVICE ROLE!)"
     )
-    print("   SUPABASE_ANON_KEY      = <SUPABASE_ANON_KEY>")
+    print("   ARCHIVE_DB_ANON_KEY         = <ARCHIVE_DB_ANON_KEY>")
+    print("   ARCHIVE_DB_SERVICE_ROLE_KEY = <ARCHIVE_DB_SERVICE_ROLE_KEY>")
+    print("   # Supabase Cloud (Auth Only - DO NOT point to benchify-archive-db!):")
+    print("   SUPABASE_AUTH_URL           = https://<project-ref>.supabase.co")
+    print("   VITE_SUPABASE_AUTH_URL      = https://<project-ref>.supabase.co")
+    print("   SUPABASE_AUTH_ANON_KEY      = <cloud-supabase-anon-key>")
+    print("   VITE_SUPABASE_AUTH_ANON_KEY = <cloud-supabase-anon-key>")
     print("   (Then trigger 'Clear cache and deploy site')")
     print("\n2. GitHub Actions Secrets (Repository Settings -> Secrets -> Actions):")
     print("   SUPABASE_SERVICE_ROLE_KEY = <SUPABASE_SERVICE_ROLE_KEY>")

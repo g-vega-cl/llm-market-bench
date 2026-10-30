@@ -41,8 +41,8 @@ vi.mock('~/routes/signup', () => ({
     signupFn: vi.fn(),
 }));
 
-vi.mock('~/lib/supabase-client', () => ({
-    getSupabaseBrowserClient: () => ({
+vi.mock('~/lib/auth-client', () => ({
+    getAuthBrowserClient: () => ({
         auth: {
             signInWithOAuth: vi.fn(),
         },

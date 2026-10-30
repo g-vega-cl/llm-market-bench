@@ -167,9 +167,10 @@ async function processToolCalls(
 export async function handleChatMessage(payload: {
     messages: ChatMessage[];
 }): Promise<ChatMessage> {
-    const { getSupabaseServerClient } = await import('~/lib/supabase');
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase.auth.getUser();
+    const { getAuthServerClient } = await import('~/lib/auth');
+    const { getDbServerClient } = await import('~/lib/db');
+    const authClient = getAuthServerClient();
+    const { data, error } = await authClient.auth.getUser();
 
     if (error || !data.user) {
         throw new Error('Authentication required');
@@ -184,7 +185,8 @@ export async function handleChatMessage(payload: {
         throw new Error('DeepSeek API key is not configured');
     }
 
-    const schemaSummary = await getDatabaseSchemaSummary(supabase);
+    const db = getDbServerClient({ useServiceRole: true });
+    const schemaSummary = await getDatabaseSchemaSummary(db);
     const systemPrompt = buildSystemPrompt(schemaSummary);
 
     const messagesToSend: ChatMessage[] = [
@@ -210,13 +212,7 @@ export async function handleChatMessage(payload: {
             };
         }
 
-        await processToolCalls(
-            assistantMsg,
-            messagesToSend,
-            supabase,
-            accumulatedTraces,
-            data.user.id,
-        );
+        await processToolCalls(assistantMsg, messagesToSend, db, accumulatedTraces, data.user.id);
     }
 
     const lastMsg = messagesToSend[messagesToSend.length - 1];
@@ -261,9 +257,9 @@ function parseJsonFromText<T>(text: string): T | null {
 export async function handleDistillChatMemory(
     payload: DistillMemoryRequest,
 ): Promise<DistillMemoryResult> {
-    const { getSupabaseServerClient } = await import('~/lib/supabase');
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase.auth.getUser();
+    const { getAuthServerClient } = await import('~/lib/auth');
+    const authClient = getAuthServerClient();
+    const { data, error } = await authClient.auth.getUser();
 
     if (error || !data.user) {
         throw new Error('Authentication required');
@@ -341,9 +337,10 @@ Distill into JSON:`;
 }
 
 export async function handleSaveChatMemory(payload: SaveChatMemoryRequest): Promise<ChatMemory> {
-    const { getSupabaseServerClient } = await import('~/lib/supabase');
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase.auth.getUser();
+    const { getAuthServerClient } = await import('~/lib/auth');
+    const { getDbServerClient } = await import('~/lib/db');
+    const authClient = getAuthServerClient();
+    const { data, error } = await authClient.auth.getUser();
 
     if (error || !data.user) {
         throw new Error('Authentication required');
@@ -358,7 +355,8 @@ export async function handleSaveChatMemory(payload: SaveChatMemoryRequest): Prom
         throw new Error('Thesis content is required');
     }
 
-    const { data: inserted, error: insertError } = await supabase
+    const db = getDbServerClient({ useServiceRole: true });
+    const { data: inserted, error: insertError } = await db
         .from('chat_memories')
         .insert({
             user_id: data.user.id,
@@ -383,9 +381,10 @@ export async function handleSaveChatMemory(payload: SaveChatMemoryRequest): Prom
 export async function handleFetchMyChatMemories(payload: {
     ticker?: string;
 }): Promise<ChatMemory[]> {
-    const { getSupabaseServerClient } = await import('~/lib/supabase');
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase.auth.getUser();
+    const { getAuthServerClient } = await import('~/lib/auth');
+    const { getDbServerClient } = await import('~/lib/db');
+    const authClient = getAuthServerClient();
+    const { data, error } = await authClient.auth.getUser();
 
     if (error || !data.user) {
         throw new Error('Authentication required');
@@ -395,7 +394,8 @@ export async function handleFetchMyChatMemories(payload: {
         throw new Error('Chat feature is restricted to authorized accounts');
     }
 
-    let query = supabase.from('chat_memories').select('*').eq('user_id', data.user.id);
+    const db = getDbServerClient({ useServiceRole: true });
+    let query = db.from('chat_memories').select('*').eq('user_id', data.user.id);
 
     if (payload.ticker) {
         query = query.eq('ticker', payload.ticker.trim().toUpperCase());

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 let mockSupabaseClient: Record<string, unknown> | null = null;
-vi.mock('~/lib/supabase-client', () => ({
-    getSupabaseBrowserClient: vi.fn(() => mockSupabaseClient),
+vi.mock('~/lib/db', () => ({
+    getDbBrowserClient: vi.fn(() => mockSupabaseClient),
 }));
 
 import { fetchCauseAndEffect, fetchCauseAndEffectByEventId } from './fetch-cause-and-effect';

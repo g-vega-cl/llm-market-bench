@@ -1,12 +1,12 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getAuthServerClient } from '~/lib/auth';
 
 const exchangeCodeFn = createServerFn({ method: 'GET' })
     .inputValidator((d: { code: string }) => d)
     .handler(async ({ data }) => {
-        const supabase = getSupabaseServerClient();
-        const { error } = await supabase.auth.exchangeCodeForSession(data.code);
+        const authClient = getAuthServerClient();
+        const { error } = await authClient.auth.exchangeCodeForSession(data.code);
         if (error) {
             console.error('Error exchanging code for session:', error.message);
         }

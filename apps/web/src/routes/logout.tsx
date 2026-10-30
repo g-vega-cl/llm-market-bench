@@ -2,11 +2,11 @@ import { usePostHog } from '@posthog/react';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { useEffect } from 'react';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getAuthServerClient } from '~/lib/auth';
 
 export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
-    const supabase = getSupabaseServerClient();
-    const { error } = await supabase.auth.signOut();
+    const authClient = getAuthServerClient();
+    const { error } = await authClient.auth.signOut();
 
     if (error) {
         return {

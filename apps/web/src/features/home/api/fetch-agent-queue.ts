@@ -34,10 +34,11 @@ export async function handleSubmitAgentQueueQuestion(data: {
 }): Promise<{ success: boolean; item: AgentQueueItem }> {
     const trimmedMessage = validateQueueMessage(data.message);
 
-    const { getSupabaseServerClient } = await import('~/lib/supabase');
-    const supabase = getSupabaseServerClient();
+    const { getAuthServerClient } = await import('~/lib/auth');
+    const { getDbServerClient } = await import('~/lib/db');
+    const authClient = getAuthServerClient();
 
-    const { data: authData, error: authError } = await supabase.auth.getUser();
+    const { data: authData, error: authError } = await authClient.auth.getUser();
     const user = authData?.user;
 
     if (authError || !user?.id) {
@@ -46,7 +47,8 @@ export async function handleSubmitAgentQueueQuestion(data: {
 
     const displayName = user.email ? user.email.split('@')[0] : 'Analyst';
 
-    const { data: insertedItem, error: insertError } = await supabase
+    const db = getDbServerClient();
+    const { data: insertedItem, error: insertError } = await db
         .from('agent_chat_queue')
         .insert({
             user_id: user.id,
@@ -69,17 +71,17 @@ export async function handleSubmitAgentQueueQuestion(data: {
 
 export async function handleFetchAgentQueueStatus(): Promise<AgentQueueStatus> {
     try {
-        const { getSupabaseServerClient } = await import('~/lib/supabase');
-        const supabase = getSupabaseServerClient();
+        const { getDbServerClient } = await import('~/lib/db');
+        const db = getDbServerClient();
 
         // 1. Fetch pending count
-        const { count: pendingCount, error: countErr } = await supabase
+        const { count: pendingCount, error: countErr } = await db
             .from('agent_chat_queue')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'pending');
 
         // 2. Fetch latest answered item
-        const { data: answeredRows, error: ansErr } = await supabase
+        const { data: answeredRows, error: ansErr } = await db
             .from('agent_chat_queue')
             .select('*')
             .not('agent_response', 'is', null)

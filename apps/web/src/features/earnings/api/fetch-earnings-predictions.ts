@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { getDbServerClient } from '~/lib/db';
 
 export interface EarningsPrediction {
     id: string;
@@ -32,7 +32,7 @@ export interface EarningsPrediction {
  */
 export async function fetchEarningsPredictions(limit = 100): Promise<EarningsPrediction[]> {
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getDbServerClient();
         const { data, error } = await supabase
             .from('earnings_predictions')
             .select('*')

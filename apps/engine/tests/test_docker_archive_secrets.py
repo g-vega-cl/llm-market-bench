@@ -103,3 +103,29 @@ def test_rotate_all_sync_db_flag(tmp_path):
         # sync_db=False
         rotate_all(sync_db=False)
         mock_update.assert_not_called()
+
+
+def test_rotate_all_writes_decoupled_archive_db_keys_to_web_env(tmp_path):
+    """Verify rotate_all writes ARCHIVE_DB_* keys to apps/web/.env and never overwrites SUPABASE_URL."""
+    from docker.archive.rotate_secrets import rotate_all
+
+    web_env_dir = tmp_path / "apps" / "web"
+    web_env_dir.mkdir(parents=True)
+    web_env_file = web_env_dir / ".env"
+    web_env_file.write_text(
+        "SUPABASE_AUTH_URL=https://xfnrckoylmvoyccdrthx.supabase.co\n"
+        "VITE_SUPABASE_AUTH_URL=https://xfnrckoylmvoyccdrthx.supabase.co\n",
+        encoding="utf-8",
+    )
+
+    with patch("docker.archive.rotate_secrets.REPO_ROOT", tmp_path):
+        rotate_all(sync_db=False)
+
+    updated = web_env_file.read_text(encoding="utf-8")
+    assert "ARCHIVE_DB_URL=https://benchify-archive-db.clvg.uk" in updated
+    assert "VITE_ARCHIVE_DB_URL=https://benchify-archive-db.clvg.uk" in updated
+    assert "ARCHIVE_DB_ANON_KEY=" in updated
+    assert "VITE_ARCHIVE_DB_ANON_KEY=" in updated
+    assert "ARCHIVE_DB_SERVICE_ROLE_KEY=" in updated
+    assert "SUPABASE_AUTH_URL=https://xfnrckoylmvoyccdrthx.supabase.co" in updated
+    assert "SUPABASE_URL=https://benchify-archive-db.clvg.uk" not in updated

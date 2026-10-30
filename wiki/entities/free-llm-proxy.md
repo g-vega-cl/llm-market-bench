@@ -213,7 +213,7 @@ Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configu
           "id": "strata-auto",
           "name": "Free LLM: Strata Primary (Auto Fallback)",
           "input": ["text"],
-          "contextWindow": 65536,
+          "contextWindow": 262144,
           "maxTokens": 8192,
           "type": "chat"
         },
@@ -221,7 +221,15 @@ Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configu
           "id": "auto-strata",
           "name": "Free LLM: Auto with Strata Rotated",
           "input": ["text"],
-          "contextWindow": 65536,
+          "contextWindow": 262144,
+          "maxTokens": 8192,
+          "type": "chat"
+        },
+        {
+          "id": "strata",
+          "name": "Free LLM: Strata (Strict / No Fallback)",
+          "input": ["text"],
+          "contextWindow": 262144,
           "maxTokens": 8192,
           "type": "chat"
         },

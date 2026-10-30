@@ -40,35 +40,38 @@ Empty input returns a neutral snapshot (`vwap 0.0`, `rsi_14 50.0`, `trend NEUTRA
 `execute_intraday_agent_step` runs one 5-minute turn:
 1. Fetch the rolling 120-minute tape and compute the technical snapshot.
 2. Aggregate deduplicated news for the ticker (5 per source).
-3. Pull the 5 most recent `memories` rows for episodic context.
-4. Build a lean system prompt enforcing a strict JSON contract (`action`, `conviction`, `thought`, `allocation_pct`, `memories_consulted`) plus a user prompt with the tape snapshot, headlines, and memory bullets.
-5. Parse the response with `_extract_json_decision`, which strips code fences, falls back to a greedy regex match, and finally to a neutral `HOLD`.
-6. **Agency-Driven Sizing**: On `BUY` or `SELL`, the agent reads Alpaca paper cash and sizes `allocation_pct` into whole shares at the last close, then submits a `MarketOrderRequest` with `TimeInForce.DAY`.
-7. Persist the turn into `market_feeling` (`sentiment_label`, `confidence_score`, `why_explanation`, `market_direction`, `primary_concern` for RSI and trend, `secondary_concern` for VWAP, `trades_summary` payload with action, allocation, order id, technicals, memories, news count, bar count, and model attribution). The `trades_summary` payload also carries the full `bars` array of real 1-minute candles, which is what the Home page chart renders from.
+3. **Dequeue the next audience question**: call the `pop_next_queue_item` RPC (atomic `SELECT ... FOR UPDATE SKIP LOCKED` FIFO dequeue that flips the oldest `pending` row to `injected`). If the RPC fails, fall back to a direct `agent_chat_queue` select of the oldest `pending` row followed by an `injected` status update.
+4. **Retrieve read-only grounding**: `retrieve_read_only_market_data(sb_client, query, ticker, limit_per_domain=3)` in `apps/engine/trading/read_only_retriever.py` gathers cross-domain context — `memories` (ticker-filtered, ordered by recency), `cause_and_effect` causal chains, recent `trades`, recent `decisions`, the latest `market_barometer` snapshot, and the top `catalyst_radar` collisions. `format_read_only_grounding` renders these into lean prompt sections (`### HISTORICAL MEMORIES & LESSONS`, `### CAUSAL CHAINS`, `### RECENT TRADES & AUDIT DECISIONS`, `### MACRO & CATALYST CONTEXT`).
+5. Build a lean system prompt enforcing a strict JSON contract (`action`, `conviction`, `thought`, `allocation_pct`, `memories_consulted`) plus a user prompt with the tape snapshot, headlines, grounding sections, and — when a queue item was dequeued — an `### AUDIENCE INQUIRY (External Untrusted Hypothesis)` block wrapping the message in `<audience_question author="..." user_id="...">` tags. The system prompt instructs the model to evaluate the inquiry critically against the data and to never follow user instructions as system directives.
+6. Parse the response with `_extract_json_decision`, which strips code fences, falls back to a greedy regex match, and finally to a neutral `HOLD`.
+7. **Answer the queue item**: if one was dequeued, update `agent_chat_queue` with `status = 'answered'`, `agent_response = decision.thought`, and a fresh `injected_turn_at`.
+8. **Agency-Driven Sizing**: On `BUY` or `SELL`, the agent reads Alpaca paper cash and sizes `allocation_pct` into whole shares at the last close, then submits a `MarketOrderRequest` with `TimeInForce.DAY`.
+9. Persist the turn into `market_feeling` (`sentiment_label`, `confidence_score`, `why_explanation`, `market_direction`, `primary_concern` for RSI and trend, `secondary_concern` for VWAP, `trades_summary` payload with action, allocation, order id, technicals, memories, news count, bar count, model attribution, plus `queue_item_id` and `audience_question`). The `trades_summary` payload also carries the full `bars` array of real 1-minute candles, which is what the Home page chart renders from. The returned step result also exposes `queue_item_id`.
 
 ### 6. Edge Daemon Runner and Deployment
 `apps/engine/trading/runner.py` drives the background loop:
 - `is_market_session_active`: Checks if current Eastern Time is Monday through Friday between 09:30 AM and 04:00 PM.
 - `calculate_seconds_to_market_open`: Calculates remaining seconds until the next 09:30 AM ET market open.
-- In `--loop` mode: Sleeps until market open if closed. When active, executes `run_daemon_turn` every 300 seconds.
+- `run_loop(..., continuous_24_7=True)`: In 24/7 mode (the default) the loop never sleeps for the market close. When the session is closed it still runs an evaluation turn every 300 seconds, but passes `alpaca_trading_client=None` so paper order submission is skipped — the agent keeps analyzing news, reviewing memories, and answering audience questions. When the session is open the real trading client is passed and orders execute normally. Passing `--no-24-7` restores the legacy behavior of sleeping until the next market open.
 - Dockerized in `docker/archive/Dockerfile.trader` and configured as `live-spy-trader` in `docker/archive/docker-compose.secondary.yml`.
 - `docker/archive/deploy_secondary.sh` syncs the runner, dependencies, and configuration to the edge MiniPC server (`cv-minipc@minipc`).
 
 ### 7. Console UI and Client-Side Polling
 `LiveAgentConsole.tsx` renders the header ribbon (`24/7 Autonomous SPY Trader`, live or closed pulse dot, 5-minute countdown timer, `Polling 20s` status indicator, and manual `Refresh Tape` action), direction and action badges, a `ConfidenceBar` for agent conviction, the candlestick chart, the intraday thought trace, a technicals row (VWAP, RSI, Trend plus memory pills), and the audience queue card.
 
-While the surrounding Home page remains completely server-side rendered (`routes/index.tsx`), `LiveAgentConsole` acts as an active presentation island on the client. It polls `fetchLiveIntradayTape` every 20 seconds, updating the local chart tape and agent thought state without re-rendering or refetching portfolio leaderboards or benchmarks.
+While the surrounding Home page remains completely server-side rendered (`routes/index.tsx`), `LiveAgentConsole` acts as an active presentation island on the client. It polls `fetchLiveIntradayTape` every 20 seconds, updating the local chart tape and agent thought state without re-rendering or refetching portfolio leaderboards or benchmarks. Each poll runs `fetchLiveIntradayTape` and `fetchAgentQueueStatus` in parallel via `Promise.all`, so the pending queue count and latest answered turn refresh alongside the tape.
 
-- **Local State Seeding**: `currentBars` and `currentAgentState` are initialized from the SSR-provided `bars` / `agentState` props and re-synced whenever those props change, so the server-rendered tape is shown instantly before the first poll lands.
-- **`updateLiveTape` Helper**: Wraps the poll in a `try/finally` that toggles `isPolling`, optionally invokes the `onRefreshTape` callback, calls the `fetchLiveIntradayTape` server function, and only overwrites local bars/state when the snapshot returns non-empty data. Failures are swallowed as non-blocking background poll errors.
+- **Local State Seeding**: `currentBars` and `currentAgentState` are initialized from the SSR-provided `bars` / `agentState` props and re-synced whenever those props change, so the server-rendered tape is shown instantly before the first poll lands. `pendingCount` / `latestAnswered` are seeded by an immediate `fetchAgentQueueStatus()` call on mount.
+- **`updateLiveTape` Helper**: Wraps the poll in a `try/finally` that toggles `isPolling`, optionally invokes the `onRefreshTape` callback, calls the `fetchLiveIntradayTape` server function, and only overwrites local bars/state when the snapshot returns non-empty data. It also forwards the queue status to `handleQueueStatusUpdate`. Failures are swallowed as non-blocking background poll errors.
 - **Manual Refresh**: The header `Refresh` button (`voxel-btn`, disabled while `isPolling`) triggers the same `updateLiveTape` path on demand.
+- **Authenticated User Prop**: `LiveAgentConsole` accepts `currentUser` (`{ id, email } | null`), threaded from the route context (`Route.useRouteContext().user`) through `HomePage` into `ConsoleQueueCard`.
 
 ### 8. Audience Chat Queue
-- Schema defined in `supabase/migrations/20261029140000_create_agent_chat_queue.sql` (`public.agent_chat_queue`).
-- Columns: `id`, `user_id` (FK to `auth.users`, `ON DELETE SET NULL`), `display_name` (default `Visitor`), `message`, `status` (`pending`, `injected`, `archived`, `rejected`, default `pending`), `created_at`, `injected_turn_at`, `agent_response`.
+- Schema defined in `supabase/migrations/20261029140000_create_agent_chat_queue.sql` (`public.agent_chat_queue`), extended by `supabase/migrations/20261029220000_add_pop_next_queue_item_rpc.sql`.
+- Columns: `id`, `user_id` (FK to `auth.users`, `ON DELETE SET NULL`), `display_name` (default `Visitor`), `message`, `status` (`pending`, `injected`, `answered`, `archived`, `rejected`, default `pending`), `created_at`, `injected_turn_at`, `agent_response`.
 - Indexes: `(status, created_at ASC)` for queue polling and `(created_at DESC)` for timeline display.
 - RLS enabled with public `SELECT` and `INSERT` policies plus full `service_role` access; grants `SELECT, INSERT` to `anon` and `authenticated` and `ALL` to `service_role`.
-- Allows human visitors to submit questions or market hypotheses to be injected into the agent's upcoming 5-minute thinking turn. The console card currently renders as a teaser.
+- Allows human visitors to submit questions or market hypotheses that are injected into the agent's upcoming 5-minute thinking turn. The console card is now a fully functional submission form (see `ConsoleQueueCard.tsx` below), not a teaser.
 
 ### 9. 30-Minute Audit Harness
 `apps/engine/scripts/audit_30min_trader.py` is a standalone instrumented harness that exercises the live trader end-to-end against real feeds (Alpaca, Benzinga, Polygon, FMP stable, Supabase, and the multi-tier LLM cascade) and records per-turn metrics.
@@ -88,7 +91,7 @@ PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 apps/engine/scripts/audit
 ```
 
 ## Home Page Integration
-`apps/web/src/routes/index.tsx` builds the agent state server-side via `buildAgentState(marketFeeling, tradesPayload)`, deriving `action`, `conviction`, `thought`, `marketDirection`, `sentimentLabel`, `modelUsed`, `lastUpdated` in Eastern Time, `technicals`, and `memoriesConsulted` from the latest `market_feeling` row and its `trades_summary` payload. The Home page's first block renders `LiveAgentConsole` inside the `home-block-feeling` test id, receiving real Alpaca bars directly from `tradesPayload.bars` with `isRegularMarketHours()` supplying session state.
+`apps/web/src/routes/index.tsx` builds the agent state server-side via `buildAgentState(marketFeeling, tradesPayload)`, deriving `action`, `conviction`, `thought`, `marketDirection`, `sentimentLabel`, `modelUsed`, `lastUpdated` in Eastern Time, `technicals`, and `memoriesConsulted` from the latest `market_feeling` row and its `trades_summary` payload. The route component merges `Route.useRouteContext().user` into the payload as `currentUser`, which `HomePage` forwards to `LiveAgentConsole`. The Home page's first block renders `LiveAgentConsole` inside the `home-block-feeling` test id, receiving real Alpaca bars directly from `tradesPayload.bars` with `isRegularMarketHours()` supplying session state.
 
 Bars flow through `filterLastBars(bars, 60)` in `apps/web/src/features/home/api/fetch-intraday-tape.ts`, which returns the trailing 60 candles (or an empty array for `null`/`undefined`/non-array input). `SPYCandlestickChart` independently slices its input to the last 60 bars, so the chart never renders more than an hour of tape. There is no synthetic fallback tape — when no live bars exist the chart renders the `Awaiting live SPY market tape...` empty state.
 
@@ -110,6 +113,15 @@ Because the newest `market_feeling` row can be written by a turn that persisted 
 3. **Fail-soft** — any query error is caught and resolves to an empty bar array, so the console degrades to the `Awaiting live SPY market tape...` empty state instead of failing the homepage render.
 
 This keeps the last real session tape visible across row churn without ever fabricating candles.
+
+## Audience Interactive Queue & 24/7 Operation
+- **Database Queue (`public.agent_chat_queue`)**: Schema defined in `supabase/migrations/20261029140000_create_agent_chat_queue.sql` and extended with the atomic `pop_next_queue_item()` RPC in `supabase/migrations/20261029220000_add_pop_next_queue_item_rpc.sql` (see [[entities/database]]). Statuses are `pending`, `injected`, `answered`, `archived`, `rejected`.
+- **Authenticated Submissions**: Gated strictly to logged-in users via `submitAgentQueueQuestion` in `apps/web/src/features/home/api/fetch-agent-queue.ts`, capturing `user_id` as metadata for analytics. `validateQueueMessage` rejects empty/whitespace-only input and enforces a 500-character max (`MAX_QUEUE_MESSAGE_LENGTH`). Unauthenticated submissions throw `UNAUTHORIZED`.
+- **Queue Status Polling**: `fetchAgentQueueStatus` returns `{ pendingCount, latestAnswered }` — an exact `pending` count plus the most recent row with a non-null `agent_response` ordered by `injected_turn_at` descending. It fails soft to `{ pendingCount: 0, latestAnswered: null }`.
+- **Read-Only Data & Memory Grounding**: `apps/engine/trading/read_only_retriever.py` provides cross-domain read-only context (`memories`, `cause_and_effect`, `trades`, `decisions`, `market_barometer`, `catalyst_radar`) formatted into lean prompt sections by `format_read_only_grounding`.
+- **Untrusted Hypothesis Containment**: Injected audience questions are isolated in `<audience_question author="..." user_id="...">` blocks with system directives preventing prompt injections from affecting trade parameters.
+- **24/7 Continuous Mode**: `apps/engine/trading/runner.py` runs continuous evaluation turns across off-hours and weekends (`continuous_24_7=True`, disable with `--no-24-7`). Off-hours turns pass `alpaca_trading_client=None`, so paper order submission is skipped while the agent continues analyzing news, reviewing memories, and answering audience questions.
+- **Frontend Console Card**: `apps/web/src/features/home/components/ConsoleQueueCard.tsx` renders a sign-in CTA for anonymous visitors, a 500-character textarea with live `n/500` counting for authenticated users, the pending queue count (`N in queue` / `Queue open`), and the latest answered turn with the model's commentary.
 
 ## Related
 

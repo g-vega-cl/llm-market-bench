@@ -129,5 +129,6 @@ export const Route = createFileRoute('/')({
 
 function RouteComponent() {
     const data = Route.useLoaderData();
-    return <HomePage data={data} />;
+    const context = Route.useRouteContext();
+    return <HomePage data={{ ...data, currentUser: context?.user ?? null }} />;
 }

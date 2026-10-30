@@ -21,6 +21,7 @@ export interface HomePageData {
     trades?: ChartTradeMarker[];
     agentState?: LiveAgentState;
     isMarketOpen?: boolean;
+    currentUser?: { id: string; email?: string } | null;
     feeling?: {
         sentiment: string;
         summary: string;
@@ -240,6 +241,7 @@ export function HomePage({ data }: { data: HomePageData }) {
                             trades={data.trades}
                             agentState={agentState}
                             isMarketOpen={isMarketOpen}
+                            currentUser={data.currentUser}
                         />
                     </div>
                     <PortfoliosBlock portfolios={data.portfolios} benchmark={data.benchmark} />

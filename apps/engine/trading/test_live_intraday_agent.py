@@ -285,3 +285,91 @@ async def test_fetch_intraday_bars_sort_descending_and_chronological():
     assert len(bars) == 2
     assert bars[0]["time"] == "2026-10-29T15:59:00Z"
     assert bars[1]["time"] == "2026-10-29T16:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_execute_intraday_agent_step_with_audience_queue():
+    mock_alpaca_data = MagicMock()
+    mock_alpaca_trade = MagicMock()
+    mock_sb = MagicMock()
+    mock_http = AsyncMock()
+
+    # Mock intraday bars
+    with (
+        patch(
+            "trading.live_intraday_agent.fetch_intraday_bars",
+            new=AsyncMock(
+                return_value=[
+                    {
+                        "time": "2026-10-29T14:00:00Z",
+                        "open": 580,
+                        "high": 581,
+                        "low": 579,
+                        "close": 580.5,
+                        "volume": 1000,
+                    }
+                ]
+            ),
+        ),
+        patch("trading.live_intraday_agent.aggregate_intraday_news", new=AsyncMock(return_value=[])),
+    ):
+        # Queue item to return from pop_next_queue_item
+        queue_item = {
+            "id": "q-12345",
+            "user_id": "usr-999",
+            "display_name": "TraderAlex",
+            "message": "Is SPY rejecting VWAP or forming a bull flag on the 1m?",
+            "status": "pending",
+        }
+
+        # Mock sb.rpc or table queries
+        mock_rpc_resp = MagicMock()
+        mock_rpc_resp.data = [queue_item]
+        mock_sb.rpc.return_value.execute.return_value = mock_rpc_resp
+
+        mock_update_builder = MagicMock()
+        mock_sb.table.return_value.update.return_value = mock_update_builder
+        mock_update_builder.eq.return_value.execute.return_value = MagicMock()
+
+        # Mock LLM response
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "action": "HOLD",
+                                "conviction": 65,
+                                "thought": "TraderAlex asked about a bull flag. Consolidating near VWAP $580.50.",
+                                "allocation_pct": 0,
+                                "memories_consulted": ["mem-1"],
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+        mock_http.post.return_value = mock_resp
+
+        result = await execute_intraday_agent_step(
+            alpaca_data_client=mock_alpaca_data,
+            alpaca_trading_client=mock_alpaca_trade,
+            sb_client=mock_sb,
+            http_client=mock_http,
+            ticker="SPY",
+        )
+
+        assert result["action"] == "HOLD"
+        assert result.get("queue_item_id") == "q-12345"
+
+        # Verify prompt had the audience question
+        posted_payload = mock_http.post.call_args[1]["json"]
+        user_content = posted_payload["messages"][1]["content"]
+        assert "<audience_question" in user_content
+        assert "TraderAlex" in user_content
+        assert "Is SPY rejecting VWAP" in user_content
+
+        # Verify queue was updated
+        assert mock_sb.table.return_value.update.called

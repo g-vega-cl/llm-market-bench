@@ -128,9 +128,12 @@ async def run_loop(
     interval_seconds: int = 300,
     strata_url: str = DEFAULT_STRATA_URL,
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    continuous_24_7: bool = True,
 ) -> None:
     """Run the continuous 24/7 daemon loop."""
-    logger.info(f"Starting Live SPY Trader Daemon (ticker={ticker}, interval={interval_seconds}s)")
+    logger.info(
+        f"Starting Live SPY Trader Daemon (ticker={ticker}, interval={interval_seconds}s, 24/7={continuous_24_7})"
+    )
     logger.info(f"Tier 1 Inference: {strata_url}")
     logger.info(f"Tier 2 Inference: {cheap_proxy_url}")
 
@@ -139,7 +142,8 @@ async def run_loop(
     async with httpx.AsyncClient(timeout=30.0) as http_client:
         while True:
             try:
-                if not is_market_session_active():
+                is_open = is_market_session_active()
+                if not is_open and not continuous_24_7:
                     secs_to_open = calculate_seconds_to_market_open()
                     sleep_dur = min(secs_to_open, 300.0)
                     logger.info(
@@ -148,10 +152,13 @@ async def run_loop(
                     await asyncio.sleep(sleep_dur)
                     continue
 
-                logger.info(f"Market open. Running 5-minute trading cycle for {ticker}...")
+                # In 24/7 off-hours mode, trading is disabled (paper orders skipped) but Q&A and analysis run
+                effective_trading_client = trading_client if is_open else None
+                mode_str = "Market open" if is_open else "24/7 Off-hours"
+                logger.info(f"{mode_str}. Running evaluation turn for {ticker}...")
                 turn_result = await run_daemon_turn(
                     alpaca_data_client=data_client,
-                    alpaca_trading_client=trading_client,
+                    alpaca_trading_client=effective_trading_client,
                     sb_client=sb_client,
                     http_client=http_client,
                     ticker=ticker,
@@ -174,6 +181,11 @@ def main() -> None:
     parser.add_argument("--once", action="store_true", help="Run a single trading turn and exit")
     parser.add_argument("--ticker", default="SPY", help="Ticker symbol to trade (default: SPY)")
     parser.add_argument("--interval", type=int, default=300, help="Cadence in seconds (default: 300)")
+    parser.add_argument(
+        "--no-24-7",
+        action="store_true",
+        help="Disable 24/7 off-hours loop (sleep when regular market closes)",
+    )
     parser.add_argument(
         "--strata-url",
         default=os.getenv("STRATA_BASE_URL", DEFAULT_STRATA_URL),
@@ -209,6 +221,7 @@ def main() -> None:
                 interval_seconds=args.interval,
                 strata_url=args.strata_url,
                 cheap_proxy_url=args.cheap_proxy_url,
+                continuous_24_7=not args.no_24_7,
             )
         )
 

@@ -1,6 +1,8 @@
 import { Badge, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
+import { type AgentQueueItem, fetchAgentQueueStatus } from '../api/fetch-agent-queue';
 import { fetchLiveIntradayTape } from '../api/fetch-intraday-tape';
+import { ConsoleQueueCard } from './ConsoleQueueCard';
 import {
     type CandlestickBar,
     type ChartTradeMarker,
@@ -28,6 +30,7 @@ export interface LiveAgentConsoleProps {
     trades?: ChartTradeMarker[];
     agentState: LiveAgentState;
     isMarketOpen?: boolean;
+    currentUser?: { id: string; email?: string } | null;
     onRefreshTape?: () => void;
 }
 
@@ -162,70 +165,31 @@ function ConsoleTechnicalsRow({
     );
 }
 
-function ConsoleQueueCard({
-    userQuestion,
-    setUserQuestion,
-    queueSubmitted,
-    onSubmit,
-}: {
-    userQuestion: string;
-    setUserQuestion: (val: string) => void;
-    queueSubmitted: boolean;
-    onSubmit: (e: React.FormEvent) => void;
-}) {
-    return (
-        <div className="voxel-trough p-3 flex flex-col gap-2 border border-accent/20">
-            <div className="flex flex-wrap items-center justify-between gap-1">
-                <span className="text-xs font-black uppercase tracking-wider text-accent">
-                    Audience Interactive Queue
-                </span>
-                <span className="text-xs font-mono text-boxel-muted">Coming Soon</span>
-            </div>
-            <p className="text-xs text-boxel-muted leading-normal">
-                Submit questions or thesis hypotheses to inject into the model&apos;s next 5-minute
-                thinking turn.
-            </p>
-
-            {queueSubmitted ? (
-                <div className="text-xs font-mono text-success font-bold py-1">
-                    Question queued. Injected during the next open market evaluation turn.
-                </div>
-            ) : (
-                <form onSubmit={onSubmit} className="flex flex-wrap gap-2 mt-1">
-                    <input
-                        type="text"
-                        value={userQuestion}
-                        onChange={(e) => setUserQuestion(e.target.value)}
-                        placeholder="Ask a question for the model's next turn..."
-                        className="voxel-input flex-1 min-w-48 px-3 py-1.5 text-xs bg-boxel-canvas text-boxel-ink border border-boxel-bevel-hi focus:outline-none focus:border-accent"
-                    />
-                    <button
-                        type="submit"
-                        className="voxel-btn bg-accent text-accent-ink px-3 py-1.5 text-xs font-black uppercase tracking-widest hover:opacity-90"
-                    >
-                        Queue
-                    </button>
-                </form>
-            )}
-        </div>
-    );
-}
-
 async function updateLiveTape(
     setIsPolling: (v: boolean) => void,
     setBars: (bars: CandlestickBar[]) => void,
     setAgentState: (state: LiveAgentState) => void,
+    setQueueStatus?: (status: {
+        pendingCount: number;
+        latestAnswered: AgentQueueItem | null;
+    }) => void,
     onRefreshTape?: () => void,
 ) {
     try {
         setIsPolling(true);
         if (onRefreshTape) onRefreshTape();
-        const snapshot = await fetchLiveIntradayTape();
+        const [snapshot, queueStatus] = await Promise.all([
+            fetchLiveIntradayTape(),
+            fetchAgentQueueStatus().catch(() => ({ pendingCount: 0, latestAnswered: null })),
+        ]);
         if (snapshot.bars && snapshot.bars.length > 0) {
             setBars(snapshot.bars);
         }
         if (snapshot.agentState) {
             setAgentState(snapshot.agentState);
+        }
+        if (setQueueStatus && queueStatus) {
+            setQueueStatus(queueStatus);
         }
     } catch {
         // Non-blocking background poll failure
@@ -239,14 +203,23 @@ export function LiveAgentConsole({
     trades = [],
     agentState,
     isMarketOpen = true,
+    currentUser,
     onRefreshTape,
 }: LiveAgentConsoleProps) {
     const [currentBars, setCurrentBars] = React.useState<CandlestickBar[]>(bars);
     const [currentAgentState, setCurrentAgentState] = React.useState<LiveAgentState>(agentState);
     const [isPolling, setIsPolling] = React.useState(false);
-    const [userQuestion, setUserQuestion] = React.useState('');
-    const [queueSubmitted, setQueueSubmitted] = React.useState(false);
+    const [pendingCount, setPendingCount] = React.useState(0);
+    const [latestAnswered, setLatestAnswered] = React.useState<AgentQueueItem | null>(null);
     const [countdownSeconds, setCountdownSeconds] = React.useState(285);
+
+    const handleQueueStatusUpdate = React.useCallback(
+        (status: { pendingCount: number; latestAnswered: AgentQueueItem | null }) => {
+            setPendingCount(status.pendingCount);
+            setLatestAnswered(status.latestAnswered);
+        },
+        [],
+    );
 
     React.useEffect(() => {
         if (bars && bars.length > 0) {
@@ -261,16 +234,34 @@ export function LiveAgentConsole({
     }, [agentState]);
 
     const handleManualRefresh = React.useCallback(() => {
-        updateLiveTape(setIsPolling, setCurrentBars, setCurrentAgentState, onRefreshTape);
-    }, [onRefreshTape]);
+        updateLiveTape(
+            setIsPolling,
+            setCurrentBars,
+            setCurrentAgentState,
+            handleQueueStatusUpdate,
+            onRefreshTape,
+        );
+    }, [handleQueueStatusUpdate, onRefreshTape]);
 
     React.useEffect(() => {
+        fetchAgentQueueStatus()
+            .then((status) => {
+                setPendingCount(status.pendingCount);
+                setLatestAnswered(status.latestAnswered);
+            })
+            .catch(() => {});
+
         const interval = setInterval(() => {
-            updateLiveTape(setIsPolling, setCurrentBars, setCurrentAgentState);
+            updateLiveTape(
+                setIsPolling,
+                setCurrentBars,
+                setCurrentAgentState,
+                handleQueueStatusUpdate,
+            );
         }, 20000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [handleQueueStatusUpdate]);
 
     React.useEffect(() => {
         if (!isMarketOpen) return;
@@ -279,13 +270,6 @@ export function LiveAgentConsole({
         }, 1000);
         return () => clearInterval(timer);
     }, [isMarketOpen]);
-
-    const handleQueueSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!userQuestion.trim()) return;
-        setQueueSubmitted(true);
-        setUserQuestion('');
-    };
 
     return (
         <Card
@@ -350,10 +334,12 @@ export function LiveAgentConsole({
             />
 
             <ConsoleQueueCard
-                userQuestion={userQuestion}
-                setUserQuestion={setUserQuestion}
-                queueSubmitted={queueSubmitted}
-                onSubmit={handleQueueSubmit}
+                user={currentUser}
+                pendingCount={pendingCount}
+                latestAnswered={latestAnswered}
+                onQuestionQueued={() => {
+                    setPendingCount((prev) => prev + 1);
+                }}
             />
         </Card>
     );

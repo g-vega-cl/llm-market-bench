@@ -51,14 +51,34 @@ describe('LiveAgentConsole', () => {
         expect(screen.getByText(/58.4/i)).toBeInTheDocument();
     });
 
-    it('renders chat queue teaser card', () => {
+    it('renders chat queue with sign in CTA when user is not authenticated', () => {
         render(
-            <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
+            <LiveAgentConsole
+                bars={mockBars}
+                agentState={mockAgentState}
+                isMarketOpen={true}
+                currentUser={null}
+            />,
+        );
+        expect(screen.getByText(/Audience Interactive Queue/i)).toBeInTheDocument();
+        expect(screen.getByText(/Sign In to Queue/i)).toBeInTheDocument();
+    });
+
+    it('renders chat queue input and 500-char limit when user is authenticated', () => {
+        render(
+            <LiveAgentConsole
+                bars={mockBars}
+                agentState={mockAgentState}
+                isMarketOpen={true}
+                currentUser={{ id: 'usr-1', email: 'trader@example.com' }}
+            />,
         );
         expect(screen.getByText(/Audience Interactive Queue/i)).toBeInTheDocument();
         expect(
-            screen.getByPlaceholderText(/Ask a question for the model's next turn/i),
+            screen.getByPlaceholderText(/Ask a question or thesis hypothesis \(max 500 chars\)/i),
         ).toBeInTheDocument();
+        expect(screen.getByText(/0\/500/i)).toBeInTheDocument();
+        expect(screen.getByText(/Logged in as analyst/i)).toBeInTheDocument();
     });
 
     it('displays closed banner when market is closed', () => {

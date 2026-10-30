@@ -14,7 +14,7 @@ The database is organized into several functional areas:
 ### Core Tables
 - `agents` — Registered LLM agents and their model configurations
 - `agents_tool_use` — Tool execution logs per agent
-- `agent_chat_queue` — Audience-submitted questions for the live intraday agent's next thinking turn (`status` ∈ `pending`/`injected`/`archived`/`rejected`, plus `injected_turn_at` and `agent_response`); see [[entities/live-agent-trader]]
+- `agent_chat_queue` — Audience-submitted questions for the live intraday agent's next thinking turn (`status` ∈ `pending`/`injected`/`answered`/`archived`/`rejected`, plus `injected_turn_at` and `agent_response`); see [[entities/live-agent-trader]]
 - `analysis_sessions` — Top-level grouping for each analysis cycle
 - `catalyst_radar` — Pre-computed collisions between narrative concepts and calendar events for the Keep an Eye radar (see [[concepts/catalyst-radar]])
 - `chat_memories` — User-curated private research theses with full RLS isolation (see [[concepts/private-memory-vault]])
@@ -73,6 +73,9 @@ Applied to 100% of tables in the `public` schema without exception. All tables e
 
 Following [[concepts/supabase-grant-convention]], all tables exposed via the PostgREST Data API must have explicit `GRANT SELECT, INSERT, UPDATE, DELETE ON public.<table> TO authenticated;` statements. The `chat_memories` migration includes both authenticated and service_role grants.
 
+## RPC Functions
+
+- `pop_next_queue_item()` — Atomic FIFO dequeue for the live intraday agent's audience queue (migration `20261029220000_add_pop_next_queue_item_rpc.sql`). Uses `SELECT ... FOR UPDATE SKIP LOCKED` to atomically transition the oldest `pending` row to `injected` (stamping `injected_turn_at = NOW()`) and returns it, avoiding race conditions between concurrent runner turns. Declared `SECURITY DEFINER` and granted `EXECUTE` to `authenticated` and `service_role`.
 
 ## Migrations
 

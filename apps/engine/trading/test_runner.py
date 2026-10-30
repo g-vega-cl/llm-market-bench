@@ -139,7 +139,38 @@ async def test_run_loop_executes_turn_when_open():
         patch("asyncio.sleep", side_effect=mock_sleep),
         pytest.raises(asyncio.CancelledError),
     ):
-        await run_loop(ticker="SPY", interval_seconds=10)
+        await run_loop(ticker="SPY", interval_seconds=10, continuous_24_7=False)
+
+
+@pytest.mark.asyncio
+async def test_run_loop_executes_in_24_7_off_hours_mode():
+    mock_data = MagicMock()
+    mock_trade = MagicMock()
+    mock_sb = MagicMock()
+
+    loop_count = 0
+
+    async def mock_sleep(_duration):
+        nonlocal loop_count
+        loop_count += 1
+        if loop_count >= 1:
+            raise asyncio.CancelledError()
+
+    with (
+        patch("trading.runner._create_clients", return_value=(mock_data, mock_trade, mock_sb)),
+        patch("trading.runner.is_market_session_active", return_value=False),
+        patch(
+            "trading.runner.run_daemon_turn", new=AsyncMock(return_value={"action": "HOLD", "conviction": 50})
+        ) as mock_turn,
+        patch("asyncio.sleep", side_effect=mock_sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_loop(ticker="SPY", interval_seconds=10, continuous_24_7=True)
+
+        assert mock_turn.called
+        # Verify trading client was passed as None during off hours
+        call_kwargs = mock_turn.call_args[1]
+        assert call_kwargs["alpaca_trading_client"] is None
 
 
 def test_main_cli_once():

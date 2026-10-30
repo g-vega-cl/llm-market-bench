@@ -25,6 +25,8 @@ The public entry point used by the pipeline. It wires together the cache, sessio
 
 The manager exposes `client`, `cache_ttl_seconds`, and `provider` as properties with setters, so overrides propagate into the underlying `MarketDataCache`. `_validate_date_coverage` remains as a backward-compatibility alias for `market_transforms.validate_date_coverage`.
 
+`is_market_open()` and `get_market_holidays()` are thin delegations to `self.session` — the facade no longer copies caches or locks back and forth around the call. Shared state lives on `MarketSessionManager` and is reached through the lock proxy described below.
+
 ### `market_cache.py` — `MarketDataCache`
 
 Database-backed persistence layer. It owns all Supabase reads/writes for market data:
@@ -42,6 +44,17 @@ US equity session, calendar, and trading-hours logic with in-memory locking and 
 - `is_trading_day(target_date)` — weekend check, FMP holiday check, then a rule-based holiday fallback.
 - `is_known_us_market_holiday_fallback(date)` — static rule set covering New Year's, MLK, Presidents', Memorial, Juneteenth, Independence, Labor, Thanksgiving, and Christmas with observed-date handling.
 - `is_premarket()` — Mon–Fri 04:00–09:30 ET.
+
+#### Event-Loop-Safe Lock Lifecycle
+
+Both caches are guarded by class-level `asyncio.Lock` singletons (`_market_status_lock`, `_holidays_lock`) that prevent thundering-herd refetches. Because a lock created in one event loop cannot be awaited from another (it raises `RuntimeError: ... is bound to a different event loop`), the manager never instantiates them directly. Instead it resolves them through two classmethods:
+
+- `_get_market_status_lock()` — returns `_market_status_lock`, recreating it when it is `None` or when its `_loop` attribute is bound to a different (or dead) event loop than `asyncio.get_running_loop()`.
+- `_get_holidays_lock()` — same contract for the holidays lock.
+
+`is_market_open()` and `get_market_holidays()` call the relevant accessor and then `async with lock:` for the double-checked cache refill. This makes the caches safe to share across the long-lived runner loop, short-lived CLI invocations, and per-test event loops without stale-lock deadlocks.
+
+`MarketDataManager` mirrors both locks as class attributes through the `_LockProxy` descriptor, which transparently reads and writes the corresponding `MarketSessionManager` class attribute. Assigning `MarketDataManager._market_status_lock = None` (as tests do to reset state) therefore resets the session manager's lock too, and reading it always returns the live lock object rather than a stale copy.
 
 ### `market_transforms.py` — pure functions
 

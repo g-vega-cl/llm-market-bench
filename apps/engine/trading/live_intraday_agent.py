@@ -140,6 +140,7 @@ async def query_multi_tier_llm(
     messages: list[dict[str, str]],
     strata_url: str = DEFAULT_STRATA_URL,
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    fallback_api_key: str | None = None,
     http_client: httpx.AsyncClient | None = None,
 ) -> str:
     """Query local Strata first, falling back cleanly to the free proxy."""
@@ -175,7 +176,7 @@ async def query_multi_tier_llm(
                 "temperature": 0.3,
                 "max_tokens": 600,
             }
-            master_key = _get_free_proxy_master_key()
+            master_key = fallback_api_key or _get_free_proxy_master_key()
             headers = {"Authorization": f"Bearer {master_key}"} if master_key else {}
             resp = await http_client.post(url_fallback, json=payload_fallback, headers=headers, timeout=20.0)
             if resp.status_code == 200:

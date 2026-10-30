@@ -160,6 +160,7 @@ async def test_market_status_lock_prevents_thundering_herd():
     import asyncio
 
     from execution.market_data import MarketDataManager
+    from execution.market_session import MarketSessionManager
 
     # Reset cache
     MarketDataManager._market_status_cache = {
@@ -168,6 +169,7 @@ async def test_market_status_lock_prevents_thundering_herd():
         "ttl_seconds": 300,
     }
     MarketDataManager._market_status_lock = None
+    MarketSessionManager._market_status_lock = None
 
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -178,7 +180,7 @@ async def test_market_status_lock_prevents_thundering_herd():
     async def slow_get(*args, **kwargs):
         nonlocal call_count
         call_count += 1
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0)
         return mock_resp
 
     with (

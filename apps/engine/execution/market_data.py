@@ -23,14 +23,27 @@ _validate_date_coverage = validate_date_coverage
 MARKET_DATA_RETRIES = getattr(cfg, "MARKET_DATA_RETRIES", 2)
 
 
+class _LockProxy:
+    """Descriptor that transparently proxies class-level lock access to MarketSessionManager."""
+
+    def __init__(self, target_attr: str):
+        self.target_attr = target_attr
+
+    def __get__(self, instance, owner=None):
+        return getattr(MarketSessionManager, self.target_attr)
+
+    def __set__(self, instance, value):
+        setattr(MarketSessionManager, self.target_attr, value)
+
+
 class MarketDataManager:
     """Manages market data retrieval with database-backed caching and provider fallback."""
 
     _market_status_cache: dict = MarketSessionManager._market_status_cache
-    _market_status_lock: asyncio.Lock | None = None
+    _market_status_lock = _LockProxy("_market_status_lock")
 
     _holidays_cache: dict = MarketSessionManager._holidays_cache
-    _holidays_lock: asyncio.Lock | None = None
+    _holidays_lock = _LockProxy("_holidays_lock")
 
     _screener_cache: dict = {}
 
@@ -82,25 +95,11 @@ class MarketDataManager:
 
     async def is_market_open(self) -> bool:
         """Checks if the US stock market (NASDAQ/NYSE) is currently open."""
-        self.session._market_status_cache = MarketDataManager._market_status_cache
-        if MarketDataManager._market_status_lock is not None:
-            MarketSessionManager._market_status_lock = MarketDataManager._market_status_lock
-
-        is_open = await self.session.is_market_open(fmp_api_key=FMP_API_KEY)
-        MarketDataManager._market_status_cache = self.session._market_status_cache
-        MarketDataManager._market_status_lock = MarketSessionManager._market_status_lock
-        return is_open
+        return await self.session.is_market_open(fmp_api_key=FMP_API_KEY)
 
     async def get_market_holidays(self) -> list[dict]:
         """Fetch US market holidays from FMP API with in-memory caching."""
-        self.session._holidays_cache = MarketDataManager._holidays_cache
-        if MarketDataManager._holidays_lock is not None:
-            MarketSessionManager._holidays_lock = MarketDataManager._holidays_lock
-
-        holidays = await self.session.get_market_holidays(fmp_api_key=FMP_API_KEY)
-        MarketDataManager._holidays_cache = self.session._holidays_cache
-        MarketDataManager._holidays_lock = MarketSessionManager._holidays_lock
-        return holidays
+        return await self.session.get_market_holidays(fmp_api_key=FMP_API_KEY)
 
     def _is_known_us_market_holiday_fallback(self, date_obj) -> bool:
         """Rule-based fallback for US stock exchange holidays when API data is unavailable."""

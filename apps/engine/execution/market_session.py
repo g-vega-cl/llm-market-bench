@@ -29,6 +29,22 @@ class MarketSessionManager:
     }
     _holidays_lock: asyncio.Lock | None = None
 
+    @classmethod
+    def _get_market_status_lock(cls) -> asyncio.Lock:
+        """Return the market status lock, recreating it if bound to a different or dead event loop."""
+        loop = asyncio.get_running_loop()
+        if cls._market_status_lock is None or getattr(cls._market_status_lock, "_loop", None) not in (None, loop):
+            cls._market_status_lock = asyncio.Lock()
+        return cls._market_status_lock
+
+    @classmethod
+    def _get_holidays_lock(cls) -> asyncio.Lock:
+        """Return the holidays lock, recreating it if bound to a different or dead event loop."""
+        loop = asyncio.get_running_loop()
+        if cls._holidays_lock is None or getattr(cls._holidays_lock, "_loop", None) not in (None, loop):
+            cls._holidays_lock = asyncio.Lock()
+        return cls._holidays_lock
+
     def __init__(self, fmp_api_key: str | None = None):
         self.fmp_api_key = fmp_api_key if fmp_api_key is not None else DEFAULT_FMP_API_KEY
 
@@ -48,10 +64,8 @@ class MarketSessionManager:
                 logger.debug(f"Using cached market status: {'OPEN' if cache['is_open'] else 'CLOSED'}")
                 return cache["is_open"]
 
-        if MarketSessionManager._market_status_lock is None:
-            MarketSessionManager._market_status_lock = asyncio.Lock()
-
-        async with MarketSessionManager._market_status_lock:
+        lock = self._get_market_status_lock()
+        async with lock:
             # Recheck cache after acquiring lock
             if cache["fetched_at"] is not None:
                 elapsed = (now - cache["fetched_at"]).total_seconds()
@@ -128,10 +142,8 @@ class MarketSessionManager:
             if elapsed < cache["ttl_seconds"]:
                 return cache["holidays"]
 
-        if MarketSessionManager._holidays_lock is None:
-            MarketSessionManager._holidays_lock = asyncio.Lock()
-
-        async with MarketSessionManager._holidays_lock:
+        lock = self._get_holidays_lock()
+        async with lock:
             if cache["holidays"] is not None and cache["fetched_at"] is not None:
                 elapsed = (now - cache["fetched_at"]).total_seconds()
                 if elapsed < cache["ttl_seconds"]:

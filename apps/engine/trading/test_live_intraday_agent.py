@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -118,12 +119,14 @@ async def test_query_multi_tier_llm_fallback_to_cheap_proxy():
     mock_http.post.side_effect = mock_post
 
     messages = [{"role": "user", "content": "Analyze tape"}]
-    result = await query_multi_tier_llm(
-        messages=messages,
-        strata_url="http://localhost:8080/v1",
-        cheap_proxy_url="https://llm.clvg.uk/v1",
-        http_client=mock_http,
-    )
+    with patch.dict(os.environ, {"FREE_PROXY_MASTER_KEY": "test-mock-master-key"}):
+        result = await query_multi_tier_llm(
+            messages=messages,
+            strata_url="http://localhost:8080/v1",
+            cheap_proxy_url="https://llm.clvg.uk/v1",
+            fallback_api_key="test-explicit-key",
+            http_client=mock_http,
+        )
 
     data = json.loads(result)
     assert data["action"] == "HOLD"
@@ -134,9 +137,58 @@ async def test_query_multi_tier_llm_fallback_to_cheap_proxy():
     fallback_call = mock_http.post.call_args_list[1]
     headers = fallback_call.kwargs.get("headers", {})
     assert "Authorization" in headers
-    assert headers["Authorization"].startswith("Bearer ")
+    assert headers["Authorization"] == "Bearer test-explicit-key"
     payload = fallback_call.kwargs.get("json", {})
     assert payload.get("model") == "free-auto"
+
+
+@pytest.mark.asyncio
+async def test_query_multi_tier_llm_fallback_without_master_key_hermetic():
+    """Verify fallback executes cleanly when no master key is configured (e.g. Clean CI runner)."""
+    mock_http = AsyncMock()
+
+    async def mock_post(url, **kwargs):
+        resp = MagicMock()
+        if "localhost:8080" in str(url):
+            resp.status_code = 503
+            resp.text = "Server Unavailable"
+        else:
+            resp.status_code = 200
+            resp.json.return_value = {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "action": "HOLD",
+                                    "conviction": 50,
+                                    "thought": "No key fallback.",
+                                    "memories_consulted": [],
+                                    "allocation_pct": 0,
+                                }
+                            )
+                        }
+                    }
+                ]
+            }
+        return resp
+
+    mock_http.post.side_effect = mock_post
+
+    messages = [{"role": "user", "content": "Analyze tape"}]
+    with patch("os.path.exists", return_value=False), patch.dict(os.environ, {"FREE_PROXY_MASTER_KEY": ""}):
+        result = await query_multi_tier_llm(
+            messages=messages,
+            strata_url="http://localhost:8080/v1",
+            cheap_proxy_url="https://llm.clvg.uk/v1",
+            http_client=mock_http,
+        )
+
+    data = json.loads(result)
+    assert data["action"] == "HOLD"
+    fallback_call = mock_http.post.call_args_list[1]
+    headers = fallback_call.kwargs.get("headers", {})
+    assert "Authorization" not in headers
 
 
 @pytest.mark.asyncio

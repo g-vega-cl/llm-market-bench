@@ -178,3 +178,27 @@ async def test_is_premarket():
         mock_dt.now.return_value = sat_8am
         mock_dt.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
         assert await MarketSessionManager.is_premarket() is False
+
+
+@pytest.mark.asyncio
+async def test_cross_event_loop_lock_recreation():
+    """Verify that class-level locks bound to an alien event loop are cleanly recreated."""
+    stale_lock = asyncio.Lock()
+    # Simulate a lock acquired in a different event loop
+    stale_lock._loop = MagicMock()
+    MarketSessionManager._market_status_lock = stale_lock
+    MarketSessionManager._holidays_lock = stale_lock
+
+    current_loop = asyncio.get_running_loop()
+    status_lock = MarketSessionManager._get_market_status_lock()
+    holidays_lock = MarketSessionManager._get_holidays_lock()
+
+    assert status_lock is not stale_lock
+    assert holidays_lock is not stale_lock
+    assert status_lock._loop in (None, current_loop)
+    assert holidays_lock._loop in (None, current_loop)
+    # Confirm both new locks can be acquired concurrently in the current event loop without RuntimeError
+    async with status_lock:
+        pass
+    async with holidays_lock:
+        pass

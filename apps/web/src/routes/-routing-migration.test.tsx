@@ -3,8 +3,8 @@ import { navItems } from './__root';
 import { LAB_CATEGORIES } from './lab';
 
 describe('Routing Migration TDD Verification', () => {
-    it('should have Home mapped to /, Portfolios to /portfolios, and Lab to /lab in navItems', () => {
-        const homeItem = navItems.find((item) => item.label === 'Home');
+    it('should have B mapped to /, Portfolios to /portfolios, and Lab to /lab in navItems', () => {
+        const homeItem = navItems.find((item) => item.label === 'B');
         expect(homeItem).toBeDefined();
         expect(homeItem?.to).toBe('/');
 

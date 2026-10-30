@@ -9,7 +9,7 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 
 ## Design rules cheat sheet
 
-1. **Topbar 3-item budget**: The global navigation bar in `apps/web/src/routes/__root.tsx` displays strictly 3 items: `Home`, `Portfolios`, and `Lab`. Zero sidebars are allowed.
+1. **Topbar 3-item budget**: The global navigation bar in `apps/web/src/routes/__root.tsx` displays strictly 3 items: `B` (Home), `Portfolios`, and `Lab`. Zero sidebars are allowed.
 2. **Page 3-block budget**: Any page may render at most 3 major blocks. `Home` renders 2 blocks, `Portfolios` renders 3 blocks, and `Lab` renders 3 category blocks.
 3. **Row 3-stat budget**: Every table row or card slot displays at most 3 data points.
 4. **Zero cards inside cards**: Raised `.voxel-card` surfaces never nest inside another `.voxel-card`. Inner metrics use recessed `.voxel-trough` slots.

@@ -103,15 +103,17 @@ function RootComponent() {
 }
 
 export const navItems = [
-    { to: '/', label: 'Home', exact: true },
+    { to: '/', label: 'B', exact: true },
     { to: '/portfolios', label: 'Portfolios' },
     { to: '/lab', label: 'Lab' },
 ];
 
 export function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {
+    const isLogo = label === 'B';
     return (
         <Link
             to={to}
+            aria-label={isLogo ? 'Home' : undefined}
             activeProps={{
                 className: 'bg-accent text-boxel-trough',
             }}
@@ -119,7 +121,10 @@ export function NavLink({ to, label, exact }: { to: string; label: string; exact
                 className: 'bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated',
             }}
             activeOptions={{ exact }}
-            className="voxel-btn px-3.5 py-1.5 text-xs font-black uppercase tracking-widest shrink-0"
+            className={cn(
+                'voxel-btn py-1.5 text-xs font-black uppercase tracking-widest shrink-0',
+                isLogo ? 'px-2.5 font-mono' : 'px-3.5',
+            )}
         >
             {label}
         </Link>
@@ -206,34 +211,6 @@ export function RootDocument({ children }: { children: ReactNode }) {
                             'text-sm font-bold uppercase tracking-widest',
                         )}
                     >
-                        <Link
-                            to="/"
-                            className="flex items-center gap-2 mr-2 shrink-0 text-boxel-ink hover:text-accent transition-colors"
-                        >
-                            <span className="voxel-badge bg-accent text-boxel-trough px-2 py-0.5 font-mono font-black text-xs">
-                                B
-                            </span>
-                            <span className="font-display font-black tracking-tight text-base">
-                                BENCHIFY
-                            </span>
-                        </Link>
-
-                        {user && (
-                            <Link
-                                to="/profile"
-                                className="shrink-0 hover:opacity-80 transition-opacity"
-                            >
-                                <Badge
-                                    variant="soft"
-                                    size="sm"
-                                    colorScheme="neutral"
-                                    className="normal-case tracking-normal cursor-pointer"
-                                >
-                                    {user.email}
-                                </Badge>
-                            </Link>
-                        )}
-
                         <div className="flex items-center gap-2 flex-wrap">
                             {navItems.map((item) => (
                                 <NavLink
@@ -246,6 +223,21 @@ export function RootDocument({ children }: { children: ReactNode }) {
                         </div>
 
                         <div className="ml-auto flex items-center gap-3 shrink-0">
+                            {user && (
+                                <Link
+                                    to="/profile"
+                                    className="shrink-0 hover:opacity-80 transition-opacity"
+                                >
+                                    <Badge
+                                        variant="soft"
+                                        size="sm"
+                                        colorScheme="neutral"
+                                        className="normal-case tracking-normal cursor-pointer"
+                                    >
+                                        {user.email}
+                                    </Badge>
+                                </Link>
+                            )}
                             {user ? (
                                 <Link
                                     to="/logout"

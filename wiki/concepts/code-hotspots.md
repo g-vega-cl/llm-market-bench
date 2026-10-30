@@ -15,13 +15,13 @@ Files with high churn and high bug fix density represent code where changes freq
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/engine/tasks/daily_predictor.py` | 21 | 5 | 23.8% | 693 | 105 | **CRITICAL** |
 | `apps/engine/main.py` | 20 | 3 | 15.0% | 73 | 60 | **HIGH** |
-| `apps/engine/tests/test_workflow_schedule.py` | 12 | 5 | 41.7% | 239 | 60 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 14 | 4 | 28.6% | 264 | 56 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 25 | 2 | 8.0% | 1758 | 50 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 15 | 3 | 20.0% | 378 | 45 | **HIGH** |
 | `packages/config/tools.json` | 22 | 2 | 9.1% | 210 | 44 | **HIGH** |
 | `apps/engine/autoresearch/program.md` | 22 | 2 | 9.1% | 137 | 44 | **HIGH** |
 | `apps/engine/tests/test_daily_predictor.py` | 11 | 4 | 36.4% | 763 | 44 | **HIGH** |
+| `apps/engine/tests/test_workflow_schedule.py` | 11 | 4 | 36.4% | 239 | 44 | **HIGH** |
 | `apps/engine/tasks/evaluate_daily_predictions.py` | 9 | 3 | 33.3% | 290 | 27 | **MEDIUM** |
 | `apps/engine/tests/test_verify_skill.py` | 8 | 3 | 37.5% | 93 | 24 | **MEDIUM** |
 | `apps/engine/tests/test_evaluate_daily_predictions.py` | 8 | 3 | 37.5% | 410 | 24 | **MEDIUM** |

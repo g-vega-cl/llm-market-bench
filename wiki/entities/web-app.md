@@ -11,9 +11,11 @@ TanStack Start dashboard in `apps/web` providing real-time portfolio telemetry, 
 
 The global navigation bar in `apps/web/src/routes/__root.tsx` exposes strictly 3 top-level destinations:
 
-- **Home** (`/` and `/today` redirect): Unified 2-block live overview (`apps/web/src/features/home/pages/HomePage.tsx`). Block 1 renders the **Live Agent Trader console** (`LiveAgentConsole.tsx`) — a 24/7 autonomous SPY trader with a 1-minute D3 candlestick tape, agent conviction bar, intraday thought trace, VWAP/RSI/trend technicals, and an audience chat-queue teaser (see [[entities/live-agent-trader]]). Block 2 renders **Active Agent Portfolios** alongside the inline S&P 500 benchmark trough, excluding mechanical `sys-*` strategies so only autonomous LLM agents appear on the Home leaderboard.
+- **B** (`/` and `/today` redirect): The home destination is rendered as a compact `B` logo button (`font-mono`, `px-2.5`) carrying `aria-label="Home"` for accessibility. The former standalone `BENCHIFY` wordmark and separate `Home` text button have been removed — the `B` button is the sole home affordance. It leads to the unified 2-block live overview (`apps/web/src/features/home/pages/HomePage.tsx`). Block 1 renders the **Live Agent Trader console** (`LiveAgentConsole.tsx`) — a 24/7 autonomous SPY trader with a 1-minute D3 candlestick tape, agent conviction bar, intraday thought trace, VWAP/RSI/trend technicals, and an audience chat-queue teaser (see [[entities/live-agent-trader]]). Block 2 renders **Active Agent Portfolios** alongside the inline S&P 500 benchmark trough, excluding mechanical `sys-*` strategies so only autonomous LLM agents appear on the Home leaderboard.
 - **Portfolios** (`/portfolios`): 3-block capital allocation arena (`apps/web/src/features/portfolios/pages/PortfoliosPage.tsx`). Block 1 renders the interactive `PortfolioComparisonChart` with timeframe and benchmark controls. Block 2 renders **Active LLM Agents** using single-level boxel cards. Block 3 renders **Systematic Strategies** (`sys-*`) in a dedicated section.
 - **Lab** (`/lab`): 3-block experimental directory (`apps/web/src/routes/lab.tsx`) indexing all 18 specialized research, telemetry, and audit routes with descriptions, plus the **Retired Agent Archive** for frozen historical portfolios.
+
+The authenticated user's email badge (linking to `/profile`) and the login/logout control are right-aligned in the topbar (`ml-auto`), keeping the left cluster reserved for the `B` logo and the three nav items.
 
 ## Specialized lab routes
 

@@ -23,9 +23,9 @@ vi.mock('@posthog/react', () => ({
 }));
 
 describe('Root layout navigation', () => {
-    it('navItems should strictly contain 3 topbar items: Home, Portfolios, and Lab', () => {
+    it('navItems should strictly contain 3 topbar items: B, Portfolios, and Lab', () => {
         expect(navItems).toHaveLength(3);
-        expect(navItems[0]).toEqual({ to: '/', label: 'Home', exact: true });
+        expect(navItems[0]).toEqual({ to: '/', label: 'B', exact: true });
         expect(navItems[1]).toEqual({ to: '/portfolios', label: 'Portfolios' });
         expect(navItems[2]).toEqual({ to: '/lab', label: 'Lab' });
     });
@@ -53,6 +53,61 @@ describe('Root layout navigation', () => {
         expect(link).toHaveAttribute('href', '/portfolios');
         expect(link).toHaveClass('shrink-0');
         expect(link).toHaveClass('voxel-btn');
+    });
+
+    it('NavLink for B should render with aria-label="Home" and font-mono class', async () => {
+        const rootRoute = createRootRoute({
+            component: () => <NavLink to="/" label="B" exact={true} />,
+        });
+
+        const memoryHistory = createMemoryHistory({
+            initialEntries: ['/'],
+        });
+
+        const router = createRouter({
+            routeTree: rootRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />);
+
+        const link = await screen.findByLabelText('Home');
+        expect(link).toBeInTheDocument();
+        expect(link).toHaveTextContent('B');
+        expect(link).toHaveAttribute('href', '/');
+        expect(link).toHaveClass('font-mono');
+        expect(link).toHaveClass('voxel-btn');
+    });
+
+    it('RootDocument navbar renders B as home button without separate BENCHIFY or Home text buttons', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
+        const router = createRouter({ routeTree: testRoute, history: memoryHistory });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        await screen.findByText('Content');
+
+        // B should be present as the Home link
+        const homeLink = screen.getByRole('link', { name: 'Home' });
+        expect(homeLink).toBeInTheDocument();
+        expect(homeLink).toHaveTextContent('B');
+        expect(homeLink).toHaveAttribute('href', '/');
+
+        // "BENCHIFY" heading text and standalone "HOME" button should NOT exist
+        expect(screen.queryByText('BENCHIFY')).toBeNull();
+        expect(screen.queryByText('Home')).toBeNull();
     });
 });
 

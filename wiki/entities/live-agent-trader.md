@@ -57,15 +57,21 @@ Empty input returns a neutral snapshot (`vwap 0.0`, `rsi_14 50.0`, `trend NEUTRA
 - Dockerized in `docker/archive/Dockerfile.trader` and configured as `live-spy-trader` in `docker/archive/docker-compose.secondary.yml`.
 - `docker/archive/deploy_secondary.sh` syncs the runner, dependencies, and configuration to the edge MiniPC server (`cv-minipc@minipc`).
 
-### 7. Console UI and Manual Tape Refresh
-`LiveAgentConsole.tsx` renders the header ribbon (`24/7 Autonomous SPY Trader`, live or closed pulse dot, 5-minute countdown timer, and manual `Refresh Tape` action), direction and action badges, a `ConfidenceBar` for agent conviction, the candlestick chart, the intraday thought trace, a technicals row (VWAP, RSI, Trend plus memory pills), and the audience queue card.
+### 7. Real-Time Tape Streaming & MiniPC Edge Gateway
+To provide instant live candlestick updates without draining client battery or running unneeded LLM evaluations, the live tape architecture is decoupled into a 20-second edge streaming service and a 5-minute autonomous LLM turn:
 
-While the surrounding Home page remains completely server-side rendered (`routes/index.tsx`), `LiveAgentConsole` acts as an active presentation island on the client. To conserve device battery and avoid unnecessary client CPU cycles, the console avoids continuous background HTTP polling loops. Instead, it relies on server-rendered initial state and an explicit manual `Refresh Tape` action.
-
-- **Local State Seeding**: `currentBars` and `currentAgentState` are initialized from the SSR-provided `bars` / `agentState` props and re-synced whenever those props change, so the server-rendered tape is shown instantly. `pendingCount` / `latestAnswered` are seeded by an immediate `fetchAgentQueueStatus()` call on mount.
-- **`updateLiveTape` Helper**: Wraps the fetch in a `try/finally` that toggles `isPolling`, optionally invokes the `onRefreshTape` callback, calls the `fetchLiveIntradayTape` server function, and only overwrites local bars/state when the snapshot returns non-empty data. It also forwards the queue status to `handleQueueStatusUpdate`. Failures are swallowed as non-blocking background errors.
-- **Manual Refresh**: The header `Refresh Tape` button (`voxel-btn`, disabled while `isPolling`) triggers `updateLiveTape` on demand, allowing users to pull the latest candles and agent state immediately without reloading the page.
-- **Authenticated User Prop**: `LiveAgentConsole` accepts `currentUser` (`{ id, email } | null`), threaded from the route context (`Route.useRouteContext().user`) through `HomePage` into `ConsoleQueueCard`.
+- **Edge Tape Streaming Server (`apps/engine/trading/tape_stream.py`)**:
+  - `TapeBroadcaster`: Thread-safe, in-memory pub/sub broker managing client queues for active candlestick bars and technical snapshots.
+  - `TapeHttpServer`: Lightweight `asyncio.start_server` running on port 8090 on the MiniPC edge gateway (`live-spy-trader` container), exposing `/api/tape/health` and `/api/tape/stream` (Server-Sent Events) with CORS support.
+  - Client connections receive an immediate `snapshot` event with the rolling 60-minute bars, followed by real-time `bar` events as 1-minute candles form, and periodic keepalive pings every 15 seconds. Client TCP disconnects are detected concurrently via `reader.read(1)`.
+  - Reverse proxied via Nginx (`proxy_buffering off;`) across edge hosts and the Cloudflare tunnel.
+- **Background Tape Poller**: In `apps/engine/trading/runner.py`, `run_tape_poller_loop` polls Alpaca 1-minute bars every 20 seconds during regular market hours, broadcasts to connected SSE subscribers, and updates `market_feeling` in PostgreSQL (`update_latest_tape_in_db`) without modifying agent LLM analysis fields.
+- **Client Reactive Streaming Hook (`apps/web/src/features/home/hooks/useLiveTapeStream.ts`)**:
+  - Manages real-time connection to `/api/tape/stream` with zero client-side HTTP polling intervals.
+  - `mergeIncomingBar`: Pure algorithmic merge that updates the active forming bar in-place if timestamps match the current minute, or appends a new bar and rolls off the oldest bar to maintain a strict 60-minute window.
+  - **Tab Visibility Sleep Guard**: Listens to browser `visibilitychange` events; if the tab is backgrounded or minimized, the SSE connection is immediately closed to eliminate battery drain, automatically reconnecting when the tab becomes visible again.
+- **CSR Island in SSR Page**: The home page remains server-side rendered (`routes/index.tsx`) for fast TTFB and SEO, but `LiveAgentConsole` acts as a client-side rendered (CSR) reactive island. `SPYCandlestickChart.tsx` guarantees zero layout shift (CLS) by always rendering fixed SVG viewport dimensions and reference grid coordinates even while initial bars are loading.
+- **Manual Tape Refresh**: An explicit `Refresh Tape` button triggers an on-demand tape snapshot fetch from the server.
 
 ### 8. Audience Chat Queue
 - Schema defined in `supabase/migrations/20261029140000_create_agent_chat_queue.sql` (`public.agent_chat_queue`), extended by `supabase/migrations/20261029220000_add_pop_next_queue_item_rpc.sql`.

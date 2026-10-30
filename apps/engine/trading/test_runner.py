@@ -173,6 +173,39 @@ async def test_run_loop_executes_in_24_7_off_hours_mode():
         assert call_kwargs["alpaca_trading_client"] is None
 
 
+@pytest.mark.asyncio
+async def test_run_tape_poller_loop_polls_and_publishes():
+    from trading.runner import run_tape_poller_loop
+
+    mock_alpaca = MagicMock()
+    mock_sb = MagicMock()
+    mock_broadcaster = MagicMock()
+
+    sample_bars = [{"time": "2026-10-30T16:00:00Z", "close": 582.0}]
+
+    async def mock_sleep(_dur):
+        raise asyncio.CancelledError()
+
+    with (
+        patch("trading.runner.is_market_session_active", return_value=True),
+        patch("trading.live_intraday_agent.fetch_intraday_bars", new=AsyncMock(return_value=sample_bars)) as mock_bars,
+        patch("trading.runner.update_latest_tape_in_db", new=AsyncMock(return_value=True)) as mock_db,
+        patch("asyncio.sleep", side_effect=mock_sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_tape_poller_loop(
+            alpaca_data_client=mock_alpaca,
+            sb_client=mock_sb,
+            broadcaster=mock_broadcaster,
+            ticker="SPY",
+            tape_interval_seconds=10,
+        )
+
+        assert mock_bars.called
+        assert mock_broadcaster.publish_bars.called
+        assert mock_db.called
+
+
 def test_main_cli_once():
     with (
         patch.object(sys, "argv", ["runner.py", "--once", "--ticker", "SPY"]),

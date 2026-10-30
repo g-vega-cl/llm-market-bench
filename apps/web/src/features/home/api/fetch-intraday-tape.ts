@@ -33,6 +33,38 @@ export function filterLastBars(
     return bars.slice(-maxBars);
 }
 
+export function mergeIncomingBar(
+    currentBars: CandlestickBar[] | null | undefined,
+    incomingBar: CandlestickBar | null | undefined,
+    maxBars = 60,
+): CandlestickBar[] {
+    if (!incomingBar) return currentBars ? [...currentBars] : [];
+    if (!currentBars || currentBars.length === 0) return [incomingBar];
+
+    const last = currentBars[currentBars.length - 1];
+
+    // Same minute: mutate/update forming candle in place
+    if (incomingBar.time === last.time) {
+        const updated: CandlestickBar = {
+            time: last.time,
+            open: last.open,
+            high: Math.max(last.high, incomingBar.high),
+            low: Math.min(last.low, incomingBar.low),
+            close: incomingBar.close,
+            volume: Math.max(last.volume, incomingBar.volume),
+        };
+        return [...currentBars.slice(0, -1), updated];
+    }
+
+    // New minute: roll over, append, and maintain maxBars window
+    if (incomingBar.time > last.time) {
+        return filterLastBars([...currentBars, incomingBar], maxBars);
+    }
+
+    // Stale or older timestamp: keep existing tape
+    return [...currentBars];
+}
+
 export function isRegularMarketHours(date = new Date()): boolean {
     const utcHours = date.getUTCHours();
     const utcMinutes = date.getUTCMinutes();

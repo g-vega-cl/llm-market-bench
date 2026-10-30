@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../api/fetch-intraday-tape', async (importOriginal) => {
@@ -125,7 +125,9 @@ describe('LiveAgentConsole', () => {
         expect(mockFetch).not.toHaveBeenCalled();
 
         // Advance 60 seconds (what would have been 3 intervals under 20s polling)
-        vi.advanceTimersByTime(60000);
+        act(() => {
+            vi.advanceTimersByTime(60000);
+        });
 
         expect(mockFetch).not.toHaveBeenCalled();
         vi.useRealTimers();
@@ -146,7 +148,9 @@ describe('LiveAgentConsole', () => {
         );
 
         const refreshBtn = screen.getByRole('button', { name: /refresh/i });
-        fireEvent.click(refreshBtn);
+        await act(async () => {
+            fireEvent.click(refreshBtn);
+        });
 
         expect(onRefreshTape).toHaveBeenCalledTimes(1);
         expect(mockFetch).toHaveBeenCalledTimes(1);

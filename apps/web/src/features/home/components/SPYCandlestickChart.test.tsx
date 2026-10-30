@@ -39,9 +39,11 @@ const mockTrades = [
 ];
 
 describe('SPYCandlestickChart', () => {
-    it('renders empty fallback when no bars provided', () => {
-        render(<SPYCandlestickChart bars={[]} />);
+    it('renders empty fallback grid and SVG frame when no bars provided', () => {
+        const { container } = render(<SPYCandlestickChart bars={[]} />);
+        expect(container.querySelector('svg')).toBeInTheDocument();
         expect(screen.getByText(/awaiting live spy market tape/i)).toBeInTheDocument();
+        expect(screen.getByText(/syncing market tape/i)).toBeInTheDocument();
     });
 
     it('renders SVG chart with bars and trade marker', () => {

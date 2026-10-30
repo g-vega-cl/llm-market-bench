@@ -1,7 +1,7 @@
 import { Badge, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { type AgentQueueItem, fetchAgentQueueStatus } from '../api/fetch-agent-queue';
-import { fetchLiveIntradayTape } from '../api/fetch-intraday-tape';
+import { useLiveTapeStream } from '../hooks/useLiveTapeStream';
 import { ConsoleQueueCard } from './ConsoleQueueCard';
 import {
     type CandlestickBar,
@@ -45,6 +45,7 @@ function ConsoleHeaderRibbon({
     countdownSeconds,
     marketDirection,
     action,
+    isStreaming = false,
     isPolling = false,
     onRefresh,
 }: {
@@ -52,6 +53,7 @@ function ConsoleHeaderRibbon({
     countdownSeconds: number;
     marketDirection: LiveAgentState['marketDirection'];
     action: LiveAgentState['action'];
+    isStreaming?: boolean;
     isPolling?: boolean;
     onRefresh?: () => void;
 }) {
@@ -73,10 +75,18 @@ function ConsoleHeaderRibbon({
                     <span className="flex items-center gap-1.5">
                         <span
                             className={`h-2 w-2 rounded-none ${
-                                isMarketOpen ? 'bg-success animate-pulse' : 'bg-boxel-muted'
+                                isMarketOpen
+                                    ? isStreaming
+                                        ? 'bg-success animate-pulse'
+                                        : 'bg-success'
+                                    : 'bg-boxel-muted'
                             }`}
                         />
-                        {isMarketOpen ? 'LIVE SESSION' : 'MARKET CLOSED'}
+                        {isMarketOpen
+                            ? isStreaming
+                                ? 'LIVE SESSION (STREAMING)'
+                                : 'LIVE SESSION'
+                            : 'MARKET CLOSED'}
                     </span>
                     <span>•</span>
                     <span>
@@ -163,39 +173,6 @@ function ConsoleTechnicalsRow({
     );
 }
 
-async function updateLiveTape(
-    setIsPolling: (v: boolean) => void,
-    setBars: (bars: CandlestickBar[]) => void,
-    setAgentState: (state: LiveAgentState) => void,
-    setQueueStatus?: (status: {
-        pendingCount: number;
-        latestAnswered: AgentQueueItem | null;
-    }) => void,
-    onRefreshTape?: () => void,
-) {
-    try {
-        setIsPolling(true);
-        if (onRefreshTape) onRefreshTape();
-        const [snapshot, queueStatus] = await Promise.all([
-            fetchLiveIntradayTape(),
-            fetchAgentQueueStatus().catch(() => ({ pendingCount: 0, latestAnswered: null })),
-        ]);
-        if (snapshot.bars && snapshot.bars.length > 0) {
-            setBars(snapshot.bars);
-        }
-        if (snapshot.agentState) {
-            setAgentState(snapshot.agentState);
-        }
-        if (setQueueStatus && queueStatus) {
-            setQueueStatus(queueStatus);
-        }
-    } catch {
-        // Non-blocking background poll failure
-    } finally {
-        setIsPolling(false);
-    }
-}
-
 export function LiveAgentConsole({
     bars,
     trades = [],
@@ -204,9 +181,20 @@ export function LiveAgentConsole({
     currentUser,
     onRefreshTape,
 }: LiveAgentConsoleProps) {
-    const [currentBars, setCurrentBars] = React.useState<CandlestickBar[]>(bars);
-    const [currentAgentState, setCurrentAgentState] = React.useState<LiveAgentState>(agentState);
-    const [isPolling, setIsPolling] = React.useState(false);
+    const {
+        bars: currentBars,
+        agentState: streamedAgentState,
+        isStreaming,
+        isRefreshing,
+        refreshTape,
+    } = useLiveTapeStream({
+        initialBars: bars,
+        initialAgentState: agentState,
+        isMarketOpen,
+        onRefreshTape,
+    });
+
+    const currentAgentState = streamedAgentState ?? agentState;
     const [pendingCount, setPendingCount] = React.useState(0);
     const [latestAnswered, setLatestAnswered] = React.useState<AgentQueueItem | null>(null);
     const [countdownSeconds, setCountdownSeconds] = React.useState(285);
@@ -219,36 +207,20 @@ export function LiveAgentConsole({
         [],
     );
 
-    React.useEffect(() => {
-        if (bars && bars.length > 0) {
-            setCurrentBars(bars);
-        }
-    }, [bars]);
-
-    React.useEffect(() => {
-        if (agentState) {
-            setCurrentAgentState(agentState);
-        }
-    }, [agentState]);
-
-    const handleManualRefresh = React.useCallback(() => {
-        updateLiveTape(
-            setIsPolling,
-            setCurrentBars,
-            setCurrentAgentState,
-            handleQueueStatusUpdate,
-            onRefreshTape,
-        );
-    }, [handleQueueStatusUpdate, onRefreshTape]);
+    const handleManualRefresh = React.useCallback(async () => {
+        await Promise.all([
+            refreshTape(),
+            fetchAgentQueueStatus()
+                .then(handleQueueStatusUpdate)
+                .catch(() => {}),
+        ]);
+    }, [refreshTape, handleQueueStatusUpdate]);
 
     React.useEffect(() => {
         fetchAgentQueueStatus()
-            .then((status) => {
-                setPendingCount(status.pendingCount);
-                setLatestAnswered(status.latestAnswered);
-            })
+            .then(handleQueueStatusUpdate)
             .catch(() => {});
-    }, []);
+    }, [handleQueueStatusUpdate]);
 
     React.useEffect(() => {
         if (!isMarketOpen) return;
@@ -269,7 +241,8 @@ export function LiveAgentConsole({
                 countdownSeconds={countdownSeconds}
                 marketDirection={currentAgentState.marketDirection}
                 action={currentAgentState.action}
-                isPolling={isPolling}
+                isStreaming={isStreaming}
+                isPolling={isRefreshing}
                 onRefresh={handleManualRefresh}
             />
 

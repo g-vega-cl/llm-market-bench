@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import os
 from datetime import datetime
 from typing import Any
@@ -27,6 +28,12 @@ from trading.live_intraday_agent import (
     DEFAULT_STRATA_URL,
     execute_intraday_agent_step,
     fetch_active_candle,
+    fetch_intraday_bars,
+)
+from trading.tape_stream import (
+    TapeBroadcaster,
+    start_tape_server,
+    update_latest_tape_in_db,
 )
 
 
@@ -123,22 +130,39 @@ def _create_clients() -> tuple[Any, Any, Any]:
     return data_client, trading_client, sb_client
 
 
-async def run_loop(
+async def run_tape_poller_loop(
+    alpaca_data_client: Any,
+    sb_client: Any,
+    broadcaster: TapeBroadcaster,
     ticker: str = "SPY",
-    interval_seconds: int = 300,
-    strata_url: str = DEFAULT_STRATA_URL,
-    cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
-    continuous_24_7: bool = True,
+    tape_interval_seconds: int = 20,
 ) -> None:
-    """Run the continuous 24/7 daemon loop."""
-    logger.info(
-        f"Starting Live SPY Trader Daemon (ticker={ticker}, interval={interval_seconds}s, 24/7={continuous_24_7})"
-    )
-    logger.info(f"Tier 1 Inference: {strata_url}")
-    logger.info(f"Tier 2 Inference: {cheap_proxy_url}")
+    """Continuously poll active tape from Alpaca, push to broadcaster, and update DB."""
+    logger.info(f"Starting tape poller loop for {ticker} (interval={tape_interval_seconds}s)")
+    while True:
+        try:
+            if alpaca_data_client and is_market_session_active():
+                bars = await fetch_intraday_bars(alpaca_data_client, ticker=ticker, window_minutes=60)
+                if bars:
+                    broadcaster.publish_bars(bars)
+                    await update_latest_tape_in_db(sb_client, bars)
+        except Exception:
+            logger.exception("Error in tape poller loop")
+        await asyncio.sleep(float(tape_interval_seconds))
 
-    data_client, trading_client, sb_client = _create_clients()
 
+async def _run_agent_loop(
+    ticker: str,
+    interval_seconds: int,
+    strata_url: str,
+    cheap_proxy_url: str,
+    continuous_24_7: bool,
+    data_client: Any,
+    trading_client: Any,
+    sb_client: Any,
+    broadcaster: TapeBroadcaster | None = None,
+) -> None:
+    """Run the 5-minute autonomous LLM reasoning turn loop."""
     async with httpx.AsyncClient(timeout=30.0) as http_client:
         while True:
             try:
@@ -174,6 +198,65 @@ async def run_loop(
             await asyncio.sleep(float(interval_seconds))
 
 
+async def run_loop(
+    ticker: str = "SPY",
+    interval_seconds: int = 300,
+    tape_interval_seconds: int = 20,
+    tape_port: int = 8090,
+    enable_tape_server: bool = True,
+    strata_url: str = DEFAULT_STRATA_URL,
+    cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    continuous_24_7: bool = True,
+) -> None:
+    """Run the continuous 24/7 daemon loop with concurrent 20s tape polling & SSE server."""
+    logger.info(
+        f"Starting Live SPY Trader Daemon (ticker={ticker}, interval={interval_seconds}s, tape_interval={tape_interval_seconds}s, 24/7={continuous_24_7})"
+    )
+    logger.info(f"Tier 1 Inference: {strata_url}")
+    logger.info(f"Tier 2 Inference: {cheap_proxy_url}")
+
+    data_client, trading_client, sb_client = _create_clients()
+    broadcaster = TapeBroadcaster()
+
+    server = None
+    if enable_tape_server:
+        try:
+            server, bound_port = await start_tape_server(broadcaster, host="0.0.0.0", port=tape_port)
+            logger.info(f"Tape SSE server running on port {bound_port}")
+        except Exception:
+            logger.exception(f"Failed to start tape SSE server on port {tape_port}")
+
+    try:
+        tape_task = asyncio.create_task(
+            run_tape_poller_loop(
+                alpaca_data_client=data_client,
+                sb_client=sb_client,
+                broadcaster=broadcaster,
+                ticker=ticker,
+                tape_interval_seconds=tape_interval_seconds,
+            )
+        )
+        agent_task = asyncio.create_task(
+            _run_agent_loop(
+                ticker=ticker,
+                interval_seconds=interval_seconds,
+                strata_url=strata_url,
+                cheap_proxy_url=cheap_proxy_url,
+                continuous_24_7=continuous_24_7,
+                data_client=data_client,
+                trading_client=trading_client,
+                sb_client=sb_client,
+                broadcaster=broadcaster,
+            )
+        )
+        await asyncio.gather(tape_task, agent_task)
+    finally:
+        if server:
+            server.close()
+            with contextlib.suppress(Exception):
+                await server.wait_closed()
+
+
 def main() -> None:
     """CLI entrypoint for running the intraday agent trader."""
     parser = argparse.ArgumentParser(description="Live Intraday SPY Trader Daemon")
@@ -181,6 +264,23 @@ def main() -> None:
     parser.add_argument("--once", action="store_true", help="Run a single trading turn and exit")
     parser.add_argument("--ticker", default="SPY", help="Ticker symbol to trade (default: SPY)")
     parser.add_argument("--interval", type=int, default=300, help="Cadence in seconds (default: 300)")
+    parser.add_argument(
+        "--tape-interval",
+        type=int,
+        default=20,
+        help="Tape polling cadence in seconds (default: 20)",
+    )
+    parser.add_argument(
+        "--tape-port",
+        type=int,
+        default=8090,
+        help="Port for SSE tape server (default: 8090)",
+    )
+    parser.add_argument(
+        "--no-tape-server",
+        action="store_true",
+        help="Disable the SSE tape server",
+    )
     parser.add_argument(
         "--no-24-7",
         action="store_true",
@@ -219,6 +319,9 @@ def main() -> None:
             run_loop(
                 ticker=args.ticker,
                 interval_seconds=args.interval,
+                tape_interval_seconds=args.tape_interval,
+                tape_port=args.tape_port,
+                enable_tape_server=not args.no_tape_server,
                 strata_url=args.strata_url,
                 cheap_proxy_url=args.cheap_proxy_url,
                 continuous_24_7=not args.no_24_7,

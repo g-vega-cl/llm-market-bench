@@ -178,16 +178,22 @@ function ChartHeaderHUD({ activeDisplay, priceChange, pctChange }: ChartHeaderHU
                 <span className="text-boxel-muted uppercase font-black tracking-wider bg-boxel-surface border border-boxel-border px-1.5 py-0.5">
                     SPY 1M
                 </span>
-                {activeDisplay && (
-                    <span className="font-bold text-boxel-ink text-sm">
-                        ${activeDisplay.close.toFixed(2)}
-                    </span>
+                {activeDisplay ? (
+                    <>
+                        <span className="font-bold text-boxel-ink text-sm">
+                            ${activeDisplay.close.toFixed(2)}
+                        </span>
+                        <span
+                            className={`font-bold ${priceChange >= 0 ? 'text-success' : 'text-danger'}`}
+                        >
+                            {priceChange >= 0 ? '+' : ''}
+                            {priceChange.toFixed(2)} ({pctChange >= 0 ? '+' : ''}
+                            {pctChange.toFixed(2)}%)
+                        </span>
+                    </>
+                ) : (
+                    <span className="text-boxel-muted">Syncing market tape...</span>
                 )}
-                <span className={`font-bold ${priceChange >= 0 ? 'text-success' : 'text-danger'}`}>
-                    {priceChange >= 0 ? '+' : ''}
-                    {priceChange.toFixed(2)} ({pctChange >= 0 ? '+' : ''}
-                    {pctChange.toFixed(2)}%)
-                </span>
             </div>
             {activeDisplay && (
                 <div className="flex flex-wrap items-center gap-2.5 text-boxel-muted">
@@ -257,7 +263,7 @@ export function SPYCandlestickChart({
             : 0;
 
     React.useEffect(() => {
-        if (!svgRef.current || bars.length === 0) return;
+        if (!svgRef.current) return;
 
         const margin = { top: 16, right: 60, bottom: 24, left: 12 };
         const width = Math.max(containerWidth, 240) - margin.left - margin.right;
@@ -269,6 +275,21 @@ export function SPYCandlestickChart({
         svg.selectAll('*').remove();
 
         const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+        if (bars.length === 0) {
+            const emptyYScale = d3.scaleLinear().domain([580, 585]).range([candleHeight, 0]);
+            drawGridAndAxes(g, emptyYScale, width);
+            g.append('text')
+                .attr('class', 'chart-empty-message')
+                .attr('x', width / 2)
+                .attr('y', candleHeight / 2)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#93a79d')
+                .attr('font-size', '12px')
+                .attr('font-family', 'ui-monospace, monospace')
+                .text('Awaiting live SPY market tape...');
+            return;
+        }
 
         const xScale = d3
             .scaleBand<string>()
@@ -296,16 +317,6 @@ export function SPYCandlestickChart({
         drawCandlesticks(g, bars, xScale, yScale, setHoveredBar);
         drawTradeMarkers(g, trades, xScale, yScale);
     }, [bars, trades, containerWidth, height]);
-
-    if (bars.length === 0) {
-        return (
-            <div
-                className={`voxel-trough flex items-center justify-center p-8 text-xs text-boxel-muted font-mono ${className}`}
-            >
-                Awaiting live SPY market tape...
-            </div>
-        );
-    }
 
     const activeDisplay = hoveredBar || lastBar;
 

@@ -81,6 +81,8 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "primary-workstation:${PRIMARY_WORKSTATION_IP:-127.0.0.1}"
+    ports:
+      - "8090:8090"
     environment:
       STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
       FREE_LLM_PROXY_URL: https://llm.clvg.uk/v1

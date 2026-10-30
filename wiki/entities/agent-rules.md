@@ -36,6 +36,7 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 11. **Design System & UI Consistency**: Strict primitive consumption from `@llm-market-bench/ui-design-system` with zero arbitrary utility escapes (`[[entities/design-system]]`).
 12. **Dependency Restraint**: Do not add new packages, dev dependencies, test runners, or lockfile changes without explicit user approval; prefer the standard library and tooling already in the repo.
 13. **Targeted Git Staging & Multi-Agent Isolation**: Never blanket-stage; stage only the files touched by the active task (`[[entities/agent-rules]]`).
+14. **Live Edge & Server Deployment Mandate (Build Implies Run)**: Committing or syncing files is not completion — edge services must be deployed, launched, and health-verified (`[[entities/secondary-minipc-edge]]`).
 
 ## Git Staging & Commit Protocol (MANDATORY)
 
@@ -49,6 +50,21 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 ### Commit Message Validation
 
 All commit messages are strictly validated by `.husky/commit-msg` via `apps/engine/commit_msg_lint.py`. Commits must follow Conventional Commits formatting; `feat`, `fix`, `perf`, and `refactor` commits must include a descriptive body explaining context and reasoning so the git log serves as a clear historical record (`[[entities/commit-msg-lint]]`).
+
+## Live Edge & Server Deployment Mandate (Build Implies Run)
+
+Whenever an agent builds, modifies, or fixes edge server services or configurations for the MiniPC or the primary workstation — including `live-spy-trader`, Nginx reverse proxy routes, `free-llm-proxy`, or database replicas — the work is **not** complete at a git commit or a file synchronization step.
+
+Agents MUST:
+
+1. **Deploy and launch immediately** — run the secondary edge deployment, which synchronizes files and automatically rebuilds/restarts containers in its `[5/5]` step:
+   ```sh
+   ./docker/archive/deploy_secondary.sh cv-minipc@minipc
+   ```
+2. **Verify health** — confirm health endpoints respond and inspect container logs after the restart.
+3. **Never leave services dirty** — an unstarted, dirty, or crashed server service is a failed task. The operating assumption is that "people assume it's running when we commit or finish it."
+
+See [[entities/secondary-minipc-edge]] for the edge topology and [[entities/live-agent-trader]] for the trader container that this mandate most frequently covers.
 
 ## Verification Gate
 
@@ -71,3 +87,5 @@ A passing test suite with failing lint or low coverage is not done.
 - [[entities/design-system]]
 - [[entities/commit-msg-lint]]
 - [[concepts/wiki-synchronization]]
+- [[entities/secondary-minipc-edge]]
+- [[entities/live-agent-trader]]

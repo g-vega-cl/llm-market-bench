@@ -17,6 +17,7 @@
 - LLM Wiki Lint (Git Drift Auditor): `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint_llm.py --days 7 --model <model_name>`
 - Auto-wiki dry: `./apps/engine/.venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
 - Code Hotspot & Churn Forensics: `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py` (use `--write-wiki` to refresh wiki page)
+- Deploy & start MiniPC secondary edge stack: `./docker/archive/deploy_secondary.sh cv-minipc@minipc`
 
 ## Linting & Testing
 
@@ -106,6 +107,10 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
     - Never use blanket staging commands (`git add -A`, `git add .`, `git add -u`, or `git commit -a` / `-am`).
     - Explicitly stage only files touched by your active task (`git add <file1> <file2>`).
     - When multiple agents or developers work on the same branch, blanket staging scoops up in-flight intermediate work from other sessions, corrupts change attribution, and breaks hermetic pre-commit gates.
+18. **Live Edge & Server Deployment Mandate (Build Implies Run) (MANDATORY)**:
+    - Whenever building, modifying, or fixing edge server services or configurations for the MiniPC or workstation (such as `live-spy-trader`, Nginx reverse proxy routes, `free-llm-proxy`, or database replicas), agents MUST NOT stop at git commits or file synchronization.
+    - Agents MUST immediately deploy and launch the containers (e.g. via `./docker/archive/deploy_secondary.sh cv-minipc@minipc`, which synchronizes files and automatically rebuilds/restarts containers via step `[5/5]`), and verify health endpoints and logs.
+    - Never leave server services in an unstarted, dirty, or crashed state: "people assume it's running when we commit or finish it."
 
 
 

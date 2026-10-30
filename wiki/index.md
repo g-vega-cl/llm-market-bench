@@ -6,11 +6,11 @@
 
 ## Entities
 
-- [[entities/live-agent-trader]] — Auto-indexed page
-- [[entities/secondary-minipc-edge]] — Auto-indexed page
+- [[entities/live-agent-trader]] — 24/7 autonomous SPY trader console with real-time SSE tape streaming, technicals, and audience queue
+- [[entities/secondary-minipc-edge]] — 24/7 dedicated MiniPC edge gateway, read-replica, reverse proxy, and live tape streaming host (deploy_secondary.sh automated deployment)
 - [[entities/reset-state]] — portfolio reset script (LLM-only by default, `--all` for system portfolios)
 - [[entities/daily-market-predictor]] — Daily S&P 500 predictor arena with four-model comparison including DeepSeek Flash, MiniMax-M3, Jev Baseline, and Jev Four-Regime Champion
-- [[entities/free-llm-proxy]] — Auto-indexed page
+- [[entities/free-llm-proxy]] — model-agnostic, OpenAI-compatible proxy pooling free-tier LLM inference with circuit-breaker failover
 - [[entities/rotate-secrets]] — utility that generates secure secrets and mints PostgREST JWTs for the archive DB stack
 - [[entities/compare-8k-vs-16k]] — head-to-head Strata ORCA benchmark of 8k vs 16k reasoning budgets on non-continuous sessions
 - [[entities/historical-downloader]] — rate-limited offline downloader for multi-year EOD/pre-market/news/newsletter/macro data into a local SQLite raw vault

@@ -762,3 +762,56 @@ def test_strata_env_disable(monkeypatch):
     monkeypatch.setattr(config, "ENABLE_STRATA", False)
     cfg_data = config.load_providers_config()
     assert "strata" not in cfg_data["providers"]
+
+
+def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypatch):
+    """Verify max_tokens >= 128k is preserved for Strata but clamped to 8192 for cloud providers."""
+    executed_payloads = []
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        executed_payloads.append((provider_cfg.get("name"), dict(payload)))
+        return (
+            200,
+            {
+                "id": "chatcmpl-tokens",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": payload.get("model"),
+                "choices": [
+                    {"index": 0, "message": {"role": "assistant", "content": "ok"}}
+                ],
+            },
+            {},
+        )
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+
+    # Request 1: Direct strata target with 131072 tokens
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "strata",
+            "messages": [{"role": "user", "content": "deep thinking task"}],
+            "max_tokens": 131072,
+        },
+    )
+    assert resp.status_code == 200
+    assert len(executed_payloads) == 1
+    assert executed_payloads[0][1]["max_tokens"] == 131072
+
+    # Request 2: Cloud auto target with 131072 tokens -> must be clamped to 8192
+    resp2 = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "free-auto",
+            "messages": [{"role": "user", "content": "cloud task"}],
+            "max_tokens": 131072,
+        },
+    )
+    assert resp2.status_code == 200
+    assert len(executed_payloads) == 2
+    assert executed_payloads[1][1]["max_tokens"] == 8192

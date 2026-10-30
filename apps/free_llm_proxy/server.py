@@ -204,6 +204,18 @@ async def chat_completions(
         payload = dict(raw_body)
         payload["model"] = target_model
 
+        # Cloud free-tier providers enforce an 8k token limit; clamp when routing to cloud
+        if p_id != "strata":
+            if "max_tokens" in payload and payload["max_tokens"] is not None:
+                if payload["max_tokens"] > config.CLOUD_MAX_OUTPUT_TOKENS:
+                    payload["max_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS
+            if (
+                "max_completion_tokens" in payload
+                and payload["max_completion_tokens"] is not None
+            ):
+                if payload["max_completion_tokens"] > config.CLOUD_MAX_OUTPUT_TOKENS:
+                    payload["max_completion_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS
+
         status_code, body_or_gen, resp_headers = await execute_completion(
             provider_cfg=p_cfg,
             payload=payload,

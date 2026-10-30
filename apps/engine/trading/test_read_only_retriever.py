@@ -184,3 +184,20 @@ async def test_retrieve_read_only_market_data_production_schema():
     assert "Decision: HOLD SPY (Conv: 75%) - Choppy tape" in text
     assert "Barometer (2026-10-30): P/E 26.5" in text
     assert "Catalyst: [BULLISH] AI CapEx (Mega-cap guidance)" in text
+
+
+def test_format_read_only_grounding_tolerates_null_columns():
+    """Live rows carry explicit NULLs (e.g. trades.reasoning); formatting must not crash."""
+    data = {
+        "memories": [{"id": "m1", "content": None, "importance_score": None}],
+        "cause_and_effect": [{"id": "ce1", "analysis": None, "market_outcome": None}],
+        "trades": [{"id": "t1", "ticker": "SPY", "signal": "BUY", "price": None, "reasoning": None}],
+        "decisions": [{"id": "d1", "ticker": "SPY", "signal": "HOLD", "confidence": None, "reasoning": None}],
+        "barometer": None,
+        "catalyst_radar": [{"concept_name": None, "catalyst_title": None, "impact": None}],
+    }
+
+    text = format_read_only_grounding(data)
+
+    assert "Trade: BUY SPY @ $0.00" in text
+    assert "Decision: HOLD SPY" in text

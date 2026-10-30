@@ -127,7 +127,7 @@ def format_read_only_grounding(data: dict[str, Any], max_items_per_section: int 
     mems = data.get("memories", [])
     if mems:
         mem_lines = [
-            f"- [{m.get('id', '')}] {m.get('content', '')[:140]} (Score: {m.get('importance_score', 5)})"
+            f"- [{m.get('id', '')}] {(m.get('content') or '')[:140]} (Score: {m.get('importance_score') or 5})"
             for m in mems[:max_items_per_section]
         ]
         sections.append("### HISTORICAL MEMORIES & LESSONS (READ-ONLY GROUNDING):\n" + "\n".join(mem_lines))
@@ -137,8 +137,8 @@ def format_read_only_grounding(data: dict[str, Any], max_items_per_section: int 
     if ces:
         ce_lines = []
         for c in ces[:max_items_per_section]:
-            cause = c.get("analysis") or c.get("cause", "")
-            outcome = c.get("market_outcome") or c.get("effect", "")
+            cause = c.get("analysis") or c.get("cause") or ""
+            outcome = c.get("market_outcome") or c.get("effect") or ""
             ce_lines.append(f"- Cause: {cause[:80]} -> Outcome: {outcome[:80]}")
         sections.append("### CAUSAL CHAINS (cause_and_effect):\n" + "\n".join(ce_lines))
 
@@ -148,13 +148,15 @@ def format_read_only_grounding(data: dict[str, Any], max_items_per_section: int 
     if trades or decs:
         td_lines = []
         for t in trades[:2]:
-            act = t.get("signal") or t.get("action", "TRADE")
-            price = t.get("price") if t.get("price") is not None else t.get("execution_price", 0)
-            td_lines.append(f"- Trade: {act} {t.get('ticker')} @ ${float(price):.2f} - {t.get('reasoning', '')[:100]}")
+            act = t.get("signal") or t.get("action") or "TRADE"
+            price = t.get("price") if t.get("price") is not None else t.get("execution_price")
+            reasoning = t.get("reasoning") or ""
+            td_lines.append(f"- Trade: {act} {t.get('ticker')} @ ${float(price or 0):.2f} - {reasoning[:100]}")
         for d in decs[:2]:
-            act = d.get("signal") or d.get("action", "DECISION")
-            conf = d.get("confidence") if d.get("confidence") is not None else d.get("confidence_score", 0)
-            td_lines.append(f"- Decision: {act} {d.get('ticker')} (Conv: {conf}%) - {d.get('reasoning', '')[:100]}")
+            act = d.get("signal") or d.get("action") or "DECISION"
+            conf = d.get("confidence") if d.get("confidence") is not None else d.get("confidence_score")
+            reasoning = d.get("reasoning") or ""
+            td_lines.append(f"- Decision: {act} {d.get('ticker')} (Conv: {conf or 0}%) - {reasoning[:100]}")
         sections.append("### RECENT TRADES & AUDIT DECISIONS:\n" + "\n".join(td_lines))
 
     # Barometer and Catalyst Radar
@@ -172,9 +174,9 @@ def format_read_only_grounding(data: dict[str, Any], max_items_per_section: int 
                 f"- Barometer: Score {baro.get('score')} ({baro.get('status')}) | Regime: {baro.get('regime')}"
             )
     for r in radars[:2]:
-        concept = r.get("concept_name") or r.get("narrative", "")
-        cat = r.get("catalyst_title") or r.get("catalyst", "")
-        impact = r.get("impact") or r.get("urgency", "NEUTRAL")
+        concept = r.get("concept_name") or r.get("narrative") or ""
+        cat = r.get("catalyst_title") or r.get("catalyst") or ""
+        impact = r.get("impact") or r.get("urgency") or "NEUTRAL"
         macro_lines.append(f"- Catalyst: [{impact}] {concept} ({cat})")
     if macro_lines:
         sections.append("### MACRO & CATALYST CONTEXT:\n" + "\n".join(macro_lines))

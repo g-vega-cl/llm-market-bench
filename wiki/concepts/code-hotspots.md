@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **90 days ago**, Total commits analyzed: **311**).
+Living metrics generated from git history (Lookback window: **90 days ago**, Total commits analyzed: **312**).
 
 ## Top Hotspots
 

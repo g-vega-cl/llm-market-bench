@@ -83,18 +83,11 @@ services:
       - "primary-workstation:${PRIMARY_WORKSTATION_IP:-127.0.0.1}"
     ports:
       - "8090:8090"
+    env_file:
+      - ../../apps/engine/.env
     environment:
       STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
       FREE_LLM_PROXY_URL: https://llm.clvg.uk/v1
-      SUPABASE_PROJECT_URL: ${SUPABASE_PROJECT_URL:-https://benchify-archive-db.clvg.uk}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
-      ALPACA_API_KEY: ${ALPACA_API_KEY:-}
-      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
-      ALPACA_PAPER_ENDPOINT: ${ALPACA_PAPER_ENDPOINT:-https://paper-api.alpaca.markets}
-      FMP_API_KEY: ${FMP_API_KEY:-}
-      MASSIVE_API_KEY: ${MASSIVE_API_KEY:-}
-      POLYGON_API_KEY: ${POLYGON_API_KEY:-}
     deploy:
       resources:
         limits:

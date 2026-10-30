@@ -70,9 +70,10 @@ if [[ -f "${REPO_ROOT}/apps/free_llm_proxy/.env" ]]; then
     rsync -avz "${REPO_ROOT}/apps/free_llm_proxy/.env" "${TARGET_HOST}:${REMOTE_DIR}/apps/free_llm_proxy/.env"
 fi
 
-echo "=== [4/4] Setting execution permissions on remote helper scripts ==="
+echo "=== [4/5] Setting execution permissions on remote helper scripts ==="
 ssh "${TARGET_HOST}" "chmod +x ${REMOTE_DIR}/docker/archive/*.sh"
 
-echo "=== Deployment sync to ${TARGET_HOST} complete! ==="
-echo "To initialize or restart containers on MiniPC, SSH into ${TARGET_HOST} and run:"
-echo "  cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build"
+echo "=== [5/5] Rebuilding and launching Docker containers on ${TARGET_HOST} ==="
+ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build && docker compose -f docker-compose.secondary.yml ps"
+
+echo "=== Deployment to ${TARGET_HOST} complete and services started! ==="

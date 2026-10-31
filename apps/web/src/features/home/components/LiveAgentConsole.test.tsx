@@ -155,4 +155,18 @@ describe('LiveAgentConsole', () => {
         expect(onRefreshTape).toHaveBeenCalledTimes(1);
         expect(mockFetch).toHaveBeenCalledTimes(1);
     });
+
+    it('renders clean technicals row without Ref tags and displays memory vault footer link', () => {
+        render(
+            <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
+        );
+        expect(screen.queryByText(/^Ref:/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/Autonomous intraday paper execution/i)).toBeInTheDocument();
+        expect(screen.getByText(/Grounded in 1 memory reference/i)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Memory Vault/i })).toHaveAttribute(
+            'href',
+            '/memories',
+        );
+        expect(screen.getByRole('link', { name: /Lab/i })).toHaveAttribute('href', '/lab');
+    });
 });

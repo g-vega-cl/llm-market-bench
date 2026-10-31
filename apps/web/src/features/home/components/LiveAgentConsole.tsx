@@ -120,55 +120,33 @@ function ConsoleHeaderRibbon({
     );
 }
 
-function ConsoleTechnicalsRow({
-    technicals,
-    memoriesConsulted,
-}: {
-    technicals?: LiveAgentState['technicals'];
-    memoriesConsulted?: string[];
-}) {
+function ConsoleTechnicalsRow({ technicals }: { technicals?: LiveAgentState['technicals'] }) {
+    if (!technicals) return null;
+
     return (
         <div className="flex flex-wrap gap-2 text-xs font-mono">
-            {technicals && (
-                <>
-                    <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
-                        <span className="text-boxel-muted">VWAP:</span>
-                        <span className="font-bold text-boxel-ink">
-                            ${technicals.vwap.toFixed(2)}
-                        </span>
-                    </div>
-                    <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
-                        <span className="text-boxel-muted">RSI:</span>
-                        <span className="font-bold text-boxel-ink">
-                            {technicals.rsi_14.toFixed(1)}
-                        </span>
-                    </div>
-                    <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
-                        <span className="text-boxel-muted">Trend:</span>
-                        <span
-                            className={`font-bold ${
-                                technicals.trend === 'BULLISH'
-                                    ? 'text-success'
-                                    : technicals.trend === 'BEARISH'
-                                      ? 'text-danger'
-                                      : 'text-accent'
-                            }`}
-                        >
-                            {technicals.trend}
-                        </span>
-                    </div>
-                </>
-            )}
-
-            {memoriesConsulted?.map((mem) => (
-                <div
-                    key={mem}
-                    className="voxel-trough px-2.5 py-1.5 flex items-center gap-1 text-boxel-muted"
+            <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
+                <span className="text-boxel-muted">VWAP:</span>
+                <span className="font-bold text-boxel-ink">${technicals.vwap.toFixed(2)}</span>
+            </div>
+            <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
+                <span className="text-boxel-muted">RSI:</span>
+                <span className="font-bold text-boxel-ink">{technicals.rsi_14.toFixed(1)}</span>
+            </div>
+            <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
+                <span className="text-boxel-muted">Trend:</span>
+                <span
+                    className={`font-bold ${
+                        technicals.trend === 'BULLISH'
+                            ? 'text-success'
+                            : technicals.trend === 'BEARISH'
+                              ? 'text-danger'
+                              : 'text-accent'
+                    }`}
                 >
-                    <span>Ref:</span>
-                    <span className="text-boxel-ink font-bold">{mem}</span>
-                </div>
-            ))}
+                    {technicals.trend}
+                </span>
+            </div>
         </div>
     );
 }
@@ -288,10 +266,7 @@ export function LiveAgentConsole({
                 </div>
             </div>
 
-            <ConsoleTechnicalsRow
-                technicals={currentAgentState.technicals}
-                memoriesConsulted={currentAgentState.memoriesConsulted}
-            />
+            <ConsoleTechnicalsRow technicals={currentAgentState.technicals} />
 
             <ConsoleQueueCard
                 user={currentUser}
@@ -301,6 +276,33 @@ export function LiveAgentConsole({
                     setPendingCount((prev) => prev + 1);
                 }}
             />
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-boxel-bevel-hi/50 text-[11px] font-mono text-boxel-muted">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                    <span>Autonomous intraday paper execution.</span>
+                    {currentAgentState.memoriesConsulted &&
+                        currentAgentState.memoriesConsulted.length > 0 && (
+                            <span className="text-boxel-muted/80">
+                                (Grounded in {currentAgentState.memoriesConsulted.length} memory{' '}
+                                {currentAgentState.memoriesConsulted.length === 1
+                                    ? 'reference'
+                                    : 'references'}
+                                )
+                            </span>
+                        )}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                    <a href="/memories" className="text-accent hover:underline">
+                        Memory Vault →
+                    </a>
+                    <a
+                        href="/lab"
+                        className="text-boxel-muted hover:text-boxel-ink hover:underline"
+                    >
+                        Lab →
+                    </a>
+                </div>
+            </div>
         </Card>
     );
 }

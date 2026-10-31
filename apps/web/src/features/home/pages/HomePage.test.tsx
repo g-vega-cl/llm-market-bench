@@ -80,7 +80,9 @@ describe('HomePage 2-Block Boxel Dashboard', () => {
         expect(
             within(feelingBlock).getByText(/positive momentum due to strong tech earnings/),
         ).toBeInTheDocument();
-        expect(within(feelingBlock).getByText('Inflation risks')).toBeInTheDocument();
+        expect(
+            within(feelingBlock).getByText(/Grounded in 1 memory reference/i),
+        ).toBeInTheDocument();
         expect(within(feelingBlock).getByText(/Turn: 14:30:00 ET/)).toBeInTheDocument();
         expect(within(feelingBlock).getByText(/Model: MiniMax-Text-01/)).toBeInTheDocument();
         expect(within(feelingBlock).queryByText(/Expand Details/i)).toBeNull();

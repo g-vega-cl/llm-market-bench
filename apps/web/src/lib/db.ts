@@ -21,13 +21,20 @@ export function getDbServerClient(options?: { useServiceRole?: boolean }) {
     const serviceRoleKey =
         process.env.ARCHIVE_DB_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    const dbKey = options?.useServiceRole ? serviceRoleKey || anonKey : anonKey;
+    if (options?.useServiceRole) {
+        if (!serviceRoleKey) {
+            throw new Error(
+                'Missing Archive DB service role key (ARCHIVE_DB_SERVICE_ROLE_KEY). Privileged operations require service_role access.',
+            );
+        }
+        return createClient(dbUrl, serviceRoleKey, STATELESS_DB_OPTIONS);
+    }
 
-    if (!dbUrl || !dbKey) {
+    if (!dbUrl || !anonKey) {
         throw new Error('Missing Archive DB credentials (ARCHIVE_DB_ANON_KEY)');
     }
 
-    return createClient(dbUrl, dbKey, STATELESS_DB_OPTIONS);
+    return createClient(dbUrl, anonKey, STATELESS_DB_OPTIONS);
 }
 
 export function getDbBrowserClient() {

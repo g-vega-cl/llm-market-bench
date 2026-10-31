@@ -194,4 +194,3 @@ def test_no_tables_reference_auth_users():
         "Supabase Cloud Auth and the PostgreSQL archive DB are decoupled. "
         "Store cloud user UUIDs directly and drop the foreign key constraint."
     )
-

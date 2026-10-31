@@ -25,7 +25,8 @@ Auth consumers: `__root.tsx` (`fetchUser`), `_authed.tsx` (`loginFn`), `auth.cal
 
 - **`apps/web/src/lib/db.ts`** — `getDbServerClient(options?: { useServiceRole?: boolean })` and `getDbBrowserClient()` build a plain `createClient` (from `@supabase/supabase-js`) against the archive DB.
   - URL: `ARCHIVE_DB_URL` / `VITE_ARCHIVE_DB_URL`, defaulting to `DEFAULT_ARCHIVE_DB_URL = 'https://benchify-archive-db.clvg.uk'`.
-  - Key: `ARCHIVE_DB_ANON_KEY` / `VITE_ARCHIVE_DB_ANON_KEY` (falling back to `SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY`). When `useServiceRole` is set, `ARCHIVE_DB_SERVICE_ROLE_KEY` (falling back to `SUPABASE_SERVICE_ROLE_KEY`) is preferred, falling back to the anon key.
+  - Key: `ARCHIVE_DB_ANON_KEY` / `VITE_ARCHIVE_DB_ANON_KEY` (falling back to `SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY`). When `useServiceRole` is set, `ARCHIVE_DB_SERVICE_ROLE_KEY` (falling back to `SUPABASE_SERVICE_ROLE_KEY`) is strictly required; missing service role credentials throw an explicit configuration error rather than falling back to the anon key.
+  - In development and SSR builds, `apps/web/vite.config.ts` calls `loadEnv(mode, process.cwd(), '')` to populate `process.env` so server functions access `ARCHIVE_DB_SERVICE_ROLE_KEY` without baking non-`VITE_` variables into client-side bundles.
   - Both clients are **stateless**: `auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }`. The DB client never manages sessions — auth is the Auth client's job.
   - Throws `Missing Archive DB credentials (ARCHIVE_DB_ANON_KEY)` / `(VITE_ARCHIVE_DB_ANON_KEY)` when the key is absent.
 

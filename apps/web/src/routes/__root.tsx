@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { Badge, cn, GlobalBackground } from '@llm-market-bench/ui-design-system';
+import { cn, GlobalBackground } from '@llm-market-bench/ui-design-system';
 import { PostHogProvider, usePostHog } from '@posthog/react';
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
@@ -205,13 +205,13 @@ export function RootDocument({ children }: { children: ReactNode }) {
                     <PostHogAuthSync user={user} />
                     <nav
                         className={cn(
-                            'flex flex-wrap items-center gap-3 px-6 py-3',
+                            'flex items-center gap-3 px-6 py-3',
                             'bg-boxel-surface border-b-2 border-boxel-bevel-lo shadow-md',
                             'sticky top-0 z-50',
                             'text-sm font-bold uppercase tracking-widest',
                         )}
                     >
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                             {navItems.map((item) => (
                                 <NavLink
                                     key={item.to}
@@ -222,22 +222,7 @@ export function RootDocument({ children }: { children: ReactNode }) {
                             ))}
                         </div>
 
-                        <div className="ml-auto flex items-center gap-3 shrink-0">
-                            {user && (
-                                <Link
-                                    to="/profile"
-                                    className="shrink-0 hover:opacity-80 transition-opacity"
-                                >
-                                    <Badge
-                                        variant="soft"
-                                        size="sm"
-                                        colorScheme="neutral"
-                                        className="normal-case tracking-normal cursor-pointer"
-                                    >
-                                        {user.email}
-                                    </Badge>
-                                </Link>
-                            )}
+                        <div className="ml-auto flex items-center shrink-0">
                             {user ? (
                                 <Link
                                     to="/logout"

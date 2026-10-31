@@ -109,6 +109,42 @@ describe('Root layout navigation', () => {
         expect(screen.queryByText('BENCHIFY')).toBeNull();
         expect(screen.queryByText('Home')).toBeNull();
     });
+
+    it('RootDocument navbar renders Logout on the same row without flex-wrap and without user email when authenticated', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({
+            user: { id: 'usr-456', email: 'verified@example.com' },
+        });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
+        const router = createRouter({ routeTree: testRoute, history: memoryHistory });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        await screen.findByText('Content');
+
+        // Email should NOT be shown in the navbar
+        expect(screen.queryByText('verified@example.com')).toBeNull();
+
+        // Logout button must be present
+        const logoutLink = screen.getByRole('link', { name: 'Logout' });
+        expect(logoutLink).toBeInTheDocument();
+        expect(logoutLink).toHaveAttribute('href', '/logout');
+
+        // Navbar must not have flex-wrap to keep logout on the same row
+        const nav = logoutLink.closest('nav');
+        expect(nav).toBeInTheDocument();
+        expect(nav?.className).not.toContain('flex-wrap');
+    });
 });
 
 describe('RootDocument PostHog configuration', () => {

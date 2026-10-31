@@ -15,7 +15,7 @@ The global navigation bar in `apps/web/src/routes/__root.tsx` exposes strictly 3
 - **Portfolios** (`/portfolios`): 3-block capital allocation arena (`apps/web/src/features/portfolios/pages/PortfoliosPage.tsx`). Block 1 renders the interactive `PortfolioComparisonChart` with timeframe and benchmark controls. Block 2 renders **Active LLM Agents** using single-level boxel cards. Block 3 renders **Systematic Strategies** (`sys-*`) in a dedicated section.
 - **Lab** (`/lab`): 3-block experimental directory (`apps/web/src/routes/lab.tsx`) indexing all 18 specialized research, telemetry, and audit routes with descriptions, plus the **Retired Agent Archive** for frozen historical portfolios.
 
-The authenticated user's email badge (linking to `/profile`) and the login/logout control are right-aligned in the topbar (`ml-auto`), keeping the left cluster reserved for the `B` logo and the three nav items.
+The topbar is a single non-wrapping row (`flex items-center`, no `flex-wrap`). The left cluster holds the `B` logo and the three nav items; the right cluster (`ml-auto shrink-0`) holds only the login/logout control. The authenticated user's email is **not** rendered in the navbar — the email badge that previously linked to `/profile` has been removed, so the logout link stays on the same row regardless of email length.
 
 ## Specialized lab routes
 

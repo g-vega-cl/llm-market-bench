@@ -227,7 +227,7 @@ Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configu
     "free-llm": {
       "baseUrl": "https://llm.clvg.uk/v1",
       "api": "openai-completions",
-      "apiKey": "sk-free-bf2f76aa1b930536367c26c52d86f677814c1fa7e9ac263c",
+      "apiKey": "<FREE_PROXY_MASTER_KEY>",
       "compat": {
         "supportsDeveloperRole": false,
         "supportsReasoningEffort": false

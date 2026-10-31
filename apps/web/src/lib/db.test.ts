@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getDbBrowserClient, getDbServerClient } from './db';
+import { getDbAdminClient, getDbBrowserClient, getDbServerClient } from './db';
 
 vi.mock('@supabase/supabase-js', () => ({
     createClient: vi.fn((url, key, options) => ({
@@ -93,5 +93,31 @@ describe('db client (Local PostgREST Archive DB Only)', () => {
         expect(() => getDbServerClient({ useServiceRole: true })).toThrow(
             /Missing Archive DB service role key/,
         );
+    });
+
+    it('should create admin db client using ARCHIVE_DB_URL and ARCHIVE_DB_SERVICE_ROLE_KEY', () => {
+        process.env.ARCHIVE_DB_URL = 'https://benchify-archive-db.clvg.uk';
+        process.env.ARCHIVE_DB_SERVICE_ROLE_KEY = 'local-service-jwt';
+
+        getDbAdminClient();
+        expect(createClient).toHaveBeenCalledWith(
+            'https://benchify-archive-db.clvg.uk',
+            'local-service-jwt',
+            {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false,
+                },
+            },
+        );
+    });
+
+    it('should throw when ARCHIVE_DB_SERVICE_ROLE_KEY is missing in getDbAdminClient', () => {
+        process.env.ARCHIVE_DB_URL = 'https://benchify-archive-db.clvg.uk';
+        delete process.env.ARCHIVE_DB_SERVICE_ROLE_KEY;
+        delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        expect(() => getDbAdminClient()).toThrow(/Missing Archive DB service role key/);
     });
 });

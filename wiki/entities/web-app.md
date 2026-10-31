@@ -36,7 +36,7 @@ The topbar is a single non-wrapping row (`flex items-center`, no `flex-wrap`). T
 The web app uses two strictly separated Supabase client families (see [[concepts/auth-db-client-separation]]):
 
 - **Auth client** — `apps/web/src/lib/auth.ts` (`getAuthServerClient`) and `apps/web/src/lib/auth-client.ts` (`getAuthBrowserClient`) talk to **Supabase Cloud** for password login, Google OAuth, session cookies, and `auth.getUser()`. `assertValidAuthUrl` rejects any URL containing `benchify-archive-db` to prevent `PGRST125` auth misrouting.
-- **DB client** — `apps/web/src/lib/db.ts` (`getDbServerClient`, `getDbBrowserClient`) talks to the **self-hosted PostgREST archive DB** (`https://benchify-archive-db.clvg.uk`) for all data reads/writes, using stateless `createClient` options (`persistSession: false`, `autoRefreshToken: false`, `detectSessionInUrl: false`). `getDbServerClient({ useServiceRole: true })` is used for privileged server-side operations (chat schema introspection, `chat_memories` writes).
+- **DB client** — `apps/web/src/lib/db.ts` (`getDbServerClient`, `getDbBrowserClient`) talks to the **self-hosted PostgREST archive DB** (`https://benchify-archive-db.clvg.uk`) for all data reads/writes, using stateless `createClient` options (`persistSession: false`, `autoRefreshToken: false`, `detectSessionInUrl: false`). `getDbAdminClient()` is used for privileged server-side operations (chat schema introspection, `chat_memories` writes).
 
 All feature data fetchers import `getDbServerClient` / `getDbBrowserClient` from `~/lib/db`; auth routes import `getAuthServerClient` from `~/lib/auth`. The former `~/lib/supabase` and `~/lib/supabase-client` modules have been removed.
 

@@ -21,8 +21,8 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tests/test_daily_predictor.py` | 11 | 4 | 36.4% | 763 | 44 | **HIGH** |
 | `apps/engine/tests/test_workflow_schedule.py` | 9 | 4 | 44.4% | 239 | 36 | **HIGH** |
 | `apps/web/src/routes/__root.tsx` | 8 | 4 | 50.0% | 233 | 32 | **HIGH** |
-| `apps/web/src/features/today/api/fetch-today-data.test.ts` | 7 | 4 | 57.1% | 538 | 28 | **MEDIUM** |
 | `apps/web/src/features/today/api/fetch-today-data.ts` | 7 | 4 | 57.1% | 460 | 28 | **MEDIUM** |
+| `apps/web/src/features/today/api/fetch-today-data.test.ts` | 7 | 4 | 57.1% | 538 | 28 | **MEDIUM** |
 | `apps/engine/tasks/evaluate_daily_predictions.py` | 9 | 3 | 33.3% | 290 | 27 | **MEDIUM** |
 | `apps/engine/tests/test_docker_archive_secrets.py` | 5 | 5 | 100.0% | 98 | 25 | **MEDIUM** |
 | `apps/engine/tests/test_verify_skill.py` | 8 | 3 | 37.5% | 93 | 24 | **MEDIUM** |

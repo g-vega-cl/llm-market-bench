@@ -16,6 +16,9 @@ vi.mock('~/lib/db', () => ({
     getDbServerClient: () => ({
         from: mockFrom,
     }),
+    getDbAdminClient: () => ({
+        from: mockFrom,
+    }),
 }));
 
 describe('Chat Server Handler (handleChatMessage)', () => {

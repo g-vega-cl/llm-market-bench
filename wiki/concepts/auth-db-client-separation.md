@@ -23,14 +23,15 @@ Auth consumers: `__root.tsx` (`fetchUser`), `_authed.tsx` (`loginFn`), `auth.cal
 
 ### DB client — self-hosted PostgREST archive only
 
-- **`apps/web/src/lib/db.ts`** — `getDbServerClient(options?: { useServiceRole?: boolean })` and `getDbBrowserClient()` build a plain `createClient` (from `@supabase/supabase-js`) against the archive DB.
+- **`apps/web/src/lib/db.ts`** — `getDbServerClient()`, `getDbAdminClient()`, and `getDbBrowserClient()` build a plain `createClient` (from `@supabase/supabase-js`) against the archive DB.
   - URL: `ARCHIVE_DB_URL` / `VITE_ARCHIVE_DB_URL`, defaulting to `DEFAULT_ARCHIVE_DB_URL = 'https://benchify-archive-db.clvg.uk'`.
-  - Key: `ARCHIVE_DB_ANON_KEY` / `VITE_ARCHIVE_DB_ANON_KEY` (falling back to `SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY`). When `useServiceRole` is set, `ARCHIVE_DB_SERVICE_ROLE_KEY` (falling back to `SUPABASE_SERVICE_ROLE_KEY`) is strictly required; missing service role credentials throw an explicit configuration error rather than falling back to the anon key.
-  - In development and SSR builds, `apps/web/vite.config.ts` calls `loadEnv(mode, process.cwd(), '')` to populate `process.env` so server functions access `ARCHIVE_DB_SERVICE_ROLE_KEY` without baking non-`VITE_` variables into client-side bundles.
-  - Both clients are **stateless**: `auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }`. The DB client never manages sessions — auth is the Auth client's job.
+  - Regular reads: `getDbServerClient()` uses `ARCHIVE_DB_ANON_KEY` / `VITE_ARCHIVE_DB_ANON_KEY` (falling back to `SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY`).
+  - Privileged mutations: `getDbAdminClient()` is an explicit dedicated export that strictly requires `ARCHIVE_DB_SERVICE_ROLE_KEY` (falling back to `SUPABASE_SERVICE_ROLE_KEY`) and throws an explicit configuration error rather than falling back to anon. (An explicit export prevents bundler parameter-folding optimizations from dead-code eliminating service_role branches in SSR bundles).
+  - In development and SSR builds, `ensureEnvLoaded()` leverages Node 24 `process.loadEnvFile` and `apps/web/vite.config.ts` calls `loadEnv(mode, process.cwd(), '')` to populate `process.env` so server functions access `ARCHIVE_DB_SERVICE_ROLE_KEY` without baking non-`VITE_` variables into client-side bundles.
+  - All clients are **stateless**: `auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }`. The DB client never manages sessions — auth is the Auth client's job.
   - Throws `Missing Archive DB credentials (ARCHIVE_DB_ANON_KEY)` / `(VITE_ARCHIVE_DB_ANON_KEY)` when the key is absent.
 
-DB consumers: every data fetcher across `features/*/api/*` (portfolios, memories, reasoning, today, leaderboard, market-overview, cause-and-effect, earnings, generated-newsletters, daily-predictions, ai-predictions, home barometer/tape/agent-queue, concepts, audits, autoresearch). The chat server uses `getDbServerClient({ useServiceRole: true })` for schema introspection and `chat_memories` writes/reads.
+DB consumers: every data fetcher across `features/*/api/*` (portfolios, memories, reasoning, today, leaderboard, market-overview, cause-and-effect, earnings, generated-newsletters, daily-predictions, ai-predictions, home barometer/tape/agent-queue, concepts, audits, autoresearch). Privileged server functions like `handleSubmitAgentQueueQuestion` and `chat-server.ts` use `getDbAdminClient()` for schema introspection, `agent_chat_queue` inserts, and `chat_memories` writes/reads.
 
 ## Client Call-Site Architecture
 

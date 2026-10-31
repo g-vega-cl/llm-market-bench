@@ -168,7 +168,7 @@ export async function handleChatMessage(payload: {
     messages: ChatMessage[];
 }): Promise<ChatMessage> {
     const { getAuthServerClient } = await import('~/lib/auth');
-    const { getDbServerClient } = await import('~/lib/db');
+    const { getDbAdminClient } = await import('~/lib/db');
     const authClient = getAuthServerClient();
     const { data, error } = await authClient.auth.getUser();
 
@@ -185,7 +185,7 @@ export async function handleChatMessage(payload: {
         throw new Error('DeepSeek API key is not configured');
     }
 
-    const db = getDbServerClient({ useServiceRole: true });
+    const db = getDbAdminClient();
     const schemaSummary = await getDatabaseSchemaSummary(db);
     const systemPrompt = buildSystemPrompt(schemaSummary);
 
@@ -338,7 +338,7 @@ Distill into JSON:`;
 
 export async function handleSaveChatMemory(payload: SaveChatMemoryRequest): Promise<ChatMemory> {
     const { getAuthServerClient } = await import('~/lib/auth');
-    const { getDbServerClient } = await import('~/lib/db');
+    const { getDbAdminClient } = await import('~/lib/db');
     const authClient = getAuthServerClient();
     const { data, error } = await authClient.auth.getUser();
 
@@ -355,7 +355,7 @@ export async function handleSaveChatMemory(payload: SaveChatMemoryRequest): Prom
         throw new Error('Thesis content is required');
     }
 
-    const db = getDbServerClient({ useServiceRole: true });
+    const db = getDbAdminClient();
     const { data: inserted, error: insertError } = await db
         .from('chat_memories')
         .insert({
@@ -382,7 +382,7 @@ export async function handleFetchMyChatMemories(payload: {
     ticker?: string;
 }): Promise<ChatMemory[]> {
     const { getAuthServerClient } = await import('~/lib/auth');
-    const { getDbServerClient } = await import('~/lib/db');
+    const { getDbAdminClient } = await import('~/lib/db');
     const authClient = getAuthServerClient();
     const { data, error } = await authClient.auth.getUser();
 
@@ -394,7 +394,7 @@ export async function handleFetchMyChatMemories(payload: {
         throw new Error('Chat feature is restricted to authorized accounts');
     }
 
-    const db = getDbServerClient({ useServiceRole: true });
+    const db = getDbAdminClient();
     let query = db.from('chat_memories').select('*').eq('user_id', data.user.id);
 
     if (payload.ticker) {

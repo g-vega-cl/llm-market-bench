@@ -22,7 +22,7 @@ A dedicated, user-isolated storage system for promoting assistant answers into s
 
 ## Auth / Data Decoupling
 
-Authentication is managed by Supabase Cloud while `chat_memories` lives in the self-hosted PostgreSQL archive DB (see [[concepts/auth-db-client-separation]] and [[concepts/hybrid-database-archival]]). Because the archive DB does not run an Auth service, the `chat_memories.user_id` foreign key to the local `auth.users` stub was dropped in migration `20261030150000_decouple_chat_memories_auth_fk.sql`. Cloud-authenticated user UUIDs are stored directly in `user_id`, and RLS still enforces `auth.uid() = user_id` at the archive DB. The chat server resolves the user via `getAuthServerClient()` (Supabase Cloud) and performs `chat_memories` reads/writes via `getDbServerClient({ useServiceRole: true })` (archive DB).
+Authentication is managed by Supabase Cloud while `chat_memories` lives in the self-hosted PostgreSQL archive DB (see [[concepts/auth-db-client-separation]] and [[concepts/hybrid-database-archival]]). Because the archive DB does not run an Auth service, the `chat_memories.user_id` foreign key to the local `auth.users` stub was dropped in migration `20261030150000_decouple_chat_memories_auth_fk.sql`. Cloud-authenticated user UUIDs are stored directly in `user_id`, and RLS still enforces `auth.uid() = user_id` at the archive DB. The chat server resolves the user via `getAuthServerClient()` (Supabase Cloud) and performs `chat_memories` reads/writes via `getDbAdminClient()` (archive DB).
 
 ## Related
 

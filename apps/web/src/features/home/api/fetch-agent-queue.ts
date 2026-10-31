@@ -35,7 +35,7 @@ export async function handleSubmitAgentQueueQuestion(data: {
     const trimmedMessage = validateQueueMessage(data.message);
 
     const { getAuthServerClient } = await import('~/lib/auth');
-    const { getDbServerClient } = await import('~/lib/db');
+    const { getDbAdminClient } = await import('~/lib/db');
     const authClient = getAuthServerClient();
 
     const { data: authData, error: authError } = await authClient.auth.getUser();
@@ -47,7 +47,7 @@ export async function handleSubmitAgentQueueQuestion(data: {
 
     const displayName = user.email ? user.email.split('@')[0] : 'Analyst';
 
-    const db = getDbServerClient({ useServiceRole: true });
+    const db = getDbAdminClient();
     const { data: insertedItem, error: insertError } = await db
         .from('agent_chat_queue')
         .insert({

@@ -9,6 +9,7 @@ vi.mock('~/lib/db', () => ({
     getDbServerClient: vi.fn(() => mockSupabaseClient),
 }));
 
+import { getDbServerClient } from '~/lib/db';
 import {
     handleFetchAgentQueueStatus,
     handleSubmitAgentQueueQuestion,
@@ -80,6 +81,7 @@ describe('handleSubmitAgentQueueQuestion', () => {
         const result = await handleSubmitAgentQueueQuestion({ message: 'Is SPY bullish?' });
         expect(result.success).toBe(true);
         expect(result.item?.id).toBe('q-abc-123');
+        expect(getDbServerClient).toHaveBeenCalledWith({ useServiceRole: true });
         expect(mockInsert).toHaveBeenCalledWith(
             expect.objectContaining({
                 user_id: 'usr-123',

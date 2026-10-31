@@ -47,7 +47,7 @@ export async function handleSubmitAgentQueueQuestion(data: {
 
     const displayName = user.email ? user.email.split('@')[0] : 'Analyst';
 
-    const db = getDbServerClient();
+    const db = getDbServerClient({ useServiceRole: true });
     const { data: insertedItem, error: insertError } = await db
         .from('agent_chat_queue')
         .insert({

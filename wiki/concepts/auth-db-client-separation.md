@@ -49,7 +49,9 @@ Data fetchers import `getDbServerClient` / `getDbBrowserClient` from `apps/web/s
 
 ## Data-Model Consequence
 
-Because Auth lives in Supabase Cloud while `chat_memories` lives in the archive DB, the `chat_memories.user_id` foreign key to the local `auth.users` stub was dropped (migration `20261030150000_decouple_chat_memories_auth_fk.sql`). Cloud-authenticated user UUIDs are stored directly, and RLS policies still enforce `auth.uid() = user_id` at the archive DB. See [[concepts/private-memory-vault]].
+Because Auth lives in Supabase Cloud while data tables live in the archive DB, foreign keys to the local `auth.users` stub table were dropped for user-associated tables:
+- `chat_memories.user_id` (migration `20261030150000_decouple_chat_memories_auth_fk.sql`), where cloud-authenticated user UUIDs are stored directly and RLS policies enforce `auth.uid() = user_id`. See [[concepts/private-memory-vault]].
+- `agent_chat_queue.user_id` (migration `20261030190000_decouple_agent_chat_queue_auth_fk.sql`), allowing audience question submissions to store cloud user UUIDs directly. Queue mutations are locked down to `service_role` execution via TanStack Start server functions after validating session cookies with Supabase Cloud Auth. See [[entities/live-agent-trader]].
 
 ## Related
 

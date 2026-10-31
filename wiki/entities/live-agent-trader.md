@@ -81,10 +81,10 @@ To provide instant live candlestick updates without draining client battery or r
 - **Manual Tape Refresh**: An explicit `Refresh Tape` button triggers an on-demand tape snapshot fetch from the server.
 
 ### 8. Audience Chat Queue
-- Schema defined in `supabase/migrations/20261029140000_create_agent_chat_queue.sql` (`public.agent_chat_queue`), extended by `supabase/migrations/20261029220000_add_pop_next_queue_item_rpc.sql`.
-- Columns: `id`, `user_id` (FK to `auth.users`, `ON DELETE SET NULL`), `display_name` (default `Visitor`), `message`, `status` (`pending`, `injected`, `answered`, `archived`, `rejected`, default `pending`), `created_at`, `injected_turn_at`, `agent_response`.
+- Schema defined in `supabase/migrations/20261029140000_create_agent_chat_queue.sql` (`public.agent_chat_queue`), extended by `supabase/migrations/20261029220000_add_pop_next_queue_item_rpc.sql`, and decoupled from local auth stubs by `supabase/migrations/20261030190000_decouple_agent_chat_queue_auth_fk.sql`.
+- Columns: `id`, `user_id` (Supabase Cloud user UUID; foreign key to local `auth.users` dropped to allow cloud authentication), `display_name` (default `Visitor`), `message`, `status` (`pending`, `injected`, `answered`, `archived`, `rejected`, default `pending`), `created_at`, `injected_turn_at`, `agent_response`.
 - Indexes: `(status, created_at ASC)` for queue polling and `(created_at DESC)` for timeline display.
-- RLS enabled with public `SELECT` and `INSERT` policies plus full `service_role` access; grants `SELECT, INSERT` to `anon` and `authenticated` and `ALL` to `service_role`.
+- RLS enabled with public `SELECT` for visitor queue visibility and `service_role` full access; `INSERT` is restricted to `service_role` execution via server functions validating Supabase Cloud session cookies.
 - Allows human visitors to submit questions or market hypotheses that are injected into the agent's upcoming 5-minute thinking turn. The console card is now a fully functional submission form (see `ConsoleQueueCard.tsx` below), not a teaser.
 
 ### 9. 30-Minute Audit Harness
@@ -129,7 +129,7 @@ Because the newest `market_feeling` row can be written by a turn that persisted 
 This keeps the last real session tape visible across row churn without ever fabricating candles.
 
 ## Audience Interactive Queue & 24/7 Operation
-- **Database Queue (`public.agent_chat_queue`)**: Schema defined in `supabase/migrations/20261029140000_create_agent_chat_queue.sql` and extended with the atomic `pop_next_queue_item()` RPC in `supabase/migrations/20261029220000_add_pop_next_queue_item_rpc.sql` (see [[entities/database]]). Statuses are `pending`, `injected`, `answered`, `archived`, `rejected`.
+- **Database Queue (`public.agent_chat_queue`)**: Schema defined in `supabase/migrations/20261029140000_create_agent_chat_queue.sql`, extended with the atomic `pop_next_queue_item()` RPC in `supabase/migrations/20261029220000_add_pop_next_queue_item_rpc.sql`, and decoupled from local `auth.users` via `supabase/migrations/20261030190000_decouple_agent_chat_queue_auth_fk.sql` (see [[entities/database]]). Statuses are `pending`, `injected`, `answered`, `archived`, `rejected`.
 - **Authenticated Submissions**: Gated strictly to logged-in users via `submitAgentQueueQuestion` in `apps/web/src/features/home/api/fetch-agent-queue.ts`, capturing `user_id` as metadata for analytics. `validateQueueMessage` rejects empty/whitespace-only input and enforces a 500-character max (`MAX_QUEUE_MESSAGE_LENGTH`). Unauthenticated submissions throw `UNAUTHORIZED`.
 - **Queue Status Polling**: `fetchAgentQueueStatus` returns `{ pendingCount, latestAnswered }` — an exact `pending` count plus the most recent row with a non-null `agent_response` ordered by `injected_turn_at` descending. It fails soft to `{ pendingCount: 0, latestAnswered: null }`.
 - **Read-Only Data & Memory Grounding**: `apps/engine/trading/read_only_retriever.py` provides cross-domain read-only context (`memories`, `cause_and_effect`, `trades`, `decisions`, `market_barometer_history`, `catalyst_radar`) formatted into lean prompt sections by `format_read_only_grounding`.

@@ -155,3 +155,43 @@ def test_new_tables_have_rls_enabled_in_file():
                 f"Migration {filename} creates table '{t}' but does not enable RLS in the same file. "
                 f"Every new table migration MUST include: ALTER TABLE public.{t} ENABLE ROW LEVEL SECURITY;"
             )
+
+
+def test_no_tables_reference_auth_users():
+    """Verify that no active tables have a foreign key constraint referencing auth.users.
+
+    Auth is managed by Supabase Cloud while data lives in the self-hosted PostgreSQL
+    archive DB. Tables in the archive DB must not have foreign key constraints to auth.users,
+    as cloud user UUIDs will fail FK validation. Any historical table referencing auth.users
+    must have a subsequent migration dropping the foreign key constraint.
+    """
+    migration_files = _get_migration_sql_files()
+
+    tables_with_auth_fk: set[str] = set()
+    dropped_auth_fk: set[str] = set()
+
+    for _filename, content in migration_files:
+        created_tables = re.findall(
+            r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?([a-zA-Z0-9_]+)\s*\([^;]+REFERENCES\s+auth\.users",
+            content,
+            re.IGNORECASE,
+        )
+        for t in created_tables:
+            tables_with_auth_fk.add(t.lower())
+
+        dropped_constraints = re.findall(
+            r"ALTER\s+TABLE\s+(?:ONLY\s+)?(?:public\.)?([a-zA-Z0-9_]+)\s+DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?([a-zA-Z0-9_]+)",
+            content,
+            re.IGNORECASE,
+        )
+        for table_name, constraint_name in dropped_constraints:
+            if "user_id_fkey" in constraint_name.lower() or "auth" in constraint_name.lower():
+                dropped_auth_fk.add(table_name.lower())
+
+    active_auth_fks = tables_with_auth_fk - dropped_auth_fk
+    assert not active_auth_fks, (
+        f"Active public tables still reference auth.users: {sorted(active_auth_fks)}. "
+        "Supabase Cloud Auth and the PostgreSQL archive DB are decoupled. "
+        "Store cloud user UUIDs directly and drop the foreign key constraint."
+    )
+

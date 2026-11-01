@@ -815,3 +815,48 @@ def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypat
     assert resp2.status_code == 200
     assert len(executed_payloads) == 2
     assert executed_payloads[1][1]["max_tokens"] == 8192
+
+
+def test_unauthorized_call_is_logged_in_audit_db(client):
+    """Verify that failed authentication attempts (401) are logged to audit_db."""
+    from apps.free_llm_proxy.server import audit_db
+
+    initial_metrics = audit_db.get_metrics()
+    initial_unauth = initial_metrics.get("unauthorized_requests", 0)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer bad-token-attempt", "X-Forwarded-For": "203.0.113.195"},
+        json={"model": "free-auto", "messages": [{"role": "user", "content": "probe"}]},
+    )
+    assert resp.status_code == 401
+
+    updated_metrics = audit_db.get_metrics()
+    assert updated_metrics["unauthorized_requests"] == initial_unauth + 1
+    recent = updated_metrics["recent_calls"][0]
+    assert recent["status_code"] == 401
+    assert recent["client_ip"] == "203.0.113.195"
+    assert recent["routed_provider"] == "none"
+
+
+def test_gemini_pro_model_is_coerced_to_free_flash():
+    """Verify that requesting a Gemini Pro or paid model coerces to free flash."""
+    cb = CircuitBreaker()
+    router = Router(circuit_breaker=cb)
+
+    # Gemini catalog with both pro and flash
+    available_models = ["models/gemini-1.5-pro", "models/gemini-3.8-flash", "models/gemini-2.5-flash-lite"]
+
+    # If client asks for gemini-1.5-pro, router must coerce to free flash
+    resolved = router.resolve_model_for_provider("gemini", "models/gemini-1.5-pro", available_models)
+    assert "flash" in resolved.lower()
+    assert "pro" not in resolved.lower()
+
+
+def test_gemini_uses_gemini_api_key_free(monkeypatch):
+    """Verify that Gemini provider uses GEMINI_API_KEY_FREE from providers.json."""
+    from apps.free_llm_proxy import config
+
+    providers_cfg = config.load_providers_config()
+    assert providers_cfg["providers"]["gemini"]["env_key"] == "GEMINI_API_KEY_FREE"
+

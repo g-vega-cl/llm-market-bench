@@ -79,6 +79,15 @@ class Router:
                 if p.endswith(":free") or p == "openrouter/free"
             ] or ["openrouter/free"]
 
+        # Gemini safety guard: strictly filter available models to free Flash tier
+        if provider_id == "gemini":
+            if available_models:
+                available_models = [
+                    m
+                    for m in available_models
+                    if "flash" in m.lower()
+                ]
+
         # Check virtual alias patterns first
         if requested_model in self.virtual_aliases:
             patterns = self.virtual_aliases[requested_model]
@@ -100,6 +109,17 @@ class Router:
                 if not stripped.endswith(":free"):
                     # Non-free model requested for OpenRouter: strictly disallow and fall back
                     return "openrouter/free"
+            if provider_id == "gemini" and "flash" not in stripped.lower():
+                flash_candidates = (
+                    [m for m in (available_models or []) if "flash" in m.lower()]
+                    if available_models
+                    else []
+                )
+                return (
+                    self.discovery.match_best_model(flash_candidates, preferred_patterns)
+                    if flash_candidates
+                    else (flash_candidates[0] if flash_candidates else "models/gemini-3.8-flash")
+                )
             if available_models:
                 if stripped in available_models:
                     return stripped
@@ -109,7 +129,14 @@ class Router:
             return stripped
         else:
             # Check if requested model exists directly in provider's live models
-            if available_models and requested_model in available_models:
+            if (
+                available_models
+                and requested_model in available_models
+                and not (
+                    provider_id == "gemini"
+                    and "flash" not in requested_model.lower()
+                )
+            ):
                 return requested_model
             # Otherwise treat as generic request -> fall back to preferred patterns
             patterns = preferred_patterns
@@ -121,6 +148,17 @@ class Router:
             resolved.endswith(":free") or resolved == "openrouter/free"
         ):
             return "openrouter/free"
+        if provider_id == "gemini" and "flash" not in resolved.lower():
+            flash_candidates = (
+                [m for m in (available_models or []) if "flash" in m.lower()]
+                if available_models
+                else []
+            )
+            resolved = (
+                self.discovery.match_best_model(flash_candidates, preferred_patterns)
+                if flash_candidates
+                else (flash_candidates[0] if flash_candidates else "models/gemini-3.8-flash")
+            )
         return resolved
 
     def get_candidate_chain(self, requested_model: str) -> list[tuple[str, dict]]:

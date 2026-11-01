@@ -6,6 +6,8 @@
 
 ## Entities
 
+- [[entities/conversational-explainer]] — decoupled audience Q&A worker that answers community questions in Markdown prose, isolated from the live trader's decision loop
+- [[entities/secret-scanner]] — pre-commit and wiki-lint scanner that blocks commits containing leaked API keys
 - [[entities/live-agent-trader]] — 24/7 autonomous SPY trader console with real-time SSE tape streaming, technicals, and audience queue
 - [[entities/secondary-minipc-edge]] — 24/7 dedicated MiniPC edge gateway, read-replica, reverse proxy, and live tape streaming host (deploy_secondary.sh automated deployment)
 - [[entities/reset-state]] — portfolio reset script (LLM-only by default, `--all` for system portfolios)

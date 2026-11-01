@@ -16,6 +16,11 @@ from pathlib import Path
 
 import yaml
 
+try:
+    from apps.engine.secret_scanner import scan_text
+except ImportError:
+    from secret_scanner import scan_text
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WIKI_DIR = REPO_ROOT / "wiki"
 
@@ -196,6 +201,11 @@ def lint(fix: bool = False) -> list[str]:
         code_errors = validate_codebase_references(content, REPO_ROOT, rel)
         for err in code_errors:
             issues.append(f"[broken-code-ref] {rel}: {err}")
+
+        # 5. Secret scanning validation
+        secret_findings = scan_text(content, filename=rel)
+        for finding in secret_findings:
+            issues.append(f"[leaked-secret] {rel}:{finding['line']}: [{finding['rule']}] {finding['masked']}")
 
     # 4. Index coverage
     index_path = WIKI_DIR / "index.md"

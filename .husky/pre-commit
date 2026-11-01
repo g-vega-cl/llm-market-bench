@@ -3,6 +3,10 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
+# Scan staged changes for leaked API keys / secrets (FAIL FAST)
+echo "[security] Scanning staged changes for credentials..."
+"$REPO_ROOT/apps/engine/.venv/bin/python3" "$REPO_ROOT/apps/engine/secret_scanner.py" --cached || exit 1
+
 # Auto-document code changes in the wiki (BLOCKING)
 "$REPO_ROOT/scripts/auto-wiki.sh"
 

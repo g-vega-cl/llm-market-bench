@@ -17,7 +17,7 @@
     "gemini": {
       "name": "Google Gemini",
       "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-      "env_key": "GEMINI_API_KEY",
+      "env_key": "GEMINI_API_KEY_FREE",
       "tier": 1,
       "requires_auth": true,
       "models_endpoint": "/models",

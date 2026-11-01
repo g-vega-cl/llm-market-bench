@@ -125,6 +125,9 @@ class AuditDB:
         success_reqs = conn.execute(
             "SELECT COUNT(*) FROM call_logs WHERE status_code = 200"
         ).fetchone()[0]
+        unauthorized_reqs = conn.execute(
+            "SELECT COUNT(*) FROM call_logs WHERE status_code = 401"
+        ).fetchone()[0]
         tokens_row = conn.execute(
             "SELECT SUM(prompt_tokens), SUM(completion_tokens), SUM(total_tokens) FROM call_logs WHERE status_code = 200"
         ).fetchone()
@@ -139,6 +142,7 @@ class AuditDB:
             """
             SELECT routed_provider, COUNT(*) as req_count, SUM(total_tokens) as tokens, AVG(latency_ms) as avg_lat
             FROM call_logs
+            WHERE routed_provider != 'none'
             GROUP BY routed_provider
             """
         )
@@ -168,6 +172,7 @@ class AuditDB:
         return {
             "total_requests": total_reqs,
             "successful_requests": success_reqs,
+            "unauthorized_requests": unauthorized_reqs,
             "success_rate_pct": round(
                 (success_reqs / total_reqs * 100) if total_reqs > 0 else 100.0, 1
             ),

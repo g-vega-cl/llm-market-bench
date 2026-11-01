@@ -55,7 +55,7 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 - **Circuit Breaker (`apps/free_llm_proxy/circuit_breaker.py`)**: Reacts to HTTP 429 rate limits or repeated 5xx errors by placing the failed provider into cooldown (respecting `Retry-After` if sent). A 429 trips the breaker immediately; two consecutive 5xx errors trip it. `record_success` resets the consecutive-failure counter, and `get_status_overview` exposes per-provider health, cooldown remaining, failure count, and rate-limit hit count.
 - **Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; cooling providers are used only as a last resort when no healthy candidate remains. An explicit `provider/model` prefix in the request moves that provider to the front of the chain. Providers declaring `enabled_in_auto: false` (such as local Strata) are excluded from the standard auto rotation unless explicitly targeted or opted in via `auto-strata`.
 - **Cloud Output-Token Clamping (`apps/free_llm_proxy/server.py`)**: Before dispatch, requests routed to any non-Strata (cloud) provider have `max_tokens` and `max_completion_tokens` clamped down to `CLOUD_MAX_OUTPUT_TOKENS` (default `8192`), because cloud free-tier providers enforce an 8k output ceiling. Strata is exempt and preserves the caller's full budget (e.g. 131,072 tokens).
-- **Audit Database (`apps/free_llm_proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, failover chains, and caller attribution to a local SQLite database (`data/free_llm_proxy.db`). Captures "Who" (`client_ip` via Cloudflare `CF-Connecting-IP`, `X-Forwarded-For`, or socket host, and `user_agent`) and "Why" (`purpose` via `X-Purpose` / `X-Client-Id` and `prompt_preview` containing a 60-character snippet of the user prompt). `get_metrics()` aggregates total/successful requests, success rate, token totals, average latency, per-provider stats, and the 10 most recent calls. Auto-migrates existing tables seamlessly.
+- **Audit Database (`apps/free_llm_proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, failover chains, and caller attribution to a local SQLite database (`data/free_llm_proxy.db`). Captures "Who" (`client_ip` via Cloudflare `CF-Connecting-IP`, `X-Forwarded-For`, or socket host, and `user_agent`) and "Why" (`purpose` via `X-Purpose` / `X-Client-Id` and `prompt_preview` containing a 60-character snippet of the user prompt). Logs failed authentication attempts (status 401) with caller IP and user agent to monitor unauthorized probes. `get_metrics()` aggregates total/successful/unauthorized requests, success rate, token totals, average latency, per-provider stats, and the 10 most recent calls. Auto-migrates existing tables seamlessly.
 - **Streaming & SSE (`apps/free_llm_proxy/client.py`)**: Streams `text/event-stream` chunks directly to chat clients with pre-flight failover protection — the connection is probed first so an initial 429/5xx fails over before any chunk is yielded.
 - **Connection Error Resilience (`apps/free_llm_proxy/client.py`)**: `execute_completion` wraps both the non-streaming `POST` and the streaming `build_request`/`send` probe in `try/except httpx.RequestError`. A connection refusal, DNS failure, or connect timeout is converted into a structured `503` response (`{"error": {"message": "Provider connection error: ...", "type": "connection_error"}}`) rather than propagating an unhandled exception. This lets the router cleanly fail over to the next candidate provider (e.g. `strata-auto` falling back to the auto pool when local Strata is offline). The default client uses `httpx.Timeout(60.0, connect=3.0)` so an unreachable provider is detected within 3 seconds.
 - **Provider Registry (`apps/free_llm_proxy/providers.json`)**: Declarative provider definitions (`base_url`, `env_key`, `tier`, `requires_auth`, `preferred_patterns`, optional `extra_headers`, optional `enabled_in_auto`) plus the virtual alias pattern map. Providers with `requires_auth: false` (Kilo Code, OVHcloud, local Strata) are active with zero keys; keyed providers activate automatically when their env var is present.
@@ -80,6 +80,17 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 - the model string itself equals an active provider ID (e.g. `openrouter`).
 
 In both cases that provider is moved to the front of the candidate chain, with normal tiered failover behind it.
+
+### Gemini Free-Flash Coercion Guard
+
+The `gemini` provider is restricted to the free Flash tier. `resolve_model_for_provider` enforces this at every resolution stage:
+
+- **Catalog pre-filter** — when `provider_id == "gemini"`, the discovered `available_models` list is first narrowed to entries containing `flash` (case-insensitive) before any pattern matching runs.
+- **Prefix resolution** — if a `provider/model` prefix resolves to a non-Flash Gemini model (e.g. `models/gemini-1.5-pro`), the router re-matches against the Flash-only candidate list, falling back to `models/gemini-3.8-flash` when the catalog is empty.
+- **Exact catalog match** — a requested model that exists in the catalog but is not a Flash variant is rejected from the exact-match path and coerced to a Flash candidate.
+- **Final safety gate** — after resolution, any Gemini model whose name does not contain `flash` is coerced to the best Flash candidate (or `models/gemini-3.8-flash`).
+
+This guarantees that a client requesting a paid Gemini Pro model is transparently served by a free Flash model instead of incurring cost or failing. It is verified by `test_gemini_pro_model_is_coerced_to_free_flash` in `apps/free_llm_proxy/tests/test_proxy.py`.
 
 ### Local Strata Targeting
 
@@ -162,7 +173,7 @@ This is verified by `test_max_tokens_unclamped_for_strata_and_clamped_for_cloud`
 
 ## Configuration
 
-Environment variables (loaded from `apps/free_llm_proxy/.env`, falling back to `apps/engine/.env`):
+Environment variables (loaded strictly from `apps/free_llm_proxy/.env` to isolate secrets from `apps/engine/.env`):
 
 | Variable | Default | Meaning |
 | :--- | :--- | :--- |
@@ -175,9 +186,12 @@ Environment variables (loaded from `apps/free_llm_proxy/.env`, falling back to `
 | `STRATA_BASE_URL` | `http://localhost:8080/v1` | Local Strata OpenAI-compatible endpoint URL |
 | `ENABLE_STRATA` | `true` | Toggle inclusion of local Strata provider in proxy pool |
 | `CLOUD_MAX_OUTPUT_TOKENS` | `8192` | Output-token ceiling enforced on all non-Strata (cloud) routes; Strata is exempt |
-| `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool |
+| `GROQ_API_KEY`, `GEMINI_API_KEY_FREE`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool |
 
 `ENABLE_STRATA` is parsed leniently — `0`, `false`, and `no` (case-insensitive) disable the provider. When disabled, `load_providers_config()` removes the `strata` entry from the provider map entirely. When enabled, `STRATA_BASE_URL` overrides the `strata` provider's `base_url` at load time.
+
+> [!IMPORTANT]
+> The Gemini provider reads `GEMINI_API_KEY_FREE` (not `GEMINI_API_KEY`) so the proxy never inherits the engine's paid Gemini key. `config.py` loads only `apps/free_llm_proxy/.env` and no longer falls back to `apps/engine/.env`, keeping the free-tier credential set fully isolated.
 
 ---
 
@@ -213,7 +227,7 @@ docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
 ./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
 ```
 
-The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, graceful `503` handling of `httpx.RequestError` connection failures, and cloud output-token clamping (`test_max_tokens_unclamped_for_strata_and_clamped_for_cloud`). A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
+The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, graceful `503` handling of `httpx.RequestError` connection failures, cloud output-token clamping (`test_max_tokens_unclamped_for_strata_and_clamped_for_cloud`), unauthorized 401 audit logging (`test_unauthorized_call_is_logged_in_audit_db`), Gemini Pro→Flash coercion (`test_gemini_pro_model_is_coerced_to_free_flash`), and the `GEMINI_API_KEY_FREE` provider key (`test_gemini_uses_gemini_api_key_free`). A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
 
 ---
 

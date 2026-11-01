@@ -5,10 +5,9 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env file from app directory or engine directory
+# Load .env file strictly from app directory (never inherit engine keys)
 app_dir = Path(__file__).resolve().parent
 load_dotenv(app_dir / ".env")
-load_dotenv(app_dir.parent / "engine" / ".env")
 
 PORT = int(os.environ.get("PORT", "8086"))
 HOST = os.environ.get("HOST", "127.0.0.1")

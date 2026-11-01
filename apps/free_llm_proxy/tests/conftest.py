@@ -8,7 +8,7 @@ os.environ["FREE_PROXY_MASTER_KEY"] = "sk-test-master-key"
 os.environ["PORT"] = "8086"
 os.environ["SQLITE_DB_PATH"] = ":memory:"
 os.environ["GROQ_API_KEY"] = "gsk_test_key"
-os.environ["GEMINI_API_KEY"] = "gemini_test_key"
+os.environ["GEMINI_API_KEY_FREE"] = "gemini_test_key"
 os.environ["OPENROUTER_API_KEY"] = "or_test_key"
 
 

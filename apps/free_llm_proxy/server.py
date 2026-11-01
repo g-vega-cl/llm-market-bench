@@ -49,10 +49,36 @@ def extract_prompt_preview(messages: list[Any], max_length: int = 60) -> str | N
     return None
 
 
-def verify_master_key(authorization: str | None = Header(None)) -> None:
-    """Strictly validates Master API Key Bearer token."""
+def extract_client_info(request: Request | None) -> tuple[str, str]:
+    """Extracts client IP and User-Agent from Request."""
+    if not request:
+        return ("unknown", "unknown")
+    client_ip = (
+        request.headers.get("cf-connecting-ip")
+        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    user_agent = request.headers.get("user-agent", "unknown")
+    return (client_ip, user_agent)
+
+
+def verify_master_key(
+    authorization: str | None = Header(None),
+    request: Request | None = None,
+) -> None:
+    """Strictly validates Master API Key Bearer token and records 401 attempts."""
     expected_key = config.MASTER_KEY
     if not authorization or not authorization.startswith("Bearer "):
+        client_ip, user_agent = extract_client_info(request)
+        audit_db.log_call(
+            requested_model="unauthorized",
+            routed_provider="none",
+            routed_model="none",
+            status_code=401,
+            error_message="Invalid or missing master API key in Authorization header.",
+            client_ip=client_ip,
+            user_agent=user_agent,
+        )
         raise HTTPException(
             status_code=401,
             detail={
@@ -64,6 +90,16 @@ def verify_master_key(authorization: str | None = Header(None)) -> None:
         )
     provided_key = authorization.split("Bearer ", 1)[1].strip()
     if not secrets.compare_digest(provided_key, expected_key):
+        client_ip, user_agent = extract_client_info(request)
+        audit_db.log_call(
+            requested_model="unauthorized",
+            routed_provider="none",
+            routed_model="none",
+            status_code=401,
+            error_message="Unauthorized: Master API key does not match.",
+            client_ip=client_ip,
+            user_agent=user_agent,
+        )
         raise HTTPException(
             status_code=401,
             detail={
@@ -88,8 +124,11 @@ async def health_check() -> dict[str, Any]:
 
 
 @app.get("/v1/models")
-async def list_models(authorization: str | None = Header(None)) -> dict[str, Any]:
-    verify_master_key(authorization)
+async def list_models(
+    request: Request,
+    authorization: str | None = Header(None),
+) -> dict[str, Any]:
+    verify_master_key(authorization, request=request)
     active = router.get_active_providers()
     model_entries = []
 
@@ -126,8 +165,11 @@ async def list_models(authorization: str | None = Header(None)) -> dict[str, Any
 
 @app.get("/v1/metrics")
 @app.get("/stats")
-async def get_metrics(authorization: str | None = Header(None)) -> dict[str, Any]:
-    verify_master_key(authorization)
+async def get_metrics(
+    request: Request,
+    authorization: str | None = Header(None),
+) -> dict[str, Any]:
+    verify_master_key(authorization, request=request)
     db_metrics = audit_db.get_metrics()
     db_metrics["circuit_breaker"] = circuit_breaker.get_status_overview()
     return db_metrics
@@ -138,7 +180,7 @@ async def chat_completions(
     request: Request,
     authorization: str | None = Header(None),
 ) -> Response:
-    verify_master_key(authorization)
+    verify_master_key(authorization, request=request)
     raw_body = await request.json()
     try:
         req = ChatCompletionRequest(**raw_body)

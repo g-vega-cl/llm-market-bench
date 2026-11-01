@@ -860,3 +860,61 @@ def test_gemini_uses_gemini_api_key_free(monkeypatch):
     providers_cfg = config.load_providers_config()
     assert providers_cfg["providers"]["gemini"]["env_key"] == "GEMINI_API_KEY_FREE"
 
+
+def test_gemini_strictly_filters_out_legacy_models():
+    """Verify that Gemini router strips obsolete 1.5, 2.0, and 2.5 models."""
+    cb = CircuitBreaker()
+    router = Router(circuit_breaker=cb)
+
+    available_models = [
+        "models/gemini-1.5-flash",
+        "models/gemini-2.0-flash",
+        "models/gemini-2.5-flash",
+        "models/gemini-3.6-flash",
+        "models/gemini-flash-latest",
+    ]
+
+    # Asking for free-auto or generic flash must select flash-latest or 3.x flash, never 1.5/2.0/2.5
+    resolved = router.resolve_model_for_provider("gemini", "free-auto", available_models)
+    assert resolved in ("models/gemini-flash-latest", "gemini-flash-latest", "models/gemini-3.6-flash", "gemini-3.6-flash")
+    assert not any(v in resolved for v in ("1.5", "2.0", "2.5"))
+
+
+def test_resolved_model_has_no_wildcards():
+    """Verify that resolved models never contain raw asterisk wildcards even on empty catalogs."""
+    cb = CircuitBreaker()
+    router = Router(circuit_breaker=cb)
+
+    resolved = router.resolve_model_for_provider("gemini", "free-auto", [])
+    assert "*" not in resolved
+    assert resolved in ("gemini-flash-latest", "gemini-3.8-flash")
+
+
+def test_gemini_in_provider_cascade_on_503_spike(client, monkeypatch):
+    """Verify that if the primary Gemini model encounters HTTP 503, the proxy tries alternative Flash models before leaving Google."""
+    attempts = []
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        model = payload["model"]
+        attempts.append((provider_cfg.get("name"), model))
+        if model in ("gemini-flash-latest", "models/gemini-flash-latest", "gemini-3.8-flash"):
+            return 503, {"error": {"message": "High demand spike"}}, {}
+        if model in ("gemini-3.6-flash", "models/gemini-3.6-flash"):
+            return 200, {"choices": [{"message": {"content": "Cascade OK"}}], "usage": {}}, {}
+        return 200, {"choices": [{"message": {"content": "OK"}}], "usage": {}}, {}
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "gemini/gemini-flash-latest", "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["message"]["content"] == "Cascade OK"
+    # Ensure it tried the alternative flash model
+    assert any("gemini-3.6-flash" in att[1] for att in attempts)
+
+
+

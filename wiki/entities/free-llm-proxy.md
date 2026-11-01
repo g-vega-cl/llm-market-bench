@@ -81,16 +81,18 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 In both cases that provider is moved to the front of the candidate chain, with normal tiered failover behind it.
 
-### Gemini Free-Flash Coercion Guard
+### Gemini Free-Flash Dynamic Routing & Legacy Exclusion
 
-The `gemini` provider is restricted to the free Flash tier. `resolve_model_for_provider` enforces this at every resolution stage:
+The `gemini` provider is restricted to modern free Flash models (defaulting to Google's official dynamic alias `gemini-flash-latest` and the Gemini 3.x Flash series):
 
-- **Catalog pre-filter** — when `provider_id == "gemini"`, the discovered `available_models` list is first narrowed to entries containing `flash` (case-insensitive) before any pattern matching runs.
-- **Prefix resolution** — if a `provider/model` prefix resolves to a non-Flash Gemini model (e.g. `models/gemini-1.5-pro`), the router re-matches against the Flash-only candidate list, falling back to `models/gemini-3.8-flash` when the catalog is empty.
-- **Exact catalog match** — a requested model that exists in the catalog but is not a Flash variant is rejected from the exact-match path and coerced to a Flash candidate.
-- **Final safety gate** — after resolution, any Gemini model whose name does not contain `flash` is coerced to the best Flash candidate (or `models/gemini-3.8-flash`).
+- **Catalog pre-filter** — when `provider_id == "gemini"`, the discovered `available_models` list is narrowed to entries containing `flash` (case-insensitive) while strictly stripping obsolete 1.x and 2.x versions (`1.5`, `2.0`, `2.5`).
+- **Dynamic alias preference** — matches Google's official dynamic alias `gemini-flash-latest`, followed by `gemini-3.8-flash` and modern 3.x Flash models.
+- **Prefix resolution** — if a `provider/model` prefix resolves to a non-Flash or legacy Gemini model (e.g. `gemini/gemini-1.5-pro`), the router re-matches against the modern Flash candidate list, falling back to `gemini-flash-latest`.
+- **Exact catalog match** — a requested model that is a legacy or Pro model is rejected from the exact-match path and coerced to modern Flash.
+- **In-provider demand spike cascade** — if the bleeding-edge model (`gemini-flash-latest` or `gemini-3.8-flash`) encounters a temporary Google HTTP 503 high-demand spike or 429 rate limit, the proxy automatically attempts modern stable variants (`gemini-3.6-flash`, `gemini-3.5-flash`) before falling over to Groq.
+- **Wildcard sanitization** — all resolved model strings are stripped of raw pattern wildcards (`*`).
 
-This guarantees that a client requesting a paid Gemini Pro model is transparently served by a free Flash model instead of incurring cost or failing. It is verified by `test_gemini_pro_model_is_coerced_to_free_flash` in `apps/free_llm_proxy/tests/test_proxy.py`.
+This guarantees zero compute cost while preventing breaking changes when Google promotes new Flash iterations. Verified by `test_gemini_strictly_filters_out_legacy_models` and `test_gemini_in_provider_cascade_on_503_spike` in `apps/free_llm_proxy/tests/test_proxy.py`.
 
 ### Local Strata Targeting
 

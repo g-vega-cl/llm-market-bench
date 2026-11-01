@@ -264,6 +264,29 @@ async def chat_completions(
             stream=req.stream,
         )
 
+        # In-provider cascade for Gemini when high demand (503) or rate-limit (429) occurs
+        if p_id == "gemini" and status_code in (429, 503):
+            gemini_fallbacks = [
+                m
+                for m in [
+                    "gemini-flash-latest",
+                    "gemini-3.8-flash",
+                    "gemini-3.6-flash",
+                    "gemini-3.5-flash",
+                ]
+                if m != target_model and not target_model.endswith(m)
+            ]
+            for fallback_model in gemini_fallbacks:
+                payload["model"] = fallback_model
+                status_code, body_or_gen, resp_headers = await execute_completion(
+                    provider_cfg=p_cfg,
+                    payload=payload,
+                    stream=req.stream,
+                )
+                if status_code == 200:
+                    target_model = fallback_model
+                    break
+
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
 
         if status_code == 200:

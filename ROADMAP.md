@@ -62,6 +62,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - Benchify: get the smol server to do API calls 24/7 now that the DB is huge, and set up a distributed DB.
+- [ ] - Benchify: news scraper/news caller. I need a huge DB of news
+- [ ] - Benchify: audit news ingestion
 
 ---
 
@@ -122,6 +124,7 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
 - [ ] - Benchify: an autoresearch autoresearcher?
+- [ ] - Strata: 24/7 business fit researcher
 - [ ] **A programming/business buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 

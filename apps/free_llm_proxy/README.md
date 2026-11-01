@@ -9,8 +9,9 @@ A high-performance, model-agnostic OpenAI-compatible proxy that unifies free LLM
 - **Single Universal Endpoint**: Connect any OpenAI-compatible chat app, IDE, agent, or script to `http://localhost:8086/v1`.
 - **Dynamic Model-Agnostic Discovery**: Queries live provider `/v1/models` catalogs. No broken model strings when providers release or retire checkpoints.
 - **Smart Tiered Failover**:
-  - **Tier 1 (High Performance)**: Groq (ultra-fast 120B/27B), Gemini (Flash 3.8 / 2.5), Kilo Code (no key needed).
+  - **Tier 1 (High Performance)**: Groq (ultra-fast 120B/27B), Gemini (Flash Latest / 3.x Flash), Kilo Code (no key needed).
   - **Tier 2 (Fallback Pool)**: OVHcloud (anonymous EU), OpenRouter (17 `:free` models), NVIDIA NIM.
+- **Zero Hardcoded Model IDs**: Relies on dynamic runtime `/models` discovery, official dynamic provider aliases (`gemini-flash-latest`, `openrouter/free`), and virtual model aliases (`free-auto`, `strata-auto`) to insulate clients from model obsolescence.
 - **Circuit Breaker**: On HTTP 429 (rate limit) or 5xx downtime, automatically cools down the provider and retries next candidate seamlessly.
 - **Streaming & SSE**: Full pass-through token streaming (`stream: true`) with pre-flight failover protection.
 - **Reasoning Token Preservation**: Preserves `reasoning` and thinking blocks for thinking models (`gpt-oss-120b`, `flint`, `beam`).
@@ -29,7 +30,7 @@ Copy `.env.example` to `.env` (already initialized in `apps/free_llm_proxy/.env`
 PORT=8086
 FREE_PROXY_MASTER_KEY=sk-free-proxy-secret-key-12345
 GROQ_API_KEY=gsk_...
-GEMINI_API_KEY=...
+GEMINI_API_KEY_FREE=...
 OPENROUTER_API_KEY=...
 ```
 

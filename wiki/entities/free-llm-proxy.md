@@ -62,6 +62,18 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ---
 
+## Dynamic Model Discovery & Anti-Hardcoding Philosophy
+
+A foundational architectural principle of Free LLM Proxy is **zero hardcoded model pinning**:
+
+1. **Model Obsolescence Rate**: Frontier and fast-tier LLM models churn rapidly. Checkpoint names are sunset and replaced on weeks-long cadences (e.g., Google advancing from Gemini 1.5 to 2.0 to 3.x Flash, Groq updating Qwen and Llama checkpoints). Hardcoding specific model strings in clients or configurations creates constant maintenance friction, broken upstream calls, and silent degradation.
+2. **Dynamic Provider Catalog Ingestion (`discovery.py`)**: The proxy queries each active provider's live `/models` endpoint at runtime and caches the catalog. New models released by providers are immediately discovered and become available to the router without requiring code commits or proxy restarts.
+3. **Official Provider Dynamic Aliases**: Wherever an upstream provider supports an official moving pointer (such as Google's official `gemini-flash-latest` or OpenRouter's `openrouter/free`), the proxy targets the alias as the primary pattern. This ensures downstream callers automatically receive newly promoted versions without intervention.
+4. **Resilient In-Provider Fallback**: If an upstream bleeding-edge model experiences high-demand spikes (e.g. Google HTTP 503 on `gemini-flash-latest`), the proxy cascades down through adjacent active generation variants (e.g. `gemini-3.6-flash`, `gemini-3.5-flash`) before tripping circuit breakers.
+5. **Virtual Alias Abstraction**: Callers (such as the Pi agent or background prediction routines) consume generic virtual aliases (`free-auto`, `strata-auto`, `free-fast`, `free-reasoning`). Clients never specify brittle upstream IDs, allowing the routing engine to swap, balance, and heal underlying model targets transparently.
+
+---
+
 ## Model Resolution & Provider Targeting
 
 `Router.resolve_model_for_provider(provider_id, requested_model, available_models)` maps the client-supplied `model` string onto a concrete provider model ID. Resolution order:

@@ -23,6 +23,7 @@ from core.config import (
     logger,
 )
 from core.db import get_supabase_client
+from trading.conversational_explainer import process_pending_queue_item
 from trading.live_intraday_agent import (
     DEFAULT_CHEAP_PROXY_URL,
     DEFAULT_STRATA_URL,
@@ -198,6 +199,34 @@ async def _run_agent_loop(
             await asyncio.sleep(float(interval_seconds))
 
 
+async def run_qa_worker_loop(
+    sb_client: Any,
+    strata_url: str = DEFAULT_STRATA_URL,
+    cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    interval_seconds: int = 300,
+) -> None:
+    """Run the 5-minute background worker answering audience questions with conversational explainer."""
+    logger.info(f"Starting Conversational Desk QA worker loop (interval={interval_seconds}s)")
+    async with httpx.AsyncClient(timeout=35.0) as http_client:
+        while True:
+            try:
+                if sb_client:
+                    result = await process_pending_queue_item(
+                        sb_client=sb_client,
+                        http_client=http_client,
+                        strata_url=strata_url,
+                        cheap_proxy_url=cheap_proxy_url,
+                    )
+                    if result:
+                        logger.info(
+                            f"Answered audience inquiry from @{result.get('author')}: {result.get('message', '')[:60]}"
+                        )
+            except Exception:
+                logger.exception("Unexpected error in QA worker loop")
+
+            await asyncio.sleep(float(interval_seconds))
+
+
 async def run_loop(
     ticker: str = "SPY",
     interval_seconds: int = 300,
@@ -208,7 +237,7 @@ async def run_loop(
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
     continuous_24_7: bool = True,
 ) -> None:
-    """Run the continuous 24/7 daemon loop with concurrent 20s tape polling & SSE server."""
+    """Run the continuous 24/7 daemon loop with concurrent 20s tape polling, 5m trader, & 5m QA worker."""
     logger.info(
         f"Starting Live SPY Trader Daemon (ticker={ticker}, interval={interval_seconds}s, tape_interval={tape_interval_seconds}s, 24/7={continuous_24_7})"
     )
@@ -249,7 +278,15 @@ async def run_loop(
                 broadcaster=broadcaster,
             )
         )
-        await asyncio.gather(tape_task, agent_task)
+        qa_task = asyncio.create_task(
+            run_qa_worker_loop(
+                sb_client=sb_client,
+                strata_url=strata_url,
+                cheap_proxy_url=cheap_proxy_url,
+                interval_seconds=interval_seconds,
+            )
+        )
+        await asyncio.gather(tape_task, agent_task, qa_task)
     finally:
         if server:
             server.close()

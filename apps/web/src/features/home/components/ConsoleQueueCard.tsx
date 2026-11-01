@@ -48,7 +48,7 @@ export function ConsoleQueueCard({
         <div className="voxel-trough p-3 flex flex-col gap-2.5 border border-accent/20">
             <div className="flex flex-wrap items-center justify-between gap-1">
                 <span className="text-xs font-black uppercase tracking-wider text-accent">
-                    Audience Interactive Queue
+                    Audience Interactive Queue & Desk Explainer
                 </span>
                 <span className="text-xs font-mono text-boxel-muted">
                     {pendingCount > 0 ? `${pendingCount} in queue` : 'Queue open'}
@@ -56,8 +56,8 @@ export function ConsoleQueueCard({
             </div>
 
             <p className="text-xs text-boxel-muted leading-normal">
-                Submit questions or hypotheses to inject into the model&apos;s next 5-minute
-                thinking turn.
+                Ask the trader about past choices, current SPY positioning, or macroeconomic
+                hypotheses (e.g. &ldquo;What do you think will happen after midterms?&rdquo;).
             </p>
 
             {!user ? (
@@ -127,17 +127,17 @@ export function ConsoleQueueCard({
             )}
 
             {latestAnswered && (
-                <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-1 text-xs">
+                <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-1.5 text-xs">
                     <div className="flex items-center justify-between text-boxel-muted font-mono text-[10px]">
                         <span>Latest Answered Turn:</span>
                         <span>@{latestAnswered.display_name}</span>
                     </div>
-                    <div className="font-mono text-boxel-ink text-xs line-clamp-2">
+                    <div className="font-mono text-boxel-ink text-xs">
                         &ldquo;{latestAnswered.message}&rdquo;
                     </div>
                     {latestAnswered.agent_response && (
-                        <div className="text-accent text-[11px] leading-relaxed italic bg-accent/5 p-2 border border-accent/20">
-                            &ldquo;{latestAnswered.agent_response}&rdquo;
+                        <div className="text-boxel-ink text-[11px] leading-relaxed whitespace-pre-wrap break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono">
+                            {latestAnswered.agent_response}
                         </div>
                     )}
                 </div>

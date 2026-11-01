@@ -206,6 +206,33 @@ async def test_run_tape_poller_loop_polls_and_publishes():
         assert mock_db.called
 
 
+@pytest.mark.asyncio
+async def test_run_qa_worker_loop_processes_queue():
+    from trading.runner import run_qa_worker_loop
+
+    mock_sb = MagicMock()
+
+    async def mock_sleep(_dur):
+        raise asyncio.CancelledError()
+
+    with (
+        patch(
+            "trading.runner.process_pending_queue_item",
+            new=AsyncMock(return_value={"id": "q-1", "author": "Trader", "message": "Why hold cash?"}),
+        ) as mock_qa,
+        patch("asyncio.sleep", side_effect=mock_sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_qa_worker_loop(
+            sb_client=mock_sb,
+            strata_url="http://mock:8080",
+            cheap_proxy_url="http://mock:8086",
+            interval_seconds=300,
+        )
+
+        assert mock_qa.called
+
+
 def test_main_cli_once():
     with (
         patch.object(sys, "argv", ["runner.py", "--once", "--ticker", "SPY"]),

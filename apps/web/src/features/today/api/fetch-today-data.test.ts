@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { formatEasternTime } from '~/utils/date';
 
 // Module-level mock for Supabase client
 let mockSupabaseClient: Record<string, unknown> | null = null;
@@ -429,11 +430,12 @@ describe('fetchTodayData zero-load TDD checks', () => {
 
         const result = await fetchTodayData();
 
-        expect(result.macroLastUpdated).toBe('10:45 AM ET');
+        const expectedTime = formatEasternTime(`${estToday}T14:45:00Z`);
+        expect(result.macroLastUpdated).toBe(expectedTime);
         const spyStat = result.macroStats.find((s) => s.ticker === 'SPY');
         expect(spyStat).toBeDefined();
         expect(spyStat?.fetchedAt).toBe(`${estToday}T14:45:00Z`);
-        expect(spyStat?.formattedTime).toBe('10:45 AM ET');
+        expect(spyStat?.formattedTime).toBe(expectedTime);
     });
 
     it('handles midnight UTC or date-only fetched_at without formatting as misleading 8:00 PM ET', async () => {

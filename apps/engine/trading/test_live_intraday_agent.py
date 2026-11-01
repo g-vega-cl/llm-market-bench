@@ -340,7 +340,7 @@ async def test_fetch_intraday_bars_sort_descending_and_chronological():
 
 
 @pytest.mark.asyncio
-async def test_execute_intraday_agent_step_with_audience_queue():
+async def test_execute_intraday_agent_step_isolated_from_audience_queue():
     mock_alpaca_data = MagicMock()
     mock_alpaca_trade = MagicMock()
     mock_sb = MagicMock()
@@ -365,25 +365,6 @@ async def test_execute_intraday_agent_step_with_audience_queue():
         ),
         patch("trading.live_intraday_agent.aggregate_intraday_news", new=AsyncMock(return_value=[])),
     ):
-        # Queue item to return from pop_next_queue_item
-        queue_item = {
-            "id": "q-12345",
-            "user_id": "usr-999",
-            "display_name": "TraderAlex",
-            "message": "Is SPY rejecting VWAP or forming a bull flag on the 1m?",
-            "status": "pending",
-        }
-
-        # Mock sb.rpc or table queries
-        mock_rpc_resp = MagicMock()
-        mock_rpc_resp.data = [queue_item]
-        mock_sb.rpc.return_value.execute.return_value = mock_rpc_resp
-
-        mock_update_builder = MagicMock()
-        mock_sb.table.return_value.update.return_value = mock_update_builder
-        mock_update_builder.eq.return_value.execute.return_value = MagicMock()
-
-        # Mock LLM response
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -394,7 +375,7 @@ async def test_execute_intraday_agent_step_with_audience_queue():
                             {
                                 "action": "HOLD",
                                 "conviction": 65,
-                                "thought": "TraderAlex asked about a bull flag. Consolidating near VWAP $580.50.",
+                                "thought": "Consolidating near VWAP $580.50.",
                                 "allocation_pct": 0,
                                 "memories_consulted": ["mem-1"],
                             }
@@ -414,14 +395,10 @@ async def test_execute_intraday_agent_step_with_audience_queue():
         )
 
         assert result["action"] == "HOLD"
-        assert result.get("queue_item_id") == "q-12345"
+        assert result.get("queue_item_id") is None
 
-        # Verify prompt had the audience question
+        # Verify trader prompt NEVER contains untrusted audience questions
         posted_payload = mock_http.post.call_args[1]["json"]
         user_content = posted_payload["messages"][1]["content"]
-        assert "<audience_question" in user_content
-        assert "TraderAlex" in user_content
-        assert "Is SPY rejecting VWAP" in user_content
-
-        # Verify queue was updated
-        assert mock_sb.table.return_value.update.called
+        assert "<audience_question" not in user_content
+        assert "audience" not in user_content.lower()

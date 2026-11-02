@@ -26,6 +26,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: design rules cheat sheet to ground my design system
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
+- [ ] - Benchify: Add timestamp to the intraday thought trace and to comments.
+- [ ] - Benchify: Make sure boxes are the same size for design. And let's try to use at most 3 different font sizes and boldness combinations (eg. 14px - bold could be one of three combinations) through the site. Let's try to "standarize" as much as we can of the design with just the minimum amount of variation.
 
 ### Marketing & Building in Public
 

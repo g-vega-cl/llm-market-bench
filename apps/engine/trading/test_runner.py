@@ -252,3 +252,86 @@ def test_main_cli_loop():
     ):
         main()
         assert mock_run_loop.called
+
+
+@pytest.mark.asyncio
+async def test_synthesize_recent_news_updates_market_feeling():
+    from trading.runner import synthesize_recent_news
+
+    mock_sb = MagicMock()
+    mock_news_table = MagicMock()
+    mock_news_table.select.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "headline": "Jobs Report Beats Expectations with 250k Additions",
+                "source": "Alpaca Benzinga",
+                "event_timestamp": "2026-11-01T19:30:00Z",
+            },
+            {
+                "headline": "Semiconductor Sector Rallies on Hyperscaler Demand",
+                "source": "Polygon Wire",
+                "event_timestamp": "2026-11-01T19:40:00Z",
+            },
+        ]
+    )
+
+    mock_feeling_table = MagicMock()
+    mock_feeling_table.select.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "feeling_001"}]
+    )
+    mock_update_chain = MagicMock()
+    mock_feeling_table.update.return_value.eq.return_value = mock_update_chain
+
+    def table_router(table_name):
+        if table_name == "intraday_market_news":
+            return mock_news_table
+        if table_name == "market_feeling":
+            return mock_feeling_table
+        return MagicMock()
+
+    mock_sb.table.side_effect = table_router
+
+    mock_http = AsyncMock()
+
+    with patch(
+        "trading.runner.query_multi_tier_llm",
+        new=AsyncMock(return_value="Strong labor data and semiconductor resilience support risk-on momentum."),
+    ):
+        result = await synthesize_recent_news(
+            sb_client=mock_sb,
+            http_client=mock_http,
+            strata_url="http://mock:8080",
+            cheap_proxy_url="http://mock:8086",
+        )
+
+        assert result == "Strong labor data and semiconductor resilience support risk-on momentum."
+        mock_feeling_table.update.assert_called_with(
+            {"news_summary": "Strong labor data and semiconductor resilience support risk-on momentum."}
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_news_synthesis_worker_loop_triggers_synthesizer():
+    from trading.runner import run_news_synthesis_worker_loop
+
+    mock_sb = MagicMock()
+
+    async def mock_sleep(_dur):
+        raise asyncio.CancelledError()
+
+    with (
+        patch(
+            "trading.runner.synthesize_recent_news",
+            new=AsyncMock(return_value="Macro catalysts remain balanced."),
+        ) as mock_synth,
+        patch("asyncio.sleep", side_effect=mock_sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_news_synthesis_worker_loop(
+            sb_client=mock_sb,
+            strata_url="http://mock:8080",
+            cheap_proxy_url="http://mock:8086",
+            interval_seconds=1800,
+        )
+
+        assert mock_synth.called

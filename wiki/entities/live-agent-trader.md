@@ -27,21 +27,24 @@ Empty input returns a neutral snapshot (`vwap 0.0`, `rsi_14 50.0`, `trend NEUTRA
 ### 3. Multi-Source News and Deduplication
 - Implemented in `apps/engine/analysis/intraday_news_aggregator.py`.
 - Aggregates headlines across the Alpaca Benzinga wire (`fetch_alpaca_news`), Polygon reference news (`fetch_polygon_news`, `/v2/reference/news`), and Financial Modeling Prep stable stock news (`fetch_fmp_news`, `/stable/news/stock`).
+- `fetch_alpaca_news` accepts an optional client; when none is supplied it lazily constructs a `NewsClient` from `ALPACA_API_KEY`/`ALPACA_SECRET_KEY` (or explicit `api_key`/`secret_key` args).
+- Every normalized article carries `url`, `tickers`, and a deterministic `source_id_hash` (SHA-256 of `headline|source|event_timestamp[:19]`).
 - `normalize_headline` lowercases, strips punctuation, drops stopwords and tokens of length 2 or less; `deduplicate_news` then drops any article whose Jaccard word overlap with an already seen headline is greater than or equal to `similarity_threshold` (default 0.5).
-- `aggregate_intraday_news` fans the three providers out with `asyncio.gather(..., return_exceptions=True)`, keeps only list results, and returns the deduplicated combined feed. Each provider fails soft on missing keys, non-200 responses, or exceptions.
+- `aggregate_intraday_news` fans the three providers out with `asyncio.gather(..., return_exceptions=True)`, keeps only list results, and returns the deduplicated combined feed (backfilling `source_id_hash` on any item missing one). Each provider fails soft on missing keys, non-200 responses, or exceptions.
+- **Persistence**: `persist_intraday_news(news_items, sb_client=None)` upserts deduplicated items into `intraday_market_news` on `on_conflict="source_id_hash"`, stamping `jev_choice="MARKET_MOVING"` and `jev_confidence=75.0`. `execute_intraday_agent_step` calls it after aggregation so the continuous edge feed keeps the table populated (see [[entities/intraday-news]]).
 
 ### 4. Cascading LLM Inference and Network Topology
 `query_multi_tier_llm` implements a two-tier cascade:
 - **Tier 1 (Local Strata)**: Primary inference server at `STRATA_BASE_URL` (default `http://primary-workstation:8080/v1`), model `STRATA_MODEL` (default `orcarouter-qwen3.8-flash-next-uncensored-iq3_xxs`), 12s timeout. When running on the edge MiniPC server, Tailscale routes `primary-workstation:8080` to the developer machine.
 - **Tier 2 (Centralized CLVG Free Proxy)**: Fallback proxy at `FREE_LLM_PROXY_URL` (default `https://llm.clvg.uk/v1`), model `FREE_PROXY_MODEL` (default `free-auto`), 20s timeout, invoked on non-200, connection failure, or timeout. Requests are authenticated with an `Authorization: Bearer <master key>` header.
 - **Master Key Resolution**: `query_multi_tier_llm` accepts an optional `fallback_api_key` parameter that takes precedence over the ambient key. When it is not supplied, `_get_free_proxy_master_key()` resolves the key: it first reads the `FREE_PROXY_MASTER_KEY` environment variable, and if unset, falls back to parsing `FREE_PROXY_MASTER_KEY=` out of `apps/free_llm_proxy/.env` (checked at both `apps/free_llm_proxy/.env` and `../../apps/free_llm_proxy/.env` relative paths). If no key is found by either path, the fallback request is sent with **no** `Authorization` header at all rather than an empty bearer token, so the cascade still completes on clean CI runners and unprovisioned hosts.
-- **Configurable Token Budget**: `query_multi_tier_llm` accepts a `max_tokens` parameter (default `1200`) applied to both tiers, so callers can request longer responses — the conversational explainer passes `1500` for prose answers while the trader uses the default.
+- **Configurable Token Budget**: `query_multi_tier_llm` accepts a `max_tokens` parameter (default `1200`) applied to both tiers, so callers can request longer responses — the conversational explainer passes `1500` for prose answers, the news synthesizer passes `250`, while the trader uses the default.
 - **Terminal Fallback**: If both tiers fail, a neutral `HOLD` decision JSON is returned so the loop never crashes.
 
 ### 5. Agent Turn and Order Routing
 `execute_intraday_agent_step` runs one 5-minute turn. It is strictly isolated from audience input — the trader never sees untrusted user text (the audience Q&A is handled by the decoupled worker in [[entities/conversational-explainer]]):
 1. Fetch the rolling 120-minute tape and compute the technical snapshot.
-2. Aggregate deduplicated news for the ticker (5 per source).
+2. Aggregate deduplicated news for the ticker (5 per source) and persist it via `persist_intraday_news`.
 3. **Retrieve read-only grounding**: `retrieve_read_only_market_data(sb_client, query="", ticker, limit_per_domain=3)` in `apps/engine/trading/read_only_retriever.py` gathers cross-domain context using the production PostgreSQL table and column schemas:
    - `memories` — selects `id, content, importance_score, metadata`, filters with `ilike("content", "%<ticker>%")` (the `memories` table has no `ticker` column), ordered by `importance_score` descending.
    - `cause_and_effect` — selects `id, analysis, market_outcome, confidence, tags`, ordered by `created_at` descending.
@@ -53,13 +56,14 @@ Empty input returns a neutral snapshot (`vwap 0.0`, `rsi_14 50.0`, `trend NEUTRA
 4. Build a lean system prompt enforcing a strict JSON contract (`action`, `conviction`, `thought`, `allocation_pct`, `memories_consulted`) plus a user prompt with the tape snapshot, headlines, and grounding sections. No audience inquiry block is ever injected into the trader prompt.
 5. Parse the response with `_extract_json_decision`, which strips code fences, falls back to a greedy regex match, and finally to a neutral `HOLD`. On a failed JSON parse it now salvages the `thought` string via a targeted regex (un-escaping quotes/newlines) rather than dumping raw JSON, defaulting to `"Technical tape evaluated; maintaining disciplined position."` when no thought is recoverable.
 6. **Agency-Driven Sizing**: On `BUY` or `SELL`, the agent reads Alpaca paper cash and sizes `allocation_pct` into whole shares at the last close, then submits a `MarketOrderRequest` with `TimeInForce.DAY`.
-7. Persist the turn into `market_feeling` (`sentiment_label`, `confidence_score`, `why_explanation`, `market_direction`, `primary_concern` for RSI and trend, `secondary_concern` for VWAP, `trades_summary` payload with action, allocation, order id, technicals, memories, news count, bar count, model attribution, plus `queue_item_id` and `audience_question` — both now always `None` since the trader no longer dequeues audience questions). The `trades_summary` payload also carries the full `bars` array of real 1-minute candles, which is what the Home page chart renders from. The returned step result exposes `queue_item_id` (always `None`).
+7. Persist the turn into `market_feeling` (`sentiment_label`, `confidence_score`, `why_explanation`, `market_direction`, `primary_concern` for RSI and trend, `secondary_concern` for VWAP, `trades_summary` payload with action, allocation, order id, technicals, memories, news count, bar count, model attribution, plus `queue_item_id` and `audience_question` — both now always `None` since the trader no longer dequeues audience questions). When a `news_summary` argument is supplied or a cached synthesis exists (`get_latest_news_synthesis()`), the row also carries `news_summary`. The `trades_summary` payload also carries the full `bars` array of real 1-minute candles, which is what the Home page chart renders from. The returned step result exposes `queue_item_id` (always `None`).
 
 ### 6. Edge Daemon Runner and Deployment
 `apps/engine/trading/runner.py` drives the background loop:
 - `is_market_session_active`: Checks if current Eastern Time is Monday through Friday between 09:30 AM and 04:00 PM.
 - `calculate_seconds_to_market_open`: Calculates remaining seconds until the next 09:30 AM ET market open.
 - `run_loop(..., continuous_24_7=True)`: In 24/7 mode (the default) the loop never sleeps for the market close. When the session is closed it still runs an evaluation turn every 300 seconds, but passes `alpaca_trading_client=None` so paper order submission is skipped — the agent keeps analyzing news, reviewing memories, and answering audience questions. When the session is open the real trading client is passed and orders execute normally. Passing `--no-24-7` restores the legacy behavior of sleeping until the next market open.
+- **Concurrent Tasks**: `run_loop` gathers four concurrent tasks — `tape_task` (20s Alpaca tape poller + SSE broadcaster), `agent_task` (5-minute autonomous trader turn), `qa_task` (5-minute conversational explainer worker), and `news_synth_task` (30-minute AI news synthesis worker).
 - Dockerized in `docker/archive/Dockerfile.trader` and configured as `live-spy-trader` in `docker/archive/docker-compose.secondary.yml`.
 - `docker/archive/deploy_secondary.sh` syncs the runner, dependencies, and configuration to the edge MiniPC server (`cv-minipc@minipc`).
 
@@ -86,7 +90,15 @@ To provide instant live candlestick updates without draining client battery or r
 - RLS enabled with public `SELECT` for visitor queue visibility and `service_role` full access; `INSERT` is restricted to `service_role` execution via server functions validating Supabase Cloud session cookies.
 - **Architectural Decoupling**: Rather than injecting untrusted user text into the live trading runner's decision prompt, the audience queue is strictly decoupled into a dedicated **Conversational Desk Explainer** (`apps/engine/trading/conversational_explainer.py`, see [[entities/conversational-explainer]]). The autonomous trader evaluates tape, news, and benchmark grounding with zero audience input, while a concurrent 5-minute QA worker queries relevant memories, recent trades, and macroeconomic precedents to answer community inquiries in articulate Markdown prose.
 
-### 9. 30-Minute Audit Harness
+### 9. 30-Minute AI News Synthesis Worker
+`run_news_synthesis_worker_loop(sb_client, strata_url, cheap_proxy_url, interval_seconds=1800)` runs a background loop that keeps a rolling institutional market brief fresh:
+
+- **`synthesize_recent_news(...)`** reads the latest `limit` (default 15) rows from `intraday_market_news` ordered by `event_timestamp` descending, formats them as `- [source] headline` bullets, and prompts the two-tier cascade (`query_multi_tier_llm`, `max_tokens=250`) to produce a concise 2-3 sentence institutional intelligence summary highlighting dominant themes, sector rotation, or immediate risk catalysts.
+- The cleaned summary is cached in-process via `set_latest_news_synthesis()` (readable through `get_latest_news_synthesis()`) and written to the newest `market_feeling` row's `news_summary` column.
+- Empty results, missing news rows, or an `"All LLM endpoints currently unavailable"` fallback resolve to `None` (no write).
+- The loop is scheduled by `run_loop` as `news_synth_task` and its cadence is configurable via the `--news-interval` CLI flag (default `1800` seconds).
+
+### 10. 30-Minute Audit Harness
 `apps/engine/scripts/audit_30min_trader.py` is a standalone instrumented harness that exercises the live trader end-to-end against real feeds (Alpaca, Benzinga, Polygon, FMP stable, Supabase, and the multi-tier LLM cascade) and records per-turn metrics.
 
 - **Turn loop**: `run_30min_audit` computes `total_turns = total_minutes * 60 // turn_interval` (defaults: 30 minutes, 300s interval, ticker `SPY`) and calls `run_single_audit_turn` for each turn, sleeping `turn_interval` seconds between turns.

@@ -16,7 +16,7 @@ from typing import Any
 
 import httpx
 
-from analysis.intraday_news_aggregator import aggregate_intraday_news
+from analysis.intraday_news_aggregator import aggregate_intraday_news, generate_source_id_hash
 from core.config import (
     FMP_API_KEY,
     MASSIVE_API_KEY,
@@ -30,6 +30,62 @@ from trading.read_only_retriever import (
 
 DEFAULT_STRATA_URL = os.getenv("STRATA_BASE_URL", "http://localhost:8080/v1")
 DEFAULT_CHEAP_PROXY_URL = os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1")
+
+_LATEST_NEWS_SYNTHESIS: str | None = None
+
+
+def get_latest_news_synthesis() -> str | None:
+    """Return the most recently generated 30-minute AI news synthesis."""
+    return _LATEST_NEWS_SYNTHESIS
+
+
+def set_latest_news_synthesis(summary: str | None) -> None:
+    """Cache the most recently generated 30-minute AI news synthesis."""
+    global _LATEST_NEWS_SYNTHESIS
+    _LATEST_NEWS_SYNTHESIS = summary
+
+
+async def persist_intraday_news(news_items: list[dict[str, Any]], sb_client: Any = None) -> int:
+    """Persist deduplicated news items into public.intraday_market_news using upsert."""
+    if not news_items:
+        return 0
+
+    sb = sb_client or get_supabase_client()
+    if not sb:
+        return 0
+
+    to_insert = []
+    for item in news_items:
+        headline = item.get("headline", "").strip()
+        if not headline:
+            continue
+        source = item.get("source", "Unknown")
+        pub_time = item.get("published_at") or datetime.now(UTC).isoformat()
+        h = item.get("source_id_hash") or generate_source_id_hash(headline, source, pub_time)
+        to_insert.append(
+            {
+                "headline": headline,
+                "summary": item.get("summary") or "",
+                "source": source,
+                "url": item.get("url"),
+                "tickers": item.get("tickers") or [],
+                "event_timestamp": pub_time,
+                "jev_choice": "MARKET_MOVING",
+                "jev_confidence": 75.0,
+                "source_id_hash": h,
+            }
+        )
+
+    if not to_insert:
+        return 0
+
+    try:
+        sb.table("intraday_market_news").upsert(to_insert, on_conflict="source_id_hash").execute()
+        logger.info(f"Persisted {len(to_insert)} intraday news items to database.")
+        return len(to_insert)
+    except Exception as e:
+        logger.warning(f"Failed to upsert intraday news to database: {e}")
+        return 0
 
 
 def _get_free_proxy_master_key() -> str:
@@ -320,6 +376,7 @@ async def execute_intraday_agent_step(
     ticker: str = "SPY",
     strata_url: str = DEFAULT_STRATA_URL,
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    news_summary: str | None = None,
 ) -> dict[str, Any]:
     """Execute one 5-minute autonomous trading and reasoning turn."""
     sb = sb_client or get_supabase_client()
@@ -328,14 +385,17 @@ async def execute_intraday_agent_step(
     bars = await fetch_intraday_bars(alpaca_data_client, ticker=ticker, window_minutes=120)
     technicals = calculate_technical_snapshot(bars)
 
-    # 2. Gather deduplicated news
+    # 2. Gather deduplicated news and persist to database
     news_items = await aggregate_intraday_news(
+        alpaca_client=alpaca_data_client,
         http_client=http_client,
         massive_api_key=MASSIVE_API_KEY,
         fmp_api_key=FMP_API_KEY,
         symbols=ticker,
         limit_per_source=5,
     )
+    if news_items:
+        await persist_intraday_news(news_items, sb_client=sb)
 
     # 3. Fetch read-only market data grounding (memories, cause_and_effect, trades, decisions, barometer)
     grounding_data = await retrieve_read_only_market_data(
@@ -432,19 +492,22 @@ async def execute_intraday_agent_step(
     }
 
     try:
-        sb.table("market_feeling").insert(
-            {
-                "sentiment_label": sentiment_label,
-                "sentiment_emoji": "⚡",
-                "confidence_score": int(decision.get("conviction", 50)),
-                "why_explanation": decision.get("thought", ""),
-                "market_direction": market_direction,
-                "primary_concern": f"RSI: {technicals['rsi_14']} | Trend: {technicals['trend']}",
-                "secondary_concern": f"VWAP: ${technicals['vwap']:.2f}",
-                "trades_summary": trades_payload,
-                "model_used": "Strata / Cheap-LLM-Cascade",
-            }
-        ).execute()
+        feeling_insert = {
+            "sentiment_label": sentiment_label,
+            "sentiment_emoji": "⚡",
+            "confidence_score": int(decision.get("conviction", 50)),
+            "why_explanation": decision.get("thought", ""),
+            "market_direction": market_direction,
+            "primary_concern": f"RSI: {technicals['rsi_14']} | Trend: {technicals['trend']}",
+            "secondary_concern": f"VWAP: ${technicals['vwap']:.2f}",
+            "trades_summary": trades_payload,
+            "model_used": "Strata / Cheap-LLM-Cascade",
+        }
+        effective_summary = news_summary or get_latest_news_synthesis()
+        if effective_summary:
+            feeling_insert["news_summary"] = effective_summary
+
+        sb.table("market_feeling").insert(feeling_insert).execute()
     except Exception:
         logger.exception("Failed to persist intraday agent thought to market_feeling")
 

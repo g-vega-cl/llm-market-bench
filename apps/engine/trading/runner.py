@@ -30,6 +30,8 @@ from trading.live_intraday_agent import (
     execute_intraday_agent_step,
     fetch_active_candle,
     fetch_intraday_bars,
+    query_multi_tier_llm,
+    set_latest_news_synthesis,
 )
 from trading.tape_stream import (
     TapeBroadcaster,
@@ -227,10 +229,113 @@ async def run_qa_worker_loop(
             await asyncio.sleep(float(interval_seconds))
 
 
+async def synthesize_recent_news(
+    sb_client: Any = None,
+    http_client: httpx.AsyncClient | None = None,
+    strata_url: str = DEFAULT_STRATA_URL,
+    cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    limit: int = 15,
+) -> str | None:
+    """Synthesize recent breaking news items into a concise market intelligence brief.
+
+    Uses Tier 1 (local Strata) with fallback to Tier 2 (auto-strata free proxy).
+    Updates market_feeling.news_summary with the resulting text.
+    """
+    sb = sb_client or get_supabase_client()
+    if not sb:
+        return None
+
+    try:
+        resp = (
+            sb.table("intraday_market_news")
+            .select("headline, source, event_timestamp")
+            .order("event_timestamp", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        news_rows = resp.data or []
+    except Exception as e:
+        logger.warning(f"Failed to fetch recent intraday news for synthesis: {e}")
+        return None
+
+    if not news_rows:
+        return None
+
+    bullets = "\n".join(
+        [f"- [{r.get('source', 'Wire')}] {r.get('headline', '').strip()}" for r in news_rows if r.get("headline")]
+    )
+    if not bullets:
+        return None
+
+    prompt = (
+        "You are an institutional macro research analyst. "
+        "Synthesize the following recent breaking market news and macro headlines into a concise 2-3 sentence "
+        "intelligence summary highlighting dominant market themes, sector rotation, or immediate risk catalysts. "
+        "Avoid fluff or buzzwords; be direct, factual, and quantitative.\n\n"
+        f"### BREAKING HEADLINES (LAST 30 MINUTES):\n{bullets}\n\n"
+        "Summary:"
+    )
+
+    summary_text = await query_multi_tier_llm(
+        messages=[
+            {"role": "system", "content": "You are a concise institutional market analyst."},
+            {"role": "user", "content": prompt},
+        ],
+        strata_url=strata_url,
+        cheap_proxy_url=cheap_proxy_url,
+        http_client=http_client,
+        max_tokens=250,
+    )
+
+    clean_summary = summary_text.strip().strip('"').strip("'")
+    if not clean_summary or "All LLM endpoints currently unavailable" in clean_summary:
+        return None
+
+    set_latest_news_synthesis(clean_summary)
+
+    try:
+        latest_feeling = sb.table("market_feeling").select("id").order("created_at", desc=True).limit(1).execute()
+        if latest_feeling.data:
+            fid = latest_feeling.data[0]["id"]
+            sb.table("market_feeling").update({"news_summary": clean_summary}).eq("id", fid).execute()
+            logger.info(f"Updated market_feeling id={fid} with fresh 30m AI news synthesis.")
+    except Exception as e:
+        logger.warning(f"Failed to update latest market_feeling with news summary: {e}")
+
+    return clean_summary
+
+
+async def run_news_synthesis_worker_loop(
+    sb_client: Any,
+    strata_url: str = DEFAULT_STRATA_URL,
+    cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    interval_seconds: int = 1800,
+) -> None:
+    """Run the 30-minute background worker synthesizing recent breaking news using auto-strata."""
+    logger.info(f"Starting 30-minute AI News Synthesis worker loop (interval={interval_seconds}s)")
+    async with httpx.AsyncClient(timeout=35.0) as http_client:
+        while True:
+            try:
+                if sb_client:
+                    summary = await synthesize_recent_news(
+                        sb_client=sb_client,
+                        http_client=http_client,
+                        strata_url=strata_url,
+                        cheap_proxy_url=cheap_proxy_url,
+                    )
+                    if summary:
+                        logger.info(f"AI News Synthesis complete: {summary[:80]}...")
+            except Exception:
+                logger.exception("Unexpected error in news synthesis worker loop")
+
+            await asyncio.sleep(float(interval_seconds))
+
+
 async def run_loop(
     ticker: str = "SPY",
     interval_seconds: int = 300,
     tape_interval_seconds: int = 20,
+    news_interval_seconds: int = 1800,
     tape_port: int = 8090,
     enable_tape_server: bool = True,
     strata_url: str = DEFAULT_STRATA_URL,
@@ -286,7 +391,15 @@ async def run_loop(
                 interval_seconds=interval_seconds,
             )
         )
-        await asyncio.gather(tape_task, agent_task, qa_task)
+        news_synth_task = asyncio.create_task(
+            run_news_synthesis_worker_loop(
+                sb_client=sb_client,
+                strata_url=strata_url,
+                cheap_proxy_url=cheap_proxy_url,
+                interval_seconds=news_interval_seconds,
+            )
+        )
+        await asyncio.gather(tape_task, agent_task, qa_task, news_synth_task)
     finally:
         if server:
             server.close()
@@ -306,6 +419,12 @@ def main() -> None:
         type=int,
         default=20,
         help="Tape polling cadence in seconds (default: 20)",
+    )
+    parser.add_argument(
+        "--news-interval",
+        type=int,
+        default=1800,
+        help="Cadence for AI news synthesis in seconds (default: 1800)",
     )
     parser.add_argument(
         "--tape-port",
@@ -357,6 +476,7 @@ def main() -> None:
                 ticker=args.ticker,
                 interval_seconds=args.interval,
                 tape_interval_seconds=args.tape_interval,
+                news_interval_seconds=args.news_interval,
                 tape_port=args.tape_port,
                 enable_tape_server=not args.no_tape_server,
                 strata_url=args.strata_url,

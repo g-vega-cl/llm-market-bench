@@ -402,3 +402,37 @@ async def test_execute_intraday_agent_step_isolated_from_audience_queue():
         user_content = posted_payload["messages"][1]["content"]
         assert "<audience_question" not in user_content
         assert "audience" not in user_content.lower()
+
+
+@pytest.mark.asyncio
+async def test_persist_intraday_news_upserts_cleanly():
+    from trading.live_intraday_agent import persist_intraday_news
+
+    mock_sb = MagicMock()
+    mock_table = MagicMock()
+    mock_upsert = MagicMock()
+    mock_table.upsert.return_value = mock_upsert
+    mock_sb.table.return_value = mock_table
+
+    news_items = [
+        {
+            "headline": "Fed Holds Policy Rates Steady at 4.5%",
+            "summary": "FOMC keeps benchmark interest rate unchanged.",
+            "source": "Alpaca Benzinga",
+            "url": "https://benzinga.com/news/123",
+            "tickers": ["SPY", "TLT"],
+            "published_at": "2026-11-01T20:00:00Z",
+            "source_id_hash": "hash_fed_01",
+        }
+    ]
+
+    count = await persist_intraday_news(news_items, sb_client=mock_sb)
+    assert count == 1
+    mock_sb.table.assert_called_with("intraday_market_news")
+    mock_table.upsert.assert_called_once()
+    upsert_arg = mock_table.upsert.call_args[0][0]
+    assert len(upsert_arg) == 1
+    assert upsert_arg[0]["headline"] == "Fed Holds Policy Rates Steady at 4.5%"
+    assert upsert_arg[0]["tickers"] == ["SPY", "TLT"]
+    assert upsert_arg[0]["source_id_hash"] == "hash_fed_01"
+    assert mock_table.upsert.call_args[1]["on_conflict"] == "source_id_hash"

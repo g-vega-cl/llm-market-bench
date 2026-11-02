@@ -166,3 +166,68 @@ async def test_aggregate_intraday_news_combines_and_deduplicates():
     assert len(aggregated) == 2
     assert any("Microsoft" in item["headline"] for item in aggregated)
     assert any("Treasury Yields" in item["headline"] for item in aggregated)
+    assert all("source_id_hash" in item for item in aggregated)
+
+
+@pytest.mark.asyncio
+async def test_fetch_alpaca_news_includes_url_and_tickers():
+    mock_client = MagicMock()
+    mock_article = MagicMock()
+    mock_article.headline = "NVIDIA Hits New Record Ahead of Blackwell Shipments"
+    mock_article.created_at = "2026-11-01T18:00:00Z"
+    mock_article.summary = "Blackwell shipments ramp up."
+    mock_article.url = "https://benzinga.com/news/nvda"
+    mock_article.symbols = ["NVDA", "SPY"]
+    mock_client.get_news.return_value = MagicMock(data={"news": [mock_article]})
+
+    results = await fetch_alpaca_news(mock_client, limit=5, symbols="NVDA")
+    assert len(results) == 1
+    assert results[0]["url"] == "https://benzinga.com/news/nvda"
+    assert results[0]["tickers"] == ["NVDA", "SPY"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_polygon_news_includes_url_and_tickers():
+    mock_http = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "results": [
+            {
+                "title": "Amazon AWS Inks Defense Department Cloud Contract",
+                "published_utc": "2026-11-01T19:00:00Z",
+                "description": "Multi-billion dollar contract signed.",
+                "article_url": "https://polygon.io/news/amzn",
+                "tickers": ["AMZN", "SPY"],
+            }
+        ]
+    }
+    mock_http.get.return_value = mock_resp
+
+    results = await fetch_polygon_news(mock_http, api_key="test_key", limit=5)
+    assert len(results) == 1
+    assert results[0]["url"] == "https://polygon.io/news/amzn"
+    assert results[0]["tickers"] == ["AMZN", "SPY"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_fmp_news_includes_url_and_tickers():
+    mock_http = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {
+            "title": "Tesla Robotaxi Fleet Begins Texas Deployment",
+            "publishedDate": "2026-11-01 19:30:00",
+            "publisher": "Seeking Alpha",
+            "text": "Regulatory clearance achieved in Austin.",
+            "url": "https://seekingalpha.com/article/tsla",
+        }
+    ]
+    mock_http.get.return_value = mock_resp
+
+    results = await fetch_fmp_news(mock_http, api_key="test_key", symbols="TSLA", limit=5)
+    assert len(results) == 1
+    assert results[0]["url"] == "https://seekingalpha.com/article/tsla"
+    assert results[0]["tickers"] == ["TSLA"]
+    assert "T" in results[0]["published_at"]  # Normalized to ISO

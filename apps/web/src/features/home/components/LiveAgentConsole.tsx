@@ -212,7 +212,7 @@ export function LiveAgentConsole({
         <Card
             data-testid="live-agent-console"
             padding="md"
-            className="flex-1 basis-96 min-w-0 flex flex-col gap-4"
+            className="h-full min-w-0 flex flex-col gap-4"
         >
             <ConsoleHeaderRibbon
                 isMarketOpen={isMarketOpen}
@@ -226,7 +226,7 @@ export function LiveAgentConsole({
 
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
                 {currentAgentState.sentimentLabel && (
-                    <div className="text-base font-black text-boxel-ink tracking-tight">
+                    <div className="text-sm font-bold text-boxel-ink tracking-tight">
                         {currentAgentState.sentimentLabel}
                     </div>
                 )}
@@ -257,11 +257,13 @@ export function LiveAgentConsole({
             <SPYCandlestickChart bars={currentBars} trades={trades} height={320} />
 
             <div className="voxel-trough p-3.5 flex flex-col gap-2">
-                <div className="flex items-center justify-between text-xs font-black tracking-wider uppercase text-boxel-muted border-b border-boxel-bevel-hi/50 pb-1.5">
+                <div className="flex items-center justify-between text-xs font-normal tracking-wider uppercase text-boxel-muted border-b border-boxel-bevel-hi/50 pb-1.5">
                     <span>Intraday Thought Trace</span>
-                    <span className="text-accent">{currentAgentState.action} DECISION</span>
+                    <span className="text-accent font-bold">
+                        {currentAgentState.action} DECISION
+                    </span>
                 </div>
-                <div className="text-sm leading-relaxed text-boxel-ink">
+                <div className="text-xs font-normal leading-relaxed text-boxel-ink">
                     &quot;{currentAgentState.thought}&quot;
                 </div>
             </div>
@@ -277,7 +279,7 @@ export function LiveAgentConsole({
                 }}
             />
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-boxel-bevel-hi/50 text-[11px] font-mono text-boxel-muted">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-boxel-bevel-hi/50 text-xs font-normal font-mono text-boxel-muted">
                 <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     <span>Autonomous intraday paper execution.</span>
                     {currentAgentState.memoriesConsulted &&

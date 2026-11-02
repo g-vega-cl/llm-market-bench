@@ -33,26 +33,24 @@ export function StatPill({
             type="button"
             onClick={onClick}
             className={cn(
-                'flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-900 border rounded-full shadow-sm transition-all duration-300 cursor-pointer',
-                isActive
-                    ? 'border-zinc-900 dark:border-white shadow-md scale-105'
-                    : 'border-zinc-200 dark:border-zinc-800 hover:shadow-md hover:scale-105',
+                'voxel-btn rounded-none flex items-center gap-2 px-3 py-1.5 bg-boxel-surface transition-all duration-150 cursor-pointer',
+                isActive ? 'border-accent bg-boxel-elevated' : 'hover:bg-boxel-elevated',
                 className,
             )}
         >
-            <div className={cn('w-2 h-2 rounded-full shadow-lg', dotColorClass)} />
+            <div className={cn('w-2 h-2 rounded-none shrink-0', dotColorClass)} />
             <span
                 className={cn(
-                    'text-[10px] font-black uppercase tracking-wider',
-                    isActive ? 'text-zinc-900 dark:text-white' : 'text-zinc-400',
+                    'text-xs font-normal uppercase tracking-wider',
+                    isActive ? 'text-boxel-ink' : 'text-boxel-muted',
                 )}
             >
                 {label}
             </span>
             <span
                 className={cn(
-                    'text-sm font-black tabular-nums',
-                    isActive ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400',
+                    'text-sm font-bold tabular-nums',
+                    isActive ? 'text-accent' : 'text-boxel-ink',
                 )}
             >
                 {value}

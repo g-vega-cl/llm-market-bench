@@ -105,11 +105,11 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
         ref,
     ) => {
         const scheme = severity ?? colorScheme ?? 'neutral';
-        const base = 'voxel-badge inline-flex items-center font-black uppercase tracking-widest';
+        const base = 'voxel-badge inline-flex items-center font-bold uppercase tracking-wider';
         const sizeClasses = {
-            xs: 'px-1.5 py-0.5 text-[9px]',
-            sm: 'px-2 py-0.5 text-[10px]',
-            md: 'px-2.5 py-1 text-xs',
+            xs: 'px-1.5 py-0.5 text-sm',
+            sm: 'px-2 py-0.5 text-sm',
+            md: 'px-2.5 py-1 text-sm',
         }[size];
         const colorClasses = badgeColors[scheme]?.[variant] ?? badgeColors.neutral.soft;
         const radiusClasses = radiusMap[radius] ?? 'rounded-none';

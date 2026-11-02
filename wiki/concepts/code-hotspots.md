@@ -22,12 +22,12 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tests/test_daily_predictor.py` | 10 | 4 | 40.0% | 763 | 40 | **HIGH** |
 | `apps/engine/main.py` | 18 | 2 | 11.1% | 73 | 36 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.test.ts` | 8 | 4 | 50.0% | 540 | 32 | **HIGH** |
+| `apps/engine/trading/live_intraday_agent.py` | 10 | 3 | 30.0% | 470 | 30 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.ts` | 7 | 4 | 57.1% | 460 | 28 | **MEDIUM** |
+| `apps/engine/trading/test_live_intraday_agent.py` | 9 | 3 | 33.3% | 385 | 27 | **MEDIUM** |
 | `apps/engine/tests/test_docker_archive_secrets.py` | 5 | 5 | 100.0% | 98 | 25 | **MEDIUM** |
 | `apps/engine/tests/test_verify_skill.py` | 8 | 3 | 37.5% | 93 | 24 | **MEDIUM** |
 | `apps/web/src/routes/-__root.test.tsx` | 7 | 3 | 42.9% | 352 | 21 | **MEDIUM** |
-| `apps/engine/execution/daily_trading.py` | 7 | 3 | 42.9% | 304 | 21 | **MEDIUM** |
-| `apps/engine/tasks/daily_autoresearch.py` | 10 | 2 | 20.0% | 735 | 20 | **MEDIUM** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -42,6 +42,7 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/handlers/base.py` | 10 | 50% |
 | `apps/engine/core/llm/handlers/base.py` | `apps/engine/core/llm/tools.py` | 10 | 50% |
 | `apps/engine/autoresearch/researcher.py` | `apps/engine/core/llm/tools.py` | 10 | 48% |
+| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 9 | 100% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/tests/test_tools_consistency.py` | 9 | 60% |
 | `apps/engine/autoresearch/researcher.py` | `apps/engine/tests/test_tools_consistency.py` | 9 | 60% |
 | `apps/engine/core/llm/handlers/base.py` | `apps/engine/tests/test_tools_consistency.py` | 9 | 60% |
@@ -49,7 +50,6 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/engine/tests/test_tools_consistency.py` | `packages/config/tools.json` | 9 | 60% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/handlers/base.py` | 9 | 53% |
 | `apps/engine/autoresearch/researcher.py` | `packages/config/tools.json` | 9 | 53% |
-| `apps/engine/core/llm/handlers/base.py` | `packages/config/tools.json` | 9 | 53% |
 
 ## Usage Guidelines for LLM Agents
 

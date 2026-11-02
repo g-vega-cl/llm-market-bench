@@ -335,6 +335,28 @@
         font-family: var(--font-mono);
     }
 
+    /* Benchify Strict 3-Combination Typography Standard */
+    /* Tier 1: 18px Bold - Display / Headings / Primary Stat Values */
+    .type-heading {
+        font-size: 1.125rem;
+        line-height: 1.75rem;
+        font-weight: 700;
+    }
+
+    /* Tier 2: 14px Bold - Controls / Card Titles / Table Headers / Badges / Metric Labels */
+    .type-control {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        font-weight: 700;
+    }
+
+    /* Tier 3: 12px Normal - Body / Descriptions / Table Rows / Timestamps / Traces */
+    .type-body {
+        font-size: 0.75rem;
+        line-height: 1rem;
+        font-weight: 400;
+    }
+
     /* Gradient Utilities */
     .gradient-electric {
         background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);

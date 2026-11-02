@@ -107,8 +107,8 @@ function SPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
     const spWeek = benchmark.weekPct;
 
     return (
-        <div className="voxel-trough flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-xs">
-            <span className="font-black text-accent tracking-widest uppercase">
+        <div className="voxel-trough flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-xs font-normal">
+            <span className="font-bold text-accent tracking-wider uppercase">
                 S&P 500 Benchmark
             </span>
             <div className="flex items-center gap-4 font-mono">
@@ -157,7 +157,7 @@ function PortfoliosBlock({
                 <SectionHeading className="text-lg">Active Agent Portfolios</SectionHeading>
                 <Link
                     to="/portfolios"
-                    className="voxel-btn bg-boxel-elevated text-boxel-ink hover:text-accent px-3 py-1 text-xs font-black uppercase tracking-widest"
+                    className="voxel-btn bg-boxel-elevated text-boxel-ink hover:text-accent px-3 py-1 text-sm font-bold uppercase tracking-wider"
                 >
                     All Portfolios →
                 </Link>
@@ -165,15 +165,17 @@ function PortfoliosBlock({
 
             <SPInlineRow benchmark={benchmark} />
 
-            <div className="voxel-trough overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
+            <div className="voxel-trough overflow-x-auto flex-1">
+                <table className="w-full border-collapse text-left">
                     <thead>
-                        <tr className="border-b-2 border-boxel-bevel-hi bg-boxel-surface font-black text-boxel-muted">
-                            <th className="px-4 py-2.5 text-xs uppercase tracking-wider">Model</th>
-                            <th className="px-4 py-2.5 text-right text-xs uppercase tracking-wider">
+                        <tr className="border-b-2 border-boxel-bevel-hi bg-boxel-surface text-boxel-muted">
+                            <th className="px-4 py-2.5 text-sm font-bold uppercase tracking-wider">
+                                Model
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-sm font-bold uppercase tracking-wider">
                                 Equity
                             </th>
-                            <th className="px-4 py-2.5 text-right text-xs uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-right text-sm font-bold uppercase tracking-wider">
                                 Today / Wk
                             </th>
                         </tr>
@@ -222,16 +224,16 @@ export function HomePage({ data }: { data: HomePageData }) {
             <PageLayout maxWidth="xl">
                 <header className="mb-6 pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-black tracking-tight text-boxel-ink uppercase">
+                        <h1 className="text-lg font-bold tracking-tight text-boxel-ink uppercase">
                             Market Overview
                         </h1>
-                        <p className="text-xs text-boxel-muted font-mono mt-1">
+                        <p className="text-xs font-normal text-boxel-muted font-mono mt-1">
                             LIVE AUTONOMOUS LLM BENCHMARK • 24/7 TRADER &amp; SESSION LEADERBOARD
                         </p>
                     </div>
                 </header>
 
-                <div data-testid="dashboard" className="flex flex-wrap gap-6 items-start w-full">
+                <div data-testid="dashboard" className="flex flex-wrap gap-6 items-stretch w-full">
                     <div
                         data-testid="home-block-feeling"
                         className="flex-1 basis-96 min-w-0 flex flex-col"

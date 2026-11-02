@@ -127,11 +127,11 @@ function PortfolioCard({
             key={portfolio.id}
             to="/portfolios/$portfolioId"
             params={{ portfolioId: portfolio.id }}
-            className="block group h-full flex-1 basis-72 min-w-0"
+            className="block group h-full min-w-0"
         >
             <Card padding="md" isHoverable className="h-full flex flex-col">
                 <div className="flex justify-between items-start gap-2 mb-2">
-                    <h3 className="text-lg font-black capitalize text-boxel-ink group-hover:text-accent transition-colors">
+                    <h3 className="text-sm font-bold capitalize text-boxel-ink group-hover:text-accent transition-colors">
                         {portfolio.owner_id.replace(/-/g, ' ')}
                     </h3>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -149,17 +149,17 @@ function PortfolioCard({
                 </div>
 
                 {subtitle && (
-                    <p className="text-xs text-boxel-muted mb-3 font-medium">{subtitle}</p>
+                    <p className="text-xs font-normal text-boxel-muted mb-3">{subtitle}</p>
                 )}
 
                 <PortfolioBadges portfolio={portfolio} isSystem={isSystem} track={track} />
 
                 <div className="space-y-3 mt-auto">
                     <div className="voxel-trough p-3 flex items-baseline justify-between gap-2">
-                        <span className="text-xs font-black uppercase tracking-widest text-boxel-muted">
+                        <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted">
                             Total Equity
                         </span>
-                        <span className="text-xl font-black font-mono text-boxel-ink tabular-nums">
+                        <span className="text-sm font-bold font-mono text-boxel-ink tabular-nums">
                             $
                             {totalEquity.toLocaleString('en-US', {
                                 minimumFractionDigits: 2,
@@ -170,7 +170,7 @@ function PortfolioCard({
 
                     <div className="voxel-trough px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
                         <div>
-                            <span className="text-boxel-muted mr-1.5 uppercase font-sans font-bold">
+                            <span className="text-boxel-muted mr-1.5 uppercase font-sans font-normal">
                                 Cash
                             </span>
                             <span className="text-boxel-ink font-bold tabular-nums">
@@ -182,7 +182,7 @@ function PortfolioCard({
                         </div>
                         <span className="text-boxel-bevel-hi">|</span>
                         <div>
-                            <span className="text-boxel-muted mr-1.5 uppercase font-sans font-bold">
+                            <span className="text-boxel-muted mr-1.5 uppercase font-sans font-normal">
                                 Buying Power
                             </span>
                             <span className="text-boxel-ink font-bold tabular-nums">
@@ -371,7 +371,7 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                             {activeLlm.length} Models
                         </Badge>
                     </div>
-                    <div className="flex flex-wrap gap-6">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.72),1fr))] gap-6 items-stretch">
                         {activeLlm.map((portfolio) => (
                             <PortfolioCard
                                 key={portfolio.id}
@@ -393,7 +393,7 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                                 {activeSystematic.length} Rules
                             </Badge>
                         </div>
-                        <div className="flex flex-wrap gap-6">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.72),1fr))] gap-6 items-stretch">
                             {activeSystematic.map((portfolio) => (
                                 <PortfolioCard
                                     key={portfolio.id}

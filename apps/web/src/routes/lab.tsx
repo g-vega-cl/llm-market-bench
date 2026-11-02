@@ -173,10 +173,10 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
             <PageLayout maxWidth="xl">
                 <header className="mb-8 pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-black text-boxel-ink uppercase tracking-tight">
+                        <h1 className="text-lg font-bold text-boxel-ink uppercase tracking-tight">
                             Lab & Experimental Directory
                         </h1>
-                        <p className="text-sm text-boxel-muted mt-1">
+                        <p className="text-xs font-normal text-boxel-muted mt-1">
                             Direct access to research modules, telemetry inspectors, audits, and
                             archived models while we streamline the core benchmark.
                         </p>
@@ -186,19 +186,24 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
                     </Badge>
                 </header>
 
-                {/* Strictly 3 Category Blocks using intrinsic flex-wrap */}
-                <div className="flex flex-wrap gap-6 items-start">
+                {/* Strictly 3 Category Blocks using equal-height grid */}
+                <div
+                    data-testid="lab-category-grid"
+                    className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.80),1fr))] gap-6 items-stretch"
+                >
                     {LAB_CATEGORIES.map((category) => (
                         <Card
                             key={category.id}
                             padding="md"
-                            className="flex-1 basis-80 min-w-0 flex flex-col gap-4"
+                            className="h-full min-w-0 flex flex-col gap-4"
                         >
                             <div className="pb-3 border-b-2 border-boxel-bevel-hi">
                                 <SectionHeading className="text-lg">
                                     {category.title}
                                 </SectionHeading>
-                                <p className="text-xs text-boxel-muted mt-1">{category.subtitle}</p>
+                                <p className="text-xs font-normal text-boxel-muted mt-1">
+                                    {category.subtitle}
+                                </p>
                             </div>
 
                             <div className="flex flex-col gap-2.5">
@@ -212,11 +217,11 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
                                             <span className="font-bold text-sm text-boxel-ink group-hover:text-accent transition-colors">
                                                 {item.label}
                                             </span>
-                                            <span className="font-mono text-xs text-accent">
+                                            <span className="font-mono text-xs font-normal text-accent">
                                                 {item.to}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-boxel-muted leading-relaxed">
+                                        <p className="text-xs font-normal text-boxel-muted leading-relaxed">
                                             {item.description}
                                         </p>
                                     </Link>
@@ -225,9 +230,9 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
 
                             {/* Append Retired Portfolios inside Block 3 (Audits, Benchmarks & Retired Archives) */}
                             {category.id === 'audits-archives' && retiredPortfolios.length > 0 && (
-                                <div className="pt-3 border-t-2 border-boxel-bevel-hi">
+                                <div className="pt-3 border-t-2 border-boxel-bevel-hi mt-auto">
                                     <div className="flex items-center justify-between gap-2 mb-2">
-                                        <span className="text-xs font-black uppercase tracking-widest text-boxel-muted">
+                                        <span className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
                                             Retired Agent Archive
                                         </span>
                                         <Badge colorScheme="neutral" variant="soft" size="xs">
@@ -242,10 +247,10 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
                                                 params={{ portfolioId: p.id }}
                                                 className="voxel-trough px-3 py-2 flex items-center justify-between gap-2 hover:bg-boxel-elevated transition-colors"
                                             >
-                                                <span className="text-xs font-bold text-boxel-ink truncate">
+                                                <span className="text-xs font-normal text-boxel-ink truncate">
                                                     {p.owner_id ?? 'Retired Agent'}
                                                 </span>
-                                                <span className="font-mono text-xs text-boxel-muted shrink-0">
+                                                <span className="font-mono text-xs font-normal text-boxel-muted shrink-0">
                                                     $
                                                     {Number(p.total_equity ?? 0).toLocaleString(
                                                         'en-US',

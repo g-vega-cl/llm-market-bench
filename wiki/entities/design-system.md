@@ -16,6 +16,11 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 5. **Zero collapsibles or accordions**: Content that belongs on a page renders flat and visible immediately. Secondary telemetry lives in `/lab`.
 6. **Zero decorative emojis in UI chrome**: Section headers, metric labels, and buttons use crisp typography and square pixel indicators instead of emojis.
 7. **Sharp boxel geometry**: Corners use `rounded-none` with 2px directional bevels (`border-boxel-bevel-hi` on top and left, `border-boxel-bevel-lo` on right and bottom) and hard `4px 4px 0px` offset shadows.
+8. **Strict 3-combination typography budget**: The interface standardizes on at most 3 font size and boldness combinations across all chrome and content:
+   - **Tier 1 (Display & Headings)**: `18px Bold` (`text-lg font-bold`, `.type-heading`) for page titles (`h1`), `h2`, and `SectionHeading`.
+   - **Tier 2 (Controls & Cards)**: `14px Bold` (`text-sm font-bold`, `.type-control`) for buttons, card titles, table headers, badges, and prominent values.
+   - **Tier 3 (Content & Telemetry)**: `12px Normal` (`text-xs font-normal`, `.type-body`) for body copy, table cells, timestamps, and thought traces.
+9. **Standardized equal box sizing**: All cards inside grids and composite blocks enforce matched dimensions using fluid CSS Grid (`grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.72),1fr))]`) and `items-stretch` so boxes in a section share identical height and width without awkward trailing wraps.
 
 ## Matcha & Cedar / Cheddar palette tokens
 

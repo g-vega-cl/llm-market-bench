@@ -29,7 +29,7 @@ export function SectionHeading({
     return (
         <h2
             className={cn(
-                'text-2xl font-black text-boxel-ink flex items-center gap-3 text-display uppercase tracking-tight',
+                'text-lg font-bold text-boxel-ink flex items-center gap-2.5 text-display uppercase tracking-tight',
                 className,
             )}
         >

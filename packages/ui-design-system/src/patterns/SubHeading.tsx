@@ -27,8 +27,8 @@ export function SubHeading({
         <div className={cn('flex items-center gap-3 mb-6', className)}>
             <h2
                 className={cn(
-                    'font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight',
-                    uppercase ? 'text-sm uppercase tracking-wider' : 'text-xl',
+                    'text-sm font-bold text-boxel-ink tracking-tight',
+                    uppercase && 'uppercase tracking-wider',
                 )}
             >
                 {children}

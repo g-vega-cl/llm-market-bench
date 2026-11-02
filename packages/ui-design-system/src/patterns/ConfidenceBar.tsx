@@ -34,7 +34,7 @@ export function ConfidenceBar({
         <div className={cn('flex items-center gap-2', className)}>
             <span
                 className={cn(
-                    'text-[10px] font-black uppercase tracking-wider',
+                    'text-xs font-normal uppercase tracking-wider',
                     isHero ? 'text-boxel-ink' : 'text-boxel-muted',
                 )}
             >
@@ -58,7 +58,7 @@ export function ConfidenceBar({
             </div>
             <span
                 className={cn(
-                    'text-xs font-bold font-mono tabular-nums',
+                    'text-sm font-bold font-mono tabular-nums',
                     isHero ? 'text-boxel-ink' : 'text-boxel-ink',
                 )}
             >

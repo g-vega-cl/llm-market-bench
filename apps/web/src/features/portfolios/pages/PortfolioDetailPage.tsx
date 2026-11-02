@@ -106,9 +106,9 @@ export function PortfolioDetailPage({
     }
 
     return (
-        <div className="min-h-screen">
-            <PageLayout className="px-4 sm:px-6 md:px-12 py-8 md:py-12" withPadding={false}>
-                <header className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
+        <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+            <PageLayout className="px-4 py-8" withPadding={false}>
+                <header className="mb-8 flex flex-wrap items-end justify-between gap-6 pb-4 border-b-2 border-boxel-bevel-hi">
                     <div>
                         <div className="flex items-center gap-3">
                             <SectionHeading gradient="electric">
@@ -120,39 +120,39 @@ export function PortfolioDetailPage({
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-zinc-500 text-sm md:text-lg">
+                        <p className="text-boxel-muted text-xs font-normal mt-1">
                             Portfolio analysis and performance timeline.
                         </p>
                         <PortfolioLastUpdatedText timestamp={portfolio.last_updated_at} />
                     </div>
 
-                    <Card padding="md" className="flex gap-4 md:gap-8">
+                    <Card
+                        padding="md"
+                        className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.36),1fr))] gap-4 items-stretch min-w-72"
+                    >
                         <MetricTile
-                            icon="💰"
                             label="Total Equity"
                             value={`$${Number(portfolio.total_equity ?? portfolio.cash_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                         {todayPct !== null && (
                             <MetricTile
-                                icon={todayPct >= 0 ? '📈' : '📉'}
                                 label="Daily Move"
                                 value={`${todayPct >= 0 ? '+' : ''}${todayPct.toFixed(2)}%`}
                             />
                         )}
                         <MetricTile
-                            icon="💵"
                             label="Cash"
                             value={`$${Number(portfolio.cash_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
                 </header>
 
-                <div className="flex flex-col space-y-12">
+                <div className="flex flex-col gap-8">
                     <StrategyExplainer ownerId={portfolio.owner_id} />
 
                     {/* Performance Chart */}
                     <section>
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 w-full">
+                        <div className="flex flex-wrap items-center justify-between gap-4 mb-4 w-full">
                             <BenchmarkSelector
                                 selected={selectedBenchmark}
                                 onChange={setSelectedBenchmark}

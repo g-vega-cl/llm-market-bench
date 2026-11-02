@@ -84,7 +84,7 @@ export const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
         <th
             ref={ref}
             className={cn(
-                'px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400',
+                'px-4 py-3 text-sm font-bold uppercase tracking-wider text-boxel-muted',
                 align === 'center' && 'text-center',
                 align === 'right' && 'text-right',
                 className,
@@ -104,7 +104,7 @@ export const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
         <td
             ref={ref}
             className={cn(
-                'px-4 sm:px-6 py-3 sm:py-4 transition-colors',
+                'px-4 py-3 text-xs font-normal text-boxel-ink transition-colors',
                 align === 'center' && 'text-center',
                 align === 'right' && 'text-right',
                 className,

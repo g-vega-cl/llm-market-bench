@@ -122,7 +122,7 @@ export function NavLink({ to, label, exact }: { to: string; label: string; exact
             }}
             activeOptions={{ exact }}
             className={cn(
-                'voxel-btn py-1.5 text-xs font-black uppercase tracking-widest shrink-0',
+                'voxel-btn py-1.5 text-sm font-bold uppercase tracking-wider shrink-0',
                 isLogo ? 'px-2.5 font-mono' : 'px-3.5',
             )}
         >
@@ -226,14 +226,14 @@ export function RootDocument({ children }: { children: ReactNode }) {
                             {user ? (
                                 <Link
                                     to="/logout"
-                                    className="voxel-btn inline-flex items-center justify-center font-bold bg-boxel-trough text-danger hover:bg-danger/10 px-3 py-1.5 text-xs uppercase tracking-widest"
+                                    className="voxel-btn inline-flex items-center justify-center font-bold bg-boxel-trough text-danger hover:bg-danger/10 px-3 py-1.5 text-sm uppercase tracking-wider"
                                 >
                                     Logout
                                 </Link>
                             ) : (
                                 <Link
                                     to="/login"
-                                    className="voxel-btn inline-flex items-center justify-center font-bold bg-accent text-boxel-trough hover:bg-accent-hover px-3 py-1.5 text-xs uppercase tracking-widest"
+                                    className="voxel-btn inline-flex items-center justify-center font-bold bg-accent text-boxel-trough hover:bg-accent-hover px-3 py-1.5 text-sm uppercase tracking-wider"
                                 >
                                     Login
                                 </Link>

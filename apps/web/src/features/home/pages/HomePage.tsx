@@ -112,8 +112,8 @@ function SPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
                 S&P 500 Benchmark
             </span>
             <div className="flex items-center gap-4 font-mono">
-                <div>
-                    <span className="text-boxel-muted mr-1.5">Today</span>
+                <div className="flex items-center gap-1.5">
+                    <span className="text-boxel-muted">Today</span>
                     <span
                         className={
                             spToday >= 0 ? 'text-success font-bold' : 'text-danger font-bold'
@@ -124,8 +124,8 @@ function SPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
                     </span>
                 </div>
                 <span className="text-boxel-bevel-hi">|</span>
-                <div>
-                    <span className="text-boxel-muted mr-1.5">Week</span>
+                <div className="flex items-center gap-1.5">
+                    <span className="text-boxel-muted">Week</span>
                     <span
                         className={spWeek >= 0 ? 'text-success font-bold' : 'text-danger font-bold'}
                     >
@@ -221,13 +221,13 @@ export function HomePage({ data }: { data: HomePageData }) {
 
     return (
         <div className="min-h-screen w-full bg-boxel-canvas text-boxel-ink overflow-x-hidden">
-            <PageLayout maxWidth="xl">
-                <header className="mb-6 pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
-                    <div>
+            <PageLayout maxWidth="xl" className="flex flex-col gap-6">
+                <header className="pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
+                    <div className="flex flex-col gap-1">
                         <h1 className="text-lg font-bold tracking-tight text-boxel-ink uppercase">
                             Market Overview
                         </h1>
-                        <p className="text-xs font-normal text-boxel-muted font-mono mt-1">
+                        <p className="text-xs font-normal text-boxel-muted font-mono">
                             LIVE AUTONOMOUS LLM BENCHMARK • 24/7 TRADER &amp; SESSION LEADERBOARD
                         </p>
                     </div>

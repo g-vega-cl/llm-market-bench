@@ -142,9 +142,10 @@ describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
                 expect(cardElement.className).toContain('flex');
                 expect(cardElement.className).toContain('flex-col');
 
-                const metricsContainer = cardElement.querySelector('.space-y-3');
+                const metricsContainer = cardElement.querySelector('.mt-auto');
                 expect(metricsContainer).not.toBeNull();
                 expect(metricsContainer?.className).toContain('mt-auto');
+                expect(metricsContainer?.className).toContain('gap-3');
             }
         });
     });

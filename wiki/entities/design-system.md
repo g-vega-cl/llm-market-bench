@@ -48,7 +48,20 @@ Composable base components that handle styling and accessibility:
 
 - **Button**: Tactile `.voxel-btn` primitive with 2px raised bevels, sharp `rounded-none` corners, and physical `translate(2px, 2px)` click depression.
 - **Card**: Raised `.voxel-card` block with `rounded-none` geometry, stepped moss surface, and hard offset shadow.
-- **Badge**: Sharp `.voxel-badge` tag with optional square pixel dot indicator.
+- **Badge**: Sharp `.voxel-badge` tag with optional square pixel dot indicator. The base class carries `gap-1.5` so the dot and label are separated by container gap rather than a child `mr-1.5` margin. Every badge emits a `data-color-scheme` attribute (the resolved `severity ?? colorScheme ?? 'neutral'`) for test and styling hooks. Solid-variant dot colors are resolved from a dedicated `solidDotColors` map so the indicator always contrasts against the solid fill:
+
+  | Scheme | Solid dot color |
+  | :--- | :--- |
+  | `accent` | `bg-boxel-trough` |
+  | `success` | `bg-zinc-950` |
+  | `danger` | `bg-white` |
+  | `info` | `bg-white` |
+  | `warning` | `bg-zinc-950` |
+  | `neutral` | `bg-white dark:bg-zinc-950` |
+  | `high` | `bg-zinc-950` |
+  | `medium` | `bg-white` |
+
+  Non-solid variants keep the standard `dotColors` map. The `accent` solid fill uses `bg-accent text-boxel-trough` (never `text-white`) to satisfy the WCAG AAA contrast rule.
 - **Table**: Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container.
 - **Input**, **Label**, **Select**, **LoadingSpinner**: Standard form and status primitives.
 
@@ -63,9 +76,22 @@ Higher-level compound components for specific UI patterns:
 
 ## Layouts
 
-- **PageLayout**: Full-page container with max-width constraints.
+- **PageLayout**: Full-page container with max-width constraints. It accepts a `className` prop so pages can own vertical rhythm declaratively — e.g. `<PageLayout maxWidth="xl" className="flex flex-col gap-6">` or `className="px-4 py-8 flex flex-col gap-8"`. Page headers and sections then carry **no** `mb-*` margins; the parent's `gap` supplies all inter-block spacing.
 - **GlobalBackground**: Deep Forest Moss canvas with a subtle warm dot grid matrix.
 - **TodayStatusBar**: Slim sticky info bar for the Today view that filters out mechanical `sys-*` portfolios from AI buy and sell counts.
+
+## Gap-only flow in practice
+
+Composite views follow a strict parent-owns-spacing pattern:
+
+- Page shells: `<PageLayout className="flex flex-col gap-6">` (Home) or `gap-8` (Portfolios, Portfolio Detail, Lab).
+- Headers: `flex flex-col gap-1` for a title + subtitle stack, replacing `mt-1` / `mt-0.5` on the subtitle.
+- Sections: `flex flex-col gap-4` for a heading + content stack, replacing `mb-4` / `mb-6` on the heading row.
+- Cards: `Card className="h-full flex flex-col gap-3"` with the metrics block pinned via `mt-auto` (the only permitted margin anchor).
+- Inline stat pairs: `flex items-center gap-1.5` around a label + value, replacing `mr-1.5` on the label.
+- Card grids: `grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch` (Lab uses `minmax(min(100%,20rem),1fr)`).
+
+Neutral states use the `neutral` color scheme rather than `accent` — e.g. `LiveAgentConsole` renders a `NEUTRAL` market-direction badge with `colorScheme="neutral"` so it never inherits the Cheddar Gold action fill.
 
 ## Governance and verification protocol
 
@@ -74,6 +100,7 @@ Higher-level compound components for specific UI patterns:
 3. **Closed variant props**: Components must accept only design-system-defined variants and color schemes.
 4. **Fluent responsive layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72` and `basis-96`). See [[concepts/fluent-responsive-design]].
 5. **Cumulative layout shift prevention**: Enforce silent Suspense fallbacks (`fallback={null}`) and `keepPreviousData` on timeframe queries. See [[concepts/cumulative-layout-shift]].
+6. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` boxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` neutral badge scheme, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers.
 
 ## Related
 

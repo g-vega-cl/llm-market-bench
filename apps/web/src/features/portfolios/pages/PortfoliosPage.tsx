@@ -83,7 +83,7 @@ function PortfolioBadges({
     track: ReturnType<typeof getPortfolioTrack>;
 }) {
     return (
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        <div className="flex flex-wrap gap-1.5">
             {isSystem && (
                 <Badge variant="soft" size="xs" colorScheme="warning" showDot>
                     System
@@ -129,8 +129,8 @@ function PortfolioCard({
             params={{ portfolioId: portfolio.id }}
             className="block group h-full min-w-0"
         >
-            <Card padding="md" isHoverable className="h-full flex flex-col">
-                <div className="flex justify-between items-start gap-2 mb-2">
+            <Card padding="md" isHoverable className="h-full flex flex-col gap-3">
+                <div className="flex justify-between items-start gap-2">
                     <h3 className="text-sm font-bold capitalize text-boxel-ink group-hover:text-accent transition-colors">
                         {portfolio.owner_id.replace(/-/g, ' ')}
                     </h3>
@@ -148,13 +148,11 @@ function PortfolioCard({
                     </div>
                 </div>
 
-                {subtitle && (
-                    <p className="text-xs font-normal text-boxel-muted mb-3">{subtitle}</p>
-                )}
+                {subtitle && <p className="text-xs font-normal text-boxel-muted">{subtitle}</p>}
 
                 <PortfolioBadges portfolio={portfolio} isSystem={isSystem} track={track} />
 
-                <div className="space-y-3 mt-auto">
+                <div className="flex flex-col gap-3 mt-auto">
                     <div className="voxel-trough p-3 flex items-baseline justify-between gap-2">
                         <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted">
                             Total Equity
@@ -169,8 +167,8 @@ function PortfolioCard({
                     </div>
 
                     <div className="voxel-trough px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-                        <div>
-                            <span className="text-boxel-muted mr-1.5 uppercase font-sans font-normal">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-boxel-muted uppercase font-sans font-normal">
                                 Cash
                             </span>
                             <span className="text-boxel-ink font-bold tabular-nums">
@@ -181,8 +179,8 @@ function PortfolioCard({
                             </span>
                         </div>
                         <span className="text-boxel-bevel-hi">|</span>
-                        <div>
-                            <span className="text-boxel-muted mr-1.5 uppercase font-sans font-normal">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-boxel-muted uppercase font-sans font-normal">
                                 Buying Power
                             </span>
                             <span className="text-boxel-ink font-bold tabular-nums">
@@ -303,23 +301,23 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
 
     return (
         <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
-            <PageLayout maxWidth="xl">
-                <header className="mb-8 pb-4 border-b-2 border-boxel-bevel-hi">
+            <PageLayout maxWidth="xl" className="flex flex-col gap-8">
+                <header className="pb-4 border-b-2 border-boxel-bevel-hi flex flex-col gap-1">
                     <SectionHeading gradient="electric">Agent Portfolios</SectionHeading>
-                    <p className="text-boxel-muted text-sm mt-1">
+                    <p className="text-boxel-muted text-sm">
                         Live equity curves, active LLM agents, and systematic strategies.
                     </p>
                 </header>
 
                 {/* Block 1: Performance Comparison Chart */}
                 {hasComparison && (
-                    <section data-testid="portfolios-block-chart" className="mb-12">
-                        <div className="flex flex-wrap items-center justify-between gap-4 mb-4 w-full">
-                            <div>
+                    <section data-testid="portfolios-block-chart" className="flex flex-col gap-4">
+                        <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+                            <div className="flex flex-col gap-1">
                                 <SectionHeading gradient="success">
                                     Performance Comparison
                                 </SectionHeading>
-                                <p className="text-xs text-boxel-muted mt-1">
+                                <p className="text-xs text-boxel-muted">
                                     Normalized percentage returns over{' '}
                                     {timeframe === 'all'
                                         ? 'all available days'
@@ -364,14 +362,14 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                 )}
 
                 {/* Block 2: Active LLM Agents */}
-                <section data-testid="portfolios-block-llm" className="mb-12">
-                    <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b-2 border-boxel-bevel-hi">
+                <section data-testid="portfolios-block-llm" className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between gap-2 pb-2 border-b-2 border-boxel-bevel-hi">
                         <SectionHeading gradient="electric">Active LLM Agents</SectionHeading>
                         <Badge colorScheme="accent" variant="solid" size="xs">
                             {activeLlm.length} Models
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.72),1fr))] gap-6 items-stretch">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
                         {activeLlm.map((portfolio) => (
                             <PortfolioCard
                                 key={portfolio.id}
@@ -384,8 +382,11 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
 
                 {/* Block 3: Systematic Strategies */}
                 {activeSystematic.length > 0 && (
-                    <section data-testid="portfolios-block-systematic" className="mb-12">
-                        <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b-2 border-boxel-bevel-hi">
+                    <section
+                        data-testid="portfolios-block-systematic"
+                        className="flex flex-col gap-4"
+                    >
+                        <div className="flex items-center justify-between gap-2 pb-2 border-b-2 border-boxel-bevel-hi">
                             <SectionHeading gradient="catalyst">
                                 Systematic Strategies
                             </SectionHeading>
@@ -393,7 +394,7 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                                 {activeSystematic.length} Rules
                             </Badge>
                         </div>
-                        <div className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.72),1fr))] gap-6 items-stretch">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
                             {activeSystematic.map((portfolio) => (
                                 <PortfolioCard
                                     key={portfolio.id}

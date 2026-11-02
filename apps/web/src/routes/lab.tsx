@@ -170,13 +170,13 @@ function LabRouteComponent() {
 export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Portfolio[] }) {
     return (
         <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
-            <PageLayout maxWidth="xl">
-                <header className="mb-8 pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
-                    <div>
+            <PageLayout maxWidth="xl" className="flex flex-col gap-8">
+                <header className="pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
+                    <div className="flex flex-col gap-1">
                         <h1 className="text-lg font-bold text-boxel-ink uppercase tracking-tight">
                             Lab & Experimental Directory
                         </h1>
-                        <p className="text-xs font-normal text-boxel-muted mt-1">
+                        <p className="text-xs font-normal text-boxel-muted">
                             Direct access to research modules, telemetry inspectors, audits, and
                             archived models while we streamline the core benchmark.
                         </p>
@@ -189,7 +189,7 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
                 {/* Strictly 3 Category Blocks using equal-height grid */}
                 <div
                     data-testid="lab-category-grid"
-                    className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.80),1fr))] gap-6 items-stretch"
+                    className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6 items-stretch"
                 >
                     {LAB_CATEGORIES.map((category) => (
                         <Card
@@ -197,11 +197,11 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
                             padding="md"
                             className="h-full min-w-0 flex flex-col gap-4"
                         >
-                            <div className="pb-3 border-b-2 border-boxel-bevel-hi">
+                            <div className="pb-3 border-b-2 border-boxel-bevel-hi flex flex-col gap-1">
                                 <SectionHeading className="text-lg">
                                     {category.title}
                                 </SectionHeading>
-                                <p className="text-xs font-normal text-boxel-muted mt-1">
+                                <p className="text-xs font-normal text-boxel-muted">
                                     {category.subtitle}
                                 </p>
                             </div>
@@ -211,9 +211,9 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
                                     <Link
                                         key={item.to}
                                         to={item.to}
-                                        className="voxel-trough p-3 block hover:bg-boxel-elevated transition-colors group"
+                                        className="voxel-trough p-3 flex flex-col gap-1 hover:bg-boxel-elevated transition-colors group"
                                     >
-                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                        <div className="flex items-center justify-between gap-2">
                                             <span className="font-bold text-sm text-boxel-ink group-hover:text-accent transition-colors">
                                                 {item.label}
                                             </span>
@@ -230,8 +230,8 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
 
                             {/* Append Retired Portfolios inside Block 3 (Audits, Benchmarks & Retired Archives) */}
                             {category.id === 'audits-archives' && retiredPortfolios.length > 0 && (
-                                <div className="pt-3 border-t-2 border-boxel-bevel-hi mt-auto">
-                                    <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="pt-3 border-t-2 border-boxel-bevel-hi mt-auto flex flex-col gap-2">
+                                    <div className="flex items-center justify-between gap-2">
                                         <span className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
                                             Retired Agent Archive
                                         </span>

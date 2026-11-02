@@ -22,7 +22,7 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 const badgeColors: Record<string, Record<string, string>> = {
     accent: {
-        solid: 'bg-accent text-white',
+        solid: 'bg-accent text-boxel-trough',
         soft: 'bg-accent/20 text-accent',
         outline: 'border border-accent/30 text-accent',
         glass: 'bg-white/5 border border-white/10 text-white/70',
@@ -82,6 +82,17 @@ const dotColors: Record<string, string> = {
     medium: 'bg-info',
 };
 
+const solidDotColors: Record<string, string> = {
+    accent: 'bg-boxel-trough',
+    success: 'bg-zinc-950',
+    danger: 'bg-white',
+    info: 'bg-white',
+    warning: 'bg-zinc-950',
+    neutral: 'bg-white dark:bg-zinc-950',
+    high: 'bg-zinc-950',
+    medium: 'bg-white',
+};
+
 const radiusMap: Record<string, string> = {
     none: 'rounded-none',
     full: 'rounded-none',
@@ -105,7 +116,8 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
         ref,
     ) => {
         const scheme = severity ?? colorScheme ?? 'neutral';
-        const base = 'voxel-badge inline-flex items-center font-bold uppercase tracking-wider';
+        const base =
+            'voxel-badge inline-flex items-center gap-1.5 font-bold uppercase tracking-wider';
         const sizeClasses = {
             xs: 'px-1.5 py-0.5 text-sm',
             sm: 'px-2 py-0.5 text-sm',
@@ -113,20 +125,20 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
         }[size];
         const colorClasses = badgeColors[scheme]?.[variant] ?? badgeColors.neutral.soft;
         const radiusClasses = radiusMap[radius] ?? 'rounded-none';
+        const dotColorClass =
+            variant === 'solid'
+                ? (solidDotColors[scheme] ?? 'bg-white')
+                : (dotColors[scheme] ?? dotColors.neutral);
 
         return (
             <span
                 ref={ref}
+                data-color-scheme={scheme}
                 className={cn(base, radiusClasses, sizeClasses, colorClasses, className)}
                 {...props}
             >
                 {showDot && (
-                    <span
-                        className={cn(
-                            'mr-1.5 h-1.5 w-1.5 shrink-0 rounded-none',
-                            dotColors[scheme] ?? dotColors.neutral,
-                        )}
-                    />
+                    <span className={cn('h-1.5 w-1.5 shrink-0 rounded-none', dotColorClass)} />
                 )}
                 {children}
             </span>

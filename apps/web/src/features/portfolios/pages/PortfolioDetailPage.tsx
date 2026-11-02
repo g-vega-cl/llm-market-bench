@@ -48,7 +48,7 @@ interface PortfolioDetailPageProps {
 function PortfolioLastUpdatedText({ timestamp }: { timestamp?: string | null }) {
     if (!timestamp) return null;
     return (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-mono">
+        <p className="text-xs text-boxel-muted font-mono">
             Last updated: {formatEasternDateTime(timestamp)}
         </p>
     );
@@ -107,9 +107,9 @@ export function PortfolioDetailPage({
 
     return (
         <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
-            <PageLayout className="px-4 py-8" withPadding={false}>
-                <header className="mb-8 flex flex-wrap items-end justify-between gap-6 pb-4 border-b-2 border-boxel-bevel-hi">
-                    <div>
+            <PageLayout className="px-4 py-8 flex flex-col gap-8" withPadding={false}>
+                <header className="flex flex-wrap items-end justify-between gap-6 pb-4 border-b-2 border-boxel-bevel-hi">
+                    <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-3">
                             <SectionHeading gradient="electric">
                                 {portfolio.owner_id.replace(/-/g, ' ')}
@@ -120,7 +120,7 @@ export function PortfolioDetailPage({
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-boxel-muted text-xs font-normal mt-1">
+                        <p className="text-boxel-muted text-xs font-normal">
                             Portfolio analysis and performance timeline.
                         </p>
                         <PortfolioLastUpdatedText timestamp={portfolio.last_updated_at} />
@@ -128,7 +128,7 @@ export function PortfolioDetailPage({
 
                     <Card
                         padding="md"
-                        className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.36),1fr))] gap-4 items-stretch min-w-72"
+                        className="grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.36),1fr))] gap-4 items-stretch w-full"
                     >
                         <MetricTile
                             label="Total Equity"
@@ -151,8 +151,8 @@ export function PortfolioDetailPage({
                     <StrategyExplainer ownerId={portfolio.owner_id} />
 
                     {/* Performance Chart */}
-                    <section>
-                        <div className="flex flex-wrap items-center justify-between gap-4 mb-4 w-full">
+                    <section className="flex flex-col gap-4">
+                        <div className="flex flex-wrap items-center justify-between gap-4 w-full">
                             <BenchmarkSelector
                                 selected={selectedBenchmark}
                                 onChange={setSelectedBenchmark}
@@ -186,14 +186,14 @@ export function PortfolioDetailPage({
                     )}
 
                     {/* Positions Table */}
-                    <section>
+                    <section className="flex flex-col gap-4">
                         <SectionHeading gradient="electric">Current Positions</SectionHeading>
                         <PositionsTable positions={positions} themes={themes} trades={trades} />
                     </section>
 
                     {/* Recent Trades Table */}
-                    <section>
-                        <div className="flex items-center justify-between mb-6">
+                    <section className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
                             <SectionHeading gradient="success">Recent Trades</SectionHeading>
                             <Badge variant="soft" size="sm" colorScheme="neutral">
                                 Audit Trail

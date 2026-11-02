@@ -62,16 +62,16 @@ function ConsoleHeaderRibbon({
             ? 'success'
             : marketDirection === 'BEARISH'
               ? 'danger'
-              : 'accent';
+              : 'neutral';
 
     const actionBadgeScheme =
         action === 'BUY' ? 'success' : action === 'SELL' ? 'danger' : 'neutral';
 
     return (
         <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-boxel-bevel-hi">
-            <div>
+            <div className="flex flex-col gap-1">
                 <SectionHeading className="text-lg">24/7 Autonomous SPY Trader</SectionHeading>
-                <div className="flex items-center gap-2 text-xs font-mono text-boxel-muted mt-0.5">
+                <div className="flex items-center gap-2 text-xs font-mono text-boxel-muted">
                     <span className="flex items-center gap-1.5">
                         <span
                             className={`h-2 w-2 rounded-none ${

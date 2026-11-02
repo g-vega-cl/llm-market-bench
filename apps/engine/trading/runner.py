@@ -284,7 +284,7 @@ async def synthesize_recent_news(
         strata_url=strata_url,
         cheap_proxy_url=cheap_proxy_url,
         http_client=http_client,
-        max_tokens=250,
+        max_tokens=800,
     )
 
     clean_summary = summary_text.strip().strip('"').strip("'")
@@ -313,7 +313,7 @@ async def run_news_synthesis_worker_loop(
 ) -> None:
     """Run the 30-minute background worker synthesizing recent breaking news using auto-strata."""
     logger.info(f"Starting 30-minute AI News Synthesis worker loop (interval={interval_seconds}s)")
-    async with httpx.AsyncClient(timeout=35.0) as http_client:
+    async with httpx.AsyncClient(timeout=45.0) as http_client:
         while True:
             try:
                 if sb_client:

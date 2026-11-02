@@ -46,7 +46,7 @@ Renders the grounding dict into lean Markdown sections for the LLM:
 
 ### `answer_audience_question(query, author, grounding, http_client, strata_url, cheap_proxy_url)`
 
-Builds a **Chief Market Strategist** system prompt (explicitly instructing Markdown prose, no JSON) plus a user prompt containing the audience inquiry and formatted grounding, then calls `query_multi_tier_llm` with `max_tokens=1500`. The two-tier cascade (local Strata → centralized free proxy) is inherited from [[entities/live-agent-trader]].
+Builds a **Chief Market Strategist** system prompt (explicitly instructing Markdown prose, no JSON) plus a user prompt containing the audience inquiry and formatted grounding, then calls `query_multi_tier_llm` with `max_tokens=16384` (`EXPLAINER_MAX_TOKENS`) and `reasoning_budget_tokens=12288` (`EXPLAINER_REASONING_BUDGET`). This unconstrained headroom ensures reasoning models (such as Strata ORCA, Gemini Flash, or DeepSeek R1) have ample budget for multi-thousand token chain-of-thought deliberation without truncating the visible Markdown commentary. The two-tier cascade (local Strata with 45s runway → centralized free proxy with 75s fallback) is inherited from [[entities/live-agent-trader]] and wrapped in a 120-second worker client timeout.
 
 ### LLM Outage Fallback (`FALLBACK_DESK_PROSE` / `is_llm_outage_fallback`)
 

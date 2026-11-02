@@ -209,7 +209,7 @@ async def run_qa_worker_loop(
 ) -> None:
     """Run the 5-minute background worker answering audience questions with conversational explainer."""
     logger.info(f"Starting Conversational Desk QA worker loop (interval={interval_seconds}s)")
-    async with httpx.AsyncClient(timeout=90.0) as http_client:
+    async with httpx.AsyncClient(timeout=120.0) as http_client:
         while True:
             try:
                 if sb_client:

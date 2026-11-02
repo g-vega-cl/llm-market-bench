@@ -21,7 +21,7 @@ ENABLE_STRATA = os.environ.get("ENABLE_STRATA", "true").lower() not in {
     "false",
     "no",
 }
-CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "8192"))
+CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "16384"))
 
 
 def load_providers_config() -> dict:

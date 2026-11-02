@@ -264,6 +264,10 @@ def is_llm_outage_fallback(text: str | None) -> bool:
     return trimmed.startswith("{") and '"action"' in trimmed
 
 
+EXPLAINER_MAX_TOKENS = 16384
+EXPLAINER_REASONING_BUDGET = 12288
+
+
 async def answer_audience_question(
     query: str,
     author: str = "Analyst",
@@ -300,7 +304,8 @@ async def answer_audience_question(
         strata_url=strata_url,
         cheap_proxy_url=cheap_proxy_url,
         http_client=http_client,
-        max_tokens=1500,
+        max_tokens=EXPLAINER_MAX_TOKENS,
+        reasoning_budget_tokens=EXPLAINER_REASONING_BUDGET,
     )
     trimmed = response.strip() if response else ""
     if is_llm_outage_fallback(trimmed):

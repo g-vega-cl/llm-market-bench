@@ -246,8 +246,10 @@ async def chat_completions(
         payload = dict(raw_body)
         payload["model"] = target_model
 
-        # Cloud free-tier providers enforce an 8k token limit; clamp when routing to cloud
+        # Cloud free-tier providers enforce an output token limit; clamp when routing to cloud
         if p_id != "strata":
+            # Strip Strata-specific kwargs that cloud gateways (Gemini, OVHCloud) reject with 400
+            payload.pop("reasoning_budget_tokens", None)
             if "max_tokens" in payload and payload["max_tokens"] is not None:
                 if payload["max_tokens"] > config.CLOUD_MAX_OUTPUT_TOKENS:
                     payload["max_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS

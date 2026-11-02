@@ -80,8 +80,12 @@ async def test_query_multi_tier_llm_strata_success():
     data = json.loads(result)
     assert data["action"] == "BUY"
     assert data["conviction"] == 85
-    # Strata was called on the first try
+    # Strata was called on the first try with 45s runway and 16k/12k headroom
     assert "localhost:8080" in mock_http.post.call_args_list[0][0][0]
+    strata_call = mock_http.post.call_args_list[0][1]
+    assert strata_call["timeout"] == 45.0
+    assert strata_call["json"]["max_tokens"] == 16384
+    assert strata_call["json"]["reasoning_budget_tokens"] == 12288
 
 
 @pytest.mark.asyncio
@@ -132,6 +136,9 @@ async def test_query_multi_tier_llm_fallback_to_cheap_proxy():
     assert data["action"] == "HOLD"
     assert data["conviction"] == 60
     assert len(mock_http.post.call_args_list) == 2
+    fallback_call = mock_http.post.call_args_list[1][1]
+    assert fallback_call["json"]["max_tokens"] == 16384
+    assert fallback_call["json"]["model"] == "free-auto"
 
     # Verify fallback call headers and model
     fallback_call = mock_http.post.call_args_list[1]

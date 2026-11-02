@@ -210,25 +210,30 @@ async def query_multi_tier_llm(
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
     fallback_api_key: str | None = None,
     http_client: httpx.AsyncClient | None = None,
-    max_tokens: int = 1200,
+    max_tokens: int = 16384,
+    reasoning_budget_tokens: int | None = 12288,
+    strata_timeout: float = 45.0,
+    fallback_timeout: float = 75.0,
 ) -> str:
     """Query local Strata first, falling back cleanly to the free proxy."""
     should_close = False
     if http_client is None:
-        http_client = httpx.AsyncClient(timeout=90.0)
+        http_client = httpx.AsyncClient(timeout=120.0)
         should_close = True
 
     try:
         # Tier 1: Local Strata
         try:
             url_strata = f"{strata_url.rstrip('/')}/chat/completions"
-            payload = {
+            payload: dict[str, Any] = {
                 "model": os.getenv("STRATA_MODEL", "orcarouter-qwen3.8-flash-next-uncensored-iq3_xxs"),
                 "messages": messages,
                 "temperature": 0.3,
                 "max_tokens": max_tokens,
             }
-            resp = await http_client.post(url_strata, json=payload, timeout=12.0)
+            if reasoning_budget_tokens is not None:
+                payload["reasoning_budget_tokens"] = reasoning_budget_tokens
+            resp = await http_client.post(url_strata, json=payload, timeout=strata_timeout)
             if resp.status_code == 200:
                 data = resp.json()
                 return data["choices"][0]["message"]["content"]
@@ -239,7 +244,7 @@ async def query_multi_tier_llm(
         # Tier 2: CLVG Free Proxy
         try:
             url_fallback = f"{cheap_proxy_url.rstrip('/')}/chat/completions"
-            payload_fallback = {
+            payload_fallback: dict[str, Any] = {
                 "model": os.getenv("FREE_PROXY_MODEL", "free-auto"),
                 "messages": messages,
                 "temperature": 0.3,
@@ -247,7 +252,9 @@ async def query_multi_tier_llm(
             }
             master_key = fallback_api_key or _get_free_proxy_master_key()
             headers = {"Authorization": f"Bearer {master_key}"} if master_key else {}
-            resp = await http_client.post(url_fallback, json=payload_fallback, headers=headers, timeout=75.0)
+            resp = await http_client.post(
+                url_fallback, json=payload_fallback, headers=headers, timeout=fallback_timeout
+            )
             if resp.status_code == 200:
                 data = resp.json()
                 return data["choices"][0]["message"]["content"]

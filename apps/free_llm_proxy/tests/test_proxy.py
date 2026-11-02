@@ -765,7 +765,7 @@ def test_strata_env_disable(monkeypatch):
 
 
 def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypatch):
-    """Verify max_tokens >= 128k is preserved for Strata but clamped to 8192 for cloud providers."""
+    """Verify max_tokens >= 128k is preserved for Strata but clamped to 16384 for cloud providers."""
     executed_payloads = []
 
     async def mock_execute(provider_cfg, payload, stream=False, client=None):
@@ -788,7 +788,7 @@ def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypat
 
     headers = {"Authorization": "Bearer sk-test-master-key"}
 
-    # Request 1: Direct strata target with 131072 tokens
+    # Request 1: Direct strata target with 131072 tokens and reasoning_budget_tokens
     resp = client.post(
         "/v1/chat/completions",
         headers=headers,
@@ -796,13 +796,15 @@ def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypat
             "model": "strata",
             "messages": [{"role": "user", "content": "deep thinking task"}],
             "max_tokens": 131072,
+            "reasoning_budget_tokens": 12288,
         },
     )
     assert resp.status_code == 200
     assert len(executed_payloads) == 1
     assert executed_payloads[0][1]["max_tokens"] == 131072
+    assert executed_payloads[0][1]["reasoning_budget_tokens"] == 12288
 
-    # Request 2: Cloud auto target with 131072 tokens -> must be clamped to 8192
+    # Request 2: Cloud auto target with 131072 tokens -> must be clamped to 16384 and reasoning_budget_tokens stripped
     resp2 = client.post(
         "/v1/chat/completions",
         headers=headers,
@@ -810,11 +812,13 @@ def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypat
             "model": "free-auto",
             "messages": [{"role": "user", "content": "cloud task"}],
             "max_tokens": 131072,
+            "reasoning_budget_tokens": 12288,
         },
     )
     assert resp2.status_code == 200
     assert len(executed_payloads) == 2
-    assert executed_payloads[1][1]["max_tokens"] == 8192
+    assert executed_payloads[1][1]["max_tokens"] == 16384
+    assert "reasoning_budget_tokens" not in executed_payloads[1][1]
 
 
 def test_unauthorized_call_is_logged_in_audit_db(client):

@@ -26,7 +26,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: design rules cheat sheet to ground my design system
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
-- [ ] - Benchify: update tanstack
 
 ### Marketing & Building in Public
 

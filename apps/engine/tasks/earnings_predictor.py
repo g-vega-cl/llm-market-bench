@@ -4,13 +4,14 @@ Dispatches earnings day-1 movement predictions (RTH Open-to-Close UP/DOWN)
 across GPT Luna (gpt-5.6-luna), DeepSeek Flash (deepseek-chat), and TypeSafe Jev (~typesafe/jev-latest).
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
 
 from core.config import (
     DEEPSEEK_FLASH_MODEL,
+    FMP_API_KEY,
     JEV_MODEL,
     OPENAI_MODEL,
     OPENROUTER_API_KEY,
@@ -26,6 +27,8 @@ from core.llm.earnings_predictor_prompts import (
     EARNINGS_PREDICTOR_PROMPT,
     EarningsPredictionOutput,
 )
+
+FMP_BASE_URL = "https://financialmodelingprep.com/stable"
 
 
 def format_candidate_context(candidate: dict[str, Any]) -> str:
@@ -229,20 +232,113 @@ async def predict_with_jev(
 async def discover_earnings_candidates(
     target_date_str: str, ticker: str | None = None, limit: int = 5
 ) -> list[dict[str, Any]]:
-    """Query recent snapshots from earnings_alpha_snapshots for reporting companies."""
+    """Query recent snapshots from earnings_alpha_snapshots and earnings calendar for reporting companies."""
+    # If ticker is provided and is not SPY (since SPY is an ETF without earnings), target that specific stock
+    explicit_ticker = ticker.upper() if ticker and ticker.upper() != "SPY" else None
     client = get_supabase_client()
+    seen_tickers: set[str] = set()
+    candidates: list[dict[str, Any]] = []
+
+    # 1. Query Supabase earnings_alpha_snapshots
     try:
         query = client.table("earnings_alpha_snapshots").select("*")
-        query = query.eq("ticker", ticker.upper()) if ticker else query.order("snapshot_date", desc=True)
-        res = query.limit(limit).execute()
+        if explicit_ticker:
+            query = query.eq("ticker", explicit_ticker).order("snapshot_date", desc=True)
+        else:
+            # Look for companies reporting within 5 days of target date (covering weekends)
+            try:
+                target_dt = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+                min_report_date = (target_dt - timedelta(days=5)).strftime("%Y-%m-%d")
+            except Exception:
+                min_report_date = target_date_str
+            query = (
+                query.gte("report_date", min_report_date).order("report_date", desc=True).order("sue_score", desc=True)
+            )
 
+        res = query.limit(limit * 3).execute()
         if res.data:
-            return res.data
+            for row in res.data:
+                sym = str(row.get("ticker", "")).upper()
+                if sym and sym != "SPY" and sym not in seen_tickers:
+                    seen_tickers.add(sym)
+                    candidates.append(row)
+                    if len(candidates) >= limit:
+                        break
     except Exception as e:
         logger.warning(f"Error querying earnings snapshots for candidates: {e}")
 
-    # Fallback candidate if database is empty or unpopulated
-    sample_ticker = ticker.upper() if ticker else "NVDA"
+    # 2. If under limit and FMP_API_KEY is available, check FMP live earnings calendar
+    if not explicit_ticker and len(candidates) < limit and FMP_API_KEY:
+        try:
+            url = f"{FMP_BASE_URL}/earnings-calendar"
+            async with httpx.AsyncClient(timeout=10.0) as http_client:
+                resp = await http_client.get(
+                    url, params={"from": target_date_str, "to": target_date_str, "apikey": FMP_API_KEY}
+                )
+                if resp.status_code == 200:
+                    cal_data = resp.json()
+                    if isinstance(cal_data, list):
+                        with_eps = [
+                            e
+                            for e in cal_data
+                            if e.get("symbol")
+                            and e["symbol"].upper() != "SPY"
+                            and e["symbol"].upper() not in seen_tickers
+                            and (e.get("epsEstimated") is not None or e.get("epsActual") is not None)
+                        ]
+                        with_eps.sort(key=lambda x: float(x.get("revenueEstimated") or 0.0), reverse=True)
+                        for entry in with_eps:
+                            sym = entry["symbol"].upper()
+                            seen_tickers.add(sym)
+                            actual_eps = entry.get("epsActual")
+                            est_eps = entry.get("epsEstimated")
+                            actual_rev = entry.get("revenueActual")
+                            est_rev = entry.get("revenueEstimated")
+                            rev_surp = (
+                                ((actual_rev - est_rev) / est_rev * 100.0)
+                                if (actual_rev is not None and est_rev is not None and est_rev > 0)
+                                else None
+                            )
+                            candidates.append(
+                                {
+                                    "snapshot_date": target_date_str,
+                                    "ticker": sym,
+                                    "sector": "Reporting Earnings",
+                                    "report_date": entry.get("date", target_date_str),
+                                    "report_timing": "BMO" if actual_eps is not None else "AMC",
+                                    "actual_eps": actual_eps,
+                                    "estimated_eps": est_eps,
+                                    "eps_surprise": (
+                                        (actual_eps - est_eps)
+                                        if (actual_eps is not None and est_eps is not None)
+                                        else None
+                                    ),
+                                    "revenue_actual": actual_rev,
+                                    "revenue_estimated": est_rev,
+                                    "revenue_surprise_pct": rev_surp,
+                                    "sue_score": (
+                                        2.0
+                                        if (actual_eps is not None and est_eps is not None and actual_eps > est_eps)
+                                        else 0.0
+                                    ),
+                                    "is_top_decile_sue": bool(
+                                        actual_eps is not None and est_eps is not None and actual_eps > est_eps
+                                    ),
+                                    "is_sloan_accrual_clean": True,
+                                    "analyst_consensus": "Moderate Buy",
+                                    "target_consensus_upside_pct": 10.0,
+                                }
+                            )
+                            if len(candidates) >= limit:
+                                break
+        except Exception as e:
+            logger.debug(f"Could not fetch FMP earnings calendar for {target_date_str}: {e}")
+
+    if candidates:
+        return candidates
+
+    # Fallback candidate if database and calendar are completely empty
+    sample_ticker = explicit_ticker if explicit_ticker else "NVDA"
     return [
         {
             "snapshot_date": target_date_str,

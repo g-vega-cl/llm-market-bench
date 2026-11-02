@@ -6,6 +6,7 @@ import pytest
 
 from core.llm.earnings_predictor_prompts import EarningsPredictionOutput
 from tasks.earnings_predictor import (
+    discover_earnings_candidates,
     format_candidate_context,
     predict_with_deepseek,
     predict_with_jev,
@@ -171,3 +172,88 @@ async def test_run_earnings_prediction_end_to_end(sample_candidate):
         assert "deepseek-chat" in model_names
         assert "~typesafe/jev-latest" in model_names
         assert mock_table.upsert.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_discover_earnings_candidates_explicit_ticker():
+    """Verify explicit ticker query fetches and filters for that stock."""
+    mock_db = MagicMock()
+    mock_table = MagicMock()
+    mock_db.table.return_value = mock_table
+    mock_query = mock_table.select.return_value.eq.return_value.order.return_value.limit.return_value
+    mock_query.execute.return_value.data = [
+        {"ticker": "GOOGL", "report_date": "2026-10-28", "actual_eps": 2.12, "estimated_eps": 3.02}
+    ]
+
+    with patch("tasks.earnings_predictor.get_supabase_client", return_value=mock_db):
+        candidates = await discover_earnings_candidates("2026-10-29", ticker="GOOGL")
+        assert len(candidates) == 1
+        assert candidates[0]["ticker"] == "GOOGL"
+        assert candidates[0]["actual_eps"] == 2.12
+
+
+@pytest.mark.asyncio
+async def test_discover_earnings_candidates_auto_ignores_spy():
+    """Verify that passing ticker='SPY' or None triggers auto-discovery and filters out SPY."""
+    mock_db = MagicMock()
+    mock_table = MagicMock()
+    mock_db.table.return_value = mock_table
+    mock_query = (
+        mock_table.select.return_value.gte.return_value.order.return_value.order.return_value.limit.return_value
+    )
+    mock_query.execute.return_value.data = [
+        {"ticker": "SPY", "report_date": "2026-11-02", "actual_eps": 1.0},
+        {"ticker": "CVX", "report_date": "2026-10-30", "actual_eps": 5.28, "estimated_eps": 4.87, "sue_score": 1.66},
+        {"ticker": "XOM", "report_date": "2026-10-30", "actual_eps": 4.23, "estimated_eps": 4.12, "sue_score": 1.44},
+    ]
+
+    with patch("tasks.earnings_predictor.get_supabase_client", return_value=mock_db):
+        # Passing ticker="SPY" should NOT filter by ticker="SPY"
+        candidates = await discover_earnings_candidates("2026-11-02", ticker="SPY")
+        tickers = [c["ticker"] for c in candidates]
+        assert "SPY" not in tickers
+        assert "CVX" in tickers
+        assert "XOM" in tickers
+
+
+@pytest.mark.asyncio
+async def test_discover_earnings_candidates_fmp_calendar_fallback():
+    """Verify fallback to FMP live earnings calendar when snapshots are empty."""
+    mock_db = MagicMock()
+    mock_table = MagicMock()
+    mock_db.table.return_value = mock_table
+    mock_query = (
+        mock_table.select.return_value.gte.return_value.order.return_value.order.return_value.limit.return_value
+    )
+    mock_query.execute.return_value.data = []
+
+    mock_cal_data = [
+        {
+            "symbol": "MAR",
+            "date": "2026-11-02",
+            "epsActual": 3.02,
+            "epsEstimated": 2.84,
+            "revenueActual": 7000000000,
+            "revenueEstimated": 6926000000,
+        }
+    ]
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json = MagicMock(return_value=mock_cal_data)
+
+    mock_http_inst = AsyncMock()
+    mock_http_inst.get = AsyncMock(return_value=mock_resp)
+
+    with (
+        patch("tasks.earnings_predictor.get_supabase_client", return_value=mock_db),
+        patch("tasks.earnings_predictor.FMP_API_KEY", "mock-fmp-key"),
+        patch("httpx.AsyncClient") as mock_client_cls,
+    ):
+        mock_client_cls.return_value.__aenter__.return_value = mock_http_inst
+        candidates = await discover_earnings_candidates("2026-11-02", ticker=None)
+        assert len(candidates) == 1
+        assert candidates[0]["ticker"] == "MAR"
+        assert candidates[0]["actual_eps"] == 3.02
+        assert candidates[0]["estimated_eps"] == 2.84
+        assert candidates[0]["is_top_decile_sue"] is True

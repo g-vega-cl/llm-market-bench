@@ -90,7 +90,10 @@ def handle_earnings_predictor(args: argparse.Namespace) -> None:
     from tasks.earnings_predictor import run_earnings_prediction
 
     target_date = getattr(args, "target_date", None)
-    ticker = getattr(args, "ticker", None)
+    raw_ticker = getattr(args, "ticker", None)
+    # SPY is an ETF and never reports quarterly earnings. If the default 'SPY' is present,
+    # treat as None to enable automatic discovery of actual reporting stocks.
+    ticker = None if raw_ticker and raw_ticker.upper() == "SPY" else raw_ticker
     force = getattr(args, "force", False)
     asyncio.run(run_earnings_prediction(target_date=target_date, ticker=ticker, force=force))
 

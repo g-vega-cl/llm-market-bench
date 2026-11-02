@@ -189,6 +189,87 @@ describe('MemoriesPage (SSR-First)', () => {
         expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
     });
 
+    it('fetches category-specific memories when Principles filter is selected and load more is clicked', async () => {
+        const initialPrinciples = Array.from({ length: 5 }, (_, i) => ({
+            id: `p${i + 1}`,
+            content: `Empirical Principle ${i + 1}`,
+            created_at: `2026-05-2${5 - i}T12:00:00.000Z`,
+            metadata: { source_type: 'academic_paper' },
+            status: 'ACTIVE',
+            parent_id: null,
+            relationship_type: null,
+            relevance_score: null,
+            memory_type: 'ACADEMIC_PAPER',
+            importance_score: 8,
+            target_date: null,
+        }));
+
+        const sixthPrinciple = {
+            id: 'p6',
+            content: 'Empirical Principle 6: Cross-sectional momentum anomaly',
+            created_at: '2026-05-20T12:00:00.000Z',
+            metadata: { source_type: 'academic_paper' },
+            status: 'ACTIVE',
+            parent_id: null,
+            relationship_type: null,
+            relevance_score: null,
+            memory_type: 'ACADEMIC_PAPER',
+            importance_score: 9,
+            target_date: null,
+        };
+
+        const fetchFnMock = vi.fn().mockResolvedValue({
+            data: [sixthPrinciple],
+            hasMore: false,
+            nextCursor: null,
+        });
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage
+                    initialMemories={[...mockMemories, ...initialPrinciples]}
+                    initialHasMore={true}
+                    initialCursor="cursor-all"
+                    initialByCategory={{
+                        ACADEMIC_PAPER: {
+                            data: initialPrinciples,
+                            hasMore: true,
+                            nextCursor: 'cursor-principle-5',
+                        },
+                    }}
+                    fetchFn={fetchFnMock}
+                />
+            </QueryClientProvider>,
+        );
+
+        // Select "Principles" filter tab
+        const principlesBtn = screen.getByText('Principles');
+        fireEvent.click(principlesBtn);
+
+        // Verify initial 5 principles are displayed
+        expect(screen.getByText('Empirical Principle 1')).toBeInTheDocument();
+        expect(screen.getByText('Empirical Principle 5')).toBeInTheDocument();
+        expect(
+            screen.queryByText('Empirical Principle 6: Cross-sectional momentum anomaly'),
+        ).not.toBeInTheDocument();
+
+        // Click Load More
+        const loadMoreBtn = screen.getByText('Load More');
+        fireEvent.click(loadMoreBtn);
+
+        // Assert fetchFn was called with category='ACADEMIC_PAPER' and cursor='cursor-principle-5'
+        await waitFor(() => {
+            expect(fetchFnMock).toHaveBeenCalledWith('cursor-principle-5', 'ACADEMIC_PAPER');
+        });
+
+        // Assert 6th principle renders in the feed
+        await waitFor(() => {
+            expect(
+                screen.getByText('Empirical Principle 6: Cross-sectional momentum anomaly'),
+            ).toBeInTheDocument();
+        });
+    });
+
     it('handles search query submission and clears results correctly', async () => {
         const searchResultsMock = [
             {

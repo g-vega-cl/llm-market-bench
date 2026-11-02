@@ -21,6 +21,7 @@ interface MemoriesPageProps {
     initialMemories: Memory[];
     initialHasMore: boolean;
     initialCursor: string | null;
+    initialByCategory?: Record<string, PaginatedMemories>;
     fetchFn: (
         cursor: string | undefined,
         category: string | undefined,
@@ -103,6 +104,7 @@ export function MemoriesPage({
     initialMemories,
     initialHasMore,
     initialCursor,
+    initialByCategory,
     fetchFn,
     searchFn,
     deltaSyncFn,
@@ -120,26 +122,61 @@ export function MemoriesPage({
     const [searchResults, setSearchResults] = React.useState<Memory[] | null>(null);
     const [isSearching, setIsSearching] = React.useState(false);
 
+    const category = filter === 'RESOLVED' || filter === 'all' ? undefined : filter;
+    const categoryKey = category ?? 'all';
+
     // Standard infinite query for paginated scroll/fetch with 4-hour cache
     const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
         useInfiniteQuery({
-            queryKey: ['benchify', 'memories', 'list'],
+            queryKey: ['benchify', 'memories', 'list', categoryKey],
             queryFn: async ({ pageParam }) => {
-                const res = await fetchFn(pageParam, undefined);
+                const res = await fetchFn(pageParam, category);
                 return res;
             },
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage) =>
                 lastPage.hasMore ? (lastPage.nextCursor ?? undefined) : undefined,
-            initialData: {
-                pages: [
-                    {
-                        data: initialMemories,
-                        hasMore: initialHasMore,
-                        nextCursor: initialCursor,
-                    },
-                ],
-                pageParams: [undefined],
+            initialData: () => {
+                if (category && initialByCategory?.[category]) {
+                    const catData = initialByCategory[category];
+                    return {
+                        pages: [
+                            {
+                                data: catData.data,
+                                hasMore: catData.hasMore,
+                                nextCursor: catData.nextCursor,
+                            },
+                        ],
+                        pageParams: [undefined],
+                    };
+                }
+
+                if (category) {
+                    const matching = initialMemories.filter(
+                        (m) => getMemoryCategory(m) === category,
+                    );
+                    return {
+                        pages: [
+                            {
+                                data: matching,
+                                hasMore: matching.length > 0 ? initialHasMore : false,
+                                nextCursor: initialCursor,
+                            },
+                        ],
+                        pageParams: [undefined],
+                    };
+                }
+
+                return {
+                    pages: [
+                        {
+                            data: initialMemories,
+                            hasMore: initialHasMore,
+                            nextCursor: initialCursor,
+                        },
+                    ],
+                    pageParams: [undefined],
+                };
             },
             staleTime: 1000 * 60 * 60 * 4, // 4 hours
             refetchOnWindowFocus: false,
@@ -162,7 +199,7 @@ export function MemoriesPage({
             .then((newRecords) => {
                 if (newRecords && newRecords.length > 0) {
                     queryClient.setQueryData(
-                        ['benchify', 'memories', 'list'],
+                        ['benchify', 'memories', 'list', categoryKey],
                         (old: InfiniteData<PaginatedMemories> | undefined) => {
                             if (!old?.pages || old.pages.length === 0) return old;
                             const firstPage = old.pages[0];
@@ -183,7 +220,7 @@ export function MemoriesPage({
             .catch((err) => {
                 console.error('Delta-sync check failed:', err);
             });
-    }, [deltaSyncFn, memories, queryClient]);
+    }, [categoryKey, deltaSyncFn, memories, queryClient]);
 
     const handleFilterChange = (newFilter: string) => {
         setFilter(newFilter);

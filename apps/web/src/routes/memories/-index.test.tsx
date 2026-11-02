@@ -1,5 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('@tanstack/react-start', async () => {
+    const actual =
+        await vi.importActual<typeof import('@tanstack/react-start')>('@tanstack/react-start');
+    return {
+        ...actual,
+        createServerFn: () => ({
+            inputValidator: () => ({
+                handler: (fn: (args: { data: unknown }) => unknown) => (args: { data: unknown }) =>
+                    fn(args),
+            }),
+            validator: () => ({
+                handler: (fn: (args: { data: unknown }) => unknown) => (args: { data: unknown }) =>
+                    fn(args),
+            }),
+        }),
+    };
+});
+
 vi.mock('~/features/memories/api/fetch-memories', () => ({
     fetchMemories: vi.fn(async (_cursor, _limit, _category) => ({
         data: [{ id: 'm1', content: 'Fetched memory', created_at: '2026-05-25' }],
@@ -54,5 +72,17 @@ describe('/memories route server functions', () => {
     it('Route component is defined correctly', () => {
         expect(Route).toBeDefined();
         expect(typeof Route).toBe('object');
+    });
+
+    it('Route loader prefetches per-category slices and returns initialByCategory', async () => {
+        if (typeof Route.options.loader === 'function') {
+            // biome-ignore lint/suspicious/noExplicitAny: TanStack Router internal loader typing
+            const loaderData = await (Route.options.loader as any)({} as any);
+            expect(loaderData).toHaveProperty('initialByCategory');
+            expect(loaderData.initialByCategory).toHaveProperty('ACADEMIC_PAPER');
+            expect(loaderData.initialByCategory).toHaveProperty('MARKET_EVENT');
+            expect(loaderData.initialByCategory).toHaveProperty('CALENDAR_EVENT');
+            expect(loaderData.initialByCategory).toHaveProperty('POST_MORTEM');
+        }
     });
 });

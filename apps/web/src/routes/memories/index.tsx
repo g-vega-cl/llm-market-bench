@@ -3,6 +3,7 @@ import { createServerFn, useServerFn } from '@tanstack/react-start';
 import {
     fetchMemories,
     fetchNewMemories,
+    type PaginatedMemories,
     searchMemories,
 } from '~/features/memories/api/fetch-memories';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
@@ -102,10 +103,19 @@ export const Route = createFileRoute('/memories/')({
             return dateB - dateA;
         });
 
+        const initialByCategory: Record<string, PaginatedMemories> = {};
+        categories.forEach((cat, idx) => {
+            const res = catResults[idx];
+            if (res) {
+                initialByCategory[cat] = res;
+            }
+        });
+
         return {
             data: deduplicated,
             hasMore: allRes?.hasMore ?? false,
             nextCursor: allRes?.nextCursor ?? null,
+            initialByCategory,
         };
     },
     component: RouteComponent,
@@ -122,6 +132,7 @@ function RouteComponent() {
             initialMemories={initialData.data}
             initialHasMore={initialData.hasMore}
             initialCursor={initialData.nextCursor}
+            initialByCategory={initialData.initialByCategory}
             fetchFn={(cursor, category) => getMemoriesFn({ data: { cursor, category, limit: 50 } })}
             searchFn={(query) => queryMemoriesFn({ data: { query } })}
             deltaSyncFn={(since) => syncMemoriesFn({ data: { since } })}

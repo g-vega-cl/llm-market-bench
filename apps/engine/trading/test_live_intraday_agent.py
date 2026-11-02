@@ -138,7 +138,7 @@ async def test_query_multi_tier_llm_fallback_to_cheap_proxy():
     assert len(mock_http.post.call_args_list) == 2
     fallback_call = mock_http.post.call_args_list[1][1]
     assert fallback_call["json"]["max_tokens"] == 16384
-    assert fallback_call["json"]["model"] == "free-auto"
+    assert fallback_call["json"]["model"] == "auto-strata"
 
     # Verify fallback call headers and model
     fallback_call = mock_http.post.call_args_list[1]
@@ -146,7 +146,7 @@ async def test_query_multi_tier_llm_fallback_to_cheap_proxy():
     assert "Authorization" in headers
     assert headers["Authorization"] == "Bearer test-explicit-key"
     payload = fallback_call.kwargs.get("json", {})
-    assert payload.get("model") == "free-auto"
+    assert payload.get("model") == "auto-strata"
 
 
 @pytest.mark.asyncio

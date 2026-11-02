@@ -40,8 +40,8 @@
       "models_endpoint": "/models",
       "preferred_patterns": [
         "kilo-auto/free",
-        "*nemotron*",
-        "*:free"
+        "*:free",
+        "*-free"
       ]
     },
     "openrouter": {
@@ -53,6 +53,9 @@
       "models_endpoint": "/models",
       "preferred_patterns": [
         "openrouter/free",
+        "*ultra*",
+        "*super-vl*",
+        "*lightning*",
         "*:free"
       ],
       "extra_headers": {
@@ -82,10 +85,13 @@
       "requires_auth": true,
       "models_endpoint": "/models",
       "preferred_patterns": [
-        "*gpt-oss-20b*",
+        "*nemotron-3.5-super-vl-120b*",
+        "*nemotron-3-ultra-550b*",
+        "*mistral-large*",
         "*minimax-m3.1-flash*",
-        "*nemotron-3.5*",
-        "*"
+        "*nemotron-3.5-lightning*",
+        "*diffusiongemma*",
+        "*llama-3.2-90b-vision*"
       ]
     },
     "strata": {

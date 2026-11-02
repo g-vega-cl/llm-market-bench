@@ -79,6 +79,22 @@ class Router:
                 if p.endswith(":free") or p == "openrouter/free"
             ] or ["openrouter/free"]
 
+        # Kilo Code safety guard: strictly filter available models to free tier
+        if provider_id == "kilo":
+            if available_models:
+                available_models = [
+                    m
+                    for m in available_models
+                    if m.endswith(":free")
+                    or m.endswith("-free")
+                    or m == "kilo-auto/free"
+                ]
+            preferred_patterns = [
+                p
+                for p in preferred_patterns
+                if p.endswith(":free") or p.endswith("-free") or p == "kilo-auto/free"
+            ] or ["kilo-auto/free"]
+
         # Gemini safety guard: strictly filter available models to modern free Flash tier
         if provider_id == "gemini":
             if available_models:
@@ -86,14 +102,26 @@ class Router:
                     m
                     for m in available_models
                     if "flash" in m.lower()
-                    and not any(v in m for v in ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5"))
+                    and not any(
+                        v in m
+                        for v in (
+                            "-1.5",
+                            "-2.0",
+                            "-2.5",
+                            "-2-",
+                            "-1-",
+                            "1.5",
+                            "2.0",
+                            "2.5",
+                        )
+                    )
                 ]
 
         # Check virtual alias patterns first
         if requested_model in self.virtual_aliases:
             patterns = self.virtual_aliases[requested_model]
         elif requested_model in {"default", "auto", ""}:
-            patterns = self.virtual_aliases.get("free-auto", preferred_patterns)
+            patterns = self.virtual_aliases.get("auto-strata", preferred_patterns)
         elif requested_model in preferred_patterns:
             return requested_model.replace("*", "").strip()
         elif available_models and requested_model in available_models:
@@ -112,7 +140,10 @@ class Router:
                     return "openrouter/free"
             if provider_id == "gemini" and (
                 "flash" not in stripped.lower()
-                or any(v in stripped for v in ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5"))
+                or any(
+                    v in stripped
+                    for v in ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5")
+                )
             ):
                 flash_candidates = (
                     [m for m in (available_models or []) if "flash" in m.lower()]
@@ -120,9 +151,15 @@ class Router:
                     else []
                 )
                 matched = (
-                    self.discovery.match_best_model(flash_candidates, preferred_patterns)
+                    self.discovery.match_best_model(
+                        flash_candidates, preferred_patterns
+                    )
                     if flash_candidates
-                    else (flash_candidates[0] if flash_candidates else "gemini-flash-latest")
+                    else (
+                        flash_candidates[0]
+                        if flash_candidates
+                        else "gemini-flash-latest"
+                    )
                 )
                 return (matched or "gemini-flash-latest").replace("*", "").strip()
             if available_models:
@@ -141,7 +178,19 @@ class Router:
                     provider_id == "gemini"
                     and (
                         "flash" not in requested_model.lower()
-                        or any(v in requested_model for v in ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5"))
+                        or any(
+                            v in requested_model
+                            for v in (
+                                "-1.5",
+                                "-2.0",
+                                "-2.5",
+                                "-2-",
+                                "-1-",
+                                "1.5",
+                                "2.0",
+                                "2.5",
+                            )
+                        )
                     )
                 )
             ):
@@ -156,8 +205,17 @@ class Router:
             resolved.endswith(":free") or resolved == "openrouter/free"
         ):
             return "openrouter/free"
+        if provider_id == "kilo" and not (
+            resolved.endswith(":free")
+            or resolved.endswith("-free")
+            or resolved == "kilo-auto/free"
+        ):
+            return "kilo-auto/free"
         if provider_id == "gemini":
-            is_legacy = any(v in resolved for v in ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5"))
+            is_legacy = any(
+                v in resolved
+                for v in ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5")
+            )
             if "flash" not in resolved.lower() or is_legacy:
                 flash_candidates = (
                     [m for m in (available_models or []) if "flash" in m.lower()]
@@ -165,9 +223,15 @@ class Router:
                     else []
                 )
                 matched = (
-                    self.discovery.match_best_model(flash_candidates, preferred_patterns)
+                    self.discovery.match_best_model(
+                        flash_candidates, preferred_patterns
+                    )
                     if flash_candidates
-                    else (flash_candidates[0] if flash_candidates else "gemini-flash-latest")
+                    else (
+                        flash_candidates[0]
+                        if flash_candidates
+                        else "gemini-flash-latest"
+                    )
                 )
                 resolved = matched or "gemini-flash-latest"
         return resolved.replace("*", "").strip()
@@ -194,7 +258,13 @@ class Router:
                 return [("strata", active["strata"])]
             return []
 
-        include_strata_in_auto = model_lower in {"auto-strata", "free-auto-strata"}
+        include_strata_in_auto = model_lower in {
+            "auto-strata",
+            "free-auto-strata",
+            "default",
+            "auto",
+            "",
+        }
         is_strata_primary = model_lower == "strata-auto"
 
         # If client explicitly specified a provider (e.g. 'groq/qwen...' or 'openrouter')

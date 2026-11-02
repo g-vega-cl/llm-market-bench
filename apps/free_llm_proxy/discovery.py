@@ -62,6 +62,16 @@ class ModelDiscovery:
                             for m in models
                             if m.endswith(":free") or m == "openrouter/free"
                         ]
+                    # Kilo Code is a mixed marketplace; strictly filter to zero-cost models
+                    elif provider_id == "kilo":
+                        models = [
+                            m
+                            for m in models
+                            if m.endswith(":free")
+                            or m.endswith("-free")
+                            or m == "kilo-auto/free"
+                        ]
+
                     self.set_cached_models(provider_id, models)
                     return models
         except Exception:

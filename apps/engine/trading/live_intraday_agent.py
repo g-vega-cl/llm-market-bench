@@ -245,7 +245,7 @@ async def query_multi_tier_llm(
         try:
             url_fallback = f"{cheap_proxy_url.rstrip('/')}/chat/completions"
             payload_fallback: dict[str, Any] = {
-                "model": os.getenv("FREE_PROXY_MODEL", "free-auto"),
+                "model": os.getenv("FREE_PROXY_MODEL", "auto-strata"),
                 "messages": messages,
                 "temperature": 0.3,
                 "max_tokens": max_tokens,

@@ -1,13 +1,11 @@
----
-tags: [llm, proxy, inference, router, failover, docker]
-category: entity
+--- 
+tags: [llm, proxy, inference, router, free-tier] 
+category: entity 
 ---
 
 # Free LLM Proxy
 
 A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, cloud output-token clamping, and full token usage logging.
-
----
 
 ## Architecture & Lifecycle
 
@@ -23,7 +21,7 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
        └──────────┬───────────┘
                   │
                   ▼
-       ┌──────────────────────┐
+       ┌─────────────────────────────────────────────────────────────┐
        │    Model Resolver    │ (free-auto, free-fast, free-reasoning,
        │  (discovery.py)      │  strata-auto, auto-strata, strata, or dynamic provider models)
        └──────────┬───────────┘
@@ -47,20 +45,21 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
                        └─────────────────────────────┘
 ```
 
----
-
 ## Key Components
 
-- **Dynamic Catalog Discovery (`apps/free_llm_proxy/discovery.py`)**: Queries each active provider's `GET /models` endpoint at runtime. Avoids hardcoded model IDs so provider version rollouts (e.g. `qwen3.8-27b`, `gpt-oss-120b`) work automatically without code edits. Results are cached per provider (`ModelDiscovery`, default 3600s TTL) and matched against prioritized `fnmatch` patterns. Discovery requests use a short connect timeout (`httpx.Timeout(4.0, connect=2.0)`) so an offline provider (e.g. local Strata) fails fast instead of stalling the catalog refresh.
-- **Circuit Breaker (`apps/free_llm_proxy/circuit_breaker.py`)**: Reacts to HTTP 429 rate limits or repeated 5xx errors by placing the failed provider into cooldown (respecting `Retry-After` if sent). A 429 trips the breaker immediately; two consecutive 5xx errors trip it. `record_success` resets the consecutive-failure counter, and `get_status_overview` exposes per-provider health, cooldown remaining, failure count, and rate-limit hit count.
-- **Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; cooling providers are used only as a last resort when no healthy candidate remains. An explicit `provider/model` prefix in the request moves that provider to the front of the chain. Providers declaring `enabled_in_auto: false` (such as local Strata) are excluded from the standard auto rotation unless explicitly targeted or opted in via `auto-strata`.
-- **Cloud Output-Token Clamping (`apps/free_llm_proxy/server.py`)**: Before dispatch, requests routed to any non-Strata (cloud) provider have `max_tokens` and `max_completion_tokens` clamped down to `CLOUD_MAX_OUTPUT_TOKENS` (default `16384`), because cloud free-tier providers enforce a 16k output ceiling. Strata is exempt and preserves the caller's full budget (e.g. 131,072 tokens). Cloud routes also have the Strata-specific `reasoning_budget_tokens` key stripped from the payload, since cloud gateways (Gemini, OVHCloud) reject it with a 400.
-- **Audit Database (`apps/free_llm_proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, failover chains, and caller attribution to a local SQLite database (`data/free_llm_proxy.db`). Captures "Who" (`client_ip` via Cloudflare `CF-Connecting-IP`, `X-Forwarded-For`, or socket host, and `user_agent`) and "Why" (`purpose` via `X-Purpose` / `X-Client-Id` and `prompt_preview` containing a 60-character snippet of the user prompt). Logs failed authentication attempts (status 401) with caller IP and user agent to monitor unauthorized probes. `get_metrics()` aggregates total/successful/unauthorized requests, success rate, token totals, average latency, per-provider stats, and the 10 most recent calls. Auto-migrates existing tables seamlessly.
-- **Streaming & SSE (`apps/free_llm_proxy/client.py`)**: Streams `text/event-stream` chunks directly to chat clients with pre-flight failover protection — the connection is probed first so an initial 429/5xx fails over before any chunk is yielded.
-- **Connection Error Resilience (`apps/free_llm_proxy/client.py`)**: `execute_completion` wraps both the non-streaming `POST` and the streaming `build_request`/`send` probe in `try/except httpx.RequestError`. A connection refusal, DNS failure, or connect timeout is converted into a structured `503` response (`{"error": {"message": "Provider connection error: ...", "type": "connection_error"}}`) rather than propagating an unhandled exception. This lets the router cleanly fail over to the next candidate provider (e.g. `strata-auto` falling back to the auto pool when local Strata is offline). The default client uses `httpx.Timeout(60.0, connect=3.0)` so an unreachable provider is detected within 3 seconds.
-- **Provider Registry (`apps/free_llm_proxy/providers.json`)**: Declarative provider definitions (`base_url`, `env_key`, `tier`, `requires_auth`, `preferred_patterns`, optional `extra_headers`, optional `enabled_in_auto`) plus the virtual alias pattern map. Providers with `requires_auth: false` (Kilo Code, OVHcloud, local Strata) are active with zero keys; keyed providers activate automatically when their env var is present.
+### Dynamic Catalog Discovery (`apps/free_llm_proxy/discovery.py`)**: Queries each active provider's `GET /models` endpoint at runtime. Avoids hardcoded model IDs so provider version rollouts (e.g. `qwen3.8-27b`, `gpt-oss-120b`) work automatically without code edits. Results are cached per provider (`ModelDiscovery`, default 3600s TTL) and matched against prioritized `fnmatch` patterns. Discovery requests use a short connect timeout (`httpx.Timeout(4.0, connect=2.0)`) so an offline provider (e.g. local Strata) fails fast instead of stalling the catalog refresh.
 
----
+### Circuit Breaker (`apps/free_llm_proxy/circuit_breaker.py`)**: Reacts to HTTP 429 rate limits or repeated 5xx errors by placing the failed provider into cooldown (respecting `Retry-After` if sent). A 429 trips the breaker immediately; two consecutive 5xx errors trip it. `record_success` resets the consecutive-failure counter, and `get_status_overview` exposes per-provider health, cooldown remaining, failure count, and rate-limit hit count.
+
+### Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; cooling providers are used only as a last resort when no healthy candidate remains. An explicit `provider/model` prefix in the request moves that provider to the front of the chain. Providers declaring `enabled_in_auto: false` (such as local Strata) are excluded from the standard auto rotation unless explicitly targeted or opted in via `auto-strata`.
+
+### Cloud Output-Token Clamping (`apps/free_llm_proxy/server.py`)**: Before dispatch, requests routed to any non-Strata (cloud) provider have `max_tokens` and `max_completion_tokens` clamped down to `CLOUD_MAX_OUTPUT_TOKENS` (default `16384`), because cloud free-tier providers enforce a 16k output ceiling. Strata is exempt and preserves the caller's full budget (e.g. 131,072 tokens). Cloud routes also have the Strata-specific `reasoning_budget_tokens` key stripped from the payload, since cloud gateways (Gemini, OVHCloud) reject it with a 400.
+
+### Audit Database (`apps/free_llm_proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, failover chains, and caller attribution to a local SQLite database (`data/free_llm_proxy.db`). Captures "Who" (`client_ip` via Cloudflare `CF-Connecting-IP`, `X-Forwarded-For`, or socket host, and `user_agent`) and "Why" (`purpose` via `X-Purpose` / `X-Client-Id` and `prompt_preview` containing a 60-character snippet of the user prompt). Logs failed authentication attempts (status 401) with caller IP and user agent to monitor unauthorized probes. `get_metrics()` aggregates total/successful/unauthorized requests, success rate, token totals, average latency, per-provider stats, and the 10 most recent calls. Auto-migrates existing tables seamlessly.
+
+### Streaming & SSE (`apps/free_llm_proxy/client.py`)**: Streams `text/event-stream` chunks directly to chat clients with pre-flight failover protection — the connection is probed first so an initial 429/5xx fails over before any chunk is yielded.
+
+### Connection Error Resilience (`apps/free_llm_proxy/client.py`)**: `execute_completion` wraps both the non-streaming `POST` and the streaming `build_request`/`send` probe in `try/except httpx.RequestError`. A connection refusal, DNS failure, or connect timeout is converted into a structured `503` response (`{"error": {"message": "Provider connection error: ...", "type": "connection_error"}}`) rather than propagating an unhandled exception. This lets the router cleanly fail over to the next candidate provider (e.g. `strata-auto` falling back to the auto pool when local Strata is offline). The default client uses `httpx.Timeout(60.0, connect=3.0)` so an unreachable provider is detected within 3 seconds.
 
 ## Dynamic Model Discovery & Anti-Hardcoding Philosophy
 
@@ -71,8 +70,6 @@ A foundational architectural principle of Free LLM Proxy is **zero hardcoded mod
 3. **Official Provider Dynamic Aliases**: Wherever an upstream provider supports an official moving pointer (such as Google's official `gemini-flash-latest` or OpenRouter's `openrouter/free`), the proxy targets the alias as the primary pattern. This ensures downstream callers automatically receive newly promoted versions without intervention.
 4. **Resilient In-Provider Fallback**: If an upstream bleeding-edge model experiences high-demand spikes (e.g. Google HTTP 503 on `gemini-flash-latest`), the proxy cascades down through adjacent active generation variants (e.g. `gemini-3.6-flash`, `gemini-3.5-flash`) before tripping circuit breakers.
 5. **Virtual Alias Abstraction**: Callers (such as the Pi agent or background prediction routines) consume generic virtual aliases (`free-auto`, `strata-auto`, `free-fast`, `free-reasoning`). Clients never specify brittle upstream IDs, allowing the routing engine to swap, balance, and heal underlying model targets transparently.
-
----
 
 ## Model Resolution & Provider Targeting
 
@@ -87,49 +84,50 @@ A foundational architectural principle of Free LLM Proxy is **zero hardcoded mod
 7. **Pattern fallback** — otherwise the first `preferred_patterns` entry matching the catalog is used.
 
 `Router.get_candidate_chain(requested_model)` builds the ordered provider attempt list. A request is treated as **explicitly provider-targeted** when either:
-
 - the model contains a `/` and the prefix matches an active provider ID (e.g. `groq/qwen...`), or
 - the model string itself equals an active provider ID (e.g. `openrouter`).
-
 In both cases that provider is moved to the front of the candidate chain, with normal tiered failover behind it.
 
 ### Gemini Free-Flash Dynamic Routing & Legacy Exclusion
-
 The `gemini` provider is restricted to modern free Flash models (defaulting to Google's official dynamic alias `gemini-flash-latest` and the Gemini 3.x Flash series):
-
 - **Catalog pre-filter** — when `provider_id == "gemini"`, the discovered `available_models` list is narrowed to entries containing `flash` (case-insensitive) while strictly stripping obsolete 1.x and 2.x versions (`1.5`, `2.0`, `2.5`).
 - **Dynamic alias preference** — matches Google's official dynamic alias `gemini-flash-latest`, followed by `gemini-3.8-flash` and modern 3.x Flash models.
 - **Prefix resolution** — if a `provider/model` prefix resolves to a non-Flash or legacy Gemini model (e.g. `gemini/gemini-1.5-pro`), the router re-matches against the modern Flash candidate list, falling back to `gemini-flash-latest`.
 - **Exact catalog match** — a requested model that is a legacy or Pro model is rejected from the exact-match path and coerced to modern Flash.
 - **In-provider demand spike cascade** — if the bleeding-edge model (`gemini-flash-latest` or `gemini-3.8-flash`) encounters a temporary Google HTTP 503 high-demand spike or 429 rate limit, the proxy automatically attempts modern stable variants (`gemini-3.6-flash`, `gemini-3.5-flash`) before falling over to Groq.
 - **Wildcard sanitization** — all resolved model strings are stripped of raw pattern wildcards (`*`).
-
 This guarantees zero compute cost while preventing breaking changes when Google promotes new Flash iterations. Verified by `test_gemini_strictly_filters_out_legacy_models` and `test_gemini_in_provider_cascade_on_503_spike` in `apps/free_llm_proxy/tests/test_proxy.py`.
 
 ### Local Strata Targeting
-
 Local Strata (`strata` provider, `base_url` from `STRATA_BASE_URL`, default `http://localhost:8080/v1`) is a Tier 1 provider with `requires_auth: false` and `enabled_in_auto: false`, so it is excluded from the standard `free-auto` rotation. Three aliases control how it participates:
-
 - **`strata-auto`** — Strata is placed first in the candidate chain; if Strata is offline or cooling down, the request fails over cleanly to the normal auto pool.
 - **`auto-strata`** — Strata is added into the standard Tier 1 round-robin rotation alongside the cloud providers.
 - **`strata`** (and `strata/<model>`) — strict targeting: the candidate chain contains **only** Strata. If Strata is offline the request fails (HTTP 502) with zero silent cloud fallback.
-
 When Strata is in circuit-breaker cooldown, `strata-auto` skips it immediately and routes to healthy auto providers.
 
 In the dual-connector edge topology (MiniPC edge gateway and primary Fedora workstation), the MiniPC proxy container routes Strata requests over Tailscale to `http://primary-workstation:3001/strata/v1`. The primary workstation's Nginx reverse proxy forwards `/strata/` to `http://172.17.0.1:8080/` with `Host: localhost` to satisfy Strata's DNS rebinding protection while bypassing host firewall restrictions. On the primary workstation, the local Docker proxy reaches Strata via `http://host.docker.internal:8080/v1`.
 
 ### OpenRouter Zero-Cost Isolation
-
 The `openrouter` provider operates as a mixed marketplace of paid and free models. To guarantee that no account credits are ever billed unintentionally:
 - **Discovered Catalog Filtering (`discovery.py`)**: Models fetched from OpenRouter's live `/models` endpoint are strictly filtered at ingestion time to keep only zero-cost variants ending with `:free` or equaling `openrouter/free`. Paid models are stripped before pattern matching can evaluate them.
 - **Resolution Safety Gate (`router.py`)**: Virtual aliases (such as `free-auto`) and provider patterns are restricted to `:free` variants. If an explicit paid model is targeted or no pattern matches, the router coerces the model to `openrouter/free`.
 - **Server Dispatch Guard (`server.py`)**: Pre-flight verification enforces that requests dispatched to OpenRouter must end with `:free` or equal `openrouter/free`, ensuring 100% hermetic zero-cost inference.
 - **Attribution Headers**: Requests to OpenRouter pass `HTTP-Referer: https://llm.clvg.uk` and `X-Title: Pi / Free LLM Proxy`.
 
----
+### Kilo Code Zero-Cost Isolation
+The `kilo` provider (`requires_auth: false`) also operates as a mixed marketplace of free and paid models. To prevent HTTP 401 `PAID_MODEL_AUTH_REQUIRED` failures:
+- **Discovered Catalog Filtering (`discovery.py`)**: Strips paid models and retains only zero-cost variants (`:free`, `*-free`, or `kilo-auto/free`).
+- **Resolution Safety Gate (`router.py`)**: Prioritizes `kilo-auto/free` and coerces unrecognized models to `kilo-auto/free` before dispatch.
+- **In-Provider Cascade (`server.py`)**: If a specific model returns 401/429/503, the proxy falls back through `kilo-auto/free`, `reflection/beam-free`, and `nvidia/nemotron-3.5-super-vl:free` before leaving the provider.
+
+### Resilient In-Provider Demand-Spike Cascades
+When an upstream endpoint returns temporary errors (503 high-demand spike, 404 deprecated function, or 429 rate limit), the proxy automatically cascades through alternative models on the *same* provider before tripping circuit breakers and moving to the next provider:
+- **Google Gemini**: Cascades from `gemini-flash-latest` ➔ `gemini-3.8-flash` ➔ `gemini-3.6-flash` ➔ `gemini-3.5-flash`.
+- **OpenRouter**: Cascades from the primary model ➔ `openrouter/free` ➔ `nemotron-3-ultra-550b:free` ➔ `nemotron-3.5-super-vl:free`.
+- **NVIDIA NIM**: Cascades from the primary model ➔ `minimax-m3.1-flash` ➔ `nemotron-3.5-super-vl-120b` ➔ `nemotron-3-ultra-550b` ➔ `mistral-large`.
+- **Kilo Code**: Cascades from the primary model ➔ `kilo-auto/free` ➔ `reflection/beam-free` ➔ `nemotron-3.5-super-vl:free`.
 
 ## Cloud Output-Token Clamping
-
 Cloud free-tier providers enforce an output-token ceiling. To prevent upstream 400/422 rejections when a client (e.g. Pi configured with a 131,072-token budget for Strata) sends an oversized `max_tokens`, `chat_completions` in `apps/free_llm_proxy/server.py` clamps the payload **after** model resolution and **before** `execute_completion`:
 
 ```python
@@ -149,24 +147,20 @@ if p_id != "strata":
 ```
 
 Behavioral rules:
-
 - **Strata is exempt** — requests routed to the `strata` provider keep the caller's full budget (e.g. `max_tokens: 131072`) and any `reasoning_budget_tokens` value, since local inference has no cloud ceiling and understands the reasoning-budget kwarg.
 - **All cloud providers are clamped** — `free-auto`, `free-fast`, `free-reasoning`, `provider/model` targets, and any other non-Strata route are clamped to `CLOUD_MAX_OUTPUT_TOKENS` (default `16384`).
 - **`reasoning_budget_tokens` is stripped on cloud routes** — the Strata-specific reasoning-budget kwarg is removed from the payload before dispatch to any non-Strata provider, because cloud gateways (Gemini, OVHCloud) reject the unknown field with a 400.
 - **Both parameter names are handled** — `max_tokens` and `max_completion_tokens` are clamped independently, and `None` values are left untouched.
 - **Clamping only lowers** — values already at or below the ceiling pass through unchanged.
-
 This is verified by `test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` in `apps/free_llm_proxy/tests/test_proxy.py`, which asserts a 131,072-token request (with `reasoning_budget_tokens: 12288`) survives intact on the `strata` route and is clamped to `16384` with `reasoning_budget_tokens` stripped on the `free-auto` route.
-
----
 
 ## Virtual Model Aliases
 
 | Alias | Description | Target Family |
 | :--- | :--- | :--- |
-| `free-auto` (default) | Best overall model across the healthy active pool (Strata excluded) | 120B / 70B / Flash / 27B |
+| `auto-strata` (default) | Adds Strata into the standard Tier 1 round-robin auto rotation pool | Local Strata + Tier 1 providers |
+| `free-auto` | Best overall model across the healthy cloud pool (Strata excluded) | 120B / 70B / Flash / 27B |
 | `strata-auto` | Prioritizes local Strata (localhost:8080); fails over cleanly to auto pool when offline | Local live model / Strata ➔ Auto fallback |
-| `auto-strata` | Adds Strata into the standard Tier 1 round-robin auto rotation pool | Local Strata + Tier 1 providers |
 | `strata` | Strictly targets local Strata; fails fast with error if offline (zero silent cloud fallback) | Whichever model is live on localhost:8080 |
 | `free-fast` | Sub-second ultra-low latency models | 20B / 8B / Flash-Lite / 7B |
 | `free-reasoning` | Deep reasoning / thinking models | R1, reasoning, Flint, Beam |
@@ -174,8 +168,6 @@ This is verified by `test_max_tokens_unclamped_for_strata_and_clamped_for_cloud`
 | `provider/model` | Explicitly targets a provider first, with normal failover behind it | — |
 | `provider` (bare) | Bare active provider ID (e.g. `openrouter`) targets that provider first (`strata` is strict with no fallback) | — |
 | `openrouter/free` | Passed through verbatim to OpenRouter; never stripped to `free` | — |
-
----
 
 ## Endpoints
 
@@ -185,8 +177,6 @@ This is verified by `test_max_tokens_unclamped_for_strata_and_clamped_for_cloud`
 | `/v1/models` | `GET` | Bearer Token | Discovered live models and virtual aliases |
 | `/v1/metrics` (alias `/stats`) | `GET` | Bearer Token | Total requests, token counts, latency, per-provider stats, and circuit breaker status |
 | `/health` | `GET` | None | Service readiness and active provider list |
-
----
 
 ## Configuration
 
@@ -207,15 +197,9 @@ Environment variables (loaded strictly from `apps/free_llm_proxy/.env` to isolat
 
 `ENABLE_STRATA` is parsed leniently — `0`, `false`, and `no` (case-insensitive) disable the provider. When disabled, `load_providers_config()` removes the `strata` entry from the provider map entirely. When enabled, `STRATA_BASE_URL` overrides the `strata` provider's `base_url` at load time.
 
-> [!IMPORTANT]
-> The Gemini provider reads `GEMINI_API_KEY_FREE` (not `GEMINI_API_KEY`) so the proxy never inherits the engine's paid Gemini key. `config.py` loads only `apps/free_llm_proxy/.env` and no longer falls back to `apps/engine/.env`, keeping the free-tier credential set fully isolated.
-
----
-
 ## Running & Testing
 
 ### Docker (recommended — auto-starts on boot)
-
 The proxy ships a self-contained container stack:
 
 - **`apps/free_llm_proxy/Dockerfile`** — `python:3.13-slim` base with pinned dependencies (`fastapi==0.115.11`, `uvicorn[standard]==0.34.0`, `httpx==0.28.1`, `pydantic==2.10.6`, `python-dotenv==1.0.1`). Code is copied to `/app/apps/free_llm_proxy` to preserve the package layout, exposes port `8086`, and launches `python main.py --host 0.0.0.0 --port 8086`.
@@ -231,14 +215,12 @@ docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
 ```
 
 ### Local Python
-
 ```bash
 # Or start the local server directly
 ./apps/engine/.venv/bin/python3 apps/free_llm_proxy/main.py [--port 8086] [--host 0.0.0.0] [--reload]
 ```
 
 ### Tests
-
 ```bash
 # Hermetic test suite (no external network; loopback only)
 ./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
@@ -246,10 +228,7 @@ docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
 
 The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, graceful `503` handling of `httpx.RequestError` connection failures, cloud output-token clamping (`test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` — including `reasoning_budget_tokens` preservation on Strata and stripping on cloud routes), unauthorized 401 audit logging (`test_unauthorized_call_is_logged_in_audit_db`), Gemini Pro→Flash coercion (`test_gemini_pro_model_is_coerced_to_free_flash`), and the `GEMINI_API_KEY_FREE` provider key (`test_gemini_uses_gemini_api_key_free`). A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
 
----
-
 ## Pi Assistant Integration
-
 Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configuring a custom OpenAI-compatible provider in `~/.pi/agent/models.json`:
 
 ```json
@@ -319,7 +298,6 @@ Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configu
 ```
 
 ### Usage in Pi
-
 - **Interactive Cycle**: Press `Ctrl+P` in the Pi TUI to cycle between local quantized models (`strata`, `orcarouter`) and the free models (`free-auto`, `free-fast`, `free-reasoning`).
 - **Direct CLI Invocation**:
   ```bash
@@ -328,10 +306,7 @@ Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configu
 - **Tool Calling Support**: `free-auto` prioritizes tool-capable models (e.g. Groq Llama 3.3 70B, Google Gemini Flash) so Pi's built-in coding tools (`read`, `bash`, `edit`, `write`) function seamlessly. Structured array message formats (`content: [{"type": "text", ...}]`) are natively parsed in `apps/free_llm_proxy/models.py`.
 - **Strata Token Budgets**: The Strata aliases declare `maxTokens: 131072` so Pi can request deep reasoning budgets; the proxy preserves them on the Strata route and clamps them to `CLOUD_MAX_OUTPUT_TOKENS` if the request fails over to a cloud provider.
 
----
-
 ## Related
-
 - [[concepts/tool-first-agency]]
 - [[entities/tool-registry]]
 - [[entities/wiki-linter]]

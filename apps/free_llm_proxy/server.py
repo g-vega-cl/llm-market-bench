@@ -289,6 +289,74 @@ async def chat_completions(
                     target_model = fallback_model
                     break
 
+        # In-provider cascade for OpenRouter when high demand (503) or rate-limit (429) occurs
+        if p_id == "openrouter" and status_code in (429, 503):
+            or_fallbacks = [
+                m
+                for m in [
+                    "openrouter/free",
+                    "nvidia/nemotron-3-ultra-550b-a55b:free",
+                    "nvidia/nemotron-3.5-super-vl:free",
+                    "nvidia/nemotron-3.5-lightning:free",
+                ]
+                if m != target_model and not target_model.endswith(m)
+            ]
+            for fallback_model in or_fallbacks:
+                payload["model"] = fallback_model
+                status_code, body_or_gen, resp_headers = await execute_completion(
+                    provider_cfg=p_cfg,
+                    payload=payload,
+                    stream=req.stream,
+                )
+                if status_code == 200:
+                    target_model = fallback_model
+                    break
+
+        # In-provider cascade for NVIDIA NIM when deprecated function (404) or rate-limit occurs
+        if p_id == "nvidia" and status_code in (404, 429, 503):
+            nvidia_fallbacks = [
+                m
+                for m in [
+                    "minimaxai/minimax-m3.1-flash",
+                    "nvidia/nemotron-3.5-super-vl-120b-a12b",
+                    "nvidia/nemotron-3-ultra-550b-a55b",
+                    "mistralai/mistral-large-4-1t-a52b",
+                ]
+                if m != target_model and not target_model.endswith(m)
+            ]
+            for fallback_model in nvidia_fallbacks:
+                payload["model"] = fallback_model
+                status_code, body_or_gen, resp_headers = await execute_completion(
+                    provider_cfg=p_cfg,
+                    payload=payload,
+                    stream=req.stream,
+                )
+                if status_code == 200:
+                    target_model = fallback_model
+                    break
+
+        # In-provider cascade for Kilo Code when paid model (401) or rate-limit occurs
+        if p_id == "kilo" and status_code in (400, 401, 429, 503):
+            kilo_fallbacks = [
+                m
+                for m in [
+                    "kilo-auto/free",
+                    "reflection/beam-free",
+                    "nvidia/nemotron-3.5-super-vl:free",
+                ]
+                if m != target_model and not target_model.endswith(m)
+            ]
+            for fallback_model in kilo_fallbacks:
+                payload["model"] = fallback_model
+                status_code, body_or_gen, resp_headers = await execute_completion(
+                    provider_cfg=p_cfg,
+                    payload=payload,
+                    stream=req.stream,
+                )
+                if status_code == 200:
+                    target_model = fallback_model
+                    break
+
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
 
         if status_code == 200:

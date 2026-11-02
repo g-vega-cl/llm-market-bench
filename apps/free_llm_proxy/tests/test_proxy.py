@@ -830,7 +830,10 @@ def test_unauthorized_call_is_logged_in_audit_db(client):
 
     resp = client.post(
         "/v1/chat/completions",
-        headers={"Authorization": "Bearer bad-token-attempt", "X-Forwarded-For": "203.0.113.195"},
+        headers={
+            "Authorization": "Bearer bad-token-attempt",
+            "X-Forwarded-For": "203.0.113.195",
+        },
         json={"model": "free-auto", "messages": [{"role": "user", "content": "probe"}]},
     )
     assert resp.status_code == 401
@@ -849,10 +852,16 @@ def test_gemini_pro_model_is_coerced_to_free_flash():
     router = Router(circuit_breaker=cb)
 
     # Gemini catalog with both pro and flash
-    available_models = ["models/gemini-1.5-pro", "models/gemini-3.8-flash", "models/gemini-2.5-flash-lite"]
+    available_models = [
+        "models/gemini-1.5-pro",
+        "models/gemini-3.8-flash",
+        "models/gemini-2.5-flash-lite",
+    ]
 
     # If client asks for gemini-1.5-pro, router must coerce to free flash
-    resolved = router.resolve_model_for_provider("gemini", "models/gemini-1.5-pro", available_models)
+    resolved = router.resolve_model_for_provider(
+        "gemini", "models/gemini-1.5-pro", available_models
+    )
     assert "flash" in resolved.lower()
     assert "pro" not in resolved.lower()
 
@@ -879,8 +888,15 @@ def test_gemini_strictly_filters_out_legacy_models():
     ]
 
     # Asking for free-auto or generic flash must select flash-latest or 3.x flash, never 1.5/2.0/2.5
-    resolved = router.resolve_model_for_provider("gemini", "free-auto", available_models)
-    assert resolved in ("models/gemini-flash-latest", "gemini-flash-latest", "models/gemini-3.6-flash", "gemini-3.6-flash")
+    resolved = router.resolve_model_for_provider(
+        "gemini", "free-auto", available_models
+    )
+    assert resolved in (
+        "models/gemini-flash-latest",
+        "gemini-flash-latest",
+        "models/gemini-3.6-flash",
+        "gemini-3.6-flash",
+    )
     assert not any(v in resolved for v in ("1.5", "2.0", "2.5"))
 
 
@@ -901,10 +917,18 @@ def test_gemini_in_provider_cascade_on_503_spike(client, monkeypatch):
     async def mock_execute(provider_cfg, payload, stream=False):
         model = payload["model"]
         attempts.append((provider_cfg.get("name"), model))
-        if model in ("gemini-flash-latest", "models/gemini-flash-latest", "gemini-3.8-flash"):
+        if model in (
+            "gemini-flash-latest",
+            "models/gemini-flash-latest",
+            "gemini-3.8-flash",
+        ):
             return 503, {"error": {"message": "High demand spike"}}, {}
         if model in ("gemini-3.6-flash", "models/gemini-3.6-flash"):
-            return 200, {"choices": [{"message": {"content": "Cascade OK"}}], "usage": {}}, {}
+            return (
+                200,
+                {"choices": [{"message": {"content": "Cascade OK"}}], "usage": {}},
+                {},
+            )
         return 200, {"choices": [{"message": {"content": "OK"}}], "usage": {}}, {}
 
     monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
@@ -913,7 +937,10 @@ def test_gemini_in_provider_cascade_on_503_spike(client, monkeypatch):
     resp = client.post(
         "/v1/chat/completions",
         headers=headers,
-        json={"model": "gemini/gemini-flash-latest", "messages": [{"role": "user", "content": "hi"}]},
+        json={
+            "model": "gemini/gemini-flash-latest",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
     )
     assert resp.status_code == 200
     assert resp.json()["choices"][0]["message"]["content"] == "Cascade OK"
@@ -921,4 +948,141 @@ def test_gemini_in_provider_cascade_on_503_spike(client, monkeypatch):
     assert any("gemini-3.6-flash" in att[1] for att in attempts)
 
 
+@pytest.mark.asyncio
+async def test_kilo_free_model_isolation_and_resolution():
+    """Verify that Kilo catalog discovery strips paid models and resolves strictly to free models."""
+    from apps.free_llm_proxy.discovery import ModelDiscovery
+
+    discovery = ModelDiscovery()
+    raw_kilo_catalog = [
+        {"id": "nvidia/nemotron-3-super-120b-a12b"},  # Paid
+        {"id": "anthropic/claude-3-opus"},  # Paid
+        {"id": "kilo-auto/free"},  # Free
+        {"id": "reflection/beam-free"},  # Free
+        {"id": "nvidia/nemotron-3.5-super-vl:free"},  # Free
+    ]
+
+    class MockResp:
+        status_code = 200
+
+        def json(self):
+            return {"data": raw_kilo_catalog}
+
+    class MockClient:
+        async def get(self, url, headers=None):
+            return MockResp()
+
+    filtered = await discovery.fetch_live_models(
+        "kilo", "https://api.kilo.ai/api/gateway", {}, client=MockClient()
+    )
+    # Paid models must be completely excluded
+    assert "nvidia/nemotron-3-super-120b-a12b" not in filtered
+    assert "anthropic/claude-3-opus" not in filtered
+    # Free models must be present
+    assert "kilo-auto/free" in filtered
+    assert "reflection/beam-free" in filtered
+    assert "nvidia/nemotron-3.5-super-vl:free" in filtered
+
+    # Verify router resolution for kilo prioritizes kilo-auto/free or free models
+    cb = CircuitBreaker()
+    router = Router(circuit_breaker=cb, discovery=discovery)
+    resolved = router.resolve_model_for_provider("kilo", "free-auto", filtered)
+    assert resolved in (
+        "kilo-auto/free",
+        "reflection/beam-free",
+        "nvidia/nemotron-3.5-super-vl:free",
+    )
+    assert not any(p in resolved for p in ("super-120b", "claude-3-opus"))
+
+
+def test_default_model_is_auto_strata_and_includes_strata_in_tier1():
+    """Verify that ChatCompletionRequest and Router defaults to auto-strata with Strata in Tier 1."""
+    from apps.free_llm_proxy.models import ChatCompletionRequest
+
+    # Schema default
+    req = ChatCompletionRequest(messages=[{"role": "user", "content": "hi"}])
+    assert req.model == "auto-strata"
+
+    # Router candidate chain for default/empty/auto
+    cb = CircuitBreaker()
+    router = Router(circuit_breaker=cb)
+
+    for empty_val in ("", "auto", "default", "auto-strata"):
+        chain = [p[0] for p in router.get_candidate_chain(empty_val)]
+        assert "strata" in chain
+        # Strata must be in the Tier 1 group (healthy candidates before Tier 2)
+        assert chain.index("strata") < len(chain)
+
+
+def test_openrouter_in_provider_cascade_on_503(client, monkeypatch):
+    """Verify that an upstream 503 on an OpenRouter model cascades to openrouter/free before failing provider."""
+    attempts = []
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        model = payload["model"]
+        attempts.append((provider_cfg.get("name"), model))
+        if provider_cfg.get("name") == "OpenRouter":
+            if model == "recursive/flint-v1.0:free":
+                return 503, {"error": {"message": "no upstreams available"}}, {}
+            if model == "openrouter/free":
+                return (
+                    200,
+                    {
+                        "choices": [{"message": {"content": "OpenRouter Cascade OK"}}],
+                        "usage": {},
+                    },
+                    {},
+                )
+        return 200, {"choices": [{"message": {"content": "OK"}}], "usage": {}}, {}
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "openrouter/recursive/flint-v1.0:free",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["message"]["content"] == "OpenRouter Cascade OK"
+    assert any(att[1] == "openrouter/free" for att in attempts)
+
+
+def test_nvidia_in_provider_cascade_on_404(client, monkeypatch):
+    """Verify that a 404 (deprecated function) on NVIDIA NIM cascades to another model before failing provider."""
+    attempts = []
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        model = payload["model"]
+        attempts.append((provider_cfg.get("name"), model))
+        if provider_cfg.get("name") == "NVIDIA NIM":
+            if "super-120b-a12b" in model:
+                return 404, {"status": 404, "title": "Not Found"}, {}
+            if "minimax" in model or "super-vl" in model:
+                return (
+                    200,
+                    {
+                        "choices": [{"message": {"content": "NVIDIA Cascade OK"}}],
+                        "usage": {},
+                    },
+                    {},
+                )
+        return 200, {"choices": [{"message": {"content": "OK"}}], "usage": {}}, {}
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "nvidia/nvidia/nemotron-3-super-120b-a12b",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["message"]["content"] == "NVIDIA Cascade OK"
 

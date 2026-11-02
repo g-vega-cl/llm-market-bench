@@ -18,8 +18,8 @@ class ChatCompletionRequest(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     model: str = Field(
-        default="free-auto",
-        description="Model name or virtual alias (e.g. free-auto, free-fast)",
+        default="auto-strata",
+        description="Model name or virtual alias (e.g. auto-strata, free-auto, free-fast)",
     )
     messages: list[ChatMessage] = Field(..., description="Conversation messages")
     temperature: float | None = 0.7

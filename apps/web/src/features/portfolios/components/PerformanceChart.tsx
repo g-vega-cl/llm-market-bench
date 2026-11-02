@@ -55,6 +55,14 @@ export function PerformanceChart({
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
 
+        const clipId = 'performance-chart-clip';
+        svg.append('defs')
+            .append('clipPath')
+            .attr('id', clipId)
+            .append('rect')
+            .attr('width', width)
+            .attr('height', height);
+
         const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
         const parsedData: ChartLine[] = data.map((d) => ({
@@ -66,7 +74,15 @@ export function PerformanceChart({
         let benchmarkLines: ChartLine[] = [];
 
         if (selectedBenchmark && benchmarkData?.[selectedBenchmark]) {
-            benchmarkLines = benchmarkData[selectedBenchmark].map((d) => ({
+            const [minDate, maxDate] = d3.extent(parsedData, (d) => d.date);
+            const minTime = minDate ? minDate.getTime() : 0;
+            const maxTime = maxDate ? maxDate.getTime() : Infinity;
+            const filteredBenchmark = benchmarkData[selectedBenchmark].filter((d) => {
+                const t = new Date(d.date).getTime();
+                return t >= minTime && t <= maxTime;
+            });
+
+            benchmarkLines = filteredBenchmark.map((d) => ({
                 date: new Date(d.date),
                 value: d.price,
                 ticker: selectedBenchmark,
@@ -155,6 +171,7 @@ export function PerformanceChart({
 
         g.append('path')
             .datum(allLines)
+            .attr('clip-path', `url(#${clipId})`)
             .attr('fill', 'none')
             .attr('stroke', '#0ea5e9')
             .attr('stroke-width', 2.5)
@@ -167,11 +184,16 @@ export function PerformanceChart({
             .y1((d) => y(d.value))
             .curve(d3.curveMonotoneX);
 
-        g.append('path').datum(allLines).attr('fill', 'url(#line-gradient)').attr('d', area);
+        g.append('path')
+            .datum(allLines)
+            .attr('clip-path', `url(#${clipId})`)
+            .attr('fill', 'url(#line-gradient)')
+            .attr('d', area);
 
         if (benchmarkLines.length > 0) {
             g.append('path')
                 .datum(benchmarkLines)
+                .attr('clip-path', `url(#${clipId})`)
                 .attr('fill', 'none')
                 .attr('stroke', '#f59e0b')
                 .attr('stroke-width', 2)

@@ -221,7 +221,13 @@ export function PortfolioComparisonChart({
 
         let benchmarkValue: number | undefined;
         if (selectedBenchmark && benchmarkData?.[selectedBenchmark]) {
-            const bPoints = benchmarkData[selectedBenchmark];
+            const [minDate, maxDate] = dateRange;
+            const minTime = minDate.getTime();
+            const maxTime = maxDate.getTime();
+            const bPoints = benchmarkData[selectedBenchmark].filter((b) => {
+                const t = new Date(b.date).getTime();
+                return t >= minTime && t <= maxTime;
+            });
             if (bPoints.length > 0) {
                 const latest = bPoints[bPoints.length - 1];
                 const base = bPoints[0].price || 1;
@@ -243,7 +249,7 @@ export function PortfolioComparisonChart({
             x: 0,
             y: 0,
         };
-    }, [activeData, portfolioColors, benchmarkData, selectedBenchmark]);
+    }, [activeData, portfolioColors, benchmarkData, selectedBenchmark, dateRange]);
 
     React.useEffect(() => {
         setClickedData((prev) => {
@@ -292,6 +298,14 @@ export function PortfolioComparisonChart({
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
 
+        const clipId = 'portfolio-comparison-clip';
+        svg.append('defs')
+            .append('clipPath')
+            .attr('id', clipId)
+            .append('rect')
+            .attr('width', width)
+            .attr('height', height);
+
         const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
         const portfolioGroups = new Map<string, ChartLine[]>();
@@ -313,7 +327,15 @@ export function PortfolioComparisonChart({
 
         let benchmarkLines: ChartLine[] = [];
         if (selectedBenchmark && benchmarkData?.[selectedBenchmark]) {
-            benchmarkLines = benchmarkData[selectedBenchmark].map((d) => ({
+            const [minDate, maxDate] = dateRange;
+            const minTime = minDate.getTime();
+            const maxTime = maxDate.getTime();
+            const filteredBenchmark = benchmarkData[selectedBenchmark].filter((d) => {
+                const t = new Date(d.date).getTime();
+                return t >= minTime && t <= maxTime;
+            });
+
+            benchmarkLines = filteredBenchmark.map((d) => ({
                 date: new Date(d.date),
                 value: d.price,
                 ticker: selectedBenchmark,
@@ -409,6 +431,7 @@ export function PortfolioComparisonChart({
             g.append('path')
                 .datum(sorted)
                 .attr('class', `portfolio-line portfolio-line-${portfolioId}`)
+                .attr('clip-path', `url(#${clipId})`)
                 .attr('fill', 'none')
                 .attr('stroke', color)
                 .attr('stroke-width', 2.5)
@@ -428,6 +451,7 @@ export function PortfolioComparisonChart({
             g.append('path')
                 .datum(sortedBenchmark)
                 .attr('class', 'benchmark-line')
+                .attr('clip-path', `url(#${clipId})`)
                 .attr('fill', 'none')
                 .attr('stroke', '#f59e0b')
                 .attr('stroke-width', 2)

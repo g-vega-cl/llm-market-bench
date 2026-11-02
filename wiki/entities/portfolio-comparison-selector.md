@@ -29,6 +29,7 @@ The comparison chart can receive data for many portfolios, but rendering all of 
 - Only `activeData` (the selected subset) is rendered as lines. Portfolio names and their percentages are displayed exclusively in the selector chips (via `chipValues`, mapped from the readout's `ownerId` to `portfolioId`); the readout panel above the chart keeps just the date and the benchmark row. Benchmark series remain labeled in the chart legend. Portfolio colors are assigned per selected portfolio so they stay stable across add/remove.
 - When no portfolios are selected, the chart renders a centered message: *"No agents selected. Select up to 5 agents above to compare."*
 - The crosshair tooltip is trimmed to the currently selected portfolios, and the chart's date range falls back to the benchmark's range when nothing is selected.
+- **Benchmark bounding & normalization** — Benchmark series (e.g. SPY) are strictly bounded to the active portfolio date range (`[minTime, maxTime]`) and clipped via `<clipPath id="portfolio-comparison-clip">`. This prevents lines from extending past the chart in 90D/All timeframes where raw index history precedes agent creation, and normalizes the benchmark baseline and headline readout to 0% at the start of the visible comparison window.
 
 ## Related
 

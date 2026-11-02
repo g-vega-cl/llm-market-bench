@@ -320,4 +320,56 @@ describe('PortfolioComparisonChart — uses design system', () => {
             container.querySelector('button[aria-label="Remove agent 1 from comparison"]'),
         ).toBeNull();
     });
+
+    it('restricts benchmark line and coordinates to the active date range when benchmark data starts earlier than portfolios', () => {
+        // Portfolio only has data from 2026-09-13 to 2026-11-02
+        const data = [
+            {
+                portfolioId: 'port-1',
+                ownerId: 'agent-1',
+                performance: [
+                    { date: '2026-09-13', value: 0 },
+                    { date: '2026-11-02', value: 10 },
+                ],
+            },
+        ];
+
+        // Benchmark (SPY) has points going back to 2026-08-21 (earlier) and forward to 2026-11-05 (later)
+        const benchmarkData = {
+            SPY: [
+                { date: '2026-08-21', price: 500 },
+                { date: '2026-09-01', price: 510 },
+                { date: '2026-09-13', price: 520 },
+                { date: '2026-10-01', price: 530 },
+                { date: '2026-11-02', price: 540 },
+                { date: '2026-11-05', price: 550 },
+            ],
+        };
+
+        const { container } = render(
+            <PortfolioComparisonChart
+                data={data}
+                benchmarkData={benchmarkData}
+                selectedBenchmark="SPY"
+                onReset={vi.fn()}
+            />,
+        );
+
+        const benchmarkLine = container.querySelector('.benchmark-line');
+        expect(benchmarkLine).toBeTruthy();
+
+        const dAttr = benchmarkLine?.getAttribute('d') ?? '';
+        const commands = dAttr.split(/[MLZ]/).filter(Boolean);
+        const xCoordinates = commands.map((cmd) => parseFloat(cmd.split(',')[0].trim()));
+
+        // Every x-coordinate must be >= 0 and <= width (590)
+        expect(xCoordinates.length).toBeGreaterThan(0);
+        for (const x of xCoordinates) {
+            expect(x).toBeGreaterThanOrEqual(0);
+            expect(x).toBeLessThanOrEqual(590);
+        }
+
+        // Verify the benchmark percentage is normalized from the start of the visible date range (520 -> 540 = +3.85%)
+        expect(container.textContent).toContain('+3.85%');
+    });
 });

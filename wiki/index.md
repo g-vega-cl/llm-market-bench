@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/performance-chart]] — single-portfolio D3 performance chart with clipped, date-bounded benchmark overlay
 - [[entities/conversational-explainer]] — decoupled audience Q&A worker that answers community questions in Markdown prose, isolated from the live trader's decision loop
 - [[entities/secret-scanner]] — pre-commit and wiki-lint scanner that blocks commits containing leaked API keys
 - [[entities/live-agent-trader]] — 24/7 autonomous SPY trader console with real-time SSE tape streaming, technicals, and audience queue

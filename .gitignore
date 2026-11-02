@@ -47,3 +47,7 @@ apps/engine/scratch/
 # Backups
 *.bak
 
+
+# Business-fit research snapshot (partner hand-off, local-only; large capture set)
+# Snapshot 20261102T175851Z — see research/business-fit/SNAPSHOT.md
+research/business-fit/

@@ -163,7 +163,7 @@ To eliminate the divergence between historical simulated two-pass newsletters an
 ### 2. Hermetic Ground-Truth Session Store ([`live_session_store.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/local_autoresearch/live_session_store.py))
 - Materializes live production runs from Supabase into `.live_production_sessions.db`.
 - Preserves the exact pre-market newsletters, real serialized market contexts, and ground-truth intraday SPY open/close prices.
-- **Premarket Timestamp Guard (`is_premarket_timestamp_clean`)**: Enforces a strict `< 09:30:00 AM EDT` (< 13:30:00 UTC) ceiling, purging post-open sessions recorded during afternoon market hours.
+- **Premarket Timestamp Guard (`is_premarket_timestamp_clean`)**: Enforces a strict `< 09:30:00 AM ET` ceiling (handling both EDT and EST seamlessly), purging post-open sessions recorded during afternoon market hours.
 
 ### 3. Strata ORCA Reasoning Token Calibration
 - Inference runs locally on **Strata ORCA** (`orcarouter-qwen3.8-flash-next-uncensored-iq3_xxs`) with unconstrained chain-of-thought reasoning (`reasoning_budget_tokens: -1`).

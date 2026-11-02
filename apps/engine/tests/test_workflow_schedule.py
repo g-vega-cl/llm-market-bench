@@ -167,12 +167,13 @@ def test_generate_newsletter_chains_daily_predictor():
 
 
 def test_daily_predictor_safety_window_blocks_after_hours():
-    """Verify daily-predictor.yml safety check blocks pre-market predictions after 13:30 UTC without leaking past 20:00 UTC."""
+    """Verify daily-predictor.yml safety check blocks pre-market predictions after 9:30 AM ET (570 mins) without leaking past 20:00 UTC."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     predictor_yml_path = root / ".github" / "workflows" / "daily-predictor.yml"
 
     content = predictor_yml_path.read_text()
-    assert '[ "$NOW_MINUTES" -ge 810 ]' in content
+    assert '[ "$NY_MINUTES" -ge 570 ]' in content
+    assert 'TZ="America/New_York"' in content
     # Crucial regression check: Must NOT have '< 1200' upper bound which let 20:00-24:00 UTC evening runs leak through
     assert "-lt 1200" not in content, (
         "Found fragile '-lt 1200' check in daily-predictor.yml which allows rogue evening runs after 8 PM UTC."
@@ -202,8 +203,11 @@ def test_generate_newsletter_workflow_auto_session_and_safety():
     job = config.get("jobs", {}).get("generate-newsletter", {})
     assert job.get("timeout-minutes") == 15, f"Expected 15m timeout, got {job.get('timeout-minutes')}"
 
-    # Verify downstream step guards against triggering daily-predictor past 13:30 UTC
-    assert "810" in content, "Expected downstream trigger step to check for 13:30 UTC (810 mins) cutoff."
+    # Verify downstream step guards against triggering daily-predictor past 9:30 AM ET (570 mins)
+    assert '[ "$NY_MINUTES" -ge 570 ]' in content, (
+        "Expected downstream trigger step to check for 9:30 AM ET (570 mins) cutoff."
+    )
+    assert 'TZ="America/New_York"' in content
 
 
 def test_cron_dispatcher_917_schedule():

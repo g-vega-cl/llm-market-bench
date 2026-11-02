@@ -12,7 +12,9 @@ import re
 import sqlite3
 import sys
 import time
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 # Ensure apps/engine root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,11 +27,21 @@ DEFAULT_LIVE_SESSIONS_DB = ".live_production_sessions.db"
 
 def is_premarket_timestamp_clean(source_created_at: str | None, payload: str | None) -> bool:
     """Verify that session data was strictly produced before the 09:30 AM ET market open."""
-    # 1. Check source creation timestamp in UTC (09:30 AM EDT is 13:30:00 UTC)
+    # 1. Check source creation timestamp in America/New_York (09:30 AM ET market open across EDT and EST)
     if source_created_at:
-        utc_time_match = re.search(r"T([0-9]{2}:[0-9]{2}:[0-9]{2})", source_created_at)
-        if utc_time_match and utc_time_match.group(1) > "13:30:00":
-            return False
+        try:
+            cleaned_ts = source_created_at.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(cleaned_ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+            dt_ny = dt.astimezone(ZoneInfo("America/New_York"))
+            if dt_ny.hour > 9 or (dt_ny.hour == 9 and dt_ny.minute >= 30) or dt_ny.hour < 4:
+                return False
+        except Exception:
+            utc_time_match = re.search(r"T([0-9]{2}:[0-9]{2}:[0-9]{2})", source_created_at)
+            # Fallback regex ceiling: in EST 09:30 AM is 14:30:00 UTC
+            if utc_time_match and utc_time_match.group(1) > "14:30:00":
+                return False
 
     # 2. Check exact current time inside market context
     if payload:

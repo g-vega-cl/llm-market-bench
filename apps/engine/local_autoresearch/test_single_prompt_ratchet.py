@@ -243,11 +243,17 @@ def test_lint_mutant_prompt_blocks_dates_and_years():
 
 def test_is_premarket_timestamp_clean():
     """Verify premarket cleaner rejects any sessions timestamped post-open."""
-    # Pre-market clean: 09:16 AM ET (13:16 UTC)
+    # Pre-market clean (EDT): 09:16 AM ET (13:16 UTC)
     assert is_premarket_timestamp_clean("2026-08-12T13:16:00Z", "Exact Current Time: 09:16:00 AM EDT") is True
 
-    # Leaked post-open: 09:38 AM ET (13:38 UTC)
+    # Pre-market clean (EST): 09:16 AM ET (14:16 UTC)
+    assert is_premarket_timestamp_clean("2026-11-02T14:16:00Z", "Exact Current Time: 09:16:00 AM EST") is True
+
+    # Leaked post-open (EDT): 09:38 AM ET (13:38 UTC)
     assert is_premarket_timestamp_clean("2026-08-07T13:38:05Z", "Market Session: Pre-Market") is False
+
+    # Leaked post-open (EST): 09:38 AM ET (14:38 UTC)
+    assert is_premarket_timestamp_clean("2026-11-02T14:38:05Z", "Market Session: Pre-Market") is False
 
     # Leaked afternoon: 03:18 PM ET
     assert is_premarket_timestamp_clean("2026-09-23T19:18:55Z", "Exact Current Time: 03:18:55 PM EDT") is False

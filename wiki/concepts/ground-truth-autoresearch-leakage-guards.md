@@ -18,7 +18,7 @@ In live automated systems, pipeline retry delays, network stalls, or manual trig
 
 ### The Guard (`is_premarket_timestamp_clean`)
 All live sessions are strictly filtered during materialization in [`apps/engine/local_autoresearch/live_session_store.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/local_autoresearch/live_session_store.py):
-1. **UTC Source Ceiling**: `source_created_at` timestamp must be strictly `< 13:30:00 UTC` (09:30:00 AM EDT).
+1. **Eastern Time Source Ceiling**: `source_created_at` timestamp is converted to `America/New_York` and must be strictly before 09:30:00 AM ET (handling both EDT and EST seamlessly).
 2. **Payload Context Regex**: The serialized `Exact Current Time` inside the market context string is parsed. Any time in `PM` or with `hh == 9 and mm >= 30` is purged immediately.
 
 Filtering reduced the raw dataset from 51 sessions to **47 strictly pre-market sessions** (17 UP / 30 DOWN).

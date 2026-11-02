@@ -41,8 +41,8 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.session }}" != "auto" ]; then
             SESSION="${{ inputs.session }}"
           else
-            HOUR=$(date -u +%H)
-            if [ "$HOUR" -ge 13 ] && [ "$HOUR" -le 14 ]; then
+            NY_HOUR=$(( 10#$(TZ="America/New_York" date +%H) ))
+            if [ "$NY_HOUR" -lt 12 ]; then
               SESSION="open"
             else
               SESSION="close"
@@ -78,9 +78,10 @@ jobs:
           GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
         run: |
           if [ "${{ steps.sess.outputs.session }}" = "open" ]; then
-            NOW_MINUTES=$(( $(date -u +%H) * 60 + $(date -u +%M) ))
-            if [ "$NOW_MINUTES" -ge 810 ]; then
-              echo "Session was 'open' but current time is past 13:30 UTC (9:30 AM ET market open). Skipping pre-market predictor trigger."
+            NY_MINUTES=$(( 10#$(TZ="America/New_York" date +%H) * 60 + 10#$(TZ="America/New_York" date +%M) ))
+            # 9:30 AM ET = 570 minutes (9 * 60 + 30)
+            if [ "$NY_MINUTES" -ge 570 ]; then
+              echo "Session was 'open' but current time is past 9:30 AM ET market open ($NY_MINUTES mins ET). Skipping pre-market predictor trigger."
               exit 0
             fi
             ACTION="daily-predictor"

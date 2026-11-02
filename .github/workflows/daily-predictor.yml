@@ -55,12 +55,12 @@ jobs:
 
           echo "command=$COMMAND" >> $GITHUB_OUTPUT
 
-          # Pre-market prediction safety check: skip if running after 13:30 UTC (9:30 AM EDT market open)
+          # Pre-market prediction safety check: skip if running after 9:30 AM ET market open
           if [ "$COMMAND" = "daily-predictor" ]; then
-            NOW_MINUTES=$(( $(date -u +%H) * 60 + $(date -u +%M) ))
-            # 13:30 UTC = 810 minutes (9:30 AM EDT market open)
-            if [ "$NOW_MINUTES" -ge 810 ]; then
-              echo "WARNING: Pre-market prediction triggered after 9:30 AM ET market open ($NOW_MINUTES mins UTC). Skipping to avoid stale prediction."
+            NY_MINUTES=$(( 10#$(TZ="America/New_York" date +%H) * 60 + 10#$(TZ="America/New_York" date +%M) ))
+            # 9:30 AM ET = 570 minutes (9 * 60 + 30)
+            if [ "$NY_MINUTES" -ge 570 ]; then
+              echo "WARNING: Pre-market prediction triggered after 9:30 AM ET market open ($NY_MINUTES mins ET). Skipping to avoid stale prediction."
               echo "skip=true" >> $GITHUB_OUTPUT
             fi
           fi

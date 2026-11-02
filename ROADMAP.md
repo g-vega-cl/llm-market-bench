@@ -60,6 +60,7 @@ A living document of features and improvements in progress or planned for the pl
 ### Database & Performance Polish
 
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
+- [ ] - Benchify: connect QMD to knowledge db or use strata to distil the information to core principles
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - Benchify: get the smol server to do API calls 24/7 now that the DB is huge, and set up a distributed DB.
 - [ ] - Benchify: news scraper/news caller. I need a huge DB of news
@@ -138,6 +139,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
   - same with text
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.
+- [ ] - Random: Toronto rank councilors and what they do and categorize them
 
 ---
 

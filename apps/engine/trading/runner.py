@@ -166,7 +166,7 @@ async def _run_agent_loop(
     broadcaster: TapeBroadcaster | None = None,
 ) -> None:
     """Run the 5-minute autonomous LLM reasoning turn loop."""
-    async with httpx.AsyncClient(timeout=30.0) as http_client:
+    async with httpx.AsyncClient(timeout=90.0) as http_client:
         while True:
             try:
                 is_open = is_market_session_active()
@@ -209,7 +209,7 @@ async def run_qa_worker_loop(
 ) -> None:
     """Run the 5-minute background worker answering audience questions with conversational explainer."""
     logger.info(f"Starting Conversational Desk QA worker loop (interval={interval_seconds}s)")
-    async with httpx.AsyncClient(timeout=35.0) as http_client:
+    async with httpx.AsyncClient(timeout=90.0) as http_client:
         while True:
             try:
                 if sb_client:
@@ -313,7 +313,7 @@ async def run_news_synthesis_worker_loop(
 ) -> None:
     """Run the 30-minute background worker synthesizing recent breaking news using auto-strata."""
     logger.info(f"Starting 30-minute AI News Synthesis worker loop (interval={interval_seconds}s)")
-    async with httpx.AsyncClient(timeout=45.0) as http_client:
+    async with httpx.AsyncClient(timeout=90.0) as http_client:
         while True:
             try:
                 if sb_client:

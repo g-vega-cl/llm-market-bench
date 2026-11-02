@@ -12,7 +12,7 @@ import {
 import { PortfolioDetailPage } from '~/features/portfolios/pages/PortfolioDetailPage';
 
 const getPortfolioData = createServerFn({ method: 'GET' })
-    .inputValidator((d: string) => d)
+    .validator((d: string) => d)
     .handler(async ({ data: portfolioId }: { data: string }) => {
         const [portfolio, positions, history, trades, themes, forces] = await Promise.all([
             fetchPortfolioById(portfolioId),
@@ -27,7 +27,7 @@ const getPortfolioData = createServerFn({ method: 'GET' })
     });
 
 const getBenchmarkData = createServerFn({ method: 'GET' })
-    .inputValidator((d: { tickers: string[]; startDate: string; endDate: string }) => d)
+    .validator((d: { tickers: string[]; startDate: string; endDate: string }) => d)
     .handler(
         async ({ data }: { data: { tickers: string[]; startDate: string; endDate: string } }) => {
             if (data.tickers.length === 0) return {};

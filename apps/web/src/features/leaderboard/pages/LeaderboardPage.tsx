@@ -9,7 +9,7 @@ import { LeaderboardTable } from '../components/LeaderboardTable';
 import { ModelComparison } from '../components/ModelComparison';
 
 const getLeaderboardFn = createServerFn({ method: 'GET' })
-    .inputValidator((d: number | null) => d)
+    .validator((d: number | null) => d)
     .handler(async ({ data: timeframe }: { data: number | null }) => {
         return fetchLeaderboard(timeframe);
     });

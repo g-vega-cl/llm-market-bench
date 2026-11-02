@@ -2,6 +2,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { fetchReasoningLogs } from '~/features/reasoning/api/fetch-reasoning-logs';
 import { Route } from './index';
 
+vi.mock('@tanstack/react-start', async () => {
+    const actual =
+        await vi.importActual<typeof import('@tanstack/react-start')>('@tanstack/react-start');
+    return {
+        ...actual,
+        createServerFn: () => ({
+            inputValidator: () => ({
+                handler: (fn: (args: { data: unknown }) => unknown) => (args: { data: unknown }) =>
+                    fn(args),
+            }),
+            validator: () => ({
+                handler: (fn: (args: { data: unknown }) => unknown) => (args: { data: unknown }) =>
+                    fn(args),
+            }),
+        }),
+    };
+});
+
 vi.mock('~/features/reasoning/api/fetch-reasoning-logs', () => ({
     fetchReasoningLogs: vi.fn().mockResolvedValue({
         data: [],

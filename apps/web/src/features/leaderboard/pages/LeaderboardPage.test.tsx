@@ -20,6 +20,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 // Mock Server Fn
 vi.mock('@tanstack/react-start', () => ({
     createServerFn: () => ({
+        validator: () => ({
+            handler: (fn: unknown) => fn,
+        }),
         inputValidator: () => ({
             handler: (fn: unknown) => fn,
         }),

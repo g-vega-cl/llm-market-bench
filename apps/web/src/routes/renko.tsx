@@ -103,7 +103,7 @@ const getLinPortfolioData = createServerFn({ method: 'GET' }).handler(async () =
 });
 
 const getBenchmarkData = createServerFn({ method: 'GET' })
-    .inputValidator((d: { tickers: string[]; startDate: string; endDate: string }) => d)
+    .validator((d: { tickers: string[]; startDate: string; endDate: string }) => d)
     .handler(
         async ({ data }: { data: { tickers: string[]; startDate: string; endDate: string } }) => {
             if (data.tickers.length === 0) return {};

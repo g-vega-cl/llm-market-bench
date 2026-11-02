@@ -4,7 +4,7 @@ import { getAuthServerClient } from '~/lib/auth';
 import { Login } from '~/shared/auth';
 
 export const loginFn = createServerFn({ method: 'POST' })
-    .inputValidator((d: { email: string; password: string }) => d)
+    .validator((d: { email: string; password: string }) => d)
     .handler(async ({ data }) => {
         const authClient = getAuthServerClient();
         const { data: authData, error } = await authClient.auth.signInWithPassword({
@@ -34,7 +34,7 @@ export const Route = createFileRoute('/_authed')({
         }
     },
     errorComponent: ({ error }) => {
-        if (error.message === 'Not authenticated') {
+        if (error instanceof Error && error.message === 'Not authenticated') {
             return <Login />;
         }
 

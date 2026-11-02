@@ -6,13 +6,13 @@ import { buildChain } from '~/features/memories/utils/build-chain';
 import { formatEasternDateTimeWithYear } from '~/utils/date';
 
 const getFocusMemory = createServerFn({ method: 'GET' })
-    .inputValidator((d: string) => d)
+    .validator((d: string) => d)
     .handler(async ({ data: memoryId }: { data: string }) => {
         return fetchMemoryById(memoryId);
     });
 
 const getEventChain = createServerFn({ method: 'GET' })
-    .inputValidator((d: string) => d)
+    .validator((d: string) => d)
     .handler(async ({ data: memoryId }: { data: string }) => {
         const chainMemories = await fetchMemoryChain(memoryId);
         return buildChain(memoryId, chainMemories);

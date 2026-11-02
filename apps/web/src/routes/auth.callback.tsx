@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { getAuthServerClient } from '~/lib/auth';
 
 const exchangeCodeFn = createServerFn({ method: 'GET' })
-    .inputValidator((d: { code: string }) => d)
+    .validator((d: { code: string }) => d)
     .handler(async ({ data }) => {
         const authClient = getAuthServerClient();
         const { error } = await authClient.auth.exchangeCodeForSession(data.code);

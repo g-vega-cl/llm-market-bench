@@ -4,7 +4,7 @@ import { fetchCauseAndEffect } from '~/features/cause-and-effect/api/fetch-cause
 import { CauseAndEffectPage } from '~/features/cause-and-effect/pages/CauseAndEffectPage';
 
 const getCauseAndEffect = createServerFn({ method: 'GET' })
-    .inputValidator((d: { limit?: number } | undefined) => d)
+    .validator((d: { limit?: number } | undefined) => d)
     .handler(async ({ data }) => {
         return fetchCauseAndEffect(data?.limit);
     });

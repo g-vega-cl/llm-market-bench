@@ -4,7 +4,7 @@ import { fetchMarketOverviewData } from '~/features/market-overview/api/fetch-ma
 import { MarketOverviewPage } from '~/features/market-overview/pages/MarketOverviewPage';
 
 const getMarketOverview = createServerFn({ method: 'GET' })
-    .inputValidator((d: { limit?: number } | undefined) => d)
+    .validator((d: { limit?: number } | undefined) => d)
     .handler(async ({ data }) => {
         return fetchMarketOverviewData(data?.limit);
     });

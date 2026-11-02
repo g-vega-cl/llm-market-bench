@@ -4,7 +4,7 @@ import { fetchAudits } from '~/features/audits/api/fetch-audits';
 import { AuditsPage } from '~/features/audits/pages/AuditsPage';
 
 const getAudits = createServerFn({ method: 'GET' })
-    .inputValidator((d?: string) => d)
+    .validator((d?: string) => d)
     .handler(async ({ data }) => {
         return fetchAudits(data);
     });

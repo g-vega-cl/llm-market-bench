@@ -8,7 +8,7 @@ const getConcepts = createServerFn({ method: 'GET' }).handler(async () => {
 });
 
 const getConceptMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: string) => d)
+    .validator((d: string) => d)
     .handler(async ({ data: conceptId }: { data: string }) => {
         return fetchConceptMemories(conceptId);
     });

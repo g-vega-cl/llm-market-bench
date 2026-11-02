@@ -104,7 +104,7 @@ export async function handleFetchAgentQueueStatus(): Promise<AgentQueueStatus> {
 }
 
 export const submitAgentQueueQuestion = createServerFn({ method: 'POST' })
-    .inputValidator((d: { message: string }) => d)
+    .validator((d: { message: string }) => d)
     .handler(async ({ data }) => {
         return handleSubmitAgentQueueQuestion(data);
     });

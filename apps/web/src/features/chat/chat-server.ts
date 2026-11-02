@@ -415,25 +415,25 @@ export async function handleFetchMyChatMemories(payload: {
 }
 
 export const sendChatMessageFn = createServerFn({ method: 'POST' })
-    .inputValidator((d: { messages: ChatMessage[] }) => d)
+    .validator((d: { messages: ChatMessage[] }) => d)
     .handler(async ({ data }) => {
         return handleChatMessage(data);
     });
 
 export const distillChatMemoryFn = createServerFn({ method: 'POST' })
-    .inputValidator((d: DistillMemoryRequest) => d)
+    .validator((d: DistillMemoryRequest) => d)
     .handler(async ({ data }) => {
         return handleDistillChatMemory(data);
     });
 
 export const saveChatMemoryFn = createServerFn({ method: 'POST' })
-    .inputValidator((d: SaveChatMemoryRequest) => d)
+    .validator((d: SaveChatMemoryRequest) => d)
     .handler(async ({ data }) => {
         return handleSaveChatMemory(data);
     });
 
 export const fetchMyChatMemoriesFn = createServerFn({ method: 'GET' })
-    .inputValidator((d: { ticker?: string }) => d)
+    .validator((d: { ticker?: string }) => d)
     .handler(async ({ data }) => {
         return handleFetchMyChatMemories(data);
     });

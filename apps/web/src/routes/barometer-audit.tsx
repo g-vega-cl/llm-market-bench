@@ -7,7 +7,7 @@ import {
 import { BarometerAuditPage } from '~/features/home/pages/BarometerAuditPage';
 
 const getBarometerAuditData = createServerFn({ method: 'GET' })
-    .inputValidator((d: { date?: string } | undefined) => d)
+    .validator((d: { date?: string } | undefined) => d)
     .handler(async ({ data }) => {
         const dates = await fetchMarketBarometerDates();
         const selectedDate = data?.date || dates[0] || null;

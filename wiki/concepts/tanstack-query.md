@@ -102,6 +102,12 @@ Passing a dynamic value as the React `key` prop on a chart or data-heavy compone
 <PortfolioComparisonChart data={...} selectedBenchmark={selectedBenchmark} />
 ```
 
+### Server Function Validation & Strict Error Types
+
+With updated TanStack Start / Router packages:
+- **Server Function Validation**: Deprecated `.inputValidator(...)` on `createServerFn` is superseded by `.validator(...)`. It accepts the same identity validator pattern `(d: T) => d` while avoiding Vite build-time deprecation warnings.
+- **Strict Error Component Types**: Router `errorComponent` arguments strictly type `error` as `unknown` rather than ambient `any`. Error-checking logic must guard types explicitly (e.g., `error instanceof Error && error.message === '...'`) before accessing property fields.
+
 ## Related
 
 - [[entities/web-app]]

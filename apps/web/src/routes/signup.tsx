@@ -12,7 +12,7 @@ type AuthResult =
     | undefined;
 
 export const signupFn = createServerFn({ method: 'POST' })
-    .inputValidator((d: SignupVariables) => d)
+    .validator((d: SignupVariables) => d)
     .handler(async ({ data }) => {
         const authClient = getAuthServerClient();
         const { data: authData, error } = await authClient.auth.signUp({

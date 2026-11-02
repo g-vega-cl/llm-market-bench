@@ -9,80 +9,59 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TodayRouteImport } from './routes/today'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as RenkoRouteImport } from './routes/renko'
-import { Route as LogoutRouteImport } from './routes/logout'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as LabRouteImport } from './routes/lab'
-import { Route as HowItWorksRouteImport } from './routes/how-it-works'
-import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
-import { Route as EarningsAuditRouteImport } from './routes/earnings-audit'
-import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
-import { Route as ChatRouteImport } from './routes/chat'
-import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
-import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
-import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
-import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
-import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
-import { Route as MarketOverviewIndexRouteImport } from './routes/market-overview/index'
-import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard/index'
-import { Route as DailyPredictionsIndexRouteImport } from './routes/daily-predictions/index'
-import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
-import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
-import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/index'
-import { Route as AuditsIndexRouteImport } from './routes/audits/index'
-import { Route as AiPredictionsIndexRouteImport } from './routes/ai-predictions/index'
-import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
+import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
+import { Route as ChatRouteImport } from './routes/chat'
+import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
+import { Route as EarningsAuditRouteImport } from './routes/earnings-audit'
+import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as LabRouteImport } from './routes/lab'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as RenkoRouteImport } from './routes/renko'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as TodayRouteImport } from './routes/today'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
+import { Route as AiPredictionsIndexRouteImport } from './routes/ai-predictions/index'
+import { Route as AuditsIndexRouteImport } from './routes/audits/index'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/index'
+import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
+import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
+import { Route as DailyPredictionsIndexRouteImport } from './routes/daily-predictions/index'
+import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard/index'
+import { Route as MarketOverviewIndexRouteImport } from './routes/market-overview/index'
+import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
+import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
+import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
+import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
 
-const TodayRoute = TodayRouteImport.update({
-  id: '/today',
-  path: '/today',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RenkoRoute = RenkoRouteImport.update({
-  id: '/renko',
-  path: '/renko',
+const AutoresearchBacktestRoute = AutoresearchBacktestRouteImport.update({
+  id: '/autoresearch-backtest',
+  path: '/autoresearch-backtest',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LogoutRoute = LogoutRouteImport.update({
-  id: '/logout',
-  path: '/logout',
+const BarometerAuditRoute = BarometerAuditRouteImport.update({
+  id: '/barometer-audit',
+  path: '/barometer-audit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LabRoute = LabRouteImport.update({
-  id: '/lab',
-  path: '/lab',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HowItWorksRoute = HowItWorksRouteImport.update({
-  id: '/how-it-works',
-  path: '/how-it-works',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GeneratedNewslettersRoute = GeneratedNewslettersRouteImport.update({
-  id: '/generated-newsletters',
-  path: '/generated-newsletters',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EarningsAuditRoute = EarningsAuditRouteImport.update({
-  id: '/earnings-audit',
-  path: '/earnings-audit',
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DailyPredictionsBacktestRoute =
@@ -91,73 +70,59 @@ const DailyPredictionsBacktestRoute =
     path: '/daily-predictions-backtest',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ChatRoute = ChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
+const EarningsAuditRoute = EarningsAuditRouteImport.update({
+  id: '/earnings-audit',
+  path: '/earnings-audit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BarometerAuditRoute = BarometerAuditRouteImport.update({
-  id: '/barometer-audit',
-  path: '/barometer-audit',
+const GeneratedNewslettersRoute = GeneratedNewslettersRouteImport.update({
+  id: '/generated-newsletters',
+  path: '/generated-newsletters',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AutoresearchBacktestRoute = AutoresearchBacktestRouteImport.update({
-  id: '/autoresearch-backtest',
-  path: '/autoresearch-backtest',
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedRoute = AuthedRouteImport.update({
-  id: '/_authed',
+const LabRoute = LabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReasoningIndexRoute = ReasoningIndexRouteImport.update({
-  id: '/reasoning/',
-  path: '/reasoning/',
+const LogoutRoute = LogoutRouteImport.update({
+  id: '/logout',
+  path: '/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PortfoliosIndexRoute = PortfoliosIndexRouteImport.update({
-  id: '/portfolios/',
-  path: '/portfolios/',
+const RenkoRoute = RenkoRouteImport.update({
+  id: '/renko',
+  path: '/renko',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MemoriesIndexRoute = MemoriesIndexRouteImport.update({
-  id: '/memories/',
-  path: '/memories/',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MarketOverviewIndexRoute = MarketOverviewIndexRouteImport.update({
-  id: '/market-overview/',
-  path: '/market-overview/',
+const TodayRoute = TodayRouteImport.update({
+  id: '/today',
+  path: '/today',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
-  id: '/leaderboard/',
-  path: '/leaderboard/',
-  getParentRoute: () => rootRouteImport,
+const AuthedProfileRoute = AuthedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AuthedRoute,
 } as any)
-const DailyPredictionsIndexRoute = DailyPredictionsIndexRouteImport.update({
-  id: '/daily-predictions/',
-  path: '/daily-predictions/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConceptsIndexRoute = ConceptsIndexRouteImport.update({
-  id: '/concepts/',
-  path: '/concepts/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CauseAndEffectIndexRoute = CauseAndEffectIndexRouteImport.update({
-  id: '/cause-and-effect/',
-  path: '/cause-and-effect/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutoresearchIndexRoute = AutoresearchIndexRouteImport.update({
-  id: '/autoresearch/',
-  path: '/autoresearch/',
+const AiPredictionsIndexRoute = AiPredictionsIndexRouteImport.update({
+  id: '/ai-predictions/',
+  path: '/ai-predictions/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuditsIndexRoute = AuditsIndexRouteImport.update({
@@ -165,9 +130,49 @@ const AuditsIndexRoute = AuditsIndexRouteImport.update({
   path: '/audits/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AiPredictionsIndexRoute = AiPredictionsIndexRouteImport.update({
-  id: '/ai-predictions/',
-  path: '/ai-predictions/',
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutoresearchIndexRoute = AutoresearchIndexRouteImport.update({
+  id: '/autoresearch/',
+  path: '/autoresearch/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CauseAndEffectIndexRoute = CauseAndEffectIndexRouteImport.update({
+  id: '/cause-and-effect/',
+  path: '/cause-and-effect/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConceptsIndexRoute = ConceptsIndexRouteImport.update({
+  id: '/concepts/',
+  path: '/concepts/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DailyPredictionsIndexRoute = DailyPredictionsIndexRouteImport.update({
+  id: '/daily-predictions/',
+  path: '/daily-predictions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
+  id: '/leaderboard/',
+  path: '/leaderboard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketOverviewIndexRoute = MarketOverviewIndexRouteImport.update({
+  id: '/market-overview/',
+  path: '/market-overview/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MemoriesIndexRoute = MemoriesIndexRouteImport.update({
+  id: '/memories/',
+  path: '/memories/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortfoliosIndexRoute = PortfoliosIndexRouteImport.update({
+  id: '/portfolios/',
+  path: '/portfolios/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
@@ -175,15 +180,10 @@ const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
   path: '/portfolios/$portfolioId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
+const ReasoningIndexRoute = ReasoningIndexRouteImport.update({
+  id: '/reasoning/',
+  path: '/reasoning/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthedProfileRoute = AuthedProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AuthedRoute,
 } as any)
 const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
   id: '/memories/chain/$memoryId',
@@ -417,95 +417,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/today': {
-      id: '/today'
-      path: '/today'
-      fullPath: '/today'
-      preLoaderRoute: typeof TodayRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/renko': {
-      id: '/renko'
-      path: '/renko'
-      fullPath: '/renko'
-      preLoaderRoute: typeof RenkoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/logout': {
-      id: '/logout'
-      path: '/logout'
-      fullPath: '/logout'
-      preLoaderRoute: typeof LogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lab': {
-      id: '/lab'
-      path: '/lab'
-      fullPath: '/lab'
-      preLoaderRoute: typeof LabRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/how-it-works': {
-      id: '/how-it-works'
-      path: '/how-it-works'
-      fullPath: '/how-it-works'
-      preLoaderRoute: typeof HowItWorksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/generated-newsletters': {
-      id: '/generated-newsletters'
-      path: '/generated-newsletters'
-      fullPath: '/generated-newsletters'
-      preLoaderRoute: typeof GeneratedNewslettersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/earnings-audit': {
-      id: '/earnings-audit'
-      path: '/earnings-audit'
-      fullPath: '/earnings-audit'
-      preLoaderRoute: typeof EarningsAuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/daily-predictions-backtest': {
-      id: '/daily-predictions-backtest'
-      path: '/daily-predictions-backtest'
-      fullPath: '/daily-predictions-backtest'
-      preLoaderRoute: typeof DailyPredictionsBacktestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chat': {
-      id: '/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof ChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/barometer-audit': {
-      id: '/barometer-audit'
-      path: '/barometer-audit'
-      fullPath: '/barometer-audit'
-      preLoaderRoute: typeof BarometerAuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/autoresearch-backtest': {
-      id: '/autoresearch-backtest'
-      path: '/autoresearch-backtest'
-      fullPath: '/autoresearch-backtest'
-      preLoaderRoute: typeof AutoresearchBacktestRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed': {
@@ -515,74 +431,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/autoresearch-backtest': {
+      id: '/autoresearch-backtest'
+      path: '/autoresearch-backtest'
+      fullPath: '/autoresearch-backtest'
+      preLoaderRoute: typeof AutoresearchBacktestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/reasoning/': {
-      id: '/reasoning/'
-      path: '/reasoning'
-      fullPath: '/reasoning/'
-      preLoaderRoute: typeof ReasoningIndexRouteImport
+    '/barometer-audit': {
+      id: '/barometer-audit'
+      path: '/barometer-audit'
+      fullPath: '/barometer-audit'
+      preLoaderRoute: typeof BarometerAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/portfolios/': {
-      id: '/portfolios/'
-      path: '/portfolios'
-      fullPath: '/portfolios/'
-      preLoaderRoute: typeof PortfoliosIndexRouteImport
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/memories/': {
-      id: '/memories/'
-      path: '/memories'
-      fullPath: '/memories/'
-      preLoaderRoute: typeof MemoriesIndexRouteImport
+    '/daily-predictions-backtest': {
+      id: '/daily-predictions-backtest'
+      path: '/daily-predictions-backtest'
+      fullPath: '/daily-predictions-backtest'
+      preLoaderRoute: typeof DailyPredictionsBacktestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/market-overview/': {
-      id: '/market-overview/'
-      path: '/market-overview'
-      fullPath: '/market-overview/'
-      preLoaderRoute: typeof MarketOverviewIndexRouteImport
+    '/earnings-audit': {
+      id: '/earnings-audit'
+      path: '/earnings-audit'
+      fullPath: '/earnings-audit'
+      preLoaderRoute: typeof EarningsAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/leaderboard/': {
-      id: '/leaderboard/'
-      path: '/leaderboard'
-      fullPath: '/leaderboard/'
-      preLoaderRoute: typeof LeaderboardIndexRouteImport
+    '/generated-newsletters': {
+      id: '/generated-newsletters'
+      path: '/generated-newsletters'
+      fullPath: '/generated-newsletters'
+      preLoaderRoute: typeof GeneratedNewslettersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/daily-predictions/': {
-      id: '/daily-predictions/'
-      path: '/daily-predictions'
-      fullPath: '/daily-predictions/'
-      preLoaderRoute: typeof DailyPredictionsIndexRouteImport
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/concepts/': {
-      id: '/concepts/'
-      path: '/concepts'
-      fullPath: '/concepts/'
-      preLoaderRoute: typeof ConceptsIndexRouteImport
+    '/lab': {
+      id: '/lab'
+      path: '/lab'
+      fullPath: '/lab'
+      preLoaderRoute: typeof LabRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cause-and-effect/': {
-      id: '/cause-and-effect/'
-      path: '/cause-and-effect'
-      fullPath: '/cause-and-effect/'
-      preLoaderRoute: typeof CauseAndEffectIndexRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/autoresearch/': {
-      id: '/autoresearch/'
-      path: '/autoresearch'
-      fullPath: '/autoresearch/'
-      preLoaderRoute: typeof AutoresearchIndexRouteImport
+    '/logout': {
+      id: '/logout'
+      path: '/logout'
+      fullPath: '/logout'
+      preLoaderRoute: typeof LogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/renko': {
+      id: '/renko'
+      path: '/renko'
+      fullPath: '/renko'
+      preLoaderRoute: typeof RenkoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/today': {
+      id: '/today'
+      path: '/today'
+      fullPath: '/today'
+      preLoaderRoute: typeof TodayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/profile': {
+      id: '/_authed/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthedProfileRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/ai-predictions/': {
+      id: '/ai-predictions/'
+      path: '/ai-predictions'
+      fullPath: '/ai-predictions/'
+      preLoaderRoute: typeof AiPredictionsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/audits/': {
@@ -592,11 +543,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ai-predictions/': {
-      id: '/ai-predictions/'
-      path: '/ai-predictions'
-      fullPath: '/ai-predictions/'
-      preLoaderRoute: typeof AiPredictionsIndexRouteImport
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/autoresearch/': {
+      id: '/autoresearch/'
+      path: '/autoresearch'
+      fullPath: '/autoresearch/'
+      preLoaderRoute: typeof AutoresearchIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cause-and-effect/': {
+      id: '/cause-and-effect/'
+      path: '/cause-and-effect'
+      fullPath: '/cause-and-effect/'
+      preLoaderRoute: typeof CauseAndEffectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/concepts/': {
+      id: '/concepts/'
+      path: '/concepts'
+      fullPath: '/concepts/'
+      preLoaderRoute: typeof ConceptsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daily-predictions/': {
+      id: '/daily-predictions/'
+      path: '/daily-predictions'
+      fullPath: '/daily-predictions/'
+      preLoaderRoute: typeof DailyPredictionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard/': {
+      id: '/leaderboard/'
+      path: '/leaderboard'
+      fullPath: '/leaderboard/'
+      preLoaderRoute: typeof LeaderboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market-overview/': {
+      id: '/market-overview/'
+      path: '/market-overview'
+      fullPath: '/market-overview/'
+      preLoaderRoute: typeof MarketOverviewIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/memories/': {
+      id: '/memories/'
+      path: '/memories'
+      fullPath: '/memories/'
+      preLoaderRoute: typeof MemoriesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolios/': {
+      id: '/portfolios/'
+      path: '/portfolios'
+      fullPath: '/portfolios/'
+      preLoaderRoute: typeof PortfoliosIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portfolios/$portfolioId': {
@@ -606,19 +613,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
+    '/reasoning/': {
+      id: '/reasoning/'
+      path: '/reasoning'
+      fullPath: '/reasoning/'
+      preLoaderRoute: typeof ReasoningIndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authed/profile': {
-      id: '/_authed/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthedProfileRouteImport
-      parentRoute: typeof AuthedRoute
     }
     '/memories/chain/$memoryId': {
       id: '/memories/chain/$memoryId'

@@ -23,7 +23,7 @@ interface SyncQueryParams {
 }
 
 const getMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: MemoriesQueryParams | { data?: MemoriesQueryParams } | undefined) => d)
+    .validator((d: MemoriesQueryParams | { data?: MemoriesQueryParams } | undefined) => d)
     .handler(async ({ data }) => {
         const payload: MemoriesQueryParams | undefined =
             data && 'data' in data && data.data ? data.data : (data as MemoriesQueryParams);
@@ -34,7 +34,7 @@ const getMemories = createServerFn({ method: 'GET' })
     });
 
 const syncMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: SyncQueryParams | { data?: SyncQueryParams } | string | undefined) => d)
+    .validator((d: SyncQueryParams | { data?: SyncQueryParams } | string | undefined) => d)
     .handler(async ({ data }) => {
         let since = '';
         if (typeof data === 'string') {
@@ -50,7 +50,7 @@ const syncMemories = createServerFn({ method: 'GET' })
     });
 
 const queryMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: SearchQueryParams | { data?: SearchQueryParams } | string | undefined) => d)
+    .validator((d: SearchQueryParams | { data?: SearchQueryParams } | string | undefined) => d)
     .handler(async ({ data }) => {
         let queryStr = '';
         let limit = 50;

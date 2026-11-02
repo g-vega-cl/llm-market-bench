@@ -59,6 +59,43 @@ These crawlers run in headless **CefSharp** (.NET Chromium Embedded Framework) e
 - **Console Warning Handler**: A top-level client listener on `window.addEventListener('unhandledrejection')` prevents default browser error logging for CefSharp host bridge rejections, issuing an informational `console.warn` instead and calling `stopImmediatePropagation()`.
 - **Non-Retroactivity**: Ingested events captured prior to the filter appear in weekly digests until the issue status is set to Suppressed or the retention window expires.
 
+## Canonical Error Tracking Standard (`posthog.captureException`)
+
+To ensure application errors and backend service interruptions are visible in PostHog's **Error Tracking** dashboard (rather than scattered or lost among generic analytics events), the platform establishes a canonical error capture standard:
+
+### 1. `posthog.captureException()` over Generic `posthog.capture()`
+
+- **Dedicated Error Tracking ($exception)**: Call `posthog.captureException(err, extraProperties)`. PostHog automatically serializes the error as an official `$exception` event with stack trace, error name, and `$exception_handled: true`.
+- **Automatic Grouping & Triage**: Exceptions are grouped by fingerprint and stack trace in PostHog Error Tracking, allowing engineers to assign, resolve, and monitor regression rates across releases.
+- **Custom Event Contrast**: Using `posthog.capture('custom_error_name', ...)` alone is insufficient for error reporting because it only increments analytics event counts and does not appear in PostHog Error Tracking.
+- **Dual-Capture Pattern**: When monitoring user-facing feature disruptions (such as LLM endpoint outages in `ConsoleQueueCard.tsx`), pair `posthog.captureException(err, properties)` for issue tracking with an optional `posthog.capture('agent_chat_endpoint_error', properties)` for dashboard trend graphs.
+
+```typescript
+const err = new Error(`Agent Q&A LLM Outage: All endpoints unavailable for question "${latestAnswered.message}"`);
+err.name = 'AgentLLMOutageError';
+
+// 1. Official Error Tracking issue creation ($exception event)
+posthog.captureException(err, {
+    feature: 'agent_chat_queue',
+    question: latestAnswered.message,
+    author: latestAnswered.display_name,
+    user_id: latestAnswered.user_id,
+    error_type: 'llm_endpoints_unavailable',
+});
+
+// 2. Custom analytics event for dashboard trend lines
+posthog.capture('agent_chat_endpoint_error', {
+    question: latestAnswered.message,
+    error_type: 'llm_endpoints_unavailable',
+});
+```
+
+### 2. Client-Side Deduplication
+
+When capturing errors inside reactive React components or lifecycle hooks, always guard against re-render duplicate submissions using a ref (e.g. `trackedErrorIdRef.current !== item.id`), ensuring a persistent error state is reported exactly once per occurrence.
+
+---
+
 ## Identity resolution and session lifecycle
 
 To accurately track conversion funnels without splitting user profiles or leaking sessions across shared devices, the application standardizes on a client sync lifecycle:

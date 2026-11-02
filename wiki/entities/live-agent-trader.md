@@ -137,6 +137,7 @@ This keeps the last real session tape visible across row churn without ever fabr
 - **Strict Execution Isolation**: Audience questions are completely isolated from the live intraday trader's decision loop. The trader runs 100% data-driven without ever seeing audience inputs, eliminating prompt injection risks into paper portfolio execution.
 - **24/7 Continuous Mode**: `apps/engine/trading/runner.py` runs continuous evaluation turns across off-hours and weekends (`continuous_24_7=True`, disable with `--no-24-7`). Off-hours turns pass `alpaca_trading_client=None`, so paper order submission is skipped while the agent continues analyzing news, reviewing memories, and serving the 5-minute QA explainer worker.
 - **Frontend Console Card**: `apps/web/src/features/home/components/ConsoleQueueCard.tsx` renders a sign-in CTA for anonymous visitors, a 500-character textarea with live `n/500` counting for authenticated users, the pending queue count (`N in queue` / `Queue open`), and the latest answered turn with the model's commentary rendered as full Markdown prose (`whitespace-pre-wrap break-words`).
+- **LLM Outage Fallback Rendering**: The card exports `isOutageFallbackResponse(response)`, which flags a stored `agent_response` as an outage payload when it is empty, contains `"All LLM endpoints currently unavailable"`, or is a JSON object (starts with `{`) carrying both `"action"` and `"HOLD"`. When flagged, the card renders a styled **DESK NOTICE: HIGH SYSTEM VOLUME** panel (warning icon + neutral-stance explanation) instead of the raw text, so emergency trader JSON is never surfaced to the audience. A `React.useEffect` guarded by `trackedErrorIdRef` (deduplicating per `latestAnswered.id`) reports the outage to PostHog via `posthog.captureException(err, properties)` with `err.name = 'AgentLLMOutageError'` and a paired `posthog.capture('agent_chat_endpoint_error', properties)` analytics event (see [[concepts/posthog-stealth-proxy]]).
 
 ## Related
 
@@ -147,3 +148,4 @@ This keeps the last real session tape visible across row churn without ever fabr
 - [[entities/web-app]]
 - [[entities/database]]
 - [[entities/engine]]
+- [[concepts/posthog-stealth-proxy]]

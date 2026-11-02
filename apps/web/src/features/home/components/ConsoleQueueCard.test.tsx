@@ -1,6 +1,16 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockCapture = vi.fn();
+const mockCaptureException = vi.fn();
+
+vi.mock('@posthog/react', () => ({
+    usePostHog: () => ({
+        capture: mockCapture,
+        captureException: mockCaptureException,
+    }),
+}));
+
 vi.mock('../api/fetch-agent-queue', () => ({
     MAX_QUEUE_MESSAGE_LENGTH: 500,
     submitAgentQueueQuestion: vi.fn(),
@@ -91,5 +101,54 @@ describe('ConsoleQueueCard', () => {
         expect(
             screen.getByText(/10Y yield spiked 8bps following hot PPI print\./i),
         ).toBeInTheDocument();
+    });
+
+    it('captures error in PostHog and displays user-friendly desk notice when response is emergency JSON fallback', () => {
+        render(
+            <ConsoleQueueCard
+                user={{ id: 'usr-1', email: 'analyst@fund.com' }}
+                latestAnswered={{
+                    id: 'q-ans-crash',
+                    user_id: 'usr-2',
+                    display_name: 'g.vega.cl',
+                    message: 'Will the market keep crashing?',
+                    agent_response:
+                        '{"action": "HOLD", "conviction": 50, "thought": "All LLM endpoints currently unavailable; holding neutral position.", "memories_consulted": [], "allocation_pct": 0}',
+                    status: 'answered',
+                    created_at: new Date().toISOString(),
+                }}
+            />,
+        );
+
+        expect(screen.getByText(/Latest Answered Turn:/i)).toBeInTheDocument();
+        expect(screen.getByText(/@g.vega.cl/i)).toBeInTheDocument();
+        expect(screen.getByText(/Will the market keep crashing\?/i)).toBeInTheDocument();
+
+        // Assert clean desk notice is displayed
+        expect(screen.getByText(/DESK NOTICE: HIGH SYSTEM VOLUME/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Quantitative commentary models experienced high demand/i),
+        ).toBeInTheDocument();
+        // Assert raw JSON is NOT displayed
+        expect(screen.queryByText(/{"action": "HOLD"/i)).not.toBeInTheDocument();
+
+        // Assert PostHog captureException and capture were called
+        expect(mockCaptureException).toHaveBeenCalledWith(
+            expect.objectContaining({
+                name: 'AgentLLMOutageError',
+            }),
+            expect.objectContaining({
+                feature: 'agent_chat_queue',
+                question: 'Will the market keep crashing?',
+                error_type: 'llm_endpoints_unavailable',
+            }),
+        );
+        expect(mockCapture).toHaveBeenCalledWith(
+            'agent_chat_endpoint_error',
+            expect.objectContaining({
+                question: 'Will the market keep crashing?',
+                error_type: 'llm_endpoints_unavailable',
+            }),
+        );
     });
 });

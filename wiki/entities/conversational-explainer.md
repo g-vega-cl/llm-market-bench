@@ -48,13 +48,24 @@ Renders the grounding dict into lean Markdown sections for the LLM:
 
 Builds a **Chief Market Strategist** system prompt (explicitly instructing Markdown prose, no JSON) plus a user prompt containing the audience inquiry and formatted grounding, then calls `query_multi_tier_llm` with `max_tokens=1500`. The two-tier cascade (local Strata → centralized free proxy) is inherited from [[entities/live-agent-trader]].
 
+### LLM Outage Fallback (`FALLBACK_DESK_PROSE` / `is_llm_outage_fallback`)
+
+When both LLM tiers fail, `query_multi_tier_llm` returns a neutral `HOLD` decision JSON (or an `"All LLM endpoints currently unavailable"` payload) so the trading loop never crashes. That emergency payload is valid for the trader but is **not** valid conversational prose — surfacing raw JSON to the audience would leak internal decision schema and read as broken.
+
+To keep the audience experience clean, `answer_audience_question` post-processes the raw response through `is_llm_outage_fallback(text)`:
+
+- Returns `True` when the text is empty/`None`, contains the substring `"All LLM endpoints currently unavailable"`, or is a JSON object (starts with `{`) that carries an `"action"` key (the trader decision schema).
+- When a fallback is detected, the function logs a warning (`Audience QA received emergency LLM fallback response for @{author}; serving clean desk notice.`) and returns the module-level `FALLBACK_DESK_PROSE` constant instead of the raw payload.
+
+`FALLBACK_DESK_PROSE` is a blockquote **Desk Notice** explaining that the quantitative commentary models and local inference desk are temporarily at high inquiry volume or under endpoint maintenance, that the desk is maintaining a neutral risk posture, and that the inquiry has been recorded for the strategists on the next evaluation turn. This guarantees the `agent_chat_queue` row is always persisted with human-readable prose, never raw JSON.
+
 ### `process_pending_queue_item(sb_client, http_client, strata_url, cheap_proxy_url)`
 
 One worker iteration:
 
 1. **Atomic dequeue** via the `pop_next_queue_item` RPC (see [[entities/database]]). On RPC failure, falls back to a direct `agent_chat_queue` select of the oldest `pending` row followed by an `injected` status update.
 2. Returns `None` when the queue is empty.
-3. Retrieves grounding, generates the answer, and updates the row to `status = 'answered'` with `agent_response` and a fresh `injected_turn_at`.
+3. Retrieves grounding, generates the answer (with the outage fallback applied), and updates the row to `status = 'answered'` with `agent_response` and a fresh `injected_turn_at`.
 4. Returns `{id, author, message, response}` for logging.
 
 ## Runner Integration
@@ -67,7 +78,7 @@ One worker iteration:
 
 ## Frontend
 
-`apps/web/src/features/home/components/ConsoleQueueCard.tsx` labels the card **Audience Interactive Queue & Desk Explainer**, prompts visitors to ask about past choices / positioning / macro hypotheses, and renders the latest answered turn's Markdown response in a `whitespace-pre-wrap` block.
+`apps/web/src/features/home/components/ConsoleQueueCard.tsx` labels the card **Audience Interactive Queue & Desk Explainer**, prompts visitors to ask about past choices / positioning / macro hypotheses, and renders the latest answered turn's Markdown response in a `whitespace-pre-wrap` block. When the stored `agent_response` is itself an outage fallback (detected client-side via `isOutageFallbackResponse`), the card renders a styled **DESK NOTICE: HIGH SYSTEM VOLUME** panel instead of the raw text and reports the outage to PostHog Error Tracking (see [[entities/live-agent-trader]] and [[concepts/posthog-stealth-proxy]]).
 
 ## Related
 
@@ -75,3 +86,4 @@ One worker iteration:
 - [[entities/database]] — `agent_chat_queue`, `market_feeling`, `memories`, `cause_and_effect`, `catalyst_radar` tables
 - [[entities/secondary-minipc-edge]] — the edge host running the trader + QA worker containers
 - [[concepts/private-memory-vault]] — user-isolated memory storage
+- [[concepts/posthog-stealth-proxy]] — canonical `posthog.captureException` error tracking standard

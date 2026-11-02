@@ -165,3 +165,65 @@ async def test_process_pending_queue_item_answers_with_conversational_markdown()
         update_payload = update_mock.update.call_args[0][0]
         assert update_payload["status"] == "answered"
         assert "divided government" in update_payload["agent_response"]
+
+
+@pytest.mark.asyncio
+async def test_process_pending_queue_item_formats_clean_desk_notice_on_llm_outage():
+    import json
+
+    sb_mock = MagicMock()
+    popped_item = {
+        "id": "q-crash",
+        "message": "Will the market keep crashing?",
+        "display_name": "g.vega.cl",
+        "user_id": "u-456",
+    }
+    sb_mock.rpc.return_value.execute.return_value.data = [popped_item]
+
+    update_mock = MagicMock()
+    update_mock.update.return_value.eq.return_value.execute.return_value = MagicMock()
+
+    dummy_table = MagicMock()
+    dummy_table.select.return_value.order.return_value.limit.return_value.execute.return_value.data = []
+
+    def table_router(table_name):
+        if table_name == "agent_chat_queue":
+            return update_mock
+        return dummy_table
+
+    sb_mock.table.side_effect = table_router
+
+    fallback_json = json.dumps(
+        {
+            "action": "HOLD",
+            "conviction": 50,
+            "thought": "All LLM endpoints currently unavailable; holding neutral position.",
+            "memories_consulted": [],
+            "allocation_pct": 0,
+        }
+    )
+
+    with patch(
+        "trading.conversational_explainer.query_multi_tier_llm",
+        new=AsyncMock(return_value=fallback_json),
+    ):
+        res = await process_pending_queue_item(
+            sb_client=sb_mock,
+            http_client=AsyncMock(),
+            strata_url="http://mock:8080",
+            cheap_proxy_url="http://mock:8086",
+        )
+
+        assert res is not None
+        assert res["id"] == "q-crash"
+        # Must NOT return raw JSON
+        assert '{"action": "HOLD"' not in res["response"]
+        assert "Desk Notice" in res["response"]
+        assert "temporarily experiencing high inquiry volume" in res["response"]
+
+        # Verify DB update was executed with prose response, NOT raw JSON
+        update_mock.update.assert_called_once()
+        update_payload = update_mock.update.call_args[0][0]
+        assert update_payload["status"] == "answered"
+        assert '{"action": "HOLD"' not in update_payload["agent_response"]
+        assert "Desk Notice" in update_payload["agent_response"]

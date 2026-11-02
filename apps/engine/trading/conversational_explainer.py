@@ -247,6 +247,23 @@ def format_qa_context(grounding: dict[str, Any]) -> str:
     return "\n\n".join(sections)
 
 
+FALLBACK_DESK_PROSE = (
+    "> **Desk Notice**: Our quantitative commentary models and local inference desk are temporarily "
+    "experiencing high inquiry volume or endpoint maintenance. The desk is maintaining a neutral risk posture, "
+    "and your inquiry has been recorded for the strategists on the next evaluation turn."
+)
+
+
+def is_llm_outage_fallback(text: str | None) -> bool:
+    """Detect if response is an emergency trading JSON fallback or outage payload."""
+    if not text:
+        return True
+    trimmed = text.strip()
+    if "All LLM endpoints currently unavailable" in trimmed:
+        return True
+    return trimmed.startswith("{") and '"action"' in trimmed
+
+
 async def answer_audience_question(
     query: str,
     author: str = "Analyst",
@@ -285,7 +302,13 @@ async def answer_audience_question(
         http_client=http_client,
         max_tokens=1500,
     )
-    return response.strip()
+    trimmed = response.strip() if response else ""
+    if is_llm_outage_fallback(trimmed):
+        logger.warning(
+            f"Audience QA received emergency LLM fallback response for @{author}; serving clean desk notice."
+        )
+        return FALLBACK_DESK_PROSE
+    return trimmed
 
 
 async def process_pending_queue_item(

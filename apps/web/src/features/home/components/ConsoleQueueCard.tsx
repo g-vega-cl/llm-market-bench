@@ -1,9 +1,19 @@
+import { usePostHog } from '@posthog/react';
 import * as React from 'react';
 import {
     type AgentQueueItem,
     MAX_QUEUE_MESSAGE_LENGTH,
     submitAgentQueueQuestion,
 } from '../api/fetch-agent-queue';
+
+export function isOutageFallbackResponse(response: string | null | undefined): boolean {
+    if (!response) return false;
+    const trimmed = response.trim();
+    return (
+        trimmed.includes('All LLM endpoints currently unavailable') ||
+        (trimmed.startsWith('{') && trimmed.includes('"action"') && trimmed.includes('"HOLD"'))
+    );
+}
 
 export interface ConsoleQueueCardProps {
     user?: { id: string; email?: string } | null;
@@ -18,10 +28,45 @@ export function ConsoleQueueCard({
     latestAnswered,
     onQuestionQueued,
 }: ConsoleQueueCardProps) {
+    const posthog = usePostHog();
+    const trackedErrorIdRef = React.useRef<string | null>(null);
     const [userQuestion, setUserQuestion] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [submittedMessage, setSubmittedMessage] = React.useState<string | null>(null);
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+
+    const isOutage = isOutageFallbackResponse(latestAnswered?.agent_response);
+
+    React.useEffect(() => {
+        if (isOutage && latestAnswered?.id && trackedErrorIdRef.current !== latestAnswered.id) {
+            trackedErrorIdRef.current = latestAnswered.id;
+
+            const err = new Error(
+                `Agent Q&A LLM Outage: All endpoints unavailable for question "${latestAnswered.message}"`,
+            );
+            err.name = 'AgentLLMOutageError';
+
+            // 1. Explicit Error Tracking ($exception event)
+            if (typeof posthog?.captureException === 'function') {
+                posthog.captureException(err, {
+                    feature: 'agent_chat_queue',
+                    question: latestAnswered.message,
+                    author: latestAnswered.display_name,
+                    user_id: latestAnswered.user_id,
+                    raw_response: latestAnswered.agent_response,
+                    error_type: 'llm_endpoints_unavailable',
+                });
+            }
+
+            // 2. Custom analytics event for dashboard trends
+            posthog?.capture('agent_chat_endpoint_error', {
+                question: latestAnswered.message,
+                author: latestAnswered.display_name,
+                user_id: latestAnswered.user_id,
+                error_type: 'llm_endpoints_unavailable',
+            });
+        }
+    }, [isOutage, latestAnswered, posthog]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -135,11 +180,25 @@ export function ConsoleQueueCard({
                     <div className="font-mono text-boxel-ink text-xs">
                         &ldquo;{latestAnswered.message}&rdquo;
                     </div>
-                    {latestAnswered.agent_response && (
-                        <div className="text-boxel-ink text-[11px] leading-relaxed whitespace-pre-wrap break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono">
-                            {latestAnswered.agent_response}
-                        </div>
-                    )}
+                    {latestAnswered.agent_response &&
+                        (isOutage ? (
+                            <div className="p-2.5 bg-boxel-surface border border-accent/40 flex flex-col gap-1 text-[11px] font-mono">
+                                <div className="flex items-center gap-1.5 text-accent font-bold">
+                                    <span>⚠️</span>
+                                    <span>DESK NOTICE: HIGH SYSTEM VOLUME</span>
+                                </div>
+                                <div className="text-boxel-ink leading-relaxed">
+                                    Quantitative commentary models experienced high demand during
+                                    this evaluation turn. The desk maintained a disciplined neutral
+                                    stance, and your inquiry has been recorded for the strategists
+                                    on the next turn.
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-boxel-ink text-[11px] leading-relaxed whitespace-pre-wrap break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono">
+                                {latestAnswered.agent_response}
+                            </div>
+                        ))}
                 </div>
             )}
         </div>

@@ -868,4 +868,84 @@ You MUST return a valid JSON object.`,
         expect(screen.getByText('Daily 20+ Year Treasury Bond Predictor')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /GPT-5\.6 Luna \(1\)/i })).toBeInTheDocument();
     });
+
+    it('renders CuratedManifestCard under PredictionsTable to avoid layout shift when switching to Champion tab', () => {
+        const championPrediction: DailyPrediction = {
+            id: 'pred-champion-1',
+            prediction_date: '2026-10-09',
+            target_date: '2026-10-09',
+            ticker: 'SPY',
+            model_name: 'jev-four-regime-champion',
+            prompt_variant_tag: 'daily-champion-v1',
+            predicted_direction: 'UP',
+            confidence: 78.0,
+            open_price: 580.0,
+            close_price: 585.0,
+            actual_direction: 'UP',
+            status: 'evaluated',
+            is_correct: true,
+            intraday_hit: true,
+            brier_score: 0.0484,
+            rationale: 'Champion four-regime analysis indicates positive momentum.',
+            created_at: '2026-10-09T08:00:00Z',
+            updated_at: '2026-10-09T16:05:00Z',
+        } as DailyPrediction;
+
+        const championExperiment: PromptExperiment = {
+            id: 'exp-champion-1',
+            prompt_name: 'DAILY_PREDICTOR_PROMPT',
+            variant_tag: 'daily-champion-v1',
+            experiment_type: 'variant',
+            prompt_content: JSON.stringify({
+                manifest: {
+                    selected_newsletters: ['bloomberg-five-things', 'wsj-morning'],
+                    include_macro_proxies: ['VIX', 'TNX'],
+                    include_synthetic_newsletter: true,
+                },
+            }),
+            change_description: 'Active four-regime champion prompt',
+            metrics: { score: 81.5 },
+            status: 'active',
+            week_start: '2026-10-09',
+            week_end: '2026-10-16',
+            parent_tag: null,
+            research_output: null,
+            is_backtest: false,
+            created_at: '2026-10-09T00:00:00Z',
+            track_id: 'jev-four-regime-champion',
+        } as unknown as PromptExperiment;
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={[championPrediction]}
+                experiments={[championExperiment]}
+                initialTicker="SPY"
+            />,
+        );
+
+        // Switch to Jev (Four-Regime Champion) tab
+        const championTabButton = screen.getByRole('button', {
+            name: /Jev \(Four-Regime Champion\)/i,
+        });
+        fireEvent.click(championTabButton);
+
+        // Elements must be present
+        const heroCard = screen.getByText(/Latest Prediction/i);
+        const table = screen.getByRole('table');
+        const manifestCard = screen.getByText(/Curated Pre-Market Data Manifest/i);
+
+        expect(heroCard).toBeInTheDocument();
+        expect(table).toBeInTheDocument();
+        expect(manifestCard).toBeInTheDocument();
+
+        // HeroPredictionCard must precede PredictionsTable
+        expect(
+            Boolean(heroCard.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING),
+        ).toBe(true);
+
+        // CuratedManifestCard must follow PredictionsTable (underneath table, avoiding hero jump)
+        expect(
+            Boolean(table.compareDocumentPosition(manifestCard) & Node.DOCUMENT_POSITION_FOLLOWING),
+        ).toBe(true);
+    });
 });

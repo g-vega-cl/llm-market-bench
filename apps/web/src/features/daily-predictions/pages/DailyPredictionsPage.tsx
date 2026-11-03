@@ -249,14 +249,14 @@ export function DailyPredictionsPage({
                         activePromptTag={activePrompt?.variant_tag || 'daily-pred-baseline'}
                     />
 
-                    {curatedManifest && <CuratedManifestCard manifest={curatedManifest} />}
-
                     {latestPrediction && <HeroPredictionCard prediction={latestPrediction} />}
 
                     <PredictionsTable
                         predictions={modelPredictions}
                         experiments={promptExperiments}
                     />
+
+                    {curatedManifest && <CuratedManifestCard manifest={curatedManifest} />}
                 </>
             ) : (
                 <>

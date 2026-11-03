@@ -22,8 +22,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: design rules cheat sheet to ground my design system
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
-- [x] - Benchify: retired agent add a new page and link. Not a table in /lab
-- [ ] - Benchify: /daily-predictions Make sure the layout is consistent, in "Champion" the last prediction block moves under the "Curated pre-market-data manifest". It should be in the same place to avoid weird layout shifts when the users switch tabs, this princuple should be general across the site
+- [x] - Benchify: /daily-predictions Make sure the layout is consistent, in "Champion" the last prediction block moves under the "Curated pre-market-data manifest". It should be in the same place to avoid weird layout shifts when the users switch tabs, this princuple should be general across the site
 
 ### Marketing & Building in Public
 

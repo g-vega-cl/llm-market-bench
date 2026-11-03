@@ -1,10 +1,18 @@
 import { usePostHog } from '@posthog/react';
 import * as React from 'react';
+import { formatEasternTime } from '~/utils/date';
 import {
     type AgentQueueItem,
     MAX_QUEUE_MESSAGE_LENGTH,
     submitAgentQueueQuestion,
 } from '../api/fetch-agent-queue';
+
+function formatTimestamp(ts: string | null | undefined): string | null {
+    if (!ts) return null;
+    if (ts.endsWith('ET') || ts.endsWith('EST') || ts.endsWith('EDT')) return ts;
+    const formatted = formatEasternTime(ts);
+    return formatted === 'Unknown' ? ts : formatted;
+}
 
 export function isOutageFallbackResponse(response: string | null | undefined): boolean {
     if (!response) return false;
@@ -20,6 +28,53 @@ export interface ConsoleQueueCardProps {
     pendingCount?: number;
     latestAnswered?: AgentQueueItem | null;
     onQuestionQueued?: () => void;
+}
+
+function AnsweredTurnView({
+    latestAnswered,
+    isOutage,
+}: {
+    latestAnswered: AgentQueueItem;
+    isOutage: boolean;
+}) {
+    const injectedTime = formatTimestamp(latestAnswered.injected_turn_at);
+    const createdTime = formatTimestamp(latestAnswered.created_at);
+
+    return (
+        <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-1.5 text-xs">
+            <div className="flex items-center justify-between text-boxel-muted font-mono text-[10px]">
+                <div className="flex items-center gap-1.5">
+                    <span>Latest Answered Turn:</span>
+                    {injectedTime && <span>{injectedTime}</span>}
+                </div>
+                <div className="flex items-center gap-1">
+                    <span>@{latestAnswered.display_name}</span>
+                    {createdTime && <span>• {createdTime}</span>}
+                </div>
+            </div>
+            <div className="font-mono text-boxel-ink text-xs">
+                &ldquo;{latestAnswered.message}&rdquo;
+            </div>
+            {latestAnswered.agent_response &&
+                (isOutage ? (
+                    <div className="p-2.5 bg-boxel-surface border border-accent/40 flex flex-col gap-1 text-[11px] font-mono">
+                        <div className="flex items-center gap-1.5 text-accent font-bold">
+                            <span>⚠️</span>
+                            <span>DESK NOTICE: HIGH SYSTEM VOLUME</span>
+                        </div>
+                        <div className="text-boxel-ink leading-relaxed">
+                            Quantitative commentary models experienced high demand during this
+                            evaluation turn. The desk maintained a disciplined neutral stance, and
+                            your inquiry has been recorded for the strategists on the next turn.
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-boxel-ink text-[11px] leading-relaxed whitespace-pre-wrap break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono">
+                        {latestAnswered.agent_response}
+                    </div>
+                ))}
+        </div>
+    );
 }
 
 export function ConsoleQueueCard({
@@ -172,34 +227,7 @@ export function ConsoleQueueCard({
             )}
 
             {latestAnswered && (
-                <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-1.5 text-xs">
-                    <div className="flex items-center justify-between text-boxel-muted font-mono text-[10px]">
-                        <span>Latest Answered Turn:</span>
-                        <span>@{latestAnswered.display_name}</span>
-                    </div>
-                    <div className="font-mono text-boxel-ink text-xs">
-                        &ldquo;{latestAnswered.message}&rdquo;
-                    </div>
-                    {latestAnswered.agent_response &&
-                        (isOutage ? (
-                            <div className="p-2.5 bg-boxel-surface border border-accent/40 flex flex-col gap-1 text-[11px] font-mono">
-                                <div className="flex items-center gap-1.5 text-accent font-bold">
-                                    <span>⚠️</span>
-                                    <span>DESK NOTICE: HIGH SYSTEM VOLUME</span>
-                                </div>
-                                <div className="text-boxel-ink leading-relaxed">
-                                    Quantitative commentary models experienced high demand during
-                                    this evaluation turn. The desk maintained a disciplined neutral
-                                    stance, and your inquiry has been recorded for the strategists
-                                    on the next turn.
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-boxel-ink text-[11px] leading-relaxed whitespace-pre-wrap break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono">
-                                {latestAnswered.agent_response}
-                            </div>
-                        ))}
-                </div>
+                <AnsweredTurnView latestAnswered={latestAnswered} isOutage={isOutage} />
             )}
         </div>
     );

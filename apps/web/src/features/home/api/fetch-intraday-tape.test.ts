@@ -64,6 +64,8 @@ describe('fetch-intraday-tape utilities', () => {
         expect(state.marketDirection).toBe('BULLISH');
         expect(state.sentimentLabel).toBe('Momentum Breakout');
         expect(state.technicals?.vwap).toBe(582.5);
+        expect(state.timestamp).toBe('2026-10-29T19:30:00Z');
+        expect(state.lastUpdated).toContain('ET');
     });
 
     describe('mergeIncomingBar', () => {

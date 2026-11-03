@@ -78,7 +78,7 @@ One worker iteration:
 
 ## Frontend
 
-`apps/web/src/features/home/components/ConsoleQueueCard.tsx` labels the card **Audience Interactive Queue & Desk Explainer**, prompts visitors to ask about past choices / positioning / macro hypotheses, and renders the latest answered turn's Markdown response in a `whitespace-pre-wrap` block. When the stored `agent_response` is itself an outage fallback (detected client-side via `isOutageFallbackResponse`), the card renders a styled **DESK NOTICE: HIGH SYSTEM VOLUME** panel instead of the raw text and reports the outage to PostHog Error Tracking (see [[entities/live-agent-trader]] and [[concepts/posthog-stealth-proxy]]).
+`apps/web/src/features/home/components/ConsoleQueueCard.tsx` labels the card **Audience Interactive Queue & Desk Explainer**, prompts visitors to ask about past choices / positioning / macro hypotheses, and renders the latest answered turn's Markdown response in a `whitespace-pre-wrap` block. The answered-turn view (`AnsweredTurnView`) renders **dual Eastern-Time timestamps**: the turn timestamp (`injected_turn_at`) beside the `Latest Answered Turn:` label and the submission timestamp (`created_at`) beside the author handle, via a local `formatTimestamp` helper that passes through `ET`/`EST`/`EDT`-suffixed values and otherwise formats through `formatEasternTime`. When the stored `agent_response` is itself an outage fallback (detected client-side via `isOutageFallbackResponse`), the card renders a styled **DESK NOTICE: HIGH SYSTEM VOLUME** panel instead of the raw text and reports the outage to PostHog Error Tracking (see [[entities/live-agent-trader]] and [[concepts/posthog-stealth-proxy]]).
 
 ## Related
 

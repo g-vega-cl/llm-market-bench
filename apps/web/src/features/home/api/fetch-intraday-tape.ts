@@ -94,6 +94,7 @@ export function buildAgentState(
         sentimentLabel: feeling?.sentiment_label || 'Active Surveillance',
         modelUsed: feeling?.model_used || 'Strata Orca',
         lastUpdated: feeling?.created_at ? formatEasternTime(feeling.created_at) : undefined,
+        timestamp: feeling?.created_at || undefined,
         technicals: payload?.technicals || {
             vwap: 582.4,
             rsi_14: 54.2,

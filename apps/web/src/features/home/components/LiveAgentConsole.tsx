@@ -1,5 +1,6 @@
 import { Badge, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
+import { formatEasternTime } from '~/utils/date';
 import { type AgentQueueItem, fetchAgentQueueStatus } from '../api/fetch-agent-queue';
 import { useLiveTapeStream } from '../hooks/useLiveTapeStream';
 import { ConsoleQueueCard } from './ConsoleQueueCard';
@@ -17,6 +18,7 @@ export interface LiveAgentState {
     sentimentLabel?: string;
     modelUsed?: string;
     lastUpdated?: string;
+    timestamp?: string;
     technicals?: {
         vwap: number;
         rsi_14: number;
@@ -258,7 +260,18 @@ export function LiveAgentConsole({
 
             <div className="voxel-trough p-3.5 flex flex-col gap-2">
                 <div className="flex items-center justify-between text-xs font-normal tracking-wider uppercase text-boxel-muted border-b border-boxel-bevel-hi/50 pb-1.5">
-                    <span>Intraday Thought Trace</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span>Intraday Thought Trace</span>
+                        {(currentAgentState.lastUpdated || currentAgentState.timestamp) && (
+                            <span className="font-mono text-boxel-muted/80">
+                                •{' '}
+                                {currentAgentState.lastUpdated ??
+                                    (currentAgentState.timestamp
+                                        ? formatEasternTime(currentAgentState.timestamp)
+                                        : '')}
+                            </span>
+                        )}
+                    </div>
                     <span className="text-accent font-bold">
                         {currentAgentState.action} DECISION
                     </span>

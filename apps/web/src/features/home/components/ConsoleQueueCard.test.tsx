@@ -88,13 +88,16 @@ describe('ConsoleQueueCard', () => {
                     message: 'Is inflation driving the 10Y yield higher?',
                     agent_response: '10Y yield spiked 8bps following hot PPI print.',
                     status: 'answered',
-                    created_at: new Date().toISOString(),
+                    created_at: '2026-11-03T15:42:00Z',
+                    injected_turn_at: '2026-11-03T15:45:00Z',
                 }}
             />,
         );
 
         expect(screen.getByText(/Latest Answered Turn:/i)).toBeInTheDocument();
+        expect(screen.getByText(/10:45 AM ET/i)).toBeInTheDocument();
         expect(screen.getByText(/@MacroTrader/i)).toBeInTheDocument();
+        expect(screen.getByText(/10:42 AM ET/i)).toBeInTheDocument();
         expect(
             screen.getByText(/Is inflation driving the 10Y yield higher\?/i),
         ).toBeInTheDocument();

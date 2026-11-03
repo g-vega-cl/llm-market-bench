@@ -65,10 +65,12 @@ describe('LiveAgentConsole', () => {
         expect(screen.getByText(/Accumulating Dips/i)).toBeInTheDocument();
     });
 
-    it('renders thought trace and technical indicators', () => {
+    it('renders thought trace with timestamp and technical indicators', () => {
         render(
             <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
         );
+        expect(screen.getByText(/Intraday Thought Trace/i)).toBeInTheDocument();
+        expect(screen.getByText(/• 14:25 ET/i)).toBeInTheDocument();
         expect(screen.getByText(/SPY bounced cleanly off the 15m VWAP/i)).toBeInTheDocument();
         expect(screen.getByText(/VWAP:/i)).toBeInTheDocument();
         expect(screen.getByText(/\$580.20/i)).toBeInTheDocument();

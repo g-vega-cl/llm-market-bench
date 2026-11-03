@@ -18,15 +18,10 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
-- [x] - Benchify: when remaking and updating design system. Make sure sidebar is only 4 items tops. Maybe change the items based on frequency of use?
-- [x] - Benchify: at most 4 in navbar..maybe less. Home, portfolios, live, data/experiments. They can be icons too
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
-- [x] - Benchify: update today page: Replaced static AI Market Feeling overview with the 24/7 Autonomous SPY Trader console, D3 candlestick tape, and real-time HUD
-- [x] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios: Excluded mechanical sys-* strategies so only autonomous LLM agents appear on Home overview
 - [ ] - Benchify: design rules cheat sheet to ground my design system
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
-- [x] - Benchify: Add timestamp to the intraday thought trace and to comments: Rendered Eastern Time turn timestamp in Intraday Thought Trace header and added dual submission + turn timestamps to audience queue comments in ConsoleQueueCard
 - [ ] - Benchify: autonomous trader must auto-refresh
 - [ ] - Benchify: I tend to see the "no data found error" a second before my pages are populated. Check SSR/CSR
 - [ ] - Benchify: retired agent add a new page and link. Not a table in /lab

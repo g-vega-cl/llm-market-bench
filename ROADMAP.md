@@ -13,6 +13,7 @@ A living document of features and improvements in progress or planned for the pl
       Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
   - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
+- [ ] - Benchify: haiku and DeepSeek not making trades, why? Has the verifier gone crazy/useless.
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 
@@ -28,6 +29,10 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
 - [ ] - Benchify: Add timestamp to the intraday thought trace and to comments.
 - [ ] - Benchify: Make sure boxes are the same size for design. And let's try to use at most 3 different font sizes and boldness combinations (eg. 14px - bold could be one of three combinations) through the site. Let's try to "standarize" as much as we can of the design with just the minimum amount of variation.
+- [ ] - Benchify: autonomous trader must auto-refresh
+- [ ] - Benchify: I tend to see the "no data found error" a second before my pages are populated. Check SSR/CSR
+- [ ] - Benchify: retired agent add a new page and link. Not a table in /lab
+- [ ] - Benchify: /daily-predictions Make sure the layout is consistent, in "Champion" the last prediction block moves under the "Curated pre-market-data manifest". It should be in the same place to avoid weird layout shifts when the users switch tabs, this princuple should be general across the site
 
 ### Marketing & Building in Public
 
@@ -66,6 +71,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: get the smol server to do API calls 24/7 now that the DB is huge, and set up a distributed DB.
 - [ ] - Benchify: news scraper/news caller. I need a huge DB of news
 - [ ] - Benchify: audit news ingestion
+- [ ] - Benchify: research every stock/sector mentioned in newsletters individually and decide if it would be worth investing in it. Save all these research reports in a DB where users could "look up all information about X company"
+- [ ] - Benchify: parse this paper for good memories and patterns to add to our DB ssrn-2476415
 
 ---
 
@@ -114,6 +121,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: market data free APIs?
 - [ ] - Benchify: free APIs to the LLMs chat?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
+- [ ] - Benchify: So many posts like this. https://www.reddit.com/r/ai_trading/s/P9KnfLpbAV There must be a better way
 
 ### Gamifying
 
@@ -141,6 +149,7 @@ A living document of features and improvements in progress or planned for the pl
   - same with text
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.
 - [ ] - Random: Toronto rank councilors and what they do and categorize them
+- [ ] - Benchify: research pivot? Maybe stock prediction is way over my head. But maybe I can mix my other loves - policy, economics, socials in real life, supplements, games/strategy,  chemical engineering, anti nepotism, writing/cinema/art/books, history, gym, AI, etc...
 
 ---
 

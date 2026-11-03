@@ -43,7 +43,7 @@ function ToolTracesView({
             <button
                 type="button"
                 onClick={onToggle}
-                className="flex items-center gap-1.5 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/40 border border-cyan-800/40 rounded-lg px-2.5 py-1"
+                className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/40 border border-cyan-800/40 rounded-none px-2.5 py-1"
             >
                 <span>⚡</span>
                 <span>
@@ -53,13 +53,13 @@ function ToolTracesView({
             </button>
 
             {isOpen && (
-                <div className="mt-1.5 space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/70 p-2.5 text-[11px] text-zinc-400">
+                <div className="mt-1.5 space-y-1 rounded-none border border-zinc-800 bg-zinc-900/70 p-2.5 text-xs font-normal text-zinc-400">
                     {traces.map((trace) => (
                         <div
                             key={`${trace.tool_name}-${trace.summary}`}
                             className="flex items-start gap-2 border-b border-zinc-800/60 pb-1 last:border-b-0 last:pb-0"
                         >
-                            <Badge variant="outline" size="sm" colorScheme="accent">
+                            <Badge variant="outline" size="sm" radius="none" colorScheme="accent">
                                 {trace.tool_name}
                             </Badge>
                             <span className="text-zinc-300 flex-1">{trace.summary}</span>
@@ -82,7 +82,7 @@ function SuggestedQuestionsView({
 
     return (
         <div className="mt-2.5 w-full max-w-[90%] md:max-w-[85%] pl-1 space-y-1.5">
-            <p className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1.5">
+            <p className="text-xs font-bold text-zinc-400 flex items-center gap-1.5">
                 <span className="text-cyan-400">💡</span>
                 <span>Next best questions:</span>
             </p>
@@ -92,9 +92,9 @@ function SuggestedQuestionsView({
                         key={question}
                         type="button"
                         onClick={() => onSelect(question)}
-                        className="text-left rounded-xl border border-cyan-900/50 bg-cyan-950/20 hover:bg-cyan-900/40 hover:border-cyan-500/60 p-2.5 text-xs text-zinc-200 hover:text-cyan-100 transition-all shadow-sm flex items-start gap-2 group"
+                        className="text-left rounded-none border border-cyan-900/50 bg-cyan-950/20 hover:bg-cyan-900/40 hover:border-cyan-500/60 p-2.5 text-xs font-normal text-zinc-200 hover:text-cyan-100 transition-all shadow-sm flex items-start gap-2 group"
                     >
-                        <span className="text-cyan-400 shrink-0 font-mono text-[11px] group-hover:translate-x-0.5 transition-transform">
+                        <span className="text-cyan-400 shrink-0 font-mono text-xs group-hover:translate-x-0.5 transition-transform">
                             ↳
                         </span>
                         <span className="flex-1">{question}</span>
@@ -129,10 +129,10 @@ function MessageBubble({
     return (
         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
             <div
-                className={`rounded-2xl px-4 py-3 text-xs leading-relaxed max-w-[90%] md:max-w-[85%] ${
+                className={`rounded-none px-4 py-3 text-xs font-normal leading-relaxed max-w-[90%] md:max-w-[85%] ${
                     isUser
-                        ? 'bg-cyan-600 text-white rounded-br-none shadow-md'
-                        : 'bg-zinc-900/90 text-zinc-200 border border-zinc-800 rounded-bl-none shadow-sm'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'bg-zinc-900/90 text-zinc-200 border border-zinc-800 shadow-sm'
                 }`}
             >
                 {isUser ? (
@@ -150,8 +150,9 @@ function MessageBubble({
                         <Badge
                             variant="outline"
                             size="sm"
+                            radius="none"
                             colorScheme="success"
-                            className="text-[11px] py-0.5"
+                            className="text-xs py-0.5"
                         >
                             ✓ Saved to My Theses
                         </Badge>
@@ -160,7 +161,7 @@ function MessageBubble({
                             type="button"
                             onClick={onPromoteMemory}
                             disabled={isDistilling}
-                            className="flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-cyan-300 transition-colors bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-cyan-800/60 rounded-lg px-2.5 py-1"
+                            className="flex items-center gap-1.5 text-xs font-normal text-zinc-400 hover:text-cyan-300 transition-colors bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-cyan-800/60 rounded-none px-2.5 py-1"
                         >
                             <span>{isDistilling ? '⏳' : '🧠'}</span>
                             <span>
@@ -345,9 +346,9 @@ export function ChatInterface({
 
     if (!isAuthorized) {
         return (
-            <Card className="w-full max-w-2xl mx-auto p-8 border-cyan-900/40 bg-zinc-950/80 backdrop-blur-xl shadow-2xl">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xl">
+            <Card className="w-full max-w-2xl mx-auto p-8 border-cyan-900/40 bg-zinc-950/80 backdrop-blur-xl rounded-none shadow-sm flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-none bg-cyan-500/10 border border-cyan-500/30 text-lg">
                         🔒
                     </div>
                     <div>
@@ -355,28 +356,28 @@ export function ChatInterface({
                             <h2 className="text-lg font-bold text-white tracking-tight">
                                 Investment Chat Gateway
                             </h2>
-                            <Badge variant="outline" colorScheme="accent">
+                            <Badge variant="outline" size="sm" radius="none" colorScheme="accent">
                                 Private Beta
                             </Badge>
                         </div>
-                        <p className="text-xs text-zinc-400">
+                        <p className="text-xs font-normal text-zinc-400">
                             Gated conversational agent with real-time memory & database access
                         </p>
                     </div>
                 </div>
 
-                <div className="space-y-4 text-sm text-zinc-300">
+                <div className="flex flex-col gap-4 text-xs font-normal text-zinc-300">
                     <p className="leading-relaxed">
                         The Investment Chat Gateway is an interactive research interface allowing
                         you to interrogate market memories, review model theses, and ask questions
                         like{' '}
-                        <code className="text-cyan-400 bg-zinc-900 px-1.5 py-0.5 rounded">
+                        <code className="text-cyan-400 bg-zinc-900 px-1.5 py-0.5 rounded-none font-mono">
                             "Should I invest in NVO?"
                         </code>{' '}
                         grounded directly in live Supabase trading records.
                     </p>
-                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-2 text-xs text-zinc-400">
-                        <p className="font-semibold text-zinc-200">
+                    <div className="rounded-none border border-zinc-800 bg-zinc-900/50 p-4 flex flex-col gap-2 text-xs text-zinc-400">
+                        <p className="font-bold text-zinc-200">
                             ✨ Available Capabilities when Authorized:
                         </p>
                         <ul className="list-disc list-inside space-y-1 pl-1">
@@ -396,12 +397,12 @@ export function ChatInterface({
                     </div>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between pt-4 border-t border-zinc-800/80">
-                    <span className="text-xs text-zinc-500">
+                <div className="pt-4 border-t border-zinc-800/80 flex items-center justify-between">
+                    <span className="text-xs font-normal text-zinc-500">
                         {user ? `Signed in as ${user.email} (Access restricted)` : 'Not signed in'}
                     </span>
                     <Link to="/login">
-                        <Button variant="solid" size="sm" colorScheme="accent">
+                        <Button variant="solid" size="sm" rounded="none" colorScheme="accent">
                             Sign In to Access
                         </Button>
                     </Link>
@@ -414,28 +415,28 @@ export function ChatInterface({
 
     return (
         <div
-            className={`flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-950/90 shadow-2xl backdrop-blur-xl transition-all ${
+            className={`flex flex-col rounded-none border border-zinc-800/80 bg-zinc-950/90 shadow-sm backdrop-blur-xl transition-all ${
                 isFullPage
                     ? 'w-full h-[calc(100vh-140px)] min-h-[580px]'
                     : 'h-[540px] w-96 max-w-[calc(100vw-2rem)]'
             }`}
         >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-4 py-3 rounded-t-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-4 py-3 rounded-none">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 font-bold text-white text-sm shadow-md">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-none bg-gradient-to-tr from-cyan-500 to-blue-600 font-bold text-white text-sm shadow-sm">
                         🤖
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-zinc-100 text-sm leading-none">
+                            <h3 className="font-bold text-zinc-100 text-sm leading-none">
                                 Benchify AI Gateway
                             </h3>
-                            <Badge variant="soft" size="sm" colorScheme="accent">
+                            <Badge variant="soft" size="sm" radius="none" colorScheme="accent">
                                 Live DB Connected
                             </Badge>
                         </div>
-                        <span className="text-[11px] text-zinc-400">
+                        <span className="text-xs font-normal text-zinc-400">
                             DeepSeek Flash · 4 Database Tools Enabled
                         </span>
                     </div>
@@ -457,7 +458,7 @@ export function ChatInterface({
                             type="button"
                             aria-label="Close chat"
                             onClick={onClose}
-                            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+                            className="rounded-none p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
                         >
                             ✕
                         </button>
@@ -466,7 +467,7 @@ export function ChatInterface({
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-zinc-700">
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-zinc-700">
                 {visibleMessages.map((msg, idx) => {
                     const isUser = msg.role === 'user';
                     const isLatestAssistant = !isUser && idx === visibleMessages.length - 1;
@@ -493,8 +494,8 @@ export function ChatInterface({
                 {/* Loading indicator */}
                 {isLoading && (
                     <div className="flex justify-start">
-                        <div className="flex items-center gap-2 rounded-2xl rounded-bl-none border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-xs text-cyan-400">
-                            <span className="h-2 w-2 animate-ping rounded-full bg-cyan-400" />
+                        <div className="flex items-center gap-2 rounded-none border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-xs text-cyan-400 font-normal">
+                            <span className="h-2 w-2 animate-ping rounded-none bg-cyan-400" />
                             <span>Benchify AI is querying database & analyzing memories...</span>
                         </div>
                     </div>
@@ -502,15 +503,15 @@ export function ChatInterface({
 
                 {/* Error Banner */}
                 {error && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-950/40 p-3 text-xs text-red-300">
+                    <div className="rounded-none border border-red-500/30 bg-red-950/40 p-3 text-xs font-normal text-red-300">
                         ⚠️ {error}
                     </div>
                 )}
 
                 {/* Prompt Suggestions (if only greeting is present) */}
                 {messages.length <= 1 && (
-                    <div className="mt-4 space-y-2 pt-2 border-t border-zinc-800/60">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                    <div className="mt-4 flex flex-col gap-2 pt-2 border-t border-zinc-800/60">
+                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
                             Suggested Inquiries:
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -519,7 +520,7 @@ export function ChatInterface({
                                     key={prompt}
                                     type="button"
                                     onClick={() => handleChipClick(prompt)}
-                                    className="text-left rounded-xl border border-zinc-800 bg-zinc-900/40 p-2.5 text-xs text-zinc-300 hover:border-cyan-500/50 hover:bg-cyan-950/20 hover:text-cyan-200 transition-all shadow-sm"
+                                    className="text-left rounded-none border border-zinc-800 bg-zinc-900/40 p-2.5 text-xs font-normal text-zinc-300 hover:border-cyan-500/50 hover:bg-cyan-950/20 hover:text-cyan-200 transition-all shadow-sm"
                                 >
                                     💡 {prompt}
                                 </button>
@@ -534,10 +535,10 @@ export function ChatInterface({
             {/* Input Form */}
             <form
                 onSubmit={handleSubmit}
-                className="border-t border-zinc-800 bg-zinc-900/80 p-3 rounded-b-2xl space-y-2"
+                className="border-t border-zinc-800 bg-zinc-900/80 p-3 rounded-none flex flex-col gap-2"
             >
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                         Attach DB Context:
                     </span>
                     <button
@@ -548,7 +549,7 @@ export function ChatInterface({
                                     `${prev ? `${prev} ` : ''}Please check the latest daily market briefing and market feeling.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-md text-[11px] font-mono text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 rounded-none text-xs font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
                     >
                         📰 + Briefing
                     </button>
@@ -560,7 +561,7 @@ export function ChatInterface({
                                     `${prev ? `${prev} ` : ''}Please search our memories for recent market lessons and causal scenarios.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-md text-[11px] font-mono text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 rounded-none text-xs font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
                     >
                         🧠 + Memories
                     </button>
@@ -572,7 +573,7 @@ export function ChatInterface({
                                     `${prev ? `${prev} ` : ''}Please query our recent trade decisions and portfolio leaderboard.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-md text-[11px] font-mono text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 rounded-none text-xs font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
                     >
                         📊 + Portfolio Trades
                     </button>
@@ -585,15 +586,16 @@ export function ChatInterface({
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask about a stock ticker, memory, or market feeling..."
                         disabled={isLoading}
-                        className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-xs text-zinc-100 placeholder-zinc-500 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all disabled:opacity-50"
+                        className="flex-1 rounded-none border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-xs text-zinc-100 placeholder-zinc-500 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all disabled:opacity-50"
                     />
                     <Button
                         type="submit"
                         variant="solid"
                         size="sm"
+                        rounded="none"
                         colorScheme="accent"
                         disabled={isLoading || !input.trim()}
-                        className="font-medium text-xs shadow-md shrink-0"
+                        className="font-bold text-xs shadow-sm shrink-0"
                     >
                         Send
                     </Button>

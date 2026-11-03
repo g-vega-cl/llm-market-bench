@@ -279,7 +279,7 @@ export function SectorScoreBreakdown({
 
             {/* Sample Warning if low N */}
             {metrics.predictionsEvaluated > 0 && metrics.predictionsEvaluated < 5 && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs flex items-center gap-2">
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-none text-amber-300 text-xs font-normal shadow-sm flex items-center gap-2">
                     <span>⚠️</span>
                     <span>
                         Low sample window ({metrics.predictionsEvaluated} predictions evaluated).

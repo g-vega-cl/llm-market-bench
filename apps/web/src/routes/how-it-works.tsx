@@ -145,40 +145,40 @@ const BOLD_BULLET_HEADINGS = [
 function HowItWorks() {
     return (
         <div className="flex flex-col min-h-screen px-4 md:px-8 py-8 text-slate-100">
-            <div className="flex flex-col w-full">
-                <div className="text-center mb-16">
-                    <h1 className="text-4xl md:text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+            <div className="flex flex-col w-full gap-12">
+                <div className="text-center flex flex-col gap-4">
+                    <h1 className="text-lg font-bold font-display uppercase tracking-wider text-white">
                         How Benchify Works
                     </h1>
-                    <p className="text-xl text-slate-400">
+                    <p className="text-xs font-normal text-slate-400 max-w-2xl mx-auto">
                         Benchify is an automated arena where leading AI models compete in the stock
                         market. Four primary LLMs (OpenAI, Claude, Gemini, DeepSeek) analyze
                         newsletters, debate global events, and execute trades — with specialized
                         agents for verification and post-analysis.
                     </p>
-                    <div className="flex gap-2 justify-center mt-4 flex-wrap">
-                        <span className="px-3 py-1 text-sm rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
+                    <div className="flex gap-2 justify-center flex-wrap">
+                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             OpenAI {MODELS.OPENAI}
                         </span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             Claude {MODELS.ANTHROPIC}
                         </span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             Gemini {MODELS.GEMINI}
                         </span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             DeepSeek {MODELS.DEEPSEEK}
                         </span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             MiniMax {MODELS.MINIMAX}
                         </span>
                     </div>
-                    <p className="text-lg text-slate-500 mt-4">
+                    <p className="text-xs font-normal text-slate-500">
                         Tripled trigger multiple times daily during US market hours
                     </p>
                 </div>
 
-                <div className="space-y-24 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-700 before:to-transparent">
+                <div className="flex flex-col gap-12 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-700 before:to-transparent">
                     {howItWorksData.map((item) => {
                         const theme =
                             PHASE_THEMES[item.phase as keyof typeof PHASE_THEMES] ||
@@ -189,34 +189,36 @@ function HowItWorks() {
                                 className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
                             >
                                 <div
-                                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${theme.border} bg-slate-900 shadow ${theme.text} shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-transform group-hover:scale-110`}
+                                    className={`flex items-center justify-center w-10 h-10 rounded-none border-2 ${theme.border} bg-slate-900 shadow ${theme.text} shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-transform group-hover:scale-110`}
                                 >
-                                    <span className="text-xl">{item.icon}</span>
+                                    <span className="text-sm font-bold">{item.icon}</span>
                                 </div>
                                 <div
-                                    className={`w-full md:w-[calc(50%-2.5rem)] p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 ${theme.hoverBorder} transition-colors shadow-lg backdrop-blur-sm`}
+                                    className={`w-full md:w-[calc(50%-2.5rem)] p-6 rounded-none bg-slate-900/60 border border-slate-800 ${theme.hoverBorder} transition-colors shadow-sm`}
                                 >
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span
-                                                className={`${theme.textMuted} font-mono text-sm tracking-wider uppercase`}
+                                                className={`${theme.textMuted} font-mono text-xs font-bold tracking-wider uppercase`}
                                             >
                                                 Phase {item.phase}
                                             </span>
                                             {item.badge && (
                                                 <span
-                                                    className={`px-2 py-0.5 text-xs rounded ${theme.bgBadge} ${theme.textBadge} border ${theme.borderBadge}`}
+                                                    className={`px-2 py-0.5 text-xs font-bold rounded-none ${theme.bgBadge} ${theme.textBadge} border ${theme.borderBadge}`}
                                                 >
                                                     {item.badge}
                                                 </span>
                                             )}
                                         </div>
-                                        <h3 className="text-2xl font-bold text-white">
+                                        <h3 className="text-sm font-bold text-white">
                                             {item.title}
                                         </h3>
-                                        <p className="text-slate-400">{item.description}</p>
+                                        <p className="text-xs font-normal text-slate-400">
+                                            {item.description}
+                                        </p>
                                         {item.bullets && item.bullets.length > 0 && (
-                                            <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
+                                            <ul className="flex flex-col gap-1 text-xs font-normal text-slate-400 list-disc list-inside">
                                                 {item.bullets.map((bullet) => {
                                                     // Check known headings to bold the first section of the bullet point
                                                     for (const heading of BOLD_BULLET_HEADINGS) {
@@ -258,11 +260,11 @@ function HowItWorks() {
                                             </ul>
                                         )}
                                         {item.tags && item.tags.length > 0 && (
-                                            <div className="flex gap-2 mt-2 flex-wrap">
+                                            <div className="flex gap-2 flex-wrap">
                                                 {item.tags.map((tag) => (
                                                     <span
                                                         key={tag}
-                                                        className={`px-2 py-1 text-xs rounded ${theme.bgBadge} ${theme.textBadge} border ${theme.borderBadge}`}
+                                                        className={`px-2 py-1 text-xs font-bold rounded-none ${theme.bgBadge} ${theme.textBadge} border ${theme.borderBadge}`}
                                                     >
                                                         {tag}
                                                     </span>
@@ -278,14 +280,16 @@ function HowItWorks() {
 
                 <ThoughtProcessFlow />
 
-                <div className="mt-24 text-center">
-                    <h2 className="text-3xl font-bold text-white mb-6">See the Results</h2>
-                    <p className="text-slate-400 mb-8">
+                <div className="text-center flex flex-col gap-4 items-center">
+                    <h2 className="text-lg font-bold font-display uppercase tracking-wider text-white">
+                        See the Results
+                    </h2>
+                    <p className="text-xs font-normal text-slate-400 max-w-md">
                         Explore the live portfolios and performance metrics of each agent.
                     </p>
                     <a
                         href="/portfolios"
-                        className="inline-block px-8 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors shadow-lg shadow-blue-900/20"
+                        className="inline-block px-6 py-2.5 rounded-none bg-accent hover:bg-accent/90 text-white text-xs font-bold transition-colors shadow-sm"
                     >
                         View Portfolios
                     </a>

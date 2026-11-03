@@ -187,38 +187,45 @@ export function RenkoAgentPageView({
     const totalReturnPct = ((totalEquity - initialCapital) / initialCapital) * 100;
 
     return (
-        <PageLayout className="px-4 sm:px-6 md:px-12 py-8 md:py-12" withPadding={false}>
+        <PageLayout
+            className="px-4 sm:px-6 md:px-12 py-8 md:py-12 flex flex-col gap-8"
+            withPadding={false}
+        >
             {/* Header Banner */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-8 border-b border-zinc-800">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-blue-400">
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-lg font-bold font-display uppercase tracking-wider text-blue-400">
                         Linde plc (LIN) — Hyper-Focused Renko Agent
                     </h1>
-                    <p className="text-zinc-400 text-sm md:text-base mt-1">
+                    <p className="text-zinc-400 text-xs font-normal">
                         Chemical Engineering & Industrial Gas Context | DeepSeek Flash Powered
                     </p>
                 </div>
                 <div className="flex flex-col md:items-end gap-1">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs md:text-sm font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700 w-fit">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-none text-xs font-bold bg-emerald-900/60 text-emerald-300 border border-emerald-700 shadow-sm w-fit">
                         ACTIVE ● {selectedModel}
                     </span>
-                    <p className="text-xs text-zinc-400">Calculated 14d ATR: $4.87 / brick</p>
+                    <p className="text-xs font-normal text-zinc-400">
+                        Calculated 14d ATR: $4.87 / brick
+                    </p>
                 </div>
             </header>
 
             {/* Grid Layout: Renko Visualizer + Live Metrics */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                 {/* Visual Renko Bricks Stack */}
-                <div className="lg:col-span-2 bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl shadow-lg">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base md:text-lg font-semibold text-zinc-100">
+                <div className="lg:col-span-2 bg-zinc-900/80 border border-zinc-800 p-6 rounded-none shadow-sm flex flex-col justify-between gap-4">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-zinc-100">
                             Authentic Renko Price Chart (FMP 2-Year Feed)
                         </h3>
-                        <span className="text-xs text-zinc-400">Y-Axis: Price ($475 - $550)</span>
+                        <span className="text-xs font-normal text-zinc-400">
+                            Y-Axis: Price ($475 - $550)
+                        </span>
                     </div>
 
                     {/* True Price Coordinate Canvas */}
-                    <div className="flex gap-2 h-72 p-4 bg-zinc-950 rounded-lg border border-zinc-800 relative overflow-x-auto">
+                    <div className="flex gap-2 h-72 p-4 bg-zinc-950 rounded-none border border-zinc-800 relative overflow-x-auto shadow-sm">
                         {/* Price Grid Lines */}
                         <div className="absolute left-0 right-0 top-[20%] border-t border-dashed border-zinc-800 opacity-50" />
                         <div className="absolute left-0 right-0 top-[50%] border-t border-dashed border-zinc-800 opacity-50" />
@@ -235,7 +242,7 @@ export function RenkoAgentPageView({
                             return (
                                 <div key={brick.id} className="relative flex-none w-7 h-full">
                                     <div
-                                        className={`absolute w-full rounded border flex items-center justify-center text-[10px] font-bold text-white shadow ${
+                                        className={`absolute w-full rounded-none border flex items-center justify-center text-xs font-bold text-white shadow ${
                                             brick.direction === 'UP'
                                                 ? 'bg-emerald-600 border-emerald-500'
                                                 : 'bg-rose-600 border-rose-500'
@@ -253,19 +260,17 @@ export function RenkoAgentPageView({
                         })}
                     </div>
 
-                    <div className="mt-4 text-xs md:text-sm text-amber-400 bg-amber-950/30 p-3 rounded-lg border border-amber-800/60">
+                    <div className="text-xs font-normal text-amber-400 bg-amber-950/30 p-3 rounded-none border border-amber-800/60 shadow-sm">
                         ⚠️ <strong>2-Brick Reversal Trigger Threshold:</strong> $480.87 (Price must
                         drop below $480.87 to breach current Bullish reversal).
                     </div>
                 </div>
 
                 {/* Agent State Summary */}
-                <div className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl shadow-lg flex flex-col justify-between">
-                    <div>
-                        <h3 className="text-base md:text-lg font-semibold text-zinc-100 mb-4">
-                            Live Renko State (LIN)
-                        </h3>
-                        <div className="flex flex-col gap-3 text-sm">
+                <div className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-none shadow-sm flex flex-col justify-between gap-4">
+                    <div className="flex flex-col gap-4">
+                        <h3 className="text-sm font-bold text-zinc-100">Live Renko State (LIN)</h3>
+                        <div className="flex flex-col gap-3 text-xs font-normal">
                             <div className="flex justify-between pb-2 border-b border-zinc-800">
                                 <span className="text-zinc-400">Active Trend:</span>
                                 <span className="font-bold text-emerald-400">BULLISH REVERSAL</span>
@@ -290,24 +295,24 @@ export function RenkoAgentPageView({
                             </div>
                         </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-zinc-800 text-xs text-zinc-400">
-                        Signal: <span className="text-emerald-400 font-semibold">BUY_LONG</span> |
+                    <div className="pt-4 border-t border-zinc-800 text-xs font-normal text-zinc-400">
+                        Signal: <span className="text-emerald-400 font-bold">BUY_LONG</span> |
                         Model: DeepSeek Flash
                     </div>
                 </div>
             </div>
 
             {/* Cognitive Audit & ChemEng Prompt Drawer */}
-            <div className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl shadow-lg mb-12">
-                <h3 className="text-base md:text-lg font-semibold text-zinc-100 mb-4">
+            <div className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-none shadow-sm flex flex-col gap-4">
+                <h3 className="text-sm font-bold text-zinc-100">
                     DeepSeek Flash Prompt & Injected ChemEng Domain Context
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800">
-                        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 items-stretch">
+                    <div className="bg-zinc-950 p-4 rounded-none border border-zinc-800 shadow-sm flex flex-col gap-2">
+                        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                             Injected Domain Signals
                         </h4>
-                        <ul className="text-xs text-zinc-300 space-y-1.5 list-disc pl-4">
+                        <ul className="text-xs font-normal text-zinc-300 flex flex-col gap-1.5 list-disc pl-4">
                             <li>
                                 <strong>Semiconductor Fab Gas Demand:</strong> HIGH (Taiwan/US
                                 mega-fab expansions)
@@ -326,11 +331,11 @@ export function RenkoAgentPageView({
                             </li>
                         </ul>
                     </div>
-                    <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800">
-                        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                    <div className="bg-zinc-950 p-4 rounded-none border border-zinc-800 shadow-sm flex flex-col gap-2">
+                        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                             LLM Cognitive Synthesis (DeepSeek Flash)
                         </h4>
-                        <p className="text-xs text-zinc-300 leading-relaxed">
+                        <p className="text-xs font-normal text-zinc-300 leading-relaxed">
                             &quot;Renko state displays 2 consecutive UP green bricks following a
                             13-brick downward consolidation from $544.18 to $480.87. Reversal
                             threshold at $480.87 intact. Injected industrial gas backlogs ($4.2B)
@@ -342,18 +347,18 @@ export function RenkoAgentPageView({
             </div>
 
             {/* Dedicated LIN Renko Portfolio & Performance Ledger */}
-            <div className="space-y-8">
+            <div className="flex flex-col gap-8">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-zinc-800">
                     <div>
                         <div className="flex items-center gap-3">
                             <SectionHeading gradient="electric">
                                 LIN Renko Portfolio & Execution Ledger
                             </SectionHeading>
-                            <Badge variant="glass" size="sm" colorScheme="accent">
+                            <Badge variant="glass" size="sm" colorScheme="accent" radius="none">
                                 $10,000 Isolated Ledger
                             </Badge>
                         </div>
-                        <p className="text-zinc-400 text-sm mt-1">
+                        <p className="text-zinc-400 text-xs font-normal">
                             Live execution ledger strictly restricted to Linde plc ($LIN) equity and
                             cash allocations.
                         </p>
@@ -361,29 +366,29 @@ export function RenkoAgentPageView({
                 </div>
 
                 {/* Portfolio Metrics Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Card padding="md" variant="glass">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4 items-stretch">
+                    <Card padding="md" variant="glass" className="h-full rounded-none shadow-sm">
                         <MetricTile
                             icon="💰"
                             label="Total Equity"
                             value={`$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
-                    <Card padding="md" variant="glass">
+                    <Card padding="md" variant="glass" className="h-full rounded-none shadow-sm">
                         <MetricTile
                             icon="💵"
                             label="Cash Balance"
                             value={`$${cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
-                    <Card padding="md" variant="glass">
+                    <Card padding="md" variant="glass" className="h-full rounded-none shadow-sm">
                         <MetricTile
                             icon="🏭"
                             label="LIN Equity Value"
                             value={`$${positionsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
-                    <Card padding="md" variant="glass">
+                    <Card padding="md" variant="glass" className="h-full rounded-none shadow-sm">
                         <MetricTile
                             icon="📈"
                             label="Total Return"
@@ -393,9 +398,11 @@ export function RenkoAgentPageView({
                 </div>
 
                 {/* Performance Timeline & Benchmark Overlay */}
-                <section>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 w-full">
-                        <h3 className="text-lg font-bold text-zinc-100">Performance Timeline</h3>
+                <section className="flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+                        <h3 className="text-lg font-bold font-display uppercase tracking-wider text-zinc-100">
+                            Performance Timeline
+                        </h3>
                         <BenchmarkSelector
                             selected={selectedBenchmark}
                             onChange={setSelectedBenchmark}
@@ -411,7 +418,7 @@ export function RenkoAgentPageView({
                         <Card
                             variant="outlined"
                             padding="md"
-                            className="text-center text-zinc-500 mt-2"
+                            className="text-center text-zinc-400 text-xs font-normal rounded-none shadow-sm"
                         >
                             No historical snapshots recorded yet. Equity curve is automatically
                             tracked on daily runs.
@@ -420,16 +427,16 @@ export function RenkoAgentPageView({
                 </section>
 
                 {/* Active Positions Table */}
-                <section>
+                <section className="flex flex-col gap-4">
                     <SectionHeading gradient="electric">Active Positions</SectionHeading>
                     <PositionsTable positions={positions} trades={trades} />
                 </section>
 
                 {/* Recent Trades Table */}
-                <section>
-                    <div className="flex items-center justify-between mb-4">
+                <section className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
                         <SectionHeading gradient="success">Recent Trades</SectionHeading>
-                        <Badge variant="soft" size="sm" colorScheme="neutral">
+                        <Badge variant="soft" size="sm" colorScheme="neutral" radius="none">
                             Audit Trail
                         </Badge>
                     </div>

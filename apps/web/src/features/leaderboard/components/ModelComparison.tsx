@@ -119,11 +119,11 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                     className="h-full flex flex-col justify-between gap-4"
                 >
                     <div className="flex items-center gap-3 border-b border-boxel-bevel-hi pb-3">
-                        <span className="text-2xl">{infoA.emoji}</span>
+                        <span className="text-lg font-bold">{infoA.emoji}</span>
                         <div>
                             <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-bold text-boxel-ink">{infoA.name}</h3>
-                                <Badge colorScheme="neutral" variant="soft" size="xs">
+                                <Badge colorScheme="neutral" variant="soft" size="xs" radius="none">
                                     Model A
                                 </Badge>
                             </div>
@@ -180,11 +180,11 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                     className="h-full flex flex-col justify-between gap-4"
                 >
                     <div className="flex items-center gap-3 border-b border-boxel-bevel-hi pb-3">
-                        <span className="text-2xl">{infoB.emoji}</span>
+                        <span className="text-lg font-bold">{infoB.emoji}</span>
                         <div>
                             <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-bold text-boxel-ink">{infoB.name}</h3>
-                                <Badge colorScheme="neutral" variant="soft" size="xs">
+                                <Badge colorScheme="neutral" variant="soft" size="xs" radius="none">
                                     Model B
                                 </Badge>
                             </div>

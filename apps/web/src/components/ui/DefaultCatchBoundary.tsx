@@ -20,7 +20,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
                     variant="solid"
                     colorScheme="neutral"
                     size="sm"
-                    className="uppercase font-extrabold"
+                    className="uppercase font-bold text-xs"
                     onClick={() => {
                         router.invalidate();
                     }}
@@ -30,14 +30,14 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
                 {isRoot ? (
                     <Link
                         to="/"
-                        className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded-sm text-white uppercase font-extrabold`}
+                        className="px-2.5 py-1 bg-zinc-700 rounded-none text-white uppercase font-bold text-xs shadow-sm"
                     >
                         Home
                     </Link>
                 ) : (
                     <Link
                         to="/"
-                        className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded-sm text-white uppercase font-extrabold`}
+                        className="px-2.5 py-1 bg-zinc-700 rounded-none text-white uppercase font-bold text-xs shadow-sm"
                         onClick={(e) => {
                             e.preventDefault();
                             window.history.back();

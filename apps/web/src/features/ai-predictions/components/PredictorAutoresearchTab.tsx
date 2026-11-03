@@ -225,10 +225,10 @@ function PredictorPromptInspector({
 
     if (!isSplit) {
         return (
-            <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
+            <Card className="p-6 bg-slate-800/20 border-slate-700/50 flex flex-col gap-4 rounded-none shadow-sm">
                 <SectionHeading className="text-slate-200">The Predictor Prompt</SectionHeading>
                 <div className="relative group">
-                    <pre className="p-4 bg-slate-950 text-slate-300 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-slate-850 max-h-[500px] overflow-y-auto">
+                    <pre className="p-4 bg-slate-950 text-slate-300 rounded-none overflow-x-auto text-xs font-mono leading-relaxed border border-slate-800 max-h-96 overflow-y-auto shadow-sm whitespace-pre-wrap break-words">
                         {promptContent}
                     </pre>
                 </div>
@@ -290,7 +290,7 @@ function PredictorExperimentDetailsPane({
 }) {
     if (!selectedExperiment) {
         return (
-            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-slate-800 rounded-3xl text-slate-500">
+            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-slate-800 rounded-none text-slate-500 text-xs font-normal shadow-sm">
                 Select an experiment to view details
             </div>
         );

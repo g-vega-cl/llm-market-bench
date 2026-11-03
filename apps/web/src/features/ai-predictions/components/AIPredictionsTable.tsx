@@ -508,16 +508,16 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
     return (
         <div className="space-y-4">
             {/* Top Toolbar Controls */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800 backdrop-blur-sm">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-900/60 p-4 rounded-none border border-slate-800 backdrop-blur-sm shadow-sm">
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                     {/* Search Input */}
-                    <div className="relative min-w-[220px] flex-1 sm:flex-none">
+                    <div className="relative min-w-56 flex-1 sm:flex-none">
                         <input
                             type="text"
                             placeholder="Search tickers, models, reasoning..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                            className="w-full px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-none text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors shadow-sm font-normal"
                         />
                         {searchQuery && (
                             <button
@@ -543,7 +543,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                                     | 'openai',
                             )
                         }
-                        className="px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-blue-500"
+                        className="px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-none text-slate-300 focus:outline-none focus:border-blue-500 shadow-sm font-bold"
                     >
                         <option value="all">All Models</option>
                         <option value="deepseek">DeepSeek Models</option>
@@ -558,7 +558,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                         onChange={(e) =>
                             setStatusFilter(e.target.value as 'all' | 'active' | 'past')
                         }
-                        className="px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-blue-500"
+                        className="px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-none text-slate-300 focus:outline-none focus:border-blue-500 shadow-sm font-bold"
                     >
                         <option value="all">All Statuses</option>
                         <option value="active">🔮 Active Forecasts</option>
@@ -573,7 +573,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                                 e.target.value as 'all' | '7d' | '30d' | '60d' | '90d',
                             )
                         }
-                        className="px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-blue-500"
+                        className="px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-none text-slate-300 focus:outline-none focus:border-blue-500 shadow-sm font-bold"
                     >
                         <option value="all">All Horizons</option>
                         <option value="7d">7 Days</option>

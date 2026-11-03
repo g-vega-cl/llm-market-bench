@@ -175,7 +175,7 @@ function ChartHeaderHUD({ activeDisplay, priceChange, pctChange }: ChartHeaderHU
     return (
         <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-mono">
             <div className="flex items-center gap-2.5">
-                <span className="text-boxel-muted uppercase font-black tracking-wider bg-boxel-surface border border-boxel-border px-1.5 py-0.5">
+                <span className="text-boxel-muted uppercase font-bold tracking-wider bg-boxel-surface border border-boxel-border px-1.5 py-0.5">
                     SPY 1M
                 </span>
                 {activeDisplay ? (
@@ -218,7 +218,7 @@ function ChartHeaderHUD({ activeDisplay, priceChange, pctChange }: ChartHeaderHU
                         {activeDisplay.volume.toLocaleString('en-US')}
                     </span>
                     {timeET && (
-                        <span className="border-l border-boxel-border pl-2 text-[11px]">
+                        <span className="border-l border-boxel-border pl-2 text-xs font-normal">
                             {timeET} ET
                         </span>
                     )}

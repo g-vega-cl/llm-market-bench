@@ -62,14 +62,14 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                 </div>
 
                 {/* Session filter tabs */}
-                <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl self-start md:self-auto">
+                <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none self-start md:self-auto">
                     <button
                         type="button"
                         onClick={() => {
                             setSelectedSession('all');
                             if (initialNewsletters.length) setSelectedId(initialNewsletters[0].id);
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all ${
                             selectedSession === 'all'
                                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
                                 : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -84,7 +84,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                             const firstOpen = initialNewsletters.find((n) => n.session === 'open');
                             if (firstOpen) setSelectedId(firstOpen.id);
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 ${
+                        className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all flex items-center gap-1 ${
                             selectedSession === 'open'
                                 ? 'bg-electric-blue-500 text-white shadow-sm'
                                 : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -101,7 +101,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                             );
                             if (firstClose) setSelectedId(firstClose.id);
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 ${
+                        className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all flex items-center gap-1 ${
                             selectedSession === 'close'
                                 ? 'bg-deep-purple-500 text-white shadow-sm'
                                 : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -128,17 +128,17 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     {/* Left Sidebar: Timeline of generated briefings */}
-                    <div className="lg:col-span-4 space-y-3">
+                    <div className="lg:col-span-4 flex flex-col gap-3">
                         <div className="flex items-center justify-between px-1">
-                            <span className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                            <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                                 Archive ({filteredNewsletters.length})
                             </span>
-                            <span className="text-[10px] text-zinc-400 font-mono">
+                            <span className="text-xs font-normal text-zinc-400 font-mono">
                                 DeepSeek V4 Flash
                             </span>
                         </div>
 
-                        <div className="space-y-2.5 max-h-[700px] overflow-y-auto pr-1">
+                        <div className="flex flex-col gap-2.5 max-h-[700px] overflow-y-auto pr-1">
                             {filteredNewsletters.map((newsletter) => {
                                 const isSelected = activeNewsletter?.id === newsletter.id;
                                 const isOpenSession = newsletter.session === 'open';
@@ -148,7 +148,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                         type="button"
                                         key={newsletter.id}
                                         onClick={() => setSelectedId(newsletter.id)}
-                                        className={`w-full p-4 rounded-2xl border transition-all cursor-pointer text-left space-y-2 ${
+                                        className={`w-full p-4 rounded-none border transition-all cursor-pointer text-left flex flex-col gap-2 ${
                                             isSelected
                                                 ? 'bg-electric-blue-50/40 dark:bg-electric-blue-950/20 border-electric-blue-500/50 ring-1 ring-electric-blue-500/30'
                                                 : 'bg-white dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
@@ -159,13 +159,14 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                 variant="soft"
                                                 colorScheme={isOpenSession ? 'accent' : 'warning'}
                                                 size="xs"
-                                                className="uppercase text-[9px] font-bold"
+                                                radius="none"
+                                                className="uppercase text-xs font-bold"
                                             >
                                                 {isOpenSession
                                                     ? '🌅 Market Open'
                                                     : '🌆 Market Close'}
                                             </Badge>
-                                            <span className="text-[10px] text-zinc-400 font-mono tabular-nums">
+                                            <span className="text-xs font-normal text-zinc-400 font-mono tabular-nums">
                                                 {newsletter.displayTime}
                                             </span>
                                         </div>
@@ -174,11 +175,11 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                             <InlineMarkdown text={newsletter.title} />
                                         </h4>
 
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 font-light">
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 font-normal">
                                             <InlineMarkdown text={newsletter.summary} />
                                         </p>
 
-                                        <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+                                        <div className="flex items-center justify-between text-xs font-normal text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
                                             <span>{newsletter.formattedDate}</span>
                                             <span>
                                                 ⏱️ {newsletter.read_time_minutes ?? 6} min read
@@ -192,8 +193,8 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
 
                     {/* Right Spotlight: Selected Newsletter Full View */}
                     {activeNewsletter && (
-                        <div className="lg:col-span-8 space-y-6">
-                            <Card className="p-6 md:p-8 space-y-6 relative overflow-hidden border-electric-blue-100 dark:border-electric-blue-900/30">
+                        <div className="lg:col-span-8 flex flex-col gap-6">
+                            <Card className="p-6 md:p-8 flex flex-col gap-6 rounded-none shadow-sm relative overflow-hidden border-electric-blue-100 dark:border-electric-blue-900/30">
                                 {/* Side Accent Line */}
                                 <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-electric-blue-500 via-deep-purple-500 to-electric-blue-600" />
 
@@ -202,6 +203,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <Badge
                                             variant="solid"
+                                            radius="none"
                                             colorScheme={
                                                 activeNewsletter.session === 'open'
                                                     ? 'accent'
@@ -213,10 +215,10 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                 ? '🌅 Market Open Briefing'
                                                 : '🌆 Market Close Briefing'}
                                         </Badge>
-                                        <span className="px-2.5 py-1 rounded-full text-xs font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                        <span className="px-2.5 py-1 rounded-none text-xs font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
                                             🕒 Created at {activeNewsletter.displayTime}
                                         </span>
-                                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-electric-blue-50 dark:bg-electric-blue-950/40 text-electric-blue-600 dark:text-electric-blue-400 border border-electric-blue-200 dark:border-electric-blue-800/50">
+                                        <span className="px-2.5 py-1 rounded-none text-xs font-normal bg-electric-blue-50 dark:bg-electric-blue-950/40 text-electric-blue-600 dark:text-electric-blue-400 border border-electric-blue-200 dark:border-electric-blue-800/50">
                                             ⏱️ {activeNewsletter.read_time_minutes ?? 6} min read
                                         </span>
                                     </div>
@@ -226,49 +228,49 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                             search={{
                                                 q: `Analyze market newsletter briefing "${activeNewsletter.title}": ${activeNewsletter.summary.slice(0, 150)}...`,
                                             }}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm transition-all"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm transition-all"
                                             title="Discuss this briefing in AI Chat Gateway"
                                         >
                                             <span>💬</span>
                                             <span>Discuss in AI Chat</span>
                                         </Link>
-                                        <span className="text-xs text-zinc-400 font-mono">
+                                        <span className="text-xs font-normal text-zinc-400 font-mono">
                                             {activeNewsletter.formattedDate}
                                         </span>
                                     </div>
                                 </div>
 
                                 {/* Newsletter Title */}
-                                <div className="space-y-3">
-                                    <h1 className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">
+                                <div>
+                                    <h1 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight leading-tight">
                                         <InlineMarkdown text={activeNewsletter.title} />
                                     </h1>
                                 </div>
 
                                 {/* Executive Summary Banner */}
-                                <div className="p-4 rounded-2xl bg-electric-blue-50/60 dark:bg-electric-blue-950/20 border border-electric-blue-200/60 dark:border-electric-blue-900/40 space-y-1.5">
+                                <div className="p-4 rounded-none bg-electric-blue-50/60 dark:bg-electric-blue-950/20 border border-electric-blue-200/60 dark:border-electric-blue-900/40 flex flex-col gap-1.5">
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm">⚡</span>
-                                        <span className="text-xs font-black uppercase tracking-widest text-electric-blue-600 dark:text-electric-blue-400">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-electric-blue-600 dark:text-electric-blue-400">
                                             Executive Summary
                                         </span>
                                     </div>
-                                    <p className="text-sm text-zinc-700 dark:text-zinc-200 font-medium leading-relaxed">
+                                    <p className="text-xs font-normal text-zinc-700 dark:text-zinc-200 leading-relaxed">
                                         <InlineMarkdown text={activeNewsletter.summary} />
                                     </p>
                                 </div>
 
                                 {/* Key Bullet Highlights */}
                                 {parsedBullets.length > 0 && (
-                                    <div className="space-y-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800">
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+                                    <div className="flex flex-col gap-3 p-4 rounded-none bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
                                             📌 Key Takeaways
                                         </h3>
-                                        <ul className="space-y-2">
+                                        <ul className="flex flex-col gap-2">
                                             {parsedBullets.map((bullet) => (
                                                 <li
                                                     key={bullet}
-                                                    className="text-xs md:text-sm text-zinc-700 dark:text-zinc-300 font-light flex items-start gap-2.5 leading-relaxed"
+                                                    className="text-xs text-zinc-700 dark:text-zinc-300 font-normal flex items-start gap-2.5 leading-relaxed"
                                                 >
                                                     <span className="text-electric-blue-500 font-bold mt-0.5">
                                                         •
@@ -290,7 +292,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                 </div>
 
                                 {/* Footer metadata */}
-                                <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
+                                <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs font-normal text-zinc-400 font-mono">
                                     <span>
                                         Sources Ingested: {activeNewsletter.source_count ?? 0}{' '}
                                         Briefings

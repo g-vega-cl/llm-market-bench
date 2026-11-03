@@ -39,8 +39,8 @@ function PodiumCard({ model, place }: PodiumCardProps) {
             </div>
 
             {/* Top Section */}
-            <div className="text-center pt-2 space-y-3">
-                <div className="text-2xl">{info.emoji}</div>
+            <div className="text-center pt-2 flex flex-col gap-3">
+                <div className="text-lg font-bold">{info.emoji}</div>
                 <div>
                     <h3 className="text-sm font-bold text-boxel-ink line-clamp-1">{info.name}</h3>
                     <p className="text-xs font-normal text-boxel-muted font-mono tracking-wider truncate">

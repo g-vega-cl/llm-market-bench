@@ -43,7 +43,7 @@ export function formatStableDate(dateStr: string): string {
 export function PredictionOutcomeBadge({ pred }: { pred: SectorPrediction }) {
     if (pred.status === 'pending') {
         return (
-            <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/40 flex items-center gap-1">
+            <span className="px-3 py-1 text-xs font-bold rounded-none bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-sm flex items-center gap-1">
                 <span>🔮</span> Active Forecast (Pending)
             </span>
         );
@@ -52,7 +52,7 @@ export function PredictionOutcomeBadge({ pred }: { pred: SectorPrediction }) {
     const sectorScore = pred.sector_percentile_score ?? 0;
     if (sectorScore >= 75) {
         return (
-            <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+            <span className="px-3 py-1 text-xs font-bold rounded-none bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm">
                 🎯 Top-Quartile Call ({sectorScore.toFixed(0)}th percentile)
             </span>
         );
@@ -60,14 +60,14 @@ export function PredictionOutcomeBadge({ pred }: { pred: SectorPrediction }) {
 
     if (sectorScore >= 50) {
         return (
-            <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/40">
+            <span className="px-3 py-1 text-xs font-bold rounded-none bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-sm">
                 🟢 Above Benchmark ({sectorScore.toFixed(0)}th percentile)
             </span>
         );
     }
 
     return (
-        <span className="px-3 py-1 text-xs font-bold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40">
+        <span className="px-3 py-1 text-xs font-bold rounded-none bg-rose-500/20 text-rose-400 border border-rose-500/40 shadow-sm">
             🔴 Below Benchmark ({sectorScore.toFixed(0)}th percentile)
         </span>
     );

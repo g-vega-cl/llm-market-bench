@@ -49,7 +49,7 @@ function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][num
 
     return (
         <tr className="hover:bg-boxel-elevated transition-colors">
-            <td className="px-4 py-3 font-medium">
+            <td className="px-4 py-3">
                 <div className="flex flex-col gap-0.5">
                     <span className="text-sm font-bold text-boxel-ink tracking-tight">
                         {portfolio.name}

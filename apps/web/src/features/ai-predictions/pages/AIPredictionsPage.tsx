@@ -253,16 +253,18 @@ function ArenaTabContent({
             </div>
 
             {/* SECTION 2: Historical Accuracy Trend Chart */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
+            <div className="bg-slate-800/50 border border-slate-700 rounded-none p-6 backdrop-blur-sm shadow-sm">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div>
-                        <h3 className="text-xl font-bold text-white">Historical Accuracy Trend</h3>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <h3 className="text-lg font-bold font-display uppercase tracking-wider text-white">
+                            Historical Accuracy Trend
+                        </h3>
+                        <p className="text-xs font-normal text-slate-400">
                             Model percentile scores evaluated against benchmark market ETF returns
                             over time.
                         </p>
                     </div>
-                    <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-700">
+                    <div className="flex bg-slate-900/60 p-1 rounded-none border border-slate-700 shadow-sm">
                         {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
                             <button
                                 key={tf}
@@ -390,13 +392,13 @@ function ArenaTabContent({
                         </div>
 
                         {/* Cards Feed */}
-                        <div className="space-y-4">
+                        <div className="flex flex-col gap-4">
                             {feedFilteredData.length > 0 ? (
                                 feedFilteredData.map((pred) => (
                                     <PredictionFeedCard key={pred.id} pred={pred} />
                                 ))
                             ) : (
-                                <div className="p-8 bg-slate-800/30 border border-dashed border-slate-700/60 rounded-xl text-center text-slate-400 text-sm">
+                                <div className="p-8 bg-slate-800/30 border border-dashed border-slate-700/60 rounded-none text-center text-slate-400 text-xs font-normal shadow-sm">
                                     No predictions match the selected status and timeframe filters.
                                 </div>
                             )}

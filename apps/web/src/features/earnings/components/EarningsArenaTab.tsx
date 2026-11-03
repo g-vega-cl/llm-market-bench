@@ -30,10 +30,10 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
 
     return (
         <TableRow key={pred.id} className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-semibold text-white">{pred.ticker}</TableCell>
+            <TableCell className="font-bold text-white">{pred.ticker}</TableCell>
             <TableCell className="text-xs text-zinc-400">{pred.target_date}</TableCell>
             <TableCell className="text-xs text-zinc-400">
-                <Badge variant="outline" className="border-zinc-700 text-zinc-400">
+                <Badge variant="outline" radius="none" className="border-zinc-700 text-zinc-400">
                     {pred.report_timing}
                 </Badge>
             </TableCell>
@@ -42,6 +42,7 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
             </TableCell>
             <TableCell className="text-center">
                 <Badge
+                    radius="none"
                     className={
                         pred.predicted_direction === 'UP'
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
@@ -61,7 +62,7 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
                 {pred.close_price ? `$${pred.close_price.toFixed(2)}` : '—'}
             </TableCell>
             <TableCell
-                className={`text-right font-mono text-xs font-semibold ${
+                className={`text-right font-mono text-xs font-bold ${
                     returnPct !== null
                         ? returnPct >= 0
                             ? 'text-emerald-400'
@@ -133,45 +134,48 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
     }, [predictions, selectedModel, selectedDir]);
 
     return (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
             {/* Header info */}
             <div>
-                <h2 className="text-xl font-bold tracking-tight text-white">
+                <h2 className="text-lg font-bold font-display uppercase tracking-wider text-white">
                     Day-1 Earnings Movement Arena
                 </h2>
-                <p className="text-sm text-zinc-400">
+                <p className="text-xs font-normal text-zinc-400">
                     Benchmarking LLMs on Regular Trading Hours (09:30 Open to 16:00 Close)
                     continuation versus fade reactions.
                 </p>
             </div>
 
             {/* Model Triad Leaderboard Cards */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 items-stretch">
                 {modelStats.map((stat) => (
-                    <Card key={stat.modelId} className="p-4 bg-zinc-900/60 border-zinc-800">
+                    <Card
+                        key={stat.modelId}
+                        className="p-4 bg-zinc-900/60 border-zinc-800 rounded-none shadow-sm flex flex-col justify-between gap-3"
+                    >
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-white">
-                                {stat.displayName}
-                            </span>
+                            <span className="text-sm font-bold text-white">{stat.displayName}</span>
                             <Badge
                                 variant="outline"
-                                className="text-xs border-zinc-700 text-zinc-400"
+                                className="text-xs font-bold border-zinc-700 text-zinc-400 rounded-none"
                             >
                                 {stat.total} Predictions
                             </Badge>
                         </div>
-                        <div className="mt-3 flex items-baseline justify-between">
+                        <div className="flex items-baseline justify-between">
                             <div>
-                                <div className="text-xs text-zinc-400">
+                                <div className="text-xs font-normal text-zinc-400">
                                     Hit Rate (Open to Close)
                                 </div>
-                                <div className="text-2xl font-bold text-emerald-400">
+                                <div className="text-lg font-bold font-mono text-emerald-400">
                                     {stat.evaluatedCount > 0 ? `${stat.hitRate}%` : 'Pending'}
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-xs text-zinc-400">Avg Brier Score</div>
-                                <div className="text-sm font-mono text-zinc-300">
+                                <div className="text-xs font-normal text-zinc-400">
+                                    Avg Brier Score
+                                </div>
+                                <div className="text-sm font-bold font-mono text-zinc-300">
                                     {stat.evaluatedCount > 0 ? stat.avgBrier.toFixed(3) : 'N/A'}
                                 </div>
                             </div>
@@ -181,15 +185,15 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
             </div>
 
             {/* Filters Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-zinc-900/40 p-3 border border-zinc-800/80">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-none bg-zinc-900/40 p-3 border border-zinc-800 shadow-sm">
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-zinc-400">Model:</span>
+                    <span className="text-xs font-bold text-zinc-400">Model:</span>
                     <button
                         type="button"
                         onClick={() => setSelectedModel('ALL')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors ${
                             selectedModel === 'ALL'
-                                ? 'bg-zinc-700 text-white font-medium'
+                                ? 'bg-zinc-700 text-white'
                                 : 'text-zinc-400 hover:text-white'
                         }`}
                     >
@@ -198,9 +202,9 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                     <button
                         type="button"
                         onClick={() => setSelectedModel('gpt-5.6-luna')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors ${
                             selectedModel === 'gpt-5.6-luna'
-                                ? 'bg-zinc-700 text-white font-medium'
+                                ? 'bg-zinc-700 text-white'
                                 : 'text-zinc-400 hover:text-white'
                         }`}
                     >
@@ -209,9 +213,9 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                     <button
                         type="button"
                         onClick={() => setSelectedModel('deepseek-chat')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors ${
                             selectedModel === 'deepseek-chat'
-                                ? 'bg-zinc-700 text-white font-medium'
+                                ? 'bg-zinc-700 text-white'
                                 : 'text-zinc-400 hover:text-white'
                         }`}
                     >
@@ -220,9 +224,9 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                     <button
                         type="button"
                         onClick={() => setSelectedModel('~typesafe/jev-latest')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors ${
                             selectedModel === '~typesafe/jev-latest'
-                                ? 'bg-zinc-700 text-white font-medium'
+                                ? 'bg-zinc-700 text-white'
                                 : 'text-zinc-400 hover:text-white'
                         }`}
                     >
@@ -231,13 +235,13 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-zinc-400">Direction:</span>
+                    <span className="text-xs font-bold text-zinc-400">Direction:</span>
                     <button
                         type="button"
                         onClick={() => setSelectedDir('ALL')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors ${
                             selectedDir === 'ALL'
-                                ? 'bg-zinc-700 text-white font-medium'
+                                ? 'bg-zinc-700 text-white'
                                 : 'text-zinc-400 hover:text-white'
                         }`}
                     >
@@ -246,9 +250,9 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                     <button
                         type="button"
                         onClick={() => setSelectedDir('UP')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors ${
                             selectedDir === 'UP'
-                                ? 'bg-emerald-500/20 text-emerald-300 font-medium'
+                                ? 'bg-emerald-500/20 text-emerald-300'
                                 : 'text-zinc-400 hover:text-white'
                         }`}
                     >
@@ -257,9 +261,9 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                     <button
                         type="button"
                         onClick={() => setSelectedDir('DOWN')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors ${
                             selectedDir === 'DOWN'
-                                ? 'bg-rose-500/20 text-rose-300 font-medium'
+                                ? 'bg-rose-500/20 text-rose-300'
                                 : 'text-zinc-400 hover:text-white'
                         }`}
                     >
@@ -269,7 +273,7 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
             </div>
 
             {/* Predictions Table */}
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 overflow-hidden">
+            <div className="rounded-none border border-zinc-800 bg-zinc-900/30 overflow-hidden shadow-sm">
                 <Table>
                     <TableHeader className="bg-zinc-900/80">
                         <TableRow className="border-zinc-800">

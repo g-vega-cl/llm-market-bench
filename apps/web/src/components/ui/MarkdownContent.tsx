@@ -14,17 +14,15 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
     if (fullMatch.startsWith('***') || fullMatch.startsWith('___')) {
         const inner = fullMatch.slice(3, -3);
         return (
-            <strong key={key} className="font-semibold text-zinc-900 dark:text-white">
-                <em className="italic text-zinc-800 dark:text-zinc-200">
-                    {parseInlineMarkdown(inner)}
-                </em>
+            <strong key={key} className="font-bold text-white">
+                <em className="italic text-zinc-300">{parseInlineMarkdown(inner)}</em>
             </strong>
         );
     }
     if (fullMatch.startsWith('**') || fullMatch.startsWith('__')) {
         const inner = fullMatch.slice(2, -2);
         return (
-            <strong key={key} className="font-semibold text-zinc-900 dark:text-white">
+            <strong key={key} className="font-bold text-white">
                 {parseInlineMarkdown(inner)}
             </strong>
         );
@@ -32,7 +30,7 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
     if (fullMatch.startsWith('*') || fullMatch.startsWith('_')) {
         const inner = fullMatch.slice(1, -1);
         return (
-            <em key={key} className="italic text-zinc-800 dark:text-zinc-200">
+            <em key={key} className="italic text-zinc-300">
                 {parseInlineMarkdown(inner)}
             </em>
         );
@@ -42,7 +40,7 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
         return (
             <code
                 key={key}
-                className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-electric-blue-600 dark:text-electric-blue-400 font-mono text-xs"
+                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-accent font-mono text-xs font-bold"
             >
                 {inner}
             </code>
@@ -58,7 +56,7 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-electric-blue-500 hover:text-electric-blue-600 underline font-medium"
+                className="text-accent hover:underline font-bold text-xs"
             >
                 {linkText}
             </a>
@@ -120,7 +118,7 @@ function renderHeading(trimmed: string, blockKey: string): React.ReactNode | nul
         return (
             <h1
                 key={blockKey}
-                className="text-xl md:text-2xl font-black text-zinc-900 dark:text-white mt-6 mb-3 first:mt-0 tracking-tight"
+                className="text-lg font-bold font-display uppercase tracking-wider text-white mt-6 mb-3 first:mt-0"
             >
                 {children}
             </h1>
@@ -130,7 +128,7 @@ function renderHeading(trimmed: string, blockKey: string): React.ReactNode | nul
         return (
             <h2
                 key={blockKey}
-                className="text-lg md:text-xl font-bold text-zinc-900 dark:text-white mt-5 mb-2.5 first:mt-0 tracking-tight border-b border-zinc-200/60 dark:border-zinc-800/60 pb-1"
+                className="text-lg font-bold font-display uppercase tracking-wider text-white mt-5 mb-2.5 first:mt-0 border-b border-zinc-800 pb-1"
             >
                 {children}
             </h2>
@@ -140,17 +138,14 @@ function renderHeading(trimmed: string, blockKey: string): React.ReactNode | nul
         return (
             <h3
                 key={blockKey}
-                className="text-base md:text-lg font-bold text-zinc-900 dark:text-white mt-4 mb-2 first:mt-0 tracking-tight"
+                className="text-sm font-bold text-white mt-4 mb-2 first:mt-0 tracking-tight"
             >
                 {children}
             </h3>
         );
     }
     return (
-        <h4
-            key={blockKey}
-            className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mt-3 mb-1.5 first:mt-0"
-        >
+        <h4 key={blockKey} className="text-xs font-bold text-zinc-300 mt-3 mb-1.5 first:mt-0">
             {children}
         </h4>
     );
@@ -284,13 +279,13 @@ function renderTable(lines: string[], trimmed: string, blockKey: string): React.
 
     return (
         <div key={blockKey} className="overflow-x-auto my-4">
-            <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800 text-xs text-left border border-zinc-200 dark:border-zinc-800 rounded-lg">
+            <table className="min-w-full divide-y divide-zinc-800 text-xs font-normal text-left border border-zinc-800 rounded-none shadow-sm">
                 <thead>
                     <tr>
                         {headers.map((h) => (
                             <th
                                 key={`th-${h}`}
-                                className="px-3 py-2 bg-zinc-100 dark:bg-zinc-800 font-bold text-zinc-900 dark:text-white"
+                                className="px-3 py-2 bg-zinc-800 font-bold text-white"
                             >
                                 {parseInlineMarkdown(h)}
                             </th>

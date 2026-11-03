@@ -47,41 +47,55 @@ export function Auth({
     };
 
     return (
-        <div className="fixed inset-0 bg-white dark:bg-black flex items-start justify-center p-8">
-            <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
-                <h1 className="text-2xl font-bold mb-4">{actionText}</h1>
+        <div className="fixed inset-0 bg-black/80 flex items-start justify-center p-8 backdrop-blur-sm">
+            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-none shadow-sm flex flex-col gap-6 max-w-md w-full">
+                <h1 className="text-lg font-bold font-display uppercase tracking-wider text-white">
+                    {actionText}
+                </h1>
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         onSubmit(e);
                     }}
-                    className="space-y-4"
+                    className="flex flex-col gap-4"
                 >
-                    <div>
-                        <Label htmlFor="email">Username</Label>
-                        <Input type="email" name="email" id="email" />
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="email" className="text-xs font-bold text-zinc-400">
+                            Username
+                        </Label>
+                        <Input
+                            type="email"
+                            name="email"
+                            id="email"
+                            className="rounded-none text-xs font-normal"
+                        />
                     </div>
-                    <div>
-                        <Label htmlFor="password">Password</Label>
-                        <Input type="password" name="password" id="password" />
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="password" className="text-xs font-bold text-zinc-400">
+                            Password
+                        </Label>
+                        <Input
+                            type="password"
+                            name="password"
+                            id="password"
+                            className="rounded-none text-xs font-normal"
+                        />
                     </div>
                     <Button
                         type="submit"
                         colorScheme="info"
-                        className="w-full uppercase font-black"
+                        className="w-full uppercase font-bold text-xs"
                         isLoading={status === 'pending'}
                     >
                         {actionText}
                     </Button>
 
-                    <div className="relative my-6">
+                    <div className="relative my-2">
                         <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-gray-500/20" />
+                            <span className="w-full border-t border-zinc-800" />
                         </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-white dark:bg-gray-900 px-2 text-gray-500">
-                                Or continue with
-                            </span>
+                        <div className="relative flex justify-center text-xs uppercase font-normal">
+                            <span className="bg-zinc-900 px-2 text-zinc-400">Or continue with</span>
                         </div>
                     </div>
 
@@ -89,7 +103,7 @@ export function Auth({
                         type="button"
                         variant="outline"
                         colorScheme="neutral"
-                        className="w-full"
+                        className="w-full text-xs font-bold"
                         leftIcon={<GoogleIcon />}
                         onClick={handleGoogleLogin}
                     >

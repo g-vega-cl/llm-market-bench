@@ -68,22 +68,22 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <SectionHeading gradient="ai">LLM Leaderboard</SectionHeading>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-lg leading-relaxed mt-2">
+                        <p className="text-zinc-400 text-xs font-normal leading-relaxed">
                             Rankings and diagnostics evaluating trading performance, reasoning
                             quality, and consistency.
                         </p>
                     </div>
 
                     {/* Timeframe selector */}
-                    <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 shrink-0 self-start md:self-auto">
+                    <div className="flex bg-white/5 p-1 rounded-none border border-white/10 shrink-0 self-start md:self-auto shadow-sm">
                         {timeframes.map((tf) => (
                             <button
                                 key={tf.label}
                                 type="button"
                                 onClick={() => setTimeframe(tf.value)}
-                                className={`px-4 py-1.5 text-xs font-mono font-bold rounded-xl transition-all ${
+                                className={`px-4 py-1.5 text-xs font-mono font-bold rounded-none transition-all ${
                                     timeframe === tf.value
-                                        ? 'bg-accent text-zinc-950 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
+                                        ? 'bg-accent text-zinc-950 shadow-sm'
                                         : 'text-zinc-400 hover:text-white'
                                 }`}
                             >
@@ -95,9 +95,9 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
 
                 {/* Loading state indicator */}
                 {isLoading && models.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent" />
-                        <p className="text-sm text-zinc-500 font-mono">
+                    <div className="flex flex-col items-center justify-center py-20 flex flex-col gap-4">
+                        <div className="animate-spin rounded-none h-8 w-8 border-t-2 border-b-2 border-accent" />
+                        <p className="text-xs font-normal text-zinc-400 font-mono">
                             Aggregating engine metrics...
                         </p>
                     </div>
@@ -107,7 +107,7 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                         {models.length > 0 && <LeaderboardPodium models={models} />}
 
                         {/* Leaderboard Grid / Table */}
-                        <div className="space-y-4">
+                        <div className="flex flex-col gap-4">
                             <div className="flex justify-between items-center">
                                 <h2 className="font-heading text-lg font-bold text-zinc-100 uppercase tracking-wider">
                                     All Running Models{' '}

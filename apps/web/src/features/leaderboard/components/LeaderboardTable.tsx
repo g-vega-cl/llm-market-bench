@@ -135,7 +135,7 @@ export function LeaderboardTable({
                 </TableBody>
             </Table>
             {selectedModels.length < 2 && (
-                <p className="text-[11px] text-zinc-500 font-mono text-right italic">
+                <p className="text-xs font-normal text-zinc-500 font-mono text-right italic">
                     Select up to 2 models to run side-by-side comparative diagnostics.
                 </p>
             )}
@@ -178,26 +178,26 @@ function LeaderboardTableRow({
                     checked={isSelected}
                     disabled={isSelectionMaxed}
                     onChange={() => onToggleSelectModel(model.model_name)}
-                    className="h-4.5 w-4.5 rounded border-zinc-700 bg-zinc-800 text-accent focus:ring-accent accent-accent-hover disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                    className="h-4.5 w-4.5 rounded-none border-zinc-700 bg-zinc-800 text-accent focus:ring-accent accent-accent-hover disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
                 />
             </TableCell>
             <TableCell className="font-mono font-bold">
-                <Badge colorScheme={badgeColor} variant="soft" size="xs">
+                <Badge colorScheme={badgeColor} variant="soft" size="xs" radius="none">
                     #{originalRank}
                 </Badge>
             </TableCell>
             <TableCell>
                 <div className="flex items-center gap-2.5">
-                    <span className="text-xl shrink-0">{info.emoji}</span>
+                    <span className="text-sm font-bold shrink-0">{info.emoji}</span>
                     <div className="truncate">
                         <div className="font-bold text-zinc-100 text-sm truncate">{info.name}</div>
-                        <div className="text-[10px] text-zinc-500 font-mono tracking-wider truncate">
+                        <div className="text-xs font-normal text-zinc-500 font-mono tracking-wider truncate">
                             {model.model_name}
                         </div>
                     </div>
                 </div>
             </TableCell>
-            <TableCell className="font-mono font-black text-zinc-100 text-sm">
+            <TableCell className="font-mono font-bold text-zinc-100 text-sm">
                 {model.composite_score.toFixed(1)}%
             </TableCell>
             <TableCell className="font-mono font-bold text-sm">

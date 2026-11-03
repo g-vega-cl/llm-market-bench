@@ -40,6 +40,8 @@ services:
     restart: unless-stopped
     depends_on:
       - archive-postgrest
+    extra_hosts:
+      - "minipc:${MINIPC_IP:-100.119.63.53}"
     ports:
       - "${BIND_ADDRESS:-0.0.0.0}:3001:80"
     volumes:

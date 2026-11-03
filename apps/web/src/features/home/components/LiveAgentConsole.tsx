@@ -205,10 +205,16 @@ export function LiveAgentConsole({
     React.useEffect(() => {
         if (!isMarketOpen) return;
         const timer = setInterval(() => {
-            setCountdownSeconds((prev) => (prev > 0 ? prev - 1 : 300));
+            setCountdownSeconds((prev) => {
+                if (prev <= 1) {
+                    handleManualRefresh();
+                    return 300;
+                }
+                return prev - 1;
+            });
         }, 1000);
         return () => clearInterval(timer);
-    }, [isMarketOpen]);
+    }, [isMarketOpen, handleManualRefresh]);
 
     return (
         <Card

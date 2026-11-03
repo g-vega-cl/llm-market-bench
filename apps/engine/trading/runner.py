@@ -35,6 +35,7 @@ from trading.live_intraday_agent import (
 )
 from trading.tape_stream import (
     TapeBroadcaster,
+    seed_broadcaster_from_db,
     start_tape_server,
     update_latest_tape_in_db,
 )
@@ -138,10 +139,14 @@ async def run_tape_poller_loop(
     sb_client: Any,
     broadcaster: TapeBroadcaster,
     ticker: str = "SPY",
-    tape_interval_seconds: int = 20,
+    tape_interval_seconds: int = 10,
 ) -> None:
     """Continuously poll active tape from Alpaca, push to broadcaster, and update DB."""
     logger.info(f"Starting tape poller loop for {ticker} (interval={tape_interval_seconds}s)")
+    if sb_client:
+        with contextlib.suppress(Exception):
+            await seed_broadcaster_from_db(sb_client, broadcaster)
+
     while True:
         try:
             if alpaca_data_client and is_market_session_active():
@@ -149,6 +154,9 @@ async def run_tape_poller_loop(
                 if bars:
                     broadcaster.publish_bars(bars)
                     await update_latest_tape_in_db(sb_client, bars)
+            elif not broadcaster.latest_bars and sb_client:
+                # Outside market hours, ensure initial snapshot is seeded
+                await seed_broadcaster_from_db(sb_client, broadcaster)
         except Exception:
             logger.exception("Error in tape poller loop")
         await asyncio.sleep(float(tape_interval_seconds))
@@ -195,6 +203,27 @@ async def _run_agent_loop(
                 logger.info(
                     f"Turn complete: Action={turn_result.get('action')} Conviction={turn_result.get('conviction')}%"
                 )
+
+                if broadcaster:
+                    action = turn_result.get("action", "HOLD")
+                    agent_turn_payload = {
+                        "action": action,
+                        "conviction": turn_result.get("conviction", 50),
+                        "thought": turn_result.get("thought", ""),
+                        "marketDirection": "BULLISH"
+                        if action == "BUY"
+                        else "BEARISH"
+                        if action == "SELL"
+                        else "NEUTRAL",
+                        "sentimentLabel": "Accumulating Dips"
+                        if action == "BUY"
+                        else "Defensive Cash"
+                        if action == "HOLD"
+                        else "Reducing Risk",
+                        "lastUpdated": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M ET"),
+                        "technicals": turn_result.get("technicals"),
+                    }
+                    broadcaster.publish_agent_turn(agent_turn_payload)
             except Exception:
                 logger.exception("Unexpected error in daemon turn loop")
 
@@ -334,7 +363,7 @@ async def run_news_synthesis_worker_loop(
 async def run_loop(
     ticker: str = "SPY",
     interval_seconds: int = 300,
-    tape_interval_seconds: int = 20,
+    tape_interval_seconds: int = 10,
     news_interval_seconds: int = 1800,
     tape_port: int = 8090,
     enable_tape_server: bool = True,
@@ -342,7 +371,7 @@ async def run_loop(
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
     continuous_24_7: bool = True,
 ) -> None:
-    """Run the continuous 24/7 daemon loop with concurrent 20s tape polling, 5m trader, & 5m QA worker."""
+    """Run the continuous 24/7 daemon loop with concurrent 10s tape polling, 5m trader, & 5m QA worker."""
     logger.info(
         f"Starting Live SPY Trader Daemon (ticker={ticker}, interval={interval_seconds}s, tape_interval={tape_interval_seconds}s, 24/7={continuous_24_7})"
     )
@@ -417,8 +446,8 @@ def main() -> None:
     parser.add_argument(
         "--tape-interval",
         type=int,
-        default=20,
-        help="Tape polling cadence in seconds (default: 20)",
+        default=10,
+        help="Tape polling cadence in seconds (default: 10)",
     )
     parser.add_argument(
         "--news-interval",

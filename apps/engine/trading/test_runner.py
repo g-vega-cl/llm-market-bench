@@ -91,6 +91,47 @@ async def test_run_daemon_turn_calls_step_and_candle():
         assert result["active_candle"]["close"] == 582.5
 
 
+@pytest.mark.asyncio
+async def test_run_agent_loop_publishes_turn_to_broadcaster():
+    from trading.runner import _run_agent_loop
+
+    mock_data = MagicMock()
+    mock_trade = MagicMock()
+    mock_sb = MagicMock()
+    mock_broadcaster = MagicMock()
+
+    turn_data = {
+        "action": "BUY",
+        "conviction": 85,
+        "thought": "Strong breakout",
+        "marketDirection": "BULLISH",
+    }
+
+    async def mock_sleep(_dur):
+        raise asyncio.CancelledError()
+
+    with (
+        patch("trading.runner.is_market_session_active", return_value=True),
+        patch("trading.runner.run_daemon_turn", new=AsyncMock(return_value=turn_data)),
+        patch("asyncio.sleep", side_effect=mock_sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await _run_agent_loop(
+            ticker="SPY",
+            interval_seconds=300,
+            strata_url="http://mock:8080",
+            cheap_proxy_url="http://mock:8086",
+            continuous_24_7=True,
+            data_client=mock_data,
+            trading_client=mock_trade,
+            sb_client=mock_sb,
+            broadcaster=mock_broadcaster,
+        )
+
+    assert mock_broadcaster.publish_agent_turn.called
+    assert mock_broadcaster.publish_agent_turn.call_args[0][0]["action"] == "BUY"
+
+
 def test_create_clients_handles_missing_keys():
     with (
         patch("trading.runner.ALPACA_API_KEY", ""),

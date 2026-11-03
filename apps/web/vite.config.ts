@@ -37,6 +37,14 @@ export default defineConfig(({ mode }) => {
                     rewrite: (path) => path.replace(/^\/p/, ''),
                     secure: false,
                 },
+                '/api/tape': {
+                    target:
+                        env.VITE_ARCHIVE_DB_URL ||
+                        process.env.ARCHIVE_DB_URL ||
+                        'https://benchify-archive-db.clvg.uk',
+                    changeOrigin: true,
+                    secure: false,
+                },
             },
         },
         resolve: {

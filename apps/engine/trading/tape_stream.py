@@ -23,6 +23,7 @@ class TapeBroadcaster:
     def __init__(self) -> None:
         self.latest_bars: list[dict[str, Any]] = []
         self.latest_technicals: dict[str, Any] = {}
+        self.latest_agent_state: dict[str, Any] | None = None
         self.last_updated: str = ""
         self._subscribers: set[asyncio.Queue[str]] = set()
 
@@ -42,6 +43,7 @@ class TapeBroadcaster:
         return {
             "bars": self.latest_bars,
             "technicals": self.latest_technicals,
+            "agent_state": self.latest_agent_state,
             "updated_at": self.last_updated or datetime.now(UTC).isoformat(),
         }
 
@@ -71,6 +73,82 @@ class TapeBroadcaster:
                 q.put_nowait(event_msg)
             except asyncio.QueueFull:
                 logger.warning("Subscriber queue full; dropping frame")
+
+    def publish_agent_turn(self, agent_data: dict[str, Any]) -> None:
+        """Update in-memory agent state and fan out agent_turn event to subscribers."""
+        if not agent_data:
+            return
+
+        self.latest_agent_state = agent_data
+        self.last_updated = datetime.now(UTC).isoformat()
+
+        event_payload = {
+            "agent_state": agent_data,
+            "updated_at": self.last_updated,
+        }
+        event_msg = f"event: agent_turn\ndata: {json.dumps(event_payload)}\n\n"
+
+        for q in list(self._subscribers):
+            try:
+                q.put_nowait(event_msg)
+            except asyncio.QueueFull:
+                logger.warning("Subscriber queue full; dropping frame")
+
+
+async def seed_broadcaster_from_db(sb_client: Any, broadcaster: TapeBroadcaster) -> bool:
+    """Pre-seed broadcaster with the latest recorded market tape and agent state from DB."""
+    if not sb_client:
+        return False
+
+    def _sync_fetch() -> bool:
+        try:
+            res = (
+                sb_client.table("market_feeling")
+                .select(
+                    "id, trades_summary, market_direction, sentiment_label, confidence_score, why_explanation, model_used, created_at"
+                )
+                .order("created_at", desc=True)
+                .limit(5)
+                .execute()
+            )
+            rows = res.data or []
+            if not rows:
+                return False
+
+            target_row = None
+            for r in rows:
+                summary = r.get("trades_summary") or {}
+                if summary.get("bars"):
+                    target_row = r
+                    break
+            if not target_row:
+                target_row = rows[0]
+
+            row = target_row
+            summary = row.get("trades_summary") or {}
+            bars = summary.get("bars") or []
+            if bars:
+                broadcaster.publish_bars(bars, technicals=summary.get("technicals"))
+
+            agent_state = {
+                "action": summary.get("action") or "HOLD",
+                "conviction": int(row.get("confidence_score") or summary.get("conviction") or 50),
+                "thought": row.get("why_explanation") or summary.get("thought") or "",
+                "marketDirection": row.get("market_direction") or "NEUTRAL",
+                "sentimentLabel": row.get("sentiment_label") or "Active Surveillance",
+                "modelUsed": row.get("model_used") or "Strata Orca",
+                "lastUpdated": row.get("created_at"),
+                "technicals": summary.get("technicals") or broadcaster.latest_technicals,
+            }
+            broadcaster.publish_agent_turn(agent_state)
+            return True
+
+        except Exception:
+            logger.exception("Failed to seed broadcaster from database")
+            return False
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _sync_fetch)
 
 
 async def update_latest_tape_in_db(sb_client: Any, bars: list[dict[str, Any]]) -> bool:

@@ -67,6 +67,63 @@ async def test_broadcaster_publish_event_delivery(sample_bars):
     broadcaster.unsubscribe(q)
 
 
+def test_broadcaster_publish_agent_turn_delivery():
+    broadcaster = TapeBroadcaster()
+    q = broadcaster.subscribe()
+
+    agent_data = {
+        "action": "BUY",
+        "conviction": 85,
+        "thought": "Breakout above VWAP with rising volume.",
+        "marketDirection": "BULLISH",
+    }
+    broadcaster.publish_agent_turn(agent_data)
+
+    snapshot = broadcaster.get_snapshot_payload()
+    assert snapshot["agent_state"] == agent_data
+
+    assert not q.empty()
+    event_msg = q.get_nowait()
+    assert "event: agent_turn\n" in event_msg
+    assert "Breakout above VWAP" in event_msg
+
+    broadcaster.unsubscribe(q)
+
+
+@pytest.mark.asyncio
+async def test_seed_broadcaster_from_db(sample_bars):
+    from trading.tape_stream import seed_broadcaster_from_db
+
+    broadcaster = TapeBroadcaster()
+    mock_sb = MagicMock()
+    mock_select = MagicMock()
+    mock_select.data = [
+        {
+            "id": "row-uuid-123",
+            "trades_summary": {
+                "bars": sample_bars,
+                "action": "BUY",
+                "conviction": 80,
+                "thought": "Testing seed",
+            },
+            "market_direction": "BULLISH",
+            "sentiment_label": "Accumulating Dips",
+            "confidence_score": 80,
+            "why_explanation": "Testing seed",
+            "created_at": "2026-10-30T16:01:00Z",
+        }
+    ]
+    mock_sb.table().select().order().limit().execute.return_value = mock_select
+
+    success = await seed_broadcaster_from_db(mock_sb, broadcaster)
+    assert success is True
+    snapshot = broadcaster.get_snapshot_payload()
+    assert len(snapshot["bars"]) == 2
+    assert snapshot["technicals"]["last_close"] == 581.2
+    assert snapshot["agent_state"]["action"] == "BUY"
+    assert snapshot["agent_state"]["thought"] == "Testing seed"
+
+
 @pytest.mark.asyncio
 async def test_update_latest_tape_in_db_success(sample_bars):
     mock_sb = MagicMock()

@@ -58,7 +58,7 @@ The `live-spy-trader` container hosts a lightweight asyncio SSE server (`apps/en
 
 - **`TapeBroadcaster`** — in-memory pub/sub broker holding the rolling 60-minute bar window, latest technicals, and a set of subscriber queues.
 - **`TapeHttpServer`** — pure `asyncio.start_server` HTTP/1.1 server exposing `/api/tape/health` (JSON status with client and bar counts) and `/api/tape/stream` (Server-Sent Events). Connections receive an immediate `snapshot` event, then `bar` delta events as 1-minute candles form, with 15-second keepalive pings.
-- **`run_tape_poller_loop`** — polls Alpaca 1-minute bars every 20 seconds during regular market hours, publishes to the broadcaster, and updates the newest `market_feeling` row's `trades_summary` (`bars`, `bars_count`, `technicals`) via `update_latest_tape_in_db` without touching agent LLM analysis fields.
+- **`run_tape_poller_loop`** — polls Alpaca 1-minute bars every 10 seconds during regular market hours, publishes to the broadcaster, and updates the newest `market_feeling` row's `trades_summary` (`bars`, `bars_count`, `technicals`) via `update_latest_tape_in_db` without touching agent LLM analysis fields. Pre-seeds state from database on startup so initial SSE client connections immediately receive the rolling 60-minute window.
 - **Nginx + Cloudflare** — the `/api/tape/` location streams unbuffered through the edge proxy and Cloudflare tunnel to the browser's `useLiveTapeStream` hook (see [[entities/live-agent-trader]]).
 
 ## Operational Workflows

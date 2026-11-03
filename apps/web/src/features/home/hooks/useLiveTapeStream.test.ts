@@ -93,7 +93,7 @@ describe('useLiveTapeStream', () => {
 
         expect(result.current.bars).toEqual(initialBars);
         expect(MockEventSource.instances.length).toBe(1);
-        expect(MockEventSource.instances[0].url).toBe('/api/tape/stream');
+        expect(MockEventSource.instances[0].url).toContain('/api/tape/stream');
     });
 
     it('fetches tape via CSR on mount when initialBars is empty', async () => {
@@ -161,6 +161,61 @@ describe('useLiveTapeStream', () => {
         expect(result.current.bars).toHaveLength(2);
         expect(result.current.bars[1].close).toBe(581.8);
         expect(result.current.bars[1].high).toBe(582.0);
+    });
+
+    it('updates agentState on agent_turn SSE event and updates technicals on bar SSE event', async () => {
+        const initialAgentState = {
+            action: 'HOLD' as const,
+            conviction: 50,
+            thought: 'Watching support',
+            marketDirection: 'NEUTRAL' as const,
+            technicals: { vwap: 580.0, rsi_14: 50.0, trend: 'NEUTRAL' },
+        };
+
+        const { result } = renderHook(() =>
+            useLiveTapeStream({ initialBars: [], initialAgentState, isMarketOpen: true }),
+        );
+
+        const es = MockEventSource.instances[0];
+
+        // 1. Emit bar with technicals
+        await act(async () => {
+            es.emit('bar', {
+                bar: {
+                    time: '2026-10-30T16:02:00Z',
+                    open: 581.0,
+                    high: 582.5,
+                    low: 581.0,
+                    close: 582.2,
+                    volume: 2500,
+                },
+                technicals: {
+                    vwap: 581.5,
+                    rsi_14: 65.0,
+                    trend: 'BULLISH',
+                },
+            });
+        });
+
+        expect(result.current.agentState?.technicals?.vwap).toBe(581.5);
+        expect(result.current.agentState?.technicals?.trend).toBe('BULLISH');
+
+        // 2. Emit agent_turn
+        await act(async () => {
+            es.emit('agent_turn', {
+                agent_state: {
+                    action: 'BUY',
+                    conviction: 85,
+                    thought: 'Strong surge above VWAP',
+                    marketDirection: 'BULLISH',
+                    lastUpdated: '16:02 ET',
+                },
+            });
+        });
+
+        expect(result.current.agentState?.action).toBe('BUY');
+        expect(result.current.agentState?.conviction).toBe(85);
+        expect(result.current.agentState?.thought).toBe('Strong surge above VWAP');
     });
 
     it('disconnects EventSource on visibilitychange hidden to save battery and reconnects on visible', async () => {

@@ -11,11 +11,66 @@ export interface UseLiveTapeStreamOptions {
     onRefreshTape?: () => void;
 }
 
+function parseJson<T>(raw: string): T | null {
+    try {
+        return JSON.parse(raw) as T;
+    } catch {
+        return null;
+    }
+}
+
+interface StreamListeners {
+    onOpen: () => void;
+    onSnapshot: (data: {
+        bars?: CandlestickBar[];
+        technicals?: LiveAgentState['technicals'];
+        agent_state?: Partial<LiveAgentState>;
+    }) => void;
+    onBar: (data: { bar?: CandlestickBar; technicals?: LiveAgentState['technicals'] }) => void;
+    onAgentTurn: (agentState: Partial<LiveAgentState>) => void;
+    onError: () => void;
+}
+
+function setupStreamListeners(es: EventSource, listeners: StreamListeners) {
+    es.onopen = listeners.onOpen;
+    es.onerror = listeners.onError;
+
+    es.addEventListener('snapshot', (e: MessageEvent) => {
+        const data = parseJson<{
+            bars?: CandlestickBar[];
+            technicals?: LiveAgentState['technicals'];
+            agent_state?: Partial<LiveAgentState>;
+        }>(e.data);
+        if (data) listeners.onSnapshot(data);
+    });
+
+    es.addEventListener('bar', (e: MessageEvent) => {
+        const data = parseJson<{
+            bar?: CandlestickBar;
+            technicals?: LiveAgentState['technicals'];
+        }>(e.data);
+        if (data) listeners.onBar(data);
+    });
+
+    es.addEventListener('agent_turn', (e: MessageEvent) => {
+        const data = parseJson<{ agent_state?: Partial<LiveAgentState> }>(e.data);
+        if (data?.agent_state) listeners.onAgentTurn(data.agent_state);
+    });
+}
+
+function getDefaultStreamUrl(): string {
+    if (typeof window !== 'undefined' && import.meta.env.VITE_ARCHIVE_DB_URL) {
+        const base = import.meta.env.VITE_ARCHIVE_DB_URL.replace(/\/$/, '');
+        return `${base}/api/tape/stream`;
+    }
+    return '/api/tape/stream';
+}
+
 export function useLiveTapeStream({
     initialBars = [],
     initialAgentState,
     isMarketOpen = true,
-    streamUrl = '/api/tape/stream',
+    streamUrl = getDefaultStreamUrl(),
     onRefreshTape,
 }: UseLiveTapeStreamOptions) {
     const [bars, setBars] = React.useState<CandlestickBar[]>(initialBars);
@@ -86,35 +141,42 @@ export function useLiveTapeStream({
                 es = new EventSource(streamUrl);
                 eventSourceRef.current = es;
 
-                es.onopen = () => {
-                    setIsStreaming(true);
-                };
-
-                es.addEventListener('snapshot', (e: MessageEvent) => {
-                    try {
-                        const data = JSON.parse(e.data);
+                setupStreamListeners(es, {
+                    onOpen: () => setIsStreaming(true),
+                    onError: () => setIsStreaming(false),
+                    onSnapshot: (data) => {
                         if (Array.isArray(data.bars) && data.bars.length > 0) {
                             setBars(data.bars);
                         }
-                    } catch {
-                        // Malformed frame ignored
-                    }
-                });
-
-                es.addEventListener('bar', (e: MessageEvent) => {
-                    try {
-                        const data = JSON.parse(e.data);
+                        if (data.technicals) {
+                            setAgentState((prev) =>
+                                prev ? { ...prev, technicals: data.technicals } : undefined,
+                            );
+                        }
+                        if (data.agent_state) {
+                            setAgentState((prev) =>
+                                prev
+                                    ? { ...prev, ...data.agent_state }
+                                    : (data.agent_state as LiveAgentState),
+                            );
+                        }
+                    },
+                    onBar: (data) => {
                         if (data.bar) {
                             setBars((prev) => mergeIncomingBar(prev, data.bar));
                         }
-                    } catch {
-                        // Malformed frame ignored
-                    }
+                        if (data.technicals) {
+                            setAgentState((prev) =>
+                                prev ? { ...prev, technicals: data.technicals } : undefined,
+                            );
+                        }
+                    },
+                    onAgentTurn: (agentState) => {
+                        setAgentState((prev) =>
+                            prev ? { ...prev, ...agentState } : (agentState as LiveAgentState),
+                        );
+                    },
                 });
-
-                es.onerror = () => {
-                    setIsStreaming(false);
-                };
             } catch {
                 setIsStreaming(false);
             }

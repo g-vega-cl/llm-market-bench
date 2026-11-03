@@ -1,8 +1,5 @@
-import type { Portfolio } from '@llm-market-bench/database';
 import { Badge, Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
-import { fetchPortfolios } from '~/features/portfolios/api/fetch-portfolios';
 import { seo } from '~/lib/seo';
 
 export interface LabLinkItem {
@@ -136,20 +133,16 @@ export const LAB_CATEGORIES: LabCategory[] = [
                 description:
                     'Architectural overview of the autonomous benchmark and capital rules.',
             },
+            {
+                to: '/retired-agents',
+                label: 'Retired Agents',
+                description: 'Archive of frozen portfolios from agents no longer trading.',
+            },
         ],
     },
 ];
 
-const getRetiredPortfolios = createServerFn({ method: 'GET' }).handler(async () => {
-    const portfolios = await fetchPortfolios().catch(() => []);
-    return portfolios.filter((p) => !p.is_active);
-});
-
 export const Route = createFileRoute('/lab')({
-    loader: async () => {
-        const retiredPortfolios = await getRetiredPortfolios();
-        return { retiredPortfolios };
-    },
     head: () => ({
         meta: [
             ...seo({
@@ -163,11 +156,10 @@ export const Route = createFileRoute('/lab')({
 });
 
 function LabRouteComponent() {
-    const { retiredPortfolios } = Route.useLoaderData();
-    return <LabDirectoryView retiredPortfolios={retiredPortfolios} />;
+    return <LabDirectoryView />;
 }
 
-export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Portfolio[] }) {
+export function LabDirectoryView() {
     return (
         <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
             <PageLayout maxWidth="xl" className="flex flex-col gap-8">
@@ -227,43 +219,6 @@ export function LabDirectoryView({ retiredPortfolios }: { retiredPortfolios: Por
                                     </Link>
                                 ))}
                             </div>
-
-                            {/* Append Retired Portfolios inside Block 3 (Audits, Benchmarks & Retired Archives) */}
-                            {category.id === 'audits-archives' && retiredPortfolios.length > 0 && (
-                                <div className="pt-3 border-t-2 border-boxel-bevel-hi mt-auto flex flex-col gap-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
-                                            Retired Agent Archive
-                                        </span>
-                                        <Badge colorScheme="neutral" variant="soft" size="xs">
-                                            {retiredPortfolios.length} Frozen
-                                        </Badge>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        {retiredPortfolios.map((p) => (
-                                            <Link
-                                                key={p.id}
-                                                to="/portfolios/$portfolioId"
-                                                params={{ portfolioId: p.id }}
-                                                className="voxel-trough px-3 py-2 flex items-center justify-between gap-2 hover:bg-boxel-elevated transition-colors"
-                                            >
-                                                <span className="text-xs font-normal text-boxel-ink truncate">
-                                                    {p.owner_id ?? 'Retired Agent'}
-                                                </span>
-                                                <span className="font-mono text-xs font-normal text-boxel-muted shrink-0">
-                                                    $
-                                                    {Number(p.total_equity ?? 0).toLocaleString(
-                                                        'en-US',
-                                                        {
-                                                            maximumFractionDigits: 0,
-                                                        },
-                                                    )}
-                                                </span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </Card>
                     ))}
                 </div>

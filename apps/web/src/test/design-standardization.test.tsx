@@ -301,7 +301,7 @@ describe('Design Standardization: Typography & Box Sizing', () => {
         });
 
         it('LabDirectoryView enforces equal-sized category block grid and intrinsic fluid tracks', () => {
-            const { container } = render(<LabDirectoryView retiredPortfolios={[]} />);
+            const { container } = render(<LabDirectoryView />);
             const categoryGrid = screen.getByTestId('lab-category-grid');
             expect(categoryGrid.className).toContain('grid');
             expect(categoryGrid.className).toContain('items-stretch');

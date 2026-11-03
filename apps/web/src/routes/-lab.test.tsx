@@ -38,33 +38,17 @@ describe('LabDirectoryView (/lab)', () => {
         expect(allPaths).toContain('/audits');
     });
 
-    it('renders the 3 category blocks with descriptions and retired portfolios archive', () => {
-        const mockRetired = [
-            {
-                id: 'ret-1',
-                owner_id: 'gemini-3.1-pro-preview',
-                cash_balance: 45000,
-                buying_power: 45000,
-                total_equity: 98500,
-                last_updated_at: '2026-01-01',
-                excess_liquidity: 45000,
-                maintenance_margin: 0,
-                realized: 0,
-                sma: 45000,
-            },
-        ];
-
-        render(<LabDirectoryView retiredPortfolios={mockRetired} />);
+    it('renders the 3 category blocks and links to the retired agents page', () => {
+        render(<LabDirectoryView />);
 
         expect(screen.getByText('Research & Prediction Engines')).toBeInTheDocument();
         expect(screen.getByText('Cognition & Market Telemetry')).toBeInTheDocument();
         expect(screen.getByText('Audits, Benchmarks & Retired Archives')).toBeInTheDocument();
-
-        // Check link descriptions exist
         expect(screen.getByText('Auto-Research')).toBeInTheDocument();
         expect(screen.getByText('Memories')).toBeInTheDocument();
 
-        // Check retired portfolio is listed in the archive
-        expect(screen.getByText('gemini-3.1-pro-preview')).toBeInTheDocument();
+        const link = screen.getByText('Retired Agents').closest('a');
+        expect(link).toHaveAttribute('href', '/retired-agents');
+        expect(screen.queryByText('Retired Agent Archive')).not.toBeInTheDocument();
     });
 });

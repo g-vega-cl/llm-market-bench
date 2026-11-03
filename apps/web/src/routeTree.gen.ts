@@ -22,6 +22,7 @@ import { Route as LabRouteImport } from './routes/lab'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as RenkoRouteImport } from './routes/renko'
+import { Route as RetiredAgentsRouteImport } from './routes/retired-agents'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TodayRouteImport } from './routes/today'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
@@ -103,6 +104,11 @@ const LogoutRoute = LogoutRouteImport.update({
 const RenkoRoute = RenkoRouteImport.update({
   id: '/renko',
   path: '/renko',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RetiredAgentsRoute = RetiredAgentsRouteImport.update({
+  id: '/retired-agents',
+  path: '/retired-agents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/renko': typeof RenkoRoute
+  '/retired-agents': typeof RetiredAgentsRoute
   '/signup': typeof SignupRoute
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/renko': typeof RenkoRoute
+  '/retired-agents': typeof RetiredAgentsRoute
   '/signup': typeof SignupRoute
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/renko': typeof RenkoRoute
+  '/retired-agents': typeof RetiredAgentsRoute
   '/signup': typeof SignupRoute
   '/today': typeof TodayRoute
   '/_authed/profile': typeof AuthedProfileRoute
@@ -301,6 +310,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/logout'
     | '/renko'
+    | '/retired-agents'
     | '/signup'
     | '/today'
     | '/profile'
@@ -332,6 +342,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/logout'
     | '/renko'
+    | '/retired-agents'
     | '/signup'
     | '/today'
     | '/profile'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/logout'
     | '/renko'
+    | '/retired-agents'
     | '/signup'
     | '/today'
     | '/_authed/profile'
@@ -397,6 +409,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   RenkoRoute: typeof RenkoRoute
+  RetiredAgentsRoute: typeof RetiredAgentsRoute
   SignupRoute: typeof SignupRoute
   TodayRoute: typeof TodayRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -506,6 +519,13 @@ declare module '@tanstack/react-router' {
       path: '/renko'
       fullPath: '/renko'
       preLoaderRoute: typeof RenkoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/retired-agents': {
+      id: '/retired-agents'
+      path: '/retired-agents'
+      fullPath: '/retired-agents'
+      preLoaderRoute: typeof RetiredAgentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -655,6 +675,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   RenkoRoute: RenkoRoute,
+  RetiredAgentsRoute: RetiredAgentsRoute,
   SignupRoute: SignupRoute,
   TodayRoute: TodayRoute,
   AuthCallbackRoute: AuthCallbackRoute,

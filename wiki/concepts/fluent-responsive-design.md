@@ -56,17 +56,12 @@ For dual-pane layouts (such as experiment lineage lists paired with prompt inspe
 
 ### Intrinsic auto-fit subgrids
 
-For card catalogs, tool registries, and metric tiles:
+For card catalogs, tool registries, and metric tiles, express the intrinsic grid as a Tailwind arbitrary grid-track utility rather than an inline `style` object, so the layout stays declarative and consistent with the rest of the design system:
 
 ```tsx
-<div
-  className="grid gap-3"
-  style={{
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 15rem), 1fr))',
-  }}
->
+<div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3 items-stretch">
   {items.map((item) => (
-    <div key={item.id} className="min-w-0 overflow-hidden">
+    <div key={item.id} className="min-w-0 overflow-hidden h-full">
       ...
     </div>
   ))}
@@ -77,6 +72,20 @@ For card catalogs, tool registries, and metric tiles:
 - When available width reaches 32rem, 2 columns render.
 - When available width reaches 48rem, 3 columns render.
 - Zero viewport media queries are evaluated.
+
+The `minmax(min(100%, Xrem), 1fr)` track guarantees a single column never overflows a narrow container (the `min(100%, …)` floor) while still expanding to fill wider containers. Common track floors in the codebase: `10rem` (dense metric tiles), `12rem`/`14rem` (stat cards), `15rem`/`16rem` (tool and model cards), `18rem`/`20rem` (portfolio and comparison cards).
+
+### Equal-height stretched grids
+
+When sibling cards must share identical height (scoreboards, podiums, comparison panels, the Today page's 3-column row), pair the intrinsic grid with `items-stretch` and give each card `h-full flex flex-col justify-between`:
+
+```tsx
+<div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch">
+  <Card className="h-full flex flex-col justify-between gap-4">...</Card>
+</div>
+```
+
+This replaces the older `items-end` / arbitrary `min-h-[...]` podium pattern: cards no longer need hardcoded heights to look aligned, and the tallest card in the row sets the shared height intrinsically.
 
 ### Fluid action toolbars
 

@@ -24,7 +24,7 @@ export function SubHeading({
     uppercase = false,
 }: SubHeadingProps) {
     return (
-        <div className={cn('flex items-center gap-3 mb-6', className)}>
+        <div className={cn('flex items-center gap-3', className)}>
             <h2
                 className={cn(
                     'text-sm font-bold text-boxel-ink tracking-tight',

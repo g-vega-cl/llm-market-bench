@@ -236,7 +236,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
 
                 {/* Latest aggregates overlay */}
                 {barometer && (
-                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-4 items-stretch">
                         {[
                             { label: 'Trailing P/E', val: barometer.pe_ratio, highlight: true },
                             { label: 'Forward P/E', val: barometer.forward_pe, highlight: true },
@@ -252,20 +252,21 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                         ].map((item) => (
                             <Card
                                 key={item.label}
-                                className={`p-4 flex flex-col justify-between ${
+                                padding="md"
+                                className={`h-full flex flex-col justify-between gap-1 ${
                                     item.highlight
-                                        ? 'bg-gradient-to-br from-white/[0.06] to-transparent'
+                                        ? 'bg-boxel-elevated border-t-accent border-l-accent'
                                         : ''
                                 }`}
                             >
-                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
+                                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                                     {item.label}
                                 </span>
                                 <span
-                                    className={`text-2xl font-black font-mono tracking-tight mt-2 ${
+                                    className={`text-lg font-bold font-mono tracking-tight mt-1 tabular-nums ${
                                         item.colorScheme === 'success'
-                                            ? 'text-emerald-400'
-                                            : 'text-white'
+                                            ? 'text-success'
+                                            : 'text-boxel-ink'
                                     }`}
                                 >
                                     {formatValue(item.val)}

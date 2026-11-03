@@ -109,15 +109,15 @@ export function CompositeScoreBanner({ pred }: { pred: SectorPrediction }) {
     const { components, alphaBonus, compositeScore } = computeCompositeScore(pred);
 
     return (
-        <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-xs space-y-1">
+        <div className="bg-boxel-canvas border border-boxel-bevel-hi rounded-none p-3 text-xs flex flex-col gap-1">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
-                <span className="text-slate-200 font-semibold flex items-center gap-1.5">
+                <span className="text-boxel-ink text-sm font-bold flex items-center gap-1.5">
                     <span>🏆</span> Composite Predictor Score:{' '}
                     <strong className="text-emerald-400 font-mono text-sm">
                         {compositeScore} / 100
                     </strong>
                 </span>
-                <span className="text-slate-400 font-mono text-[11px]">
+                <span className="text-boxel-muted font-mono text-xs font-normal">
                     Formula: ({components.map((c) => c.toFixed(1)).join(' + ')}) ÷{' '}
                     {components.length}
                     {alphaBonus > 0 ? ` + ${alphaBonus.toFixed(1)} S&P Alpha` : ''}
@@ -142,80 +142,80 @@ export function ScoreConstituentsGrid({
     const pairScore = pred.pair_percentile_score ?? 0;
 
     return (
-        <div className="space-y-2">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="flex flex-col gap-2">
+            <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                 Score Constituents Breakdown
             </div>
             <div
-                className={`grid grid-cols-1 ${
-                    hasWorst ? 'md:grid-cols-3' : 'md:grid-cols-2'
-                } gap-4`}
+                className={`grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4 items-stretch`}
             >
-                <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
+                <div className="bg-boxel-trough rounded-none p-3 border border-boxel-bevel-hi flex flex-col justify-between gap-1 h-full">
                     <div className="flex justify-between items-center text-xs">
-                        <span className="font-semibold text-slate-300">1️⃣ Best Sector Call</span>
-                        <span className="text-slate-500 font-mono text-[10px]">
+                        <span className="text-sm font-bold text-boxel-ink">1️⃣ Best Sector Call</span>
+                        <span className="text-boxel-muted font-mono text-xs font-normal">
                             Best Sector Score
                         </span>
                     </div>
-                    <div className="text-lg font-bold text-white flex items-center gap-2">
+                    <div className="text-lg font-bold text-boxel-ink flex items-center gap-2">
                         {pred.predicted_sector}
                         {!isPending && (
-                            <span className="text-xs font-semibold text-emerald-400">
+                            <span className="text-xs font-normal text-emerald-400">
                                 ({sectorScore.toFixed(1)} score)
                             </span>
                         )}
                     </div>
                     {!isPending && (
-                        <div className="text-[11px] text-slate-400">
+                        <div className="text-xs font-normal text-boxel-muted">
                             vs S&P Sector ETF Median (50th %ile)
                         </div>
                     )}
                 </div>
 
                 {hasWorst && (
-                    <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
+                    <div className="bg-boxel-trough rounded-none p-3 border border-boxel-bevel-hi flex flex-col justify-between gap-1 h-full">
                         <div className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-slate-300">
+                            <span className="text-sm font-bold text-boxel-ink">
                                 2️⃣ Worst Sector Call
                             </span>
-                            <span className="text-slate-500 font-mono text-[10px]">
+                            <span className="text-boxel-muted font-mono text-xs font-normal">
                                 Worst Sector Score
                             </span>
                         </div>
                         <div className="text-lg font-bold text-rose-400 flex items-center gap-2">
                             {pred.predicted_worst_sector}
                             {!isPending && worstSectorScore != null && (
-                                <span className="text-xs font-semibold text-rose-300">
+                                <span className="text-xs font-normal text-rose-300">
                                     ({worstSectorScore.toFixed(1)} score)
                                 </span>
                             )}
                         </div>
                         {!isPending && (
-                            <div className="text-[11px] text-slate-400">
+                            <div className="text-xs font-normal text-boxel-muted">
                                 Bottom sector performance rank
                             </div>
                         )}
                     </div>
                 )}
 
-                <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
+                <div className="bg-boxel-trough rounded-none p-3 border border-boxel-bevel-hi flex flex-col justify-between gap-1 h-full">
                     <div className="flex justify-between items-center text-xs">
-                        <span className="font-semibold text-slate-300">
+                        <span className="text-sm font-bold text-boxel-ink">
                             {hasWorst ? '3️⃣ Uncorrelated Pair' : '2️⃣ Uncorrelated Pair'}
                         </span>
-                        <span className="text-slate-500 font-mono text-[10px]">Pair Score</span>
+                        <span className="text-boxel-muted font-mono text-xs font-normal">
+                            Pair Score
+                        </span>
                     </div>
-                    <div className="text-lg font-bold text-white flex items-center gap-2">
+                    <div className="text-lg font-bold text-boxel-ink flex items-center gap-2">
                         {pred.predicted_pair.join(' + ')}
                         {!isPending && (
-                            <span className="text-xs font-semibold text-emerald-400">
+                            <span className="text-xs font-normal text-emerald-400">
                                 ({pairScore.toFixed(1)} score)
                             </span>
                         )}
                     </div>
                     {!isPending && (
-                        <div className="text-[11px] text-slate-400">
+                        <div className="text-xs font-normal text-boxel-muted">
                             Multi-asset uncorrelation basket rank
                         </div>
                     )}
@@ -236,27 +236,27 @@ export function BenchmarkComparisonBlock({ pred }: { pred: SectorPrediction }) {
     const formatReturn = (val: number) => (val >= 0 ? `+${val.toFixed(1)}%` : `${val.toFixed(1)}%`);
 
     return (
-        <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 border-b border-slate-800 pb-2">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+        <div className="bg-boxel-trough border border-boxel-bevel-hi rounded-none p-4 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 border-b border-boxel-bevel-hi pb-2">
+                <span className="text-sm font-bold text-boxel-ink flex items-center gap-1.5">
                     <span>🎯</span> Prediction vs S&P 500 Benchmark ({pred.timeframe} Window)
                 </span>
-                <span className="text-xs font-mono text-slate-300">
+                <span className="text-xs font-normal font-mono text-boxel-muted">
                     S&P 500 (SPY): {formatReturn(spyReturn)}
                 </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800/80 space-y-1">
-                    <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4 text-xs font-normal items-stretch">
+                <div className="bg-boxel-canvas p-3 rounded-none border border-boxel-bevel-hi flex flex-col justify-between gap-1 h-full">
+                    <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider">
                         Sector Call: {pred.predicted_sector}
                     </div>
                     <div className="flex justify-between items-baseline">
-                        <span className="text-sm font-bold text-white">
+                        <span className="text-sm font-bold text-boxel-ink">
                             Return: {formatReturn(sectorReturn)}
                         </span>
                         <span
-                            className={`font-semibold font-mono text-xs ${
+                            className={`font-mono text-xs font-normal ${
                                 sectorAlpha >= 0 ? 'text-emerald-400' : 'text-rose-400'
                             }`}
                         >
@@ -265,16 +265,16 @@ export function BenchmarkComparisonBlock({ pred }: { pred: SectorPrediction }) {
                     </div>
                 </div>
 
-                <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800/80 space-y-1">
-                    <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                <div className="bg-boxel-canvas p-3 rounded-none border border-boxel-bevel-hi flex flex-col justify-between gap-1 h-full">
+                    <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider">
                         Pair Call: {pred.predicted_pair.join(' + ')}
                     </div>
                     <div className="flex justify-between items-baseline">
-                        <span className="text-sm font-bold text-white">
+                        <span className="text-sm font-bold text-boxel-ink">
                             Return: {formatReturn(pairReturn)}
                         </span>
                         <span
-                            className={`font-semibold font-mono text-xs ${
+                            className={`font-mono text-xs font-normal ${
                                 pairAlpha >= 0 ? 'text-emerald-400' : 'text-rose-400'
                             }`}
                         >
@@ -296,21 +296,21 @@ export function DataAuditBlock({ auditData }: { auditData: EvaluationAuditData }
     const formatRet = (val: number) => (val >= 0 ? `+${val.toFixed(1)}%` : `${val.toFixed(1)}%`);
 
     return (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-3 text-xs space-y-2">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 text-slate-300 font-semibold text-[11px] border-b border-slate-800 pb-1.5">
+        <div className="bg-boxel-trough border border-boxel-bevel-hi rounded-none p-3 text-xs font-normal flex flex-col gap-2">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 text-boxel-ink text-sm font-bold border-b border-boxel-bevel-hi pb-1.5">
                 <span className="flex items-center gap-1">
                     <span>🔍</span> Data Audit & Price Verification
                 </span>
-                <span className="text-slate-400 font-mono text-[10px]">
+                <span className="text-boxel-muted font-mono text-xs font-normal">
                     Window: {auditData.start_date} ➔ {auditData.end_date}
                 </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-2 text-xs font-normal items-stretch">
                 {spy && (
-                    <div className="flex justify-between items-center bg-slate-950/60 px-2.5 py-1.5 rounded border border-slate-850 font-mono">
-                        <span className="text-slate-400 font-sans">S&P 500 (SPY):</span>
-                        <span className="text-slate-200">
+                    <div className="flex justify-between items-center bg-boxel-canvas px-2.5 py-1.5 rounded-none border border-boxel-bevel-hi font-mono">
+                        <span className="text-boxel-muted font-sans">S&P 500 (SPY):</span>
+                        <span className="text-boxel-ink">
                             {formatPrice(spy.start_price)} ➔ {formatPrice(spy.end_price)}{' '}
                             <span
                                 className={
@@ -398,22 +398,18 @@ export function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
 
     return (
         <div
-            className={`border rounded-xl p-5 space-y-4 transition-colors ${
-                isPending
-                    ? 'bg-slate-800/60 border-blue-500/40 shadow-sm'
-                    : 'bg-slate-800/40 border-slate-700/80 hover:border-slate-600'
-            }`}
+            className={`border border-boxel-bevel-hi rounded-none p-5 flex flex-col gap-4 bg-boxel-surface transition-colors shadow-sm`}
         >
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                 <div className="flex items-center gap-3 flex-wrap">
                     <span
-                        className={`px-2.5 py-1 text-xs font-bold rounded-md ${getModelBadgeStyle(
+                        className={`px-2.5 py-1 text-sm font-bold rounded-none ${getModelBadgeStyle(
                             pred.model_name,
                         )}`}
                     >
                         {pred.model_name}
                     </span>
-                    <span className="text-slate-400 text-sm font-medium">
+                    <span className="text-boxel-muted text-xs font-normal">
                         Target: {formatStableDate(pred.target_date)} ({pred.timeframe})
                     </span>
                 </div>
@@ -437,11 +433,11 @@ export function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
             {/* Score Constituents Breakdown */}
             <ScoreConstituentsGrid pred={pred} isPending={isPending} />
 
-            <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <div className="flex flex-col gap-1">
+                <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                     AI Rationale
                 </div>
-                <p className="text-xs text-slate-300 bg-slate-900/50 p-3 rounded-lg leading-relaxed border border-slate-850">
+                <p className="text-xs font-normal text-boxel-ink bg-boxel-trough p-3 rounded-none leading-relaxed border border-boxel-bevel-hi">
                     {pred.reasoning}
                 </p>
             </div>

@@ -29,15 +29,15 @@ export function ExecutionTraceView({ trace }: ExecutionTraceViewProps) {
     if (!hasTools && !hasNewsletters) return null;
 
     return (
-        <div className="space-y-3 pt-2">
+        <div className="flex flex-col gap-3 pt-2">
             <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-lg" />
-                <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-none shadow-sm" />
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                     Execution Provenance & Grounding
                 </span>
             </div>
 
-            <div className="bg-zinc-50 dark:bg-zinc-950/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-900 space-y-3 text-xs">
+            <div className="bg-zinc-50 dark:bg-zinc-950/50 p-4 rounded-none border border-zinc-100 dark:border-zinc-900 flex flex-col gap-3 text-xs">
                 {hasTools && (
                     <div>
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">
@@ -52,7 +52,7 @@ export function ExecutionTraceView({ trace }: ExecutionTraceViewProps) {
                                         size="xs"
                                         variant="outline"
                                         colorScheme="neutral"
-                                        radius="md"
+                                        radius="none"
                                     >
                                         {t.tool}
                                         {t.ticker ? `: ${t.ticker}` : ''}
@@ -68,10 +68,10 @@ export function ExecutionTraceView({ trace }: ExecutionTraceViewProps) {
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">
                             Active Ingest Context ({trace.newsletters?.length} Newsletters)
                         </span>
-                        <ul className="space-y-1 text-zinc-600 dark:text-zinc-400">
+                        <ul className="flex flex-col gap-1 text-zinc-600 dark:text-zinc-400 font-normal">
                             {trace.newsletters?.map((n) => (
                                 <li key={n.source_id} className="truncate">
-                                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                                    <span className="font-bold text-zinc-800 dark:text-zinc-200">
                                         {n.sender || 'Newsletter'}:
                                     </span>{' '}
                                     {n.subject || n.source_id}

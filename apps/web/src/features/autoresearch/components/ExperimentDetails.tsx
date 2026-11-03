@@ -38,13 +38,13 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
             : 'N/A';
 
     return (
-        <div className="space-y-8 animate-slide-up">
-            <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+        <div className="flex flex-col gap-6 animate-slide-up">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-none voxel-trough border border-boxel-bevel-hi">
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                    <span className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
                         Optimization Track:
                     </span>
-                    <Badge colorScheme="accent" variant="soft" className="text-xs font-bold">
+                    <Badge colorScheme="accent" variant="soft">
                         {trackLabel}
                     </Badge>
                     {isCold && (
@@ -55,7 +55,7 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                    <span className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
                         Experiment Type:
                     </span>
                     <Badge variant="soft" size="sm">
@@ -64,7 +64,7 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-4 items-stretch">
                 <MetricTile label="Excess Return" value={excessReturnVal} />
                 <MetricTile icon="📊" label="Volatility" value={volatilityVal} />
                 <MetricTile icon="📉" label="Max Drawdown" value={maxDrawdownVal} />
@@ -110,13 +110,13 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
 
                 if (!isSplit) {
                     return (
-                        <Card className="p-8 space-y-4">
+                        <Card className="p-6 flex flex-col gap-4">
                             <div className="flex items-center justify-between">
                                 <SectionHeading>The Trading Prompt</SectionHeading>
                                 <Badge variant="outline">v{experiment.variant_tag}</Badge>
                             </div>
                             <div className="relative group">
-                                <pre className="p-6 bg-zinc-950 text-zinc-300 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-zinc-800 max-h-[600px] overflow-y-auto">
+                                <pre className="p-6 bg-boxel-canvas text-boxel-ink rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-boxel-bevel-hi max-h-[600px] overflow-y-auto">
                                     {experiment.prompt_content}
                                 </pre>
                             </div>
@@ -125,11 +125,11 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                 }
 
                 return (
-                    <Card className="p-8 space-y-6">
+                    <Card className="p-6 flex flex-col gap-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="space-y-1">
+                            <div className="flex flex-col gap-1">
                                 <SectionHeading>The Trading Prompt</SectionHeading>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                <p className="text-xs font-normal text-boxel-muted">
                                     System breakdown of engine constraints vs. prompt strategies
                                     mutated by autoresearch.
                                 </p>
@@ -139,86 +139,86 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                             </div>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="flex flex-col gap-6">
                             {/* Section 1: Engine Constraints & Tool Protocols (FROZEN) */}
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                        <span className="text-sm font-bold text-boxel-ink">
                                             🔒 1. Engine Constraints & Tool Protocols
                                         </span>
-                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                                        <span className="text-xs font-normal text-boxel-muted font-mono">
                                             (Header)
                                         </span>
                                     </div>
                                     <Badge
                                         variant="solid"
-                                        className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] uppercase"
+                                        className="bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase"
                                     >
                                         Frozen / System Managed
                                     </Badge>
                                 </div>
-                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                <p className="text-xs font-normal text-boxel-muted">
                                     Unchangeable system rules (price injection rules, tool
                                     requirements, RAG/memory protocols). Autoresearch cannot edit
                                     this.
                                 </p>
-                                <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
+                                <pre className="p-4 bg-boxel-trough text-boxel-muted rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
                                     {header}
                                 </pre>
                             </div>
 
                             {/* Section 2: Trading Strategy & Analysis Rules (MUTABLE) */}
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                        <span className="text-sm font-bold text-boxel-ink">
                                             ⚡ 2. Trading Strategy & Analysis Rules
                                         </span>
-                                        <span className="text-[10px] text-emerald-500 font-mono font-semibold">
+                                        <span className="text-xs font-normal text-emerald-400 font-mono">
                                             (Evolved Target)
                                         </span>
                                     </div>
                                     <Badge
                                         variant="solid"
-                                        className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] uppercase font-bold"
+                                        className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase"
                                     >
                                         Mutable / Evolved by Autoresearch
                                     </Badge>
                                 </div>
-                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                <p className="text-xs font-normal text-boxel-muted">
                                     Trading philosophy, reasoning frameworks, entry/exit logic, and
                                     portfolio management rules. This section is iteratively tested
                                     and optimized by autoresearch.
                                 </p>
-                                <pre className="p-4 bg-zinc-950 text-zinc-200 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto">
+                                <pre className="p-4 bg-boxel-canvas text-boxel-ink rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto">
                                     {mutable}
                                 </pre>
                             </div>
 
                             {/* Section 3: Risk Rules & Output JSON Format (FROZEN) */}
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                        <span className="text-sm font-bold text-boxel-ink">
                                             🔒 3. Risk Rules & Output JSON Schema
                                         </span>
-                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                                        <span className="text-xs font-normal text-boxel-muted font-mono">
                                             (Footer)
                                         </span>
                                     </div>
                                     <Badge
                                         variant="solid"
-                                        className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] uppercase"
+                                        className="bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase"
                                     >
                                         Frozen / System Managed
                                     </Badge>
                                 </div>
-                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                <p className="text-xs font-normal text-boxel-muted">
                                     SMA margin rules, trade signal definitions, and mandatory
                                     structured JSON output schema. Autoresearch cannot edit this.
                                 </p>
-                                <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
+                                <pre className="p-4 bg-boxel-trough text-boxel-muted rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
                                     {footer}
                                 </pre>
                             </div>

@@ -33,7 +33,7 @@ export function BenchmarkSelector({ selected, onChange }: BenchmarkSelectorProps
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <label
                 htmlFor="benchmark-select"
-                className="text-xs sm:text-sm font-medium text-zinc-600 uppercase tracking-wider"
+                className="text-xs font-bold text-zinc-600 uppercase tracking-wider"
             >
                 Benchmark
             </label>
@@ -41,7 +41,7 @@ export function BenchmarkSelector({ selected, onChange }: BenchmarkSelectorProps
                 id="benchmark-select"
                 value={selected}
                 onChange={(e) => onChange(e.target.value)}
-                className="bg-white border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent cursor-pointer w-full sm:w-auto"
+                className="bg-white border border-zinc-300 rounded-none px-3 py-2 text-sm font-bold text-zinc-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent cursor-pointer w-full sm:w-auto"
             >
                 <option value="">None</option>
                 {BENCHMARK_OPTIONS.map((opt) => (

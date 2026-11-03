@@ -105,12 +105,11 @@ describe('NewsletterFeed', () => {
             expect(screen.getByText('<squad@thedailyupside.com>')).toBeInTheDocument();
         });
 
-        it('renders sender badge with centered text styling', () => {
+        it('renders sender badge using design system badge styling', () => {
             render(<NewsletterFeed newsletters={[makeNewsletter({ sender: 'Stock Analysis' })]} />);
             const badge = screen.getByText('Stock Analysis');
-            expect(badge).toHaveClass('text-center');
-            expect(badge).toHaveClass('justify-center');
-            expect(badge).not.toHaveClass('text-left');
+            expect(badge).toBeInTheDocument();
+            expect(badge.className).toContain('voxel-badge');
         });
 
         it('does not render the empty-state message when newsletters are present', () => {

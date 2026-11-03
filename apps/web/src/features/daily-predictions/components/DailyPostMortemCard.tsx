@@ -43,14 +43,14 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
         prediction.postmortem_flawed_assumption?.trim().toLowerCase() !== 'none';
 
     return (
-        <div className="space-y-3 p-4 rounded-xl bg-zinc-900/60 border border-zinc-800">
+        <div className="flex flex-col gap-3 p-4 rounded-none bg-zinc-900/60 border border-zinc-800">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
                         Post-Market Evaluation (GPT-5.6 Luna)
                     </span>
                     {prediction.postmortem_evaluated_at && (
-                        <span className="text-[10px] text-zinc-500 font-mono">
+                        <span className="text-xs font-normal text-zinc-500 font-mono">
                             {formatEasternTime(prediction.postmortem_evaluated_at)}
                         </span>
                     )}
@@ -58,7 +58,7 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
 
                 <div className="flex flex-wrap items-center gap-2">
                     {category && (
-                        <Badge variant="solid" colorScheme={categoryScheme} size="sm" radius="md">
+                        <Badge variant="solid" colorScheme={categoryScheme} size="sm" radius="none">
                             {category.replace(/_/g, ' ')}
                         </Badge>
                     )}
@@ -68,7 +68,7 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
                                 variant={prediction.was_predictable ? 'outline' : 'soft'}
                                 colorScheme={prediction.was_predictable ? 'accent' : 'neutral'}
                                 size="sm"
-                                radius="md"
+                                radius="none"
                             >
                                 {prediction.was_predictable
                                     ? 'PREDICTABLE PRE-MARKET'
@@ -80,11 +80,11 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
 
             {/* Flawed Assumption (if any) */}
             {hasFlawedAssumption && (
-                <div className="space-y-1">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-rose-400">
+                <div className="flex flex-col gap-1">
+                    <div className="text-sm font-bold uppercase tracking-wider text-rose-400">
                         Flawed Morning Assumption
                     </div>
-                    <p className="text-xs text-rose-300 leading-relaxed p-3 rounded-lg bg-rose-950/30 border border-rose-900/40">
+                    <p className="text-xs font-normal text-rose-300 leading-relaxed p-3 rounded-none bg-rose-950/30 border border-rose-900/40 m-0">
                         {prediction.postmortem_flawed_assumption}
                     </p>
                 </div>
@@ -92,11 +92,11 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
 
             {/* Actionable Lesson Learned */}
             {prediction.postmortem_lesson && (
-                <div className="space-y-1">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <div className="flex flex-col gap-1">
+                    <div className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                         <span>Actionable Lesson Learned</span>
                     </div>
-                    <p className="text-xs text-emerald-200 leading-relaxed font-medium p-3 rounded-lg bg-emerald-950/30 border border-emerald-900/40">
+                    <p className="text-xs text-emerald-200 leading-relaxed font-normal p-3 rounded-none bg-emerald-950/30 border border-emerald-900/40 m-0">
                         {prediction.postmortem_lesson}
                     </p>
                 </div>

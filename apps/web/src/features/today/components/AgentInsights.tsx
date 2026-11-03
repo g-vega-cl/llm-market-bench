@@ -45,11 +45,11 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
 
     if (!totalInsights) {
         return (
-            <section className="space-y-8 animate-slide-up">
+            <section className="flex flex-col gap-6 animate-slide-up">
                 <SectionHeading gradient="ai">AI Cognitive Synthesis</SectionHeading>
-                <div className="flex flex-col items-center justify-center py-12 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-center gap-3">
-                    <span className="text-3xl">🧠</span>
-                    <p className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
+                <div className="flex flex-col items-center justify-center py-12 rounded-none border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-center gap-3">
+                    <span className="text-lg">🧠</span>
+                    <p className="text-sm font-normal text-zinc-400 dark:text-zinc-500">
                         No insights synthesized yet today
                     </p>
                 </div>
@@ -58,24 +58,24 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
     }
 
     return (
-        <section className="space-y-6 animate-slide-up">
+        <section className="flex flex-col gap-6 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <SectionHeading gradient="ai">AI Cognitive Synthesis</SectionHeading>
 
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-deep-purple-50 dark:bg-deep-purple-950/20 border border-deep-purple-200 dark:border-deep-purple-900/30 rounded-xl shadow-xs">
-                        <span className="text-[10px] font-black text-deep-purple-600 dark:text-deep-purple-400 uppercase tracking-widest">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-deep-purple-50 dark:bg-deep-purple-950/20 border border-deep-purple-200 dark:border-deep-purple-900/30 rounded-none shadow-xs">
+                        <span className="text-xs font-normal text-boxel-muted text-deep-purple-600 dark:text-deep-purple-400 uppercase tracking-widest">
                             🧠 {totalInsights} Insight{totalInsights !== 1 ? 's' : ''}
                         </span>
                     </div>
 
                     {/* View Toggle Switch */}
-                    <div className="inline-flex items-center p-1 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 rounded-xl">
+                    <div className="inline-flex items-center p-1 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 rounded-none">
                         <button
                             type="button"
                             data-active={viewMode === 'list'}
                             onClick={() => handleSetViewMode('list')}
-                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                            className={`px-3 py-1 text-xs font-bold rounded-none transition-all ${
                                 viewMode === 'list'
                                     ? 'bg-white dark:bg-zinc-900 text-deep-purple-600 dark:text-deep-purple-400 shadow-xs'
                                     : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
@@ -87,7 +87,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             type="button"
                             data-active={viewMode === 'cards'}
                             onClick={() => handleSetViewMode('cards')}
-                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                            className={`px-3 py-1 text-xs font-bold rounded-none transition-all ${
                                 viewMode === 'cards'
                                     ? 'bg-white dark:bg-zinc-900 text-deep-purple-600 dark:text-deep-purple-400 shadow-xs'
                                     : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
@@ -130,7 +130,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                     Market Consensus
                                                 </Badge>
                                                 {agents.length > 0 && (
-                                                    <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                                                    <span className="flex items-center gap-1 text-xs font-normal uppercase tracking-wider text-boxel-muted text-zinc-400 dark:text-zinc-500">
                                                         <span>•</span>
                                                         <span>Agreed:</span>
                                                         <span className="text-zinc-600 dark:text-zinc-300">
@@ -139,18 +139,18 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider tabular-nums">
                                                 {m.formattedDateTime
                                                     ? m.formattedDateTime
                                                     : 'Pending'}
                                             </span>
                                         </div>
 
-                                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 line-clamp-2 italic leading-snug">
+                                        <p className="text-xs font-normal text-boxel-ink line-clamp-2 italic leading-snug">
                                             "{m.content}"
                                         </p>
 
-                                        <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 text-[10px]">
+                                        <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 text-xs font-normal text-boxel-muted">
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 {(m.importance_score != null ||
                                                     m.metadata?.importance_score != null) && (
@@ -170,7 +170,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                                     (ticker: string, i: number) => (
                                                                         <span
                                                                             key={i}
-                                                                            className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold rounded-md uppercase border border-zinc-200 dark:border-zinc-700"
+                                                                            className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold rounded-none uppercase border border-zinc-200 dark:border-zinc-700"
                                                                         >
                                                                             {ticker}
                                                                         </span>
@@ -179,7 +179,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                         </div>
                                                     )}
                                             </div>
-                                            <span className="text-xs font-semibold text-deep-purple-600 dark:text-deep-purple-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                            <span className="text-xs font-bold text-deep-purple-600 dark:text-deep-purple-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
                                                 View event chain →
                                             </span>
                                         </div>
@@ -214,22 +214,22 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                             >
                                                 Government Incentive
                                             </Badge>
-                                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
+                                            <span className="text-xs font-normal text-boxel-muted text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
                                                 <span>💰</span> Policy Alert
                                             </span>
                                         </div>
-                                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                        <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider tabular-nums">
                                             {m.formattedShortDate
                                                 ? m.formattedShortDate
                                                 : 'Pending'}
                                         </span>
                                     </div>
 
-                                    <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 line-clamp-2 leading-snug">
+                                    <p className="text-xs font-normal text-boxel-ink line-clamp-2 leading-snug">
                                         {m.content}
                                     </p>
 
-                                    <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 text-[10px]">
+                                    <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 text-xs font-normal text-boxel-muted">
                                         <div>
                                             {m.metadata?.budget && (
                                                 <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold uppercase rounded border border-emerald-200 dark:border-emerald-800">
@@ -237,7 +237,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
                                             View event chain →
                                         </span>
                                     </div>
@@ -276,27 +276,27 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                     >
                                                         Lesson Learned
                                                     </Badge>
-                                                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                                                    <span className="text-xs font-normal text-boxel-muted text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
                                                         <span>📝</span> Post-Analysis
                                                     </span>
                                                     {lessonAgent.name !== 'Unknown' && (
-                                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                                        <span className="text-xs font-normal text-boxel-muted text-zinc-500 uppercase tracking-widest">
                                                             {lessonAgent.name}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider tabular-nums">
                                                     {m.formattedShortDate
                                                         ? m.formattedShortDate
                                                         : 'Pending'}
                                                 </span>
                                             </div>
 
-                                            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 line-clamp-2 italic leading-snug">
+                                            <p className="text-xs font-normal text-boxel-ink line-clamp-2 italic leading-snug">
                                                 "{m.content}"
                                             </p>
 
-                                            <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 text-[10px]">
+                                            <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 text-xs font-normal text-boxel-muted">
                                                 <div>
                                                     {m.metadata?.related_trade && (
                                                         <span className="font-bold text-zinc-400 uppercase tracking-wider">
@@ -305,7 +305,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
                                                     View event chain →
                                                 </span>
                                             </div>
@@ -346,7 +346,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                 Market Consensus
                                             </Badge>
                                             {agents.length > 0 && (
-                                                <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                                                <span className="flex items-center gap-1.5 text-xs font-normal uppercase tracking-wider text-boxel-muted text-zinc-400 dark:text-zinc-500">
                                                     <span>•</span>
                                                     <span>Agreed:</span>
                                                     <span className="text-zinc-600 dark:text-zinc-300">
@@ -355,12 +355,12 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                        <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider tabular-nums">
                                             {m.formattedDateTime ? m.formattedDateTime : 'Pending'}
                                         </span>
                                     </div>
 
-                                    <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic border-l-4 border-deep-purple-300 dark:border-deep-purple-700 pl-3 line-clamp-3">
+                                    <p className="text-xs font-normal text-boxel-ink leading-relaxed italic border-l-4 border-deep-purple-300 dark:border-deep-purple-700 pl-3 line-clamp-3">
                                         "{m.content}"
                                     </p>
 
@@ -369,8 +369,8 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                             {(m.importance_score != null ||
                                                 m.metadata?.importance_score != null) && (
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-2 h-2 bg-deep-purple-500 rounded-full shadow-lg" />
-                                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                                    <div className="w-2 h-2 bg-deep-purple-500 rounded-none shadow-sm" />
+                                                    <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                                                         Importance:{' '}
                                                         {m.importance_score ??
                                                             m.metadata?.importance_score}
@@ -386,7 +386,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                             .map((ticker: string, i: number) => (
                                                                 <span
                                                                     key={i}
-                                                                    className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold rounded-md uppercase tracking-wide border border-zinc-200 dark:border-zinc-700"
+                                                                    className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs font-bold rounded-none uppercase tracking-wider border border-zinc-200 dark:border-zinc-700"
                                                                 >
                                                                     {ticker}
                                                                 </span>
@@ -394,7 +394,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                     </div>
                                                 )}
                                         </div>
-                                        <span className="text-xs font-semibold text-deep-purple-600 dark:text-deep-purple-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                        <span className="text-xs font-bold text-deep-purple-600 dark:text-deep-purple-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
                                             View event chain →
                                         </span>
                                     </div>
@@ -427,27 +427,27 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                         >
                                             Government Incentive
                                         </Badge>
-                                        <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
+                                        <span className="text-xs font-normal text-boxel-muted text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
                                             <span>💰</span> Policy Alert
                                         </span>
                                     </div>
-                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                    <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider tabular-nums">
                                         {m.formattedShortDate ? m.formattedShortDate : 'Pending'}
                                     </span>
                                 </div>
-                                <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed line-clamp-3">
+                                <p className="text-xs font-normal text-boxel-ink leading-relaxed line-clamp-3">
                                     {m.content}
                                 </p>
 
                                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-800 flex-wrap gap-2">
                                     <div>
                                         {m.metadata?.budget && (
-                                            <span className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider rounded-lg border border-emerald-200 dark:border-emerald-800">
+                                            <span className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-normal text-boxel-muted uppercase tracking-wider rounded-none border border-emerald-200 dark:border-emerald-800">
                                                 Budget: {m.metadata.budget}
                                             </span>
                                         )}
                                     </div>
-                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
                                         View event chain →
                                     </span>
                                 </div>
@@ -484,16 +484,16 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                                 >
                                                     Lesson Learned
                                                 </Badge>
-                                                <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                                                <span className="text-xs font-normal text-boxel-muted text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
                                                     <span>📝</span> Post-Analysis
                                                 </span>
                                                 {lessonAgent.name !== 'Unknown' && (
-                                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                                    <span className="text-xs font-normal text-boxel-muted text-zinc-500 uppercase tracking-widest">
                                                         {lessonAgent.name}
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider tabular-nums">
                                                 {m.formattedShortDate
                                                     ? m.formattedShortDate
                                                     : 'Pending'}
@@ -501,19 +501,19 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                         </div>
                                     );
                                 })()}
-                                <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic bg-amber-50/50 dark:bg-amber-950/10 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30 line-clamp-3">
+                                <p className="text-xs font-normal text-boxel-ink leading-relaxed italic bg-amber-50/50 dark:bg-amber-950/10 p-3 rounded-none border border-amber-100 dark:border-amber-900/30 line-clamp-3">
                                     "{m.content}"
                                 </p>
 
                                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-800 flex-wrap gap-2">
                                     <div>
                                         {m.metadata?.related_trade && (
-                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                                                 Related Trade: {m.metadata.related_trade}
                                             </span>
                                         )}
                                     </div>
-                                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
                                         View event chain →
                                     </span>
                                 </div>
@@ -530,7 +530,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                         <button
                             type="button"
                             onClick={() => setCurrentPage((p) => p - 1)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-deep-purple-600 dark:text-deep-purple-400 bg-deep-purple-50 dark:bg-deep-purple-950/20 border border-deep-purple-200 dark:border-deep-purple-900/30 rounded-xl hover:bg-deep-purple-100 dark:hover:bg-deep-purple-950/40 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-deep-purple-600 dark:text-deep-purple-400 bg-deep-purple-50 dark:bg-deep-purple-950/20 border border-deep-purple-200 dark:border-deep-purple-900/30 rounded-none hover:bg-deep-purple-100 dark:hover:bg-deep-purple-950/40 transition-colors"
                         >
                             ← Prev
                         </button>
@@ -538,7 +538,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                         <span />
                     )}
 
-                    <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                    <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider tabular-nums">
                         Page {currentPage} of {totalPages}
                     </span>
 
@@ -546,7 +546,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                         <button
                             type="button"
                             onClick={() => setCurrentPage((p) => p + 1)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-deep-purple-600 dark:text-deep-purple-400 bg-deep-purple-50 dark:bg-deep-purple-950/20 border border-deep-purple-200 dark:border-deep-purple-900/30 rounded-xl hover:bg-deep-purple-100 dark:hover:bg-deep-purple-950/40 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-deep-purple-600 dark:text-deep-purple-400 bg-deep-purple-50 dark:bg-deep-purple-950/20 border border-deep-purple-200 dark:border-deep-purple-900/30 rounded-none hover:bg-deep-purple-100 dark:hover:bg-deep-purple-950/40 transition-colors"
                         >
                             Next →
                         </button>

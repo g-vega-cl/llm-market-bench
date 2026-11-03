@@ -556,11 +556,11 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
 
                                                     if (!isSplit) {
                                                         return (
-                                                            <div className="p-6 bg-slate-900 text-slate-100 rounded-xl space-y-3 min-w-0">
-                                                                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                                            <div className="p-6 bg-slate-900 text-slate-100 rounded-none flex flex-col gap-3 min-w-0">
+                                                                <div className="text-sm font-bold uppercase tracking-wider text-slate-400">
                                                                     The Predictor Prompt
                                                                 </div>
-                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs max-h-96 overflow-y-auto">
+                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs max-h-96 overflow-y-auto m-0">
                                                                     {
                                                                         selectedExperiment.prompt_content
                                                                     }
@@ -570,43 +570,43 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                                     }
 
                                                     return (
-                                                        <div className="space-y-4 min-w-0">
+                                                        <div className="flex flex-col gap-4 min-w-0">
                                                             {header && (
-                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2 min-w-0">
-                                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-none flex flex-col gap-2 min-w-0">
+                                                                    <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">
                                                                         Frozen System Header
                                                                     </div>
-                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-slate-400 max-h-48 overflow-y-auto m-0">
                                                                         {header}
                                                                     </pre>
                                                                 </div>
                                                             )}
 
-                                                            <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2 min-w-0">
+                                                            <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-none flex flex-col gap-2 min-w-0">
                                                                 <div className="flex items-center justify-between">
-                                                                    <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                                                    <div className="text-sm font-bold text-emerald-400 uppercase tracking-wider">
                                                                         Mutable Analytical
                                                                         Strategies
                                                                     </div>
-                                                                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono">
+                                                                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-none font-mono font-bold">
                                                                         v
                                                                         {
                                                                             selectedExperiment.variant_tag
                                                                         }
                                                                     </span>
                                                                 </div>
-                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto">
+                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto m-0">
                                                                     {mutable}
                                                                 </pre>
                                                             </div>
 
                                                             {footer && (
-                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2 min-w-0">
-                                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-none flex flex-col gap-2 min-w-0">
+                                                                    <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">
                                                                         Frozen Output Format &
                                                                         Schema
                                                                     </div>
-                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-slate-400 max-h-48 overflow-y-auto m-0">
                                                                         {footer}
                                                                     </pre>
                                                                 </div>

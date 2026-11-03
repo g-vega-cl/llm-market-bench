@@ -27,16 +27,16 @@ export function HumanFriendlyPrompt({
     const shouldShowTabs = (prompt?.length || 0) > 3;
 
     return (
-        <section>
-            <div className="flex items-center justify-between gap-2 md:gap-4 mb-4 md:mb-6">
-                <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-                    <h4 className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] md:tracking-[0.2em] whitespace-nowrap">
+        <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap m-0">
                         Cognitive Flow
                     </h4>
                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-800 to-transparent min-w-[20px]" />
                 </div>
                 {shouldShowTabs && (
-                    <div className="flex gap-0.5 md:gap-1 p-0.5 md:p-1 bg-gray-100 dark:bg-gray-900 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-800 shadow-inner overflow-x-auto">
+                    <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-none border border-zinc-200 dark:border-zinc-800 shadow-inner overflow-x-auto">
                         {roles.map((role) => (
                             <Button
                                 key={role}
@@ -44,6 +44,7 @@ export function HumanFriendlyPrompt({
                                 variant={activeRole === role ? 'solid' : 'ghost'}
                                 colorScheme={activeRole === role ? 'accent' : 'neutral'}
                                 onClick={() => setActiveRole(role)}
+                                className="rounded-none text-sm font-bold"
                             >
                                 {role}
                             </Button>
@@ -52,7 +53,7 @@ export function HumanFriendlyPrompt({
                 )}
             </div>
 
-            <div className="space-y-3 md:space-y-6">
+            <div className="flex flex-col gap-4">
                 {filteredMessages?.map((msg, idx) => {
                     const isSystem = msg.role === 'system';
                     const isAssistant = msg.role === 'assistant' || msg.role === 'model';
@@ -66,7 +67,7 @@ export function HumanFriendlyPrompt({
                     return (
                         <div
                             key={idx}
-                            className={`p-4 md:p-6 rounded-xl md:rounded-[1.5rem] border transition-all hover:shadow-lg ${
+                            className={`p-4 rounded-none border transition-all flex flex-col gap-2 ${
                                 isSystem
                                     ? 'bg-gray-50/50 dark:bg-gray-800/20 border-gray-200 dark:border-gray-700/50'
                                     : isAssistant
@@ -76,19 +77,19 @@ export function HumanFriendlyPrompt({
                                         : 'bg-white dark:bg-gray-900/40 border-gray-200 dark:border-gray-800 shadow-sm'
                             }`}
                         >
-                            <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3">
+                            <div className="flex items-center gap-2">
                                 <Badge
                                     size="xs"
                                     variant={isSystem ? 'soft' : 'solid'}
                                     colorScheme={
                                         isAssistant ? 'accent' : isTool ? 'success' : 'neutral'
                                     }
-                                    radius="md"
+                                    radius="none"
                                 >
                                     {msg.role}
                                 </Badge>
                             </div>
-                            <div className="text-[11px] md:text-xs font-mono leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words selection:bg-blue-500/30 overflow-x-hidden">
+                            <div className="text-xs font-normal font-mono leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words selection:bg-blue-500/30 overflow-x-hidden">
                                 <FormattedContent content={msg.content || msg.parts || msg} />
                             </div>
                         </div>

@@ -112,11 +112,11 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                         <SectionHeading gradient="electric">Event Chain</SectionHeading>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <p className="text-zinc-600 dark:text-zinc-400 text-sm">
+                        <p className="text-zinc-600 dark:text-zinc-400 text-xs font-normal m-0">
                             Chronological chain including the selected event
                         </p>
                         {isFetching && (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-amber-500 font-medium bg-amber-50/50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200/50 dark:border-amber-900/30">
+                            <span className="inline-flex items-center gap-1.5 text-xs text-amber-500 font-bold bg-amber-50/50 dark:bg-amber-950/20 px-2 py-0.5 rounded-none border border-amber-200/50 dark:border-amber-900/30">
                                 <LoadingSpinner size="sm" className="text-amber-500" />
                                 Loading chain...
                             </span>
@@ -130,11 +130,11 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                     {chain.map((memory: ChainMemory, index: number) => (
                         <div key={memory.id} className="relative">
                             {(index < chain.length - 1 || (chain.length === 1 && isFetching)) && (
-                                <div className="absolute left-6 top-14 bottom-0 w-px bg-zinc-200 dark:bg-zinc-800" />
+                                <div className="absolute left-5 top-12 bottom-0 w-px bg-zinc-200 dark:bg-zinc-800" />
                             )}
                             <div
                                 id={memory.id}
-                                className={`relative border rounded-md p-5 mb-0 transition-colors ${
+                                className={`relative border rounded-none p-5 mb-0 transition-colors ${
                                     memory.id === targetMemory.id
                                         ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/50'
                                         : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'
@@ -142,7 +142,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                             >
                                 <div className="flex items-start gap-4 mb-3">
                                     <div
-                                        className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold ${
+                                        className={`flex-shrink-0 w-10 h-10 rounded-none flex items-center justify-center text-sm font-bold ${
                                             memory.id === targetMemory.id
                                                 ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
                                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
@@ -150,11 +150,12 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                     >
                                         {index + 1}
                                     </div>
-                                    <div className="flex-1 min-w-0 pt-1">
+                                    <div className="flex-1 min-w-0 pt-0.5">
                                         <div className="flex flex-wrap items-center gap-2 mb-1">
                                             <Badge
                                                 variant="soft"
                                                 size="sm"
+                                                radius="none"
                                                 colorScheme={getTypeBadgeColor(
                                                     memory.metadata?.type,
                                                 )}
@@ -166,19 +167,24 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                             </span>
                                         </div>
                                         {memory.id === targetMemory.id && (
-                                            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                                                 &larr; You selected this event
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <p className="text-base text-zinc-800 dark:text-zinc-200 leading-relaxed pl-16">
+                                <p className="text-xs font-normal text-zinc-800 dark:text-zinc-200 leading-relaxed pl-14 m-0">
                                     {memory.content}
                                 </p>
                                 {(memory.metadata?.ticker || memory.metadata?.impact) && (
-                                    <div className="flex flex-wrap gap-2 mt-3 pl-16">
+                                    <div className="flex flex-wrap gap-2 mt-3 pl-14">
                                         {memory.metadata.ticker && (
-                                            <Badge variant="soft" size="sm" colorScheme="accent">
+                                            <Badge
+                                                variant="soft"
+                                                size="sm"
+                                                colorScheme="accent"
+                                                radius="none"
+                                            >
                                                 ${memory.metadata.ticker}
                                             </Badge>
                                         )}
@@ -186,6 +192,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                             <Badge
                                                 variant="soft"
                                                 size="sm"
+                                                radius="none"
                                                 colorScheme={getImpactBadgeColor(
                                                     memory.metadata.impact,
                                                 )}
@@ -200,16 +207,16 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                     ))}
                     {chain.length === 1 && isFetching && (
                         <div className="relative">
-                            <div className="relative border border-dashed border-zinc-200 dark:border-zinc-800 rounded-md p-5 bg-zinc-50/50 dark:bg-zinc-900/30">
+                            <div className="relative border border-dashed border-zinc-200 dark:border-zinc-800 rounded-none p-5 bg-zinc-50/50 dark:bg-zinc-900/30">
                                 <div className="flex items-center gap-4">
-                                    <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400">
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-none flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400">
                                         <LoadingSpinner size="sm" className="text-zinc-400" />
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                    <div className="flex-1 flex flex-col gap-1">
+                                        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 m-0">
                                             Loading other memories in this chain...
                                         </p>
-                                        <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                                        <p className="text-xs font-normal text-zinc-400 dark:text-zinc-500 m-0">
                                             Retrieving preceding and succeeding events
                                         </p>
                                     </div>

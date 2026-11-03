@@ -53,14 +53,14 @@ function MarketStatusChip({ isMarketOpen }: { isMarketOpen: boolean }) {
         <div className="flex items-center gap-1.5 shrink-0">
             <span
                 className={
-                    isMarketOpen ? 'live-dot' : 'w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-600'
+                    isMarketOpen ? 'live-dot' : 'w-2 h-2 rounded-none bg-zinc-400 dark:bg-zinc-600'
                 }
             />
             <Badge
                 variant="soft"
                 colorScheme={isMarketOpen ? 'success' : 'neutral'}
                 size="xs"
-                radius="full"
+                radius="none"
             >
                 {isMarketOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
             </Badge>
@@ -86,9 +86,9 @@ function SentimentSection({
     return (
         <>
             <div className="flex items-center gap-2 shrink-0">
-                <span className="text-base">{emoji}</span>
+                <span className="text-sm font-bold">{emoji}</span>
                 <span
-                    className={`text-xs font-black uppercase tracking-wider ${getDirectionColor(direction)}`}
+                    className={`text-xs font-bold uppercase tracking-wider ${getDirectionColor(direction)}`}
                 >
                     {label}
                 </span>
@@ -96,6 +96,7 @@ function SentimentSection({
                     <Badge
                         variant="soft"
                         size="xs"
+                        radius="none"
                         colorScheme={getDirectionColorScheme(direction)}
                     >
                         {direction}
@@ -103,7 +104,7 @@ function SentimentSection({
                 )}
                 {isStale && hasFeeling && (
                     <span
-                        className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full"
+                        className="text-xs font-bold px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-none"
                         title="Data is older than 4 hours"
                     >
                         ⚠ STALE
@@ -138,11 +139,11 @@ function AnalysisTimestamp({
 }) {
     return (
         <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-500 font-mono tabular-nums">
+            <span className="text-xs font-normal text-zinc-500 dark:text-zinc-500 font-mono tabular-nums">
                 {formattedTime ? `Last analyzed: ${formattedTime}` : 'Waiting for analysis...'}
             </span>
             {modelUsed && (
-                <span className="text-[10px] text-zinc-600 dark:text-zinc-600 font-mono">
+                <span className="text-xs font-normal text-zinc-600 dark:text-zinc-600 font-mono">
                     • {modelUsed}
                 </span>
             )}
@@ -176,11 +177,11 @@ export function TodayStatusBar({ data }: TodayStatusBarProps) {
             <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide whitespace-nowrap min-h-[40px]">
                 {/* Label + date */}
                 <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-100 font-mono">
+                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 font-mono">
                         TODAY
                     </span>
                     <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                    <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest tabular-nums">
+                    <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider tabular-nums">
                         {todayDateString}
                     </span>
                 </div>
@@ -233,8 +234,8 @@ function Divider() {
 function StatChip({ label, value, color }: { label: string; value: number; color: string }) {
     return (
         <div className="flex items-center gap-1">
-            <span className={`text-xs font-black tabular-nums ${color}`}>{value}</span>
-            <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest">
+            <span className={`text-xs font-bold font-mono tabular-nums ${color}`}>{value}</span>
+            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider">
                 {label}
             </span>
         </div>

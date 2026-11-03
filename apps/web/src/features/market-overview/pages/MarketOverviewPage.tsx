@@ -82,12 +82,12 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
             <PageLayout className="space-y-16 pb-24">
                 {/* Modern Premium Sub-Navigation Tabs */}
                 <div className="flex justify-center animate-slide-up">
-                    <div className="flex gap-1.5 p-1.5 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md rounded-2xl border border-zinc-200/60 dark:border-zinc-800/80 shadow-md">
+                    <div className="flex gap-1.5 p-1.5 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md rounded-none border border-zinc-200/60 dark:border-zinc-800/80 shadow-md">
                         <Button
                             variant={activeTab === 'current' ? 'solid' : 'ghost'}
                             colorScheme={activeTab === 'current' ? 'accent' : 'neutral'}
                             onClick={() => setActiveTab('current')}
-                            className="px-6 py-2.5 rounded-xl font-bold transition-all duration-200"
+                            className="px-6 py-2.5 rounded-none text-sm font-bold transition-all duration-200"
                         >
                             📊 Current Regime
                         </Button>
@@ -95,7 +95,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                             variant={activeTab === 'history' ? 'solid' : 'ghost'}
                             colorScheme={activeTab === 'history' ? 'accent' : 'neutral'}
                             onClick={() => setActiveTab('history')}
-                            className="px-6 py-2.5 rounded-xl font-bold transition-all duration-200"
+                            className="px-6 py-2.5 rounded-none text-sm font-bold transition-all duration-200"
                         >
                             📈 Historical Progression
                         </Button>
@@ -107,21 +107,21 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                         <div className="space-y-16 animate-slide-up">
                             {/* Timeframe Selector Button Group */}
                             <div className="flex flex-col items-center gap-4">
-                                <div className="flex gap-1 p-1 bg-white/80 dark:bg-zinc-900/80 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
+                                <div className="flex gap-1 p-1 bg-white/80 dark:bg-zinc-900/80 rounded-none border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
                                     {(['7d', '30d', '60d', '90d'] as const).map((tf) => (
                                         <Button
                                             key={tf}
                                             variant={timeframe === tf ? 'solid' : 'ghost'}
                                             colorScheme={timeframe === tf ? 'accent' : 'neutral'}
                                             onClick={() => setTimeframe(tf)}
-                                            className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                                            className="px-4 py-1.5 rounded-none text-sm font-bold transition-all duration-150"
                                         >
                                             {tf.toUpperCase()}
                                         </Button>
                                     ))}
                                 </div>
                                 {timeframe === '7d' && (
-                                    <div className="max-w-3xl p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 text-amber-600 dark:text-amber-400 animate-slide-up">
+                                    <div className="max-w-3xl p-4 bg-amber-500/10 border border-amber-500/20 rounded-none flex items-start gap-3 text-amber-600 dark:text-amber-400 animate-slide-up">
                                         <span className="text-lg">⚠️</span>
                                         <div className="text-left text-xs leading-relaxed">
                                             <span className="font-bold block mb-0.5">
@@ -223,12 +223,12 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
     return (
         <HeroBackground gradient="electric">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <div className="space-y-6 animate-slide-up">
+                <div className="flex flex-col gap-6 animate-slide-up">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
-                        <h1 className="text-5xl sm:text-6xl font-black text-white tracking-tighter text-display drop-shadow-lg">
+                        <h1 className="text-lg font-bold text-white uppercase tracking-wider text-display drop-shadow-lg m-0">
                             MARKET OVERVIEW
                         </h1>
-                        <Badge variant="outline" colorScheme="neutral">
+                        <Badge variant="outline" colorScheme="neutral" radius="none">
                             {now.toLocaleDateString('en-US', {
                                 timeZone: 'America/New_York',
                                 weekday: 'long',
@@ -239,7 +239,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         </Badge>
                     </div>
 
-                    <p className="text-lg text-electric-blue-100 font-light leading-relaxed max-w-2xl drop-shadow">
+                    <p className="text-xs font-normal text-electric-blue-100 leading-relaxed max-w-2xl drop-shadow m-0">
                         Real-time correlation matrix, uncorrelated asset pairs, and macro sentiment
                         analysis. Updated weekly on Sundays.
                     </p>
@@ -248,37 +248,42 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         <Badge
                             variant="soft"
                             colorScheme={isMarketOpen ? 'success' : 'neutral'}
+                            radius="none"
                             className="gap-2"
                         >
                             <span
                                 className={
-                                    isMarketOpen ? 'live-dot' : 'w-2 h-2 rounded-full bg-steel-400'
+                                    isMarketOpen ? 'live-dot' : 'w-2 h-2 rounded-none bg-steel-400'
                                 }
                             />
                             {isMarketOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
                         </Badge>
                         <Link
                             to="/"
-                            className="text-sm text-electric-blue-200 hover:text-white transition-colors underline underline-offset-2"
+                            className="text-sm font-bold text-electric-blue-200 hover:text-white transition-colors underline underline-offset-2"
                         >
                             View AI Trading Activity →
                         </Link>
                     </div>
                 </div>
 
-                <div className="space-y-6 animate-slide-up animate-stagger-2">
-                    <Card variant="glass" padding="md" className="rounded-3xl shadow-2xl">
-                        <div className="flex items-center justify-between mb-4">
-                            <span className="text-xs font-black text-electric-blue-200 uppercase tracking-widest">
+                <div className="flex flex-col gap-6 animate-slide-up animate-stagger-2">
+                    <Card
+                        variant="glass"
+                        padding="md"
+                        className="rounded-none shadow-sm flex flex-col gap-3"
+                    >
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-electric-blue-200 uppercase tracking-wider">
                                 How I'm Feeling
                             </span>
                             <div className="flex items-center gap-2">
-                                <span className="text-2xl animate-float">
+                                <span className="animate-float">
                                     {marketFeeling?.sentiment_emoji || '🤔'}
                                 </span>
                                 {isStale && marketFeeling && (
                                     <span
-                                        className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full"
+                                        className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none font-bold"
                                         title="Data is older than 4 hours"
                                     >
                                         ⚠
@@ -288,13 +293,13 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         </div>
 
                         <div
-                            className={`text-3xl sm:text-4xl font-black mb-3 text-display drop-shadow ${getDirectionColor(marketFeeling?.market_direction)}`}
+                            className={`text-lg font-bold font-mono text-display drop-shadow ${getDirectionColor(marketFeeling?.market_direction)}`}
                         >
                             {marketFeeling?.sentiment_label || 'Analyzing...'}
                         </div>
 
                         {marketFeeling?.market_direction && (
-                            <div className="flex items-center gap-2 mb-4">
+                            <div className="flex items-center gap-2">
                                 <Badge
                                     variant="soft"
                                     colorScheme={
@@ -305,6 +310,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                                               : 'neutral'
                                     }
                                     size="sm"
+                                    radius="none"
                                 >
                                     {marketFeeling.market_direction}
                                 </Badge>
@@ -320,35 +326,34 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                                         marketFeeling.confidence_score,
                                     )}
                                     textStyle="hero"
-                                    className="mb-4"
                                 />
                             )}
 
                         {marketFeeling?.why_explanation && (
-                            <p className="text-sm text-electric-blue-100 leading-relaxed mb-4 italic">
+                            <p className="text-xs font-normal text-electric-blue-100 leading-relaxed italic m-0">
                                 "{marketFeeling.why_explanation}"
                             </p>
                         )}
 
                         {marketFeeling?.primary_concern && (
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                <span className="text-[10px] text-electric-blue-300 uppercase tracking-wider">
+                            <div className="flex flex-wrap gap-2 items-center">
+                                <span className="text-xs font-normal text-electric-blue-300 uppercase tracking-wider">
                                     Primary Concern:
                                 </span>
-                                <span className="text-xs px-2 py-1 bg-white/5 rounded-lg text-electric-blue-100 border border-white/10">
+                                <span className="text-xs px-2 py-1 bg-white/5 rounded-none text-electric-blue-100 border border-white/10 font-normal">
                                     {marketFeeling.primary_concern}
                                 </span>
                             </div>
                         )}
 
-                        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
-                            <span className="text-[10px] text-electric-blue-300">
+                        <div className="flex items-center gap-2 pt-3 border-t border-white/10">
+                            <span className="text-xs font-normal text-electric-blue-300">
                                 {marketFeeling?.created_at
                                     ? `Last analyzed: ${formatEasternTime(marketFeeling.created_at)}`
                                     : 'Waiting for analysis...'}
                             </span>
                             {marketFeeling?.model_used && (
-                                <span className="text-[10px] text-electric-blue-400/50">
+                                <span className="text-xs font-normal text-electric-blue-400/50">
                                     • {marketFeeling.model_used}
                                 </span>
                             )}
@@ -423,20 +428,24 @@ function SectorPerformanceGrid({
             <SectionHeading gradient="electric">
                 Sector Performance ({displayTimeframeName} Trailing Returns)
             </SectionHeading>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
                 {Object.entries(tickerReturns).map(([category, items]) => (
-                    <Card key={category} padding="sm">
-                        <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4">
+                    <Card
+                        key={category}
+                        padding="md"
+                        className="h-full flex flex-col justify-between"
+                    >
+                        <h3 className="text-sm font-bold text-boxel-muted uppercase tracking-wider mb-3">
                             {category}
                         </h3>
-                        <div className="space-y-2">
+                        <div className="space-y-2 mt-auto">
                             {items.map(({ ticker, positive }) => (
                                 <div key={ticker} className="flex items-center justify-between">
-                                    <span className="font-mono text-sm text-zinc-700 dark:text-zinc-300">
+                                    <span className="font-mono text-xs font-normal text-boxel-ink">
                                         {ticker}
                                     </span>
                                     <span
-                                        className={`text-sm font-semibold ${positive ? 'text-neon-green-500' : 'text-alert-red-400'}`}
+                                        className={`text-sm font-bold font-mono ${positive ? 'text-success' : 'text-danger'}`}
                                     >
                                         {positive ? '↑' : '↓'}
                                     </span>

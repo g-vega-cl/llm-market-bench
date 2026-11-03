@@ -48,10 +48,10 @@ export function TrackTabs({ experiments, activeTrack, onSelectTrack }: TrackTabs
                         key={tid}
                         type="button"
                         onClick={() => onSelectTrack(tid)}
-                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                        className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
                             isActive
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+                                ? 'bg-accent text-accent-ink border border-accent'
+                                : 'bg-boxel-surface text-boxel-muted hover:text-boxel-ink hover:bg-boxel-elevated border border-boxel-bevel-hi'
                         }`}
                     >
                         <span>{formatTrackLabel(tid)}</span>

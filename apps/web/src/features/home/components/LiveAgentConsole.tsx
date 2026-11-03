@@ -105,7 +105,7 @@ function ConsoleHeaderRibbon({
                         type="button"
                         onClick={onRefresh}
                         disabled={isPolling}
-                        className="voxel-btn text-[10px] font-mono uppercase px-2.5 py-1 text-boxel-ink hover:text-accent disabled:opacity-50 flex items-center gap-1"
+                        className="voxel-btn text-xs font-normal font-mono uppercase px-2.5 py-1 text-boxel-ink hover:text-accent disabled:opacity-50 flex items-center gap-1"
                         title="Refresh intraday tape from server"
                     >
                         <span>{isPolling ? 'Refreshing...' : 'Refresh Tape'}</span>

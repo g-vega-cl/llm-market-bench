@@ -38,10 +38,10 @@ export function PredictorTrackTabs({
             <button
                 type="button"
                 onClick={() => onSelectTrack('all')}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
                     isAllActive
-                        ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                        ? 'bg-accent text-accent-ink border border-accent shadow-sm'
+                        : 'bg-boxel-surface text-boxel-muted hover:text-boxel-ink hover:bg-boxel-elevated border border-boxel-bevel-hi'
                 }`}
             >
                 <span>All Models</span>
@@ -65,10 +65,10 @@ export function PredictorTrackTabs({
                         key={trk.id}
                         type="button"
                         onClick={() => onSelectTrack(trk.id)}
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                        className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
                             isActive
-                                ? 'bg-slate-800 text-white border border-slate-600 shadow-sm'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                ? 'bg-accent text-accent-ink border border-accent shadow-sm'
+                                : 'bg-boxel-surface text-boxel-muted hover:text-boxel-ink hover:bg-boxel-elevated border border-boxel-bevel-hi'
                         }`}
                     >
                         <span>{trk.label}</span>

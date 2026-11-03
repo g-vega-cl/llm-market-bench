@@ -31,6 +31,6 @@ describe('DailyMetricsOverview', () => {
 
         expect(screen.getByText('Active Prompt Variant')).toBeInTheDocument();
         expect(screen.getByText('daily-active-v1')).toBeInTheDocument();
-        expect(screen.getByText('🟢 ACTIVE')).toBeInTheDocument();
+        expect(screen.getByText('ACTIVE')).toBeInTheDocument();
     });
 });

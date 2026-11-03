@@ -25,27 +25,27 @@ export function EmptyState({ emoji, title, subtitle, actions, className }: Empty
     return (
         <div
             className={cn(
-                'flex flex-col items-center justify-center py-16 md:py-24 text-center',
+                'flex flex-col items-center justify-center py-12 text-center gap-4',
                 className,
             )}
         >
             {emoji && (
-                <div className="relative mb-8">
-                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-full flex items-center justify-center bg-gradient-to-br from-accent-light to-info-light dark:from-accent-dark/30 dark:to-info-dark/30">
-                        <span className="text-6xl md:text-7xl">{emoji}</span>
-                    </div>
+                <div className="w-12 h-12 voxel-trough rounded-none flex items-center justify-center">
+                    <span className="text-lg">{emoji}</span>
                 </div>
             )}
-            <h2 className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white mb-3 tracking-tight">
-                {title}
-            </h2>
-            {subtitle && (
-                <p className="text-zinc-500 dark:text-zinc-400 max-w-md mb-8 text-base">
-                    {subtitle}
-                </p>
-            )}
+            <div className="flex flex-col items-center gap-1.5 max-w-md">
+                <h2 className="text-lg font-bold text-boxel-ink tracking-tight uppercase">
+                    {title}
+                </h2>
+                {subtitle && (
+                    <p className="text-xs font-normal text-boxel-muted leading-relaxed">
+                        {subtitle}
+                    </p>
+                )}
+            </div>
             {actions && actions.length > 0 && (
-                <div className="flex gap-4 flex-wrap justify-center">
+                <div className="flex gap-4 flex-wrap justify-center pt-2">
                     {actions.map((action, i) =>
                         action.href ? (
                             <a key={action.href} href={action.href}>

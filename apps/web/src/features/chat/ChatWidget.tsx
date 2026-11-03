@@ -32,9 +32,9 @@ export function ChatWidget({ user }: ChatWidgetProps) {
                 type="button"
                 aria-label="Chat"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 rounded-full border border-cyan-500/40 bg-gradient-to-r from-zinc-950 via-slate-900 to-zinc-950 px-4 py-2.5 font-medium text-xs text-cyan-300 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-cyan-400 hover:shadow-cyan-500/20 active:scale-95"
+                className="flex items-center gap-2 rounded-none border border-cyan-500/40 bg-gradient-to-r from-zinc-950 via-slate-900 to-zinc-950 px-4 py-2.5 font-bold text-xs text-cyan-300 shadow-sm backdrop-blur-md transition-all duration-300 hover:border-cyan-400 active:scale-95"
             >
-                <span className="text-base">💬</span>
+                <span className="text-sm font-bold">💬</span>
                 <span>{isOpen ? 'Close Assistant' : 'Chat Assistant'}</span>
             </button>
         </div>

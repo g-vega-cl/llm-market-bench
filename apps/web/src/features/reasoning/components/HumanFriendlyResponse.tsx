@@ -7,22 +7,22 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
 
     if (!response || typeof response !== 'object') {
         return (
-            <section>
-                <div className="flex items-center gap-2 md:gap-4 mb-4 md:mb-6">
-                    <h4 className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] md:tracking-[0.2em]">
+            <section className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                    <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider m-0">
                         Output Schema
                     </h4>
                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-800 to-transparent" />
                 </div>
                 <div className="relative group/raw">
-                    <pre className="p-4 md:p-8 bg-[#0D0D10] text-[#7DD3FC] rounded-xl md:rounded-[2.5rem] text-[10px] md:text-[11px] font-mono whitespace-pre-wrap break-all overflow-hidden border border-white/5 shadow-2xl leading-relaxed">
+                    <pre className="p-4 bg-zinc-950 text-sky-300 rounded-none text-xs font-normal font-mono whitespace-pre-wrap break-all overflow-hidden border border-zinc-800 shadow-sm leading-relaxed m-0">
                         {JSON.stringify(response, null, 2)}
                     </pre>
                     <Button
                         size="sm"
                         variant="glass"
                         colorScheme="neutral"
-                        className="absolute top-2 right-2 md:top-4 md:right-4 opacity-0 group-hover/raw:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 opacity-0 group-hover/raw:opacity-100 transition-opacity rounded-none text-sm font-bold"
                         onClick={() =>
                             navigator.clipboard.writeText(JSON.stringify(response, null, 2))
                         }
@@ -39,15 +39,15 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
     const displayedKeys = [...keys, 'RAW'];
 
     return (
-        <section>
-            <div className="flex items-center justify-between gap-2 md:gap-4 mb-4 md:mb-6">
-                <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-                    <h4 className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] md:tracking-[0.2em] whitespace-nowrap">
+        <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap m-0">
                         Output Schema
                     </h4>
                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-800 to-transparent min-w-[20px]" />
                 </div>
-                <div className="flex gap-0.5 md:gap-1 p-0.5 md:p-1 bg-gray-100 dark:bg-gray-900 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-800 shadow-inner overflow-x-auto">
+                <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-none border border-zinc-200 dark:border-zinc-800 shadow-inner overflow-x-auto">
                     {displayedKeys.map((key) => (
                         <Button
                             key={key}
@@ -55,6 +55,7 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
                             variant={activeTab === key ? 'solid' : 'ghost'}
                             colorScheme={activeTab === key ? 'accent' : 'neutral'}
                             onClick={() => setActiveTab(key)}
+                            className="rounded-none text-sm font-bold"
                         >
                             {key.replace(/_/g, ' ')}
                         </Button>
@@ -62,17 +63,17 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
                 </div>
             </div>
 
-            <div className="mt-3 md:mt-4">
+            <div>
                 {activeTab === 'RAW' ? (
                     <div className="relative group/raw">
-                        <pre className="p-4 md:p-8 bg-[#0D0D10] text-[#7DD3FC] rounded-xl md:rounded-[2.5rem] text-[10px] md:text-[11px] font-mono whitespace-pre-wrap break-all overflow-hidden border border-white/5 shadow-2xl leading-relaxed thought-step-glow">
+                        <pre className="p-4 bg-zinc-950 text-sky-300 rounded-none text-xs font-normal font-mono whitespace-pre-wrap break-all overflow-hidden border border-zinc-800 shadow-sm leading-relaxed m-0">
                             {JSON.stringify(response, null, 2)}
                         </pre>
                         <Button
                             size="sm"
                             variant="glass"
                             colorScheme="neutral"
-                            className="absolute top-3 right-3 md:top-6 md:right-6 opacity-0 group-hover/raw:opacity-100 transition-all active:scale-95"
+                            className="absolute top-3 right-3 opacity-0 group-hover/raw:opacity-100 transition-all rounded-none text-sm font-bold"
                             onClick={() =>
                                 navigator.clipboard.writeText(JSON.stringify(response, null, 2))
                             }
@@ -93,12 +94,12 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
 function ResponseDataView({ value, label }: { value: unknown; label: string }) {
     if (Array.isArray(value)) {
         return (
-            <div className="grid grid-cols-1 gap-3 md:gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 items-stretch">
                 {value.map((item, i) => (
                     <DataCard key={i} item={item} />
                 ))}
                 {value.length === 0 && (
-                    <p className="text-gray-500 italic text-[11px] md:text-xs">Empty list.</p>
+                    <p className="text-gray-500 italic text-xs font-normal m-0">Empty list.</p>
                 )}
             </div>
         );
@@ -112,17 +113,17 @@ function ResponseDataView({ value, label }: { value: unknown; label: string }) {
 
     return (
         <div
-            className={`p-4 md:p-6 rounded-xl md:rounded-[1.5rem] border bg-white dark:bg-gray-900/40 border-gray-200 dark:border-gray-800 shadow-sm ${
+            className={`p-4 rounded-none border bg-white dark:bg-gray-900/40 border-gray-200 dark:border-gray-800 shadow-sm flex flex-col gap-2 ${
                 isLongText ? 'col-span-full' : ''
             }`}
         >
-            <h5 className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5 md:mb-2">
+            <h5 className="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">
                 {label.replace(/_/g, ' ')}
             </h5>
             <div
-                className={`text-xs md:text-sm ${
+                className={`text-xs ${
                     isLongText
-                        ? 'leading-relaxed text-gray-700 dark:text-gray-300'
+                        ? 'leading-relaxed text-gray-700 dark:text-gray-300 font-normal'
                         : 'font-bold text-gray-900 dark:text-white'
                 }`}
             >

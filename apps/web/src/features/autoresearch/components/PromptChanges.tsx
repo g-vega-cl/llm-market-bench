@@ -61,13 +61,13 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
     if (!parentExperiment) {
         const isBaseline = experiment.experiment_type === 'baseline';
         return (
-            <Card className="p-8 border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-                <div className="flex flex-col items-center justify-center text-center space-y-3 py-4">
-                    <span className="text-2xl">🌱</span>
-                    <h3 className="font-bold text-zinc-900 dark:text-zinc-100">
+            <Card className="p-8 border border-dashed border-boxel-bevel-hi bg-boxel-trough">
+                <div className="flex flex-col items-center justify-center text-center gap-2 py-4">
+                    <span className="text-lg font-bold">🌱</span>
+                    <h3 className="text-sm font-bold text-boxel-ink">
                         {isBaseline ? 'Initial baseline prompt' : 'No parent prompt'}
                     </h3>
-                    <p className="text-zinc-500 dark:text-zinc-400 text-sm max-w-md">
+                    <p className="text-boxel-muted text-xs font-normal max-w-md">
                         {isBaseline
                             ? 'This is the starting point of the auto-research loop. No previous variant is available to compare.'
                             : 'This experiment does not have a registered parent variant to compare against.'}
@@ -109,7 +109,7 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
             </div>
 
             <div className="relative group min-w-0">
-                <div className="relative font-mono text-[11px] leading-relaxed max-h-[400px] overflow-y-auto overflow-x-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 md:p-6 space-y-[2px] min-w-0">
+                <div className="relative font-mono text-xs font-normal leading-relaxed max-h-[400px] overflow-y-auto overflow-x-auto bg-boxel-canvas border border-boxel-bevel-hi rounded-none p-4 md:p-6 flex flex-col gap-[2px] min-w-0">
                     {!hasChanges ? (
                         <div className="text-center text-zinc-500 dark:text-zinc-400 py-8 text-sm">
                             ✨ No prompt text changes detected between these variants.

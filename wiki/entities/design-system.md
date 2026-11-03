@@ -63,16 +63,22 @@ Composable base components that handle styling and accessibility:
 
   Non-solid variants keep the standard `dotColors` map. The `accent` solid fill uses `bg-accent text-boxel-trough` (never `text-white`) to satisfy the WCAG AAA contrast rule.
 - **Table**: Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container.
-- **Input**, **Label**, **Select**, **LoadingSpinner**: Standard form and status primitives.
+- **Input**: Recessed `.voxel-trough rounded-none` wrapper (`bg-boxel-trough`, `border-boxel-bevel-hi`, `focus-within:ring-accent/40`). The inner `<input>` uses `text-sm font-bold text-boxel-ink` with `placeholder:text-boxel-muted`. Error state swaps the border to `border-danger`.
+- **Label**: `block text-sm font-bold text-boxel-ink uppercase tracking-wider` (Tier 2 control typography, no `mb-*` — spacing is owned by the parent).
+- **Select**: Recessed `.voxel-trough rounded-none` wrapper matching `Input` (`bg-boxel-trough`, `border-boxel-bevel-hi`). The `<select>` uses `text-sm font-bold text-boxel-ink`; `<option>` rows use `bg-boxel-surface text-boxel-ink text-sm font-bold`.
+- **LoadingSpinner**: Standard status primitive.
 
 ## Patterns
 
 Higher-level compound components for specific UI patterns:
 
 - **SectionHeading**: Uppercase display title paired with a solid square cheddar-gold block marker.
-- **SubHeading**: Secondary heading for subsections with optional divider and right element.
+- **SubHeading**: Secondary heading for subsections with optional divider and right element. Carries **no** `mb-*` margin — vertical rhythm is supplied by the parent's `gap`.
 - **ConfidenceBar**: 10 discrete block segments (`data-testid="confidence-segment"`) inside a recessed `.voxel-trough` slot.
-- **StatPill**, **MetricTile**, **EmptyState**, **LoadingBoundary**, **ErrorCard**: Shared layout and feedback patterns.
+- **MetricTile**: Recessed `.voxel-trough rounded-none p-3` tile laid out as `flex flex-col justify-between gap-1` (label row + value), with `hover:bg-boxel-elevated`. No child `mb-*` margins.
+- **EmptyState**: Centered `flex flex-col items-center gap-4` block. The emoji renders inside a `w-12 h-12 voxel-trough rounded-none` icon box at `text-lg` (no oversized `text-6xl`/`text-7xl` circles). The title is Tier 1 (`text-lg font-bold text-boxel-ink uppercase tracking-tight`) and the subtitle is Tier 3 (`text-xs font-normal text-boxel-muted`), both inside a `gap-1.5` stack with no `mb-*` margins.
+- **ErrorCard**: `voxel-card rounded-none` surface with `border-t-danger/70 border-l-danger/70`, laid out as `flex flex-col gap-3`. Title is `text-sm font-bold text-danger`, message is `text-xs font-normal text-boxel-muted`, and the optional Retry action is a `voxel-btn rounded-none text-sm font-bold uppercase tracking-wider` button.
+- **StatPill**, **LoadingBoundary**: Shared layout and feedback patterns.
 
 ## Layouts
 
@@ -93,6 +99,27 @@ Composite views follow a strict parent-owns-spacing pattern:
 
 Neutral states use the `neutral` color scheme rather than `accent` — e.g. `LiveAgentConsole` renders a `NEUTRAL` market-direction badge with `colorScheme="neutral"` so it never inherits the Cheddar Gold action fill.
 
+## Page-level boxel migration
+
+Beyond the primitives, the feature pages render through the same boxel tokens and equal-height grids. Representative surfaces:
+
+- **AI Sector Predictor scoreboard** (`AIPredictionsPage.tsx`): the 4-model head-to-head grid uses `grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch` with `Card` tiles (`h-full flex flex-col justify-between gap-4`), Tier 2 model names, and `text-lg font-bold font-mono tabular-nums` metric values.
+- **Leaderboard podium** (`LeaderboardPodium.tsx`): equal-height `items-stretch` grid (no `items-end`, no arbitrary `min-h-[400px]`/`min-h-[350px]`/`min-h-[320px]`), `radius="none"` cards with rank-colored top/left bevels (`border-t-success`, `border-t-accent`, `border-t-warning`).
+- **Daily metrics overview** (`DailyMetricsOverview.tsx`): `items-stretch` grid of `Card padding="sm"` tiles with `text-lg font-bold font-mono tabular-nums` values; the active-variant badge is a solid `success` badge reading `ACTIVE` (no emoji).
+- **Hero prediction card** (`HeroPredictionCard.tsx`): `bg-boxel-surface rounded-none border-boxel-bevel-hi` card with Tier 1 direction text and Tier 3 rationale.
+- **Score calculation** (`ScoreCalculation.tsx`): `bg-boxel-surface` card, recessed `bg-boxel-trough` formula block at `text-lg font-mono font-bold`, and a fluid `minmax(min(100%,14rem),1fr)` explanation grid.
+- **Today page** (`TodayPage.tsx`): the 3-column Row 2 grid uses `items-stretch` so `AgentInsights`, `NewsletterFeed`, and `AIFeelingCard` share equal height. `AIFeelingCard` uses `Card padding="md"` with `h-full flex flex-col justify-between gap-4` and a `mt-auto` footer; `NewsletterFeed` renders briefings in a `minmax(min(100%,16rem),1fr)` grid with `Badge`-based sender chips and a `voxel-trough` empty state; `AgentInsights` uses `rounded-none` toggles and Tier 3 telemetry text.
+- **Daily predictions** (`DailyPredictionsPage.tsx`, `PredictionsTable.tsx`, `SegmentedPromptInspector.tsx`, `CuratedManifestCard.tsx`, `DailyPostMortemCard.tsx`, `DailyLessonsLedgerCard.tsx`, `AutoresearchMilestoneCards.tsx`): `rounded-none` segmented switchers, `voxel-btn` backtest link, `radius="none"` badges throughout, and `grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] items-stretch` milestone cards.
+- **Autoresearch arena** (`AutoresearchPage.tsx`, `ExperimentDetails.tsx`, `ExperimentList.tsx`, `PromptChanges.tsx`, `PromptBlocksCard.tsx`, `CognitiveToolboxCard.tsx`, `ResearchRationaleCard.tsx`, `VolatilityCalculation.tsx`, `BacktestTradesAudit.tsx`): `voxel-btn` track tabs, `voxel-trough` prompt panes, `rounded-none` diff/block/tool cards, and `items-stretch` grids replacing inline `gridTemplateColumns` styles.
+- **Daily score audit** (`DailyScoreOverview.tsx`, `DailyProgressionGrid.tsx`, `DailyAuditLedger.tsx`): `items-stretch` metric grids, `voxel-card` ledger surface, and `rounded-none` checkpoint cards with Tier 2/3 typography.
+- **Memories & Event Chain** (`MemoryCard.tsx`, `MemoriesList.tsx`, `MemoryFlow.tsx`, `EventChainPage.tsx`): `radius="none"` badges, `rounded-none` panels, `flex flex-col gap-*` stacks replacing `space-y-*`, and Tier 3 body copy.
+- **Reasoning audit trail** (`ReasoningPage.tsx`, `HumanFriendlyPrompt.tsx`, `HumanFriendlyResponse.tsx`, `DataCard.tsx`, `FormattedContent.tsx`): `rounded-none` trace cards, `voxel-trough`-style recessed blocks, and `minmax(min(100%,12rem),1fr)` data grids.
+- **Concepts tracker** (`ConceptMap.tsx`, `ConceptsPage.tsx`): `radius="none"` velocity/stage/impact badges, `rounded-none` detail panels, and a `minmax(min(100%,18rem),1fr)` legend grid.
+- **Earnings audit** (`EarningsAuditPage.tsx`): `Card padding="md"` summary tiles in a `minmax(min(100%,14rem),1fr)` `items-stretch` grid with `text-lg font-bold font-mono tabular-nums` values.
+- **Barometer audit** (`BarometerAuditPage.tsx`): `minmax(min(100%,10rem),1fr)` aggregate grid with `border-t-accent border-l-accent` highlight bevels.
+- **Market overview** (`MarketOverviewPage.tsx`): sector performance cards in a `minmax(min(100%,18rem),1fr)` `items-stretch` grid using `text-success`/`text-danger` direction glyphs.
+- **Backtest arena** (`BacktestAutoresearchPage.tsx`): `voxel-btn` navigation, `bg-boxel-surface rounded-none` formula card, and `voxel-trough` run-count badge.
+
 ## Governance and verification protocol
 
 1. **No arbitrary values**: Avoid square-bracket utility escapes in web application code. All styles must use defined theme spacing, typography, and color tokens.
@@ -100,7 +127,14 @@ Neutral states use the `neutral` color scheme rather than `accent` — e.g. `Liv
 3. **Closed variant props**: Components must accept only design-system-defined variants and color schemes.
 4. **Fluent responsive layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72` and `basis-96`). See [[concepts/fluent-responsive-design]].
 5. **Cumulative layout shift prevention**: Enforce silent Suspense fallbacks (`fallback={null}`) and `keepPreviousData` on timeframe queries. See [[concepts/cumulative-layout-shift]].
-6. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` boxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` neutral badge scheme, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers.
+6. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` boxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` neutral badge scheme, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
+   - `ErrorCard` uses `rounded-none` (no `rounded-xl`), a `text-sm font-bold` title, a `text-xs font-normal` message, and a `text-sm font-bold` Retry button (no `rounded-lg`).
+   - `EmptyState` uses a Tier 1 `text-lg font-bold` title (no `text-2xl`/`text-3xl`/`font-black`), a Tier 3 `text-xs font-normal` subtitle, no `text-6xl`/`text-7xl` emoji, and no `mb-*` margins.
+   - `Input`/`Select` wrappers use `rounded-none` (no `rounded-xl`) and `Label` uses `text-sm font-bold` (no `font-semibold`).
+   - `LeaderboardPodium` renders an `items-stretch` grid (no `items-end`) with no hardcoded `min-h-[...]` height classes.
+   - `DailyMetricsOverview` renders an `items-stretch` grid with no `text-2xl` values.
+   - `HeroPredictionCard` contains no `text-4xl`, `font-black`, `rounded-2xl`, or `mb-*` classes.
+   - `ScoreCalculation` contains no `text-3xl`/`text-2xl`/`rounded-2xl`, and its formula block is `text-lg font-bold`.
 
 ## Related
 

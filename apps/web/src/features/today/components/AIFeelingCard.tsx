@@ -46,21 +46,21 @@ function SentimentHeader({
 }) {
     return (
         <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-4xl animate-float">{emoji}</span>
-                <div>
-                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-xl">{emoji}</span>
+                <div className="flex flex-col gap-0.5">
+                    <p className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                         Market Sentiment
                     </p>
                     <div
-                        className={`text-3xl font-black text-display leading-none ${getDirectionColor(direction)}`}
+                        className={`text-lg font-bold text-display leading-tight ${getDirectionColor(direction)}`}
                     >
                         {label}
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
                 {direction && (
                     <Badge
                         variant="soft"
@@ -71,12 +71,9 @@ function SentimentHeader({
                     </Badge>
                 )}
                 {isStale && hasFeeling && (
-                    <span
-                        className="text-[9px] px-2 py-0.5 bg-amber-500/15 text-amber-500 rounded-full font-bold border border-amber-500/20"
-                        title="Data is older than 4 hours"
-                    >
-                        ⚠ STALE
-                    </span>
+                    <Badge colorScheme="warning" variant="outline" size="xs">
+                        STALE
+                    </Badge>
                 )}
             </div>
         </div>
@@ -85,16 +82,16 @@ function SentimentHeader({
 
 function TradeSplit({ buyCount, sellCount }: { buyCount: number; sellCount: number }) {
     return (
-        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-            <div className="flex flex-col items-center p-3 rounded-xl bg-neon-green-50/60 dark:bg-neon-green-950/20 border border-neon-green-200/60 dark:border-neon-green-900/40 hover:bg-neon-green-50 dark:hover:bg-neon-green-950/30 transition-colors duration-200">
-                <span className="text-2xl font-black text-neon-green-500">{buyCount}</span>
-                <span className="text-[9px] font-black text-neon-green-600 dark:text-neon-green-400 uppercase tracking-widest mt-0.5">
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-boxel-bevel-hi">
+            <div className="voxel-trough rounded-none p-2.5 flex flex-col items-center gap-0.5">
+                <span className="text-sm font-bold font-mono text-success">{buyCount}</span>
+                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                     Buys
                 </span>
             </div>
-            <div className="flex flex-col items-center p-3 rounded-xl bg-alert-red-50/60 dark:bg-alert-red-950/20 border border-alert-red-200/60 dark:border-alert-red-900/40 hover:bg-alert-red-50 dark:hover:bg-alert-red-950/30 transition-colors duration-200">
-                <span className="text-2xl font-black text-alert-red-500">{sellCount}</span>
-                <span className="text-[9px] font-black text-alert-red-600 dark:text-alert-red-400 uppercase tracking-widest mt-0.5">
+            <div className="voxel-trough rounded-none p-2.5 flex flex-col items-center gap-0.5">
+                <span className="text-sm font-bold font-mono text-danger">{sellCount}</span>
+                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                     Sells
                 </span>
             </div>
@@ -110,34 +107,18 @@ function CardFooter({
     modelUsed?: string | null;
 }) {
     return (
-        <div className="space-y-3">
-            <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <span className="text-[10px] text-zinc-400 font-mono tabular-nums">
+        <div className="space-y-2 mt-auto">
+            <div className="flex items-center justify-between pt-2 border-t border-boxel-bevel-hi text-xs font-normal font-mono text-boxel-muted">
+                <span>
                     {formattedTime ? `Last analyzed: ${formattedTime}` : 'Waiting for analysis...'}
                 </span>
-                {modelUsed && (
-                    <span className="text-[10px] text-zinc-400 font-mono">{modelUsed}</span>
-                )}
+                {modelUsed && <span>{modelUsed}</span>}
             </div>
             <a
                 href="/market-overview"
-                className="inline-flex items-center gap-1 text-xs text-electric-blue-500 hover:text-electric-blue-700 dark:hover:text-electric-blue-300 transition-colors font-semibold underline underline-offset-2"
+                className="inline-flex items-center gap-1 text-sm font-bold text-accent hover:underline uppercase tracking-wider"
             >
-                View full market analysis
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                >
-                    <title>Arrow right</title>
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
+                View full market analysis →
             </a>
         </div>
     );
@@ -161,18 +142,11 @@ export function AIFeelingCard({ marketFeeling, trades, isSentimentStale }: AIFee
     const totalTrades = llmTrades.length;
 
     return (
-        <section className="space-y-8 animate-slide-up">
+        <section className="flex flex-col gap-4 h-full animate-slide-up">
             <SectionHeading gradient="electric">How is the AI Feeling?</SectionHeading>
 
-            <Card
-                isHoverable
-                padding="lg"
-                className="relative overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-electric-blue-300 dark:hover:border-electric-blue-700 hover:shadow-electric-blue-500/10 transition-all duration-300"
-            >
-                {/* Subtle gradient background accent */}
-                <div className="absolute inset-0 bg-gradient-to-br from-electric-blue-50/40 via-transparent to-deep-purple-50/20 dark:from-electric-blue-950/20 dark:via-transparent dark:to-deep-purple-950/10 pointer-events-none rounded-[inherit]" />
-
-                <div className="relative space-y-5">
+            <Card isHoverable padding="md" className="h-full flex flex-col justify-between gap-4">
+                <div className="flex flex-col gap-4">
                     <SentimentHeader
                         emoji={sentiment.emoji}
                         label={sentiment.label}
@@ -190,37 +164,36 @@ export function AIFeelingCard({ marketFeeling, trades, isSentimentStale }: AIFee
                                 textStyle="default"
                                 className="w-full"
                             />
-                            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium tracking-wide">
-                                Self-assessed conviction score generated by the AI meta-analyst
-                                based on session trades and news
+                            <p className="text-xs font-normal text-boxel-muted">
+                                Self-assessed conviction score generated by the AI meta-analyst.
                             </p>
                         </div>
                     )}
 
                     {sentiment.why && (
-                        <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed italic border-l-2 border-electric-blue-300 dark:border-electric-blue-700 pl-3">
+                        <p className="text-xs font-normal text-boxel-ink leading-relaxed italic border-l-2 border-accent pl-3">
                             "{sentiment.why}"
                         </p>
                     )}
 
                     {sentiment.primaryConcern && (
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold">
+                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                                 Primary Concern:
                             </span>
-                            <span className="text-xs px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 font-medium">
+                            <Badge colorScheme="neutral" size="xs">
                                 {sentiment.primaryConcern}
-                            </span>
+                            </Badge>
                         </div>
                     )}
 
                     {totalTrades > 0 && <TradeSplit buyCount={buyCount} sellCount={sellCount} />}
-
-                    <CardFooter
-                        formattedTime={marketFeeling?.formattedTime}
-                        modelUsed={marketFeeling?.model_used}
-                    />
                 </div>
+
+                <CardFooter
+                    formattedTime={marketFeeling?.formattedTime}
+                    modelUsed={marketFeeling?.model_used}
+                />
             </Card>
         </section>
     );

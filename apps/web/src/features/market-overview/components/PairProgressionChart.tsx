@@ -96,7 +96,7 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
             )
             .attr('color', '#94a3b8')
             .selectAll('text')
-            .attr('class', 'text-xs font-medium')
+            .attr('class', 'text-xs font-normal')
             .attr('dy', '1em');
 
         // Left Y Axis (Correlation)
@@ -104,7 +104,7 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
             .call(d3.axisLeft(yLeft).ticks(5).tickFormat(d3.format('.1f')))
             .attr('color', '#3b82f6') // Blue axis
             .selectAll('text')
-            .attr('class', 'text-xs font-semibold');
+            .attr('class', 'text-xs font-normal');
 
         // Left Axis Title
         g.append('text')
@@ -114,7 +114,7 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
             .attr('text-anchor', 'middle')
             .attr(
                 'class',
-                'text-[10px] font-black uppercase tracking-wider fill-blue-500 dark:fill-blue-400',
+                'text-xs font-bold uppercase tracking-wider fill-blue-500 dark:fill-blue-400',
             )
             .text('Correlation (Pearson)');
 
@@ -129,7 +129,7 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
             )
             .attr('color', '#10b981') // Green axis
             .selectAll('text')
-            .attr('class', 'text-xs font-semibold');
+            .attr('class', 'text-xs font-normal');
 
         // Right Axis Title
         g.append('text')
@@ -139,7 +139,7 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
             .attr('text-anchor', 'middle')
             .attr(
                 'class',
-                'text-[10px] font-black uppercase tracking-wider fill-emerald-500 dark:fill-emerald-400',
+                'text-xs font-bold uppercase tracking-wider fill-emerald-500 dark:fill-emerald-400',
             )
             .text('90D Trailing Return (%)');
 
@@ -278,36 +278,34 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
     return (
         <div
             ref={containerRef}
-            className="relative w-full overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800/80 rounded-3xl p-6 shadow-xl"
+            className="relative w-full overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800/80 rounded-none p-6 shadow-sm flex flex-col gap-6"
         >
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <div>
-                    <h4 className="text-md font-black tracking-tight text-zinc-900 dark:text-white uppercase">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                    <h4 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-white uppercase">
                         Weekly Correlation & Returns Timeline
                     </h4>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
                         Pearson correlation coefficient (solid) against 90-day returns of {tickerA}{' '}
                         and {tickerB} (dashed).
                     </p>
                 </div>
 
                 {/* Custom styled legend */}
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold">
                     <div className="flex items-center gap-2">
-                        <span className="w-4 h-1 rounded bg-gradient-to-r from-blue-500 to-purple-500" />
-                        <span className="font-semibold text-zinc-600 dark:text-zinc-300">
-                            Correlation
-                        </span>
+                        <span className="w-4 h-1 rounded-none bg-gradient-to-r from-blue-500 to-purple-500" />
+                        <span className="text-zinc-600 dark:text-zinc-300">Correlation</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="w-4 h-0.5 border-t-2 border-dashed border-emerald-500" />
-                        <span className="font-mono text-zinc-750 dark:text-zinc-300">
+                        <span className="font-mono text-zinc-700 dark:text-zinc-300">
                             {tickerA} Return
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="w-4 h-0.5 border-t-2 border-dashed border-amber-500" />
-                        <span className="font-mono text-zinc-750 dark:text-zinc-300">
+                        <span className="font-mono text-zinc-700 dark:text-zinc-300">
                             {tickerB} Return
                         </span>
                     </div>
@@ -316,13 +314,13 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
 
             {/* Premium Cursor Metrics Status Board (Defaults to latest week in timeline) */}
             {displayPoint && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 mb-6 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800/60 rounded-2xl shadow-inner font-sans animate-scale-in">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-4 p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800/60 rounded-none shadow-inner font-sans animate-scale-in items-stretch">
                     {/* Run Date */}
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                             Timeline Week
                         </span>
-                        <span className="text-xs sm:text-sm font-black text-zinc-850 dark:text-zinc-200 mt-1 uppercase">
+                        <span className="text-sm font-bold text-zinc-900 dark:text-zinc-200 uppercase">
                             {new Date(displayPoint.run_date).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -333,11 +331,11 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
                     </div>
 
                     {/* Pearson / Spearman Correlation */}
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                             Pearson / Spearman
                         </span>
-                        <span className="text-xs sm:text-sm font-black font-mono mt-1">
+                        <span className="text-sm font-bold font-mono">
                             <span className={getCorrelationColor(displayPoint.pearson_corr)}>
                                 {displayPoint.pearson_corr !== null
                                     ? displayPoint.pearson_corr.toFixed(3)
@@ -353,15 +351,15 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
                     </div>
 
                     {/* Asset A return */}
-                    <div className="flex flex-col">
+                    <div className="flex flex-col gap-1">
                         <span
-                            className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 truncate"
+                            className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 truncate"
                             title={`${tickerA} (${etfDescriptions[tickerA] || 'ETF'})`}
                         >
                             {tickerA} ({etfDescriptions[tickerA] || 'ETF'})
                         </span>
                         <span
-                            className={`text-xs sm:text-sm font-black font-mono mt-1 ${
+                            className={`text-sm font-bold font-mono ${
                                 displayPoint.returns_a_90d !== null &&
                                 displayPoint.returns_a_90d >= 0
                                     ? 'text-emerald-500'
@@ -373,15 +371,15 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
                     </div>
 
                     {/* Asset B return */}
-                    <div className="flex flex-col">
+                    <div className="flex flex-col gap-1">
                         <span
-                            className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 truncate"
+                            className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 truncate"
                             title={`${tickerB} (${etfDescriptions[tickerB] || 'ETF'})`}
                         >
                             {tickerB} ({etfDescriptions[tickerB] || 'ETF'})
                         </span>
                         <span
-                            className={`text-xs sm:text-sm font-black font-mono mt-1 ${
+                            className={`text-sm font-bold font-mono ${
                                 displayPoint.returns_b_90d !== null &&
                                 displayPoint.returns_b_90d >= 0
                                     ? 'text-emerald-500'

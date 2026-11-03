@@ -477,32 +477,39 @@ function ExplainerCard({ config }: { config: ExplainerConfig }) {
         <Card
             variant="glass"
             padding="md"
-            className={`border ${config.borderColor} ${config.bgColor}`}
+            className={`border rounded-none shadow-sm ${config.borderColor} ${config.bgColor}`}
         >
             <div className="flex items-center gap-2.5">
-                <span className="text-xl">{config.emoji}</span>
+                <span className="text-lg">{config.emoji}</span>
                 <div>
-                    <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                         {config.title}
-                        <Badge variant="glass" size="xs" colorScheme={config.badgeColorScheme}>
+                        <Badge
+                            variant="glass"
+                            size="xs"
+                            colorScheme={config.badgeColorScheme}
+                            radius="none"
+                        >
                             {config.badgeText}
                         </Badge>
                     </h3>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{config.subtitle}</p>
+                    <p className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                        {config.subtitle}
+                    </p>
                 </div>
             </div>
 
             <div
-                className={`mt-4 pt-4 border-t border-zinc-200/20 dark:border-zinc-800 grid ${
+                className={`pt-4 border-t border-zinc-200/20 dark:border-zinc-800 grid ${
                     config.gridColsClass ?? 'grid-cols-1 md:grid-cols-3'
-                } gap-4 text-xs`}
+                } gap-4 text-xs font-normal`}
             >
                 {config.pillars.map((p) => (
                     <div
                         key={p.title}
-                        className="space-y-1.5 p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-900/50"
+                        className="flex flex-col gap-1.5 p-3 rounded-none bg-zinc-100/50 dark:bg-zinc-900/50"
                     >
-                        <span className="font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
+                        <span className="font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
                             {p.title}
                         </span>
                         <div className="text-zinc-600 dark:text-zinc-400 leading-relaxed">

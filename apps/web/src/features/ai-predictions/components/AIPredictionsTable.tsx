@@ -95,14 +95,14 @@ interface AIPredictionTableRowProps {
 function PredictionValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode: ViewMode }) {
     if (viewMode === 'sector') {
         return (
-            <div className="space-y-0.5">
-                <div className="text-xs font-bold text-white flex items-center gap-1">
-                    <span className="text-blue-400 text-[10px] uppercase">Best:</span>
+            <div className="flex flex-col gap-0.5">
+                <div className="text-xs font-bold text-boxel-ink flex items-center gap-1">
+                    <span className="text-accent text-xs font-normal uppercase">Best:</span>
                     {pred.predicted_sector}
                 </div>
                 {pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN' && (
-                    <div className="text-xs font-medium text-rose-400 flex items-center gap-1">
-                        <span className="text-rose-400 text-[10px] uppercase">Worst:</span>
+                    <div className="text-xs font-normal text-rose-400 flex items-center gap-1">
+                        <span className="text-rose-400 text-xs font-normal uppercase">Worst:</span>
                         {pred.predicted_worst_sector}
                     </div>
                 )}
@@ -111,25 +111,25 @@ function PredictionValuesCell({ pred, viewMode }: { pred: SectorPrediction; view
     }
     if (viewMode === 'pair') {
         return (
-            <span className="text-xs font-medium text-emerald-400">
+            <span className="text-xs font-normal text-emerald-400">
                 {pred.predicted_pair.join(' + ')}
             </span>
         );
     }
     return (
-        <div className="space-y-0.5">
-            <div className="text-xs font-bold text-white flex items-center gap-1">
-                <span className="text-blue-400 text-[10px] uppercase">Sec:</span>
+        <div className="flex flex-col gap-0.5">
+            <div className="text-xs font-bold text-boxel-ink flex items-center gap-1">
+                <span className="text-accent text-xs font-normal uppercase">Sec:</span>
                 {pred.predicted_sector}
             </div>
             {pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN' && (
-                <div className="text-[11px] text-rose-400 flex items-center gap-1">
-                    <span className="text-rose-400/80 text-[10px] uppercase">Worst:</span>
+                <div className="text-xs font-normal text-rose-400 flex items-center gap-1">
+                    <span className="text-rose-400/80 text-xs font-normal uppercase">Worst:</span>
                     {pred.predicted_worst_sector}
                 </div>
             )}
-            <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                <span className="text-emerald-400 text-[10px] uppercase">Pair:</span>
+            <div className="text-xs font-normal text-boxel-muted flex items-center gap-1">
+                <span className="text-emerald-400 text-xs font-normal uppercase">Pair:</span>
                 {pred.predicted_pair.join(' + ')}
             </div>
         </div>
@@ -155,7 +155,7 @@ function ReturnMetricRow({
     const sign = isPositive ? '+' : '';
 
     return (
-        <div className={`text-[11px] font-semibold ${colorClass}`}>
+        <div className={`text-xs font-normal ${colorClass}`}>
             {`${sign}${value.toFixed(2)}% (${label})`}
         </div>
     );
@@ -163,19 +163,19 @@ function ReturnMetricRow({
 
 function PerformanceValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode: ViewMode }) {
     if (pred.status === 'pending') {
-        return <span className="text-xs text-slate-500 italic">Pending...</span>;
+        return <span className="text-xs text-boxel-muted italic">Pending...</span>;
     }
 
     const showSector = viewMode === 'dual' || viewMode === 'sector';
     const showPair = viewMode === 'dual' || viewMode === 'pair';
 
     return (
-        <div className="space-y-0.5">
+        <div className="flex flex-col gap-0.5">
             {showSector &&
                 (pred.predicted_sector_return != null ? (
                     <ReturnMetricRow value={pred.predicted_sector_return} label="Best" />
                 ) : (
-                    <div className="text-xs font-semibold text-slate-500">N/A</div>
+                    <div className="text-xs font-normal text-boxel-muted">N/A</div>
                 ))}
             {showSector && (
                 <ReturnMetricRow
@@ -219,7 +219,7 @@ function AlphaValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode:
             )}
             {(viewMode === 'dual' || viewMode === 'pair') && (
                 <div
-                    className={`text-[11px] ${
+                    className={`text-xs font-normal ${
                         (pairAlpha ?? 0) >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'
                     }`}
                 >
@@ -240,23 +240,23 @@ function EvaluationAuditDrawer({
     reasoning: string;
 }) {
     return (
-        <TableRow className="bg-slate-950/90 border-b border-slate-800">
-            <TableCell colSpan={7} className="p-4 space-y-3">
+        <TableRow className="bg-boxel-canvas border-b border-boxel-bevel-hi">
+            <TableCell colSpan={7} className="p-4 flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                    <div className="space-y-1 max-w-3xl">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-blue-400">
+                    <div className="flex flex-col gap-1 max-w-3xl">
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-accent">
                             Reasoning & Market Audit
                         </h4>
-                        <p className="text-xs text-slate-300 leading-relaxed italic">
+                        <p className="text-xs font-normal text-boxel-muted leading-relaxed italic">
                             "{reasoning}"
                         </p>
                     </div>
 
                     {auditData && (
-                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs space-y-1.5 min-w-[240px]">
-                            <div className="font-semibold text-slate-200 border-b border-slate-800 pb-1 flex justify-between">
+                        <div className="bg-boxel-trough p-3 rounded-none border border-boxel-bevel-hi text-xs font-normal flex flex-col gap-1.5 min-w-[240px]">
+                            <div className="text-sm font-bold text-boxel-ink border-b border-boxel-bevel-hi pb-1 flex justify-between">
                                 <span>Price Audit Window</span>
-                                <span className="text-slate-400 font-mono text-[10px]">
+                                <span className="text-boxel-muted font-mono text-xs font-normal">
                                     {auditData.start_date} ➔ {auditData.end_date}
                                 </span>
                             </div>
@@ -332,36 +332,32 @@ function AIPredictionTableRow({
                 {/* Model */}
                 <TableCell className="py-3">
                     <div className="flex items-center gap-2">
-                        <Badge
-                            colorScheme={colorScheme}
-                            variant="soft"
-                            className="text-[11px] font-semibold px-2 py-0.5"
-                        >
+                        <Badge colorScheme={colorScheme} variant="soft" className="px-2 py-0.5">
                             {displayName}
                         </Badge>
-                        <span className="text-[10px] text-slate-400 font-mono">
+                        <span className="text-xs font-normal text-boxel-muted font-mono">
                             {pred.prompt_tag}
                         </span>
                     </div>
                 </TableCell>
 
                 {/* Prediction Date */}
-                <TableCell className="text-xs text-slate-300 py-3 whitespace-nowrap">
+                <TableCell className="text-xs font-normal text-boxel-ink py-3 whitespace-nowrap">
                     {formatDateShort(pred.prediction_date)}
                 </TableCell>
 
                 {/* Target Date & Status */}
-                <TableCell className="text-xs py-3 whitespace-nowrap">
+                <TableCell className="text-xs font-normal py-3 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
-                        <span className="text-slate-300 font-medium">
+                        <span className="text-boxel-ink font-normal">
                             {formatDateShort(pred.target_date)}
                         </span>
                         {pred.status === 'pending' ? (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-700/50">
+                            <span className="text-xs font-normal px-1.5 py-0.5 rounded-none bg-accent/20 text-accent border border-accent/40">
                                 Active ({pred.timeframe})
                             </span>
                         ) : (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                            <span className="text-xs font-normal px-1.5 py-0.5 rounded-none bg-boxel-surface text-boxel-muted">
                                 Evaluated
                             </span>
                         )}
@@ -376,11 +372,11 @@ function AIPredictionTableRow({
                 {/* Confidence */}
                 <TableCell className="py-3 text-center whitespace-nowrap">
                     {pred.confidence != null ? (
-                        <span className="text-xs font-semibold text-slate-200">
+                        <span className="text-xs font-normal text-boxel-ink">
                             {pred.confidence.toFixed(0)}%
                         </span>
                     ) : (
-                        <span className="text-xs text-slate-500">--</span>
+                        <span className="text-xs font-normal text-boxel-muted">--</span>
                     )}
                 </TableCell>
 
@@ -588,14 +584,14 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                 </div>
 
                 {/* Target View Switcher */}
-                <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 self-end lg:self-auto">
+                <div className="flex bg-boxel-canvas p-1 rounded-none border border-boxel-bevel-hi self-end lg:self-auto">
                     <button
                         type="button"
                         onClick={() => setViewMode('dual')}
-                        className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
                             viewMode === 'dual'
-                                ? 'bg-blue-600/80 text-white shadow-sm'
-                                : 'text-slate-400 hover:text-slate-200'
+                                ? 'bg-accent text-accent-ink shadow-sm'
+                                : 'text-boxel-muted hover:text-boxel-ink'
                         }`}
                     >
                         Dual Target
@@ -603,10 +599,10 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                     <button
                         type="button"
                         onClick={() => setViewMode('sector')}
-                        className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
                             viewMode === 'sector'
-                                ? 'bg-blue-600/80 text-white shadow-sm'
-                                : 'text-slate-400 hover:text-slate-200'
+                                ? 'bg-accent text-accent-ink shadow-sm'
+                                : 'text-boxel-muted hover:text-boxel-ink'
                         }`}
                     >
                         Single Sector
@@ -614,10 +610,10 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                     <button
                         type="button"
                         onClick={() => setViewMode('pair')}
-                        className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
                             viewMode === 'pair'
-                                ? 'bg-blue-600/80 text-white shadow-sm'
-                                : 'text-slate-400 hover:text-slate-200'
+                                ? 'bg-accent text-accent-ink shadow-sm'
+                                : 'text-boxel-muted hover:text-boxel-ink'
                         }`}
                     >
                         Sector Pair
@@ -626,38 +622,38 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
             </div>
 
             {/* Predictions Data Table */}
-            <div className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="bg-boxel-trough border border-boxel-bevel-hi rounded-none overflow-hidden shadow-xl">
                 <Table>
-                    <TableHeader className="bg-slate-950/80 border-b border-slate-800">
-                        <TableRow className="border-slate-800 hover:bg-transparent">
+                    <TableHeader className="bg-boxel-surface border-b border-boxel-bevel-hi">
+                        <TableRow className="border-boxel-bevel-hi hover:bg-transparent">
                             <TableHead
-                                className="text-slate-300 font-semibold text-xs cursor-pointer select-none py-3"
+                                className="text-boxel-muted font-bold text-sm uppercase tracking-wider cursor-pointer select-none py-3"
                                 onClick={() => handleSort('model_name')}
                             >
                                 Model & Prompt {renderSortArrow('model_name')}
                             </TableHead>
                             <TableHead
-                                className="text-slate-300 font-semibold text-xs cursor-pointer select-none py-3"
+                                className="text-boxel-muted font-bold text-sm uppercase tracking-wider cursor-pointer select-none py-3"
                                 onClick={() => handleSort('prediction_date')}
                             >
                                 Prediction Date {renderSortArrow('prediction_date')}
                             </TableHead>
                             <TableHead
-                                className="text-slate-300 font-semibold text-xs cursor-pointer select-none py-3"
+                                className="text-boxel-muted font-bold text-sm uppercase tracking-wider cursor-pointer select-none py-3"
                                 onClick={() => handleSort('target_date')}
                             >
                                 Target Date {renderSortArrow('target_date')}
                             </TableHead>
-                            <TableHead className="text-slate-300 font-semibold text-xs py-3">
+                            <TableHead className="text-boxel-muted font-bold text-sm uppercase tracking-wider py-3">
                                 {viewMode === 'dual' && 'Predictions (Sector / Pair)'}
                                 {viewMode === 'sector' && 'Sector Pick'}
                                 {viewMode === 'pair' && 'Pair Combination'}
                             </TableHead>
-                            <TableHead className="text-slate-300 font-semibold text-xs py-3 text-center">
+                            <TableHead className="text-boxel-muted font-bold text-sm uppercase tracking-wider py-3 text-center">
                                 Confidence
                             </TableHead>
                             <TableHead
-                                className="text-slate-300 font-semibold text-xs cursor-pointer select-none py-3 text-right"
+                                className="text-boxel-muted font-bold text-sm uppercase tracking-wider cursor-pointer select-none py-3 text-right"
                                 onClick={() =>
                                     handleSort(
                                         viewMode === 'pair' ? 'pair_return' : 'sector_return',
@@ -670,7 +666,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                                 )}
                             </TableHead>
                             <TableHead
-                                className="text-slate-300 font-semibold text-xs cursor-pointer select-none py-3 text-right"
+                                className="text-boxel-muted font-bold text-sm uppercase tracking-wider cursor-pointer select-none py-3 text-right"
                                 onClick={() =>
                                     handleSort(viewMode === 'pair' ? 'pair_alpha' : 'sector_alpha')
                                 }
@@ -681,12 +677,12 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                                 )}
                             </TableHead>
                             <TableHead
-                                className="text-slate-300 font-semibold text-xs cursor-pointer select-none py-3 text-center"
+                                className="text-boxel-muted font-bold text-sm uppercase tracking-wider cursor-pointer select-none py-3 text-center"
                                 onClick={() => handleSort('score')}
                             >
                                 Percentile {renderSortArrow('score')}
                             </TableHead>
-                            <TableHead className="text-slate-300 font-semibold text-xs py-3 text-center">
+                            <TableHead className="text-boxel-muted font-bold text-sm uppercase tracking-wider py-3 text-center">
                                 Brier Score
                             </TableHead>
                         </TableRow>

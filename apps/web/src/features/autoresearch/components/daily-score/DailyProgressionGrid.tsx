@@ -31,30 +31,32 @@ function CheckpointBody({ cp }: { cp: Checkpoint }) {
     if (cp.isFuture) {
         return (
             <>
-                <div className="text-xs font-mono font-bold mt-1 text-zinc-500">N/A</div>
-                <div className="text-[8px] text-zinc-500 font-mono mt-0.5">P: N/A</div>
+                <div className="text-sm font-bold font-mono mt-1 text-boxel-muted">N/A</div>
+                <div className="text-xs text-boxel-muted font-mono font-normal mt-0.5">P: N/A</div>
             </>
         );
     }
     if (cp.isInProgress) {
         return (
             <>
-                <div className="text-xs font-mono font-bold mt-1 text-amber-400 animate-pulse">
+                <div className="text-sm font-bold font-mono mt-1 text-amber-400 animate-pulse">
                     Pending
                 </div>
-                <div className="text-[8px] text-zinc-400 font-mono mt-0.5">In Progress</div>
+                <div className="text-xs text-boxel-muted font-mono font-normal mt-0.5">
+                    In Progress
+                </div>
             </>
         );
     }
     return (
         <>
             <div
-                className={`text-xs font-mono font-bold mt-1 ${cp.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                className={`text-sm font-bold font-mono mt-1 ${cp.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
             >
                 {cp.score >= 0 ? '+' : ''}
                 {cp.score.toFixed(3)}
             </div>
-            <div className="text-[8px] text-zinc-400 font-mono mt-0.5">
+            <div className="text-xs text-boxel-muted font-mono font-normal mt-0.5">
                 P: {cp.portfolio.toFixed(2)}%
             </div>
         </>
@@ -68,14 +70,14 @@ export function CheckpointCard({ cp, idx, isActive, isSelected, onSelect }: Chec
             type="button"
             disabled={cp.isFuture}
             onClick={onSelect}
-            className={`p-3 rounded-xl border transition-all duration-300 w-full text-left ${cardClass}`}
+            className={`p-3 rounded-none h-full border transition-all duration-300 w-full text-left flex flex-col justify-between ${cardClass}`}
         >
             <div className="flex items-center justify-between gap-1 w-full">
-                <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
+                <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                     {cp.day.substring(0, 3)}
                 </div>
                 {cp.dateStr && (
-                    <div className="text-[8px] font-bold text-zinc-400 font-mono bg-zinc-800 px-1 py-0.5 rounded-sm">
+                    <div className="text-xs font-normal text-boxel-muted font-mono bg-boxel-trough px-1 py-0.5 rounded-none border border-boxel-bevel-hi">
                         {cp.dateStr}
                     </div>
                 )}
@@ -99,12 +101,12 @@ export function DailyProgressionGrid({
     onSelectDay,
 }: DailyProgressionGridProps) {
     return (
-        <div className="space-y-3 relative z-10 pt-2">
-            <SubHeading className="text-zinc-300 text-xs font-black uppercase tracking-wider">
+        <div className="flex flex-col gap-3 relative z-10 pt-2">
+            <SubHeading className="uppercase tracking-wider">
                 Day-by-Day Score Progression
             </SubHeading>
 
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2 items-stretch">
                 {checkpoints.map((cp, idx) => (
                     <CheckpointCard
                         key={cp.day}

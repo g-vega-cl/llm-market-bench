@@ -14,7 +14,7 @@ function StatusBadges({ isActive, isPending }: { isActive: boolean; isPending: b
         return (
             <Badge
                 variant="soft"
-                className="text-xs bg-zinc-800 border border-zinc-700 text-zinc-300"
+                className="text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-none"
             >
                 COMPLETED WEEK
             </Badge>
@@ -23,15 +23,15 @@ function StatusBadges({ isActive, isPending }: { isActive: boolean; isPending: b
 
     return (
         <>
-            <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase text-emerald-400 tracking-wider animate-pulse">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-none text-xs font-normal uppercase text-emerald-400 tracking-wider animate-pulse">
+                <span className="h-1.5 w-1.5 rounded-none bg-emerald-400 shadow-[0_0_8px_#34d399]" />
                 LIVE TRACKING
             </div>
             {isPending ? (
                 <Badge
                     variant="soft"
                     colorScheme="warning"
-                    className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5"
+                    className="tracking-wider uppercase px-2 py-0.5"
                 >
                     Day 1 In Progress (First Close 4:00 PM ET)
                 </Badge>
@@ -39,7 +39,7 @@ function StatusBadges({ isActive, isPending }: { isActive: boolean; isPending: b
                 <Badge
                     variant="soft"
                     colorScheme="warning"
-                    className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5"
+                    className="tracking-wider uppercase px-2 py-0.5"
                 >
                     Provisional Do-Nothing (0.00%)
                 </Badge>
@@ -57,7 +57,7 @@ function RunningScoreDisplay({
 }) {
     if (isPending) {
         return (
-            <div className="text-2xl font-black font-mono tracking-tight text-amber-400 animate-pulse">
+            <div className="text-lg font-bold font-mono tracking-tight text-amber-400 animate-pulse">
                 Pending
             </div>
         );
@@ -69,7 +69,7 @@ function RunningScoreDisplay({
         : 'text-rose-500';
 
     return (
-        <div className={`text-3xl font-black font-mono tracking-tight ${scoreColor}`}>
+        <div className={`text-lg font-bold font-mono tracking-tight ${scoreColor}`}>
             {isPositive ? '+' : ''}
             {dailyScore.toFixed(4)}
         </div>
@@ -87,21 +87,21 @@ export function DailyScoreOverview({
     return (
         <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <SectionHeading className="text-zinc-50 dark:text-zinc-50 font-black tracking-tight">
+                        <SectionHeading className="tracking-tight">
                             Daily Autoresearch Score
                         </SectionHeading>
                         <StatusBadges isActive={isActive} isPending={isPending} />
                     </div>
-                    <p className="text-zinc-400 text-xs max-w-lg">
+                    <p className="text-boxel-muted text-xs font-normal max-w-lg">
                         Real-time daily evaluation of the Meta-Researcher prompt performance against
                         active benchmark parameters.
                     </p>
                 </div>
 
                 <div className="flex flex-col items-end">
-                    <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                    <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                         Running Score
                     </div>
                     <RunningScoreDisplay isPending={isPending} dailyScore={dailyScore} />
@@ -109,7 +109,7 @@ export function DailyScoreOverview({
             </div>
 
             {/* Daily Metric Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-4 relative z-10 items-stretch">
                 <MetricTile
                     icon="⚡"
                     label="Daily Excess Return"

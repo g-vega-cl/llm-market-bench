@@ -19,9 +19,9 @@ export function HeroPredictionCard({ prediction }: HeroPredictionCardProps) {
     const directionText = isNoTrade ? '⚡ NO TRADE' : isUp ? '▲ UP' : '▼ DOWN';
 
     return (
-        <Card className="p-6 bg-gradient-to-br from-slate-900 to-slate-950 text-white rounded-2xl border border-slate-800 shadow-xl mb-8">
-            <div className="flex justify-between items-center mb-4">
-                <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+        <Card className="p-6 bg-boxel-surface text-boxel-ink rounded-none border border-boxel-bevel-hi flex flex-col gap-4 shadow-xl">
+            <div className="flex justify-between items-center">
+                <span className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
                     Latest Prediction • {prediction.target_date} ({prediction.ticker})
                 </span>
                 <Badge
@@ -34,13 +34,13 @@ export function HeroPredictionCard({ prediction }: HeroPredictionCardProps) {
                 </Badge>
             </div>
 
-            <div className="flex items-baseline gap-4 mb-4 flex-wrap">
-                <span className={`text-4xl font-black ${directionColor}`}>{directionText}</span>
-                <span className="text-xl font-semibold text-slate-200">
+            <div className="flex items-baseline gap-4 flex-wrap">
+                <span className={`text-lg font-bold ${directionColor}`}>{directionText}</span>
+                <span className="text-sm font-bold text-boxel-ink">
                     {prediction.confidence}% Confidence
                 </span>
                 {prediction.expected_return_pct !== null && (
-                    <span className="text-base text-slate-400">
+                    <span className="text-xs font-normal text-boxel-muted">
                         (Expected Return: {prediction.expected_return_pct > 0 ? '+' : ''}
                         {prediction.expected_return_pct}%)
                     </span>
@@ -48,8 +48,8 @@ export function HeroPredictionCard({ prediction }: HeroPredictionCardProps) {
             </div>
 
             {prediction.rationale && (
-                <div className="text-sm leading-relaxed text-slate-300 mb-4">
-                    <strong>Rationale:</strong> {prediction.rationale}
+                <div className="text-xs font-normal leading-relaxed text-boxel-ink">
+                    <strong className="font-bold">Rationale:</strong> {prediction.rationale}
                 </div>
             )}
 
@@ -61,7 +61,7 @@ export function HeroPredictionCard({ prediction }: HeroPredictionCardProps) {
                             colorScheme="neutral"
                             variant="soft"
                             size="xs"
-                            className="text-slate-200 bg-slate-800 border border-slate-700"
+                            className="text-boxel-ink bg-boxel-trough border border-boxel-bevel-hi"
                         >
                             {cat}
                         </Badge>

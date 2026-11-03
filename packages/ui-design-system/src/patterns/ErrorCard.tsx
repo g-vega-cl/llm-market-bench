@@ -18,22 +18,20 @@ export function ErrorCard({ title = 'Error', message, className, onRetry }: Erro
     return (
         <div
             className={cn(
-                'w-full max-w-2xl p-6 border border-danger/30 rounded-xl bg-danger-light/50 dark:bg-danger-dark/20',
+                'voxel-card rounded-none w-full max-w-2xl p-4 bg-boxel-surface border-t-danger/70 border-l-danger/70 flex flex-col gap-3',
                 className,
             )}
         >
-            <div className="flex items-start gap-3">
-                <div>
-                    <h3 className="text-sm font-bold text-danger mb-1">{title}</h3>
-                    <p className="text-sm text-danger/80">{message}</p>
-                </div>
+            <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-bold text-danger">{title}</h3>
+                <p className="text-xs font-normal text-boxel-muted leading-relaxed">{message}</p>
             </div>
             {onRetry && (
-                <div className="mt-4">
+                <div>
                     <button
                         type="button"
                         onClick={onRetry}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-danger rounded-lg hover:bg-danger/90 transition-colors"
+                        className="voxel-btn rounded-none px-3 py-1.5 text-sm font-bold text-white bg-danger hover:bg-danger/90 transition-colors uppercase tracking-wider"
                     >
                         Retry
                     </button>

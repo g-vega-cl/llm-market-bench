@@ -23,28 +23,21 @@ interface MilestoneCardProps {
     fontSize?: string;
 }
 
-export function MilestoneCard({
-    title,
-    value,
-    subtitle,
-    valueColor,
-    fontSize,
-}: MilestoneCardProps) {
+export function MilestoneCard({ title, value, subtitle, valueColor }: MilestoneCardProps) {
     return (
-        <Card className="p-5 flex flex-col justify-between min-w-0 overflow-hidden">
-            <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{title}</div>
+        <Card className="p-5 flex flex-col justify-between min-w-0 overflow-hidden rounded-none h-full gap-2">
+            <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                {title}
+            </div>
             <div
-                className={`font-bold mt-1 break-words overflow-wrap-anywhere ${
-                    fontSize ? '' : 'text-2xl'
-                }`}
+                className="text-lg font-bold font-mono break-words overflow-wrap-anywhere"
                 style={{
                     color: valueColor,
-                    fontSize: fontSize || undefined,
                 }}
             >
                 {value}
             </div>
-            <div className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">{subtitle}</div>
+            <div className="text-xs font-normal text-boxel-muted">{subtitle}</div>
         </Card>
     );
 }
@@ -71,15 +64,7 @@ export function AutoresearchMilestoneCards({
     const activeSubtitle = getMilestoneSubtitle(isBaselineAnchor, activeExp?.status);
 
     return (
-        <div
-            style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 12rem), 1fr))',
-                gap: '16px',
-                marginBottom: '24px',
-                minWidth: 0,
-            }}
-        >
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-4 items-stretch min-w-0">
             <MilestoneCard
                 title="Current Active Prompt"
                 value={
@@ -116,7 +101,6 @@ export function AutoresearchMilestoneCards({
                 value={deltaText}
                 subtitle={activeSubtitle}
                 valueColor={deltaColor}
-                fontSize="20px"
             />
             <MilestoneCard
                 title="Mutated Variants Tracked"

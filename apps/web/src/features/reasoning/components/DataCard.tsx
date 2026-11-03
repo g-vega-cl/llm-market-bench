@@ -4,7 +4,7 @@ import { Badge } from '@llm-market-bench/ui-design-system';
 export function DataCard({ item }: { item: Record<string, any> }) {
     if (typeof item !== 'object' || item === null) {
         return (
-            <div className="p-3 md:p-4 border border-gray-200 dark:border-gray-800 rounded-xl md:rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 font-mono text-[11px] md:text-xs">
+            <div className="p-3 border border-gray-200 dark:border-gray-800 rounded-none bg-gray-50/50 dark:bg-gray-900/50 font-mono text-xs font-normal">
                 {String(item)}
             </div>
         );
@@ -19,19 +19,20 @@ export function DataCard({ item }: { item: Record<string, any> }) {
     const shortFields = entries.filter(([k, _v]) => !longTextFields.find(([lk]) => lk === k));
 
     return (
-        <div className="p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40 shadow-sm hover:shadow-xl hover:border-blue-500/30 transition-all duration-300 group/card">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="p-5 rounded-none border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40 shadow-sm hover:border-blue-500/30 transition-all duration-300 flex flex-col gap-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-4 items-stretch">
                 {shortFields.map(([k, v]) => (
-                    <div key={k} className="space-y-0.5 md:space-y-1">
-                        <h6 className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover/card:text-blue-500/60 transition-colors">
+                    <div key={k} className="flex flex-col gap-1">
+                        <h6 className="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">
                             {k.replace(/_/g, ' ')}
                         </h6>
-                        <div className="text-[12px] md:text-[13px] font-bold text-gray-900 dark:text-gray-100 break-words">
+                        <div className="text-sm font-bold text-gray-900 dark:text-gray-100 break-words">
                             {typeof v === 'boolean' ? (
                                 <Badge
                                     variant="soft"
                                     colorScheme={v ? 'success' : 'danger'}
                                     size="sm"
+                                    radius="none"
                                 >
                                     {v ? 'YES' : 'NO'}
                                 </Badge>
@@ -43,13 +44,13 @@ export function DataCard({ item }: { item: Record<string, any> }) {
                 ))}
             </div>
             {longTextFields.length > 0 && (
-                <div className="mt-5 md:mt-8 space-y-4 md:space-y-6 pt-4 md:pt-6 border-t border-gray-100 dark:border-gray-800/50">
+                <div className="flex flex-col gap-4 pt-4 border-t border-gray-100 dark:border-gray-800/50">
                     {longTextFields.map(([k, v]) => (
-                        <div key={k} className="space-y-2 md:space-y-3">
-                            <h6 className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover/card:text-blue-500/60 transition-colors">
+                        <div key={k} className="flex flex-col gap-2">
+                            <h6 className="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">
                                 {k.replace(/_/g, ' ')}
                             </h6>
-                            <div className="text-[12px] md:text-[13px] leading-relaxed text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-light bg-gray-50/50 dark:bg-gray-950/30 p-3 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 dark:border-gray-800/50">
+                            <div className="text-xs font-normal leading-relaxed text-gray-600 dark:text-gray-400 whitespace-pre-wrap bg-gray-50/50 dark:bg-gray-950/30 p-3 rounded-none border border-gray-100 dark:border-gray-800/50">
                                 {String(v)}
                             </div>
                         </div>

@@ -34,19 +34,19 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
     );
 
     return (
-        <section className="space-y-8 animate-slide-up">
+        <section className="flex flex-col gap-6 animate-slide-up">
             <div className="flex items-center justify-between">
                 <SectionHeading gradient="catalyst">Live Market Pulse</SectionHeading>
 
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl">
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-none">
                     <div className="live-dot" />
-                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                         Real-time
                     </span>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-3 items-stretch">
                 {sortedPrices.map((update: PriceUpdate, idx) => {
                     const priceChange = update.price_change || 0;
                     const isPositive = priceChange >= 0;
@@ -55,9 +55,9 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                         <Card
                             key={update.ticker}
                             isHoverable
-                            radius="2xl"
+                            radius="none"
                             padding="sm"
-                            className="text-center relative overflow-hidden animate-slide-up"
+                            className="text-center relative overflow-hidden animate-slide-up rounded-none shadow-sm flex flex-col justify-between"
                             style={{ animationDelay: `${idx * 50}ms` }}
                         >
                             {/* Background Gradient on Hover */}
@@ -68,20 +68,20 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                             />
 
                             {/* Ticker */}
-                            <div className="relative">
-                                <div className="text-xs font-black text-zinc-400 mb-2 uppercase tracking-widest">
+                            <div className="relative flex flex-col gap-1">
+                                <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                                     {update.ticker}
                                 </div>
 
                                 {/* Price */}
-                                <div className="text-2xl font-black text-zinc-900 dark:text-white mb-2 text-display">
+                                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-white">
                                     ${Number(update.price).toFixed(2)}
                                 </div>
 
                                 {/* Change Indicator */}
                                 {priceChange !== 0 && (
                                     <div
-                                        className={`flex items-center justify-center gap-1 text-xs font-bold ${
+                                        className={`flex items-center justify-center gap-1 text-xs font-bold font-mono ${
                                             isPositive
                                                 ? 'text-neon-green-500'
                                                 : 'text-alert-red-500'
@@ -95,8 +95,8 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                                 )}
 
                                 {/* Timestamp */}
-                                <div className="text-[8px] text-zinc-400 font-mono mt-2 flex items-center justify-center gap-1">
-                                    <span className="w-1 h-1 bg-zinc-300 rounded-full" />
+                                <div className="text-xs font-normal text-zinc-400 font-mono flex items-center justify-center gap-1">
+                                    <span className="w-1 h-1 bg-zinc-300 rounded-none" />
                                     {`${formatEasternShortTime(update.fetched_at)} ET`}
                                 </div>
                             </div>

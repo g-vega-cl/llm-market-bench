@@ -42,15 +42,15 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
     );
 
     return (
-        <section className="space-y-4">
+        <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <SectionHeading gradient="electric">Active Multi-Horizon Forces</SectionHeading>
-                <Badge variant="soft" size="sm" colorScheme="accent">
+                <Badge variant="soft" size="sm" colorScheme="accent" radius="none">
                     2 to 24 Months Horizon
                 </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 items-stretch">
                 {forces.map((force) => {
                     const { emoji, label, colorScheme } = getArchetypeDetails(force.archetype);
                     const forceTickers = new Set(
@@ -83,20 +83,21 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                             key={force.force_title}
                             variant="outlined"
                             padding="md"
-                            className="bg-zinc-900/40 border-zinc-800 flex flex-col justify-between hover:border-zinc-700 transition-colors"
+                            className="h-full flex flex-col justify-between rounded-none hover:border-boxel-bevel-hi transition-colors gap-4"
                         >
-                            <div className="space-y-3">
+                            <div className="flex flex-col gap-3">
                                 <div className="flex items-start justify-between gap-2">
-                                    <div className="space-y-1">
+                                    <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2">
                                             <Badge
                                                 variant="soft"
                                                 size="sm"
                                                 colorScheme={colorScheme}
+                                                radius="none"
                                             >
                                                 {emoji} {label}
                                             </Badge>
-                                            <Badge variant="outline" size="sm">
+                                            <Badge variant="outline" size="sm" radius="none">
                                                 {force.horizon_months}m Horizon
                                             </Badge>
                                             {isPendingLiquidation && (
@@ -104,33 +105,37 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                                                     variant="solid"
                                                     size="sm"
                                                     colorScheme="danger"
+                                                    radius="none"
                                                 >
                                                     Pending Market Open
                                                 </Badge>
                                             )}
                                         </div>
-                                        <h4 className="text-base font-semibold text-zinc-100 mt-1">
+                                        <h4 className="text-sm font-bold text-zinc-100">
                                             {force.force_title}
                                         </h4>
                                     </div>
-                                    <Badge variant="soft" size="sm" colorScheme="accent">
+                                    <Badge
+                                        variant="soft"
+                                        size="sm"
+                                        colorScheme="accent"
+                                        radius="none"
+                                    >
                                         Conviction {force.conviction_score}/5
                                     </Badge>
                                 </div>
 
-                                <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed">
+                                <p className="text-xs font-normal text-zinc-400 line-clamp-3 leading-relaxed">
                                     {force.thesis}
                                 </p>
 
-                                <div className="text-xs text-zinc-500 bg-zinc-950/50 p-2.5 rounded border border-zinc-800/60 space-y-1.5">
+                                <div className="text-xs font-normal text-zinc-500 bg-zinc-950/50 p-2.5 rounded-none border border-zinc-800/60 flex flex-col gap-1.5">
                                     <div>
-                                        <span className="font-semibold text-zinc-400">
-                                            Milestone:{' '}
-                                        </span>
+                                        <span className="font-bold text-zinc-400">Milestone: </span>
                                         {force.catalyst_event}
                                     </div>
                                     <div>
-                                        <span className="font-semibold text-rose-400">
+                                        <span className="font-bold text-rose-400">
                                             Invalidation Trigger:{' '}
                                         </span>
                                         <span className="text-zinc-400">
@@ -140,14 +145,14 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                                 </div>
                             </div>
 
-                            <div className="mt-4 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+                            <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-zinc-500">Tickers:</span>
                                     {Array.isArray(force.tickers) &&
                                         force.tickers.map((t) => (
                                             <span
                                                 key={t}
-                                                className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-200 font-mono font-medium"
+                                                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-zinc-200 font-mono text-xs font-bold"
                                             >
                                                 {t}
                                             </span>
@@ -163,7 +168,7 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                                             </strong>
                                         </span>
                                         <span
-                                            className={`font-semibold ${
+                                            className={`font-bold font-mono ${
                                                 forcePnlPct >= 0
                                                     ? 'text-emerald-400'
                                                     : 'text-rose-400'

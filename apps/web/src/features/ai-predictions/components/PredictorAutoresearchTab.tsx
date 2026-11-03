@@ -119,13 +119,13 @@ function PredictorExperimentRow({
             {showModelBadge && (
                 <TableCell>
                     <span
-                        className={`inline-block px-2 py-0.5 text-[11px] font-bold rounded ${trackInfo.badgeClass}`}
+                        className={`inline-block px-2 py-0.5 text-xs font-normal rounded-none ${trackInfo.badgeClass}`}
                     >
                         {trackInfo.label}
                     </span>
                 </TableCell>
             )}
-            <TableCell className="font-mono text-slate-200 font-medium text-xs break-all max-w-[120px]">
+            <TableCell className="font-mono text-boxel-ink font-normal text-xs break-all max-w-[120px]">
                 {exp.variant_tag}
             </TableCell>
             <TableCell>
@@ -143,7 +143,7 @@ function PredictorExperimentRow({
             <TableCell
                 className={`font-bold ${
                     formattedScore === 'N/A'
-                        ? 'text-slate-500 font-medium'
+                        ? 'text-boxel-muted font-normal'
                         : score > 0
                           ? 'text-emerald-400'
                           : 'text-rose-400'
@@ -172,43 +172,41 @@ function PredictorTrackHeaderCards({
     activeVariant: string;
 }) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-6 backdrop-blur-sm">
-                <div className="flex justify-between items-start mb-2">
-                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch">
+            <div className="bg-boxel-surface border border-boxel-bevel-hi rounded-none p-6 flex flex-col justify-between h-full">
+                <div className="flex justify-between items-start">
+                    <h2 className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                         {trackConfig?.label ?? 'Model'} All-Time Baseline Score
                     </h2>
                     <span
-                        className={`px-2 py-0.5 text-xs font-bold rounded ${
+                        className={`px-2 py-0.5 text-xs font-normal rounded-none ${
                             trackConfig?.badgeClass ?? ''
                         }`}
                     >
                         {trackConfig?.shortLabel}
                     </span>
                 </div>
-                <div className="text-3xl font-black text-emerald-400 font-mono">
-                    {baselineScore}
-                </div>
-                <p className="text-slate-400 text-xs mt-2">
+                <div className="text-lg font-bold text-emerald-400 font-mono">{baselineScore}</div>
+                <p className="text-boxel-muted text-xs font-normal">
                     Ratchet high-water mark for {trackConfig?.label ?? 'this model track'}
                 </p>
             </div>
 
-            <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-6 backdrop-blur-sm">
-                <div className="flex justify-between items-start mb-2">
-                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="bg-boxel-surface border border-boxel-bevel-hi rounded-none p-6 flex flex-col justify-between h-full">
+                <div className="flex justify-between items-start">
+                    <h2 className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                         {trackConfig?.label ?? 'Model'} Active Prompt
                     </h2>
                     <span
-                        className={`px-2 py-0.5 text-xs font-bold rounded ${
+                        className={`px-2 py-0.5 text-xs font-normal rounded-none ${
                             trackConfig?.badgeClass ?? ''
                         }`}
                     >
                         {trackConfig?.shortLabel}
                     </span>
                 </div>
-                <div className="text-3xl font-black text-blue-400 font-mono">{activeVariant}</div>
-                <p className="text-slate-400 text-xs mt-2">
+                <div className="text-lg font-bold text-accent font-mono">{activeVariant}</div>
+                <p className="text-boxel-muted text-xs font-normal">
                     The currently deployed strategy for {trackConfig?.label ?? 'this model track'}
                 </p>
             </div>
@@ -239,38 +237,38 @@ function PredictorPromptInspector({
     }
 
     return (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
             {header && (
-                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <div className="p-4 bg-boxel-canvas border border-boxel-bevel-hi rounded-none flex flex-col gap-2">
+                    <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                         Frozen System Constraints (Header)
                     </div>
-                    <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap font-mono text-xs font-normal text-boxel-muted max-h-48 overflow-y-auto">
                         {header}
                     </pre>
                 </div>
             )}
 
-            <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
+            <div className="p-4 bg-boxel-trough border border-emerald-500/30 rounded-none flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                    <div className="text-sm font-bold text-emerald-400 uppercase tracking-wider">
                         Mutable Analytical Strategies (Evolved by Autoresearch)
                     </div>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono">
+                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-none font-mono font-normal">
                         v{variantTag}
                     </span>
                 </div>
-                <pre className="whitespace-pre-wrap font-mono text-xs text-emerald-100 max-h-96 overflow-y-auto">
+                <pre className="whitespace-pre-wrap font-mono text-xs font-normal text-emerald-100 max-h-96 overflow-y-auto">
                     {mutable}
                 </pre>
             </div>
 
             {footer && (
-                <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <div className="p-4 bg-boxel-canvas border border-boxel-bevel-hi rounded-none flex flex-col gap-2">
+                    <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                         Frozen Output Schema (Footer)
                     </div>
-                    <pre className="whitespace-pre-wrap font-mono text-xs text-slate-400 max-h-48 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap font-mono text-xs font-normal text-boxel-muted max-h-48 overflow-y-auto">
                         {footer}
                     </pre>
                 </div>
@@ -350,10 +348,10 @@ function PredictorExperimentDetailsPane({
             />
 
             {/* Metadata Row & Change Description */}
-            <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-900/40 rounded-xl border border-slate-800/50 text-xs">
+            <Card className="p-6 bg-boxel-surface border-boxel-bevel-hi flex flex-col gap-6">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-4 p-4 bg-boxel-trough rounded-none border border-boxel-bevel-hi text-xs font-normal items-stretch">
                     <div>
-                        <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                        <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider mb-1">
                             Experiment Type
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -374,37 +372,37 @@ function PredictorExperimentDetailsPane({
                         </div>
                     </div>
                     <div>
-                        <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                        <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider mb-1">
                             Active Period
                         </div>
-                        <div className="text-slate-300 font-medium">
+                        <div className="text-boxel-ink font-normal">
                             {formatStableDate(selectedExperiment.week_start)} -{' '}
                             {formatStableDate(selectedExperiment.week_end)}
                         </div>
                     </div>
                     <div>
-                        <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                        <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider mb-1">
                             Parent Variant
                         </div>
-                        <div className="text-slate-300 font-mono font-medium">
+                        <div className="text-boxel-ink font-mono font-normal">
                             {selectedExperiment.parent_tag || (
-                                <span className="text-slate-500 italic">None (Root)</span>
+                                <span className="text-boxel-muted italic">None (Root)</span>
                             )}
                         </div>
                     </div>
                     <div>
-                        <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                        <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider mb-1">
                             Created At
                         </div>
-                        <div className="text-slate-300 font-medium">
+                        <div className="text-boxel-ink font-normal">
                             {formatStableDate(selectedExperiment.created_at)}
                         </div>
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <SubHeading className="text-slate-300">Change Description</SubHeading>
-                    <p className="text-slate-400 italic text-sm">
+                <div className="flex flex-col gap-2">
+                    <SubHeading className="text-boxel-ink">Change Description</SubHeading>
+                    <p className="text-boxel-muted italic text-xs font-normal">
                         "{selectedExperiment.change_description || 'No description provided.'}"
                     </p>
                 </div>
@@ -519,11 +517,11 @@ export function PredictorAutoresearchTab({
                     percentile ranking and benchmark outperformance while docking uncalibrated
                     probability confidence:
                 </p>
-                <div className="py-4 px-6 bg-slate-900/60 border border-slate-700/50 rounded-xl flex flex-col items-center justify-center space-y-2">
-                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <div className="py-4 px-6 bg-boxel-trough border border-boxel-bevel-hi rounded-none flex flex-col items-center justify-center gap-2">
+                    <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                         Ratchet Baseline Formula
                     </div>
-                    <div className="text-base sm:text-lg font-mono font-bold text-slate-200 text-center leading-relaxed">
+                    <div className="text-lg font-mono font-bold text-boxel-ink text-center leading-relaxed">
                         Score = Base Percentile + S&amp;P Alpha Bonus − (Mean Brier × 50.0)
                     </div>
                 </div>
@@ -531,18 +529,18 @@ export function PredictorAutoresearchTab({
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
                 {/* Sidebar: List of Experiments */}
-                <div className="xl:col-span-4 space-y-6">
+                <div className="xl:col-span-4 flex flex-col gap-6">
                     <div className="flex items-center justify-between px-2">
-                        <SectionHeading className="text-slate-200">
+                        <SectionHeading className="text-boxel-ink">
                             {activeTrack === 'all'
                                 ? 'All Experiments'
                                 : `${activeTrackConfig?.shortLabel ?? ''} History`}
                         </SectionHeading>
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-widest">
+                        <span className="text-xs font-normal text-boxel-muted uppercase tracking-widest">
                             {filteredExperiments.length} Experiments
                         </span>
                     </div>
-                    <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden">
+                    <div className="bg-boxel-trough border border-boxel-bevel-hi rounded-none overflow-hidden">
                         <Table>
                             <TableHeader>
                                 <TableRow isHoverable={false} className="border-slate-800">

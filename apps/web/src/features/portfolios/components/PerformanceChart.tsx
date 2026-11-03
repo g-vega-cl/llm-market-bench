@@ -441,20 +441,22 @@ export function PerformanceChart({
     const displayData = tooltipData || getLatestWithBenchmark();
 
     return (
-        <div className="w-full bg-white border border-zinc-200 rounded-xl p-4 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">
+        <div className="w-full bg-white border border-zinc-200 rounded-none p-4 shadow-sm overflow-hidden flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                     {showPercentage && hasBenchmark ? 'Performance vs Benchmark' : 'Equity Curve'}
                 </h3>
                 {hasBenchmark && (
-                    <div className="text-xs text-zinc-400">Normalized to percentage returns</div>
+                    <div className="text-xs font-normal text-zinc-400">
+                        Normalized to percentage returns
+                    </div>
                 )}
             </div>
             {displayData && (
-                <div className="mb-4 p-3 bg-zinc-50 rounded-lg border border-zinc-100">
-                    <div className="text-xs text-zinc-500 mb-1">{displayData.date}</div>
+                <div className="p-3 bg-zinc-50 rounded-none border border-zinc-100 flex flex-col gap-1">
+                    <div className="text-xs font-normal text-zinc-500">{displayData.date}</div>
                     <div className="flex items-baseline gap-3">
-                        <span className="text-xl font-bold text-sky-600">
+                        <span className="text-lg font-bold font-mono text-sky-600">
                             {showPercentage && hasBenchmark
                                 ? `${displayData.equity > 0 ? '+' : ''}${displayData.equity.toFixed(2)}%`
                                 : `$${displayData.equity.toLocaleString('en-US', {
@@ -464,8 +466,8 @@ export function PerformanceChart({
                         </span>
                     </div>
                     {displayData.benchmarkValue !== undefined && (
-                        <div className="mt-2 pt-2 border-t border-zinc-200">
-                            <div className="text-sm text-amber-600">
+                        <div className="pt-2 border-t border-zinc-200">
+                            <div className="text-sm font-bold text-amber-600">
                                 {
                                     BENCHMARK_OPTIONS.find((b) => b.ticker === selectedBenchmark)
                                         ?.label

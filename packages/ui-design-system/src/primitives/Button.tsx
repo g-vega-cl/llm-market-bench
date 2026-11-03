@@ -14,7 +14,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
     variant?: 'solid' | 'outline' | 'ghost' | 'soft' | 'glass';
     size?: 'sm' | 'md' | 'lg';
     colorScheme?: 'accent' | 'success' | 'danger' | 'info' | 'warning' | 'neutral';
-    rounded?: 'xl' | 'full';
+    rounded?: 'none' | 'xl' | 'full';
     gradient?: boolean;
     isLoading?: boolean;
     leftIcon?: React.ReactNode;

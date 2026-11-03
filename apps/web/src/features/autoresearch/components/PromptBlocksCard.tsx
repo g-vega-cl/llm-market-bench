@@ -109,27 +109,31 @@ export function PromptBlocksCard({
 
             {/* Block Delta */}
             {hasDelta && (
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-3">
-                    <h4 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                <div className="p-4 bg-boxel-canvas rounded-none border border-boxel-bevel-hi flex flex-col gap-3">
+                    <h4 className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
                         Discipline Evolution (Pivot Delta)
                     </h4>
                     <div className="flex flex-wrap gap-2">
                         {added.map((blockId) => (
                             <div
                                 key={blockId}
-                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-semibold rounded-full min-w-0"
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-normal rounded-none min-w-0"
                             >
                                 <span className="font-mono break-all">+ {blockId}</span>
-                                <span className="text-[10px] opacity-85 shrink-0">(enabled)</span>
+                                <span className="text-xs font-normal opacity-85 shrink-0">
+                                    (enabled)
+                                </span>
                             </div>
                         ))}
                         {removed.map((blockId) => (
                             <div
                                 key={blockId}
-                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-semibold rounded-full line-through min-w-0"
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs font-normal rounded-none line-through min-w-0"
                             >
                                 <span className="font-mono break-all">- {blockId}</span>
-                                <span className="text-[10px] opacity-85 shrink-0">(disabled)</span>
+                                <span className="text-xs font-normal opacity-85 shrink-0">
+                                    (disabled)
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -137,12 +141,7 @@ export function PromptBlocksCard({
             )}
 
             {/* Grid of Blocks */}
-            <div
-                className="grid gap-3"
-                style={{
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 15rem), 1fr))',
-                }}
-            >
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3 items-stretch">
                 {allBlocks.map((block) => {
                     const isEnabled = activeBlocks.includes(block.id);
                     const wasEnabled = parentBlocks.includes(block.id);
@@ -151,35 +150,35 @@ export function PromptBlocksCard({
                     return (
                         <div
                             key={block.id}
-                            className={`p-4 rounded-xl border transition-all duration-200 flex flex-col justify-between space-y-2 min-w-0 overflow-hidden ${
+                            className={`p-4 rounded-none h-full border transition-all duration-200 flex flex-col justify-between gap-2 min-w-0 overflow-hidden ${
                                 isEnabled
-                                    ? 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
-                                    : 'bg-zinc-100/50 dark:bg-zinc-950/20 border-zinc-200/50 dark:border-zinc-900/40 opacity-40'
+                                    ? 'bg-boxel-trough border-boxel-bevel-hi'
+                                    : 'bg-boxel-canvas/40 border-boxel-bevel-lo opacity-40'
                             } ${isNew ? 'ring-1 ring-emerald-500/30 border-emerald-500/30' : ''}`}
                         >
-                            <div className="space-y-1 min-w-0">
+                            <div className="flex flex-col gap-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
                                     <span
-                                        className={`font-mono text-xs font-bold break-words ${isEnabled ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-600 line-through'}`}
+                                        className={`font-mono text-sm font-bold break-words ${isEnabled ? 'text-boxel-ink' : 'text-boxel-muted line-through'}`}
                                     >
                                         {block.title}
                                     </span>
                                     {isEnabled ? (
-                                        <span className="text-emerald-500 text-xs font-bold flex items-center gap-1 shrink-0">
+                                        <span className="text-emerald-400 text-xs font-normal flex items-center gap-1 shrink-0">
                                             ✓{' '}
                                             {isNew && (
-                                                <span className="text-[9px] bg-emerald-500 text-white dark:text-zinc-950 px-1 py-0.5 rounded font-sans font-normal uppercase animate-pulse">
+                                                <span className="text-xs bg-emerald-500 text-boxel-trough px-1 py-0.5 rounded-none font-sans font-normal uppercase animate-pulse">
                                                     new
                                                 </span>
                                             )}
                                         </span>
                                     ) : (
-                                        <span className="text-zinc-400 dark:text-zinc-700 text-xs shrink-0">
+                                        <span className="text-boxel-muted text-xs font-normal shrink-0">
                                             ✗
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal break-words">
+                                <p className="text-xs font-normal text-boxel-muted leading-normal break-words">
                                     {block.desc}
                                 </p>
                             </div>

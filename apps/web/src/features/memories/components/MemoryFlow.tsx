@@ -181,7 +181,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             })
             .attr(
                 'class',
-                'text-[10px] font-medium fill-zinc-500 pointer-events-none uppercase tracking-wide',
+                'text-xs font-bold fill-zinc-500 pointer-events-none uppercase tracking-wide',
             );
 
         // Text: Date
@@ -195,7 +195,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
                     timeZone: 'America/New_York',
                 });
             })
-            .attr('class', 'text-[10px] font-mono fill-zinc-400 pointer-events-none');
+            .attr('class', 'text-xs font-normal font-mono fill-zinc-400 pointer-events-none');
 
         // Text: Content
         node.append('foreignObject')
@@ -204,7 +204,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             .attr('x', -nodeWidth / 2 + 12)
             .attr('y', 28)
             .append('xhtml:div')
-            .style('font-size', '11px')
+            .style('font-size', '12px')
             .style('line-height', '1.4')
             .style('color', '#3f3f46')
             .style('overflow', 'hidden')
@@ -217,7 +217,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
     }, [memories, onSelect]);
 
     return (
-        <div className="relative border border-zinc-200 dark:border-zinc-800 rounded-md bg-white dark:bg-zinc-900 overflow-hidden h-[600px] mb-6">
+        <div className="relative border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 overflow-hidden h-[600px] mb-6">
             <div
                 ref={containerRef}
                 className="relative w-full h-full cursor-grab active:cursor-grabbing"
@@ -225,14 +225,14 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
 
             {/* Hover Tooltip */}
             {hoveredNode && (
-                <div className="absolute top-4 right-4 p-4 bg-white dark:bg-zinc-900 shadow-lg rounded-md border border-zinc-200 dark:border-zinc-800 max-w-sm pointer-events-none z-10">
-                    <div className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-2">
+                <div className="absolute top-4 right-4 p-4 bg-white dark:bg-zinc-900 shadow-lg rounded-none border border-zinc-200 dark:border-zinc-800 max-w-sm pointer-events-none z-10 flex flex-col gap-2">
+                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                         {hoveredNode.metadata?.type?.replace('_', ' ')}
                     </div>
-                    <div className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed mb-3">
+                    <div className="text-xs font-normal text-zinc-800 dark:text-zinc-200 leading-relaxed">
                         {hoveredNode.content}
                     </div>
-                    <div className="text-xs text-zinc-400 border-t border-zinc-200 dark:border-zinc-800 pt-2">
+                    <div className="text-xs font-normal text-zinc-400 border-t border-zinc-200 dark:border-zinc-800 pt-2 font-mono">
                         {hoveredNode.created_at
                             ? formatEasternDateTime(hoveredNode.created_at)
                             : '-'}
@@ -241,26 +241,34 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             )}
 
             {/* Legend */}
-            <div className="absolute bottom-4 left-4 flex flex-wrap gap-4 bg-white/95 dark:bg-zinc-900/95 p-3 rounded border border-zinc-200 dark:border-zinc-800 z-10">
+            <div className="absolute bottom-4 left-4 flex flex-wrap gap-4 bg-white/95 dark:bg-zinc-900/95 p-3 rounded-none border border-zinc-200 dark:border-zinc-800 z-10">
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400">Update</span>
+                    <div className="w-2 h-2 rounded-none bg-blue-500"></div>
+                    <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">
+                        Update
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400">Resolution</span>
+                    <div className="w-2 h-2 rounded-none bg-emerald-500"></div>
+                    <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">
+                        Resolution
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400">Reversal</span>
+                    <div className="w-2 h-2 rounded-none bg-rose-500"></div>
+                    <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">
+                        Reversal
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-zinc-400"></div>
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400">Resolved</span>
+                    <div className="w-2 h-2 rounded-none bg-zinc-400"></div>
+                    <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">
+                        Resolved
+                    </span>
                 </div>
             </div>
 
-            <div className="absolute top-4 right-4 text-xs text-zinc-400 bg-white/95 dark:bg-zinc-900/95 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 z-10">
+            <div className="absolute top-4 right-4 text-xs font-normal text-zinc-400 bg-white/95 dark:bg-zinc-900/95 px-2 py-1 rounded-none border border-zinc-200 dark:border-zinc-800 z-10">
                 Scroll to zoom • Drag to pan
             </div>
         </div>

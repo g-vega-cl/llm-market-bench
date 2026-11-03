@@ -606,7 +606,9 @@ You MUST return a valid JSON object.`,
         fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
 
         // Detail column must be part of fluid flex-wrap layout and have min-w-0
-        const detailColumn = container.querySelector('.flex-wrap > div:last-child') as HTMLElement;
+        const detailColumn = container.querySelector(
+            '.flex-wrap.gap-6 > div:last-child',
+        ) as HTMLElement;
         expect(detailColumn).not.toBeNull();
         expect(detailColumn.className).toContain('min-w-0');
         expect(detailColumn.className).toContain('basis-96');

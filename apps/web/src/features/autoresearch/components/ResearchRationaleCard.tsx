@@ -15,12 +15,12 @@ function ConvictionGauge({ confidence }: { confidence: number }) {
     const color = getConfidenceColor(confidence);
     const width = `${Math.min(100, Math.max(0, confidence))}%`;
     return (
-        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-xl">
-            <span className="text-[10px] uppercase font-bold text-zinc-400">Conviction:</span>
-            <div className="w-24 bg-zinc-800 h-2 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all ${color}`} style={{ width }} />
+        <div className="flex items-center gap-2 bg-boxel-trough border border-boxel-bevel-hi px-3 py-1.5 rounded-none">
+            <span className="text-sm uppercase font-bold text-boxel-muted">Conviction:</span>
+            <div className="w-24 bg-boxel-canvas h-2 rounded-none overflow-hidden">
+                <div className={`h-full rounded-none transition-all ${color}`} style={{ width }} />
             </div>
-            <span className="font-mono text-xs font-bold text-zinc-200">{confidence}%</span>
+            <span className="font-mono text-sm font-bold text-boxel-ink">{confidence}%</span>
         </div>
     );
 }
@@ -65,9 +65,9 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
 
                 {/* Hypothesis */}
                 {hypothesis && (
-                    <div className="space-y-2">
+                    <div className="flex flex-col gap-2">
                         <SubHeading>Hypothesis</SubHeading>
-                        <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-sm text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 break-words">
+                        <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-none text-xs font-normal text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 break-words">
                             {hypothesis}
                         </div>
                     </div>
@@ -75,9 +75,9 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
 
                 {/* Meta-Researcher Reasoning / Logic */}
                 {reasoning && (
-                    <div className="space-y-2">
+                    <div className="flex flex-col gap-2">
                         <SubHeading>Meta-Researcher Analytical Reasoning</SubHeading>
-                        <div className="whitespace-pre-wrap break-words text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 font-sans">
+                        <div className="whitespace-pre-wrap break-words text-xs font-normal text-zinc-600 dark:text-zinc-400 leading-relaxed bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-none border border-zinc-200 dark:border-zinc-800 font-sans">
                             {reasoning}
                         </div>
                     </div>
@@ -85,14 +85,14 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
 
                 {/* Durable Institutional Memory / Insight */}
                 {insight && (
-                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2 break-words">
+                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-none flex flex-col gap-2 break-words">
                         <div className="flex items-center gap-2">
                             <span className="text-emerald-500 text-sm">💾</span>
                             <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                                 Durable Memory Saved for this Track
                             </span>
                         </div>
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300 italic">
+                        <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 italic">
                             "{insight}"
                         </p>
                     </div>

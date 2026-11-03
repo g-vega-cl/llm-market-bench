@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { Badge } from '@llm-market-bench/ui-design-system';
+import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
 import type { SectorPrediction } from '../api/fetch-predictions';
 import { AIPredictionChart } from '../components/AIPredictionChart';
@@ -122,118 +122,134 @@ function ArenaTabContent({
     return (
         <div className="space-y-8 animate-in fade-in duration-300">
             {/* SECTION 1: Head-to-Head Scoreboard (4 Models) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch">
                 {/* DeepSeek */}
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <h2 className="text-xl font-bold text-blue-400">DeepSeek Models</h2>
-                        <Badge colorScheme="accent" variant="soft">
+                <Card
+                    isHoverable
+                    padding="md"
+                    className="h-full flex flex-col justify-between gap-4"
+                >
+                    <div className="flex justify-between items-start gap-2">
+                        <h2 className="text-sm font-bold text-boxel-ink">DeepSeek Models</h2>
+                        <Badge colorScheme="accent" variant="soft" size="xs">
                             {deepSeekMetrics.evaluatedCount} Evaluated
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-boxel-bevel-hi">
                         <div>
-                            <div className="text-3xl font-light text-white mb-1">
+                            <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
                                 {deepSeekMetrics.avgScore}
                             </div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                Avg Percentile Score
+                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                Avg Percentile
                             </div>
                         </div>
                         <div>
-                            <div className="text-3xl font-light text-emerald-400 mb-1">
+                            <div className="text-lg font-bold font-mono text-success tabular-nums">
                                 {deepSeekMetrics.topQuartileRate}
                             </div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                Top-Quartile Call Rate
+                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                Top-Quartile
                             </div>
                         </div>
                     </div>
-                </div>
+                </Card>
 
                 {/* MiniMax */}
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <h2 className="text-xl font-bold text-emerald-400">MiniMax-M3</h2>
-                        <Badge colorScheme="neutral" variant="soft">
+                <Card
+                    isHoverable
+                    padding="md"
+                    className="h-full flex flex-col justify-between gap-4"
+                >
+                    <div className="flex justify-between items-start gap-2">
+                        <h2 className="text-sm font-bold text-boxel-ink">MiniMax-M3</h2>
+                        <Badge colorScheme="neutral" variant="soft" size="xs">
                             {miniMaxMetrics.evaluatedCount} Evaluated
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-boxel-bevel-hi">
                         <div>
-                            <div className="text-3xl font-light text-white mb-1">
+                            <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
                                 {miniMaxMetrics.avgScore}
                             </div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                Avg Percentile Score
+                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                Avg Percentile
                             </div>
                         </div>
                         <div>
-                            <div className="text-3xl font-light text-emerald-400 mb-1">
+                            <div className="text-lg font-bold font-mono text-success tabular-nums">
                                 {miniMaxMetrics.topQuartileRate}
                             </div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                Top-Quartile Call Rate
+                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                Top-Quartile
                             </div>
                         </div>
                     </div>
-                </div>
+                </Card>
 
                 {/* Gemini */}
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <h2 className="text-xl font-bold text-amber-400">Gemini 3.5</h2>
-                        <Badge colorScheme="accent" variant="soft">
+                <Card
+                    isHoverable
+                    padding="md"
+                    className="h-full flex flex-col justify-between gap-4"
+                >
+                    <div className="flex justify-between items-start gap-2">
+                        <h2 className="text-sm font-bold text-boxel-ink">Gemini 3.5</h2>
+                        <Badge colorScheme="accent" variant="soft" size="xs">
                             {geminiMetrics.evaluatedCount} Evaluated
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-boxel-bevel-hi">
                         <div>
-                            <div className="text-3xl font-light text-white mb-1">
+                            <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
                                 {geminiMetrics.avgScore}
                             </div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                Avg Percentile Score
+                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                Avg Percentile
                             </div>
                         </div>
                         <div>
-                            <div className="text-3xl font-light text-emerald-400 mb-1">
+                            <div className="text-lg font-bold font-mono text-success tabular-nums">
                                 {geminiMetrics.topQuartileRate}
                             </div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                Top-Quartile Call Rate
+                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                Top-Quartile
                             </div>
                         </div>
                     </div>
-                </div>
+                </Card>
 
                 {/* OpenAI / GPT */}
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <h2 className="text-xl font-bold text-purple-400">OpenAI GPT-5.6</h2>
-                        <Badge colorScheme="neutral" variant="soft">
+                <Card
+                    isHoverable
+                    padding="md"
+                    className="h-full flex flex-col justify-between gap-4"
+                >
+                    <div className="flex justify-between items-start gap-2">
+                        <h2 className="text-sm font-bold text-boxel-ink">OpenAI GPT-5.6</h2>
+                        <Badge colorScheme="neutral" variant="soft" size="xs">
                             {openAiMetrics.evaluatedCount} Evaluated
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-boxel-bevel-hi">
                         <div>
-                            <div className="text-3xl font-light text-white mb-1">
+                            <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
                                 {openAiMetrics.avgScore}
                             </div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                Avg Percentile Score
+                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                Avg Percentile
                             </div>
                         </div>
                         <div>
-                            <div className="text-3xl font-light text-emerald-400 mb-1">
+                            <div className="text-lg font-bold font-mono text-success tabular-nums">
                                 {openAiMetrics.topQuartileRate}
                             </div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                Top-Quartile Call Rate
+                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                Top-Quartile
                             </div>
                         </div>
                     </div>
-                </div>
+                </Card>
             </div>
 
             {/* SECTION 2: Historical Accuracy Trend Chart */}
@@ -252,10 +268,10 @@ function ArenaTabContent({
                                 key={tf}
                                 type="button"
                                 onClick={() => setTimeframeFilter(tf)}
-                                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
                                     timeframeFilter === tf
-                                        ? 'bg-slate-800 text-white shadow-sm'
-                                        : 'text-slate-400 hover:text-slate-200'
+                                        ? 'bg-boxel-elevated text-boxel-ink shadow-sm'
+                                        : 'text-boxel-muted hover:text-boxel-ink'
                                 }`}
                             >
                                 {tf.toUpperCase()}
@@ -266,18 +282,18 @@ function ArenaTabContent({
                 {chartFilteredData.length > 0 ? (
                     <AIPredictionChart data={chartFilteredData} />
                 ) : (
-                    <div className="h-[300px] flex items-center justify-center text-slate-400 text-sm">
+                    <div className="h-[300px] flex items-center justify-center text-boxel-muted text-xs font-normal">
                         No evaluated predictions available for this timeframe.
                     </div>
                 )}
             </div>
 
             {/* SECTION 3: Unified Predictions Table & Feed */}
-            <div className="space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+            <div className="flex flex-col gap-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-boxel-trough p-4 rounded-none border border-boxel-bevel-hi">
                     <div>
-                        <h3 className="text-xl font-bold text-white">All Sector Predictions</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <h3 className="text-lg font-bold text-boxel-ink">All Sector Predictions</h3>
+                        <p className="text-xs font-normal text-boxel-muted mt-0.5">
                             Interactive view for tracking prediction performance, Alpha vs S&P 500,
                             and target dates across all models.
                         </p>
@@ -285,14 +301,14 @@ function ArenaTabContent({
 
                     {/* View Switcher: Table vs Detailed Cards */}
                     <div className="flex items-center gap-3">
-                        <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                        <div className="flex bg-boxel-canvas p-1 rounded-none border border-boxel-bevel-hi">
                             <button
                                 type="button"
                                 onClick={() => setFeedViewMode('table')}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                                className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors flex items-center gap-1.5 ${
                                     feedViewMode === 'table'
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'text-slate-400 hover:text-slate-200'
+                                        ? 'bg-accent text-accent-ink shadow-sm'
+                                        : 'text-boxel-muted hover:text-boxel-ink'
                                 }`}
                             >
                                 <span>📊 Data Table</span>
@@ -300,10 +316,10 @@ function ArenaTabContent({
                             <button
                                 type="button"
                                 onClick={() => setFeedViewMode('cards')}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                                className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors flex items-center gap-1.5 ${
                                     feedViewMode === 'cards'
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'text-slate-400 hover:text-slate-200'
+                                        ? 'bg-accent text-accent-ink shadow-sm'
+                                        : 'text-boxel-muted hover:text-boxel-ink'
                                 }`}
                             >
                                 <span>🎴 Feed Cards</span>
@@ -315,17 +331,17 @@ function ArenaTabContent({
                 {feedViewMode === 'table' ? (
                     <AIPredictionsTable predictions={data} />
                 ) : (
-                    <div className="space-y-6">
-                        <div className="flex flex-wrap items-center gap-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+                    <div className="flex flex-col gap-6">
+                        <div className="flex flex-wrap items-center gap-3 bg-boxel-trough p-3 rounded-none border border-boxel-bevel-hi">
                             {/* Status Segmented Filter */}
-                            <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                            <div className="flex bg-boxel-canvas p-1 rounded-none border border-boxel-bevel-hi">
                                 <button
                                     type="button"
                                     onClick={() => setStatusFilter('all')}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                    className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                                         statusFilter === 'all'
-                                            ? 'bg-slate-800 text-white shadow-sm'
-                                            : 'text-slate-400 hover:text-slate-200'
+                                            ? 'bg-boxel-elevated text-boxel-ink shadow-sm'
+                                            : 'text-boxel-muted hover:text-boxel-ink'
                                     }`}
                                 >
                                     All Forecasts ({data.length})
@@ -333,10 +349,10 @@ function ArenaTabContent({
                                 <button
                                     type="button"
                                     onClick={() => setStatusFilter('active')}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                    className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                                         statusFilter === 'active'
-                                            ? 'bg-blue-600/80 text-white shadow-sm'
-                                            : 'text-slate-400 hover:text-slate-200'
+                                            ? 'bg-accent text-accent-ink shadow-sm'
+                                            : 'text-boxel-muted hover:text-boxel-ink'
                                     }`}
                                 >
                                     🔮 Active ({pendingPredictions.length})
@@ -344,10 +360,10 @@ function ArenaTabContent({
                                 <button
                                     type="button"
                                     onClick={() => setStatusFilter('past')}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                    className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                                         statusFilter === 'past'
                                             ? 'bg-emerald-600/80 text-white shadow-sm'
-                                            : 'text-slate-400 hover:text-slate-200'
+                                            : 'text-boxel-muted hover:text-boxel-ink'
                                     }`}
                                 >
                                     🎯 Past Outcomes ({evaluatedPredictions.length})
@@ -355,16 +371,16 @@ function ArenaTabContent({
                             </div>
 
                             {/* Timeframe Segmented Filter */}
-                            <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                            <div className="flex bg-boxel-canvas p-1 rounded-none border border-boxel-bevel-hi">
                                 {(['all', '7d', '30d', '60d', '90d'] as const).map((tf) => (
                                     <button
                                         key={tf}
                                         type="button"
                                         onClick={() => setTimeframeFilter(tf)}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                                             timeframeFilter === tf
-                                                ? 'bg-slate-800 text-white shadow-sm'
-                                                : 'text-slate-400 hover:text-slate-200'
+                                                ? 'bg-boxel-elevated text-boxel-ink shadow-sm'
+                                                : 'text-boxel-muted hover:text-boxel-ink'
                                         }`}
                                     >
                                         {tf.toUpperCase()}
@@ -446,13 +462,13 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
     );
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <div className="p-8 max-w-7xl mx-auto flex flex-col gap-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-lg font-bold tracking-tight text-boxel-ink uppercase">
                         AI Sector Predictions Arena
                     </h1>
-                    <p className="text-slate-400 mt-2 text-lg">
+                    <p className="text-boxel-muted text-xs font-normal">
                         Multi-Model Arena: DeepSeek, MiniMax-M3, Gemini 3.5 & OpenAI GPT-5.6
                         predicting top-performing sectors and uncorrelated pairs.
                     </p>
@@ -461,21 +477,21 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                     type="button"
                     onClick={handleRefresh}
                     disabled={loading}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-semibold"
+                    className="voxel-btn px-4 py-2 bg-boxel-surface hover:bg-boxel-elevated border border-boxel-bevel-hi text-boxel-ink rounded-none transition-colors flex items-center gap-2 text-sm font-bold"
                 >
                     {loading ? 'Refreshing...' : 'Refresh Data'}
                 </button>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-slate-700/60">
+            <div className="flex border-b border-boxel-bevel-hi">
                 <button
                     type="button"
                     onClick={() => setActiveTab('arena')}
-                    className={`py-3 px-6 font-semibold border-b-2 text-sm transition-all duration-200 ${
+                    className={`py-3 px-6 font-bold border-b-2 text-sm transition-all duration-200 ${
                         activeTab === 'arena'
-                            ? 'border-blue-500 text-blue-400'
-                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                            ? 'border-accent text-accent'
+                            : 'border-transparent text-boxel-muted hover:text-boxel-ink'
                     }`}
                 >
                     Arena Dashboard
@@ -483,10 +499,10 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                 <button
                     type="button"
                     onClick={() => setActiveTab('autoresearch')}
-                    className={`py-3 px-6 font-semibold border-b-2 text-sm transition-all duration-200 ${
+                    className={`py-3 px-6 font-bold border-b-2 text-sm transition-all duration-200 ${
                         activeTab === 'autoresearch'
-                            ? 'border-emerald-500 text-emerald-400'
-                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                            ? 'border-accent text-accent'
+                            : 'border-transparent text-boxel-muted hover:text-boxel-ink'
                     }`}
                 >
                     Prompt Auto-Research

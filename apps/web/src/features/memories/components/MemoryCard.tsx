@@ -214,12 +214,17 @@ export function MemoryCard({ memory }: MemoryCardProps) {
             variant="glass"
             padding="md"
             id={memory.id}
-            className="group w-full transition-colors"
+            className="group w-full transition-colors rounded-none"
         >
             {/* Header */}
             <div className="flex flex-wrap items-start gap-3 mb-4">
                 <div className="flex flex-wrap gap-2 items-center">
-                    <Badge variant="soft" colorScheme={badgeConfig.colorScheme} size="sm">
+                    <Badge
+                        variant="soft"
+                        colorScheme={badgeConfig.colorScheme}
+                        size="sm"
+                        radius="none"
+                    >
                         {badgeConfig.label}
                     </Badge>
 
@@ -228,37 +233,38 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             variant={memory.status === 'RESOLVED' ? 'solid' : 'soft'}
                             colorScheme={memory.status === 'RESOLVED' ? 'neutral' : 'warning'}
                             size="sm"
+                            radius="none"
                         >
                             {memory.status}
                         </Badge>
                     )}
 
                     {isResolved && winningScenario && (
-                        <Badge variant="solid" colorScheme="success" size="sm">
+                        <Badge variant="solid" colorScheme="success" size="sm" radius="none">
                             🏆 Winning Scenario: {winningScenario.cleanHeader}
                         </Badge>
                     )}
 
                     {memory.parent_id && (
-                        <Badge variant="soft" colorScheme="info" size="sm">
+                        <Badge variant="soft" colorScheme="info" size="sm" radius="none">
                             {memory.relationship_type || 'Related'}
                         </Badge>
                     )}
 
                     {memory.importance_score != null && (
-                        <Badge variant="soft" colorScheme="neutral" size="sm">
+                        <Badge variant="soft" colorScheme="neutral" size="sm" radius="none">
                             Score: {memory.importance_score}/10
                         </Badge>
                     )}
 
                     {memory.similarity != null && (
-                        <Badge variant="solid" colorScheme="accent" size="sm">
+                        <Badge variant="solid" colorScheme="accent" size="sm" radius="none">
                             Match: {Math.round(memory.similarity * 100)}%
                         </Badge>
                     )}
 
                     {memory.metadata?.debate?.stress_tested && (
-                        <Badge variant="soft" colorScheme="warning" size="sm">
+                        <Badge variant="soft" colorScheme="warning" size="sm" radius="none">
                             🛡️ Stress-Tested
                         </Badge>
                     )}
@@ -276,7 +282,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                     ? memory.metadata.ticker
                                     : undefined,
                         }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/80 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors shadow-xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-none text-xs font-bold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/80 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors shadow-xs"
                         title="Discuss this memory in AI Chat Gateway"
                     >
                         <span>💬</span>
@@ -299,7 +305,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
             {/* Content */}
             <p
-                className={`text-base text-zinc-800 dark:text-zinc-200 leading-relaxed mb-4 ${
+                className={`text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed mb-4 ${
                     memory.status === 'RESOLVED' ? 'opacity-60 line-through' : ''
                 }`}
             >
@@ -310,7 +316,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
             {memory.metadata && Object.keys(memory.metadata).length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                     {memory.metadata.ticker && (
-                        <Badge variant="soft" colorScheme="info" size="sm">
+                        <Badge variant="soft" colorScheme="info" size="sm" radius="none">
                             ${memory.metadata.ticker}
                         </Badge>
                     )}
@@ -326,13 +332,14 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                       : 'neutral'
                             }
                             size="sm"
+                            radius="none"
                         >
                             {memory.metadata.impact}
                         </Badge>
                     )}
 
                     {memory.metadata.model_name && (
-                        <Badge variant="soft" colorScheme="neutral" size="sm">
+                        <Badge variant="soft" colorScheme="neutral" size="sm" radius="none">
                             {memory.metadata.model_name}
                         </Badge>
                     )}
@@ -342,6 +349,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             variant="soft"
                             colorScheme={memory.metadata.is_regret ? 'warning' : 'success'}
                             size="sm"
+                            radius="none"
                         >
                             {memory.metadata.is_regret ? 'Regret' : 'Success'}
                         </Badge>
@@ -362,7 +370,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                     <button
                         type="button"
                         onClick={() => setIsExpanded(!isExpanded)}
-                        className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                        className="flex items-center gap-2 text-sm font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                     >
                         <svg
                             className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -382,10 +390,10 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                     </button>
 
                     {isExpanded && (
-                        <div className="mt-4 p-4 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
+                        <div className="mt-4 p-4 rounded-none bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
                             {/* Resolution & Performance Analysis Section */}
                             {(isResolved || childResolution || activeCe || winningScenario) && (
-                                <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-4">
+                                <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-none flex flex-col gap-4">
                                     <div className="flex items-center gap-2">
                                         <span className="text-emerald-500 text-lg">⚡</span>
                                         <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
@@ -394,21 +402,21 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                     </div>
 
                                     {/* What Resolved Section */}
-                                    <div className="space-y-1">
+                                    <div className="flex flex-col gap-1">
                                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
                                             What Resolved:
                                         </span>
-                                        <p className="text-sm text-zinc-800 dark:text-zinc-200 font-medium">
+                                        <p className="text-xs font-normal text-zinc-800 dark:text-zinc-200">
                                             {memory.content.split('|')[0].trim()}
                                         </p>
 
                                         {childResolution && (
-                                            <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium mt-1">
+                                            <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 mt-1">
                                                 Resolved by:{' '}
                                                 <Link
                                                     to="/memories/chain/$memoryId"
                                                     params={{ memoryId: childResolution.id }}
-                                                    className="text-blue-500 hover:underline font-semibold"
+                                                    className="text-blue-500 hover:underline font-bold"
                                                 >
                                                     {childResolution.content
                                                         .split('|')[0]
@@ -421,12 +429,13 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                                     {/* Winning Scenario Summary Banner */}
                                     {winningScenario && (
-                                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg space-y-1">
+                                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-none flex flex-col gap-1">
                                             <div className="flex items-center gap-2">
                                                 <Badge
                                                     colorScheme="success"
                                                     variant="solid"
                                                     size="xs"
+                                                    radius="none"
                                                 >
                                                     🏆 WINNING SCENARIO
                                                 </Badge>
@@ -435,7 +444,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                 </span>
                                             </div>
                                             {winningScenario.outcome && (
-                                                <p className="text-xs text-zinc-700 dark:text-zinc-300 mt-1 leading-relaxed">
+                                                <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 mt-1 leading-relaxed">
                                                     {winningScenario.outcome}
                                                 </p>
                                             )}
@@ -444,13 +453,13 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                                     {/* Why It Resolved Section */}
                                     {activeCe && (
-                                        <div className="space-y-3 pt-3 border-t border-emerald-500/10">
+                                        <div className="flex flex-col gap-3 pt-3 border-t border-emerald-500/10">
                                             <div>
                                                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-1">
                                                     Why It Resolved (Market Outcome & Confidence:{' '}
                                                     {activeCe.confidence}%)
                                                 </span>
-                                                <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-lg text-sm text-zinc-200 font-semibold leading-relaxed">
+                                                <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-none text-xs text-zinc-200 font-bold leading-relaxed">
                                                     {activeCe.market_outcome}
                                                 </div>
                                             </div>
@@ -459,7 +468,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-wide block mb-1">
                                                     Causal Analysis & Learning Playbook
                                                 </span>
-                                                <p className="text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-900/10 p-3 rounded-lg border border-zinc-800/30">
+                                                <p className="text-xs font-normal text-zinc-650 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-900/10 p-3 rounded-none border border-zinc-800/30">
                                                     {activeCe.analysis}
                                                 </p>
                                             </div>
@@ -469,7 +478,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                     {activeCe.tags.map((tag) => (
                                                         <span
                                                             key={tag}
-                                                            className="px-3 py-1 bg-zinc-800 text-zinc-400 text-[10px] uppercase font-bold rounded-full border border-zinc-700"
+                                                            className="px-3 py-1 bg-zinc-800 text-zinc-400 text-xs uppercase font-bold rounded-none border border-zinc-700"
                                                         >
                                                             {tag}
                                                         </span>
@@ -483,7 +492,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                             {/* Adversarial Red-Team Stress-Test Section */}
                             {memory.metadata?.debate && (
-                                <div className="mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3">
+                                <div className="mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-none flex flex-col gap-3">
                                     <div className="flex items-center justify-between gap-2 flex-wrap">
                                         <div className="flex items-center gap-2">
                                             <span className="text-amber-500 text-lg">🛡️</span>
@@ -492,29 +501,34 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                             </h4>
                                         </div>
                                         {memory.metadata.debate.adversary_model && (
-                                            <Badge variant="soft" colorScheme="neutral" size="xs">
+                                            <Badge
+                                                variant="soft"
+                                                colorScheme="neutral"
+                                                size="xs"
+                                                radius="none"
+                                            >
                                                 Challenger: {memory.metadata.debate.adversary_model}
                                             </Badge>
                                         )}
                                     </div>
 
                                     {memory.metadata.debate.counter_thesis && (
-                                        <div className="space-y-1">
+                                        <div className="flex flex-col gap-1">
                                             <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
                                                 Counter-Thesis:
                                             </span>
-                                            <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                            <p className="text-xs font-normal text-zinc-800 dark:text-zinc-200 leading-relaxed">
                                                 {memory.metadata.debate.counter_thesis}
                                             </p>
                                         </div>
                                     )}
 
                                     {memory.metadata.debate.pre_mortem && (
-                                        <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                        <div className="flex flex-col gap-1 pt-2 border-t border-amber-500/10">
                                             <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wide">
                                                 Pre-Mortem Failure Mode:
                                             </span>
-                                            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono bg-zinc-900/10 dark:bg-zinc-900/40 p-2.5 rounded-md border border-zinc-200 dark:border-zinc-800">
+                                            <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono bg-zinc-900/10 dark:bg-zinc-900/40 p-2.5 rounded-none border border-zinc-200 dark:border-zinc-800">
                                                 {memory.metadata.debate.pre_mortem}
                                             </p>
                                         </div>
@@ -522,11 +536,11 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                                     {memory.metadata.debate.key_risks &&
                                         memory.metadata.debate.key_risks.length > 0 && (
-                                            <div className="space-y-1 pt-2 border-t border-amber-500/10">
-                                                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
+                                            <div className="flex flex-col gap-1 pt-2 border-t border-amber-500/10">
+                                                <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                                                     Key Unaddressed Risks:
                                                 </span>
-                                                <ul className="list-disc list-inside text-xs text-zinc-600 dark:text-zinc-400 space-y-0.5">
+                                                <ul className="list-disc list-inside text-xs font-normal text-zinc-600 dark:text-zinc-400 space-y-0.5">
                                                     {memory.metadata.debate.key_risks.map(
                                                         (risk: string, rIdx: number) => (
                                                             <li key={rIdx}>{risk}</li>
@@ -538,7 +552,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                                     {!memory.metadata.debate.counter_thesis &&
                                         memory.metadata.debate.challenger_critique && (
-                                            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                                            <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
                                                 {memory.metadata.debate.challenger_critique}
                                             </p>
                                         )}
@@ -547,7 +561,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                             {/* Historical Precedent / Parallel Section */}
                             {memory.metadata?.historical_parallel && (
-                                <div className="mb-6 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl space-y-3">
+                                <div className="mb-6 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-none flex flex-col gap-3">
                                     <div className="flex items-center justify-between gap-2 flex-wrap">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-indigo-500 text-lg">📜</span>
@@ -556,7 +570,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                 {typeof memory.metadata.historical_parallel ===
                                                     'object' &&
                                                     memory.metadata.historical_parallel.title && (
-                                                        <span className="font-semibold normal-case text-indigo-600 dark:text-indigo-400">
+                                                        <span className="font-bold normal-case text-indigo-600 dark:text-indigo-400">
                                                             {
                                                                 memory.metadata.historical_parallel
                                                                     .title
@@ -578,7 +592,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                     </div>
 
                                     {typeof memory.metadata.historical_parallel === 'string' ? (
-                                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                        <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 leading-relaxed">
                                             {memory.metadata.historical_parallel}
                                         </p>
                                     ) : (
@@ -588,7 +602,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                     <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
                                                         Precedent:
                                                     </span>
-                                                    <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                                    <p className="text-xs font-normal text-zinc-800 dark:text-zinc-200 leading-relaxed">
                                                         {
                                                             memory.metadata.historical_parallel
                                                                 .precedent
@@ -603,7 +617,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                     <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
                                                         Market Reaction:
                                                     </span>
-                                                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono bg-zinc-900/10 dark:bg-zinc-900/40 p-2.5 rounded-md border border-zinc-200 dark:border-zinc-800">
+                                                    <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono bg-zinc-900/10 dark:bg-zinc-900/40 p-2.5 rounded-none border border-zinc-200 dark:border-zinc-800">
                                                         {
                                                             memory.metadata.historical_parallel
                                                                 .market_reaction
@@ -617,7 +631,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
                                                         Key Takeaway & Playbook:
                                                     </span>
-                                                    <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                                    <p className="text-xs font-normal text-zinc-800 dark:text-zinc-200 leading-relaxed">
                                                         {
                                                             memory.metadata.historical_parallel
                                                                 .takeaway
@@ -630,7 +644,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                 memory.metadata.historical_parallel.affected_assets
                                                     .length > 0 && (
                                                     <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-indigo-500/10">
-                                                        <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mr-1">
+                                                        <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                                                             Assets Involved:
                                                         </span>
                                                         {memory.metadata.historical_parallel.affected_assets.map(
@@ -663,7 +677,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                                 ? memory.metadata.ticker
                                                                 : undefined),
                                                     }}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 transition-colors border border-indigo-200 dark:border-indigo-800/60"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 transition-colors border border-indigo-200 dark:border-indigo-800/60"
                                                     title="Interrogate this historical parallel in AI Chat"
                                                 >
                                                     <span>💬</span>
@@ -678,12 +692,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             {scenarios.length > 0 && (
                                 <>
                                     <div className="flex items-center gap-2 mb-3">
-                                        <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
+                                        <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
                                             Scenario Analysis
                                         </h4>
                                     </div>
 
-                                    <div className="flex flex-col space-y-3 text-sm text-zinc-700 dark:text-zinc-300 mb-4">
+                                    <div className="flex flex-col space-y-3 text-xs font-normal text-zinc-700 dark:text-zinc-300 mb-4">
                                         {scenarios.map((scenario, i) => {
                                             const isWinning =
                                                 winningScenario &&
@@ -694,7 +708,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                             return (
                                                 <div
                                                     key={i}
-                                                    className={`p-3.5 rounded-lg transition-all ${
+                                                    className={`p-3.5 rounded-none transition-all ${
                                                         isWinning
                                                             ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-2 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/20'
                                                             : isResolved
@@ -726,7 +740,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                                             ? 'success'
                                                                             : 'accent'
                                                                     }
-                                                                    radius="md"
+                                                                    radius="none"
                                                                     className="tabular-nums"
                                                                 >
                                                                     {scenario.percentage}
@@ -739,6 +753,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                                 colorScheme="success"
                                                                 variant="solid"
                                                                 size="xs"
+                                                                radius="none"
                                                             >
                                                                 🏆 WINNING SCENARIO
                                                             </Badge>
@@ -747,6 +762,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                                 colorScheme="neutral"
                                                                 variant="soft"
                                                                 size="xs"
+                                                                radius="none"
                                                             >
                                                                 Did Not Occur
                                                             </Badge>
@@ -754,16 +770,16 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                     </div>
 
                                                     {scenario.outcome && (
-                                                        <div className="text-sm leading-relaxed mb-2">
+                                                        <div className="text-xs font-normal leading-relaxed mb-2">
                                                             {scenario.outcome}
                                                         </div>
                                                     )}
                                                     {scenario.tradingPlan && (
                                                         <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-                                                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
+                                                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block mb-1">
                                                                 Trading Plan:
                                                             </span>
-                                                            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                                            <p className="text-xs font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
                                                                 {scenario.tradingPlan}
                                                             </p>
                                                         </div>
@@ -773,7 +789,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                     {scenario.assets &&
                                                         scenario.assets.length > 0 && (
                                                             <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
-                                                                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
+                                                                <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
                                                                     Actionable Assets:
                                                                 </span>
                                                                 <div className="flex flex-wrap gap-2">
@@ -787,12 +803,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                                                         asset,
                                                                                     )
                                                                                 }
-                                                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 hover:scale-105 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer shadow-sm"
+                                                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer shadow-sm"
                                                                             >
                                                                                 <span>
                                                                                     ${asset.ticker}
                                                                                 </span>
-                                                                                <span className="text-[10px] opacity-75 font-normal">
+                                                                                <span className="text-xs opacity-75 font-normal">
                                                                                     ({asset.name})
                                                                                 </span>
                                                                             </button>
@@ -812,12 +828,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             {remainingAssets.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                                     <div className="flex items-center gap-2 mb-3">
-                                        <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
+                                        <h5 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
                                             Other Investable Assets
                                         </h5>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-2 items-stretch">
                                         {remainingAssets
                                             .slice(0, 6)
                                             .map((asset: DiscoveredAsset, idx: number) => (
@@ -825,22 +841,22 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                     type="button"
                                                     key={idx}
                                                     onClick={() => setSelectedAsset(asset)}
-                                                    className="flex flex-col items-start justify-between p-3 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left w-full"
+                                                    className="flex flex-col items-start justify-between p-3 rounded-none border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left w-full h-full"
                                                 >
                                                     <div className="flex flex-col w-full mb-2">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                            <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                                                                 ${asset.ticker}
                                                             </span>
-                                                            <span className="text-xs text-zinc-500">
+                                                            <span className="text-xs text-zinc-500 font-normal">
                                                                 {asset.name}
                                                             </span>
                                                         </div>
-                                                        <span className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
+                                                        <span className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1 font-normal">
                                                             {asset.reason}
                                                         </span>
                                                     </div>
-                                                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
                                                         View details →
                                                     </span>
                                                 </button>
@@ -853,10 +869,15 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             {sourceIds.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                                     <div className="flex items-center gap-2 mb-3">
-                                        <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
+                                        <h5 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
                                             Source Citations
                                         </h5>
-                                        <Badge variant="soft" colorScheme="neutral" size="sm">
+                                        <Badge
+                                            variant="soft"
+                                            colorScheme="neutral"
+                                            size="sm"
+                                            radius="none"
+                                        >
                                             {sourceIds.length}{' '}
                                             {sourceIds.length === 1 ? 'source' : 'sources'}
                                         </Badge>
@@ -887,26 +908,26 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                             Loading news sources...
                                         </div>
                                     ) : sourcesError ? (
-                                        <div className="p-3 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-900/30">
+                                        <div className="p-3 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-none border border-red-200 dark:border-red-900/30">
                                             Failed to load sources.
                                         </div>
                                     ) : sources && sources.length > 0 ? (
-                                        <div className="flex flex-col space-y-3">
+                                        <div className="flex flex-col gap-3">
                                             {sources.map((source, idx) => (
                                                 <div
                                                     key={idx}
-                                                    className="p-3 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+                                                    className="p-3 rounded-none bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
                                                 >
                                                     <div className="flex items-start justify-between gap-4 mb-2">
                                                         <div className="flex flex-col min-w-0">
-                                                            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
                                                                 {source.sender || 'Unknown Sender'}
                                                             </span>
-                                                            <span className="text-[11px] text-zinc-500 truncate">
+                                                            <span className="text-xs font-normal text-zinc-500 truncate">
                                                                 {source.subject || '(No Subject)'}
                                                             </span>
                                                         </div>
-                                                        <span className="text-[10px] text-zinc-400 font-mono flex-shrink-0 whitespace-nowrap">
+                                                        <span className="text-xs font-normal text-zinc-400 font-mono flex-shrink-0 whitespace-nowrap">
                                                             {source.date
                                                                 ? new Date(
                                                                       source.date,
@@ -920,14 +941,14 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                                 : '-'}
                                                         </span>
                                                     </div>
-                                                    <div className="max-h-[150px] overflow-y-auto pr-1 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-50 dark:bg-zinc-950/40 p-2 rounded border border-zinc-100 dark:border-zinc-800/40 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-850">
+                                                    <div className="max-h-[150px] overflow-y-auto pr-1 text-xs font-normal text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-50 dark:bg-zinc-950/40 p-2 rounded-none border border-zinc-100 dark:border-zinc-800/40 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-850">
                                                         {source.content}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="p-3 text-xs text-zinc-500 bg-zinc-50 dark:bg-zinc-900/30 rounded border border-zinc-200 dark:border-zinc-800 text-center">
+                                        <div className="p-3 text-xs font-normal text-zinc-500 bg-zinc-50 dark:bg-zinc-900/30 rounded-none border border-zinc-200 dark:border-zinc-800 text-center">
                                             No source newsletter snapshots found.
                                         </div>
                                     )}
@@ -957,13 +978,13 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             />
                         </svg>
                         <div className="flex-1 min-w-0">
-                            <span className="text-xs font-medium uppercase tracking-wide block mb-1">
+                            <span className="text-xs font-bold uppercase tracking-wider block mb-1">
                                 {memory.relationship_type || 'Update'}:
                             </span>
                             <Link
                                 to="/memories/chain/$memoryId"
                                 params={{ memoryId: memory.id }}
-                                className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline block"
+                                className="text-xs font-normal text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline block"
                                 title="View full event chain"
                             >
                                 <span>View event chain →</span>
@@ -980,14 +1001,14 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                     onClick={() => setSelectedAsset(null)}
                 >
                     <div
-                        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800"
+                        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-none shadow-lg border border-zinc-200 dark:border-zinc-800"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
                             <div className="flex items-center gap-3">
                                 <div>
-                                    <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                                         ${selectedAsset.ticker}
                                     </h3>
                                     <p className="text-xs text-zinc-500 uppercase">
@@ -998,7 +1019,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             <button
                                 type="button"
                                 onClick={() => setSelectedAsset(null)}
-                                className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                className="p-1.5 rounded-none hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                             >
                                 <svg
                                     className="w-4 h-4 text-zinc-500"
@@ -1018,12 +1039,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                         </div>
 
                         {/* Content */}
-                        <div className="p-4 md:p-6">
-                            <div className="mb-3">
-                                <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide mb-2">
+                        <div className="p-4 md:p-6 flex flex-col gap-3">
+                            <div>
+                                <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide mb-2">
                                     Investment Thesis
                                 </h4>
-                                <div className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap max-h-[50vh] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent pr-2">
+                                <div className="text-xs font-normal text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap max-h-[50vh] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent pr-2">
                                     {selectedAsset.reason}
                                 </div>
                             </div>
@@ -1033,7 +1054,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                 <Link
                                     to="/chat"
                                     search={{ ticker: selectedAsset.ticker }}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded transition-colors shadow-sm"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold rounded-none transition-colors shadow-sm"
                                 >
                                     Ask AI Gateway (${selectedAsset.ticker}) →
                                 </Link>
@@ -1041,14 +1062,14 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                     href={`https://finance.yahoo.com/quote/${selectedAsset.ticker}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-sm font-medium rounded transition-colors"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-sm font-bold rounded-none transition-colors"
                                 >
                                     View on Yahoo Finance
                                 </a>
                                 <button
                                     type="button"
                                     onClick={() => setSelectedAsset(null)}
-                                    className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded transition-colors"
+                                    className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-bold rounded-none transition-colors"
                                 >
                                     Close
                                 </button>

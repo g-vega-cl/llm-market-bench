@@ -118,7 +118,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
     const rejectionCount = rejections.length;
 
     return (
-        <section className="space-y-8 animate-slide-up">
+        <section className="flex flex-col gap-6 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <SectionHeading gradient="success">Market Execution & Guardrails</SectionHeading>
 
@@ -176,7 +176,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                             <div
                                 key={idx}
                                 onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                                className={`group flex flex-col p-6 border rounded-3xl bg-white dark:bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 card-lift ${
+                                className={`group flex flex-col p-6 border rounded-none bg-white dark:bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 ${
                                     item.type === 'REJECTION'
                                         ? 'border-rose-200 dark:border-rose-900/50 hover:border-rose-500/50 hover:shadow-rose-500/10'
                                         : 'border-zinc-200 dark:border-zinc-800 hover:border-neon-green-500/50 hover:shadow-neon-green-500/10'
@@ -192,12 +192,12 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                 <div className="flex items-center gap-4">
                                     {/* Signal Badge */}
                                     <div
-                                        className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-300 group-hover:scale-110 shadow-lg ${
+                                        className={`w-12 h-12 rounded-none voxel-card flex items-center justify-center font-bold text-sm transition-all duration-300 ${
                                             item.type === 'TRADE'
                                                 ? item.signal === 'BUY'
-                                                    ? 'bg-gradient-to-br from-neon-green-400 to-emerald-500 text-white glow-success'
-                                                    : 'bg-gradient-to-br from-alert-red-400 to-rose-500 text-white glow-alert'
-                                                : 'bg-gradient-to-br from-amber-400 to-orange-500 text-white'
+                                                    ? 'bg-success text-zinc-950'
+                                                    : 'bg-danger text-white'
+                                                : 'bg-warning text-zinc-950'
                                         }`}
                                     >
                                         {item.type === 'TRADE' ? item.signal : 'REJ'}
@@ -207,16 +207,16 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center mb-1">
                                             <div className="flex items-center gap-3 flex-wrap">
-                                                <span className="font-black text-zinc-900 dark:text-white text-2xl uppercase tracking-tight text-display">
+                                                <span className="font-bold text-boxel-ink text-lg uppercase tracking-tight text-display">
                                                     {item.ticker}
                                                 </span>
                                                 {item.type === 'TRADE' && (
                                                     <>
-                                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                                                            <span className="text-lg">
+                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 voxel-trough rounded-none">
+                                                            <span className="text-sm">
                                                                 {agentInfo.emoji}
                                                             </span>
-                                                            <span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                                                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                                                                 {agentInfo.name}
                                                             </span>
                                                         </div>
@@ -231,7 +231,6 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                                           ? 'warning'
                                                                           : 'accent'
                                                                 }
-                                                                radius="lg"
                                                             >
                                                                 {(item.confidence * 100).toFixed(0)}
                                                                 % conf
@@ -241,14 +240,18 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                 )}
                                                 {item.type === 'REJECTION' && (
                                                     <>
-                                                        <span className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/30 text-rose-500 text-[9px] font-bold rounded-lg uppercase tracking-wider border border-rose-200 dark:border-rose-900/50">
+                                                        <Badge
+                                                            colorScheme="danger"
+                                                            variant="soft"
+                                                            size="xs"
+                                                        >
                                                             Rejected
-                                                        </span>
-                                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                                                            <span className="text-lg">
+                                                        </Badge>
+                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 voxel-trough rounded-none">
+                                                            <span className="text-sm">
                                                                 {agentInfo.emoji}
                                                             </span>
-                                                            <span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                                                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                                                                 {agentInfo.name}
                                                             </span>
                                                         </div>
@@ -256,7 +259,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest tabular-nums">
+                                                <span className="text-xs font-normal text-boxel-muted font-mono uppercase tracking-wider tabular-nums">
                                                     {item.formattedTime
                                                         ? `${item.formattedTime} ET`
                                                         : 'Pending'}
@@ -284,9 +287,9 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                         </div>
                                         <div className="flex flex-wrap items-center gap-4">
                                             <p
-                                                className={`text-sm font-medium ${
+                                                className={`text-xs font-normal ${
                                                     item.type === 'REJECTION'
-                                                        ? 'text-rose-600 dark:text-rose-400'
+                                                        ? 'text-rose-600 dark:text-rose-400 font-bold'
                                                         : 'text-zinc-500 dark:text-zinc-400'
                                                 }`}
                                             >
@@ -295,7 +298,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                     : (item.status || '').replace(/_/g, ' ')}
                                             </p>
                                             {item.type === 'TRADE' && item.portfolios?.owner_id && (
-                                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                                                     {item.portfolios.owner_id.replace(/-/g, ' ')}
                                                 </span>
                                             )}
@@ -305,17 +308,17 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
 
                                 {/* Expanded Content */}
                                 {isExpanded && (
-                                    <div className="mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800 animate-slide-up space-y-4">
+                                    <div className="mt-4 pt-4 border-t border-boxel-bevel-hi animate-slide-up space-y-3">
                                         {item.type === 'REJECTION' && (
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-lg" />
-                                                    <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 bg-danger rounded-none" />
+                                                    <span className="text-xs font-normal text-danger uppercase tracking-wider">
                                                         Guardrail Rejection Detail
                                                     </span>
                                                 </div>
-                                                <div className="bg-rose-50/50 dark:bg-rose-950/10 p-4 rounded-2xl border border-rose-100/50 dark:border-rose-900/30">
-                                                    <p className="text-sm text-rose-700 dark:text-rose-300 leading-relaxed font-bold">
+                                                <div className="voxel-trough p-3 rounded-none border border-danger/30">
+                                                    <p className="text-xs font-normal text-danger leading-relaxed">
                                                         {rejectionReason}
                                                     </p>
                                                 </div>
@@ -323,15 +326,15 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                         )}
 
                                         {/* Thought Process */}
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 bg-electric-blue-500 rounded-full shadow-lg" />
-                                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-1.5 h-1.5 bg-accent rounded-none" />
+                                                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                                                     Thought Process & Reasoning
                                                 </span>
                                             </div>
-                                            <div className="bg-zinc-50 dark:bg-zinc-950/50 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-900">
-                                                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                            <div className="voxel-trough p-3 rounded-none">
+                                                <p className="text-xs font-normal text-boxel-ink leading-relaxed whitespace-pre-wrap">
                                                     {item.reasoning}
                                                 </p>
                                             </div>
@@ -344,7 +347,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
 
                                         {/* Trade Details for Executed Trades */}
                                         {item.type === 'TRADE' && (
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-4 items-stretch">
                                                 <MetricTile
                                                     label="Quantity"
                                                     value={
@@ -379,8 +382,8 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                     })}
                 </div>
             ) : (
-                <div className="text-center py-12 bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                    <p className="text-zinc-500 dark:text-zinc-300 font-medium">
+                <div className="text-center py-12 bg-zinc-50 dark:bg-zinc-900/50 rounded-none border border-dashed border-zinc-200 dark:border-zinc-800">
+                    <p className="text-xs font-normal text-zinc-500 dark:text-zinc-300">
                         No {filter === 'ALL' ? 'activity' : filter.toLowerCase()} found
                     </p>
                 </div>

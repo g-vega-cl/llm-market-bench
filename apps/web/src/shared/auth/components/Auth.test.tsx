@@ -35,8 +35,8 @@ describe('Auth — uses design system', () => {
 
         // DS Input wraps in a div with these classes, then has the input inside
         const inputWrapper = screen.getByLabelText('Username').closest('div');
-        expect(inputWrapper?.className).toContain('rounded-xl');
-        expect(inputWrapper?.className).toContain('border');
+        expect(inputWrapper?.className).toContain('rounded-none');
+        expect(inputWrapper?.className).toContain('voxel-trough');
     });
 
     it('renders labels using DS Label component', () => {
@@ -47,8 +47,8 @@ describe('Auth — uses design system', () => {
 
         // DS Label renders with these classes
         for (const label of labels) {
-            expect(label.className).toContain('font-semibold');
-            expect(label.className).toContain('text-zinc-700');
+            expect(label.className).toContain('font-bold');
+            expect(label.className).toContain('text-boxel-ink');
         }
     });
 });

@@ -226,38 +226,52 @@ export function EarningsAuditPage({
                 </div>
 
                 {/* Summary Metrics */}
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                    <Card className="p-4 bg-zinc-900/50 border-zinc-800">
-                        <div className="text-xs font-medium text-zinc-400">Total Analyzed</div>
-                        <div className="mt-1 text-2xl font-bold text-white">{snapshots.length}</div>
-                        <div className="mt-1 text-xs text-zinc-500">S&P 500 Constituents</div>
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4 items-stretch">
+                    <Card padding="md" className="h-full flex flex-col justify-between gap-1">
+                        <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            Total Analyzed
+                        </div>
+                        <div className="text-lg font-bold text-boxel-ink font-mono tabular-nums">
+                            {snapshots.length}
+                        </div>
+                        <div className="text-xs font-normal text-boxel-muted">
+                            S&P 500 Constituents
+                        </div>
                     </Card>
-                    <Card className="p-4 bg-zinc-900/50 border-zinc-800">
-                        <div className="text-xs font-medium text-zinc-400">
+                    <Card padding="md" className="h-full flex flex-col justify-between gap-1">
+                        <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                             Top-Decile SUE (≥ +2.0)
                         </div>
-                        <div className="mt-1 text-2xl font-bold text-emerald-400">
+                        <div className="text-lg font-bold text-success font-mono tabular-nums">
                             {topDecileCount}
                         </div>
-                        <div className="mt-1 text-xs text-emerald-500/80">
+                        <div className="text-xs font-normal text-boxel-muted">
                             Active Drift Candidates
                         </div>
                     </Card>
-                    <Card className="p-4 bg-zinc-900/50 border-zinc-800">
-                        <div className="text-xs font-medium text-zinc-400">Cash-Quality Clean</div>
-                        <div className="mt-1 text-2xl font-bold text-cyan-400">
+                    <Card padding="md" className="h-full flex flex-col justify-between gap-1">
+                        <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            Cash-Quality Clean
+                        </div>
+                        <div className="text-lg font-bold text-info font-mono tabular-nums">
                             {snapshots.length > 0
                                 ? `${Math.round((cleanAccrualCount / snapshots.length) * 100)}%`
                                 : '0%'}
                         </div>
-                        <div className="mt-1 text-xs text-cyan-500/80">Sloan Accrual Filter</div>
+                        <div className="text-xs font-normal text-boxel-muted">
+                            Sloan Accrual Filter
+                        </div>
                     </Card>
-                    <Card className="p-4 bg-zinc-900/50 border-zinc-800">
-                        <div className="text-xs font-medium text-zinc-400">Active Bellwethers</div>
-                        <div className="mt-1 text-2xl font-bold text-purple-400">
+                    <Card padding="md" className="h-full flex flex-col justify-between gap-1">
+                        <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            Active Bellwethers
+                        </div>
+                        <div className="text-lg font-bold text-accent font-mono tabular-nums">
                             {bellwethers.filter((b) => b.is_active_bellwether_signal).length}
                         </div>
-                        <div className="mt-1 text-xs text-purple-500/80">14-Day Signal Window</div>
+                        <div className="text-xs font-normal text-boxel-muted">
+                            14-Day Signal Window
+                        </div>
                     </Card>
                 </div>
 

@@ -357,9 +357,9 @@ export function MemoriesPage({
         <div className="min-h-screen">
             {/* Header */}
             <div className="border-b border-zinc-200 dark:border-white/10">
-                <PageLayout maxWidth="md" className="py-8">
+                <PageLayout maxWidth="md" className="py-8 flex flex-col gap-2">
                     <SectionHeading gradient="electric">AI Memories</SectionHeading>
-                    <p className="text-zinc-600 dark:text-zinc-400 text-base mt-2">
+                    <p className="text-boxel-muted text-xs font-normal m-0">
                         Market insights, strategic decisions, and post-trade analysis from AI
                         agents.
                     </p>
@@ -376,7 +376,7 @@ export function MemoriesPage({
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search memories (e.g., energy deal Trump, S&P 500 drop)..."
-                            className="w-full bg-zinc-55 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-md px-4 py-2.5 pl-10 pr-10 text-sm text-zinc-905 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-white/20 transition-all font-sans"
+                            className="w-full bg-zinc-55 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-none px-4 py-2.5 pl-10 pr-10 text-xs text-zinc-905 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-white/20 transition-all font-sans"
                         />
                         <span className="absolute left-3.5 top-3.5 text-zinc-400 dark:text-zinc-500">
                             <svg
@@ -423,16 +423,17 @@ export function MemoriesPage({
                         colorScheme="accent"
                         size="md"
                         isLoading={isSearching}
+                        className="rounded-none text-sm font-bold"
                     >
                         Search
                     </Button>
                 </form>
 
                 {activeSearchQuery && (
-                    <div className="mb-6 flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/5 rounded-md px-4 py-2.5">
+                    <div className="mb-6 flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/5 rounded-none px-4 py-2.5">
                         <div>
                             Showing matches for{' '}
-                            <span className="font-semibold text-zinc-900 dark:text-zinc-250">
+                            <span className="font-bold text-zinc-900 dark:text-zinc-250">
                                 "{activeSearchQuery}"
                             </span>
                             <span className="ml-1 text-xs text-zinc-400">
@@ -442,7 +443,7 @@ export function MemoriesPage({
                         <button
                             type="button"
                             onClick={handleSearchClear}
-                            className="text-xs text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium cursor-pointer"
+                            className="text-xs text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-bold cursor-pointer"
                         >
                             Reset Search
                         </button>

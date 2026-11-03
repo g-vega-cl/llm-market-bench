@@ -16,7 +16,7 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
     size?: 'xs' | 'sm' | 'md';
     colorScheme?: 'accent' | 'success' | 'danger' | 'info' | 'warning' | 'neutral';
     severity?: 'high' | 'medium';
-    radius?: 'full' | 'lg' | 'md';
+    radius?: 'none' | 'full' | 'lg' | 'md';
     showDot?: boolean;
 }
 

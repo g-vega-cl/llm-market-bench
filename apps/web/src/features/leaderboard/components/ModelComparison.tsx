@@ -110,27 +110,30 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6 items-stretch">
                 {/* Model A Card */}
-                <Card variant="glass" radius="3xl" className="border-white/10 p-8 space-y-6">
-                    <div className="flex items-center gap-4 border-b border-white/5 pb-4">
-                        <span className="text-4xl">{infoA.emoji}</span>
+                <Card
+                    variant="default"
+                    radius="none"
+                    padding="md"
+                    className="h-full flex flex-col justify-between gap-4"
+                >
+                    <div className="flex items-center gap-3 border-b border-boxel-bevel-hi pb-3">
+                        <span className="text-2xl">{infoA.emoji}</span>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h3 className="font-heading text-xl font-bold text-zinc-100">
-                                    {infoA.name}
-                                </h3>
+                                <h3 className="text-sm font-bold text-boxel-ink">{infoA.name}</h3>
                                 <Badge colorScheme="neutral" variant="soft" size="xs">
                                     Model A
                                 </Badge>
                             </div>
-                            <span className="text-xs text-zinc-500 font-mono tracking-wider">
+                            <span className="text-xs font-normal text-boxel-muted font-mono tracking-wider">
                                 {modelA.model_name}
                             </span>
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-2 mt-auto">
                         {compareMetrics.map((m) => {
                             const isWin =
                                 m.isHigherBetter !== null &&
@@ -146,24 +149,19 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                             return (
                                 <div
                                     key={m.label}
-                                    className={`flex justify-between items-center p-3 rounded-2xl border transition-all ${isWin ? 'bg-emerald-500/5 border-emerald-500/30' : isLoss ? 'bg-red-500/5 border-red-500/10' : 'bg-white/5 border-white/5'}`}
+                                    className={`voxel-trough rounded-none flex justify-between items-center p-2.5 transition-all ${isWin ? 'border-success/40' : isLoss ? 'opacity-80' : ''}`}
                                 >
-                                    <span className="text-xs text-zinc-400 font-mono uppercase tracking-wider">
+                                    <span className="text-xs font-normal text-boxel-muted font-mono uppercase tracking-wider">
                                         {m.label}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <span
-                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-zinc-500' : 'text-zinc-200'}`}
+                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-boxel-muted' : 'text-boxel-ink'}`}
                                         >
                                             {m.formattedA}
                                         </span>
                                         {isWin && (
-                                            <Badge
-                                                colorScheme="success"
-                                                variant="solid"
-                                                size="xs"
-                                                className="scale-90"
-                                            >
+                                            <Badge colorScheme="success" variant="solid" size="xs">
                                                 WIN
                                             </Badge>
                                         )}
@@ -175,25 +173,28 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                 </Card>
 
                 {/* Model B Card */}
-                <Card variant="glass" radius="3xl" className="border-white/10 p-8 space-y-6">
-                    <div className="flex items-center gap-4 border-b border-white/5 pb-4">
-                        <span className="text-4xl">{infoB.emoji}</span>
+                <Card
+                    variant="default"
+                    radius="none"
+                    padding="md"
+                    className="h-full flex flex-col justify-between gap-4"
+                >
+                    <div className="flex items-center gap-3 border-b border-boxel-bevel-hi pb-3">
+                        <span className="text-2xl">{infoB.emoji}</span>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h3 className="font-heading text-xl font-bold text-zinc-100">
-                                    {infoB.name}
-                                </h3>
+                                <h3 className="text-sm font-bold text-boxel-ink">{infoB.name}</h3>
                                 <Badge colorScheme="neutral" variant="soft" size="xs">
                                     Model B
                                 </Badge>
                             </div>
-                            <span className="text-xs text-zinc-500 font-mono tracking-wider">
+                            <span className="text-xs font-normal text-boxel-muted font-mono tracking-wider">
                                 {modelB.model_name}
                             </span>
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-2 mt-auto">
                         {compareMetrics.map((m) => {
                             const isWin =
                                 m.isHigherBetter !== null &&
@@ -209,24 +210,19 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                             return (
                                 <div
                                     key={m.label}
-                                    className={`flex justify-between items-center p-3 rounded-2xl border transition-all ${isWin ? 'bg-emerald-500/5 border-emerald-500/30' : isLoss ? 'bg-red-500/5 border-red-500/10' : 'bg-white/5 border-white/5'}`}
+                                    className={`voxel-trough rounded-none flex justify-between items-center p-2.5 transition-all ${isWin ? 'border-success/40' : isLoss ? 'opacity-80' : ''}`}
                                 >
-                                    <span className="text-xs text-zinc-400 font-mono uppercase tracking-wider">
+                                    <span className="text-xs font-normal text-boxel-muted font-mono uppercase tracking-wider">
                                         {m.label}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <span
-                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-zinc-500' : 'text-zinc-200'}`}
+                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-boxel-muted' : 'text-boxel-ink'}`}
                                         >
                                             {m.formattedB}
                                         </span>
                                         {isWin && (
-                                            <Badge
-                                                colorScheme="success"
-                                                variant="solid"
-                                                size="xs"
-                                                className="scale-90"
-                                            >
+                                            <Badge colorScheme="success" variant="solid" size="xs">
                                                 WIN
                                             </Badge>
                                         )}

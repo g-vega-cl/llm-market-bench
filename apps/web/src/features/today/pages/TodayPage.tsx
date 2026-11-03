@@ -75,7 +75,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                 ) : (
                     <div className="space-y-6 animate-slide-up">
                         {/* Row 2: 3-column grid — AgentInsights | NewsletterFeed | AI Feeling */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                             <Suspense fallback={null}>
                                 <AgentInsights memories={data.memories} />
                             </Suspense>

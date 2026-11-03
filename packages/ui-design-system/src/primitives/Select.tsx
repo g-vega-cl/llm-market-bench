@@ -16,16 +16,14 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         return (
             <div
                 className={cn(
-                    'relative flex items-center w-full rounded-xl border bg-white dark:bg-zinc-900 px-3 py-2 transition-colors focus-within:ring-2 focus-within:ring-accent/40',
-                    isError
-                        ? 'border-danger focus-within:ring-danger/40'
-                        : 'border-zinc-200 dark:border-zinc-800',
+                    'voxel-trough rounded-none relative flex items-center w-full bg-boxel-trough px-3 py-2 transition-colors focus-within:ring-2 focus-within:ring-accent/40',
+                    isError ? 'border-danger focus-within:ring-danger/40' : 'border-boxel-bevel-hi',
                 )}
             >
                 <select
                     ref={ref}
                     className={cn(
-                        'w-full bg-transparent text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none cursor-pointer pr-4',
+                        'w-full bg-transparent text-sm font-bold text-boxel-ink placeholder:text-boxel-muted focus:outline-none cursor-pointer pr-4',
                         className,
                     )}
                     {...props}
@@ -38,7 +36,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                             <option
                                 key={value}
                                 value={value}
-                                className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
+                                className="bg-boxel-surface text-boxel-ink text-sm font-bold"
                             >
                                 {label}
                             </option>

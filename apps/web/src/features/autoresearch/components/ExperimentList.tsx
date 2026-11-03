@@ -79,7 +79,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                 isSelected ? 'bg-zinc-100 dark:bg-zinc-800' : 'cursor-pointer'
                             }
                         >
-                            <TableCell className="font-mono font-medium">
+                            <TableCell className="font-mono font-normal">
                                 <div className="flex items-center gap-2">
                                     <span>{exp.variant_tag}</span>
                                     {(exp.research_output as { selected_tools?: string[] })
@@ -87,7 +87,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                         <Badge
                                             colorScheme="accent"
                                             variant="outline"
-                                            className="text-[9px] px-1.5 py-0 font-sans tracking-wide"
+                                            className="px-1.5 py-0 font-sans tracking-wide"
                                         >
                                             🛠️ Pull
                                         </Badge>
@@ -99,7 +99,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                     <Badge
                                         colorScheme="accent"
                                         variant="soft"
-                                        className="text-[10px] whitespace-nowrap"
+                                        className="whitespace-nowrap"
                                     >
                                         {formatTrackLabel(exp.track_id)}
                                     </Badge>
@@ -107,7 +107,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                         <Badge
                                             colorScheme="warning"
                                             variant="soft"
-                                            className="text-[10px] whitespace-nowrap"
+                                            className="whitespace-nowrap"
                                         >
                                             From 0
                                         </Badge>
@@ -125,10 +125,10 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                             <TableCell
                                 className={`font-bold ${
                                     score === 'N/A'
-                                        ? 'text-zinc-400 dark:text-zinc-500 font-medium'
+                                        ? 'text-boxel-muted font-normal'
                                         : Number(score) > 0
-                                          ? 'text-emerald-600'
-                                          : 'text-rose-600'
+                                          ? 'text-emerald-400'
+                                          : 'text-rose-400'
                                 }`}
                             >
                                 {score}

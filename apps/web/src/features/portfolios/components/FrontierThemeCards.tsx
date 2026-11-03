@@ -17,15 +17,15 @@ export function FrontierThemeCards({ themes, positions }: FrontierThemeCardsProp
     );
 
     return (
-        <section className="space-y-4">
+        <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <SectionHeading gradient="electric">Active Frontier Themes</SectionHeading>
-                <Badge variant="soft" size="sm" colorScheme="accent">
+                <Badge variant="soft" size="sm" colorScheme="accent" radius="none">
                     5-Point Supercycle Rubric
                 </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 items-stretch">
                 {themes.map((theme) => {
                     const themeTickers = new Set(
                         (Array.isArray(theme.tickers) ? theme.tickers : []).map((t) =>
@@ -55,37 +55,42 @@ export function FrontierThemeCards({ themes, positions }: FrontierThemeCardsProp
                             key={theme.theme_name}
                             variant="outlined"
                             padding="md"
-                            className="bg-zinc-900/40 border-zinc-800 flex flex-col justify-between hover:border-zinc-700 transition-colors"
+                            className="h-full flex flex-col justify-between rounded-none hover:border-boxel-bevel-hi transition-colors gap-4"
                         >
-                            <div className="space-y-3">
+                            <div className="flex flex-col gap-3">
                                 <div className="flex items-start justify-between gap-2">
-                                    <h4 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
+                                    <h4 className="text-sm font-bold text-boxel-ink flex items-center gap-2">
                                         <span>⚛️</span>
                                         <span>{theme.theme_name}</span>
                                     </h4>
-                                    <Badge variant="soft" size="sm" colorScheme="info">
+                                    <Badge
+                                        variant="soft"
+                                        size="sm"
+                                        colorScheme="info"
+                                        radius="none"
+                                    >
                                         Rubric {theme.rubric_score}/5
                                     </Badge>
                                 </div>
 
-                                <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed">
+                                <p className="text-xs font-normal text-zinc-400 line-clamp-3 leading-relaxed">
                                     {theme.thesis}
                                 </p>
 
-                                <div className="text-xs text-zinc-500 bg-zinc-950/50 p-2.5 rounded border border-zinc-800/60">
-                                    <span className="font-semibold text-zinc-400">Catalysts: </span>
+                                <div className="text-xs font-normal text-zinc-500 bg-zinc-950/50 p-2.5 rounded-none border border-zinc-800/60">
+                                    <span className="font-bold text-zinc-400">Catalysts: </span>
                                     {theme.catalysts}
                                 </div>
                             </div>
 
-                            <div className="mt-4 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+                            <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-zinc-500">Pure Plays:</span>
                                     {Array.isArray(theme.tickers) &&
                                         theme.tickers.map((t) => (
                                             <span
                                                 key={t}
-                                                className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-200 font-mono font-medium"
+                                                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-zinc-200 font-mono text-xs font-bold"
                                             >
                                                 {t}
                                             </span>
@@ -101,7 +106,7 @@ export function FrontierThemeCards({ themes, positions }: FrontierThemeCardsProp
                                             </strong>
                                         </span>
                                         <span
-                                            className={`font-semibold ${
+                                            className={`font-bold font-mono ${
                                                 themePnlPct >= 0
                                                     ? 'text-emerald-400'
                                                     : 'text-rose-400'

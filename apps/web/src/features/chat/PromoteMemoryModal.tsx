@@ -110,18 +110,18 @@ export function PromoteMemoryModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <Card className="w-full max-w-lg border-cyan-900/50 bg-zinc-950/95 p-6 shadow-2xl space-y-5 text-zinc-200">
+            <Card className="w-full max-w-lg border-cyan-900/50 bg-zinc-950/95 p-6 rounded-none shadow-sm flex flex-col gap-4 text-zinc-200">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
                     <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-base">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-none bg-cyan-500/10 border border-cyan-500/30 text-sm">
                             🧠
                         </div>
                         <div>
-                            <h3 className="font-semibold text-white text-sm">
+                            <h3 className="font-bold text-white text-sm">
                                 Promote Insight to Private Memory
                             </h3>
-                            <p className="text-[11px] text-zinc-400">
+                            <p className="text-xs font-normal text-zinc-400">
                                 Strictly isolated in your personal research vault
                             </p>
                         </div>
@@ -129,25 +129,25 @@ export function PromoteMemoryModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+                        className="rounded-none p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
                     >
                         ✕
                     </button>
                 </div>
 
                 {error && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-950/30 p-2.5 text-xs text-red-300">
+                    <div className="rounded-none border border-red-500/30 bg-red-950/30 p-2.5 text-xs font-normal text-red-300">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleSave} className="space-y-4">
+                <form onSubmit={handleSave} className="flex flex-col gap-4">
                     {/* Ticker & Score Row */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
+                        <div className="flex flex-col gap-1.5">
                             <label
                                 htmlFor="promote-ticker"
-                                className="text-[11px] font-medium text-zinc-400"
+                                className="text-xs font-bold text-zinc-400"
                             >
                                 Stock Ticker (Optional)
                             </label>
@@ -157,14 +157,14 @@ export function PromoteMemoryModal({
                                 value={ticker}
                                 onChange={(e) => setTicker(e.target.value.toUpperCase())}
                                 placeholder="e.g. NVO, NVDA"
-                                className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-xs text-zinc-100 font-mono placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
+                                className="w-full rounded-none border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-xs text-zinc-100 font-mono placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
                             />
                         </div>
 
-                        <div className="space-y-1">
+                        <div className="flex flex-col gap-1.5">
                             <label
                                 htmlFor="promote-score"
-                                className="text-[11px] font-medium text-zinc-400"
+                                className="text-xs font-bold text-zinc-400"
                             >
                                 Importance Score (1-10)
                             </label>
@@ -175,17 +175,14 @@ export function PromoteMemoryModal({
                                 max={10}
                                 value={importanceScore}
                                 onChange={(e) => setImportanceScore(Number(e.target.value))}
-                                className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-xs text-zinc-100 font-mono focus:border-cyan-500 focus:outline-none"
+                                className="w-full rounded-none border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-xs text-zinc-100 font-mono focus:border-cyan-500 focus:outline-none"
                             />
                         </div>
                     </div>
 
                     {/* Thesis */}
-                    <div className="space-y-1">
-                        <label
-                            htmlFor="promote-thesis"
-                            className="text-[11px] font-medium text-zinc-400"
-                        >
+                    <div className="flex flex-col gap-1.5">
+                        <label htmlFor="promote-thesis" className="text-xs font-bold text-zinc-400">
                             Distilled Market Thesis (Editable)
                         </label>
                         <textarea
@@ -195,26 +192,27 @@ export function PromoteMemoryModal({
                             onChange={(e) => setThesis(e.target.value)}
                             required
                             placeholder="State the core catalyst, mechanism, and actionable conclusion..."
-                            className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 p-3 text-xs leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none resize-y"
+                            className="w-full rounded-none border border-zinc-800 bg-zinc-900/80 p-3 text-xs font-normal leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none resize-y"
                         />
                     </div>
 
                     {/* Tags */}
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col gap-1.5">
                         <label
                             htmlFor="promote-tag-input"
-                            className="text-[11px] font-medium text-zinc-400"
+                            className="text-xs font-bold text-zinc-400"
                         >
                             Topic Tags
                         </label>
-                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                        <div className="flex flex-wrap gap-1.5">
                             {tags.map((tag) => (
                                 <Badge
                                     key={tag}
                                     variant="outline"
                                     size="sm"
+                                    radius="none"
                                     colorScheme="accent"
-                                    className="gap-1 text-[10px]"
+                                    className="gap-1 text-xs"
                                 >
                                     <span>{tag}</span>
                                     <button
@@ -235,12 +233,13 @@ export function PromoteMemoryModal({
                                 onChange={(e) => setTagInput(e.target.value)}
                                 onKeyDown={handleAddTag}
                                 placeholder="Add a tag..."
-                                className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
+                                className="flex-1 rounded-none border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
                             />
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                rounded="none"
                                 colorScheme="neutral"
                                 onClick={handleAddTag}
                             >
@@ -250,11 +249,8 @@ export function PromoteMemoryModal({
                     </div>
 
                     {/* Refinement instruction */}
-                    <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
-                        <label
-                            htmlFor="promote-refine"
-                            className="text-[11px] font-medium text-zinc-400"
-                        >
+                    <div className="pt-2 border-t border-zinc-800/80 flex flex-col gap-1.5">
+                        <label htmlFor="promote-refine" className="text-xs font-bold text-zinc-400">
                             Refinement Instruction (Optional)
                         </label>
                         <div className="flex gap-2">
@@ -264,12 +260,13 @@ export function PromoteMemoryModal({
                                 value={customInstruction}
                                 onChange={(e) => setCustomInstruction(e.target.value)}
                                 placeholder="e.g. Focus on supply bottleneck timing..."
-                                className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
+                                className="flex-1 rounded-none border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
                             />
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                rounded="none"
                                 colorScheme="accent"
                                 disabled={!customInstruction.trim() || isRedistilling}
                                 onClick={handleRedistill}

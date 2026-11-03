@@ -50,7 +50,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                             <TableCell className="text-zinc-500 dark:text-zinc-400 text-sm whitespace-nowrap">
                                 {trade.executed_at ? (
                                     <div className="flex flex-col">
-                                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                                        <span className="font-bold text-zinc-900 dark:text-zinc-100">
                                             {formatEasternShortDateWithYear(trade.executed_at)}
                                         </span>
                                         <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
@@ -159,7 +159,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                             </TableCell>
                             <TableCell
                                 align="right"
-                                className="text-zinc-900 dark:text-zinc-100 font-medium"
+                                className="text-zinc-900 dark:text-zinc-100 font-bold"
                             >
                                 $
                                 {Number(trade.total_cost).toLocaleString('en-US', {
@@ -185,7 +185,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                             colorScheme={
                                                 trade.realized_pnl >= 0 ? 'success' : 'danger'
                                             }
-                                            radius="md"
+                                            radius="none"
                                         >
                                             {trade.realized_pnl >= 0 ? '+' : ''}
                                             {trade.realized_pnl_pct?.toFixed(2)}%
@@ -206,14 +206,14 @@ export function TradesTable({ trades }: TradesTableProps) {
                                         <div className="flex flex-wrap items-center gap-4 text-xs border-b border-zinc-800 pb-3">
                                             {trade.executed_at && (
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="text-zinc-400 font-medium">
+                                                    <span className="text-zinc-400 font-normal">
                                                         Executed:
                                                     </span>
                                                     <Badge
                                                         variant="outline"
                                                         colorScheme="neutral"
                                                         size="sm"
-                                                        radius="md"
+                                                        radius="none"
                                                         className="font-mono text-zinc-200"
                                                     >
                                                         {formatEasternDateTimeWithYear(
@@ -226,14 +226,14 @@ export function TradesTable({ trades }: TradesTableProps) {
                                             )}
                                             {trade.alpaca_filled_at && (
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="text-zinc-400 font-medium">
+                                                    <span className="text-zinc-400 font-normal">
                                                         Alpaca Filled:
                                                     </span>
                                                     <Badge
                                                         variant="soft"
                                                         colorScheme="success"
                                                         size="sm"
-                                                        radius="md"
+                                                        radius="none"
                                                         className="font-mono"
                                                     >
                                                         {formatEasternDateTimeWithYear(
@@ -249,14 +249,14 @@ export function TradesTable({ trades }: TradesTableProps) {
                                             )}
                                             {trade.alpaca_order_id && (
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="text-zinc-400 font-medium">
+                                                    <span className="text-zinc-400 font-normal">
                                                         Order ID:
                                                     </span>
                                                     <Badge
                                                         variant="outline"
                                                         colorScheme="neutral"
                                                         size="sm"
-                                                        radius="md"
+                                                        radius="none"
                                                         className="font-mono text-zinc-300"
                                                     >
                                                         {trade.alpaca_order_id}
@@ -265,11 +265,11 @@ export function TradesTable({ trades }: TradesTableProps) {
                                             )}
                                         </div>
                                         <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                            <span className="w-1.5 h-1.5 rounded-none bg-blue-500 animate-pulse" />
                                             Thinking Process
                                         </h4>
-                                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 shadow-sm">
-                                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
+                                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-none p-4 sm:p-6 shadow-sm">
+                                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap text-xs font-normal">
                                                 {trade.reasoning}
                                             </p>
                                         </div>

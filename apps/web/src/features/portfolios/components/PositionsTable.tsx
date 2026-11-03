@@ -207,7 +207,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                     )}
                                     {pos.ticker &&
                                         tickerToThemeMap.has(pos.ticker.toUpperCase()) && (
-                                            <span className="text-[11px] font-normal px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700/60 font-sans tracking-tight">
+                                            <span className="text-xs font-normal px-2 py-0.5 rounded-none bg-zinc-800 text-zinc-300 border border-zinc-700/60 font-sans tracking-tight">
                                                 {tickerToThemeMap.get(pos.ticker.toUpperCase())}
                                             </span>
                                         )}
@@ -255,7 +255,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             </TableCell>
                             <TableCell
                                 align="right"
-                                className={`font-medium ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}
+                                className={`font-bold ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}
                             >
                                 {Number(pos.unrealized_pnl_usd) >= 0 ? '+' : ''}$
                                 {Number(pos.unrealized_pnl_usd).toLocaleString('en-US', {
@@ -265,7 +265,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             </TableCell>
                             <TableCell
                                 align="right"
-                                className={`font-medium ${Number(pos.unrealized_pnl_pct) >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}
+                                className={`font-bold ${Number(pos.unrealized_pnl_pct) >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}
                             >
                                 {Number(pos.unrealized_pnl_pct) >= 0 ? '+' : ''}
                                 {Number(pos.unrealized_pnl_pct).toFixed(2)}%
@@ -282,7 +282,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                         {pos.ticker &&
                                             tickerToTradeMap.has(pos.ticker.toUpperCase()) && (
                                                 <div className="flex flex-wrap items-center gap-2 text-xs border-b border-zinc-800 pb-3">
-                                                    <span className="text-zinc-400 font-medium">
+                                                    <span className="text-zinc-400 font-normal">
                                                         {tickerToTradeMap
                                                             .get(pos.ticker.toUpperCase())
                                                             ?.signal?.toUpperCase() === 'SHORT'
@@ -293,7 +293,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                                         variant="outline"
                                                         colorScheme="neutral"
                                                         size="sm"
-                                                        radius="md"
+                                                        radius="none"
                                                         className="font-mono text-zinc-200"
                                                     >
                                                         {formatEasternDateTimeWithYear(
@@ -312,11 +312,11 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                                 </div>
                                             )}
                                         <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                            <span className="w-1.5 h-1.5 rounded-none bg-blue-500 animate-pulse" />
                                             Thinking Process
                                         </h4>
-                                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 shadow-sm">
-                                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
+                                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-none p-4 sm:p-6 shadow-sm">
+                                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap text-xs font-normal">
                                                 {pos.reasoning}
                                             </p>
                                         </div>

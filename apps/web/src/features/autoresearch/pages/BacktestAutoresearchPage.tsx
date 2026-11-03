@@ -28,33 +28,31 @@ export function BacktestAutoresearchPage({ initialData, fetchFn }: BacktestAutor
             {/* Page Header */}
             <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 py-12">
                 <PageLayout>
-                    <div className="space-y-6">
+                    <div className="flex flex-col gap-4">
                         <div className="flex flex-wrap items-center justify-between gap-4">
-                            <div className="space-y-2">
-                                <div className="flex items-center space-x-3">
-                                    <span className="text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 px-2.5 py-0.5 rounded-full">
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-normal uppercase tracking-widest text-accent bg-boxel-trough border border-boxel-bevel-hi px-2.5 py-0.5 rounded-none">
                                         Simulation Sandbox
                                     </span>
-                                    <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
-                                        •
-                                    </span>
-                                    <span className="text-xs font-mono text-zinc-500">
+                                    <span className="text-xs font-normal text-boxel-muted">•</span>
+                                    <span className="text-xs font-mono font-normal text-boxel-muted">
                                         12-Week Window
                                     </span>
                                 </div>
-                                <h1 className="text-4xl md:text-5xl font-black text-zinc-900 dark:text-zinc-50 tracking-tight">
+                                <h1 className="text-lg font-bold text-boxel-ink tracking-tight uppercase">
                                     Backtest Auto-Research{' '}
-                                    <span className="text-indigo-500">Arena</span>
+                                    <span className="text-accent">Arena</span>
                                 </h1>
                             </div>
                             <Link
                                 to="/autoresearch"
-                                className="inline-flex items-center justify-center text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-xl transition-all"
+                                className="voxel-btn inline-flex items-center justify-center text-sm font-bold text-boxel-ink bg-boxel-surface hover:bg-boxel-elevated border border-boxel-bevel-hi px-4 py-2 rounded-none transition-all"
                             >
                                 ← Switch to Live Arena
                             </Link>
                         </div>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-lg max-w-2xl leading-relaxed">
+                        <p className="text-boxel-muted text-xs font-normal max-w-2xl leading-relaxed">
                             Audit the performance of backtested prompts. Trace mutations, weekly
                             scores, and meta-researcher hypotheses generated inside our
                             point-in-time temporal sandbox.
@@ -65,7 +63,7 @@ export function BacktestAutoresearchPage({ initialData, fetchFn }: BacktestAutor
 
             <PageLayout className="py-12 space-y-12">
                 {/* Score Formula Reference Card */}
-                <div className="bg-gradient-to-br from-indigo-50/50 to-purple-50/30 dark:from-indigo-950/20 dark:to-purple-950/10 border border-indigo-100 dark:border-indigo-950/40 rounded-3xl p-6">
+                <div className="bg-boxel-surface border border-boxel-bevel-hi rounded-none p-6">
                     <ScoreCalculation />
                 </div>
 
@@ -74,7 +72,7 @@ export function BacktestAutoresearchPage({ initialData, fetchFn }: BacktestAutor
                     <div className="xl:col-span-4 space-y-6">
                         <div className="flex items-center justify-between px-2">
                             <SectionHeading>Simulation Runs</SectionHeading>
-                            <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-widest bg-boxel-trough border border-boxel-bevel-hi px-2 py-0.5 rounded-none">
                                 {experiments.length} Runs
                             </span>
                         </div>
@@ -110,7 +108,7 @@ export function BacktestAutoresearchPage({ initialData, fetchFn }: BacktestAutor
                                 />
                             </div>
                         ) : (
-                            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl text-zinc-400">
+                            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-none text-xs font-normal text-zinc-400">
                                 Select a backtest run to view prompt details and mutation reasoning
                             </div>
                         )}

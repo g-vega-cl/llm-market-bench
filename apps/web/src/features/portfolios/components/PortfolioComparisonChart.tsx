@@ -667,15 +667,23 @@ export function PortfolioComparisonChart({
     }, [displayData, data]);
 
     return (
-        <div className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm overflow-hidden flex flex-col gap-4">
+        <div className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none p-4 shadow-sm overflow-hidden flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                     Performance Comparison
                 </h3>
                 <div className="flex items-center gap-3">
-                    <div className="text-xs text-zinc-400">Normalized to percentage returns</div>
+                    <div className="text-xs font-normal text-zinc-400">
+                        Normalized to percentage returns
+                    </div>
                     {clickedData && (
-                        <Button variant="ghost" colorScheme="info" size="sm" onClick={handleReset}>
+                        <Button
+                            variant="ghost"
+                            colorScheme="info"
+                            size="sm"
+                            rounded="none"
+                            onClick={handleReset}
+                        >
                             Reset Crosshair
                         </Button>
                     )}
@@ -699,21 +707,21 @@ export function PortfolioComparisonChart({
             )}
 
             {displayData && displayData.portfolioValues.length > 0 && (
-                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg border border-zinc-100 dark:border-zinc-800">
-                    <div className="text-xs text-zinc-500 mb-2">{displayData.date}</div>
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-none border border-zinc-100 dark:border-zinc-800 flex flex-col gap-2">
+                    <div className="text-xs font-normal text-zinc-500">{displayData.date}</div>
                     <div className="space-y-1">
                         {displayData.benchmarkValue !== undefined && (
                             <div className="flex items-center justify-between gap-4 text-sm">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                                    <span className="text-amber-600">
+                                    <div className="w-2 h-2 rounded-none bg-amber-500 shrink-0" />
+                                    <span className="text-amber-600 font-bold">
                                         {BENCHMARK_OPTIONS.find(
                                             (b) => b.ticker === selectedBenchmark,
                                         )?.label || selectedBenchmark}
                                     </span>
                                 </div>
                                 <span
-                                    className={`font-semibold ${
+                                    className={`font-bold font-mono ${
                                         displayData.benchmarkValue >= 0
                                             ? 'text-emerald-600'
                                             : 'text-red-600'

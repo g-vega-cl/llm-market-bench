@@ -34,70 +34,64 @@ function BacktestTradeRow({
     const isBuy = trade.signal.toUpperCase() === 'BUY';
 
     return (
-        <tr className="hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40 transition-colors">
-            <td className="py-3.5 px-4 text-zinc-500 whitespace-nowrap">
+        <tr className="hover:bg-boxel-elevated/40 transition-colors">
+            <td className="py-3 px-4 text-boxel-muted whitespace-nowrap text-xs font-normal">
                 {trade.executed_at ? formatEasternDateTimeWithYear(trade.executed_at) : 'N/A'}
             </td>
-            <td className="py-3.5 px-4 text-zinc-800 dark:text-zinc-200 font-semibold">
+            <td className="py-3 px-4 text-boxel-ink text-xs font-normal">
                 {trade.model_name || 'Agent'}
             </td>
-            <td className="py-3.5 px-4 font-bold text-indigo-600 dark:text-indigo-400">
-                {trade.ticker}
-            </td>
-            <td className="py-3.5 px-4">
+            <td className="py-3 px-4 text-sm font-bold text-accent">{trade.ticker}</td>
+            <td className="py-3 px-4">
                 <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                    className={`inline-flex items-center px-2 py-0.5 rounded-none text-xs font-normal ${
                         isBuy
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                     }`}
                 >
                     {trade.signal.toUpperCase()}
                 </span>
             </td>
-            <td className="py-3.5 px-4 text-right font-medium">
+            <td className="py-3 px-4 text-right text-xs font-normal">
                 {trade.quantity.toLocaleString('en-US')}
             </td>
-            <td className="py-3.5 px-4 text-right text-zinc-700 dark:text-zinc-300">
+            <td className="py-3 px-4 text-right text-boxel-muted text-xs font-normal">
                 ${trade.price.toFixed(2)}
             </td>
-            <td className="py-3.5 px-4 text-right font-semibold text-zinc-900 dark:text-zinc-100">
+            <td className="py-3 px-4 text-right text-sm font-bold text-boxel-ink">
                 $
                 {trade.total_cost.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                 })}
             </td>
-            <td className="py-3.5 px-4 text-right">
+            <td className="py-3 px-4 text-right text-xs font-normal">
                 {trade.realized_pnl !== undefined && trade.realized_pnl !== null ? (
                     <span
-                        className={`font-semibold ${
-                            trade.realized_pnl >= 0
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-rose-600 dark:text-rose-400'
-                        }`}
+                        className={trade.realized_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}
                     >
                         {trade.realized_pnl >= 0 ? '+' : ''}${trade.realized_pnl.toFixed(2)}
                     </span>
                 ) : (
-                    <span className="text-zinc-400">—</span>
+                    <span className="text-boxel-muted">—</span>
                 )}
             </td>
-            <td className="py-3.5 px-4 text-center">
+            <td className="py-3 px-4 text-center">
                 {trade.reasoning ? (
                     <button
                         type="button"
                         onClick={onToggleExpand}
-                        className="text-xs font-sans text-indigo-500 hover:text-indigo-600 underline"
+                        className="text-xs font-normal font-sans text-accent hover:underline"
                     >
                         {isExpanded ? 'Hide' : 'View Thesis'}
                     </button>
                 ) : (
-                    <span className="text-zinc-400 text-xs font-sans">—</span>
+                    <span className="text-boxel-muted text-xs font-normal font-sans">—</span>
                 )}
                 {isExpanded && trade.reasoning && (
-                    <div className="mt-2 p-3 text-left font-sans text-xs bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 rounded-xl text-zinc-800 dark:text-zinc-200 leading-relaxed">
-                        <div className="font-semibold text-indigo-600 dark:text-indigo-400 mb-1">
+                    <div className="mt-2 p-3 text-left font-sans text-xs font-normal bg-boxel-canvas border border-boxel-bevel-hi rounded-none text-boxel-ink leading-relaxed">
+                        <div className="text-sm font-bold text-accent mb-1">
                             Agent Decision Thesis:
                         </div>
                         {trade.reasoning}
@@ -121,30 +115,30 @@ export function BacktestTradesAudit({ experiment }: BacktestTradesAuditProps) {
     });
 
     return (
-        <Card className="p-8 space-y-6">
+        <Card className="p-6 flex flex-col gap-6 bg-boxel-surface border-boxel-bevel-hi">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                         <SectionHeading>Backtest Executed Trades Audit</SectionHeading>
                         <Badge variant="outline">{trades.length} Total Trades</Badge>
                     </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="text-xs font-normal text-boxel-muted">
                         Complete point-in-time trade ledger executed by model agents during this
                         12-week backtest run.
                     </p>
                 </div>
 
                 {trades.length > 0 && (
-                    <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800 self-start md:self-auto">
+                    <div className="flex items-center gap-1.5 bg-boxel-trough p-1 rounded-none border border-boxel-bevel-hi self-start md:self-auto">
                         {(['ALL', 'BUY', 'SELL'] as const).map((filter) => (
                             <button
                                 key={filter}
                                 type="button"
                                 onClick={() => setSelectedSignalFilter(filter)}
-                                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                                className={`px-3 py-1 text-sm font-bold rounded-none transition-all ${
                                     selectedSignalFilter === filter
-                                        ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                                        : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                                        ? 'bg-accent text-accent-ink shadow-sm'
+                                        : 'text-boxel-muted hover:text-boxel-ink'
                                 }`}
                             >
                                 {filter}
@@ -155,26 +149,26 @@ export function BacktestTradesAudit({ experiment }: BacktestTradesAuditProps) {
             </div>
 
             {trades.length === 0 ? (
-                <div className="p-8 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-3 bg-zinc-50/50 dark:bg-zinc-900/30">
-                    <div className="text-3xl">📜</div>
-                    <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                <div className="p-8 text-center border border-dashed border-boxel-bevel-hi rounded-none flex flex-col gap-3 bg-boxel-trough">
+                    <div className="text-lg font-bold">📜</div>
+                    <div className="flex flex-col gap-1">
+                        <h4 className="text-sm font-bold text-boxel-ink">
                             No Detailed Trade Ledger Recorded
                         </h4>
-                        <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                        <p className="text-xs font-normal text-boxel-muted max-w-md mx-auto">
                             This historical backtest run was recorded prior to detailed trade
                             telemetry collection. Only aggregate equity metrics were preserved.
                         </p>
                     </div>
                 </div>
             ) : filteredTrades.length === 0 ? (
-                <div className="p-6 text-center text-xs text-zinc-500 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                <div className="p-6 text-center text-xs font-normal text-boxel-muted border border-boxel-bevel-hi rounded-none bg-boxel-trough">
                     No {selectedSignalFilter} trades executed during this run.
                 </div>
             ) : (
-                <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-2xl">
-                    <table className="w-full text-left text-xs">
-                        <thead className="bg-zinc-100/70 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-wider">
+                <div className="overflow-x-auto border border-boxel-bevel-hi rounded-none bg-boxel-trough">
+                    <table className="w-full text-left text-xs font-mono font-normal">
+                        <thead className="bg-boxel-surface border-b border-boxel-bevel-hi text-boxel-muted text-sm font-bold uppercase tracking-wider font-sans">
                             <tr>
                                 <th className="py-3 px-4">Executed At</th>
                                 <th className="py-3 px-4">Agent Model</th>
@@ -187,7 +181,7 @@ export function BacktestTradesAudit({ experiment }: BacktestTradesAuditProps) {
                                 <th className="py-3 px-4 text-center">Reasoning</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-mono">
+                        <tbody className="divide-y divide-boxel-bevel-hi/50">
                             {filteredTrades.map((t, index) => {
                                 const key = t.id || `${t.ticker}-${t.executed_at}-${index}`;
                                 return (

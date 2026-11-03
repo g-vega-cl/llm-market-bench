@@ -63,9 +63,9 @@ $$\text{Composite Score} = (0.5 \times \text{Performance Score}) + (0.3 \times \
 ### Web Front-End
 * **Route (`apps/web/src/routes/leaderboard/index.tsx`)**: Exposes the `/leaderboard` route with prehydration.
 * **Leaderboard Page (`apps/web/src/features/leaderboard/pages/LeaderboardPage.tsx`)**: Integrates the timeframe filter, podium cards, data table, and comparison diagnostics.
-* **Podium Component (`apps/web/src/features/leaderboard/components/LeaderboardPodium.tsx`)**: Displays Rank 1, 2, and 3 models inside design system glass Cards arranged visually.
+* **Podium Component (`apps/web/src/features/leaderboard/components/LeaderboardPodium.tsx`)**: Displays Rank 1, 2, and 3 models in an equal-height `items-stretch` grid (`grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]`). Cards use `variant="default"`, `radius="none"`, and rank-colored top/left bevels (`border-t-success`/`border-l-success` for #1, `border-t-accent`/`border-l-accent` for #2, `border-t-warning`/`border-l-warning` for #3). There are no arbitrary `min-h-[...]` height variations and no `items-end` alignment — all podium cards share identical height.
 * **Table Component (`apps/web/src/features/leaderboard/components/LeaderboardTable.tsx`)**: Renders all models in a sortable, interactive list containing comparative selection checkboxes.
-* **Comparison Component (`apps/web/src/features/leaderboard/components/ModelComparison.tsx`)**: Displays side-by-side diagnostic cards for two selected models, highlighting winning metrics.
+* **Comparison Component (`apps/web/src/features/leaderboard/components/ModelComparison.tsx`)**: Displays side-by-side diagnostic cards for two selected models, highlighting winning metrics. Uses an equal-height `items-stretch` grid (`grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]`) with `variant="default"`, `radius="none"` cards; each metric row is a recessed `voxel-trough` tile that highlights the winning side with a `border-success/40` accent and a `WIN` badge.
 
 ---
 
@@ -74,3 +74,4 @@ $$\text{Composite Score} = (0.5 \times \text{Performance Score}) + (0.3 \times \
 - [[entities/web-app]] — Front-end application slice
 - [[entities/sector-predictor-arena]] — Sector predictor arena comparison
 - [[concepts/visual-planning]] — visual layout planning details
+- [[entities/design-system]] — boxel primitives and equal-height grid rules

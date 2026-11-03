@@ -42,7 +42,7 @@ function AnsweredTurnView({
 
     return (
         <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-1.5 text-xs">
-            <div className="flex items-center justify-between text-boxel-muted font-mono text-[10px]">
+            <div className="flex items-center justify-between text-boxel-muted font-mono text-xs font-normal">
                 <div className="flex items-center gap-1.5">
                     <span>Latest Answered Turn:</span>
                     {injectedTime && <span>{injectedTime}</span>}
@@ -57,8 +57,8 @@ function AnsweredTurnView({
             </div>
             {latestAnswered.agent_response &&
                 (isOutage ? (
-                    <div className="p-2.5 bg-boxel-surface border border-accent/40 flex flex-col gap-1 text-[11px] font-mono">
-                        <div className="flex items-center gap-1.5 text-accent font-bold">
+                    <div className="p-2.5 bg-boxel-surface border border-accent/40 flex flex-col gap-1 text-xs font-normal font-mono">
+                        <div className="flex items-center gap-1.5 text-sm font-bold text-accent">
                             <span>⚠️</span>
                             <span>DESK NOTICE: HIGH SYSTEM VOLUME</span>
                         </div>
@@ -69,7 +69,7 @@ function AnsweredTurnView({
                         </div>
                     </div>
                 ) : (
-                    <div className="text-boxel-ink text-[11px] leading-relaxed whitespace-pre-wrap break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono">
+                    <div className="text-boxel-ink text-xs font-normal leading-relaxed whitespace-pre-wrap break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono">
                         {latestAnswered.agent_response}
                     </div>
                 ))}
@@ -147,28 +147,28 @@ export function ConsoleQueueCard({
     return (
         <div className="voxel-trough p-3 flex flex-col gap-2.5 border border-accent/20">
             <div className="flex flex-wrap items-center justify-between gap-1">
-                <span className="text-xs font-black uppercase tracking-wider text-accent">
+                <span className="text-sm font-bold uppercase tracking-wider text-accent">
                     Audience Interactive Queue & Desk Explainer
                 </span>
-                <span className="text-xs font-mono text-boxel-muted">
+                <span className="text-xs font-normal font-mono text-boxel-muted">
                     {pendingCount > 0 ? `${pendingCount} in queue` : 'Queue open'}
                 </span>
             </div>
 
-            <p className="text-xs text-boxel-muted leading-normal">
+            <p className="text-xs font-normal text-boxel-muted leading-normal">
                 Ask the trader about past choices, current SPY positioning, or macroeconomic
                 hypotheses (e.g. &ldquo;What do you think will happen after midterms?&rdquo;).
             </p>
 
             {!user ? (
                 <div className="p-2.5 bg-boxel-elevated border border-boxel-bevel-hi flex flex-col gap-2">
-                    <span className="text-xs font-mono text-boxel-muted">
+                    <span className="text-xs font-normal font-mono text-boxel-muted">
                         🔒 Sign in to submit hypotheses and questions for the live model.
                     </span>
                     <div>
                         <a
                             href="/signup"
-                            className="voxel-btn inline-block bg-accent text-accent-ink px-3 py-1.5 text-xs font-black uppercase tracking-wider hover:opacity-90"
+                            className="voxel-btn inline-block bg-accent text-accent-ink px-3 py-1.5 text-sm font-bold uppercase tracking-wider hover:opacity-90"
                         >
                             Sign In to Queue
                         </a>
@@ -176,13 +176,13 @@ export function ConsoleQueueCard({
                 </div>
             ) : submittedMessage ? (
                 <div className="flex flex-col gap-1 py-1">
-                    <div className="text-xs font-mono text-success font-bold">
+                    <div className="text-sm font-bold font-mono text-success">
                         {submittedMessage}
                     </div>
                     <button
                         type="button"
                         onClick={() => setSubmittedMessage(null)}
-                        className="text-[10px] font-mono text-boxel-muted hover:text-boxel-ink text-left underline"
+                        className="text-xs font-normal font-mono text-boxel-muted hover:text-boxel-ink text-left underline"
                     >
                         Submit another hypothesis
                     </button>
@@ -196,23 +196,23 @@ export function ConsoleQueueCard({
                             maxLength={MAX_QUEUE_MESSAGE_LENGTH}
                             rows={2}
                             placeholder="Ask a question or thesis hypothesis (max 500 chars)..."
-                            className="voxel-input flex-1 min-w-48 px-3 py-1.5 text-xs bg-boxel-canvas text-boxel-ink border border-boxel-bevel-hi focus:outline-none focus:border-accent resize-none"
+                            className="voxel-input flex-1 min-w-48 px-3 py-1.5 text-xs font-normal bg-boxel-canvas text-boxel-ink border border-boxel-bevel-hi focus:outline-none focus:border-accent resize-none"
                         />
                         <button
                             type="submit"
                             disabled={isSubmitting || !userQuestion.trim()}
-                            className="voxel-btn bg-accent text-accent-ink px-3 py-1.5 text-xs font-black uppercase tracking-widest hover:opacity-90 disabled:opacity-50 self-end"
+                            className="voxel-btn bg-accent text-accent-ink px-3 py-1.5 text-sm font-bold uppercase tracking-wider hover:opacity-90 disabled:opacity-50 self-end"
                         >
                             {isSubmitting ? 'Queuing...' : 'Queue'}
                         </button>
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] font-mono text-boxel-muted px-0.5">
+                    <div className="flex items-center justify-between text-xs font-normal font-mono text-boxel-muted px-0.5">
                         <span>Logged in as analyst</span>
                         <span
                             className={
                                 userQuestion.length >= 480
-                                    ? 'text-danger font-bold'
+                                    ? 'text-danger font-normal'
                                     : 'text-boxel-muted'
                             }
                         >
@@ -221,7 +221,9 @@ export function ConsoleQueueCard({
                     </div>
 
                     {errorMessage && (
-                        <div className="text-[11px] font-mono text-danger">{errorMessage}</div>
+                        <div className="text-xs font-normal font-mono text-danger">
+                            {errorMessage}
+                        </div>
                     )}
                 </form>
             )}

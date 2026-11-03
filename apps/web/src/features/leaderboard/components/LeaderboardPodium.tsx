@@ -16,75 +16,75 @@ function PodiumCard({ model, place }: PodiumCardProps) {
     const isFirst = place === 1;
     const isSecond = place === 2;
 
-    const heightClass = isFirst
-        ? 'md:min-h-[400px] h-auto border-emerald-500/50 dark:border-emerald-500/30 shadow-[0_0_25px_rgba(52,211,153,0.15)]'
+    const borderClass = isFirst
+        ? 'border-t-success border-l-success'
         : isSecond
-          ? 'md:min-h-[350px] h-auto border-blue-500/30 dark:border-blue-500/20'
-          : 'md:min-h-[320px] h-auto border-amber-500/30 dark:border-amber-500/20';
+          ? 'border-t-accent border-l-accent'
+          : 'border-t-warning border-l-warning';
 
     const badgeColor = isFirst ? 'success' : isSecond ? 'accent' : 'warning';
 
     return (
         <Card
-            variant="glass"
+            variant="default"
             isHoverable
-            radius="3xl"
-            className={`relative flex flex-col justify-between w-full md:w-80 p-8 ${heightClass}`}
+            radius="none"
+            className={`relative flex flex-col justify-between w-full h-full p-6 ${borderClass}`}
         >
             {/* Rank Badge */}
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <Badge colorScheme={badgeColor} variant="solid" size="md">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge colorScheme={badgeColor} variant="solid" size="sm">
                     Place #{place}
                 </Badge>
             </div>
 
             {/* Top Section */}
-            <div className="text-center pt-4 space-y-4">
-                <div className="text-4xl">{info.emoji}</div>
+            <div className="text-center pt-2 space-y-3">
+                <div className="text-2xl">{info.emoji}</div>
                 <div>
-                    <h3 className="font-heading text-lg font-bold text-zinc-100 line-clamp-1">
-                        {info.name}
-                    </h3>
-                    <p className="text-xs text-zinc-500 font-mono tracking-wider truncate">
+                    <h3 className="text-sm font-bold text-boxel-ink line-clamp-1">{info.name}</h3>
+                    <p className="text-xs font-normal text-boxel-muted font-mono tracking-wider truncate">
                         {model.model_name}
                     </p>
                 </div>
 
                 {/* Composite Leaderboard Score */}
-                <div className="inline-block px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">
+                <div className="voxel-trough inline-block px-4 py-2">
+                    <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider block">
                         Leaderboard Score
                     </span>
-                    <span className="text-3xl font-black font-mono text-zinc-100">
+                    <span className="text-lg font-bold font-mono text-boxel-ink">
                         {model.composite_score.toFixed(1)}%
                     </span>
                 </div>
             </div>
 
             {/* Metrics Breakdown */}
-            <div className="mt-8 space-y-3 pt-6 border-t border-white/5 text-xs font-mono">
+            <div className="mt-6 space-y-2.5 pt-4 border-t border-boxel-bevel-hi text-xs font-mono">
                 <div className="flex justify-between items-center">
-                    <span className="text-zinc-500 uppercase tracking-wider text-[10px]">
+                    <span className="text-boxel-muted uppercase tracking-wider text-xs font-normal">
                         Return %
                     </span>
                     <span
-                        className={`font-black ${model.return_pct >= 0 ? 'text-success' : 'text-danger'}`}
+                        className={`text-sm font-bold ${model.return_pct >= 0 ? 'text-success' : 'text-danger'}`}
                     >
                         {model.return_pct >= 0 ? '+' : ''}
                         {model.return_pct.toFixed(2)}%
                     </span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-zinc-500 uppercase tracking-wider text-[10px]">
+                    <span className="text-boxel-muted uppercase tracking-wider text-xs font-normal">
                         Win Rate
                     </span>
-                    <span className="text-zinc-300 font-bold">{model.win_rate.toFixed(1)}%</span>
+                    <span className="text-boxel-ink text-sm font-bold">
+                        {model.win_rate.toFixed(1)}%
+                    </span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-zinc-500 uppercase tracking-wider text-[10px]">
+                    <span className="text-boxel-muted uppercase tracking-wider text-xs font-normal">
                         Approval
                     </span>
-                    <span className="text-zinc-300 font-bold">
+                    <span className="text-boxel-ink text-sm font-bold">
                         {model.verifier_approval_rate !== null &&
                         model.verifier_approval_rate !== undefined
                             ? `${model.verifier_approval_rate.toFixed(1)}%`
@@ -92,10 +92,10 @@ function PodiumCard({ model, place }: PodiumCardProps) {
                     </span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-zinc-500 uppercase tracking-wider text-[10px]">
+                    <span className="text-boxel-muted uppercase tracking-wider text-xs font-normal">
                         Consistency
                     </span>
-                    <span className="text-zinc-300 font-bold">
+                    <span className="text-boxel-ink text-sm font-bold">
                         {model.consistency_score.toFixed(1)}%
                     </span>
                 </div>
@@ -122,7 +122,7 @@ export function LeaderboardPodium({ models }: LeaderboardPodiumProps) {
     });
 
     return (
-        <div className="flex flex-col md:flex-row items-stretch md:items-end justify-center gap-6 py-8 animate-slide-up">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch py-8 animate-slide-up w-full">
             {sortedPodium.map(({ model, place }) => (
                 <PodiumCard key={model.model_name} model={model} place={place} />
             ))}

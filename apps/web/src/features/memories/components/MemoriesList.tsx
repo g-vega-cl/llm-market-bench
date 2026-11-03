@@ -140,7 +140,7 @@ export function MemoriesList({
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 border-t border-zinc-200/50 dark:border-white/5">
                         {/* Date Presets */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-1">
+                            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                                 Date:
                             </span>
                             {DATE_PRESETS.map((dp) => (
@@ -150,6 +150,7 @@ export function MemoriesList({
                                     variant={datePreset === dp.id ? 'solid' : 'ghost'}
                                     colorScheme="neutral"
                                     onClick={() => onDatePresetChange?.(dp.id)}
+                                    className="rounded-none text-sm font-bold"
                                 >
                                     {dp.label}
                                 </Button>

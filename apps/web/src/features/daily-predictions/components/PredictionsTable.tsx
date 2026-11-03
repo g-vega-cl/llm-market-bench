@@ -96,16 +96,16 @@ function PredictionExpandedDetail({
                     <MarketContextViewer context={p.market_context} />
 
                     {/* System Prompt Used */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">
                                 SYSTEM PROMPT VARIANT:
                             </span>
-                            <Badge colorScheme="info" variant="soft" size="xs">
+                            <Badge colorScheme="info" variant="soft" size="xs" radius="none">
                                 {p.prompt_variant_tag || 'baseline'}
                             </Badge>
                         </div>
-                        <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-white dark:bg-zinc-900 p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 m-0">
+                        <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-white dark:bg-zinc-900 p-3.5 rounded-none border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 m-0">
                             {matchingExp?.prompt_content ||
                                 'Standard baseline system prompt active during prediction.'}
                         </pre>
@@ -125,7 +125,7 @@ function PredictionTableRowItem({
     return (
         <>
             <TableRow className="border-b border-zinc-100 dark:border-zinc-800/60">
-                <TableCell className="font-semibold text-zinc-900 dark:text-zinc-100">
+                <TableCell className="font-bold text-sm text-zinc-900 dark:text-zinc-100 font-mono">
                     {p.target_date}
                 </TableCell>
                 <TableCell>{p.ticker}</TableCell>
@@ -141,15 +141,15 @@ function PredictionTableRowItem({
                 <TableCell>
                     {p.close_price != null ? `$${p.close_price.toFixed(2)}` : '-'}
                 </TableCell>
-                <TableCell className="font-semibold">{p.actual_direction || '-'}</TableCell>
+                <TableCell className="font-bold text-sm">{p.actual_direction || '-'}</TableCell>
                 <TableCell>
                     {p.intraday_hit === true && (
-                        <Badge colorScheme="info" variant="soft" size="xs">
+                        <Badge colorScheme="info" variant="soft" size="xs" radius="none">
                             HIT
                         </Badge>
                     )}
                     {p.intraday_hit === false && (
-                        <Badge colorScheme="warning" variant="soft" size="xs">
+                        <Badge colorScheme="warning" variant="soft" size="xs" radius="none">
                             MISSED
                         </Badge>
                     )}
@@ -157,17 +157,17 @@ function PredictionTableRowItem({
                 </TableCell>
                 <TableCell>
                     {p.is_correct === true && (
-                        <Badge colorScheme="success" variant="soft" size="xs">
+                        <Badge colorScheme="success" variant="soft" size="xs" radius="none">
                             PASS
                         </Badge>
                     )}
                     {p.is_correct === false && (
-                        <Badge colorScheme="danger" variant="soft" size="xs">
+                        <Badge colorScheme="danger" variant="soft" size="xs" radius="none">
                             FAIL
                         </Badge>
                     )}
                     {p.is_correct === null && (
-                        <Badge colorScheme="neutral" variant="soft" size="xs">
+                        <Badge colorScheme="neutral" variant="soft" size="xs" radius="none">
                             PENDING
                         </Badge>
                     )}
@@ -178,7 +178,7 @@ function PredictionTableRowItem({
                         variant="outline"
                         size="sm"
                         onClick={onToggleExpand}
-                        className="text-xs font-semibold"
+                        className="text-sm font-bold rounded-none"
                     >
                         {isExpanded ? 'Hide Details' : 'View Details & Prompt'}
                     </Button>
@@ -193,7 +193,7 @@ export function PredictionsTable({ predictions, experiments }: PredictionsTableP
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
-        <Table containerClassName="rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <Table containerClassName="rounded-none border border-zinc-200 dark:border-zinc-800">
             <TableHeader>
                 <TableRow>
                     <TableHead>Date</TableHead>

@@ -18,17 +18,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         return (
             <div
                 className={cn(
-                    'flex items-center gap-2 w-full rounded-xl border bg-white dark:bg-zinc-900 px-3 py-2 transition-colors focus-within:ring-2 focus-within:ring-accent/40',
-                    isError
-                        ? 'border-danger focus-within:ring-danger/40'
-                        : 'border-zinc-200 dark:border-zinc-800',
+                    'voxel-trough rounded-none flex items-center gap-2 w-full bg-boxel-trough px-3 py-2 transition-colors focus-within:ring-2 focus-within:ring-accent/40',
+                    isError ? 'border-danger focus-within:ring-danger/40' : 'border-boxel-bevel-hi',
                 )}
             >
                 {leftAddon}
                 <input
                     ref={ref}
                     className={cn(
-                        'flex-1 bg-transparent text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none',
+                        'flex-1 bg-transparent text-sm font-bold text-boxel-ink placeholder:text-boxel-muted focus:outline-none',
                         className,
                     )}
                     {...props}
@@ -50,7 +48,7 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
             <label
                 ref={ref}
                 className={cn(
-                    'block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1',
+                    'block text-sm font-bold text-boxel-ink uppercase tracking-wider',
                     className,
                 )}
                 {...props}

@@ -56,8 +56,8 @@ export function AuditCard({ audit }: AuditCardProps) {
                             </span>
                         )}
                     </div>
-                    <h3 className="text-lg font-medium text-zinc-200 mb-2">{audit.title}</h3>
-                    <p className="text-zinc-400 text-sm">{audit.description}</p>
+                    <h3 className="text-lg font-bold text-zinc-200 mb-2">{audit.title}</h3>
+                    <p className="text-zinc-400 text-xs font-normal">{audit.description}</p>
                 </div>
             </div>
 
@@ -66,12 +66,12 @@ export function AuditCard({ audit }: AuditCardProps) {
                     <button
                         type="button"
                         onClick={() => setExpanded(!expanded)}
-                        className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                        className="text-xs font-bold text-zinc-400 hover:text-zinc-200 transition-colors"
                     >
                         {expanded ? 'Hide suggestion' : 'Show suggestion'}
                     </button>
                     {expanded && (
-                        <div className="mt-3 p-4 bg-zinc-800/50 rounded text-sm text-zinc-300 font-mono whitespace-pre-wrap">
+                        <div className="mt-3 p-4 bg-zinc-800/50 rounded-none text-xs font-normal text-zinc-300 font-mono whitespace-pre-wrap">
                             {typeof audit.suggestion === 'string' &&
                             audit.suggestion.startsWith('[')
                                 ? JSON.stringify(JSON.parse(audit.suggestion), null, 2)

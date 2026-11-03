@@ -30,6 +30,9 @@ htmlcov/
 # Git History Cache
 git-history/
 
+# Knowledge DB Cache (QMD collection)
+knowledge-db/
+
 # Database caches
 *.db
 

@@ -78,6 +78,7 @@
 - [[entities/global-background]] — Fixed ambient background with dot grid and glowing orbs for the full application
 - [[entities/shader-background]] — WebGL shader background component with 4 animated visual themes mapped to a PostHog A/B test
 - [[entities/mcp-knowledge-rag]] — Local MCP server for semantic search (RAG) against external Supabase knowledge base via Gemini embeddings
+- [[entities/knowledge-db-sync]] — Incremental sync of external engineering articles to local Markdown with QMD indexing
 - [[entities/academic-paper-seeding]] — Seeds curated empirical asset pricing papers into pgvector memory store for RAG grounding
 - [[entities/design-system]] — Shared UI component library (primitives, patterns, layouts, design tokens)
 - [[entities/cleanup]] — Database cleanup module for periodic maintenance

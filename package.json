@@ -7,6 +7,7 @@
     "install:all": "pnpm install",
     "test": "vitest",
     "prepare": "husky",
+    "knowledge:sync": "./apps/engine/.venv/bin/python3 apps/engine/sync_knowledge_db.py",
     "biome": "biome"
   },
   "devDependencies": {

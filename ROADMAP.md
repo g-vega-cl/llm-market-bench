@@ -11,7 +11,6 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Set up a local auto researcher with Qwen, Strata, and Jev. Evaluated across 10-batch (300 iterations) tournament on 2-year multi-regime dataset (507 days, 106 weeks). Revealed that unconstrained open-to-close daily direction caps at ~52% due to random walk noise and selectivity subsidy trap. Post-mortem documented at [[concepts/daily-directional-predictability-limits]].
 - [ ] - Benchify: something I can autoresearch daily?
       Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
-  - [ ] - **Shorten Prediction Horizon (Opening Drive Alpha)**: Transition prediction target from 09:30 -> 16:00 ET (6.75 hours of unobserved intraday noise) to Opening Drive (09:30 -> 10:30 ET) or First-Hour Breakout where pre-market tape and overnight gap information carry maximum explanatory power before midday decay.
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
 - [ ] - Benchify: haiku and DeepSeek not making trades, why? Has the verifier gone crazy/useless.
 
@@ -19,8 +18,8 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
-- [ ] - Benchify: when remaking and updating design system. Make sure sidebar is only 4 items tops. Maybe change the items based on frequency of use?
-- [ ] - Benchify: at most 4 in navbar..maybe less. Home, portfolios, live, data/experiments. They can be icons too
+- [x] - Benchify: when remaking and updating design system. Make sure sidebar is only 4 items tops. Maybe change the items based on frequency of use?
+- [x] - Benchify: at most 4 in navbar..maybe less. Home, portfolios, live, data/experiments. They can be icons too
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
 - [x] - Benchify: update today page: Replaced static AI Market Feeling overview with the 24/7 Autonomous SPY Trader console, D3 candlestick tape, and real-time HUD
 - [x] - Benchify: today page how's the AI feeling is being crowded or confused by systematic portfolios: Excluded mechanical sys-* strategies so only autonomous LLM agents appear on Home overview
@@ -49,8 +48,6 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Autoresearch Scaling & Local Models
 
-- [ ] - add a local model?
-- [p] - Benchify: set up Laya alongside JEV?
 - [ ] - make an autoresearcher for the verifier
 - [ ] - make autoresearcher with more variables and more "temperatures?" More portfolios too?
 - [ ] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
@@ -61,14 +58,12 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
-- [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 
 ### Database & Performance Polish
 
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: connect QMD to knowledge db or use strata to distil the information to core principles
 - [ ] - Benchify: move all newsletters to dedicated email
-- [ ] - Benchify: get the smol server to do API calls 24/7 now that the DB is huge, and set up a distributed DB.
 - [ ] - Benchify: news scraper/news caller. I need a huge DB of news
 - [ ] - Benchify: audit news ingestion
 - [ ] - Benchify: research every stock/sector mentioned in newsletters individually and decide if it would be worth investing in it. Save all these research reports in a DB where users could "look up all information about X company"

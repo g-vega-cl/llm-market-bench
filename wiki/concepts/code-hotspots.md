@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **212**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **214**).
 
 ## Top Hotspots
 
@@ -14,7 +14,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/engine/tasks/daily_predictor.py` | 20 | 5 | 25.0% | 693 | 100 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 13 | 4 | 30.8% | 264 | 52 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 14 | 4 | 28.6% | 254 | 56 | **HIGH** |
 | `apps/web/src/routes/__root.tsx` | 10 | 5 | 50.0% | 233 | 50 | **HIGH** |
 | `apps/engine/tests/test_workflow_schedule.py` | 10 | 5 | 50.0% | 243 | 50 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 16 | 3 | 18.8% | 379 | 48 | **HIGH** |

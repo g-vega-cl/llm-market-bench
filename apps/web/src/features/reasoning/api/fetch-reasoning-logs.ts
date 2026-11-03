@@ -1,5 +1,5 @@
 import type { LLMReasoningLog } from '@llm-market-bench/database';
-import { getDbBrowserClient } from '~/lib/db';
+import { DEFAULT_ARCHIVE_DB_URL, getDbBrowserClient } from '~/lib/db';
 
 const PAGE_SIZE = 50;
 
@@ -10,7 +10,11 @@ export interface PaginatedReasoningLogs {
 }
 
 const ARCHIVE_DB_URL =
-    process.env.NEXT_PUBLIC_ARCHIVE_DB_URL || 'https://benchify-archive-db.clvg.uk';
+    (typeof process !== 'undefined'
+        ? process.env.ARCHIVE_DB_URL || process.env.VITE_ARCHIVE_DB_URL
+        : undefined) ||
+    import.meta.env.VITE_ARCHIVE_DB_URL ||
+    DEFAULT_ARCHIVE_DB_URL;
 
 async function fetchFromArchive(
     cursor?: string | null,

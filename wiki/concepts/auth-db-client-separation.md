@@ -31,11 +31,17 @@ Auth consumers: `__root.tsx` (`fetchUser`), `_authed.tsx` (`loginFn`), `auth.cal
   - All clients are **stateless**: `auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }`. The DB client never manages sessions — auth is the Auth client's job.
   - Throws `Missing Archive DB credentials (ARCHIVE_DB_ANON_KEY)` / `(VITE_ARCHIVE_DB_ANON_KEY)` when the key is absent.
 
+#### Isomorphic SSR resolution in `getDbBrowserClient()`
+
+`getDbBrowserClient()` is the isomorphic fetcher used by both route loaders and the browser. When `typeof window === 'undefined'` (i.e. during SSR in a route loader or server function) it first delegates to `getDbServerClient()` so the runtime server env (`ARCHIVE_DB_URL` / `ARCHIVE_DB_ANON_KEY`) is used — those values are **not** baked into `import.meta.env`. If that throws (missing runtime credentials), it falls through to the build-time `VITE_ARCHIVE_DB_URL` / `VITE_ARCHIVE_DB_ANON_KEY` path. Without this, SSR loaders could resolve an empty/unauthenticated client and return empty data, causing the page to flash a "no data found" state until the client refetched.
+
 DB consumers: every data fetcher across `features/*/api/*` (portfolios, memories, reasoning, today, leaderboard, market-overview, cause-and-effect, earnings, generated-newsletters, daily-predictions, ai-predictions, home barometer/tape/agent-queue, concepts, audits, autoresearch). Privileged server functions like `handleSubmitAgentQueueQuestion` and `chat-server.ts` use `getDbAdminClient()` for schema introspection, `agent_chat_queue` inserts, and `chat_memories` writes/reads.
 
 ## Client Call-Site Architecture
 
 Data fetchers import `getDbServerClient` / `getDbBrowserClient` from `apps/web/src/lib/db.ts`. Auth routes import `getAuthServerClient` from `apps/web/src/lib/auth.ts` and `getAuthBrowserClient` from `apps/web/src/lib/auth-client.ts`. Tests mock `~/lib/db` and `~/lib/auth` separately.
+
+Fetchers that need the raw archive URL (for direct `fetch` calls outside the Supabase SDK) resolve it the same way the DB client does: `apps/web/src/features/reasoning/api/fetch-reasoning-logs.ts` reads `process.env.ARCHIVE_DB_URL` / `process.env.VITE_ARCHIVE_DB_URL` when `process` is defined, then `import.meta.env.VITE_ARCHIVE_DB_URL`, then falls back to `DEFAULT_ARCHIVE_DB_URL` imported from `~/lib/db`.
 
 ## Environment Variables
 
@@ -59,6 +65,7 @@ Because Auth lives in Supabase Cloud while data tables live in the archive DB, f
 
 - [[entities/web-app]] — the dashboard that consumes both client families
 - [[concepts/hybrid-database-archival]] — the self-hosted PostgREST stack the DB client targets
+- [[concepts/rendering-strategies]] — SSR/hybrid-SSR loading patterns that rely on the isomorphic DB client
 - [[concepts/private-memory-vault]] — user-isolated theses whose FK was decoupled
 - [[concepts/env-based-secrets]] — env-var injection rules
 - [[entities/rotate-secrets]] — secret generation and env-file writes

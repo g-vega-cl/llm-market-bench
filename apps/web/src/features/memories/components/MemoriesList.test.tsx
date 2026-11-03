@@ -237,6 +237,14 @@ describe('MemoriesList', () => {
         expect(onHighImpactToggle).toHaveBeenCalledTimes(1);
     });
 
+    it('shows a loading hint instead of "No memories found" while the list is still loading', () => {
+        renderWithClient(
+            <MemoriesList memories={[]} filter="RESOLVED" onFilterChange={vi.fn()} isLoading />,
+        );
+        expect(screen.queryByText(/No memories found/i)).toBeNull();
+        expect(screen.getByText(/Loading memories/i)).toBeInTheDocument();
+    });
+
     describe('Memory Category Classification', () => {
         it('classifies MARKET_EVENT and CALENDAR_EVENT correctly', () => {
             const m1: Memory = {

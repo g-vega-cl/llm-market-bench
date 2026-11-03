@@ -60,6 +60,33 @@ describe('db client (Local PostgREST Archive DB Only)', () => {
         );
     });
 
+    it('should resolve runtime server env (ARCHIVE_DB_ANON_KEY) when browser client is called during SSR', () => {
+        vi.stubGlobal('window', undefined);
+        process.env.ARCHIVE_DB_URL = 'https://benchify-archive-db.clvg.uk';
+        process.env.ARCHIVE_DB_ANON_KEY = 'runtime-anon-jwt';
+
+        getDbBrowserClient();
+        expect(createClient).toHaveBeenCalledWith(
+            'https://benchify-archive-db.clvg.uk',
+            'runtime-anon-jwt',
+            expect.anything(),
+        );
+        vi.unstubAllGlobals();
+    });
+
+    it('should fall back to build-time VITE env during SSR when no runtime env is set', () => {
+        vi.stubGlobal('window', undefined);
+        vi.stubEnv('VITE_ARCHIVE_DB_ANON_KEY', 'baked-anon-jwt');
+
+        getDbBrowserClient();
+        expect(createClient).toHaveBeenCalledWith(
+            expect.any(String),
+            'baked-anon-jwt',
+            expect.anything(),
+        );
+        vi.unstubAllGlobals();
+    });
+
     it('should throw when missing ARCHIVE_DB_ANON_KEY', () => {
         process.env.ARCHIVE_DB_URL = 'https://benchify-archive-db.clvg.uk';
         expect(() => getDbServerClient()).toThrow(/Missing Archive DB credentials/);

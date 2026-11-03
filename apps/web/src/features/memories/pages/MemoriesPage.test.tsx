@@ -49,6 +49,12 @@ const mockMemories = [
     },
 ];
 
+// The page marks SSR data stale so it refetches on mount; keep that refetch pending in tests
+// that only exercise the initial SSR slice.
+function pendingFetch() {
+    return new Promise<never>(() => {});
+}
+
 describe('MemoriesPage (SSR-First)', () => {
     let queryClient: QueryClient;
 
@@ -71,7 +77,7 @@ describe('MemoriesPage (SSR-First)', () => {
                     initialMemories={mockMemories}
                     initialHasMore={false}
                     initialCursor={null}
-                    fetchFn={vi.fn()}
+                    fetchFn={pendingFetch}
                 />
             </QueryClientProvider>,
         );
@@ -89,7 +95,7 @@ describe('MemoriesPage (SSR-First)', () => {
                     initialMemories={mockMemories}
                     initialHasMore={false}
                     initialCursor={null}
-                    fetchFn={vi.fn()}
+                    fetchFn={pendingFetch}
                 />
             </QueryClientProvider>,
         );
@@ -105,7 +111,7 @@ describe('MemoriesPage (SSR-First)', () => {
                     initialMemories={mockMemories}
                     initialHasMore={false}
                     initialCursor={null}
-                    fetchFn={vi.fn()}
+                    fetchFn={pendingFetch}
                 />
             </QueryClientProvider>,
         );
@@ -296,7 +302,7 @@ describe('MemoriesPage (SSR-First)', () => {
                     initialMemories={mockMemories}
                     initialHasMore={false}
                     initialCursor={null}
-                    fetchFn={vi.fn()}
+                    fetchFn={pendingFetch}
                     searchFn={searchFnMock}
                 />
             </QueryClientProvider>,
@@ -386,7 +392,7 @@ describe('MemoriesPage (SSR-First)', () => {
                     initialMemories={scoredMemories}
                     initialHasMore={false}
                     initialCursor={null}
-                    fetchFn={vi.fn()}
+                    fetchFn={pendingFetch}
                 />
             </QueryClientProvider>,
         );
@@ -466,7 +472,7 @@ describe('MemoriesPage (SSR-First)', () => {
                     initialMemories={datedMemories}
                     initialHasMore={false}
                     initialCursor={null}
-                    fetchFn={vi.fn()}
+                    fetchFn={pendingFetch}
                 />
             </QueryClientProvider>,
         );
@@ -531,7 +537,7 @@ describe('MemoriesPage (SSR-First)', () => {
                     initialMemories={impactMemories}
                     initialHasMore={false}
                     initialCursor={null}
-                    fetchFn={vi.fn()}
+                    fetchFn={pendingFetch}
                 />
             </QueryClientProvider>,
         );
@@ -579,7 +585,7 @@ describe('MemoriesPage (SSR-First)', () => {
                     initialMemories={mockMemories}
                     initialHasMore={false}
                     initialCursor={null}
-                    fetchFn={vi.fn()}
+                    fetchFn={pendingFetch}
                     deltaSyncFn={deltaSyncFnMock}
                 />
             </QueryClientProvider>,
@@ -595,5 +601,26 @@ describe('MemoriesPage (SSR-First)', () => {
 
         // Old memories should still be present
         expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
+    });
+
+    it('expands the SSR slice on mount and shows loading instead of an empty state meanwhile', async () => {
+        const fetchFnMock = vi.fn(() => new Promise<never>(() => {}));
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage
+                    initialMemories={mockMemories}
+                    initialHasMore={true}
+                    initialCursor="c1"
+                    fetchFn={fetchFnMock}
+                />
+            </QueryClientProvider>,
+        );
+
+        await waitFor(() => expect(fetchFnMock).toHaveBeenCalledWith(undefined, undefined));
+
+        // "Resolved" has a match in the slice; use a filter with no match in the 2-item slice
+        fireEvent.click(screen.getByRole('button', { name: 'Principles' }));
+        expect(screen.queryByText('No memories found in this category')).toBeNull();
     });
 });

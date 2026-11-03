@@ -126,7 +126,7 @@ export function MemoriesPage({
     const categoryKey = category ?? 'all';
 
     // Standard infinite query for paginated scroll/fetch with 4-hour cache
-    const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
+    const { data, error, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =
         useInfiniteQuery({
             queryKey: ['benchify', 'memories', 'list', categoryKey],
             queryFn: async ({ pageParam }) => {
@@ -135,7 +135,7 @@ export function MemoriesPage({
             },
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage) =>
-                lastPage.hasMore ? (lastPage.nextCursor ?? undefined) : undefined,
+                lastPage?.hasMore ? (lastPage.nextCursor ?? undefined) : undefined,
             initialData: () => {
                 if (category && initialByCategory?.[category]) {
                     const catData = initialByCategory[category];
@@ -179,12 +179,14 @@ export function MemoriesPage({
                 };
             },
             staleTime: 1000 * 60 * 60 * 4, // 4 hours
+            // SSR ships a small slice; mark it stale so it expands to a full page on mount.
+            initialDataUpdatedAt: 0,
             refetchOnWindowFocus: false,
         });
 
     // Flatten all fetched pages into a single memories list
     const memories = React.useMemo(() => {
-        return data ? data.pages.flatMap((page) => page.data || []) : [];
+        return data ? data.pages.flatMap((page) => page?.data || []) : [];
     }, [data]);
 
     // Delta-sync check on mount: check if newer memories arrived and prepend them
@@ -452,6 +454,7 @@ export function MemoriesPage({
 
                 <MemoriesList
                     memories={displayedMemories}
+                    isLoading={isFetching}
                     filter={filter}
                     onFilterChange={handleFilterChange}
                     sortBy={sortBy}

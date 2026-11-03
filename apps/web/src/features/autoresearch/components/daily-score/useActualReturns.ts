@@ -93,7 +93,8 @@ export function useActualReturns(
 ) {
     const [actualReturns, setActualReturns] = useState<ActualReturns | null>(null);
     const [actualSpyReturn, setActualSpyReturn] = useState<number | null>(null);
-    const [isLoadingActuals, setIsLoadingActuals] = useState(false);
+    // Start as loading when a fetch will fire, so frame 1 never shows the empty state.
+    const [isLoadingActuals, setIsLoadingActuals] = useState(Boolean(weekStart && weekEnd));
 
     useEffect(() => {
         if (!weekStart || !weekEnd) return;

@@ -67,6 +67,16 @@ export function getDbServerClient(options?: { useServiceRole?: boolean }) {
 }
 
 export function getDbBrowserClient() {
+    // During SSR (route loaders / server functions) prefer runtime server env, which
+    // is not baked into `import.meta.env`; otherwise loaders can return empty data
+    // and flash "no data found" until the client refetches.
+    if (typeof window === 'undefined') {
+        try {
+            return getDbServerClient();
+        } catch {
+            // Fall through to build-time VITE env below.
+        }
+    }
     const dbUrl = import.meta.env.VITE_ARCHIVE_DB_URL || DEFAULT_ARCHIVE_DB_URL;
     const dbAnonKey =
         import.meta.env.VITE_ARCHIVE_DB_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;

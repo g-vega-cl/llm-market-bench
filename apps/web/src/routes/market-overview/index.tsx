@@ -10,7 +10,8 @@ const getMarketOverview = createServerFn({ method: 'GET' })
     });
 
 export const Route = createFileRoute('/market-overview/')({
-    loader: async () => await getMarketOverview({ data: { limit: 5 } }),
+    // Full matrix (~190 rows) so filters never run against a partial slice and flash "no match".
+    loader: async () => await getMarketOverview({ data: { limit: undefined } }),
     component: RouteComponent,
 });
 

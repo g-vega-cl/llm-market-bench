@@ -58,6 +58,8 @@ export interface MemoriesListProps {
     onDatePresetChange?: (preset: DatePresetOption) => void;
     onlyHighImpact?: boolean;
     onHighImpactToggle?: () => void;
+    /** True while the SSR slice is still being expanded; suppresses the empty state. */
+    isLoading?: boolean;
 }
 
 const FILTERS = [
@@ -93,6 +95,7 @@ export function MemoriesList({
     onDatePresetChange,
     onlyHighImpact = false,
     onHighImpactToggle,
+    isLoading = false,
 }: MemoriesListProps) {
     const [showFlow, setShowFlow] = React.useState(false);
 
@@ -201,7 +204,9 @@ export function MemoriesList({
 
                 {memories.length === 0 && (
                     <div className="flex justify-center items-center py-12">
-                        <p className="text-zinc-500 text-sm">No memories found in this category</p>
+                        <p className="text-zinc-500 text-sm">
+                            {isLoading ? 'Loading memories…' : 'No memories found in this category'}
+                        </p>
                     </div>
                 )}
             </div>

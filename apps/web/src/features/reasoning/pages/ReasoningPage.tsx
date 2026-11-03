@@ -35,6 +35,8 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                 pages: [initialData],
                 pageParams: [undefined],
             },
+            // SSR ships a small slice; mark it stale so the full page loads on mount.
+            initialDataUpdatedAt: 0,
         });
 
     const allLogs = React.useMemo(() => data?.pages.flatMap((page) => page.data) || [], [data]);
@@ -193,7 +195,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                                 </div>
                             </div>
                         ))}
-                        {(!filteredLogs || filteredLogs.length === 0) && (
+                        {(!filteredLogs || filteredLogs.length === 0) && !isFetching && (
                             <div className="text-center py-8 p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-none text-zinc-400 italic text-xs font-normal">
                                 No logs found for this category.
                             </div>

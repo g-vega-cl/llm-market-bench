@@ -116,8 +116,8 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             expect(val.className).not.toContain('text-lg');
             expect(val.className).not.toContain('font-black');
         });
-        it('LiveAgentConsole renders NEUTRAL market direction with neutral colorScheme', () => {
-            render(
+        it('LiveAgentConsole renders NEUTRAL market direction within recessed voxel-trough telemetry without badges', () => {
+            const { container } = render(
                 <LiveAgentConsole
                     bars={[]}
                     agentState={{
@@ -128,10 +128,14 @@ describe('Design Standardization: Typography & Box Sizing', () => {
                     }}
                 />,
             );
-            const badge = screen.getByText('NEUTRAL').closest('.voxel-badge') as HTMLElement;
-            expect(badge).toBeDefined();
-            expect(badge.getAttribute('data-color-scheme') ?? badge.className).toMatch(/neutral/);
-            expect(badge.className).not.toContain('bg-accent');
+            const trough = container.querySelector(
+                '[data-testid="console-telemetry-trough"]',
+            ) as HTMLElement;
+            expect(trough).toBeDefined();
+            expect(trough.className).toContain('voxel-trough');
+            expect(screen.getByText('NEUTRAL')).toBeInTheDocument();
+            expect(screen.getByText('HOLD')).toBeInTheDocument();
+            expect(trough.querySelectorAll('.voxel-badge').length).toBe(0);
         });
 
         it('ErrorCard conforms to boxel geometry rounded-none and Tier 2/3 typography', () => {

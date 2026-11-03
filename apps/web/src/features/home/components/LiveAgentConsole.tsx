@@ -1,4 +1,4 @@
-import { Badge, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { formatEasternTime } from '~/utils/date';
 import { type AgentQueueItem, fetchAgentQueueStatus } from '../api/fetch-agent-queue';
@@ -42,6 +42,21 @@ function formatCountdown(totalSec: number) {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+const DIRECTION_COLOR_MAP: Record<
+    LiveAgentState['marketDirection'],
+    { text: string; dot: string }
+> = {
+    BULLISH: { text: 'text-success', dot: 'bg-success' },
+    BEARISH: { text: 'text-danger', dot: 'bg-danger' },
+    NEUTRAL: { text: 'text-boxel-ink', dot: 'bg-boxel-muted' },
+};
+
+const ACTION_COLOR_MAP: Record<LiveAgentState['action'], string> = {
+    BUY: 'text-success',
+    SELL: 'text-danger',
+    HOLD: 'text-boxel-muted',
+};
+
 function ConsoleHeaderRibbon({
     isMarketOpen,
     countdownSeconds,
@@ -59,15 +74,8 @@ function ConsoleHeaderRibbon({
     isPolling?: boolean;
     onRefresh?: () => void;
 }) {
-    const directionBadgeScheme =
-        marketDirection === 'BULLISH'
-            ? 'success'
-            : marketDirection === 'BEARISH'
-              ? 'danger'
-              : 'neutral';
-
-    const actionBadgeScheme =
-        action === 'BUY' ? 'success' : action === 'SELL' ? 'danger' : 'neutral';
+    const directionStyle = DIRECTION_COLOR_MAP[marketDirection] ?? DIRECTION_COLOR_MAP.NEUTRAL;
+    const actionColor = ACTION_COLOR_MAP[action] ?? ACTION_COLOR_MAP.HOLD;
 
     return (
         <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-boxel-bevel-hi">
@@ -100,6 +108,26 @@ function ConsoleHeaderRibbon({
             </div>
 
             <div className="flex items-center gap-2">
+                <div
+                    data-testid="console-telemetry-trough"
+                    className="voxel-trough px-2.5 py-1 text-xs font-mono flex items-center gap-2"
+                >
+                    <span className="flex items-center gap-1.5">
+                        <span
+                            className={`h-1.5 w-1.5 shrink-0 rounded-none ${directionStyle.dot}`}
+                        />
+                        <span className="text-boxel-muted">BIAS:</span>
+                        <span className={`font-bold ${directionStyle.text}`}>
+                            {marketDirection}
+                        </span>
+                    </span>
+                    <span className="text-boxel-bevel-hi">/</span>
+                    <span className="flex items-center gap-1">
+                        <span className="text-boxel-muted">ACT:</span>
+                        <span className={`font-bold ${actionColor}`}>{action}</span>
+                    </span>
+                </div>
+
                 {onRefresh && (
                     <button
                         type="button"
@@ -111,12 +139,6 @@ function ConsoleHeaderRibbon({
                         <span>{isPolling ? 'Refreshing...' : 'Refresh Tape'}</span>
                     </button>
                 )}
-                <Badge colorScheme={directionBadgeScheme} variant="solid" size="sm" showDot>
-                    {marketDirection}
-                </Badge>
-                <Badge colorScheme={actionBadgeScheme} variant="outline" size="sm">
-                    {action}
-                </Badge>
             </div>
         </div>
     );

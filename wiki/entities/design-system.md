@@ -97,7 +97,7 @@ Composite views follow a strict parent-owns-spacing pattern:
 - Inline stat pairs: `flex items-center gap-1.5` around a label + value, replacing `mr-1.5` on the label.
 - Card grids: `grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch` (Lab uses `minmax(min(100%,20rem),1fr)`).
 
-Neutral states use the `neutral` color scheme rather than `accent` — e.g. `LiveAgentConsole` renders a `NEUTRAL` market-direction badge with `colorScheme="neutral"` so it never inherits the Cheddar Gold action fill.
+Neutral states use the `neutral` color scheme rather than `accent`. The `LiveAgentConsole` header ribbon renders its market bias and action telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) as compact `text-xs font-mono` text — a square pixel dot plus `BIAS:`/`ACT:` labels — rather than `Badge` elements, so the header never inherits the Cheddar Gold action fill. Direction and action colors are resolved from `DIRECTION_COLOR_MAP` (`BULLISH` → `text-success`/`bg-success`, `BEARISH` → `text-danger`/`bg-danger`, `NEUTRAL` → `text-boxel-ink`/`bg-boxel-muted`) and `ACTION_COLOR_MAP` (`BUY` → `text-success`, `SELL` → `text-danger`, `HOLD` → `text-boxel-muted`).
 
 ## Page-level boxel migration
 
@@ -127,7 +127,7 @@ Beyond the primitives, the feature pages render through the same boxel tokens an
 3. **Closed variant props**: Components must accept only design-system-defined variants and color schemes.
 4. **Fluent responsive layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72` and `basis-96`). See [[concepts/fluent-responsive-design]].
 5. **Cumulative layout shift prevention**: Enforce silent Suspense fallbacks (`fallback={null}`) and `keepPreviousData` on timeframe queries. See [[concepts/cumulative-layout-shift]].
-6. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` boxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` neutral badge scheme, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
+6. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` boxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` rendering NEUTRAL/HOLD telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) with zero `.voxel-badge` elements, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
    - `ErrorCard` uses `rounded-none` (no `rounded-xl`), a `text-sm font-bold` title, a `text-xs font-normal` message, and a `text-sm font-bold` Retry button (no `rounded-lg`).
    - `EmptyState` uses a Tier 1 `text-lg font-bold` title (no `text-2xl`/`text-3xl`/`font-black`), a Tier 3 `text-xs font-normal` subtitle, no `text-6xl`/`text-7xl` emoji, and no `mb-*` margins.
    - `Input`/`Select` wrappers use `rounded-none` (no `rounded-xl`) and `Label` uses `text-sm font-bold` (no `font-semibold`).

@@ -55,7 +55,7 @@ const mockAgentState = {
 };
 
 describe('LiveAgentConsole', () => {
-    it('renders autonomous trader title and status badges', () => {
+    it('renders autonomous trader title and status telemetry', () => {
         render(
             <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
         );
@@ -63,6 +63,18 @@ describe('LiveAgentConsole', () => {
         expect(screen.getByText(/LIVE SESSION/i)).toBeInTheDocument();
         expect(screen.getAllByText(/BULLISH/i).length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText(/Accumulating Dips/i)).toBeInTheDocument();
+    });
+
+    it('renders telemetry in a recessed voxel-trough and has zero voxel-badge elements', () => {
+        const { container } = render(
+            <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
+        );
+        const trough = container.querySelector('[data-testid="console-telemetry-trough"]');
+        expect(trough).toBeInTheDocument();
+        expect(trough?.className).toContain('voxel-trough');
+        expect(screen.getByText('BIAS:')).toBeInTheDocument();
+        expect(screen.getByText('ACT:')).toBeInTheDocument();
+        expect(trough?.querySelectorAll('.voxel-badge').length).toBe(0);
     });
 
     it('renders thought trace with timestamp and technical indicators', () => {

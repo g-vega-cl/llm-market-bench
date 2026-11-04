@@ -1,5 +1,6 @@
 import { usePostHog } from '@posthog/react';
 import * as React from 'react';
+import { MarkdownContent } from '~/components/ui/MarkdownContent';
 import { formatEasternTime } from '~/utils/date';
 import {
     type AgentQueueItem,
@@ -69,8 +70,8 @@ function AnsweredTurnView({
                         </div>
                     </div>
                 ) : (
-                    <div className="text-boxel-ink text-xs font-normal leading-relaxed whitespace-pre-wrap break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono">
-                        {latestAnswered.agent_response}
+                    <div className="text-boxel-ink text-xs font-normal leading-relaxed break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono min-w-0">
+                        <MarkdownContent content={latestAnswered.agent_response} />
                     </div>
                 ))}
         </div>

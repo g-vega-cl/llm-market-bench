@@ -106,6 +106,30 @@ describe('ConsoleQueueCard', () => {
         ).toBeInTheDocument();
     });
 
+    it('renders the agent response as formatted markdown', () => {
+        const { container } = render(
+            <ConsoleQueueCard
+                user={{ id: 'usr-1', email: 'analyst@fund.com' }}
+                latestAnswered={{
+                    id: 'q-md',
+                    user_id: 'usr-2',
+                    display_name: 'MacroTrader',
+                    message: 'Why the gap?',
+                    agent_response:
+                        'We are **not chasing** the gap.\n\n---\n\n### Catalysts\n\n| Catalyst | Impact |\n|---|---|\n| **NATO-Iran** | BEARISH |',
+                    status: 'answered',
+                    created_at: '2026-11-03T15:42:00Z',
+                }}
+            />,
+        );
+        expect(screen.getByText('not chasing').tagName).toBe('STRONG');
+        expect(container.querySelector('hr')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 3, name: 'Catalysts' })).toBeInTheDocument();
+        expect(container.querySelector('table')).toBeInTheDocument();
+        expect(container.textContent).not.toContain('**');
+        expect(container.textContent).not.toContain('|---|');
+    });
+
     it('captures error in PostHog and displays user-friendly desk notice when response is emergency JSON fallback', () => {
         render(
             <ConsoleQueueCard

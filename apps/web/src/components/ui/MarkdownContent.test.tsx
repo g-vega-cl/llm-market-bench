@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { InlineMarkdown, MarkdownContent } from './MarkdownContent';
 
 describe('MarkdownContent', () => {
@@ -87,6 +87,66 @@ describe('MarkdownContent', () => {
         expect(item1.tagName).toBe('LI');
         const item2 = screen.getByText('Second trade setup');
         expect(item2.tagName).toBe('LI');
+    });
+
+    it('renders horizontal rules, soft line breaks and lists directly after paragraph lines', () => {
+        const md = `Positioning summary
+- **No strong edge** for a new trade
+- Waiting for VWAP
+
+---
+
+### Historical Precedents`;
+        const { container } = render(<MarkdownContent content={md} />);
+        expect(container.querySelector('hr')).toBeInTheDocument();
+        expect(screen.getByText('No strong edge').tagName).toBe('STRONG');
+        expect(screen.getAllByRole('listitem')).toHaveLength(2);
+        expect(
+            screen.getByRole('heading', { level: 3, name: 'Historical Precedents' }),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain('**');
+        expect(container.textContent).not.toContain('###');
+    });
+
+    it('renders a table with bold cells that follows a paragraph line without a blank line', () => {
+        const md = `Two shocks flagged (10/10):
+| Catalyst | Impact |
+|----------|--------|
+| **NATO-Iran Escalation** | BEARISH |
+| **Hormuz Shock** | BULLISH |`;
+        const { container } = render(<MarkdownContent content={md} />);
+        expect(container.querySelector('table')).toBeInTheDocument();
+        expect(screen.getByText('NATO-Iran Escalation').tagName).toBe('STRONG');
+        expect(screen.getAllByRole('row')).toHaveLength(3);
+        expect(container.textContent).not.toContain('|');
+    });
+
+    it('renders fenced code blocks verbatim', () => {
+        const md = '```\nconst a = **1**;\nconst b = 2;\n```';
+        const { container } = render(<MarkdownContent content={md} />);
+        const pre = container.querySelector('pre');
+        expect(pre).toBeInTheDocument();
+        expect(pre?.textContent).toBe('const a = **1**;\nconst b = 2;');
+    });
+
+    it('renders nested lists', () => {
+        const md = '- Parent\n  - Child A\n  - Child B\n- Sibling';
+        const { container } = render(<MarkdownContent content={md} />);
+        expect(container.querySelectorAll('ul ul')).toHaveLength(1);
+        expect(screen.getAllByRole('listitem')).toHaveLength(4);
+    });
+
+    it('strips unsafe link protocols', () => {
+        render(<MarkdownContent content="[bad](javascript:alert(1)) and [ok](https://x.com)" />);
+        expect(screen.queryByRole('link', { name: 'bad' })).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'ok' })).toHaveAttribute('href', 'https://x.com');
+    });
+
+    it('does not warn about duplicate keys for repeated list items', () => {
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        render(<MarkdownContent content={'- same\n- same\n- same'} />);
+        expect(spy).not.toHaveBeenCalled();
+        spy.mockRestore();
     });
 });
 

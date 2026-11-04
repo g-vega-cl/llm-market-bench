@@ -15,10 +15,7 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 
-- [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
-- [x] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
-- [x] - Benchify: design rules cheat sheet to ground my design system (codified in `.agents/rules/design-spec.md` and `wiki/entities/design-system.md`)
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
 
@@ -35,9 +32,9 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Autoresearch Scaling & Local Models
 
-- [ ] - make an autoresearcher for the verifier
 - [ ] - make autoresearcher with more variables and more "temperatures?" More portfolios too?
-- [ ] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
+- [x] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
+ - Not worth it considering how I can do local autoresearch passes now.
 - [ ] - benchify: fine tune the autoresearcher rather than the model?
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
 
@@ -49,10 +46,7 @@ A living document of features and improvements in progress or planned for the pl
 ### Database & Performance Polish
 
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
-- [ ] - Benchify: connect QMD to knowledge db or use strata to distil the information to core principles
 - [ ] - Benchify: move all newsletters to dedicated email
-- [ ] - Benchify: news scraper/news caller. I need a huge DB of news
-- [ ] - Benchify: audit news ingestion
 - [ ] - Benchify: research every stock/sector mentioned in newsletters individually and decide if it would be worth investing in it. Save all these research reports in a DB where users could "look up all information about X company"
 - [ ] - Benchify: parse this paper for good memories and patterns to add to our DB ssrn-2476415
 
@@ -135,10 +129,3 @@ A living document of features and improvements in progress or planned for the pl
 
 ---
 
-## ✅ Completed & Evaluated (Archive)
-
-### 24/7 Autonomous SPY Trader & Live Tape (October 2026)
-- **Live Agent Console**: Replaced static Market Feeling with a live quantitative trader console on the Home page, rendering rolling 60-minute 1-minute real-time SPY bars, execution markers, interactive HUD, technical snapshot, conviction bar, and thought trace.
-- **Client-Side Tape Poller**: Implemented 20-second background polling via TanStack Start server function while preserving full SSR for the outer page and leaderboards.
-- **MiniPC Edge Daemon**: Built `apps/engine/trading/runner.py` with multi-tier LLM fallback routing (local Strata Tier 1, centralized CLVG free proxy Tier 2) and automated paper order execution via Alpaca.
-- **Audience Interactive Queue**: Provisioned `agent_chat_queue` table with Row Level Security to accept community instructions and questions for upcoming agent turns.

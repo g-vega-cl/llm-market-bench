@@ -58,3 +58,23 @@ def test_wiki_covers_all_seeded_papers():
     wiki = (repo_root / "wiki/entities/academic-paper-seeding.md").read_text()
     missing = [p["title"] for p in PAPERS if p["title"] not in wiki]
     assert not missing, f"Wiki missing papers: {missing}"
+
+
+def test_pozsar_shadow_banking_papers_and_prompt_block():
+    """Verify Pozsar (2014) papers in PAPERS and modular prompt block."""
+    from autoresearch.prompt_blocks import AVAILABLE_PROMPT_BLOCKS, render_prompt_blocks
+
+    pozsar_titles = [
+        "Shadow Banking: The Money View (Hierarchy of Money & Institutional Cash Pools)",
+        "The Fed Reverse Repo Facility (RRP) Floor & Minimum Haircut Channel",
+        "Forced Deleveraging via Bilateral Repo, Margin Calls & Collateral Squeezes",
+    ]
+    paper_titles = [p["title"] for p in PAPERS]
+    for title in pozsar_titles:
+        assert title in paper_titles, f"Missing paper title: {title}"
+
+    # Verify prompt block registration and rendering
+    assert "shadow_banking_liquidity_plumbing" in AVAILABLE_PROMPT_BLOCKS
+    rendered = render_prompt_blocks(["shadow_banking_liquidity_plumbing"])
+    assert "SHADOW BANKING & WHOLESALE LIQUIDITY PLUMBING" in rendered
+    assert "RRPONTSYD" in rendered

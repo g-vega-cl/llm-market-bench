@@ -81,6 +81,24 @@ Structural anomalies occur because the market is a physical machine with rigid r
 * **Reference:** Ni, Pearson, & Poteshman (2005), *Stock Price Clustering on Option Expiration Dates*, Journal of Financial Economics.
 * **Actionable Application:** Designing reversal or range-bound strategies on OPEX day targeting key option strikes, and avoiding breakout trades on highly optioned stocks on the third Friday of the month.
 
+### Shadow Banking: The Money View (Institutional Cash Pools & Money Hierarchy)
+* **Phenomenon:** Retail monetary aggregates like M2 miss the primary liquidity engine of institutional markets. Wholesale funding runs occur outside the banking sector in repo and short-term paper markets.
+* **Root Cause:** Large institutional cash pools (holding $1B+ balances) exceed FDIC deposit insurance limits. Uninsured bank deposits represent unsecured credit exposure, forcing cash managers into collateralized repos and money market funds. When risk increases, cash runs from private shadow money into public safe assets (Treasuries, Fed RRP), causing liquidity freezes for dealers and levered portfolio managers.
+* **Reference:** Pozsar (2014), *Shadow Banking: The Money View*, OFR Working Paper 14-04 (SSRN 2476415).
+* **Actionable Application:** Monitor wholesale liquidity plumbing (overnight reverse repo, Fed balance sheet, credit spreads) rather than retail M2 alone. When institutional cash flees private credit into public collateral, anticipate deleveraging across levered bond funds, mREITs, and credit strategies.
+
+### The Fed Reverse Repo Facility (RRP) Floor & Haircut Channel
+* **Phenomenon:** Reverse repo facility balances fluctuate as a direct reflection of non-bank liquidity abundance, establishing a hard floor for money market yields and governing collateral scarcity.
+* **Root Cause:** By offering shadow banks (dealers and money market funds) direct access to Fed overnight reverse repos, the central bank provides a quasi-reserve checking account. Heavy take-up at the facility absorbs cash pool liquidity directly, setting a floor on repo rates and influencing safe-asset haircuts across the private financial system.
+* **Reference:** Pozsar (2014), *Shadow Banking: The Money View*, OFR Working Paper 14-04 (SSRN 2476415).
+* **Actionable Application:** Track RRPONTSYD usage alongside Treasury issuance. Rapid RRP depletion shows money funds absorbing new T-bill supply without draining bank reserves, keeping equity market liquidity intact.
+
+### Bilateral Repo Margin Squeezes & Forced Deleveraging
+* **Phenomenon:** Sudden interest rate or foreign exchange shocks produce extended multi-day liquidation cascades in bonds and equities rather than immediate mean reversion.
+* **Root Cause:** Levered risk portfolio managers (mREITs, risk parity funds, total return bond funds) hold minimal uninvested cash and finance positions via bilateral repo and derivative swaps (IRS, CDS, FX swaps). Large adverse market moves require immediate cash variation margin. To raise cash, funds must repo bonds at wider haircuts or liquidate assets into illiquid markets.
+* **Reference:** Pozsar (2014) & Mehrling et al. (2013), *Shadow Banking: The Money View*, OFR Working Paper 14-04.
+* **Actionable Application:** Avoid prematurely buying dips following unexpected macroeconomic or interest rate shocks. Allow 24 to 48 hours for derivative variation margin calls and collateral liquidation pressures to clear before initiating long positions.
+
 ---
 
 ## 4. Academic Risk Premia (The Factors)

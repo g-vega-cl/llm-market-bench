@@ -243,6 +243,33 @@ PAPERS = [
         "application": "Measure financial turbulence via Mahalanobis distance and switch to defensive capital preservation or tighter barriers when turbulence exceeds critical thresholds.",
         "example_scenario": "When macro turbulence metrics spike, the portfolio agent recognizes that normal diversification between equities and credit will break down. Instead of relying on passive rebalancing, the agent cuts exposure and raises cash until turbulence metrics normalize.",
     },
+    {
+        "title": "Shadow Banking: The Money View (Hierarchy of Money & Institutional Cash Pools)",
+        "citation": "Pozsar, 2014, OFR Working Paper 14-04 (SSRN 2476415)",
+        "pillar": "Structural & Plumbing Anomalies",
+        "core_thesis": "Traditional monetary aggregates (M0, M1, M2) measure retail demand and stop where institutional money begins. Institutional cash pools (FX reserves, corporate cash, asset managers, securities lenders) exceed deposit insurance limits ($250k), forcing them into repos and money market funds. Dealer banks act as matched-book intermediaries between cash pools seeking safety ('do not lose') and levered risk managers seeking yield ('beat the benchmark').",
+        "mechanism": "Money exists on a hierarchy of credit and liquidity puts. Retail deposits are insured by public backstops, whereas wholesale uninsured deposits are undiversified private credit claims. In wholesale plumbing, cash pools demand collateralized claims (public repos) or diversified claims (prime MMFs). When systemic fear hits, institutional cash runs from private shadow money into public safe assets, creating liquidity freezes for dealers and levered portfolio managers.",
+        "application": "Monitor wholesale money plumbing and collateral availability beyond retail M2. When institutional cash flees private credit into public collateral, expect rapid deleveraging and liquidity stress across levered bond and credit strategies.",
+        "example_scenario": "An agent observing rising macro uncertainty checks wholesale funding conditions. Rather than tracking M2 alone, it assesses reverse repo volumes and credit spreads. Seeing cash pools rotating out of private commercial paper into short Treasuries, the agent lowers risk exposure across levered financials and mortgage REITs.",
+    },
+    {
+        "title": "The Fed Reverse Repo Facility (RRP) Floor & Minimum Haircut Channel",
+        "citation": "Pozsar, 2014, OFR Working Paper 14-04 (SSRN 2476415)",
+        "pillar": "Structural & Plumbing Anomalies",
+        "core_thesis": "The Federal Reserve's Overnight Reverse Repo Facility (RRP) provides shadow banks (dealers and money funds) direct access to the Fed balance sheet, acting as a quasi-reserve account and establishing an effective interest rate floor and collateral haircut benchmark.",
+        "mechanism": "By allowing non-banks to lend cash directly to the central bank against Treasury collateral, the Fed bypasses traditional commercial banks. This absorbs cash pool liquidity directly, eliminates interdealer tiering during cash gluts, and establishes a floor on market repo rates. When the Fed expands RRP access or T-bill supply, it directly impacts the collateral supply and leverage constraints of private dealer balance sheets.",
+        "application": "Track overnight reverse repo usage (RRPONTSYD) as a gauge of wholesale excess cash liquidity and safe asset scarcity. Large RRP balances signal money market cash abundance, while RRP drain indicates cash re-entering private collateral markets or financing Treasury debt issuance.",
+        "example_scenario": "During a Treasury debt issuance surge, the agent observes RRP balances declining rapidly. It recognizes that money market funds are shifting cash from the Fed facility into newly issued Treasury bills, absorbing supply without draining commercial bank reserves, keeping broader equity liquidity stable.",
+    },
+    {
+        "title": "Forced Deleveraging via Bilateral Repo, Margin Calls & Collateral Squeezes",
+        "citation": "Pozsar, 2014 & Mehrling et al., 2013, OFR Working Paper 14-04",
+        "pillar": "Structural & Plumbing Anomalies",
+        "core_thesis": "Securities financing transactions (bilateral repo and securities lending) and derivatives separate the flow of risk from the flow of funds. Levered portfolio managers hold minimal idle cash; unexpected market moves trigger derivative margin calls that force repo borrowing or fire sales.",
+        "mechanism": "Risk portfolio managers (mREITs, risk parity funds, total return bond funds) use repo to finance long bond positions, borrow securities for shorting, or raise cash for derivative variation margin (IRS, CDS, FX swaps). When market shocks trigger adverse mark-to-market moves, cash variation margin must be paid immediately. If dealer financing tightens or haircuts widen, funds must liquidate underlying collateral into declining markets, amplifying sell-offs.",
+        "application": "Anticipate collateral squeezes and forced liquidation cascades during sudden interest rate or FX shocks. Recognize that levered funds cannot absorb prolonged adverse moves without liquidating core bond and equity assets.",
+        "example_scenario": "A sudden hawkish Fed announcement triggers a 25 bps spike in 10-year Treasury yields. Instead of buying the immediate dip in mortgage REITs or fixed-income funds, the agent holds off, anticipating forced selling over the subsequent 24-48 hours as funds repo collateral at higher haircuts or liquidate holdings to meet swap variation margin calls.",
+    },
 ]
 
 

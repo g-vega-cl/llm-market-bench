@@ -170,6 +170,15 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "3. Multi-Asset Convergence Ceiling (66.0% - 75.0%): Require independent convergence across macro news, bond yield momentum (TLT/IEF), dollar direction (UUP), and technical levels. Never exceed 80.0% confidence on any intraday prediction."
         ),
     },
+    "shadow_banking_liquidity_plumbing": {
+        "title": "SHADOW BANKING & WHOLESALE LIQUIDITY PLUMBING (Pozsar Money View)",
+        "content": (
+            "=== FRAMEWORK: SHADOW BANKING & WHOLESALE LIQUIDITY PLUMBING ===\n"
+            "1. Wholesale vs Retail Money: Do not assess market liquidity through retail M2 alone. Institutional cash pools ($1B+ balances) operate in the shadow banking domain (repos, commercial paper, money funds). Query `reverse_repo` (`RRPONTSYD`), `fed_balance_sheet` (`WALCL`), and credit spreads via `get_macro_economic_series`.\n"
+            "2. Hierarchy of Safety & Run Detection: When systemic risk rises, cash pools flee private shadow money into public safe assets (Treasuries, RRP). Widening commercial paper spreads or surging RRP balances signal institutional risk-off, warranting reduced exposure in levered financials and mortgage REITs.\n"
+            "3. Cash-for-Margining Collateral Unwinds: Risk portfolio managers (bond funds, mREITs, macro hedge funds) use repo to finance leverage and meet swap margin. Sudden yield or FX shocks trigger cash margin calls, forcing collateral liquidations. Do not fade initial rate shocks until forced margin-call selling has cleared."
+        ),
+    },
 }
 
 

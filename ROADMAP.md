@@ -48,7 +48,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - Benchify: research every stock/sector mentioned in newsletters individually and decide if it would be worth investing in it. Save all these research reports in a DB where users could "look up all information about X company"
-- [ ] - Benchify: parse this paper for good memories and patterns to add to our DB ssrn-2476415
 
 ---
 

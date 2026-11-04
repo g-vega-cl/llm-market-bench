@@ -27,6 +27,7 @@ Reusable trading discipline and reasoning blocks dynamically toggled by the Auto
 | `anti_pessimism_prior_conditioning` | Counteract LLM macro headline alarmism ("bear porn" bias) by enforcing empirical ~54% equity drift base rate with symmetric hurdle discipline |
 | `dialectical_thesis_deliberation` | Dual-sided Bull vs Bear conviction scoring (1-10) with mandatory tie-breaking and low-conviction clamping to eliminate the asymmetry pendulum |
 | `regime_gated_confidence_calibration` | Structural confidence clamping (52-55% in range-bound/pinning regimes; >60% reserved strictly for confirmed multi-asset divergences) |
+| `shadow_banking_liquidity_plumbing` | Wholesale liquidity & Pozsar Money View framework — detect institutional cash-pool run risk via `reverse_repo` (`RRPONTSYD`), `fed_balance_sheet` (`WALCL`), and credit spreads, and anticipate forced deleveraging from repo/margin collateral squeezes |
 
 ## Implementation
 

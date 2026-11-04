@@ -6,7 +6,6 @@ import {
     computeExperimentMilestones,
     formatDeltaText,
     getActiveBadge,
-    getDeltaColor,
     getMilestoneSubtitle,
 } from '../utils/daily-predictions-helpers';
 
@@ -19,27 +18,38 @@ interface MilestoneCardProps {
     title: string;
     value: React.ReactNode;
     subtitle: string;
-    valueColor?: string;
+    valueClassName?: string;
     fontSize?: string;
 }
 
-export function MilestoneCard({ title, value, subtitle, valueColor }: MilestoneCardProps) {
+export function MilestoneCard({ title, value, subtitle, valueClassName }: MilestoneCardProps) {
     return (
         <Card className="p-5 flex flex-col justify-between min-w-0 overflow-hidden rounded-none h-full gap-2">
             <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
                 {title}
             </div>
             <div
-                className="text-lg font-bold font-mono break-words overflow-wrap-anywhere"
-                style={{
-                    color: valueColor,
-                }}
+                className={`text-lg font-bold font-mono break-words overflow-wrap-anywhere ${valueClassName ?? 'text-boxel-ink'}`}
             >
                 {value}
             </div>
             <div className="text-xs font-normal text-boxel-muted">{subtitle}</div>
         </Card>
     );
+}
+
+function getDeltaClassName(isEvaluating: boolean, delta: number | null): string {
+    if (isEvaluating || delta === null) return 'text-boxel-muted';
+    if (delta > 0) return 'text-success';
+    if (delta < 0) return 'text-danger';
+    return 'text-boxel-ink';
+}
+
+function getActiveScoreClassName(isEvaluating: boolean, score: number | null): string {
+    if (isEvaluating) return 'text-boxel-muted';
+    if (score !== null && Number(score) > 0) return 'text-success';
+    if (score !== null) return 'text-danger';
+    return 'text-boxel-ink';
 }
 
 export function AutoresearchMilestoneCards({
@@ -50,11 +60,13 @@ export function AutoresearchMilestoneCards({
         computeExperimentMilestones(experiments, predictions);
 
     const isEvaluating = activeExp?.status === 'active' && activeScore === null;
-    const deltaColor = isEvaluating ? '#64748b' : getDeltaColor(delta);
+    const deltaClassName = getDeltaClassName(isEvaluating, delta);
     const deltaText = formatDeltaText(delta, isEvaluating);
 
-    const isScorePositive = activeScore !== null && Number(activeScore) > 0;
-    const activeScoreColor = isScorePositive ? '#16a34a' : isEvaluating ? '#64748b' : undefined;
+    const activeScoreClassName = getActiveScoreClassName(
+        isEvaluating,
+        activeScore !== null ? Number(activeScore) : null,
+    );
     const activeScoreDisplay =
         activeScore !== null ? Number(activeScore).toFixed(2) : isEvaluating ? 'Pending' : 'N/A';
     const bestBaselineDisplay = bestBaselineScore !== null ? bestBaselineScore.toFixed(2) : 'N/A';
@@ -69,7 +81,7 @@ export function AutoresearchMilestoneCards({
                 title="Current Active Prompt"
                 value={
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400 break-all">
+                        <span className="text-sm font-bold text-accent break-all">
                             {activeTagDisplay}
                         </span>
                         <Badge
@@ -88,19 +100,19 @@ export function AutoresearchMilestoneCards({
                 title="Active Ratchet Score"
                 value={activeScoreDisplay}
                 subtitle="Weighted accuracy, target hit & Brier"
-                valueColor={activeScoreColor}
+                valueClassName={activeScoreClassName}
             />
             <MilestoneCard
                 title="All-Time Best Baseline"
                 value={bestBaselineDisplay}
                 subtitle="Highest performance benchmark"
-                valueColor="#4f46e5"
+                valueClassName="text-accent"
             />
             <MilestoneCard
                 title="Score Progression"
                 value={deltaText}
                 subtitle={activeSubtitle}
-                valueColor={deltaColor}
+                valueClassName={deltaClassName}
             />
             <MilestoneCard
                 title="Mutated Variants Tracked"

@@ -1,4 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
+import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 
@@ -60,48 +61,37 @@ export function calculateMagnitudeCapture(p: DailyPrediction): number {
     return Math.min(1.0, expPct / actualMove) * 100.0;
 }
 
-function computeMetricsFromSample(
-    sample: DailyPrediction[],
-    rawScore?: unknown,
+function buildMetrics(
+    closeAccuracyPct: number,
+    intradayHitPct: number,
+    magnitudeCapturePct: number,
+    meanBrier: number,
+    predictionsEvaluated: number,
+    correctCount: number,
+    intradayHitCount: number,
+    overrideScore?: number | null,
 ): DailyRatchetMetrics {
-    const correctCount = sample.filter((p) => p.is_correct === true).length;
-    const closeAccuracyPct = (correctCount / sample.length) * 100.0;
-
-    const intradayHitCount = sample.filter(
-        (p) => p.intraday_hit === true || (p.intraday_hit == null && p.is_correct === true),
-    ).length;
-    const intradayHitPct = (intradayHitCount / sample.length) * 100.0;
-
-    const captures = sample.map(calculateMagnitudeCapture);
-    const magnitudeCapturePct = captures.reduce((a, b) => a + b, 0) / captures.length;
-
-    const brierList = sample
-        .map((p) => (typeof p.brier_score === 'number' ? p.brier_score : null))
-        .filter((b): b is number => b !== null);
-    const meanBrier =
-        brierList.length > 0 ? brierList.reduce((a, b) => a + b, 0) / brierList.length : 0.25;
-
-    const finalScore =
-        typeof rawScore === 'number'
-            ? Number(rawScore)
-            : 0.55 * closeAccuracyPct +
-              0.35 * intradayHitPct +
-              0.1 * magnitudeCapturePct -
-              meanBrier * 50.0;
+    const closeAccPoints = (closeAccuracyPct / 100.0) * 55.0;
+    const intradayHitPoints = (intradayHitPct / 100.0) * 35.0;
+    const magnitudeCapturePoints = (magnitudeCapturePct / 100.0) * 10.0;
+    const brierPenaltyPoints = meanBrier * 50.0;
+    const score =
+        overrideScore ??
+        closeAccPoints + intradayHitPoints + magnitudeCapturePoints - brierPenaltyPoints;
 
     return {
-        score: finalScore,
+        score,
         closeAccuracyPct,
         intradayHitPct,
         magnitudeCapturePct,
         meanBrier,
-        predictionsEvaluated: sample.length,
+        predictionsEvaluated,
         correctCount,
         intradayHitCount,
-        closeAccPoints: 0.55 * closeAccuracyPct,
-        intradayHitPoints: 0.35 * intradayHitPct,
-        magnitudeCapturePoints: 0.1 * magnitudeCapturePct,
-        brierPenaltyPoints: meanBrier * 50.0,
+        closeAccPoints,
+        intradayHitPoints,
+        magnitudeCapturePoints,
+        brierPenaltyPoints,
     };
 }
 
@@ -130,6 +120,39 @@ function isPredictionInExperiment(p: DailyPrediction, experiment: PromptExperime
     return true;
 }
 
+function computeMetricsFromSample(
+    sample: DailyPrediction[],
+    rawScore?: unknown,
+): DailyRatchetMetrics {
+    const correctCount = sample.filter((p) => p.is_correct === true).length;
+    const closeAccuracyPct = (correctCount / sample.length) * 100.0;
+
+    const intradayHitCount = sample.filter(
+        (p) => p.intraday_hit === true || (p.intraday_hit == null && p.is_correct === true),
+    ).length;
+    const intradayHitPct = (intradayHitCount / sample.length) * 100.0;
+
+    const captures = sample.map(calculateMagnitudeCapture);
+    const magnitudeCapturePct = captures.reduce((a, b) => a + b, 0) / captures.length;
+
+    const brierList = sample
+        .map((p) => (typeof p.brier_score === 'number' ? p.brier_score : null))
+        .filter((b): b is number => b !== null);
+    const meanBrier =
+        brierList.length > 0 ? brierList.reduce((a, b) => a + b, 0) / brierList.length : 0.25;
+
+    return buildMetrics(
+        closeAccuracyPct,
+        intradayHitPct,
+        magnitudeCapturePct,
+        meanBrier,
+        sample.length,
+        correctCount,
+        intradayHitCount,
+        typeof rawScore === 'number' ? Number(rawScore) : null,
+    );
+}
+
 function extractEnrichedMetrics(rawMetrics?: Record<string, unknown>): DailyRatchetMetrics | null {
     if (
         !rawMetrics ||
@@ -141,26 +164,16 @@ function extractEnrichedMetrics(rawMetrics?: Record<string, unknown>): DailyRatc
         return null;
     }
 
-    const score = Number(rawMetrics.score);
-    const closeAccuracyPct = Number(rawMetrics.close_accuracy_pct);
-    const intradayHitPct = Number(rawMetrics.intraday_hit_pct);
-    const magnitudeCapturePct = Number(rawMetrics.magnitude_capture_pct || 0);
-    const meanBrier = Number(rawMetrics.mean_brier);
-
-    return {
-        score,
-        closeAccuracyPct,
-        intradayHitPct,
-        magnitudeCapturePct,
-        meanBrier,
-        predictionsEvaluated: Number(rawMetrics.predictions_evaluated || 0),
-        correctCount: Number(rawMetrics.correct_count || 0),
-        intradayHitCount: Number(rawMetrics.intraday_hit_count || 0),
-        closeAccPoints: 0.55 * closeAccuracyPct,
-        intradayHitPoints: 0.35 * intradayHitPct,
-        magnitudeCapturePoints: 0.1 * magnitudeCapturePct,
-        brierPenaltyPoints: meanBrier * 50.0,
-    };
+    return buildMetrics(
+        Number(rawMetrics.close_accuracy_pct),
+        Number(rawMetrics.intraday_hit_pct),
+        Number(rawMetrics.magnitude_capture_pct || 0),
+        Number(rawMetrics.mean_brier),
+        Number(rawMetrics.predictions_evaluated || 0),
+        Number(rawMetrics.correct_count || 0),
+        Number(rawMetrics.intraday_hit_count || 0),
+        Number(rawMetrics.score),
+    );
 }
 
 export function resolveRatchetMetrics(
@@ -178,86 +191,27 @@ export function resolveRatchetMetrics(
         }
     }
 
-    if (rawMetrics && typeof rawMetrics.score === 'number') {
-        const score = Number(rawMetrics.score);
-        const evalCount =
-            typeof rawMetrics.predictions_evaluated === 'number'
-                ? rawMetrics.predictions_evaluated
-                : 0;
-        return {
-            score,
-            closeAccuracyPct: 0,
-            intradayHitPct: 0,
-            magnitudeCapturePct: 0,
-            meanBrier: 0,
-            predictionsEvaluated: evalCount,
-            correctCount: 0,
-            intradayHitCount: 0,
-            closeAccPoints: 0,
-            intradayHitPoints: 0,
-            magnitudeCapturePoints: 0,
-            brierPenaltyPoints: 0,
-        };
-    }
-
     return null;
 }
 
 function ActiveDailyExperimentPlaceholder({ variantTag }: { variantTag: string }) {
     return (
-        <div
-            style={{
-                background: '#ffffff',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                padding: '24px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            }}
-        >
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '8px',
-                }}
-            >
-                <span style={{ fontSize: '18px' }}>⏳</span>
-                <span
-                    style={{
-                        fontSize: '15px',
-                        fontWeight: '700',
-                        color: '#0f172a',
-                    }}
-                >
+        <Card className="p-6 flex flex-col gap-3 rounded-none">
+            <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-bold text-boxel-ink">
                     Live Variant Evaluation In Progress
                 </span>
-                <span
-                    style={{
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: '#dcfce7',
-                        color: '#15803d',
-                    }}
-                >
-                    🟢 ACTIVE
-                </span>
+                <Badge colorScheme="success" variant="solid">
+                    ACTIVE
+                </Badge>
             </div>
-            <p
-                style={{
-                    fontSize: '13px',
-                    color: '#64748b',
-                    margin: 0,
-                    lineHeight: '1.5',
-                }}
-            >
-                This mutated prompt variant (<code>{variantTag}</code>) is currently active and
-                undergoing live daily evaluation. Score calculation and pillar breakdown will be
-                computed automatically as trading sessions conclude and predictions are evaluated.
+            <p className="text-xs font-normal text-boxel-muted leading-relaxed">
+                This mutated prompt variant (<code className="text-accent">{variantTag}</code>) is
+                currently active and undergoing live daily evaluation. Score calculation and pillar
+                breakdown will be computed automatically as trading sessions conclude and
+                predictions are evaluated.
             </p>
-        </div>
+        </Card>
     );
 }
 
@@ -270,75 +224,27 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
             return <ActiveDailyExperimentPlaceholder variantTag={experiment.variant_tag} />;
         }
         return (
-            <div
-                style={{
-                    background: '#f8fafc',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    padding: '16px',
-                    fontSize: '13px',
-                    color: '#64748b',
-                }}
-            >
-                <strong>Score Breakdown:</strong> No evaluated metrics available for this variant
-                yet.
+            <div className="voxel-trough rounded-none p-4 text-xs font-normal text-boxel-muted">
+                <strong className="text-boxel-ink">Score Breakdown:</strong> No evaluated metrics
+                available for this variant yet.
             </div>
         );
     }
 
     const isScorePositive = metrics.score > 0;
-    const scoreColor = isScorePositive ? '#16a34a' : '#dc2626';
+    const scoreColorClass = isScorePositive ? 'text-success' : 'text-danger';
     const isLowSample = metrics.predictionsEvaluated > 0 && metrics.predictionsEvaluated < 5;
 
     return (
-        <div
-            style={{
-                background: '#ffffff',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                padding: '18px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                minWidth: 0,
-                overflow: 'hidden',
-            }}
-        >
+        <Card className="p-5 flex flex-col gap-4 rounded-none min-w-0">
             {/* Header */}
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '12px',
-                    marginBottom: '14px',
-                    borderBottom: '1px solid #f1f5f9',
-                    paddingBottom: '12px',
-                    minWidth: 0,
-                }}
-            >
-                <div style={{ minWidth: 0 }}>
-                    <div
-                        style={{
-                            fontSize: '14px',
-                            fontWeight: '700',
-                            color: '#0f172a',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            flexWrap: 'wrap',
-                        }}
-                    >
-                        <span>🧮</span>
+            <div className="flex justify-between items-center flex-wrap gap-3 pb-3 border-b border-boxel-bevel-hi min-w-0">
+                <div className="min-w-0 flex flex-col gap-0.5">
+                    <div className="text-sm font-bold text-boxel-ink flex items-center gap-2 flex-wrap">
+                        <span className="w-2 h-2 bg-accent shrink-0 inline-block" />
                         <span>Daily Ratchet Score Calculation & Breakdown</span>
                     </div>
-                    <div
-                        style={{
-                            fontSize: '12px',
-                            color: '#64748b',
-                            marginTop: '2px',
-                            wordBreak: 'break-word',
-                        }}
-                    >
+                    <div className="text-xs font-normal text-boxel-muted break-words">
                         Evaluated across {metrics.predictionsEvaluated} prediction
                         {metrics.predictionsEvaluated === 1 ? '' : 's'}
                         {experiment.week_start
@@ -349,74 +255,35 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                     </div>
                 </div>
 
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#64748b',
-                            fontWeight: '600',
-                            textTransform: 'uppercase',
-                        }}
-                    >
+                <div className="text-right shrink-0 flex flex-col items-end">
+                    <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
                         Final Score
                     </div>
-                    <div
-                        style={{
-                            fontSize: '22px',
-                            fontWeight: '800',
-                            color: scoreColor,
-                            fontFamily: 'monospace',
-                        }}
-                    >
+                    <div className={`text-lg font-bold font-mono tabular-nums ${scoreColorClass}`}>
                         {metrics.score.toFixed(2)}
                     </div>
                 </div>
             </div>
 
             {/* Arithmetic Formula Bar */}
-            <div
-                style={{
-                    background: '#f8fafc',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    padding: '12px 14px',
-                    marginBottom: '16px',
-                    fontSize: '12px',
-                    fontFamily: 'monospace',
-                    color: '#334155',
-                    lineHeight: '1.6',
-                    minWidth: 0,
-                    overflowX: 'auto',
-                }}
-            >
-                <div
-                    style={{
-                        fontWeight: '700',
-                        color: '#475569',
-                        marginBottom: '4px',
-                        fontSize: '11px',
-                    }}
-                >
+            <div className="voxel-trough rounded-none p-3 text-xs font-mono text-boxel-ink leading-relaxed min-w-0 overflow-x-auto flex flex-col gap-1">
+                <div className="text-xs font-bold text-boxel-muted uppercase tracking-wider">
                     FORMULA SUBSTITUTION:
                 </div>
-                <div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                    <span style={{ color: '#2563eb' }}>
+                <div className="break-words overflow-wrap-anywhere">
+                    <span className="text-accent">
                         (0.55 × {metrics.closeAccuracyPct.toFixed(1)}%)
                     </span>
                     {' + '}
-                    <span style={{ color: '#0d9488' }}>
-                        (0.35 × {metrics.intradayHitPct.toFixed(1)}%)
-                    </span>
+                    <span className="text-info">(0.35 × {metrics.intradayHitPct.toFixed(1)}%)</span>
                     {' + '}
-                    <span style={{ color: '#7c3aed' }}>
+                    <span className="text-boxel-ink">
                         (0.10 × {metrics.magnitudeCapturePct.toFixed(1)}%)
                     </span>
                     {' − '}
-                    <span style={{ color: '#dc2626' }}>
-                        ({metrics.meanBrier.toFixed(3)} × 50.0)
-                    </span>
+                    <span className="text-danger">({metrics.meanBrier.toFixed(3)} × 50.0)</span>
                     {' = '}
-                    <strong style={{ color: scoreColor }}>
+                    <strong className={scoreColorClass}>
                         {metrics.closeAccPoints.toFixed(2)} + {metrics.intradayHitPoints.toFixed(2)}{' '}
                         + {metrics.magnitudeCapturePoints.toFixed(2)} −{' '}
                         {metrics.brierPenaltyPoints.toFixed(2)} = {metrics.score.toFixed(2)}
@@ -425,195 +292,67 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
             </div>
 
             {/* 4 Factor Pillar Cards */}
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr))',
-                    gap: '12px',
-                    marginBottom: '14px',
-                    minWidth: 0,
-                }}
-            >
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3 items-stretch min-w-0">
                 {/* Close Accuracy */}
-                <div
-                    style={{
-                        padding: '12px',
-                        background: '#f0fdf4',
-                        borderRadius: '8px',
-                        border: '1px solid #bbf7d0',
-                        minWidth: 0,
-                        overflow: 'hidden',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#166534',
-                            fontWeight: '700',
-                            wordBreak: 'break-word',
-                        }}
-                    >
+                <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
+                    <div className="text-xs font-bold text-success break-words">
                         EOD Directional Acc (55%)
                     </div>
-                    <div
-                        style={{
-                            fontSize: '18px',
-                            fontWeight: '800',
-                            color: '#15803d',
-                            marginTop: '4px',
-                        }}
-                    >
+                    <div className="text-lg font-bold font-mono text-success tabular-nums">
                         {metrics.closeAccuracyPct.toFixed(1)}%
                     </div>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#16a34a',
-                            fontWeight: '600',
-                            marginTop: '2px',
-                        }}
-                    >
+                    <div className="text-xs font-bold text-success">
                         +{metrics.closeAccPoints.toFixed(2)} pts
                     </div>
-                    <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '2px' }}>
+                    <div className="text-xs font-normal text-boxel-muted">
                         {metrics.correctCount} / {metrics.predictionsEvaluated} correct
                     </div>
                 </div>
 
                 {/* Intraday Hit */}
-                <div
-                    style={{
-                        padding: '12px',
-                        background: '#f0fdfa',
-                        borderRadius: '8px',
-                        border: '1px solid #99f6e4',
-                        minWidth: 0,
-                        overflow: 'hidden',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#115e59',
-                            fontWeight: '700',
-                            wordBreak: 'break-word',
-                        }}
-                    >
+                <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
+                    <div className="text-xs font-bold text-info break-words">
                         Intraday Target Hit (35%)
                     </div>
-                    <div
-                        style={{
-                            fontSize: '18px',
-                            fontWeight: '800',
-                            color: '#0f766e',
-                            marginTop: '4px',
-                        }}
-                    >
+                    <div className="text-lg font-bold font-mono text-info tabular-nums">
                         {metrics.intradayHitPct.toFixed(1)}%
                     </div>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#0d9488',
-                            fontWeight: '600',
-                            marginTop: '2px',
-                        }}
-                    >
+                    <div className="text-xs font-bold text-info">
                         +{metrics.intradayHitPoints.toFixed(2)} pts
                     </div>
-                    <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '2px' }}>
+                    <div className="text-xs font-normal text-boxel-muted">
                         {metrics.intradayHitCount} / {metrics.predictionsEvaluated} targets hit
                     </div>
                 </div>
 
                 {/* Magnitude Capture */}
-                <div
-                    style={{
-                        padding: '12px',
-                        background: '#faf5ff',
-                        borderRadius: '8px',
-                        border: '1px solid #e9d5ff',
-                        minWidth: 0,
-                        overflow: 'hidden',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#6b21a8',
-                            fontWeight: '700',
-                            wordBreak: 'break-word',
-                        }}
-                    >
+                <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
+                    <div className="text-xs font-bold text-accent break-words">
                         Magnitude Capture (10%)
                     </div>
-                    <div
-                        style={{
-                            fontSize: '18px',
-                            fontWeight: '800',
-                            color: '#7e22ce',
-                            marginTop: '4px',
-                        }}
-                    >
+                    <div className="text-lg font-bold font-mono text-accent tabular-nums">
                         {metrics.magnitudeCapturePct.toFixed(1)}%
                     </div>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#9333ea',
-                            fontWeight: '600',
-                            marginTop: '2px',
-                        }}
-                    >
+                    <div className="text-xs font-bold text-accent">
                         +{metrics.magnitudeCapturePoints.toFixed(2)} pts
                     </div>
-                    <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '2px' }}>
+                    <div className="text-xs font-normal text-boxel-muted">
                         Breakout capture ratio
                     </div>
                 </div>
 
                 {/* Brier Penalty */}
-                <div
-                    style={{
-                        padding: '12px',
-                        background: '#fef2f2',
-                        borderRadius: '8px',
-                        border: '1px solid #fecaca',
-                        minWidth: 0,
-                        overflow: 'hidden',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#991b1b',
-                            fontWeight: '700',
-                            wordBreak: 'break-word',
-                        }}
-                    >
+                <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
+                    <div className="text-xs font-bold text-danger break-words">
                         Brier Penalty (50.0×)
                     </div>
-                    <div
-                        style={{
-                            fontSize: '18px',
-                            fontWeight: '800',
-                            color: '#b91c1c',
-                            marginTop: '4px',
-                        }}
-                    >
+                    <div className="text-lg font-bold font-mono text-danger tabular-nums">
                         {metrics.meanBrier.toFixed(4)}
                     </div>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: '#dc2626',
-                            fontWeight: '600',
-                            marginTop: '2px',
-                        }}
-                    >
+                    <div className="text-xs font-bold text-danger">
                         −{metrics.brierPenaltyPoints.toFixed(2)} pts
                     </div>
-                    <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '2px' }}>
+                    <div className="text-xs font-normal text-boxel-muted">
                         Confidence calibration error
                     </div>
                 </div>
@@ -621,23 +360,10 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
 
             {/* Low Sample Size Notice */}
             {isLowSample && (
-                <div
-                    style={{
-                        background: '#fffbeb',
-                        border: '1px solid #fde68a',
-                        borderRadius: '8px',
-                        padding: '10px 14px',
-                        fontSize: '12px',
-                        color: '#92400e',
-                        marginBottom: '12px',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '8px',
-                    }}
-                >
-                    <span style={{ fontSize: '14px' }}>⚠️</span>
+                <div className="voxel-trough rounded-none p-3 text-xs font-normal text-accent flex items-start gap-2 border-l-2 border-l-accent">
+                    <span className="w-2 h-2 bg-accent mt-1 shrink-0 inline-block" />
                     <div>
-                        <strong>
+                        <strong className="text-boxel-ink">
                             Low Sample Window Notice (N = {metrics.predictionsEvaluated}):
                         </strong>{' '}
                         Weekly autoresearch evaluates 7-day windows (all available trading sessions
@@ -649,68 +375,55 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
             )}
 
             {/* Collapsible Guide Toggle */}
-            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
+            <div className="border-t border-boxel-bevel-hi pt-3">
                 <button
                     type="button"
                     onClick={() => setShowGuide((prev) => !prev)}
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#2563eb',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: 0,
-                    }}
+                    className="voxel-btn bg-boxel-surface text-boxel-ink hover:text-accent px-3 py-1 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
                 >
                     <span>{showGuide ? '▲ Hide' : '▼ View'} Scoring Formula & Weights Guide</span>
                 </button>
 
                 {showGuide && (
-                    <div
-                        style={{
-                            marginTop: '10px',
-                            padding: '12px',
-                            background: '#f8fafc',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            color: '#475569',
-                            lineHeight: '1.6',
-                        }}
-                    >
-                        <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#0f172a' }}>
+                    <div className="voxel-trough rounded-none p-3 mt-3 flex flex-col gap-2 text-xs font-normal text-boxel-muted leading-relaxed">
+                        <div className="text-xs font-bold text-boxel-ink uppercase tracking-wider">
                             How the Daily Ratchet Score is Computed:
-                        </p>
-                        <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                        </div>
+                        <ul className="m-0 pl-4 flex flex-col gap-1">
                             <li>
-                                <strong>Close Directional Accuracy (55%):</strong> Evaluates whether
-                                the 4:00 PM ET close price matched the predicted direction (`UP` if
-                                Close &ge; Open else `DOWN`).
+                                <strong className="text-boxel-ink">
+                                    Close Directional Accuracy (55%):
+                                </strong>{' '}
+                                Evaluates whether the 4:00 PM ET close price matched the predicted
+                                direction (`UP` if Close &ge; Open else `DOWN`).
                             </li>
                             <li>
-                                <strong>Intraday Target Hit Rate (35%):</strong> Evaluates whether
-                                SPY reached the expected return percentage (`expected_return_pct`)
-                                at any point between Open and Close.
+                                <strong className="text-boxel-ink">
+                                    Intraday Target Hit Rate (35%):
+                                </strong>{' '}
+                                Evaluates whether SPY reached the expected return percentage
+                                (`expected_return_pct`) at any point between Open and Close.
                             </li>
                             <li>
-                                <strong>Magnitude Capture Ratio (10%):</strong> Rewards predicting
-                                aggressive percentage targets on large breakout days rather than
-                                overly timid targets on clear trends (min(1.0, |pred| / actual) ×
-                                100).
+                                <strong className="text-boxel-ink">
+                                    Magnitude Capture Ratio (10%):
+                                </strong>{' '}
+                                Rewards predicting aggressive percentage targets on large breakout
+                                days rather than overly timid targets on clear trends (min(1.0,
+                                |pred| / actual) × 100).
                             </li>
                             <li>
-                                <strong>Brier Calibration Penalty (50.0×):</strong> Penalizes
-                                overconfident wrong calls (Brier = (p - y)²). A high-confidence
-                                (80%) incorrect forecast produces a single-day Brier penalty of
-                                -32.0 points.
+                                <strong className="text-boxel-ink">
+                                    Brier Calibration Penalty (50.0×):
+                                </strong>{' '}
+                                Penalizes overconfident wrong calls (Brier = (p - y)²). A
+                                high-confidence (80%) incorrect forecast produces a single-day Brier
+                                penalty of -32.0 points.
                             </li>
                         </ul>
                     </div>
                 )}
             </div>
-        </div>
+        </Card>
     );
 }

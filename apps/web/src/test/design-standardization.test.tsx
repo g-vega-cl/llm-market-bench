@@ -13,8 +13,11 @@ import {
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ScoreCalculation } from '~/features/autoresearch/components/ScoreCalculation';
+import { AutoresearchMilestoneCards } from '~/features/daily-predictions/components/AutoresearchMilestoneCards';
 import { DailyMetricsOverview } from '~/features/daily-predictions/components/DailyMetricsOverview';
+import { DailyScoreBreakdown } from '~/features/daily-predictions/components/DailyScoreBreakdown';
 import { HeroPredictionCard } from '~/features/daily-predictions/components/HeroPredictionCard';
+import { DailyPredictionsBacktestPage } from '~/features/daily-predictions/pages/DailyPredictionsBacktestPage';
 import { LiveAgentConsole } from '~/features/home/components/LiveAgentConsole';
 import { HomePage, type HomePageData } from '~/features/home/pages/HomePage';
 import { LeaderboardPodium } from '~/features/leaderboard/components/LeaderboardPodium';
@@ -354,6 +357,69 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             const formulaBlock = container.querySelector('.font-mono');
             expect(formulaBlock?.className).toContain('text-lg');
             expect(formulaBlock?.className).toContain('font-bold');
+        });
+
+        it('DailyScoreBreakdown eliminates inline style layout and colors in favor of CSS Grid/Flex and Boxel tokens', () => {
+            const mockExp = {
+                id: 'exp-1',
+                variant_tag: 'test-v1',
+                status: 'evaluated' as const,
+                prompt_name: 'test-prompt',
+                prompt_content: 'test content',
+                track_id: 'track_default',
+                experiment_type: 'incremental',
+                is_backtest: false,
+                created_at: '2026-11-01T00:00:00Z',
+                week_start: '2026-11-01',
+                week_end: '2026-11-07',
+                change_description: 'test',
+                parent_tag: null,
+                research_output: null,
+                metrics: {
+                    score: 1.42,
+                    close_accuracy_pct: 65.4,
+                    intraday_hit_pct: 42.0,
+                    magnitude_capture_pct: 80.0,
+                    mean_brier: 0.185,
+                    predictions_evaluated: 10,
+                    correct_count: 7,
+                    intraday_hit_count: 4,
+                },
+            };
+            const { container } = render(
+                <DailyScoreBreakdown
+                    experiment={
+                        mockExp as unknown as Parameters<
+                            typeof DailyScoreBreakdown
+                        >[0]['experiment']
+                    }
+                />,
+            );
+            // Must not use inline layout style objects or hardcoded hex styling
+            expect(container.innerHTML).not.toContain('grid-template-columns');
+            expect(container.innerHTML).not.toContain('background: rgb(255, 255, 255)');
+            expect(container.innerHTML).not.toContain('border-radius: 10px');
+            expect(container.innerHTML).not.toContain('border-radius: 8px');
+            // Must use Boxel classes and CSS Grid
+            expect(container.querySelector('.voxel-card, .voxel-trough')).not.toBeNull();
+            expect(container.innerHTML).not.toContain('text-3xl');
+        });
+
+        it('DailyPredictionsBacktestPage eliminates inline styles in favor of design system primitives', () => {
+            const { container } = render(
+                <DailyPredictionsBacktestPage initialPredictions={[]} experiments={[]} />,
+            );
+            expect(container.innerHTML).not.toContain('border-bottom: 1px solid');
+            expect(container.innerHTML).not.toContain('padding: 12px 8px');
+            expect(container.innerHTML).not.toContain('background: rgb(248, 250, 252)');
+            expect(container.innerHTML).not.toContain('font-size: 28px');
+        });
+
+        it('AutoresearchMilestoneCards eliminates inline color styles in favor of semantic token classes', () => {
+            const { container } = render(
+                <AutoresearchMilestoneCards experiments={[]} predictions={[]} />,
+            );
+            expect(container.innerHTML).not.toMatch(/style="[^"]*color:\s*[^;"]+[^"]*"/);
         });
     });
 });

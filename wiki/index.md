@@ -261,7 +261,6 @@
 - [[sources/correlation-matrix-source]] — Uncorrelated asset discovery
 - [[sources/anomaly-detector-source]] — Static & dynamic code auditing
 - [[sources/web-architecture-source]] — Vertical feature slicing with TanStack
-- [[sources/web-design-system-source]] — "Bloomberg Terminal meets Wired" UI
 - [[sources/web-portfolios-source]] — Active/Retired classification & D3 charts
 - [[sources/web-query-patterns-source]] — Query options factory & SSR safety
 - [[sources/web-testing-source]] — Vitest & RTL component colocation

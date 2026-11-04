@@ -174,16 +174,7 @@ export function DailyPredictionsPage({
             <PredictorHeader selectedTicker={selectedTicker} />
 
             {/* Model Navigation Tabs and Relocated Backtest Arena Button */}
-            <div
-                style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '16px',
-                }}
-                className="border-b-2 border-zinc-200 dark:border-zinc-800"
-            >
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-boxel-bevel-hi">
                 <div className="flex gap-2">
                     {currentModels.map((model) => {
                         const count = tickerPredictions.filter((p) =>

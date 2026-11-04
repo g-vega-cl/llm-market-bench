@@ -1,56 +1,62 @@
 # @llm-market-bench/ui-design-system
 
-Shared UI design system for the LLM Market Bench monorepo. Homegrown component library powered by Tailwind CSS v4.
+Shared UI design system for the LLM Market Bench monorepo. Homegrown component library powered by Tailwind CSS v4 and the **Matcha & Cedar / Cheddar Boxel** aesthetic.
+
+> [!IMPORTANT]
+> The full design system rules, typography scale, responsive invariants, and layout guidelines are codified in [`.agents/rules/design-spec.md`](../../.agents/rules/design-spec.md) and [`wiki/entities/design-system.md`](../../wiki/entities/design-system.md).
 
 ## Philosophy
 
-**"Bloomberg Terminal Meets Wired Magazine"** — data-dense but readable, motion with purpose, distinctive typography.
+- **CSS-First Layout (Avoid JS for design)**: All layouts use declarative CSS Grid and Flexbox (`grid`, `flex`, `flex-wrap`, `items-stretch`). Zero JavaScript layout math (`ResizeObserver`, `window.innerWidth`). Zero inline `style={{ ... }}` objects for layout, typography, or colors.
+- **Matcha & Cedar / Cheddar Boxel**: Tactile voxel hardware geometry (`rounded-none`, 2px directional bevels, hard 4px offset shadows, recessed `.voxel-trough` slots, and physical press `.voxel-btn`).
+- **Strict 3-Combination Typography Budget**: Tier 1 (`18px Bold`), Tier 2 (`14px Bold`), and Tier 3 (`12px Normal`).
+- **Parent-Owns-Spacing**: Zero manual child margins (`m-*`, `mb-*`, `mt-*`, `mr-*`, `ml-*`). Parents supply rhythm with `flex gap-*` and `grid gap-*` (`gap-2`, `gap-4`, `gap-6`).
+- **WCAG AAA Contrast**: Solid Cheddar Gold tags use dark trough text (`text-boxel-trough`, never white).
 
 ## Adoption
 
-All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memories, Reasoning, Audits, Cause & Effect, Concepts) use the design system as their primary UI vocabulary. No page uses zero design system components.
+All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memories, Reasoning, Audits, Cause & Effect, Concepts, Daily Predictions) use the design system as their primary UI vocabulary.
 
 ## Exports
 
 ### Primitives
 
-| Component | Props |
-|-----------|-------|
-| `Button` | `variant` (solid/outline/ghost/soft/glass), `size`, `colorScheme`, `rounded` (xl/full), `gradient`, `isLoading`, `leftIcon`, `rightIcon` |
-| `Card` | `variant` (default/elevated/outlined/ghost/glass), `padding`, `gradient`, `accentBorder`, `accentBorderColor` |
+| Component | Props & Behavior |
+|---|---|
+| `Button` | Tactile `.voxel-btn` with 2px raised bevels and physical `translate(2px, 2px)` click depression. Tier 2 typography. |
+| `Card` | Raised `.voxel-card` block with `rounded-none` geometry, stepped moss surface, and hard offset drop shadow. |
 | `CardHeader` / `CardBody` / `CardFooter` | Composable sub-components |
-| `Badge` | `variant` (solid/soft/outline/dot), `size`, `colorScheme`, `severity` (critical/high/medium/low), `radius` (full/lg/md) |
-| `Table` | `containerClassName`, composable sub-components (`TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) |
-| `Input` / `Label` / `ErrorMessage` | `isError`, `leftAddon`, `rightAddon` |
-| `Select` | Standard select with design system styling |
-| `Skeleton` | `variant` (rect/circle/text) |
+| `Badge` | Sharp `.voxel-badge` tag with optional square pixel dot indicator. Built-in `gap-1.5` container spacing. |
+| `Table` | Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container. |
+| `Input` / `Label` / `ErrorMessage` | Recessed `.voxel-trough rounded-none` wrapper (`bg-boxel-trough`, `border-boxel-bevel-hi`). Tier 2 control typography. |
+| `Select` | Recessed `.voxel-trough rounded-none` wrapper with design system styling and Tier 2 typography. |
 | `ErrorBoundary` | React error boundary with retry |
 | `LoadingSpinner` | `size` (xs/sm/md/lg) |
 
 ### Patterns
 
 | Component | Purpose |
-|-----------|---------|
-| `SectionHeading` | Section title with gradient decorator bar and gradient text |
-| `SubHeading` | Secondary heading for sections within a page, supports optional divider and rightElement |
-| `ConfidenceBar` | Percentage bar with label, color scheme, hero variant |
-| `StatPill` | Clickable filter pill with colored dot and count |
-| `MetricTile` | Compact stat display with icon, label, and value |
-| `EmptyState` | Emoji, title, subtitle, action buttons for zero-data states |
-| `LoadingBoundary` | Suspense wrapper with loading skeleton |
-| `ErrorCard` | Error display card with retry |
+|---|---|
+| `SectionHeading` | Tier 1 display title with cheddar-gold square marker. |
+| `SubHeading` | Tier 2 secondary heading with optional divider and right element. Zero manual margins. |
+| `ConfidenceBar` | 10 discrete block segments inside a recessed `.voxel-trough` slot. |
+| `StatPill` | Clickable filter pill with colored dot, label, and count. |
+| `MetricTile` | Recessed `.voxel-trough rounded-none p-3` tile (`flex flex-col justify-between gap-1`). |
+| `EmptyState` | Centered zero-data state with Tier 1 title, Tier 3 subtitle, and square icon box. |
+| `LoadingBoundary` | Suspense wrapper with silent fallback (zero layout shift). |
+| `ErrorCard` | Tactile error display card with Tier 2 title, Tier 3 message, and retry button. |
 
 ### Layouts
 
 | Component | Purpose |
-|-----------|---------|
-| `PageLayout` | Standard page wrapper with padding and max-width |
-| `HeroBackground` | Gradient hero banner with dot-pattern overlay and animated blur orbs |
+|---|---|
+| `PageLayout` | Full-page container with max-width and declarative `flex flex-col gap-6` / `gap-8` spacing. |
+| `GlobalBackground` | Deep Forest Moss canvas with subtle warm dot grid matrix. |
 
 ### Utilities
 
 | Export | Purpose |
-|--------|---------|
+|---|---|
 | `cn` | `clsx`-based className utility |
 
 ## Usage Patterns

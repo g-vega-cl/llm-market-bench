@@ -33,10 +33,14 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 8. **Tool-First, Agency-Driven Architecture**: Expose callable tools rather than injecting massive context tables (`[[concepts/tool-first-agency]]`).
 9. **Zero Compute on Frontend**: Pre-materialize all heavy calculations in background pipelines (`[[concepts/zero-frontend-compute]]`).
 10. **Vertical Slice Islands & File Size Ceiling**: 400 LOC soft ceiling, 800 LOC hard limit, colocated tests (`[[concepts/vertical-slice-islands]]`).
-11. **Design System & UI Consistency**: Strict primitive consumption from `@llm-market-bench/ui-design-system` with zero arbitrary utility escapes (`[[entities/design-system]]`).
+11. **Design System & UI Consistency**: Strict primitive consumption from `@llm-market-bench/ui-design-system` with zero arbitrary utility escapes. **CSS-first architecture (avoid JS for design)**: all 1D and 2D layouts use declarative CSS Grid and Flexbox (`grid`, `flex`, `flex-wrap`, `items-stretch`); never use JavaScript (`window.innerWidth`, `matchMedia`, `ResizeObserver`) to compute column counts, dimensions, or responsive stacking modes, and never pass layout, typography, or color values through inline `style={{ ... }}` objects (only continuous dynamic data percentages, such as progress-bar fills, are permitted). The single high-contrast dark theme is **Matcha & Cedar / Cheddar Boxel** — sharp `rounded-none` voxel geometry, 2px directional bevels, and recessed `.voxel-trough` slots (`[[entities/design-system]]`).
 12. **Dependency Restraint**: Do not add new packages, dev dependencies, test runners, or lockfile changes without explicit user approval; prefer the standard library and tooling already in the repo.
 13. **Targeted Git Staging & Multi-Agent Isolation**: Never blanket-stage; stage only the files touched by the active task (`[[entities/agent-rules]]`).
 14. **Live Edge & Server Deployment Mandate (Build Implies Run)**: Committing or syncing files is not completion — edge services must be deployed, launched, and health-verified (`[[entities/secondary-minipc-edge]]`).
+
+## Design Specification (Canonical)
+
+The complete web design specification — CSS-first layout, fluent responsive design, parent-owns-spacing, the 3-combination typography budget, boxel geometry and palette tokens, information-density budgets, CLS prevention, and overflow/text-wrapping rules — is codified in `.agents/rules/design-spec.md`. That file is the single source of truth for `apps/web` and `@llm-market-bench/ui-design-system` styling, and it supersedes the former standalone CSS-overflow rule file. Related wiki concepts: [[concepts/fluent-responsive-design]], [[concepts/cumulative-layout-shift]], [[entities/design-system]].
 
 ## Git Staging & Commit Protocol (MANDATORY)
 
@@ -85,6 +89,8 @@ A passing test suite with failing lint or low coverage is not done.
 - [[concepts/vertical-slice-islands]]
 - [[concepts/zero-frontend-compute]]
 - [[entities/design-system]]
+- [[concepts/fluent-responsive-design]]
+- [[concepts/cumulative-layout-shift]]
 - [[entities/commit-msg-lint]]
 - [[concepts/wiki-synchronization]]
 - [[entities/secondary-minipc-edge]]

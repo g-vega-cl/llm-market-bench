@@ -17,8 +17,8 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - update my site so it feels like a proper-professional website, I have to overhaul the design system, the navbar, the pages themselves. So it has a clear objective, and users can use it intutively and so it can be an "impressive portfolio piece" and a "great business". and it must not feel designed like an "AI gebnerated" website. I like the "Voxel" style, or the "posthog" style, but let's discuss.
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
-- [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
-- [ ] - Benchify: design rules cheat sheet to ground my design system
+- [x] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
+- [x] - Benchify: design rules cheat sheet to ground my design system (codified in `.agents/rules/design-spec.md` and `wiki/entities/design-system.md`)
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
 

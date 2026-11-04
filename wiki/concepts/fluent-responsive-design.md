@@ -7,6 +7,8 @@ category: concept
 
 Fluent responsive design builds interfaces that adapt to available container width without explicit viewport media query breakpoints. Rigid screen breakpoints like `sm:`, `md:`, and `lg:` make components fragile when nested inside multi-column panels or sidebars. Intrinsic fluid algorithms like `flex-wrap` and `auto-fit` grids let components flow naturally across all device sizes and split-screen layouts.
 
+The canonical, authoritative statement of these rules (together with the typography budget, boxel geometry, spacing, CLS, and overflow rules) lives in `.agents/rules/design-spec.md`. This page explains the reasoning behind the layout half of that specification.
+
 ## Core principles
 
 ### 1. Breakpoints break component isolation
@@ -28,6 +30,10 @@ Avoid hardcoded pixel values (`280px`, `340px`, `500px`) for structural layouts.
 
 - Use relative `rem` units (`minmax(min(100%, 15rem), 1fr)`) so layout scales proportionally with user font preferences.
 - Use design system spacing tokens (`p-5`, `gap-4`, `gap-6`, `basis-72`, `basis-96`).
+
+### 4. CSS-first, not JS-first
+
+Layout, responsive wrapping, and visual state belong to the browser's CSS layout engine. Never compute column counts, element dimensions, or stacking modes in JavaScript (`window.innerWidth`, `matchMedia`, `ResizeObserver`), and never pass layout, typography, or color values through inline `style={{ ... }}` objects. The only permitted inline style is a continuous dynamic data percentage (e.g. a progress-bar fill).
 
 ## Implementation patterns
 

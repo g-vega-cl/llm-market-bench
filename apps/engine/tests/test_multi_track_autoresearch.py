@@ -16,35 +16,37 @@ async def test_skip_verifier_owner_ids_config():
     assert hasattr(config, "SKIP_VERIFIER_OWNER_IDS")
     assert hasattr(config, "is_verifier_enabled_for_owner")
 
-    # Track Claude portfolios have verifier enabled
-    assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is True
-    assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is True
-    assert "claude-haiku-5-5" in config.VERIFIER_ENABLED_OWNER_IDS
-    assert "deepseek-v4-flash" in config.VERIFIER_ENABLED_OWNER_IDS
-
-    # All other portfolios skip LLM verification
+    # All active portfolios currently skip LLM verification
+    assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is False
+    assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is False
     assert config.is_verifier_enabled_for_owner("MiniMax-M3") is False
     assert config.is_verifier_enabled_for_owner("gemini-3.5-flash-lite") is False
     assert config.is_verifier_enabled_for_owner("deepseek-v4-pro") is False
     assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
 
+    assert "claude-haiku-5-5" in config.SKIP_VERIFIER_OWNER_IDS
+    assert "deepseek-v4-flash" in config.SKIP_VERIFIER_OWNER_IDS
     assert "MiniMax-M3" in config.SKIP_VERIFIER_OWNER_IDS
     assert "gemini-3.5-flash-lite" in config.SKIP_VERIFIER_OWNER_IDS
     assert "gpt-5.6-luna" in config.SKIP_VERIFIER_OWNER_IDS
-    assert "deepseek-v4-flash" not in config.SKIP_VERIFIER_OWNER_IDS
 
 
 @pytest.mark.asyncio
 async def test_verifier_gating_helper_contract():
-    """Verify is_verifier_enabled_for_owner correctly respects VERIFIER_ENABLED_OWNER_IDS."""
-    assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is True
-    assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is True
+    """Verify is_verifier_enabled_for_owner correctly respects VERIFIER_ENABLED_OWNER_IDS and SKIP_VERIFIER_OWNER_IDS."""
+    # When VERIFIER_ENABLED_OWNER_IDS is empty, all models in SKIP_VERIFIER_OWNER_IDS return False
+    assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is False
+    assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is False
     assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
     assert config.is_verifier_enabled_for_owner("gemini-3.5-flash-lite") is False
-    assert config.is_verifier_enabled_for_owner("deepseek-v4-pro") is False
-    assert config.is_verifier_enabled_for_owner("MiniMax-M3") is False
     assert config.is_verifier_enabled_for_owner(None) is False
     assert config.is_verifier_enabled_for_owner("") is False
+
+    # When VERIFIER_ENABLED_OWNER_IDS is explicitly set, it gates precisely
+    with patch.object(config, "VERIFIER_ENABLED_OWNER_IDS", {"claude-haiku-5-5"}):
+        assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is True
+        assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is False
+        assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
 
 
 @pytest.mark.asyncio

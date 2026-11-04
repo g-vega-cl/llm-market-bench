@@ -339,6 +339,22 @@ async def _execute_standard_order(
     if verification and verification.status == "ADJUSTED_ALLOCATION":
         if verification.adjusted_quantity and verification.adjusted_quantity > 0:
             qty = verification.adjusted_quantity
+            if d.signal.upper() == "BUY":
+                bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+                total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
+                from core.config import MIN_TRADE_VALUE
+
+                min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
+                if qty * exec_price < min_buy_threshold and bp >= min_buy_threshold:
+                    min_qty = int(min_buy_threshold / exec_price)
+                    if min_qty * exec_price < min_buy_threshold and (min_qty + 1) * exec_price <= bp:
+                        min_qty += 1
+                    if min_qty > qty and min_qty * exec_price <= bp:
+                        log.info(
+                            f"[{d.ticker}] ADJUSTED_ALLOCATION quantity ({qty}) is below min_buy_threshold "
+                            f"(${min_buy_threshold:.2f}). Clamping up to {min_qty} shares."
+                        )
+                        qty = min_qty
         else:
             log.warning(
                 f"[{d.ticker}] REJECTED (Verification): Status is ADJUSTED_ALLOCATION "

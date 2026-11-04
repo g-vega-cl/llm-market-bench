@@ -118,6 +118,7 @@ async def test_adjusted_allocation_failsafe_rejection():
     mock_verification_result.alternative_ticker = None
 
     with (
+        patch("core.config.is_verifier_enabled_for_owner", return_value=True),
         patch("main.validate_decision", new_callable=AsyncMock, return_value=mock_validate_result),
         patch("main.verify_trading_decision", new_callable=AsyncMock, return_value=mock_verification_result),
         patch("main.save_decision") as mock_save,

@@ -530,7 +530,7 @@ class TestAnthropicMessageFlattening:
             },
         ]
         flat = await self._run_flattening(messages)
-        assert "[Tool Call: web_search({'query': 'NVDA price'})]" in flat[-1]["content"]
+        assert any("[Tool Call: web_search({'query': 'NVDA price'})]" in msg["content"] for msg in flat)
 
     @pytest.mark.asyncio
     async def test_preserves_system_message(self):

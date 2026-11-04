@@ -222,13 +222,13 @@ AUTORESEARCH_TRACK_MODELS = dict(
 )
 
 # Model owner IDs that execute the skeptical verification agent stage (track_claude portfolios)
-VERIFIER_ENABLED_OWNER_IDS = set(_models.get("VERIFIER_ENABLED_OWNER_IDS", ["claude-haiku-5-5", "deepseek-v4-flash"]))
+VERIFIER_ENABLED_OWNER_IDS = set(_models.get("VERIFIER_ENABLED_OWNER_IDS", []))
 
 # Model owner IDs that bypass the skeptical verification agent stage
 SKIP_VERIFIER_OWNER_IDS = set(
     _models.get(
         "SKIP_VERIFIER_OWNER_IDS",
-        ["gpt-5.6-luna", "gemini-3.5-flash-lite", "MiniMax-M3"],
+        ["gpt-5.6-luna", "gemini-3.5-flash-lite", "MiniMax-M3", "claude-haiku-5-5", "deepseek-v4-flash"],
     )
 )
 
@@ -237,7 +237,7 @@ def is_verifier_enabled_for_owner(owner_id: str | None) -> bool:
     """Return True if second-step skeptical LLM verification is enabled for this portfolio owner."""
     if not owner_id:
         return False
-    if VERIFIER_ENABLED_OWNER_IDS:
+    if "VERIFIER_ENABLED_OWNER_IDS" in _models:
         return owner_id in VERIFIER_ENABLED_OWNER_IDS
     return owner_id not in SKIP_VERIFIER_OWNER_IDS
 

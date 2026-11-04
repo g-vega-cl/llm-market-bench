@@ -166,16 +166,24 @@ def prepare_messages_for_instructor(messages: list) -> list:
 
 
 def has_valid_content(messages: list) -> bool:
-    """Checks if the last assistant message has valid (non-empty) content.
+    """Checks if the last assistant message has valid (non-empty, non-tool-call) content.
 
     Args:
         messages: The message history.
 
     Returns:
-        True if the last assistant message has non-empty content.
+        True if the last assistant message has non-empty, non-tool-call content.
     """
+    import re
+
     for msg in reversed(messages):
         if isinstance(msg, dict) and msg.get("role") == "assistant":
             content = msg.get("content", "")
-            return bool(content and content.strip())
+            if not content:
+                continue
+            if not isinstance(content, str):
+                content = str(content)
+            cleaned = re.sub(r"\[Tool Call:.*?\]", "", content, flags=re.DOTALL).strip()
+            if cleaned:
+                return True
     return False

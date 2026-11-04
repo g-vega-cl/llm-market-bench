@@ -12,7 +12,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: something I can autoresearch daily?
       Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
-- [ ] - Benchify: haiku and DeepSeek not making trades, why? Has the verifier gone crazy/useless.
+- [x] - Benchify: haiku and DeepSeek not making trades, why? Has the verifier gone crazy/useless.
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 
@@ -27,8 +27,6 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - Benchify: start building in public. Maybe videos maybe blogs anything but start saying the things you think about that loud critique YouTube videos critique other creators or say something good about them too. Audit audit audit
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
-- [x] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer: Implemented trading runner edge daemon for MiniPC deployment, cascading Strata with centralized free proxy fallback, and 20-second client tape polling
-- [x] - Benchify: let people give instructions to the 24/7 trader: Created agent_chat_queue database table and audience interactive queue card in LiveAgentConsole
 - [ ] - Benchify; can you beat the agent game
   - [ ] - Benchify: challenge people to predict daily weekly etc to produce sectors to predict etc better than you and if they consistently win give them money and they get half and you get half or you can just like a little fee and to get something etc
 

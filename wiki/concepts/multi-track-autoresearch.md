@@ -22,6 +22,17 @@ Each track maintains its own independent prompt lineage, baseline, ratchet score
 - **Multi-Week Lookback Horizon (28 Days)**: Prompt synthesis and postmortem analysis across all tracks ingest a 28-day window of market events and predictions, while the weekly ratchet score remains strictly evaluated over the 7-day active week.
 - **Context Protection & Conditional Decay**: Baseline-winning insights (`is_baseline_beat=True` or `importance_score >= 8`) never decay (0% decay rate). Exploratory or non-winning insights decay at a 50% half-life per 30 days. Retrievals are capped at `limit=5` to prevent context bloat.
 
+## Track-Aware Experiment Tool Resolution
+
+Track isolation extends into the live analysis pipeline, not just the evolution loop. `resolve_experiment_tools(model_name, prompt_type, track_id=None)` in `apps/engine/core/llm/analysis_pipeline/prompt_assembly.py` resolves the active variant for the model's **own** track:
+
+1. If an explicit `track_id` is supplied, it is used directly.
+2. Otherwise the function scans `AUTORESEARCH_TRACKS` in `apps/engine/core/config.py` for the track whose owner list contains `model_name`, and uses that track id.
+3. If no track matches, it falls back to `track_default`.
+4. The resolved track is passed to `get_active_variant(track_id=...)`, so a `track_claude` model reads `track_claude`'s `selected_tools` and `web_search` flag rather than inheriting another track's tool set.
+
+After resolution, `calculate_buy_quantity` / `calculate_sell_quantity` are force-injected into the allowed tool list (see [[concepts/tool-enforcement]]), and a `web_search` selection is intercepted into a native provider flag.
+
 ## Frontend Enforcement
 
 - `resolveActiveDailyPrompt` now only considers experiments filtered to the selected model. The `allExperiments` prop and `isFallback` flag have been removed.

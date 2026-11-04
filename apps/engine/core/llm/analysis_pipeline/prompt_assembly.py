@@ -95,7 +95,9 @@ def extract_tickers_from_chunks(chunks: list[dict], portfolio_tickers: list[str]
     return frozenset(tickers)
 
 
-async def resolve_experiment_tools(model_name: str, prompt_type: str) -> tuple[list | None, bool]:
+async def resolve_experiment_tools(
+    model_name: str, prompt_type: str, track_id: str | None = None
+) -> tuple[list | None, bool]:
     """Resolve allowed tools and web search configuration for autoresearch experiment variants."""
     if prompt_type == "macro":
         return [], False
@@ -105,8 +107,16 @@ async def resolve_experiment_tools(model_name: str, prompt_type: str) -> tuple[l
 
     try:
         from autoresearch.prompt_store import get_active_variant
+        from core.config import AUTORESEARCH_TRACKS
 
-        variant = await get_active_variant()
+        resolved_track = track_id
+        if not resolved_track and model_name and AUTORESEARCH_TRACKS:
+            for t_id, owners in AUTORESEARCH_TRACKS.items():
+                if model_name in owners:
+                    resolved_track = t_id
+                    break
+
+        variant = await get_active_variant(track_id=resolved_track or "track_default")
         selected_tool_names = None
         if variant:
             research_output = variant.get("research_output")
@@ -247,15 +257,17 @@ def prepare_messages_for_provider(messages: list, provider: str, model_name: str
 
         msgs = deepseek.prepare_messages_for_instructor(msgs)
         if not deepseek.has_valid_content(msgs):
-            logger.info("[%s/%s] DeepSeek returned empty content. Requesting JSON output.", provider, model_name)
+            logger.info(
+                "[%s/%s] DeepSeek returned empty or tool-only content. Requesting structured decisions.",
+                provider,
+                model_name,
+            )
             msgs.append(
                 {
                     "role": "user",
                     "content": (
-                        "Your previous output was empty or only contains reasoning. "
-                        "To complete this task, you MUST now output ONLY a valid JSON object following the schema. "
-                        "No more reasoning, no explanations. Just the raw JSON object. "
-                        'Example: {"decisions": [], "macro_events": []}'
+                        "Based on the preceding evaluation and tool results, extract and structure the final "
+                        "trading decisions matching the schema exactly. Provide your complete analysis and decisions."
                     ),
                 }
             )
@@ -303,10 +315,25 @@ def build_provider_extraction_args(
             if isinstance(msg, dict) and msg.get("role") == "assistant":
                 msg["role"] = "model"
 
-    if provider in ("gemini", "anthropic") and final_args["messages"]:
+    if provider in ("anthropic", "minimax"):
+        final_args["max_tokens"] = 32000
+        if final_args["messages"] and final_args["messages"][0]["role"] == "system":
+            sys_content = final_args["messages"][0]["content"]
+            if provider == "anthropic":
+                final_args["system"] = [{"type": "text", "text": sys_content, "cache_control": {"type": "ephemeral"}}]
+            else:
+                final_args["system"] = sys_content
+            final_args["messages"] = final_args["messages"][1:]
+        if provider == "anthropic":
+            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
+            final_args["cache_control"] = {"type": "ephemeral"}
+            final_args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=2048, effort="medium"))
+
+    if provider in ("gemini", "anthropic", "deepseek") and final_args["messages"]:
         last_msg = final_args["messages"][-1]
         last_role = last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
-        if last_role in ("model", "assistant"):
+        if last_role in ("model", "assistant") or (provider == "anthropic" and last_role != "user"):
             final_args["messages"].append(
                 {
                     "role": "user",
@@ -319,21 +346,6 @@ def build_provider_extraction_args(
 
     if provider == "deepseek" and "deepseek" in model_name.lower():
         final_args["extra_body"] = {"thinking": {"type": "enabled"}}
-
-    if provider in ("anthropic", "minimax"):
-        final_args["max_tokens"] = 32000
-        if messages and messages[0]["role"] == "system":
-            sys_content = messages[0]["content"]
-            if provider == "anthropic":
-                final_args["system"] = [{"type": "text", "text": sys_content, "cache_control": {"type": "ephemeral"}}]
-            else:
-                final_args["system"] = sys_content
-            final_args["messages"] = messages[1:]
-        if provider == "anthropic":
-            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
-
-            final_args["cache_control"] = {"type": "ephemeral"}
-            final_args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=2048, effort="medium"))
 
     if provider == "gemini":
         from google.genai import types

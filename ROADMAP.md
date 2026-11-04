@@ -12,7 +12,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: something I can autoresearch daily?
       Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
 - [ ] - **Inject Quantitative Microstructure Features**: Ingest dealer options gamma positioning (GEX flip levels), morning NYSE Tick cumulative volume delta, and pre-open auction imbalances into the feature cache to provide genuine quantitative state-space beyond raw EOD bars.
-- [x] - Benchify: haiku and DeepSeek not making trades, why? Has the verifier gone crazy/useless.
 
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 

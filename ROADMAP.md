@@ -20,7 +20,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: I still see a flashing error when accessing a page sometimes. Set up PostHog so these errors show up there.
 - [ ] - Benchify: refresh data on window focus.
 - [ ] - Benchify: text is horribly positioned on mobile (e.g. "Latest Answered Turn: 11:50 AM ET" and "@g.vega.cl • 11:48 AM ET" labels). What rules do we need to add so this never happens again?
-- [ ] - Benchify: I asked the main homepage chat something and it answered with stale data (Fed's April 29, 2026 decision as the "immediate catalyst", December 2025 hold, P/E 28.65 / forward 20.45). Is it even anchored in the latest data?
+- [x] - Benchify: I asked the main homepage chat something and it answered with stale data (Fed's April 29, 2026 decision as the "immediate catalyst", December 2025 hold, P/E 28.65 / forward 20.45). Is it even anchored in the latest data?
 
 ### Marketing & Building in Public
 
@@ -35,18 +35,12 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Autoresearch Scaling & Local Models
 
-- [x] - make autoresearcher with more variables and more "temperatures?" More portfolios too?
- - Not worth the cost.
-- [x] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
- - Not worth it considering how I can do local autoresearch passes now.
 - [ ] - benchify: fine tune the autoresearcher rather than the model?
 - [x] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
  - So allow hold? improve the confidence number?
 
 ### Portfolio & Market Execution
 
-- [p] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
- - [p] - Do automatically for portfolios sitting on cash, daily, simulate as if 80% of unused cash went to $SGOV. Is it even worth it? Not really since we expect portfolios to use most of their cash and the whole point is investing. Let's discuss
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
  - This is kindof part of the pivot I'm looking to do, maybe a different category?
 
@@ -110,8 +104,6 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Gamifying
 
-- [x] - Benchify: a stream of an agent trading basically 24/7. The agent can't be the agent in my computer.
-  - [x] - Benchify: let people give instructions to the 24/7 trader
 - [ ] - Benchify; can you beat the agent game
   - [ ] - Benchify: challenge people to predict daily weekly etc to produce sectors to predict etc better than you and if they consistently win give them money and they get half and you get half or you can just like a little fee and to get something etc
 

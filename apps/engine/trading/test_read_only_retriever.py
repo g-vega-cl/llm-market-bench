@@ -55,6 +55,7 @@ async def test_retrieve_read_only_market_data_fetches_all_domains():
         select_builder.order.return_value = select_builder
         select_builder.limit.return_value = select_builder
         select_builder.ilike.return_value = select_builder
+        select_builder.eq.return_value = select_builder
 
         if table_name == "memories":
             select_builder.execute.return_value = mock_memories_resp

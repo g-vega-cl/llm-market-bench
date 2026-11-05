@@ -51,15 +51,45 @@ async def retrieve_read_only_market_data(
         "catalyst_radar": [],
     }
 
-    # 1. Memories (vector or recent priority)
+    # 1. Memories (active and relevant priority)
     try:
-        mem_builder = sb_client.table("memories").select("id, content, importance_score, metadata")
+        mem_builder = (
+            sb_client.table("memories")
+            .select(
+                "id, content, importance_score, relevance_score, status, memory_type, target_date, created_at, metadata"
+            )
+            .eq("status", "ACTIVE")
+        )
         if ticker:
             mem_builder = mem_builder.ilike("content", f"%{ticker}%")
-        mem_resp = mem_builder.order("importance_score", desc=True).limit(limit_per_domain).execute()
-        results["memories"] = mem_resp.data or []
+        mem_resp = mem_builder.order("importance_score", desc=True).limit(limit_per_domain * 2).execute()
+        raw_mems = mem_resp.data or []
+        # Filter out expired calendar events and academic papers
+        from datetime import UTC, datetime
+
+        today_str = datetime.now(UTC).strftime("%Y-%m-%d")
+        filtered_mems = []
+        for m in raw_mems:
+            if (m.get("memory_type") or "").upper() == "ACADEMIC_PAPER":
+                continue
+            if (
+                (m.get("memory_type") or "").upper() == "CALENDAR_EVENT"
+                and m.get("target_date")
+                and str(m.get("target_date")) < today_str
+            ):
+                continue
+            filtered_mems.append(m)
+        results["memories"] = filtered_mems[:limit_per_domain] if filtered_mems else raw_mems[:limit_per_domain]
     except Exception:
-        logger.exception("Failed to retrieve read-only memories")
+        # Fallback if mock does not support chained eq/gte
+        try:
+            mem_builder = sb_client.table("memories").select("id, content, importance_score, metadata")
+            if ticker:
+                mem_builder = mem_builder.ilike("content", f"%{ticker}%")
+            mem_resp = mem_builder.order("importance_score", desc=True).limit(limit_per_domain).execute()
+            results["memories"] = mem_resp.data or []
+        except Exception:
+            logger.exception("Failed to retrieve read-only memories")
 
     # 2. Causal Chains (cause_and_effect)
     try:

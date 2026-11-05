@@ -20,29 +20,39 @@ Earlier the live trader dequeued audience questions inside `execute_intraday_age
 
 ### `extract_search_keywords(query)`
 
-Pulls alphanumeric tokens of length ≥ 3 from the user query, drops a fixed stopword set (`what`, `when`, `think`, `after`, …), lowercases them, and returns at most 6 keywords (falling back to the first 3 raw words if everything was filtered). These keywords drive the `ilike` OR-filters used for memory and causal-chain retrieval.
+Pulls alphanumeric tokens of length ≥ 3 from the user query, drops an expanded stopword set (`what`, `when`, `think`, `after`, `the`, `can`, `some`, `more`, `get`, `put`, `puts`, `call`, `calls`, `into`, `lower`, `higher`, …), lowercases them, and returns at most 6 keywords (falling back to the first 3 raw non-common words if everything was filtered). These keywords drive targeted retrieval while preventing blanket query matches.
+
+### `rank_and_filter_memories(memories, query, now_dt, limit=5)`
+
+Composite ranking function that guarantees fresh, active records outrank decayed historical rows:
+- Drops non-ACTIVE rows, academic textbooks (`ACADEMIC_PAPER`), expired calendar events (`target_date < today`), and decayed rows with `relevance_score < 0.20`.
+- Ranks candidate rows via composite scoring: `(importance_score / 10) * relevance_score * (0.5 ** (age_days / 60)) * match_boost`.
+- Prevents stale high-importance historical events from crowding out fresh market catalysts.
 
 ### `retrieve_qa_grounding(sb_client, query, ticker="SPY", limit_memories=5)`
 
 Gathers cross-domain context from the archive DB, failing soft per source (each wrapped in `try/except` with `logger.exception`):
 
-- **`market_feeling`** — the 3 most recent desk turns (`sentiment_label`, `confidence_score`, `why_explanation`, `trades_summary`, `created_at`).
+- **`market_feeling`** — the 3 most recent desk turns (`sentiment_label`, `confidence_score`, `why_explanation`, `trades_summary`, `news_summary`, `created_at`).
+- **`breaking_news`** — the 5 most recent live headlines from `intraday_market_news` (`source`, `headline`, `event_timestamp`).
 - **`trades`** — the 3 most recent executions (`ticker`, `signal`, `price`, `reasoning`, `executed_at`).
-- **`memories`** — keyword-matched rows via `.or_(content.ilike.%kw%…)` ordered by `importance_score` descending; if fewer than 2 matches, tops up with the highest-importance memories.
+- **`memories`** — keyword-matched active rows combined with fresh active market memories, ranked and filtered by `rank_and_filter_memories`.
 - **`cause_and_effect`** — keyword-matched causal chains, falling back to the most recent rows.
-- **`market_barometer_history`** — the latest valuation ratios (`pe_ratio`, `forward_pe`, `pb_ratio`, `ps_ratio`, `earnings_surprise_momentum`).
-- **`catalyst_radar`** — the 2 most recent narrative/calendar collisions.
+- **`market_barometer_history`** — the latest valuation ratios with explicit as-of date (`pe_ratio`, `forward_pe`, `pb_ratio`, `ps_ratio`, `earnings_surprise_momentum`).
+- **`catalyst_radar`** — upcoming narrative collisions (`target_date >= today`) including target date and impact.
 
-Returns a dict with keys `recent_decisions`, `recent_trades`, `memories`, `cause_and_effect`, `barometer`, `catalyst_radar`.
+Returns a dict with keys `recent_decisions`, `recent_trades`, `memories`, `cause_and_effect`, `barometer`, `catalyst_radar`, `breaking_news`, `news_summary`, `current_timestamp`.
 
 ### `format_qa_context(grounding)`
 
 Renders the grounding dict into lean Markdown sections for the LLM:
 
-- `### TRADING DESK RECENT CHOICES & POSITIONING` — stance, action, VWAP/RSI technicals, and truncated rationale.
-- `### HISTORICAL PRECEDENTS & RETRIEVED MEMORIES` — memory content with importance scores.
+- `### CURRENT MARKET CLOCK: YYYY-MM-DD HH:MM UTC` — provides an explicit wall-clock anchor so the model never treats past dates as upcoming events.
+- `### TRADING DESK RECENT CHOICES & POSITIONING` — stance, action, VWAP/RSI technicals, UTC turn timestamp, and truncated rationale.
+- `### BREAKING LIVE NEWS & MACRO INTELLIGENCE` — rolling 30-minute AI news synthesis and live headlines.
+- `### HISTORICAL PRECEDENTS & RETRIEVED MEMORIES` — date-annotated active memories with importance scores.
 - `### CAUSAL CHAINS (cause_and_effect)` — cause → market outcome pairs.
-- `### MACRO BREADTH & CATALYSTS` — barometer ratios and catalyst radar entries.
+- `### MACRO BREADTH & CATALYSTS` — dated barometer ratios (`As of YYYY-MM-DD`) and upcoming dated catalysts.
 
 ### `answer_audience_question(query, author, grounding, http_client, strata_url, cheap_proxy_url)`
 

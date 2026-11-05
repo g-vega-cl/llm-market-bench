@@ -23,7 +23,16 @@ The page receives all datasets as props and falls back to empty arrays on error.
 - **PEAD & SUE Leaderboard** — SUE score coloring (>= 2.0 emerald, < 0 rose), revenue surprise, Sloan accrual quality badges, and top-decile status; ticker/sector search and sector chips.
 - **Sector Bellwether Radar** — Early Bellwether vs Downstream Peer badges, market cap rank, report status, and the active 14-day signal window.
 - **Analyst Revision Momentum** — analyst consensus, coverage count, buy ratio, consensus target price, and implied upside.
-- **Day-1 Movement Arena** — renders `EarningsArenaTab.tsx` benchmarking GPT Luna, DeepSeek Flash, and TypeSafe Jev on RTH Open-to-Close (UP/DOWN) direction, Brier scores, and accuracy.
+- **Day-1 Movement Arena** — renders `EarningsArenaTab.tsx` benchmarking GPT Luna, DeepSeek Flash, and TypeSafe Jev on RTH Open-to-Close (UP/DOWN) direction. Each model card shows hit rate and its normalised [[concepts/conviction-points]] score (50 = coin flip); per-row conviction is persisted by `apps/engine/tasks/evaluate_earnings_predictions.py`. Brier remains a stored calibration diagnostic and no longer moves any score.
+
+## Day-1 Scoring
+
+`evaluate_earnings_predictions.py` computes a binary RTH outcome, then writes two columns per prediction:
+
+- `brier_score` — calibration diagnostic, `(p − y)²`.
+- `conviction_score` — the raw logarithmic score `100·ln(2p)` when correct and `100·ln(2 − 2p)` when wrong, from `apps/engine/core/conviction_scoring.py`.
+
+The arena aggregates the stored conviction values and maps them with `50 + 50·tanh(mean/50)`. An unscored model shows `N/A` rather than zero.
 
 Summary cards show total analyzed, top-decile SUE count, Sloan clean percentage, and active bellwethers.
 

@@ -43,7 +43,18 @@ The daily bond predictor (`apps/engine/tasks/bond_predictor.py`) implements a pu
 - **Jev Integration**: Single-turn Decisions API receives an automated lean tool bundle pre-compiled from the yield curve and economic calendar.
 - **Portfolios**: Feeds into systematic close-exit portfolios (`sys-daily-tlt-close-{model}`) executed via `apps/engine/execution/daily_bond_trading.py`.
 
+## Scoring & Metrics Surface
+
+- **`DailyMetricsOverview`** shows directional accuracy, intraday hit rate, a **Conviction Score** card (normalised logarithmic confidence term, 50 = coin flip), total predictions, and the active prompt tag. Brier is no longer displayed here.
+- **`PredictionsTable`** replaces the old Brier column with a per-row **Conviction** value: the raw `conviction_score` the engine persisted at evaluation time, signed and coloured (green non-negative, red negative, `-` when unscored).
+- **`DailyScoreBreakdown`** explains the ratchet arithmetic: `0.90 × (0.55·accuracy + 0.35·intraday hit + 0.10·magnitude capture) + 0.10 × conviction_norm`, with Brier shown as a diagnostic only. See [[entities/daily-score-breakdown]].
+- **`DailyPredictionsBacktestPage`** mirrors the live arena with a Conviction Score stat card and a Conviction column in the prediction log.
+
+Scoring itself lives in `apps/engine/core/conviction_scoring.py`; see [[concepts/conviction-points]] for the formula, the properness property, and the ratchet baseline guard.
+
 ## Related
+
+- [[concepts/conviction-points]]
 
 - [[concepts/system-portfolios]]
 - [[entities/tool-audit]]

@@ -21,8 +21,8 @@ A unified frontend transparency layer enforced across all three prediction domai
 |--------|-------|-----------------|----------------------|
 | Portfolio Autoresearch | `/autoresearch` | `ScoreBreakdown`, `ScoreCalculation`, `DailyScoreDisplay` | Unified Risk-Adjusted Z-Score ($\sigma$, [[concepts/risk-adjusted-z-score]]) |
 | Daily SPY Predictor | `/daily-predictions` | `DailyScoreBreakdown` | 4-Pillar Composite (Points, [[entities/daily-score-breakdown]]) |
-| Weekly Sector Predictor | `/ai-predictions` | `SectorScoreBreakdown` | Multi-Pillar Percentile + Alpha Bonus − Brier (Points) |
-| Day-1 Earnings Predictor | `/earnings-audit` | `EarningsArenaTab` | Brier Score Calibration + RTH Hit Rate % |
+| Weekly Sector Predictor | `/ai-predictions` | `SectorScoreBreakdown` | Multi-Pillar Percentile + Alpha Bonus, blended 0.90 / 0.10 with Conviction (Points) |
+| Day-1 Earnings Predictor | `/earnings-audit` | `EarningsArenaTab` | Conviction Score + RTH Hit Rate % |
 
 ## Related
 

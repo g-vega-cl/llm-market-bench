@@ -60,6 +60,15 @@ These two tables form the market data persistence layer used by `MarketDataManag
 - `snp500_stocks` — S&P 500 constituent list and metadata
 - Other tables for experiments, prompts, and logging
 
+### Prediction Scoring Columns
+
+Migration `supabase/migrations/20261105000000_add_conviction_scoring.sql` adds:
+
+- `conviction_score FLOAT` on `daily_predictions`, `earnings_predictions`, and `sector_predictions` — the raw logarithmic score persisted at evaluation time (see [[concepts/conviction-points]]).
+- `worst_confidence FLOAT` on `sector_predictions` — the separately stated probability for the worst-sector call, used so the worst leg is never priced with the best-pick confidence.
+
+The same migration rewrites `public.get_llm_leaderboard_metrics(INT)` to return a `conviction_score` column and to stop paying `0.3 × average_confidence` inside the reasoning-quality score. `average_confidence` remains an informational column. Backfilled history is produced by `apps/engine/scripts/backfill_conviction_scores.py`.
+
 ### Views
 - `vw_daily_score` — Daily ratchet score audit view
 - `vw_latest_trades` — Latest trades with agent and ticker details

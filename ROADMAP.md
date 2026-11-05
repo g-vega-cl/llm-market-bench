@@ -20,7 +20,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: I still see a flashing error when accessing a page sometimes. Set up PostHog so these errors show up there.
 - [ ] - Benchify: refresh data on window focus.
 - [ ] - Benchify: text is horribly positioned on mobile (e.g. "Latest Answered Turn: 11:50 AM ET" and "@g.vega.cl • 11:48 AM ET" labels). What rules do we need to add so this never happens again?
-- [x] - Benchify: I asked the main homepage chat something and it answered with stale data (Fed's April 29, 2026 decision as the "immediate catalyst", December 2025 hold, P/E 28.65 / forward 20.45). Is it even anchored in the latest data?
+- [ ] - Benchify: I asked the main homepage chat something and it answered with stale data (Fed's April 29, 2026 decision as the "immediate catalyst", December 2025 hold, P/E 28.65 / forward 20.45). Is it even anchored in the latest data?
 
 ### Marketing & Building in Public
 

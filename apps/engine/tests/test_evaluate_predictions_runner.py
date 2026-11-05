@@ -108,6 +108,9 @@ async def test_run_evaluation_runner():
     # Brier score should be present (default 0.25 when confidence is None and percentile >= 50)
     assert update_args["brier_score"] == pytest.approx(0.25)
 
+    # No confidence was recorded, so there is no conviction to score.
+    assert update_args["conviction_score"] is None
+
     # Check that it updated the correct ID
     mock_chain.eq.assert_any_call("id", "mock-uuid-123456")
 

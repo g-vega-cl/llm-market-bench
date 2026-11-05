@@ -25,6 +25,7 @@ describe('PredictionsTable', () => {
         is_correct: true,
         intraday_hit: true,
         brier_score: 0.04,
+        conviction_score: 47.0002,
         status: 'evaluated',
         created_at: '2026-08-03T08:00:00Z',
         updated_at: '2026-08-03T16:00:00Z',
@@ -62,7 +63,8 @@ describe('PredictionsTable', () => {
         expect(screen.getByText('$455.00')).toBeInTheDocument();
         expect(screen.getByText('HIT')).toBeInTheDocument();
         expect(screen.getByText('PASS')).toBeInTheDocument();
-        expect(screen.getByText('0.0400')).toBeInTheDocument();
+        expect(screen.getByText('Conviction')).toBeInTheDocument();
+        expect(screen.getByText('+47.00')).toBeInTheDocument();
     });
 
     it('toggles row expansion to display prompt and details', () => {

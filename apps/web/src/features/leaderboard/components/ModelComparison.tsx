@@ -76,12 +76,20 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                     : null,
         },
         {
+            label: 'Conviction Score',
+            valA: modelA.conviction_score,
+            valB: modelB.conviction_score,
+            formattedA: `${modelA.conviction_score.toFixed(1)}`,
+            formattedB: `${modelB.conviction_score.toFixed(1)}`,
+            isHigherBetter: true,
+        },
+        {
             label: 'Average Confidence',
             valA: modelA.average_confidence,
             valB: modelB.average_confidence,
             formattedA: `${modelA.average_confidence.toFixed(1)}%`,
             formattedB: `${modelB.average_confidence.toFixed(1)}%`,
-            isHigherBetter: true,
+            isHigherBetter: null, // stated confidence is informational, not a rank signal
         },
         {
             label: 'API Success Rate',

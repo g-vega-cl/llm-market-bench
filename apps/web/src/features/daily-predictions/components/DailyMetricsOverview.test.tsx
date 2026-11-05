@@ -10,7 +10,7 @@ describe('DailyMetricsOverview', () => {
                 intradayHitPct="40.0"
                 correctCount={13}
                 totalEvaluated={20}
-                avgBrier="0.1850"
+                convictionScore="61.4"
                 totalPredictions={25}
                 activePromptTag="daily-active-v1"
             />,
@@ -23,8 +23,8 @@ describe('DailyMetricsOverview', () => {
         expect(screen.getByText('Intraday Target Hit (30%)')).toBeInTheDocument();
         expect(screen.getByText('40.0%')).toBeInTheDocument();
 
-        expect(screen.getByText('Brier Calibration Score')).toBeInTheDocument();
-        expect(screen.getByText('0.1850')).toBeInTheDocument();
+        expect(screen.getByText('Conviction Score')).toBeInTheDocument();
+        expect(screen.getByText('61.4')).toBeInTheDocument();
 
         expect(screen.getByText('Total Predictions')).toBeInTheDocument();
         expect(screen.getByText('25')).toBeInTheDocument();

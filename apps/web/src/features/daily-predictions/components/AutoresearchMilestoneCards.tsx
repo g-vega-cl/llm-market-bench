@@ -99,7 +99,7 @@ export function AutoresearchMilestoneCards({
             <MilestoneCard
                 title="Active Ratchet Score"
                 value={activeScoreDisplay}
-                subtitle="Weighted accuracy, target hit & Brier"
+                subtitle="Weighted accuracy, target hit & conviction"
                 valueClassName={activeScoreClassName}
             />
             <MilestoneCard

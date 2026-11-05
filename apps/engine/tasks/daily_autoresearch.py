@@ -15,6 +15,7 @@ from core.config import (
     OPENAI_MODEL,
     logger,
 )
+from core.conviction_scoring import conviction_bundle
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_deepseek_client, get_openai_client
 from core.llm.daily_predictor_prompts import (
@@ -109,11 +110,17 @@ def calculate_daily_ratchet_metrics(predictions: list[dict]) -> dict:
     """Calculate the full ratchet performance metrics breakdown for daily predictions.
 
     Score is based on:
-    - EOD Close Directional Accuracy % (weight: 0.55)
-    - Intraday Target Hit Rate % (weight: 0.35)
-    - Magnitude Capture Ratio % (weight: 0.10)
-    - Mean Brier Score penalty (penalty multiplier: 50.0)
-    Combined Score = (0.55 * close_acc) + (0.35 * hit_rate) + (0.10 * mag_capture) - (mean_brier * 50.0).
+    - EOD Close Directional Accuracy % (weight: 0.55 of the accuracy block)
+    - Intraday Target Hit Rate % (weight: 0.35 of the accuracy block)
+    - Magnitude Capture Ratio % (weight: 0.10 of the accuracy block)
+    - Conviction (weight: 0.10 of the total, centred at 50 for a coin flip)
+
+    Combined Score = 0.90 * accuracy_block + 0.10 * conviction_norm
+
+    The accuracy block is scaled to 0.90 so the 0-100 range is preserved, and the
+    previous ``- mean_brier * 50`` penalty is gone. Brier is still stored on each
+    prediction row as a diagnostic; stale rows without a confidence value score
+    a neutral 50.0 conviction.
     """
     if not predictions:
         return {
@@ -122,6 +129,9 @@ def calculate_daily_ratchet_metrics(predictions: list[dict]) -> dict:
             "intraday_hit_pct": 0.0,
             "magnitude_capture_pct": 0.0,
             "mean_brier": 0.25,
+            "conviction_norm": 50.0,
+            "conviction_mean_cp": 0.0,
+            "tail_gap": None,
             "predictions_evaluated": 0,
             "correct_count": 0,
             "intraday_hit_count": 0,
@@ -143,15 +153,19 @@ def calculate_daily_ratchet_metrics(predictions: list[dict]) -> dict:
     brier_scores = [p.get("brier_score") for p in predictions if p.get("brier_score") is not None]
     mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.25
 
-    final_score = (
-        (0.55 * close_accuracy_pct) + (0.35 * intraday_hit_pct) + (0.10 * mean_mag_capture) - (mean_brier * 50.0)
-    )
+    conviction = conviction_bundle(predictions)
+    accuracy_block = (0.55 * close_accuracy_pct) + (0.35 * intraday_hit_pct) + (0.10 * mean_mag_capture)
+    final_score = (0.90 * accuracy_block) + (0.10 * conviction["conviction_norm"])
+
     return {
         "score": round(float(final_score), 4),
         "close_accuracy_pct": round(float(close_accuracy_pct), 2),
         "intraday_hit_pct": round(float(intraday_hit_pct), 2),
         "magnitude_capture_pct": round(float(mean_mag_capture), 2),
         "mean_brier": round(float(mean_brier), 4),
+        "conviction_norm": conviction["conviction_norm"],
+        "conviction_mean_cp": conviction["mean_cp"],
+        "tail_gap": conviction["tail_gap"],
         "predictions_evaluated": len(predictions),
         "correct_count": correct_count,
         "intraday_hit_count": intraday_hit_count,

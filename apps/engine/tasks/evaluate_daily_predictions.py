@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import logger
+from core.conviction_scoring import conviction_points
 from core.db import get_supabase_client
 
 
@@ -251,11 +252,13 @@ async def evaluate_daily_predictions(
         if predicted_dir.upper() == "NO_TRADE":
             is_correct = None
             brier_score = None
+            conviction_score = None
             intraday_hit = None
             intraday_dir_hit = None
         else:
             is_correct = predicted_dir.upper() == actual_dir
             brier_score = calculate_brier_score(predicted_dir, confidence, actual_dir)
+            conviction_score = round(conviction_points(confidence, is_correct), 4)
             intraday_hit, intraday_dir_hit = compute_intraday_hit_metrics(
                 predicted_direction=predicted_dir,
                 expected_return_pct=expected_return_pct,
@@ -275,6 +278,7 @@ async def evaluate_daily_predictions(
                 "intraday_hit": intraday_hit,
                 "intraday_direction_hit": intraday_dir_hit,
                 "brier_score": brier_score,
+                "conviction_score": conviction_score,
                 "status": "evaluated",
                 "updated_at": datetime.now(UTC).isoformat(),
             }

@@ -129,7 +129,7 @@ describe('VariantSidebar', () => {
         );
 
         expect(screen.getByText('daily-pred-baseline')).toBeInTheDocument();
-        expect(screen.getByText('80.6')).toBeInTheDocument();
+        expect(screen.getByText('86.6')).toBeInTheDocument();
         expect(screen.getByText('🏆 BASELINE')).toBeInTheDocument();
     });
 });

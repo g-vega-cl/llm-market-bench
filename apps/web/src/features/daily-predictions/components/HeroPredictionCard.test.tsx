@@ -22,6 +22,7 @@ describe('HeroPredictionCard', () => {
         is_correct: true,
         intraday_hit: true,
         brier_score: 0.0225,
+        conviction_score: null,
         status: 'evaluated',
         created_at: '2026-08-03T08:00:00Z',
         updated_at: '2026-08-03T16:00:00Z',

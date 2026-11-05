@@ -23,15 +23,22 @@ $$
 
 ## Ratchet Score Integration
 
-The ratchet scoring formula used for prompt mutation now includes magnitude capture as a third weighted factor:
+The three accuracy pillars form an **accuracy block** weighted 0.55 / 0.35 / 0.10. The block is scaled to 0.90 and blended with the [[concepts/conviction-points]] term at 0.10:
 
 $$
-\text{Ratchet Score} = (0.55 \times \text{close\_accuracy\_pct}) + (0.35 \times \text{intraday\_hit\_pct}) + (0.10 \times \text{magnitude\_capture\_pct}) - (\text{mean\_brier} \times 50.0)
+\text{accuracy\_block} = (0.55 \times \text{close\_accuracy\_pct}) + (0.35 \times \text{intraday\_hit\_pct}) + (0.10 \times \text{magnitude\_capture\_pct})
 $$
 
-- Directional accuracy weight reduced from 0.60 to **0.55**.
-- Intraday hit rate weight reduced from 0.40 to **0.35**.
-- Magnitude capture added at **0.10** weight.
+$$
+\text{Ratchet Score} = (0.90 \times \text{accuracy\_block}) + (0.10 \times \text{conviction\_norm})
+$$
+
+- Directional accuracy is **0.55** of the accuracy block.
+- Intraday hit rate is **0.35** of the accuracy block.
+- Magnitude capture is **0.10** of the accuracy block.
+- Conviction is **0.10** of the total composite, centred at 50 for a coin flip (neutral 50 when a model has no scored confidence).
+
+The former `- mean_brier × 50.0` penalty is gone. `mean_brier` is still persisted on every prediction row and surfaced in the score breakdown as a diagnostic only (see [[concepts/brier-score]]).
 
 ## Postmortem Diagnosis & Catalyst Context
 
@@ -52,7 +59,7 @@ Additionally, active thematic concept clusters and their velocity metrics from `
 
 The meta-researcher prompt now includes explicit magnitude calibration objectives:
 
-1. Directional Accuracy (55%) and Intraday Hit Rate (35%) remain primary.
+1. Directional Accuracy (55%) and Intraday Hit Rate (35%) remain primary within the accuracy block.
 2. Magnitude Calibration (10%): "When high-impact catalysts or strong trend conditions align, instruct the predictor to be more confident and aggressive… instead of timid +0.20%."
 3. **On rangebound or high-VIX days**, keep expected_return_pct conservative to ensure target hit reliability.
 
@@ -60,6 +67,7 @@ The meta-researcher prompt now includes explicit magnitude calibration objective
 
 - [[entities/daily-market-predictor]]
 - [[entities/daily-predictor-backtest-arena]]
+- [[concepts/conviction-points]]
 - [[concepts/brier-score]]
 - [[concepts/intraday-hit-metrics]]
 - [[concepts/auto-research-prompt-improver]]

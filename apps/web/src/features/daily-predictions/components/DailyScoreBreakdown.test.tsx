@@ -49,9 +49,11 @@ describe('DailyScoreBreakdown', () => {
         expect(screen.getByText('Magnitude Capture (10%)')).toBeInTheDocument();
         expect(screen.getByText('+0.00 pts')).toBeInTheDocument();
 
-        expect(screen.getByText('Brier Penalty (50.0×)')).toBeInTheDocument();
-        expect(screen.getByText('0.3040')).toBeInTheDocument();
-        expect(screen.getByText('−15.20 pts')).toBeInTheDocument();
+        // Enriched metrics written before conviction scoring fall back to neutral 50.
+        expect(screen.getByText('Conviction (10%)')).toBeInTheDocument();
+        expect(screen.getAllByText('50.0').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('+5.00 pts')).toBeInTheDocument();
+        expect(screen.getByText('Neutral 50 (no scored confidence)')).toBeInTheDocument();
 
         // Low Sample Notice
         expect(screen.getByText(/Low Sample Window Notice \(N = 3\)/)).toBeInTheDocument();
@@ -88,7 +90,8 @@ describe('DailyScoreBreakdown', () => {
         expect(screen.getByText(/Close Directional Accuracy \(55%\):/)).toBeInTheDocument();
         expect(screen.getByText(/Intraday Target Hit Rate \(35%\):/)).toBeInTheDocument();
         expect(screen.getByText(/Magnitude Capture Ratio \(10%\):/)).toBeInTheDocument();
-        expect(screen.getByText(/Brier Calibration Penalty \(50.0×\):/)).toBeInTheDocument();
+        expect(screen.getByText(/Conviction \(10%\):/)).toBeInTheDocument();
+        expect(screen.getByText(/Brier \(diagnostic only\):/)).toBeInTheDocument();
 
         // Click to close guide
         fireEvent.click(screen.getByText(/Hide Scoring Formula & Weights Guide/i));
@@ -250,5 +253,44 @@ describe('DailyScoreBreakdown', () => {
             screen.queryByText('Daily Ratchet Score Calculation & Breakdown'),
         ).not.toBeInTheDocument();
         expect(screen.queryByText('FORMULA SUBSTITUTION:')).not.toBeInTheDocument();
+    });
+
+    it('scores conviction at 10% of the composite and ignores stored Brier', () => {
+        const baseMetrics = {
+            close_accuracy_pct: 75.0,
+            intraday_hit_pct: 75.0,
+            magnitude_capture_pct: 50.0,
+            mean_brier: 0.2025,
+            predictions_evaluated: 20,
+            correct_count: 15,
+            intraday_hit_count: 15,
+        };
+
+        const experimentWith = (convictionNorm: number) =>
+            ({
+                id: 'exp-conviction',
+                variant_tag: `daily-pred-conviction-${convictionNorm}`,
+                metrics: {
+                    ...baseMetrics,
+                    conviction_norm: convictionNorm,
+                    conviction_mean_cp: (convictionNorm - 50) * 10,
+                    score: 72.0,
+                },
+            }) as unknown as PromptExperiment;
+
+        // Accuracy block = 0.55*75 + 0.35*75 + 0.10*50 = 72.5
+        const metrics = resolveRatchetMetrics(experimentWith(80));
+        expect(metrics?.accuracyBlockPoints).toBeCloseTo(72.5, 6);
+        expect(metrics?.convictionNorm).toBe(80);
+        expect(metrics?.convictionContribution).toBeCloseTo(8.0, 6);
+        expect(metrics?.hasConviction).toBe(true);
+
+        // Stored Brier must not change the resolved score.
+        const highBrier = resolveRatchetMetrics(experimentWith(80));
+        expect(highBrier?.score).toBeCloseTo(72.0, 6);
+
+        render(<DailyScoreBreakdown experiment={experimentWith(80)} />);
+        expect(screen.getByText('Conviction (10%)')).toBeInTheDocument();
+        expect(screen.getAllByText('80.0').length).toBeGreaterThanOrEqual(1);
     });
 });

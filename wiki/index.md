@@ -192,7 +192,8 @@
 - [[concepts/magnitude-calibration]] — Magnitude capture ratio and postmortem diagnosis for daily S&P prediction prompt evolution
 - [[concepts/deepseek-web-search]] — Live web search tool integration for DeepSeek agents with DuckDuckGo/FMP hybrid backend
 - [[concepts/worst-sector-scoring]] — Two-sided sector prediction, worst sector percentile scoring, and S&P 500 alpha bonus
-- [[concepts/brier-score]] — Brier score calibration metric and autoresearch penalty
+- [[concepts/brier-score]] — Brier score calibration diagnostic (no longer a scoring input)
+- [[concepts/conviction-points]] — Proper log-score confidence metric replacing the Brier accuracy penalty across daily, earnings, sector, and leaderboard surfaces
 - [[concepts/renko-atr-sizing]] — Auto-indexed page
 - [[concepts/modular-prompt-blocks]] — Reusable trading discipline and reasoning blocks dynamically toggled by the Auto-Researcher
 - [[concepts/intraday-hit-metrics]] — Two-dimensional evaluation for daily predictions measuring intraday price target achievement

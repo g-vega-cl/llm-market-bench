@@ -1,6 +1,9 @@
 import pytest
 
-from tasks.evaluate_predictions import calculate_sector_brier_score
+from tasks.evaluate_predictions import (
+    calculate_sector_brier_score,
+    calculate_sector_conviction_records,
+)
 from tasks.predictor_autoresearch import calculate_baseline_score
 from tasks.sector_predictor import SectorPredictionResponse
 
@@ -68,17 +71,70 @@ def test_calculate_sector_brier_score_with_worst_sector_both_failed():
     assert score == pytest.approx(0.64)
 
 
-def test_calculate_baseline_score_with_brier_penalty():
-    """Verify sector predictor autoresearch baseline score includes mean Brier penalty."""
+def test_calculate_baseline_score_uses_conviction_not_brier():
+    """Verify the sector ratchet scores conviction, and ignores the stored Brier.
+
+    Accuracy block = (100 + 80) / 2 = 90.0, alpha = 0
+    No confidence recorded -> conviction neutral at 50.0
+    Score = 0.90 * 90.0 + 0.10 * 50.0 = 86.0
+    """
     predictions = [
         {"sector_percentile_score": 100.0, "pair_percentile_score": 100.0, "brier_score": 0.04},
         {"sector_percentile_score": 80.0, "pair_percentile_score": 80.0, "brier_score": 0.04},
     ]
-    # Avg percentile = (100 + 80) / 2 = 90.0
-    # Mean Brier = 0.04 -> penalty = 0.04 * 50.0 = 2.0
-    # Baseline ratchet score = 90.0 - 2.0 = 88.0
     score = calculate_baseline_score(predictions)
-    assert score == pytest.approx(88.0)
+    assert score == pytest.approx(86.0)
+
+    # Changing only the stored Brier must not move the score.
+    for prediction in predictions:
+        prediction["brier_score"] = 0.95
+    assert calculate_baseline_score(predictions) == pytest.approx(86.0)
+
+
+def test_sector_ratchet_rewards_calibrated_over_reckless():
+    """Reproduction: confidence must rank an honest model above a bravado model."""
+
+    def arm(confidence: float) -> list[dict]:
+        return [
+            {
+                "sector_percentile_score": 100.0 if index < 12 else 20.0,
+                "pair_percentile_score": 50.0,
+                "confidence": confidence,
+            }
+            for index in range(20)
+        ]
+
+    assert calculate_baseline_score(arm(60.0)) > calculate_baseline_score(arm(95.0))
+
+
+def test_sector_conviction_uses_separate_probabilities_per_leg():
+    """Each sector leg must carry its own stated probability."""
+    records = calculate_sector_conviction_records(
+        confidence=90.0,
+        sector_percentile_score=100.0,
+        worst_confidence=60.0,
+        worst_sector_percentile_score=90.0,
+    )
+    assert records == [
+        {"confidence": 90.0, "is_correct": True},
+        {"confidence": 60.0, "is_correct": True},
+    ]
+
+
+def test_sector_conviction_skips_unpriced_worst_leg():
+    """A legacy row without worst_confidence must not borrow the best probability."""
+    records = calculate_sector_conviction_records(
+        confidence=90.0,
+        sector_percentile_score=100.0,
+        worst_confidence=None,
+        worst_sector_percentile_score=10.0,
+    )
+    assert records == [{"confidence": 90.0, "is_correct": True}]
+
+
+def test_sector_conviction_handles_missing_scores():
+    assert calculate_sector_conviction_records(None, 100.0) == []
+    assert calculate_sector_conviction_records(90.0, None) == []
 
 
 def test_sector_prediction_response_schema():
@@ -92,3 +148,8 @@ def test_sector_prediction_response_schema():
     resp = SectorPredictionResponse(**payload)
     assert resp.predicted_sector == "XLK"
     assert resp.confidence == 85.0
+    # Legacy responses without the field must still validate.
+    assert resp.worst_confidence is None
+
+    priced = SectorPredictionResponse(**{**payload, "worst_confidence": 62.5})
+    assert priced.worst_confidence == 62.5

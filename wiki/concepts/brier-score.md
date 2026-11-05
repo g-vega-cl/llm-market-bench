@@ -5,7 +5,10 @@ category: concept
 
 # Brier Score & Confidence Calibration
 
-The Brier score measures the accuracy of probabilistic predictions. In LLM Market Bench, sector predictions now include a self-assessed confidence percentage. The Brier score quantifies calibration — how well confidence matches actual outcomes — and is used as a penalty term in the autoresearch baseline score.
+The Brier score measures the accuracy of probabilistic predictions. In LLM Market Bench, sector predictions include a self-assessed confidence percentage. The Brier score quantifies calibration — how well confidence matches actual outcomes — and is retained as a stored diagnostic.
+
+> [!IMPORTANT]
+> Brier is no longer a scoring input. The `mean_brier × 50` accuracy penalty was replaced by [[concepts/conviction-points]] in November 2026. Brier remains stored on every prediction row for auditing, and `apps/engine/local_autoresearch/single_prompt_ratchet.py` still imports `calculate_brier_score` directly.
 
 ## Formula
 
@@ -36,17 +39,29 @@ Lower is better; 0.0 is perfect calibration.
 - The `SECTOR_PREDICTOR_PROMPT` now requires the model to return a `confidence` float between 0.0 and 100.0.
 - `SectorPredictionResponse` stores `confidence` with a default of 75.0 for backward compatibility.
 - During evaluation, `calculate_sector_brier_score()` computes the Brier score and stores it in `sector_predictions.brier_score`.
-- The web UI displays Confidence and Brier Score columns in the AI Predictions table.
+- The web UI displays Confidence and Brier Score columns as diagnostics; conviction drives the composite score.
 
-## Autoresearch Baseline Penalty
+## Autoresearch Scoring (Superseded)
 
-The predictor autoresearch weekly score is now:
+The predictor autoresearch weekly score previously read:
+
+```
 Score_weekly = Average(percentile_scores) - (Mean Brier × 50.0)
+```
 
-The penalty encourages models to be well-calibrated, not just accurate. Legacy predictions without a Brier score contribute no penalty.
+That term has been removed. It bounded confidence to roughly ±12 points on a 0–100 composite, which meant a model could win by ignoring calibration entirely. The current score is:
+
+```
+Score_weekly = 0.90 × accuracy_block + 0.10 × conviction_norm
+```
+
+where `accuracy_block` is the existing percentile/alpha composite and `conviction_norm` is the normalised [[concepts/conviction-points]] term. Brier is still written to `sector_predictions.brier_score` and shown as a diagnostic only.
+
+Worst-sector legs are priced with the separate `worst_confidence` column. Legacy rows that never stated a worst-pick probability skip that leg rather than reusing the best-pick confidence.
 
 ## Related
 
+- [[concepts/conviction-points]]
 - [[entities/sector-predictor-arena]]
 - [[concepts/auto-research-prompt-improver]]
 - [[concepts/intraday-hit-metrics]]

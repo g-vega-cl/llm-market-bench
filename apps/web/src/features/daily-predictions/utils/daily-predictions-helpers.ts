@@ -1,4 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
+import { meanConvictionPoints, normalizeConvictionPoints } from '~/shared/conviction';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 
 export const DEFAULT_DAILY_PREDICTOR_TOOLS = [
@@ -130,7 +131,20 @@ export function computeDailyPredictionStats(predictions: DailyPrediction[]) {
             ? (brierScores.reduce((a, b) => a + b, 0) / brierScores.length).toFixed(4)
             : 'N/A';
 
-    return { correctCount, totalEvaluated, accuracyPct, intradayHitPct, avgBrier };
+    // Conviction is precomputed per prediction by the engine; this only aggregates
+    // the stored log-scores and maps them onto the 0-100 scale.
+    const meanConviction = meanConvictionPoints(evaluatedPredictions);
+    const convictionScore =
+        meanConviction === null ? 'N/A' : normalizeConvictionPoints(meanConviction).toFixed(1);
+
+    return {
+        correctCount,
+        totalEvaluated,
+        accuracyPct,
+        intradayHitPct,
+        avgBrier,
+        convictionScore,
+    };
 }
 
 export function resolveActiveDailyPrompt(modelExperiments: PromptExperiment[]): {

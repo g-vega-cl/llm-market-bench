@@ -23,6 +23,7 @@ export interface EarningsPrediction {
     actual_direction: 'UP' | 'DOWN' | null;
     is_correct: boolean | null;
     brier_score: number | null;
+    conviction_score: number | null;
     status: 'pending' | 'evaluated';
     created_at: string;
 }

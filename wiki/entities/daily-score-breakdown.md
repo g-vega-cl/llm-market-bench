@@ -9,7 +9,7 @@ An interactive React component (`DailyScoreBreakdown`) that renders a detailed, 
 
 ## Purpose
 
-Provides full auditability of the ratchet score computation directly in the Autoresearch & Benchmark History tab of the Daily Predictions page. Users can see exactly how each factor (directional accuracy, intraday hit rate, magnitude capture, Brier penalty) contributes to the final score, with live arithmetic substitution and per-pillar point contributions.
+Provides full auditability of the ratchet score computation directly in the Autoresearch & Benchmark History tab of the Daily Predictions page. Users can see exactly how each factor (directional accuracy, intraday hit rate, magnitude capture, conviction) contributes to the final score, with live arithmetic substitution and per-pillar point contributions.
 
 ## Key Features
 
@@ -18,27 +18,30 @@ Provides full auditability of the ratchet score computation directly in the Auto
   - EOD Directional Accuracy (55%), green tile with correct/total count
   - Intraday Target Hit Rate (35%), teal tile with targets hit/total count
   - Magnitude Capture Ratio (10%), purple tile with breakout capture ratio
-  - Brier Calibration Penalty (50.0×), red tile with confidence calibration error
+  - Conviction (10%), tile showing the normalised calibrated-confidence term with mean CP (50 = coin flip). Brier is shown only as a diagnostic in the guide.
 - **Low Sample Window Notice**: Automatically displayed when $N < 5$, explaining the sensitivity of short evaluation windows.
 - **Collapsible Scoring Guide**: Explains the methodology behind each of the four factors.
 - **Active Variant Placeholder**: When the experiment is `active` with no resolvable metrics, the component renders the **"Live Variant Evaluation In Progress"** card (with a solid `success` `ACTIVE` badge) instead of a score breakdown.
 
 ## Metric Resolution
 
-All three resolution paths funnel through a single shared `buildMetrics(...)` helper so the arithmetic is identical regardless of where the inputs came from. It converts percentages into weighted points and subtracts the Brier penalty:
+All three resolution paths funnel through a single shared `buildMetrics(...)` helper so the arithmetic is identical regardless of where the inputs came from. It converts percentages into weighted points and blends in conviction:
 
 ```
 closeAccPoints        = (closeAccuracyPct / 100) * 55.0
 intradayHitPoints     = (intradayHitPct / 100) * 35.0
 magnitudeCapturePoints= (magnitudeCapturePct / 100) * 10.0
-brierPenaltyPoints    = meanBrier * 50.0
-score                 = closeAccPoints + intradayHitPoints + magnitudeCapturePoints - brierPenaltyPoints
+accuracyBlockPoints   = closeAccPoints + intradayHitPoints + magnitudeCapturePoints
+convictionContribution= convictionNorm * 0.10
+score                 = accuracyBlockPoints * 0.90 + convictionContribution
 ```
+
+`mean_brier` is still carried through for the diagnostic line in the guide, but it is not subtracted. See [[concepts/conviction-points]].
 
 An optional `overrideScore` argument replaces the computed score with the engine-persisted value while still deriving the pillar points from the raw percentages.
 
-- **`extractEnrichedMetrics(rawMetrics)`** — reads the engine-persisted enriched metrics (`close_accuracy_pct`, `intraday_hit_pct`, `magnitude_capture_pct`, `mean_brier`, `predictions_evaluated`, `correct_count`, `intraday_hit_count`) and passes the stored `score` as the override.
-- **`computeMetricsFromSample(sample, rawScore?)`** — derives the same metrics from the supplied `DailyPrediction[]` array (correct count, intraday hits, magnitude capture, mean Brier), passing `rawScore` as the override when it is numeric.
+- **`extractEnrichedMetrics(rawMetrics)`** — reads the engine-persisted enriched metrics (`close_accuracy_pct`, `intraday_hit_pct`, `magnitude_capture_pct`, `conviction_norm`, `conviction_mean_cp`, `mean_brier`, `predictions_evaluated`, `correct_count`, `intraday_hit_count`) and passes the stored `score` as the override.
+- **`computeMetricsFromSample(sample, rawScore?)`** — derives the same metrics from the supplied `DailyPrediction[]` array (correct count, intraday hits, magnitude capture, mean conviction points from the stored `conviction_score` column, mean Brier), passing `rawScore` as the override when it is numeric.
 - **`resolveRatchetMetrics(experiment, predictions)`** — returns enriched metrics when present, otherwise computes from predictions that belong to the experiment, otherwise returns `null`. There is **no** score-only fallback: an experiment whose `metrics` object carries a numeric `score` but no enriched pillar fields resolves to `null` here, and the caller decides how to render that (see [[concepts/experiment-display-score]]).
 
 ## Fluent Layout and Overflow Prevention
@@ -65,7 +68,8 @@ The component renders inside nested detail panes that share horizontal space wit
 
 - [[entities/daily-market-predictor]], The parent feature that hosts this component
 - [[concepts/magnitude-calibration]], The magnitude capture ratio concept
-- [[concepts/brier-score]], The Brier score calibration metric
+- [[concepts/conviction-points]], The calibrated-confidence metric that drives the 10% term
+- [[concepts/brier-score]], The Brier score calibration diagnostic (no longer a scoring input)
 - [[concepts/intraday-hit-metrics]], Intraday target hit evaluation
 - [[concepts/experiment-display-score]], How the UI resolves a display score when metrics are empty
 - [[entities/design-system]], Boxel primitives and CSS-first layout rules

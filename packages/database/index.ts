@@ -123,6 +123,7 @@ export interface LLMLeaderboardRow {
     total_trades: number;
     verifier_approval_rate: number | null;
     average_confidence: number;
+    conviction_score: number;
     api_success_rate: number;
     trading_activity_rate: number;
     trading_performance_score: number;

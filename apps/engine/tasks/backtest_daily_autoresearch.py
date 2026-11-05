@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pydantic import BaseModel
 
 from core.config import logger
+from core.conviction_scoring import conviction_points
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_deepseek_client
 from core.llm.daily_predictor_prompts import (
@@ -70,6 +71,7 @@ def init_backtest_daily_db():
             intraday_hit INTEGER,
             intraday_direction_hit INTEGER,
             brier_score REAL,
+            conviction_score REAL,
             status TEXT,
             created_at TEXT,
             UNIQUE(target_date, ticker, model_name)
@@ -84,6 +86,7 @@ def init_backtest_daily_db():
         "actual_low_price": "ALTER TABLE daily_predictions ADD COLUMN actual_low_price REAL",
         "intraday_hit": "ALTER TABLE daily_predictions ADD COLUMN intraday_hit INTEGER",
         "intraday_direction_hit": "ALTER TABLE daily_predictions ADD COLUMN intraday_direction_hit INTEGER",
+        "conviction_score": "ALTER TABLE daily_predictions ADD COLUMN conviction_score REAL",
     }
     for col_name, stmt in alter_statements.items():
         if col_name not in existing_cols:
@@ -387,6 +390,7 @@ async def evaluate_backtest_prediction(
     y_outcome = 1.0 if actual_direction == predicted_direction else 0.0
     p_prob = confidence / 100.0
     brier_score = float((p_prob - y_outcome) ** 2)
+    conviction_score = round(conviction_points(confidence, is_correct == 1), 4)
 
     cursor.execute(
         """
@@ -400,6 +404,7 @@ async def evaluate_backtest_prediction(
             intraday_hit = ?,
             intraday_direction_hit = ?,
             brier_score = ?,
+            conviction_score = ?,
             status = 'evaluated'
         WHERE id = ?
         """,
@@ -413,6 +418,7 @@ async def evaluate_backtest_prediction(
             intraday_hit,
             intraday_direction_hit,
             brier_score,
+            conviction_score,
             row["id"],
         ),
     )
@@ -439,6 +445,7 @@ async def evaluate_backtest_prediction(
         "intraday_hit": intraday_hit == 1,
         "intraday_direction_hit": intraday_direction_hit == 1,
         "brier_score": brier_score,
+        "conviction_score": conviction_score,
         "status": "evaluated",
     }
     sync_to_supabase("daily_predictions", eval_record)
@@ -455,6 +462,7 @@ async def evaluate_backtest_prediction(
         "intraday_hit": intraday_hit == 1,
         "actual_direction": actual_direction,
         "brier_score": brier_score,
+        "conviction_score": conviction_score,
     }
 
 

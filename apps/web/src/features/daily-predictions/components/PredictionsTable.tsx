@@ -116,6 +116,19 @@ function PredictionExpandedDetail({
     );
 }
 
+function ConvictionCell({ value }: { value: number | null | undefined }) {
+    if (value === null || value === undefined) {
+        return <span className="font-mono text-zinc-400">-</span>;
+    }
+    const sign = value >= 0 ? '+' : '';
+    return (
+        <span className={`font-mono ${value >= 0 ? 'text-success' : 'text-danger'}`}>
+            {sign}
+            {value.toFixed(2)}
+        </span>
+    );
+}
+
 function PredictionTableRowItem({
     p,
     isExpanded,
@@ -172,7 +185,9 @@ function PredictionTableRowItem({
                         </Badge>
                     )}
                 </TableCell>
-                <TableCell>{p.brier_score !== null ? p.brier_score.toFixed(4) : '-'}</TableCell>
+                <TableCell>
+                    <ConvictionCell value={p.conviction_score} />
+                </TableCell>
                 <TableCell>
                     <Button
                         variant="outline"
@@ -205,7 +220,7 @@ export function PredictionsTable({ predictions, experiments }: PredictionsTableP
                     <TableHead>Actual Dir</TableHead>
                     <TableHead>Intraday Hit</TableHead>
                     <TableHead>Outcome</TableHead>
-                    <TableHead>Brier Score</TableHead>
+                    <TableHead>Conviction</TableHead>
                     <TableHead>Prompt & Rationale</TableHead>
                 </TableRow>
             </TableHeader>

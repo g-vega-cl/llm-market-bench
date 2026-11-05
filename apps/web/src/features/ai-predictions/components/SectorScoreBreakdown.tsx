@@ -1,6 +1,7 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Card, MetricTile, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
+import { meanConvictionPoints, normalizeConvictionPoints } from '~/shared/conviction';
 import type { SectorPrediction } from '../api/fetch-predictions';
 
 export interface SectorScoreBreakdownProps {
@@ -14,11 +15,18 @@ export interface SectorRatchetMetrics {
     basePercentile: number;
     alphaBonus: number;
     meanBrier: number;
+    convictionNorm: number;
+    convictionMeanCp: number;
+    hasConviction: boolean;
     predictionsEvaluated: number;
     basePercentilePoints: number;
     alphaBonusPoints: number;
-    brierPenaltyPoints: number;
+    accuracyBlockPoints: number;
+    convictionContribution: number;
 }
+
+const ACCURACY_WEIGHT = 0.9;
+const CONVICTION_WEIGHT = 0.1;
 
 function calculatePredictionBaseScore(p: SectorPrediction): number | null {
     const sScore = p.sector_percentile_score;
@@ -79,20 +87,28 @@ export function computeSectorMetricsFromSample(
     const meanBrier =
         brierScores.length > 0 ? brierScores.reduce((a, b) => a + b, 0) / brierScores.length : 0.25;
 
+    const meanCp = meanConvictionPoints(sample);
+    const convictionNorm = meanCp === null ? 50.0 : normalizeConvictionPoints(meanCp);
+    const accuracyBlockPoints = avgBasePercentile + avgAlphaBonus;
+
     const computedScore =
         typeof rawScore === 'number'
             ? Number(rawScore)
-            : avgBasePercentile + avgAlphaBonus - meanBrier * 50.0;
+            : accuracyBlockPoints * ACCURACY_WEIGHT + convictionNorm * CONVICTION_WEIGHT;
 
     return {
         score: computedScore,
         basePercentile: avgBasePercentile,
         alphaBonus: avgAlphaBonus,
         meanBrier,
+        convictionNorm,
+        convictionMeanCp: meanCp ?? 0.0,
+        hasConviction: meanCp !== null,
         predictionsEvaluated: evaluatedCount,
         basePercentilePoints: avgBasePercentile,
         alphaBonusPoints: avgAlphaBonus,
-        brierPenaltyPoints: meanBrier * 50.0,
+        accuracyBlockPoints,
+        convictionContribution: convictionNorm * CONVICTION_WEIGHT,
     };
 }
 
@@ -105,24 +121,36 @@ export function extractSectorMetrics(
     if (
         typeof rawMetrics.score === 'number' &&
         typeof rawMetrics.base_percentile === 'number' &&
-        typeof rawMetrics.alpha_bonus === 'number' &&
-        typeof rawMetrics.mean_brier === 'number'
+        typeof rawMetrics.alpha_bonus === 'number'
     ) {
         const score = Number(rawMetrics.score);
         const basePercentile = Number(rawMetrics.base_percentile);
         const alphaBonus = Number(rawMetrics.alpha_bonus);
-        const meanBrier = Number(rawMetrics.mean_brier);
+        const meanBrier =
+            typeof rawMetrics.mean_brier === 'number' ? Number(rawMetrics.mean_brier) : 0.25;
+        const convictionNorm =
+            typeof rawMetrics.conviction_norm === 'number'
+                ? Number(rawMetrics.conviction_norm)
+                : 50.0;
         const evaluated = Number(rawMetrics.predictions_evaluated || 0);
+        const accuracyBlockPoints = basePercentile + alphaBonus;
 
         return {
             score,
             basePercentile,
             alphaBonus,
             meanBrier,
+            convictionNorm,
+            convictionMeanCp:
+                typeof rawMetrics.conviction_mean_cp === 'number'
+                    ? Number(rawMetrics.conviction_mean_cp)
+                    : 0.0,
+            hasConviction: typeof rawMetrics.conviction_norm === 'number',
             predictionsEvaluated: evaluated,
             basePercentilePoints: basePercentile,
             alphaBonusPoints: alphaBonus,
-            brierPenaltyPoints: meanBrier * 50.0,
+            accuracyBlockPoints,
+            convictionContribution: convictionNorm * CONVICTION_WEIGHT,
         };
     }
 
@@ -144,10 +172,14 @@ export function extractSectorMetrics(
         basePercentile: 50.0,
         alphaBonus: 0.0,
         meanBrier: 0.25,
+        convictionNorm: 50.0,
+        convictionMeanCp: 0.0,
+        hasConviction: false,
         predictionsEvaluated: 0,
         basePercentilePoints: 50.0,
         alphaBonusPoints: 0.0,
-        brierPenaltyPoints: 12.5,
+        accuracyBlockPoints: 50.0,
+        convictionContribution: 5.0,
     };
 }
 
@@ -179,7 +211,7 @@ export function SectorScoreBreakdown({
                     </div>
                     <p className="text-xs font-normal text-boxel-muted">
                         Multi-pillar evaluation balancing relative percentile rank, S&P alpha
-                        capture, and Brier confidence calibration.
+                        capture, and conviction-weighted confidence calibration.
                     </p>
                 </div>
 
@@ -221,7 +253,7 @@ export function SectorScoreBreakdown({
                     Formula Substitution
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm font-bold leading-relaxed">
-                    <span className="text-boxel-muted font-normal">Score =</span>
+                    <span className="text-boxel-muted font-normal">Score = 0.90 ×</span>
                     <span className="text-emerald-400">
                         {metrics.basePercentile.toFixed(1)}%ile (Base)
                     </span>
@@ -230,9 +262,9 @@ export function SectorScoreBreakdown({
                         {metrics.alphaBonus >= 0 ? '+' : ''}
                         {metrics.alphaBonus.toFixed(2)}% (Alpha)
                     </span>
-                    <span className="text-boxel-muted font-normal">-</span>
-                    <span className="text-rose-400">
-                        ({metrics.meanBrier.toFixed(3)} × 50.0) (Brier)
+                    <span className="text-boxel-muted font-normal">+ 0.10 ×</span>
+                    <span className="text-accent">
+                        {metrics.convictionNorm.toFixed(1)} (Conviction)
                     </span>
                     <span className="text-boxel-muted font-normal">=</span>
                     <span
@@ -266,11 +298,25 @@ export function SectorScoreBreakdown({
                     className="bg-slate-950/60 border-slate-800"
                 />
                 <MetricTile
-                    icon="🛡️"
-                    label="Brier Calibration Penalty"
+                    icon="⚖️"
+                    label="Conviction Score"
                     value={
-                        <span className="font-mono text-rose-400">
-                            -{metrics.brierPenaltyPoints.toFixed(2)} pts
+                        <span
+                            className={`font-mono ${
+                                metrics.convictionNorm >= 50 ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                        >
+                            {metrics.convictionNorm.toFixed(1)}
+                        </span>
+                    }
+                    className="bg-slate-950/60 border-slate-800"
+                />
+                <MetricTile
+                    icon="🛡️"
+                    label="Brier (diagnostic)"
+                    value={
+                        <span className="font-mono text-boxel-muted">
+                            {metrics.meanBrier.toFixed(4)}
                         </span>
                     }
                     className="bg-slate-950/60 border-slate-800"
@@ -312,9 +358,16 @@ export function SectorScoreBreakdown({
                             evaluation window (max(0, Sector - SPY)).
                         </p>
                         <p>
-                            <strong>3. Brier Calibration Penalty:</strong> Strictly penalizes
-                            uncalibrated confidence. Overconfidence in wrong directional predictions
-                            heavily docks the ratchet score (Mean Brier × 50.0).
+                            <strong>3. Conviction Score (10% weight):</strong> Scores stated
+                            confidence against the outcome with the logarithmic rule, recentred so a
+                            coin flip is worth zero. The best pick uses <code>confidence</code>, the
+                            worst pick uses <code>worst_confidence</code>. A confident miss costs
+                            more than a confident hit earns, and hedging buys nothing.
+                        </p>
+                        <p>
+                            <strong>Brier (diagnostic only):</strong> Still stored per prediction
+                            for calibration auditing ({metrics.meanBrier.toFixed(4)} here) but no
+                            longer a scoring input.
                         </p>
                     </div>
                 )}

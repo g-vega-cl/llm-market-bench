@@ -26,10 +26,12 @@ You MUST return ONLY a valid JSON object matching this schema:
   "predicted_worst_sector": "XLE",
   "predicted_pair": ["XLK", "XLU"],
   "confidence": 85.0,
+  "worst_confidence": 70.0,
   "reasoning": "Detailed explanation of why this sector, worst sector, and pair were chosen based on macro and quant data."
 }
 ```
 "confidence" must be a float between 0.0 and 100.0 representing your self-assessed probability % that predicted_sector will outperform median sector returns.
+"worst_confidence" must be a float between 0.0 and 100.0 representing your self-assessed probability % that predicted_worst_sector will UNDERPERFORM median sector returns.
 """
 
 SECTOR_PREDICTOR_PROMPT = (

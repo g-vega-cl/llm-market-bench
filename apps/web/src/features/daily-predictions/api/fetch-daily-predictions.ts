@@ -22,6 +22,7 @@ export interface DailyPrediction {
     intraday_hit?: boolean | null;
     intraday_direction_hit?: boolean | null;
     brier_score: number | null;
+    conviction_score: number | null;
     status: 'pending' | 'evaluated';
     market_context?: string | null;
     postmortem_category?: string | null;

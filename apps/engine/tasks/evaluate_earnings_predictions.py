@@ -6,6 +6,7 @@ status in the earnings_predictions table.
 """
 
 from core.config import logger
+from core.conviction_scoring import conviction_points
 from core.db import get_supabase_client
 from tasks.evaluate_daily_predictions import (
     calculate_brier_score,
@@ -84,6 +85,7 @@ async def evaluate_earnings_predictions(
         actual_dir = "UP" if close_p >= open_p else "DOWN"
         is_correct = predicted_dir == actual_dir
         brier = calculate_brier_score(predicted_dir, confidence, actual_dir)
+        conviction = round(conviction_points(confidence, is_correct), 4)
 
         update_payload = {
             "open_price": round(open_p, 4),
@@ -91,6 +93,7 @@ async def evaluate_earnings_predictions(
             "actual_direction": actual_dir,
             "is_correct": is_correct,
             "brier_score": round(brier, 4),
+            "conviction_score": conviction,
             "status": "evaluated",
         }
 

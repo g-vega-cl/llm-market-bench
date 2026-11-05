@@ -25,6 +25,7 @@ class SectorPredictionResponse(BaseModel):
     predicted_worst_sector: str = "UNKNOWN"
     predicted_pair: list[str]
     confidence: float = 75.0
+    worst_confidence: float | None = None
     reasoning: str
 
 
@@ -243,6 +244,7 @@ async def run_sector_predictions(target_model: str | None = None, date_anchor: d
                             "predicted_worst_sector": resp.predicted_worst_sector,
                             "predicted_pair": resp.predicted_pair,
                             "confidence": resp.confidence,
+                            "worst_confidence": resp.worst_confidence,
                             "reasoning": resp.reasoning,
                         }
                     elif model["type"] == "minimax":
@@ -269,6 +271,11 @@ async def run_sector_predictions(target_model: str | None = None, date_anchor: d
                             "predicted_worst_sector": result.get("predicted_worst_sector", "UNKNOWN"),
                             "predicted_pair": result.get("predicted_pair", []),
                             "confidence": float(result.get("confidence", 75.0)),
+                            "worst_confidence": (
+                                float(result["worst_confidence"])
+                                if result.get("worst_confidence") is not None
+                                else None
+                            ),
                             "reasoning": result.get("reasoning", ""),
                         },
                         on_conflict="prediction_date,model_name,timeframe",

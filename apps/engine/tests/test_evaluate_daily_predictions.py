@@ -76,6 +76,38 @@ async def test_evaluate_daily_predictions_success():
 
 
 @pytest.mark.asyncio
+async def test_evaluate_daily_predictions_persists_conviction_score():
+    """Conviction must be materialised at evaluation time (zero frontend compute)."""
+    mock_supabase = MagicMock()
+
+    pending_data = [
+        {
+            "id": "pred-uuid-conviction",
+            "target_date": "2026-08-03",
+            "ticker": "SPY",
+            "predicted_direction": "UP",
+            "confidence": 75.0,
+            "expected_return_pct": 0.35,
+            "status": "pending",
+        }
+    ]
+
+    mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = pending_data
+
+    with (
+        patch("tasks.evaluate_daily_predictions.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.evaluate_daily_predictions.fetch_intraday_prices", return_value=(450.0, 452.0, 448.0, 455.0)),
+        patch("analysis.daily_postmortem.run_daily_postmortem", new=AsyncMock()),
+    ):
+        await evaluate_daily_predictions()
+
+    payload = mock_supabase.table.return_value.update.call_args_list[0][0][0]
+    # UP prediction, close 455 > open 450 => correct at 75%: 100 * ln(1.5)
+    assert payload["conviction_score"] == pytest.approx(40.5465, abs=1e-3)
+    assert payload["brier_score"] is not None
+
+
+@pytest.mark.asyncio
 async def test_evaluate_daily_predictions_triggers_postmortem():
     mock_supabase = MagicMock()
     pending_data = [

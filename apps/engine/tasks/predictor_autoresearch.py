@@ -15,6 +15,7 @@ from core.config import (
     OPENAI_MODEL,
     logger,
 )
+from core.conviction_scoring import conviction_bundle
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_gemini_client
 from core.llm.predictor_prompts import (
@@ -22,6 +23,7 @@ from core.llm.predictor_prompts import (
     SECTOR_PREDICTOR_CONSTRAINTS_HEADER,
     split_predictor_prompt,
 )
+from tasks.evaluate_predictions import calculate_sector_conviction_records
 
 TARGET_SECTOR_MODELS = [DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, GEMINI_MODEL, OPENAI_MODEL]
 
@@ -54,7 +56,11 @@ DEFAULT_SECTOR_PREDICTOR_TOOLS = [
 def calculate_baseline_metrics(predictions: list[dict]) -> dict:
     """Calculate the weekly baseline ratchet metrics for a model's sector predictions.
 
-    Ratchet Baseline Score = Avg(Prediction Scores) - (Mean Brier Score * 50.0).
+    Score = 0.90 * (avg percentile + avg S&P alpha bonus) + 0.10 * conviction_norm.
+
+    The ``mean_brier * 50`` penalty is gone. Brier is still reported for
+    diagnostics, and conviction is priced per separately-stated probability (the
+    worst-sector leg uses ``worst_confidence``, never the best-pick confidence).
     """
     if not predictions:
         return {
@@ -62,6 +68,9 @@ def calculate_baseline_metrics(predictions: list[dict]) -> dict:
             "base_percentile": 50.0,
             "alpha_bonus": 0.0,
             "mean_brier": 0.25,
+            "conviction_norm": 50.0,
+            "conviction_mean_cp": 0.0,
+            "tail_gap": None,
             "predictions_evaluated": 0,
         }
 
@@ -69,6 +78,7 @@ def calculate_baseline_metrics(predictions: list[dict]) -> dict:
     base_percentiles = []
     alpha_bonuses = []
     brier_scores = []
+    conviction_records: list[dict] = []
 
     for p in predictions:
         s_score = p.get("sector_percentile_score")
@@ -81,6 +91,15 @@ def calculate_baseline_metrics(predictions: list[dict]) -> dict:
 
         base_score = sum(components) / len(components)
         base_percentiles.append(base_score)
+
+        conviction_records.extend(
+            calculate_sector_conviction_records(
+                confidence=p.get("confidence"),
+                sector_percentile_score=s_score,
+                worst_confidence=p.get("worst_confidence"),
+                worst_sector_percentile_score=w_score,
+            )
+        )
 
         # Calculate S&P alpha bonus for the picked sector
         sp_diff = p.get("sector_sp_diff")
@@ -110,13 +129,19 @@ def calculate_baseline_metrics(predictions: list[dict]) -> dict:
     avg_base_percentile = sum(base_percentiles) / len(base_percentiles)
     avg_alpha_bonus = sum(alpha_bonuses) / len(alpha_bonuses)
     mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.0
-    final_score = (avg_base_percentile + avg_alpha_bonus) - (mean_brier * 50.0)
+
+    conviction = conviction_bundle(conviction_records)
+    accuracy_block = avg_base_percentile + avg_alpha_bonus
+    final_score = (0.90 * accuracy_block) + (0.10 * conviction["conviction_norm"])
 
     return {
         "score": float(final_score),
         "base_percentile": float(avg_base_percentile),
         "alpha_bonus": float(avg_alpha_bonus),
         "mean_brier": float(mean_brier),
+        "conviction_norm": conviction["conviction_norm"],
+        "conviction_mean_cp": conviction["mean_cp"],
+        "tail_gap": conviction["tail_gap"],
         "predictions_evaluated": len(pred_scores),
     }
 

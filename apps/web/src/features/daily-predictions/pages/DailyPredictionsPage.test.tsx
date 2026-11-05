@@ -43,6 +43,7 @@ describe('DailyPredictionsPage', () => {
             intraday_hit: true,
             intraday_direction_hit: true,
             brier_score: 0.04,
+            conviction_score: null,
             status: 'evaluated',
             created_at: '2026-08-03T08:00:00Z',
             updated_at: '2026-08-03T16:15:00Z',
@@ -68,6 +69,7 @@ describe('DailyPredictionsPage', () => {
             intraday_hit: false,
             intraday_direction_hit: false,
             brier_score: 0.4225,
+            conviction_score: null,
             status: 'evaluated',
             created_at: '2026-08-03T08:00:00Z',
             updated_at: '2026-08-03T16:15:00Z',
@@ -93,6 +95,7 @@ describe('DailyPredictionsPage', () => {
             intraday_hit: true,
             intraday_direction_hit: true,
             brier_score: 0.0676,
+            conviction_score: null,
             status: 'evaluated',
             created_at: '2026-08-03T08:00:00Z',
             updated_at: '2026-08-03T16:15:00Z',
@@ -486,7 +489,7 @@ describe('DailyPredictionsPage', () => {
         expect(screen.getByText('EOD Directional Acc (55%)')).toBeInTheDocument();
         expect(screen.getByText('Intraday Target Hit (35%)')).toBeInTheDocument();
         expect(screen.getByText('Magnitude Capture (10%)')).toBeInTheDocument();
-        expect(screen.getByText('Brier Penalty (50.0×)')).toBeInTheDocument();
+        expect(screen.getByText('Conviction (10%)')).toBeInTheDocument();
         expect(screen.getByText(/FORMULA SUBSTITUTION:/)).toBeInTheDocument();
 
         // Verify Cognitive Toolbox and Meta-Researcher Rationale
@@ -517,6 +520,7 @@ describe('DailyPredictionsPage', () => {
                 intraday_hit: true,
                 intraday_direction_hit: true,
                 brier_score: 0.04,
+                conviction_score: null,
                 status: 'evaluated',
                 created_at: '2026-08-03T08:00:00Z',
                 updated_at: '2026-08-03T16:15:00Z',
@@ -542,6 +546,7 @@ describe('DailyPredictionsPage', () => {
                 intraday_hit: false,
                 intraday_direction_hit: false,
                 brier_score: 0.36,
+                conviction_score: null,
                 status: 'evaluated',
                 created_at: '2026-05-01T08:00:00Z',
                 updated_at: '2026-05-01T16:15:00Z',
@@ -761,6 +766,7 @@ You MUST return a valid JSON object.`,
             is_correct: true,
             intraday_hit: true,
             brier_score: 0.0625,
+            conviction_score: null,
             created_at: '2026-10-08T08:00:00Z',
             updated_at: '2026-10-08T16:05:00Z',
         } as DailyPrediction;
@@ -780,6 +786,7 @@ You MUST return a valid JSON object.`,
             is_correct: true,
             intraday_hit: true,
             brier_score: 0.0324,
+            conviction_score: null,
             created_at: '2026-10-08T08:00:00Z',
             updated_at: '2026-10-08T16:05:00Z',
         } as DailyPrediction;
@@ -799,6 +806,7 @@ You MUST return a valid JSON object.`,
             is_correct: false,
             intraday_hit: false,
             brier_score: 0.36,
+            conviction_score: null,
             created_at: '2026-10-08T08:00:00Z',
             updated_at: '2026-10-08T16:05:00Z',
         } as DailyPrediction;
@@ -853,6 +861,7 @@ You MUST return a valid JSON object.`,
             is_correct: true,
             intraday_hit: true,
             brier_score: 0.0225,
+            conviction_score: null,
             created_at: '2026-10-08T08:00:00Z',
             updated_at: '2026-10-08T16:05:00Z',
         } as DailyPrediction;
@@ -886,6 +895,7 @@ You MUST return a valid JSON object.`,
             is_correct: true,
             intraday_hit: true,
             brier_score: 0.0484,
+            conviction_score: null,
             rationale: 'Champion four-regime analysis indicates positive momentum.',
             created_at: '2026-10-09T08:00:00Z',
             updated_at: '2026-10-09T16:05:00Z',

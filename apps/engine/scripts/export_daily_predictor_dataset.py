@@ -63,6 +63,7 @@ def format_sft_sample(row: dict[str, Any], prompt_content: str | None = None) ->
             "close_price": row.get("close_price"),
             "actual_direction": row.get("actual_direction"),
             "brier_score": row.get("brier_score"),
+            "conviction_score": row.get("conviction_score"),
             "postmortem_category": row.get("postmortem_category"),
             "postmortem_flawed_assumption": row.get("postmortem_flawed_assumption"),
             "postmortem_lesson": row.get("postmortem_lesson"),

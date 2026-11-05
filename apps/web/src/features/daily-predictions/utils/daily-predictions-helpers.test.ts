@@ -74,6 +74,7 @@ describe('daily-predictions-helpers', () => {
                     is_correct: true,
                     intraday_hit: true,
                     brier_score: 0.04,
+                    conviction_score: 40.5465,
                 } as DailyPrediction,
                 {
                     id: '2',
@@ -87,6 +88,7 @@ describe('daily-predictions-helpers', () => {
                     is_correct: false,
                     intraday_hit: false,
                     brier_score: 0.36,
+                    conviction_score: -51.0832,
                 } as DailyPrediction,
                 {
                     id: '3',
@@ -106,6 +108,8 @@ describe('daily-predictions-helpers', () => {
             expect(stats.accuracyPct).toBe('50.0');
             expect(stats.intradayHitPct).toBe('50.0');
             expect(stats.avgBrier).toBe('0.2000');
+            // Mean CP = (40.5465 - 51.0832) / 2 = -5.2684 -> 50 + 50*tanh(-0.10537) = 44.75
+            expect(stats.convictionScore).toBe('44.8');
         });
 
         it('handles empty predictions list', () => {
@@ -115,6 +119,7 @@ describe('daily-predictions-helpers', () => {
             expect(stats.accuracyPct).toBe('N/A');
             expect(stats.intradayHitPct).toBe('N/A');
             expect(stats.avgBrier).toBe('N/A');
+            expect(stats.convictionScore).toBe('N/A');
         });
     });
 

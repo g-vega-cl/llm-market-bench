@@ -101,15 +101,17 @@ def test_calculate_baseline_metrics_with_predictions():
 
     # Pred 1: base = 80.0, alpha = 3.0, brier = 0.10
     # Pred 2: base = 70.0, alpha = 2.0, brier = 0.20
-    # Avg base = 75.0, Avg alpha = 2.5, Mean brier = 0.15
-    # Score = 75.0 + 2.5 - (0.15 * 50) = 77.5 - 7.5 = 70.0
+    # Avg base = 75.0, Avg alpha = 2.5, Mean brier = 0.15 (diagnostic only)
+    # No confidence recorded -> conviction neutral at 50.0
+    # Score = 0.90 * (75.0 + 2.5) + 0.10 * 50.0 = 69.75 + 5.0 = 74.75
     metrics = calculate_baseline_metrics(sample)
-    assert metrics["score"] == pytest.approx(70.0)
+    assert metrics["score"] == pytest.approx(74.75)
     assert metrics["base_percentile"] == pytest.approx(75.0)
     assert metrics["alpha_bonus"] == pytest.approx(2.5)
     assert metrics["mean_brier"] == pytest.approx(0.15)
+    assert metrics["conviction_norm"] == 50.0
     assert metrics["predictions_evaluated"] == 2
-    assert calculate_baseline_score(sample) == pytest.approx(70.0)
+    assert calculate_baseline_score(sample) == pytest.approx(74.75)
 
     assert "get_historical_correlation" in DEFAULT_SECTOR_PREDICTOR_TOOLS
     assert "get_sector_fundamentals" in DEFAULT_SECTOR_PREDICTOR_TOOLS

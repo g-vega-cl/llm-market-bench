@@ -40,15 +40,16 @@ describe('SectorScoreBreakdown', () => {
         // Formula substitution
         expect(screen.getByText(/82.5%ile \(Base\)/)).toBeInTheDocument();
         expect(screen.getByText(/\+3.25% \(Alpha\)/)).toBeInTheDocument();
-        expect(screen.getByText(/\(0.230 × 50.0\) \(Brier\)/)).toBeInTheDocument();
+        expect(screen.getByText(/50\.0 \(Conviction\)/)).toBeInTheDocument();
 
-        // 3 Pillar Tiles
+        // Pillar tiles: legacy metrics have no conviction, so it resolves to neutral 50.
         expect(screen.getByText('Relative Percentile Rank')).toBeInTheDocument();
         expect(screen.getByText('82.5%')).toBeInTheDocument();
         expect(screen.getByText('S&P Alpha Bonus')).toBeInTheDocument();
         expect(screen.getByText('+3.25%')).toBeInTheDocument();
-        expect(screen.getByText('Brier Calibration Penalty')).toBeInTheDocument();
-        expect(screen.getByText('-11.50 pts')).toBeInTheDocument();
+        expect(screen.getByText('Conviction Score')).toBeInTheDocument();
+        expect(screen.getByText('Brier (diagnostic)')).toBeInTheDocument();
+        expect(screen.getByText('0.2300')).toBeInTheDocument();
     });
 
     it('computes metrics from prediction sample when experiment.metrics is empty', () => {
@@ -88,17 +89,53 @@ describe('SectorScoreBreakdown', () => {
         );
 
         // Average of (90+80+70)/3 = 80 base
-        // Alpha bonus = 3.0
-        // Brier penalty = 0.1 * 50 = 5.0
-        // Total score = 80 + 3.0 - 5.0 = 78.0
-        expect(screen.getByText('78.00')).toBeInTheDocument();
+        // Alpha bonus = 3.0 -> accuracy block 83.0
+        // No stored conviction -> neutral 50
+        // Total score = 0.90 * 83.0 + 0.10 * 50 = 74.7 + 5.0 = 79.7
+        expect(screen.getByText('79.70')).toBeInTheDocument();
         expect(screen.getByText(/80.0%ile \(Base\)/)).toBeInTheDocument();
         expect(screen.getByText(/\+3.00% \(Alpha\)/)).toBeInTheDocument();
-        expect(screen.getByText(/\(0.100 × 50.0\) \(Brier\)/)).toBeInTheDocument();
+        expect(screen.getByText('0.1000')).toBeInTheDocument();
         // Sample warning for N < 5
         expect(
             screen.getByText(/Low sample window \(1 predictions evaluated\)/),
         ).toBeInTheDocument();
+    });
+
+    it('scores calibrated conviction above neutral and ignores stored Brier', () => {
+        const scoredPrediction: SectorPrediction = {
+            id: 'p-scored',
+            prediction_date: '2026-07-10T00:00:00Z',
+            target_date: '2026-07-17T00:00:00Z',
+            timeframe: '7d',
+            model_name: 'deepseek-flash',
+            prompt_tag: 'v1.1',
+            predicted_sector: 'XLK',
+            predicted_pair: ['GLD', 'XLU'],
+            reasoning: 'Tech momentum',
+            sector_percentile_score: 90.0,
+            worst_sector_percentile_score: 80.0,
+            pair_percentile_score: 70.0,
+            sector_sp_diff: 3.0,
+            brier_score: 0.9,
+            conviction_score: 18.2322,
+            status: 'evaluated',
+            created_at: '2026-07-10T00:00:00Z',
+        };
+
+        render(
+            <SectorScoreBreakdown
+                experiment={{ ...mockExperiment, metrics: {} }}
+                predictions={[scoredPrediction]}
+            />,
+        );
+
+        // Mean CP 18.2322 -> 50 + 50*tanh(0.3646) = 67.46
+        // Score = 0.90 * 83.0 + 0.10 * 67.46 = 74.7 + 6.746 = 81.45
+        expect(screen.getByText('81.45')).toBeInTheDocument();
+        expect(screen.getByText('67.5')).toBeInTheDocument();
+        // The high stored Brier is displayed as a diagnostic and changes nothing.
+        expect(screen.getByText('0.9000')).toBeInTheDocument();
     });
 
     it('toggles collapsible methodology guide', () => {
@@ -111,7 +148,10 @@ describe('SectorScoreBreakdown', () => {
 
         expect(screen.getByText(/Averages the percentile performance/)).toBeInTheDocument();
         expect(screen.getByText(/Awards additive bonus points/)).toBeInTheDocument();
-        expect(screen.getByText(/Strictly penalizes uncalibrated confidence/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Scores stated confidence against the outcome/),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/Brier \(diagnostic only\):/)).toBeInTheDocument();
 
         fireEvent.click(toggleBtn);
         expect(screen.queryByText(/Averages the percentile performance/)).not.toBeInTheDocument();

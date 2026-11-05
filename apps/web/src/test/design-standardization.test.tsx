@@ -296,7 +296,7 @@ describe('Design Standardization: Typography & Box Sizing', () => {
                     intradayHitPct="42.0"
                     correctCount={17}
                     totalEvaluated={26}
-                    avgBrier="0.1850"
+                    convictionScore="61.4"
                     totalPredictions={50}
                     activePromptTag="variant-v2-active"
                 />,

@@ -28,7 +28,9 @@ export interface SectorPrediction {
     predicted_worst_sector?: string | null;
     predicted_pair: string[];
     confidence?: number | null;
+    worst_confidence?: number | null;
     brier_score?: number | null;
+    conviction_score?: number | null;
     reasoning: string;
     sector_percentile_score: number | null;
     worst_sector_percentile_score?: number | null;

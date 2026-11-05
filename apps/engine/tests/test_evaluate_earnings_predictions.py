@@ -63,6 +63,8 @@ async def test_evaluate_earnings_predictions_up_and_down_outcomes(pending_predic
         assert first_payload["close_price"] == 105.0
         # Brier score for conf 80% (p=0.8) and hit (y=1): (0.8 - 1)^2 = 0.04
         assert pytest.approx(first_payload["brier_score"], 0.001) == 0.04
+        # Conviction for a correct 80% call: 100 * ln(1.6)
+        assert pytest.approx(first_payload["conviction_score"], 0.001) == 47.000
 
         # Second prediction was DOWN -> Actual UP -> is_correct False
         second_payload = calls[1][0][0]
@@ -70,6 +72,8 @@ async def test_evaluate_earnings_predictions_up_and_down_outcomes(pending_predic
         assert second_payload["is_correct"] is False
         # Brier score for conf 70% (p=0.7) and miss (y=0): (0.7 - 0)^2 = 0.49
         assert pytest.approx(second_payload["brier_score"], 0.001) == 0.49
+        # Conviction for a wrong 70% call: 100 * ln(0.6)
+        assert pytest.approx(second_payload["conviction_score"], 0.001) == -51.083
 
 
 @pytest.mark.asyncio

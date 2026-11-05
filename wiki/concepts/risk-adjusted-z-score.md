@@ -72,8 +72,10 @@ The platform runs three independent auto-research loops, each using a domain-spe
 | Research Loop | Target Prompt | Evaluation Metric | Unit |
 | :--- | :--- | :--- | :--- |
 | **Portfolio Trading** (`apps/engine/autoresearch/`) | `CORE_ANALYSIS_SYSTEM_PROMPT` | Unified Risk-Adjusted Z-Score | $\sigma$ (standard deviation) |
-| **Daily SPY Predictor** (`apps/engine/tasks/daily_autoresearch.py`) | `DAILY_PREDICTOR_PROMPT` | 4-Pillar Composite (Close Acc, Intraday Hit, Mag Capture, Brier Penalty) | Points (0–100 scale) |
-| **Sector Predictor** (`apps/engine/tasks/predictor_autoresearch.py`) | `SECTOR_PREDICTOR_PROMPT` | Multi-Pillar (Sector Percentile + S&P Alpha Bonus − Brier Penalty) | Points |
+| **Daily SPY Predictor** (`apps/engine/tasks/daily_autoresearch.py`) | `DAILY_PREDICTOR_PROMPT` | 4-Pillar Composite: 0.90 × accuracy block (Close Acc 55%, Intraday Hit 35%, Mag Capture 10%) + 0.10 × Conviction | Points (0–100 scale) |
+| **Sector Predictor** (`apps/engine/tasks/predictor_autoresearch.py`) | `SECTOR_PREDICTOR_PROMPT` | Multi-Pillar: 0.90 × (Sector Percentile + S&P Alpha Bonus) + 0.10 × Conviction | Points |
+
+The Brier term that previously appeared in both predictor loops is a stored diagnostic only; see [[concepts/conviction-points]] and [[concepts/brier-score]].
 
 ## Presentation
 
@@ -86,5 +88,6 @@ The web dashboard exposes the math in [[entities/web-app]] via `ScoreBreakdown` 
 - [[concepts/multi-track-autoresearch]]
 - [[concepts/auto-research-prompt-improver]]
 - [[concepts/prompt-experiment-lifecycle]]
+- [[concepts/conviction-points]]
 - [[concepts/auditability]]
 - [[concepts/transparency-standard]]

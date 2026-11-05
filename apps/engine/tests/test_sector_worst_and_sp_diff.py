@@ -98,11 +98,11 @@ def test_calculate_baseline_score_with_worst_sector_and_sp_alpha_bonus():
     ]
     # Prediction 1: Base = (80 + 90 + 70) / 3 = 80.0, Alpha Bonus = +4.0 -> Total = 84.0
     # Prediction 2: Base = (60 + 80 + 70) / 3 = 70.0, Alpha Bonus = 0.0 -> Total = 70.0
-    # Avg Score = (84.0 + 70.0) / 2 = 77.0
-    # Mean Brier = 0.04 -> penalty = 0.04 * 50 = 2.0
-    # Final Ratchet Score = 77.0 - 2.0 = 75.0
+    # Avg accuracy block = (84.0 + 70.0) / 2 = 77.0
+    # No confidence recorded -> conviction neutral at 50.0
+    # Final Ratchet Score = 0.90 * 77.0 + 0.10 * 50.0 = 69.3 + 5.0 = 74.3
     score = calculate_baseline_score(predictions)
-    assert score == pytest.approx(75.0)
+    assert score == pytest.approx(74.3)
 
 
 @pytest.mark.asyncio

@@ -293,7 +293,8 @@ Footer JSON schema`,
         // Check 3 pillars
         expect(screen.getByText('Relative Percentile Rank')).toBeInTheDocument();
         expect(screen.getByText('S&P Alpha Bonus')).toBeInTheDocument();
-        expect(screen.getByText('Brier Calibration Penalty')).toBeInTheDocument();
+        expect(screen.getByText('Conviction Score')).toBeInTheDocument();
+        expect(screen.getByText('Brier (diagnostic)')).toBeInTheDocument();
 
         // Check Research Rationale Card & Confidence Bar
         expect(screen.getByText('Meta-Researcher Rationale & Conviction')).toBeInTheDocument();

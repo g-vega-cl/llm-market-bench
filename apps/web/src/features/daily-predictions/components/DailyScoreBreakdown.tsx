@@ -1,6 +1,7 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
+import { meanConvictionPoints, normalizeConvictionPoints } from '~/shared/conviction';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 
 export interface DailyScoreBreakdownProps {
@@ -14,13 +15,17 @@ export interface DailyRatchetMetrics {
     intradayHitPct: number;
     magnitudeCapturePct: number;
     meanBrier: number;
+    convictionNorm: number;
+    convictionMeanCp: number;
+    hasConviction: boolean;
     predictionsEvaluated: number;
     correctCount: number;
     intradayHitCount: number;
     closeAccPoints: number;
     intradayHitPoints: number;
     magnitudeCapturePoints: number;
-    brierPenaltyPoints: number;
+    accuracyBlockPoints: number;
+    convictionContribution: number;
 }
 
 function getPeakReturn(
@@ -61,6 +66,9 @@ export function calculateMagnitudeCapture(p: DailyPrediction): number {
     return Math.min(1.0, expPct / actualMove) * 100.0;
 }
 
+const ACCURACY_WEIGHT = 0.9;
+const CONVICTION_WEIGHT = 0.1;
+
 function buildMetrics(
     closeAccuracyPct: number,
     intradayHitPct: number,
@@ -69,15 +77,17 @@ function buildMetrics(
     predictionsEvaluated: number,
     correctCount: number,
     intradayHitCount: number,
+    convictionNorm: number,
+    convictionMeanCp: number,
+    hasConviction: boolean,
     overrideScore?: number | null,
 ): DailyRatchetMetrics {
     const closeAccPoints = (closeAccuracyPct / 100.0) * 55.0;
     const intradayHitPoints = (intradayHitPct / 100.0) * 35.0;
     const magnitudeCapturePoints = (magnitudeCapturePct / 100.0) * 10.0;
-    const brierPenaltyPoints = meanBrier * 50.0;
-    const score =
-        overrideScore ??
-        closeAccPoints + intradayHitPoints + magnitudeCapturePoints - brierPenaltyPoints;
+    const accuracyBlockPoints = closeAccPoints + intradayHitPoints + magnitudeCapturePoints;
+    const convictionContribution = convictionNorm * CONVICTION_WEIGHT;
+    const score = overrideScore ?? accuracyBlockPoints * ACCURACY_WEIGHT + convictionContribution;
 
     return {
         score,
@@ -85,13 +95,17 @@ function buildMetrics(
         intradayHitPct,
         magnitudeCapturePct,
         meanBrier,
+        convictionNorm,
+        convictionMeanCp,
+        hasConviction,
         predictionsEvaluated,
         correctCount,
         intradayHitCount,
         closeAccPoints,
         intradayHitPoints,
         magnitudeCapturePoints,
-        brierPenaltyPoints,
+        accuracyBlockPoints,
+        convictionContribution,
     };
 }
 
@@ -141,6 +155,12 @@ function computeMetricsFromSample(
     const meanBrier =
         brierList.length > 0 ? brierList.reduce((a, b) => a + b, 0) / brierList.length : 0.25;
 
+    // Fallback path for variants evaluated before the engine started persisting
+    // conviction_norm on the experiment metrics. The mean log-score is aggregated
+    // from the per-prediction values the engine already stored.
+    const meanCp = meanConvictionPoints(sample);
+    const convictionNorm = meanCp === null ? 50.0 : normalizeConvictionPoints(meanCp);
+
     return buildMetrics(
         closeAccuracyPct,
         intradayHitPct,
@@ -149,6 +169,9 @@ function computeMetricsFromSample(
         sample.length,
         correctCount,
         intradayHitCount,
+        convictionNorm,
+        meanCp ?? 0.0,
+        meanCp !== null,
         typeof rawScore === 'number' ? Number(rawScore) : null,
     );
 }
@@ -158,20 +181,30 @@ function extractEnrichedMetrics(rawMetrics?: Record<string, unknown>): DailyRatc
         !rawMetrics ||
         typeof rawMetrics.score !== 'number' ||
         typeof rawMetrics.close_accuracy_pct !== 'number' ||
-        typeof rawMetrics.intraday_hit_pct !== 'number' ||
-        typeof rawMetrics.mean_brier !== 'number'
+        typeof rawMetrics.intraday_hit_pct !== 'number'
     ) {
         return null;
     }
+
+    // Metrics written before conviction scoring existed fall back to neutral 50.
+    const convictionNorm =
+        typeof rawMetrics.conviction_norm === 'number' ? Number(rawMetrics.conviction_norm) : 50.0;
+    const convictionMeanCp =
+        typeof rawMetrics.conviction_mean_cp === 'number'
+            ? Number(rawMetrics.conviction_mean_cp)
+            : 0.0;
 
     return buildMetrics(
         Number(rawMetrics.close_accuracy_pct),
         Number(rawMetrics.intraday_hit_pct),
         Number(rawMetrics.magnitude_capture_pct || 0),
-        Number(rawMetrics.mean_brier),
+        typeof rawMetrics.mean_brier === 'number' ? Number(rawMetrics.mean_brier) : 0.25,
         Number(rawMetrics.predictions_evaluated || 0),
         Number(rawMetrics.correct_count || 0),
         Number(rawMetrics.intraday_hit_count || 0),
+        convictionNorm,
+        convictionMeanCp,
+        typeof rawMetrics.conviction_norm === 'number',
         Number(rawMetrics.score),
     );
 }
@@ -192,6 +225,27 @@ export function resolveRatchetMetrics(
     }
 
     return null;
+}
+
+function ConvictionPillar({ metrics }: { metrics: DailyRatchetMetrics }) {
+    const isAboveNeutral = metrics.convictionNorm >= 50;
+    const toneClass = isAboveNeutral ? 'text-success' : 'text-danger';
+    const detail = metrics.hasConviction
+        ? `${metrics.convictionMeanCp >= 0 ? '+' : ''}${metrics.convictionMeanCp.toFixed(2)} mean CP · 50 = coin flip`
+        : 'Neutral 50 (no scored confidence)';
+
+    return (
+        <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
+            <div className="text-xs font-bold text-danger break-words">Conviction (10%)</div>
+            <div className={`text-lg font-bold font-mono tabular-nums ${toneClass}`}>
+                {metrics.convictionNorm.toFixed(1)}
+            </div>
+            <div className={`text-xs font-bold ${toneClass}`}>
+                +{metrics.convictionContribution.toFixed(2)} pts
+            </div>
+            <div className="text-xs font-normal text-boxel-muted">{detail}</div>
+        </div>
+    );
 }
 
 function ActiveDailyExperimentPlaceholder({ variantTag }: { variantTag: string }) {
@@ -280,13 +334,19 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                     <span className="text-boxel-ink">
                         (0.10 × {metrics.magnitudeCapturePct.toFixed(1)}%)
                     </span>
-                    {' − '}
-                    <span className="text-danger">({metrics.meanBrier.toFixed(3)} × 50.0)</span>
+                    {' = '}
+                    <span className="text-boxel-ink">
+                        {metrics.accuracyBlockPoints.toFixed(2)} accuracy
+                    </span>
+                    <br />
+                    {'0.90 × '}
+                    {metrics.accuracyBlockPoints.toFixed(2)}
+                    {' + 0.10 × '}
+                    <span className="text-accent">{metrics.convictionNorm.toFixed(1)}</span>
                     {' = '}
                     <strong className={scoreColorClass}>
-                        {metrics.closeAccPoints.toFixed(2)} + {metrics.intradayHitPoints.toFixed(2)}{' '}
-                        + {metrics.magnitudeCapturePoints.toFixed(2)} −{' '}
-                        {metrics.brierPenaltyPoints.toFixed(2)} = {metrics.score.toFixed(2)}
+                        {(metrics.accuracyBlockPoints * ACCURACY_WEIGHT).toFixed(2)} +{' '}
+                        {metrics.convictionContribution.toFixed(2)} = {metrics.score.toFixed(2)}
                     </strong>
                 </div>
             </div>
@@ -341,21 +401,8 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                     </div>
                 </div>
 
-                {/* Brier Penalty */}
-                <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
-                    <div className="text-xs font-bold text-danger break-words">
-                        Brier Penalty (50.0×)
-                    </div>
-                    <div className="text-lg font-bold font-mono text-danger tabular-nums">
-                        {metrics.meanBrier.toFixed(4)}
-                    </div>
-                    <div className="text-xs font-bold text-danger">
-                        −{metrics.brierPenaltyPoints.toFixed(2)} pts
-                    </div>
-                    <div className="text-xs font-normal text-boxel-muted">
-                        Confidence calibration error
-                    </div>
-                </div>
+                {/* Conviction */}
+                <ConvictionPillar metrics={metrics} />
             </div>
 
             {/* Low Sample Size Notice */}
@@ -367,9 +414,9 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                             Low Sample Window Notice (N = {metrics.predictionsEvaluated}):
                         </strong>{' '}
                         Weekly autoresearch evaluates 7-day windows (all available trading sessions
-                        in the week). A single high-confidence miss heavily penalizes accuracy and
-                        deducts up to 32 Brier penalty points, creating short-term score
-                        fluctuations compared to multi-week backtest baselines.
+                        in the week). A single high-confidence miss costs far more conviction points
+                        than the equivalent correct call earns, so short windows swing more than
+                        multi-week backtest baselines.
                     </div>
                 </div>
             )}
@@ -413,12 +460,18 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                                 |pred| / actual) × 100).
                             </li>
                             <li>
-                                <strong className="text-boxel-ink">
-                                    Brier Calibration Penalty (50.0×):
-                                </strong>{' '}
-                                Penalizes overconfident wrong calls (Brier = (p - y)²). A
-                                high-confidence (80%) incorrect forecast produces a single-day Brier
-                                penalty of -32.0 points.
+                                <strong className="text-boxel-ink">Conviction (10%):</strong> Scores
+                                the stated confidence against the outcome using the logarithmic
+                                rule, recentred so a coin flip is worth zero: +100·ln(2p) when
+                                correct, +100·ln(2−2p) when wrong. Because the penalty at any
+                                confidence exceeds the reward, a confident miss costs more than a
+                                confident hit earns, and hedging buys nothing. A model with no
+                                scored confidence is held at neutral 50.
+                            </li>
+                            <li>
+                                <strong className="text-boxel-ink">Brier (diagnostic only):</strong>{' '}
+                                Still stored per prediction ({metrics.meanBrier.toFixed(4)} here)
+                                for calibration auditing. It is no longer a scoring input.
                             </li>
                         </ul>
                     </div>

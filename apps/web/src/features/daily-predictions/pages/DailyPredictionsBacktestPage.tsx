@@ -12,6 +12,7 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { meanConvictionPoints, normalizeConvictionPoints } from '~/shared/conviction';
 import { formatEasternShortDateWithYear } from '~/utils/date';
 import { CognitiveToolboxCard } from '../../autoresearch/components/CognitiveToolboxCard';
 import { PromptBlocksCard } from '../../autoresearch/components/PromptBlocksCard';
@@ -61,7 +62,9 @@ function PredictionTableRow({ pred }: { pred: DailyPrediction }) {
                 )}
             </TableCell>
             <TableCell className="font-mono text-boxel-muted">
-                {pred.brier_score !== null ? pred.brier_score.toFixed(4) : '-'}
+                {pred.conviction_score !== null && pred.conviction_score !== undefined
+                    ? `${pred.conviction_score >= 0 ? '+' : ''}${pred.conviction_score.toFixed(2)}`
+                    : '-'}
             </TableCell>
             <TableCell className="text-boxel-muted">
                 <code className="text-accent">{pred.prompt_variant_tag || 'baseline'}</code>
@@ -81,14 +84,9 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
     const accuracyPct =
         totalEvaluated > 0 ? ((correctCount / totalEvaluated) * 100).toFixed(1) : '0.0';
 
-    const brierScores = evaluatedPredictions
-        .map((p) => p.brier_score)
-        .filter((s): s is number => s !== null && s !== undefined);
-
-    const avgBrier =
-        brierScores.length > 0
-            ? (brierScores.reduce((a, b) => a + b, 0) / brierScores.length).toFixed(4)
-            : 'N/A';
+    const meanConviction = meanConvictionPoints(evaluatedPredictions);
+    const convictionScore =
+        meanConviction === null ? 'N/A' : normalizeConvictionPoints(meanConviction).toFixed(1);
 
     const selectedExperiment = experiments.find((e) => e.id === selectedExpId) || experiments[0];
 
@@ -141,13 +139,13 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
 
                 <Card className="p-5 flex flex-col justify-between gap-2 h-full rounded-none">
                     <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
-                        Brier Calibration Score
+                        Conviction Score
                     </div>
                     <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
-                        {avgBrier}
+                        {convictionScore}
                     </div>
                     <div className="text-xs font-normal text-boxel-muted">
-                        Lower is better (0.0000 = perfect calibration)
+                        Calibrated confidence · 50 = coin flip
                     </div>
                 </Card>
 
@@ -198,7 +196,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                     <TableHead>Confidence</TableHead>
                                     <TableHead>Actual Open / Close</TableHead>
                                     <TableHead>Outcome</TableHead>
-                                    <TableHead>Brier Score</TableHead>
+                                    <TableHead>Conviction</TableHead>
                                     <TableHead>Prompt Variant</TableHead>
                                 </TableRow>
                             </TableHeader>

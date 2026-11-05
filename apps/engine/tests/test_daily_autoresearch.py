@@ -61,17 +61,19 @@ def test_calculate_daily_ratchet_score():
     # Pred 3: Missed -> capture = 0.0%
     # Pred 4: Peak return = +0.4%, exp = 0.4% -> capture = 100.0%
     # Mean capture = (20.0 + 80.0 + 0.0 + 100.0) / 4 = 50.0% -> 0.10 * 50.0 = 5.0
-    # Mean Brier = 0.2025 -> 0.2025 * 50 = 10.125
-    # Combined Score = 41.25 + 26.25 + 5.0 - 10.125 = 62.375
+    # No confidence recorded -> conviction is neutral at 50.0
+    # Accuracy block = 41.25 + 26.25 + 5.0 = 72.5 -> 0.90 * 72.5 = 65.25
+    # Combined Score = 65.25 + (0.10 * 50.0) = 70.25
     score = calculate_daily_ratchet_score(predictions)
-    assert pytest.approx(score, 0.01) == 62.375
+    assert pytest.approx(score, 0.01) == 70.25
 
     metrics = calculate_daily_ratchet_metrics(predictions)
-    assert pytest.approx(metrics["score"], 0.01) == 62.375
+    assert pytest.approx(metrics["score"], 0.01) == 70.25
     assert metrics["close_accuracy_pct"] == 75.0
     assert metrics["intraday_hit_pct"] == 75.0
     assert metrics["magnitude_capture_pct"] == 50.0
     assert pytest.approx(metrics["mean_brier"], 0.0001) == 0.2025
+    assert metrics["conviction_norm"] == 50.0
     assert metrics["predictions_evaluated"] == 4
     assert metrics["correct_count"] == 3
     assert metrics["intraday_hit_count"] == 3
@@ -81,6 +83,55 @@ def test_calculate_daily_ratchet_metrics_empty():
     metrics = calculate_daily_ratchet_metrics([])
     assert metrics["score"] == 0.0
     assert metrics["predictions_evaluated"] == 0
+    assert metrics["conviction_norm"] == 50.0
+
+
+def _confidence_arm(confidence: float, correct: int, wrong: int) -> list[dict]:
+    """Identical accuracy/magnitude on both arms; only stated confidence differs."""
+    base = {
+        "intraday_hit": False,
+        "expected_return_pct": 0.0,
+        "open_price": 500.0,
+        "high_price": 500.0,
+        "low_price": 500.0,
+        "close_price": 500.0,
+        "confidence": confidence,
+    }
+    return [{**base, "is_correct": True} for _ in range(correct)] + [
+        {**base, "is_correct": False} for _ in range(wrong)
+    ]
+
+
+def test_daily_ratchet_rewards_calibrated_over_reckless_confidence():
+    """Reproduction: the confidence term must not pay for bravado."""
+    calibrated = calculate_daily_ratchet_metrics(_confidence_arm(60.0, 12, 8))
+    reckless = calculate_daily_ratchet_metrics(_confidence_arm(95.0, 12, 8))
+
+    assert calibrated["close_accuracy_pct"] == reckless["close_accuracy_pct"]
+    assert calibrated["conviction_norm"] > 50.0
+    assert reckless["conviction_norm"] < 50.0
+    assert calibrated["score"] > reckless["score"]
+
+
+def test_daily_ratchet_rewards_calibrated_over_coy_confidence():
+    honest = calculate_daily_ratchet_metrics(_confidence_arm(60.0, 12, 8))
+    coy = calculate_daily_ratchet_metrics(_confidence_arm(55.0, 12, 8))
+
+    assert coy["conviction_norm"] > 50.0
+    assert honest["score"] > coy["score"]
+
+
+def test_daily_ratchet_score_no_longer_subtracts_brier():
+    """Brier stays a stored diagnostic; it must not move the score any more."""
+    records = _confidence_arm(60.0, 6, 4)
+    for index, record in enumerate(records):
+        record["brier_score"] = 0.02 if index % 2 == 0 else 0.90
+
+    baseline = calculate_daily_ratchet_score(records)
+    for record in records:
+        record["brier_score"] = 0.25
+
+    assert calculate_daily_ratchet_score(records) == pytest.approx(baseline)
 
 
 def test_compute_magnitude_postmortem_summary():

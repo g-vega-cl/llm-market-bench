@@ -173,13 +173,15 @@ def test_realign_predictor_baselines_apply(mock_supabase_data):
     # Verify status and scores updated
     c60 = next(e for e in experiments if e["variant_tag"] == "sector-pred-c60dab58")
     assert c60["status"] == "saved"
-    # Base: 50, Brier: 0.25 -> 50 - 12.5 = 37.5
-    assert c60["metrics"]["score"] == pytest.approx(37.5)
+    # Base: 50, no confidence -> conviction neutral 50.0
+    # 0.90 * 50.0 + 0.10 * 50.0 = 50.0
+    assert c60["metrics"]["score"] == pytest.approx(50.0)
 
     c6d = next(e for e in experiments if e["variant_tag"] == "sector-pred-c6d96ec1")
     assert c6d["status"] == "baseline"
-    # Base: 80, Alpha: +2.0, Brier: 0.10 -> 82 - (0.10 * 50) = 77.0
-    assert c6d["metrics"]["score"] == pytest.approx(77.0)
+    # Base: 80, Alpha: +2.0 -> accuracy block 82.0, conviction neutral 50.0
+    # 0.90 * 82.0 + 0.10 * 50.0 = 73.8 + 5.0 = 78.8
+    assert c6d["metrics"]["score"] == pytest.approx(78.8)
 
     # Verify active prompt parent_tag re-pointed to new baseline
     eb0 = next(e for e in experiments if e["variant_tag"] == "sector-pred-eb003dd8")

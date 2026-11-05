@@ -136,6 +136,6 @@ describe('AutoresearchMilestoneCards', () => {
 
         expect(screen.getByText('daily-pred-baseline')).toBeInTheDocument();
         expect(screen.getByText('🏆 BASELINE')).toBeInTheDocument();
-        expect(screen.getAllByText('80.59').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('86.64').length).toBeGreaterThanOrEqual(1);
     });
 });

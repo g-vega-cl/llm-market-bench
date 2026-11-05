@@ -36,16 +36,18 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
   $$\text{Weekly Effective Volatility} = \frac{\max(\sigma_{\text{portfolio}}, \sigma_{\text{market}}, 10.0\%)}{\sqrt{52}}$$
   - **Why We Added It**: Prevents runaway baseline ratchet lockouts from high-volatility outlier weeks (such as the July 19 outlier recalibrated from 24.16 to 2.52σ), creates statistical parity between calm and turbulent regimes, and deflates lucky meme bets when portfolio volatility exceeds market volatility.
   - **Step-by-Step UI Flow**: Renders the 5-step derivation: (1) Composite benchmark triad, (2) Risk-free bond component, (3) Drawdown penalty, (4) Asset fact-check ledger, and (5) Complete arithmetic breakdown with the $\sigma$ unit suffix.
-- **Sector Ratchet Score Audit**: `SectorScoreBreakdown.tsx` exposes the weekly multi-pillar formula:
-  $$\text{Score} = \text{Avg}(\text{Base Percentile} + \text{S\&P Alpha Bonus}) - (\text{Mean Brier} \times 50.0)$$
+- **Sector Ratchet Score Audit**: `SectorScoreBreakdown.tsx` exposes the weekly multi-pillar formula, blending the accuracy block with conviction (see [[concepts/conviction-points]]):
+  $$\text{Score} = 0.90 \times \text{Avg}(\text{Base Percentile} + \text{S\&P Alpha Bonus}) + 0.10 \times \text{Conviction Score}$$
+  It renders a green **Relative Percentile Rank** tile, an amber **S&P Alpha Bonus** tile, a **Conviction Score** tile (emerald above neutral 50, rose below), and a muted **Brier (diagnostic)** tile carrying the stored mean Brier that no longer moves the score.
 
 ## Frontend-Backend Scoring Synchronization Contract
 
 > [!IMPORTANT]
-> **Scoring Symmetry Mandate**: The engine in `apps/engine/autoresearch/metrics.py`, `apps/engine/tasks/daily_autoresearch.py`, and `apps/engine/tasks/predictor_autoresearch.py` is the canonical source of truth for evaluation math. The frontend UI mirrors this with zero-frontend-compute transparency:
+> **Scoring Symmetry Mandate**: The engine in `apps/engine/autoresearch/metrics.py`, `apps/engine/core/conviction_scoring.py`, `apps/engine/tasks/daily_autoresearch.py`, and `apps/engine/tasks/predictor_autoresearch.py` is the canonical source of truth for evaluation math. The frontend UI mirrors this with zero-frontend-compute transparency:
 > - Portfolio Autoresearch: `ScoreCalculation.tsx`, `ScoreBreakdown.tsx`, `DailyScoreDisplay.tsx` ([[concepts/risk-adjusted-z-score]])
-> - Daily Predictor Autoresearch: `DailyScoreBreakdown.tsx`
+> - Daily Predictor Autoresearch: `DailyScoreBreakdown.tsx` ([[entities/daily-score-breakdown]])
 > - Sector Predictor Autoresearch: `SectorScoreBreakdown.tsx`
+> - Shared conviction helpers: `apps/web/src/shared/conviction.ts` ([[concepts/conviction-points]])
 > - Engine Tasks: `daily_autoresearch.py`, `predictor_autoresearch.py`
 
 ## Implementation
@@ -57,6 +59,7 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 ## Related
 - [[entities/autoresearch]] — the Python engine that produces the experiments
 - [[concepts/risk-adjusted-z-score]] — volatility-normalized weekly scoring formula
+- [[concepts/conviction-points]] — calibrated-confidence term used by the daily and sector ratchets
 - [[concepts/pending-settlement-state]] — live provisional states vs settled evaluations
 - [[concepts/stochastic-cold-start]] — independent 1-in-6 dice resets and "From 0" lineage
 - [[concepts/multi-track-autoresearch]] — parallel isolated model tracks

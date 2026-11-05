@@ -9,6 +9,7 @@ import {
     TableRow,
 } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
+import { meanConvictionPoints, normalizeConvictionPoints } from '~/shared/conviction';
 import type { EarningsPrediction } from '../api/fetch-earnings-predictions';
 
 export interface EarningsArenaTabProps {
@@ -107,11 +108,9 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
             );
             const correctCount = evaluated.filter((p) => p.is_correct).length;
             const hitRate = evaluated.length > 0 ? (correctCount / evaluated.length) * 100 : 0;
-            const avgBrier =
-                evaluated.length > 0
-                    ? evaluated.reduce((acc, curr) => acc + (curr.brier_score ?? 0), 0) /
-                      evaluated.length
-                    : 0;
+            const meanCp = meanConvictionPoints(evaluated);
+            const conviction =
+                meanCp === null ? null : Math.round(normalizeConvictionPoints(meanCp) * 10) / 10;
 
             return {
                 modelId: m,
@@ -119,7 +118,7 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                 total: modelPreds.length,
                 evaluatedCount: evaluated.length,
                 hitRate: Math.round(hitRate * 10) / 10,
-                avgBrier: Math.round(avgBrier * 1000) / 1000,
+                conviction,
             };
         });
     }, [predictions]);
@@ -173,10 +172,10 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                             </div>
                             <div className="text-right">
                                 <div className="text-xs font-normal text-zinc-400">
-                                    Avg Brier Score
+                                    Conviction Score
                                 </div>
                                 <div className="text-sm font-bold font-mono text-zinc-300">
-                                    {stat.evaluatedCount > 0 ? stat.avgBrier.toFixed(3) : 'N/A'}
+                                    {stat.conviction === null ? 'N/A' : stat.conviction.toFixed(1)}
                                 </div>
                             </div>
                         </div>

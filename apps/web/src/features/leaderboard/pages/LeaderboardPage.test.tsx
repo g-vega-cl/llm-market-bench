@@ -39,6 +39,7 @@ const mockLeaderboardData: LLMLeaderboardRow[] = [
         total_trades: 15,
         verifier_approval_rate: 95.4,
         average_confidence: 85.0,
+        conviction_score: 62.5,
         api_success_rate: 100.0,
         trading_activity_rate: 90.0,
         trading_performance_score: 85.2,
@@ -55,6 +56,7 @@ const mockLeaderboardData: LLMLeaderboardRow[] = [
         total_trades: 10,
         verifier_approval_rate: null, // ignored verifier score
         average_confidence: 80.0,
+        conviction_score: 51.0,
         api_success_rate: 100.0,
         trading_activity_rate: 85.0,
         trading_performance_score: 80.0,
@@ -71,6 +73,7 @@ const mockLeaderboardData: LLMLeaderboardRow[] = [
         total_trades: 12,
         verifier_approval_rate: 91.2,
         average_confidence: 80.0,
+        conviction_score: 51.0,
         api_success_rate: 100.0,
         trading_activity_rate: 85.0,
         trading_performance_score: 79.5,

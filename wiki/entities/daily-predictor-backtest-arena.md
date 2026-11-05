@@ -39,7 +39,7 @@ $$
 - **Close Accuracy %** (55% weight): Percentage of predictions where the EOD close direction matched the prediction.
 - **Intraday Hit %** (35% weight): Percentage of predictions where the intraday target was hit (falls back to `is_correct` when `intraday_hit` is null).
 - **Magnitude Capture %** (10% weight): Percentage of the actual move captured on correct predictions that hit target ($\min(1.0, |\text{expected}|/\max(|\text{peak}|, |\text{close}|)) \times 100$).
-- **Brier penalty**: Mean Brier score multiplied by 50, subtracted from the weighted sum.
+- **Conviction**: 10% of the composite, from the mean [[concepts/conviction-points]] of the evaluated rows (neutral 50 when unscored). Brier is a stored diagnostic only.
 
 ## Web UI & Production Isolation
 

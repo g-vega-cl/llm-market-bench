@@ -47,11 +47,13 @@ If worst sector data is unavailable (historical predictions before the feature),
 
 ## Ratchet Baseline Integration
 
-The baseline ratchet in `predictor_autoresearch.py` uses this per-prediction score, then subtracts the Brier calibration penalty:
+The baseline ratchet in `predictor_autoresearch.py` uses this per-prediction score as the accuracy block and blends in conviction:
 
 $$
-\text{Ratchet Score} = \text{Avg}(\text{Score}_{\text{prediction}}) - (\overline{\text{Brier Score}} \times 50.0)
+\text{Ratchet Score} = 0.90 \times \text{Avg}(\text{Score}_{\text{prediction}}) + 0.10 \times \text{Conviction Score}
 $$
+
+The Brier score is still stored per prediction but is no longer deducted. The worst-sector leg is priced by its own `worst_confidence`; legacy rows without it skip that leg rather than reusing the best-pick probability. See [[concepts/conviction-points]].
 
 All data is stored in the `sector_predictions` table (see [[entities/database]]) and displayed in the Sector Predictor Arena UI (see [[entities/sector-predictor-arena]]).
 

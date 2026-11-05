@@ -57,10 +57,12 @@ If hourly bars are unavailable, `fetch_intraday_prices()` falls back to `MarketD
 
 - **Live evaluation** (`evaluate_daily_predictions`): Fetches Open, High, Low, Close prices via `MarketDataManager` and stores the metrics in the `daily_predictions` table.
 - **Backtest evaluation** (`evaluate_backtest_prediction`): Uses the same function with FMP-based OHLC data.
-- **Scoring**: The daily ratchet score formula uses intraday hit rate as a 35% weighted component alongside 55% close accuracy and 10% magnitude capture, minus a 50x Brier penalty.
+- **Scoring**: The daily ratchet score uses intraday hit rate as a 35% weighted component of an **accuracy block** (alongside 55% close accuracy and 10% magnitude capture) that is scaled to 0.90 and blended with a 0.10-weight [[concepts/conviction-points]] term. Brier is stored per row as a diagnostic only (see [[concepts/brier-score]]).
 
 ## Related
 
 - [[entities/daily-market-predictor]]
 - [[entities/daily-predictor-backtest-arena]]
+- [[concepts/conviction-points]]
+- [[concepts/magnitude-calibration]]
 - [[concepts/auto-research-prompt-improver]]

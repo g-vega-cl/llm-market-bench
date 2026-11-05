@@ -5,7 +5,7 @@ export interface DailyMetricsOverviewProps {
     intradayHitPct: string;
     correctCount: number;
     totalEvaluated: number;
-    avgBrier: string;
+    convictionScore: string;
     totalPredictions: number;
     activePromptTag: string;
 }
@@ -15,7 +15,7 @@ export function DailyMetricsOverview({
     intradayHitPct,
     correctCount,
     totalEvaluated,
-    avgBrier,
+    convictionScore,
     totalPredictions,
     activePromptTag,
 }: DailyMetricsOverviewProps) {
@@ -47,13 +47,13 @@ export function DailyMetricsOverview({
 
             <Card padding="sm" className="h-full flex flex-col justify-between gap-1">
                 <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
-                    Brier Calibration Score
+                    Conviction Score
                 </div>
                 <div className="text-lg font-bold text-boxel-ink mt-0.5 tabular-nums font-mono">
-                    {avgBrier}
+                    {convictionScore}
                 </div>
                 <div className="text-xs font-normal text-boxel-muted mt-0.5">
-                    Lower is better (0.0000 = perfect)
+                    Calibrated confidence · 50 = coin flip
                 </div>
             </Card>
 

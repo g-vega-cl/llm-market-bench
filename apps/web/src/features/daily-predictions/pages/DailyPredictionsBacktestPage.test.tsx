@@ -34,6 +34,7 @@ describe('DailyPredictionsBacktestPage', () => {
             intraday_hit: true,
             intraday_direction_hit: true,
             brier_score: 0.0625,
+            conviction_score: 40.5465,
             status: 'evaluated',
             created_at: '2026-04-27T09:00:00Z',
             updated_at: '2026-04-27T17:15:00Z',
@@ -71,7 +72,8 @@ describe('DailyPredictionsBacktestPage', () => {
         expect(screen.getByText('S&P Daily Predictor Backtest Arena')).toBeInTheDocument();
         expect(screen.getByText('Backtest Directional Accuracy')).toBeInTheDocument();
         expect(screen.getByText('100.0%')).toBeInTheDocument();
-        expect(screen.getAllByText('0.0625').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('+40.55').length).toBeGreaterThan(0);
+        expect(screen.getByText('Conviction Score')).toBeInTheDocument();
         expect(screen.getByText('Historical Backtest Predictions Log')).toBeInTheDocument();
         expect(screen.getByText('Backtest Prompt Experiments Arena')).toBeInTheDocument();
         expect(screen.getAllByText('daily-pred-backtest-base').length).toBeGreaterThan(0);

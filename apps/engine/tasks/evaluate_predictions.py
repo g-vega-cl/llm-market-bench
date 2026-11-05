@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import logger
+from core.conviction_scoring import mean_conviction_points
 from core.db import get_supabase_client
 from core.time_utils import EASTERN_TZ
 from execution.providers.factory import get_financial_provider
@@ -126,6 +127,37 @@ def calculate_sector_brier_score(
         return float((bs_best + bs_worst) / 2.0)
 
     return float(bs_best)
+
+
+def calculate_sector_conviction_records(
+    confidence: float | None,
+    sector_percentile_score: float | None,
+    worst_confidence: float | None = None,
+    worst_sector_percentile_score: float | None = None,
+) -> list[dict]:
+    """Build one conviction record per *separately stated* probability.
+
+    The best-sector leg is priced by ``confidence``. The worst-sector leg is
+    priced by ``worst_confidence`` and is skipped when absent, because legacy
+    rows never stated a probability for the worst call. Reusing the best-sector
+    probability there would manufacture a penalty the model never earned.
+    """
+    records: list[dict] = []
+    if confidence is not None and sector_percentile_score is not None:
+        records.append(
+            {
+                "confidence": float(confidence),
+                "is_correct": float(sector_percentile_score) >= 50.0,
+            }
+        )
+    if worst_confidence is not None and worst_sector_percentile_score is not None:
+        records.append(
+            {
+                "confidence": float(worst_confidence),
+                "is_correct": float(worst_sector_percentile_score) >= 50.0,
+            }
+        )
+    return records
 
 
 def get_price_for_date(history: list[dict], target_date) -> float | None:
@@ -336,7 +368,16 @@ async def run_evaluation(force: bool = False, date_anchor: date | None = None):
             predicted_worst_sec_ret = sector_returns.get(predicted_worst_sec)
 
         confidence_val = p.get("confidence")
+        worst_confidence_val = p.get("worst_confidence")
         brier_score = calculate_sector_brier_score(confidence_val, sec_score, worst_sec_score)
+
+        conviction_records = calculate_sector_conviction_records(
+            confidence=confidence_val,
+            sector_percentile_score=sec_score,
+            worst_confidence=worst_confidence_val,
+            worst_sector_percentile_score=worst_sec_score,
+        )
+        conviction_score = round(mean_conviction_points(conviction_records), 4) if conviction_records else None
 
         predicted_sec_ret = sector_returns.get(predicted_sec)
         pair_rets = [sector_returns.get(t) for t in predicted_pair if t in sector_returns]
@@ -369,6 +410,7 @@ async def run_evaluation(force: bool = False, date_anchor: date | None = None):
                     "worst_sector_percentile_score": worst_sec_score,
                     "pair_percentile_score": pair_score,
                     "brier_score": brier_score,
+                    "conviction_score": conviction_score,
                     "predicted_sector_return": predicted_sec_ret,
                     "predicted_worst_sector_return": predicted_worst_sec_ret,
                     "predicted_pair_return": predicted_pair_ret,

@@ -21,6 +21,7 @@ describe('DailyPostMortemCard', () => {
         actual_direction: 'UP',
         is_correct: true,
         brier_score: 0.0625,
+        conviction_score: null,
         status: 'evaluated',
         created_at: '2026-09-28T09:15:00Z',
         updated_at: '2026-09-28T16:15:00Z',

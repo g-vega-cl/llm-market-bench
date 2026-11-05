@@ -17,7 +17,6 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
-- [x] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
 
 ### Marketing & Building in Public
 
@@ -32,16 +31,20 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Autoresearch Scaling & Local Models
 
-- [ ] - make autoresearcher with more variables and more "temperatures?" More portfolios too?
+- [x] - make autoresearcher with more variables and more "temperatures?" More portfolios too?
+ - Not worth the cost.
 - [x] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
  - Not worth it considering how I can do local autoresearch passes now.
 - [ ] - benchify: fine tune the autoresearcher rather than the model?
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
+ - So allow hold? improve the confidence number?
 
 ### Portfolio & Market Execution
 
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
+ - [ ] - Do automatically for portfolios sitting on cash, daily, simulate as if 80% of unused cash went to $SGOV. Is it even worth it? Not really since we expect portfolios to use most of their cash and the whole point is investing. Let's discuss
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
+ - This is kindof part of the pivot I'm looking to do, maybe a different category?
 
 ### Database & Performance Polish
 

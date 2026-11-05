@@ -15,11 +15,11 @@ Files with high churn and high bug fix density represent code where changes freq
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/engine/tasks/daily_predictor.py` | 20 | 5 | 25.0% | 693 | 100 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 17 | 5 | 29.4% | 245 | 85 | **HIGH** |
-| `apps/web/src/routes/__root.tsx` | 10 | 5 | 50.0% | 233 | 50 | **HIGH** |
-| `apps/engine/tests/test_workflow_schedule.py` | 10 | 5 | 50.0% | 243 | 50 | **HIGH** |
+| `apps/web/src/routes/__root.tsx` | 10 | 5 | 50.0% | 239 | 50 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 16 | 3 | 18.8% | 379 | 48 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 20 | 2 | 10.0% | 1758 | 40 | **HIGH** |
 | `apps/engine/tests/test_daily_predictor.py` | 10 | 4 | 40.0% | 763 | 40 | **HIGH** |
+| `apps/engine/tests/test_workflow_schedule.py` | 9 | 4 | 44.4% | 243 | 36 | **HIGH** |
 | `apps/engine/main.py` | 17 | 2 | 11.8% | 73 | 34 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 11 | 3 | 27.3% | 470 | 33 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.test.ts` | 8 | 4 | 50.0% | 540 | 32 | **HIGH** |

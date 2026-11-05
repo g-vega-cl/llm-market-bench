@@ -1,6 +1,8 @@
 import { Button } from '@llm-market-bench/ui-design-system';
+import { usePostHog } from '@posthog/react';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { ErrorComponent, Link, rootRouteId, useMatch, useRouter } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
     const router = useRouter();
@@ -8,6 +10,23 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
         strict: false,
         select: (state) => state.id === rootRouteId,
     });
+    const posthog = usePostHog();
+    const trackedErrorRef = useRef<unknown>(null);
+
+    useEffect(() => {
+        if (!error || trackedErrorRef.current === error) return;
+        trackedErrorRef.current = error;
+
+        const err = error instanceof Error ? error : new Error(String(error));
+        if (typeof posthog?.captureException === 'function') {
+            posthog.captureException(err, {
+                source: 'DefaultCatchBoundary',
+                is_root: isRoot,
+                pathname: typeof window !== 'undefined' ? window.location.pathname : undefined,
+                route_id: router.state?.location?.pathname,
+            });
+        }
+    }, [error, isRoot, posthog, router.state?.location?.pathname]);
 
     console.error(error);
 

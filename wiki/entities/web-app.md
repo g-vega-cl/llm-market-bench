@@ -37,10 +37,14 @@ The topbar is a single non-wrapping row (`flex items-center`, no `flex-wrap`). T
 
 The web app uses two strictly separated Supabase client families (see [[concepts/auth-db-client-separation]]):
 
-- **Auth client** — `apps/web/src/lib/auth.ts` (`getAuthServerClient`) and `apps/web/src/lib/auth-client.ts` (`getAuthBrowserClient`) talk to **Supabase Cloud** for password login, Google OAuth, session cookies, and `auth.getUser()`. `assertValidAuthUrl` rejects any URL containing `benchify-archive-db` to prevent `PGRST125` auth misrouting.
+- **Auth client** — `apps/web/src/lib/auth.ts` (`getAuthServerClient`) and `apps/web/src/lib/auth-client.ts` (`getAuthBrowserClient`) talk to **Supabase Cloud** for password login, Google OAuth, session cookies, and `auth.getUser()`. `assertValidAuthUrl` rejects any URL containing `benchify-archive-db` to prevent `PGRST125` auth misrouting. `getAuthServerClient()` resolves its URL/key from `SUPABASE_AUTH_URL` / `SUPABASE_AUTH_ANON_KEY`, falling back through `SUPABASE_URL` / `SUPABASE_ANON_KEY` and then the `VITE_SUPABASE_AUTH_*` / `VITE_SUPABASE_*` build-time variables.
 - **DB client** — `apps/web/src/lib/db.ts` (`getDbServerClient`, `getDbAdminClient`, `getDbBrowserClient`) talks to the **self-hosted PostgREST archive DB** (`https://benchify-archive-db.clvg.uk`) for all data reads/writes, using stateless `createClient` options (`persistSession: false`, `autoRefreshToken: false`, `detectSessionInUrl: false`). `getDbAdminClient()` is an explicit dedicated export used for privileged server-side operations (chat schema introspection, `chat_memories` writes, and `agent_chat_queue` audience submissions) to prevent bundler parameter folding optimizations from dead-code eliminating service_role branches.
 
 All feature data fetchers import `getDbServerClient` / `getDbBrowserClient` from `~/lib/db`; auth routes import `getAuthServerClient` from `~/lib/auth`. The former `~/lib/supabase` and `~/lib/supabase-client` modules have been removed.
+
+### Auth resilience in the root route
+
+`fetchUser` (the root route's `createServerFn`) wraps `auth.getUser()` in a `try/catch` and returns `null` (guest) on any thrown error, missing user, or missing email, logging a `console.warn` rather than propagating. `RootDocument` reads the route context defensively (`context?.user`) so it renders safely even when the router is in an error state and the context is undefined. Together these keep a transient Auth-service failure from crashing the root route — the app degrades to an unauthenticated render instead.
 
 ## Related
 

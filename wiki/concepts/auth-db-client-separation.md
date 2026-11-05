@@ -15,11 +15,13 @@ The platform migrated its data layer to a self-hosted PostgreSQL + PostgREST sta
 
 ### Auth client — Supabase Cloud only
 
-- **`apps/web/src/lib/auth.ts`** — `getAuthServerClient()` builds a `createServerClient` (from `@supabase/ssr`) with cookie `getAll`/`setAll` wired to TanStack Start's `getCookies`/`setCookie`. Reads `SUPABASE_AUTH_URL` (falling back to `SUPABASE_URL`) and `SUPABASE_AUTH_ANON_KEY` (falling back to `SUPABASE_ANON_KEY`).
+- **`apps/web/src/lib/auth.ts`** — `getAuthServerClient()` builds a `createServerClient` (from `@supabase/ssr`) with cookie `getAll`/`setAll` wired to TanStack Start's `getCookies`/`setCookie`. Reads `SUPABASE_AUTH_URL` (falling back to `SUPABASE_URL`, then `VITE_SUPABASE_AUTH_URL`, then `VITE_SUPABASE_URL`) and `SUPABASE_AUTH_ANON_KEY` (falling back to `SUPABASE_ANON_KEY`, then `VITE_SUPABASE_AUTH_ANON_KEY`, then `VITE_SUPABASE_ANON_KEY`). The `VITE_` fallbacks let the server client resolve credentials in environments where only the build-time public variables are populated.
 - **`apps/web/src/lib/auth-client.ts`** — `getAuthBrowserClient()` builds a `createBrowserClient` from `VITE_SUPABASE_AUTH_URL` (falling back to `VITE_SUPABASE_URL`) and `VITE_SUPABASE_AUTH_ANON_KEY` (falling back to `VITE_SUPABASE_ANON_KEY`).
 - **`assertValidAuthUrl(url, envVarName)`** — shared guard that throws if the URL is missing or contains `benchify-archive-db`, with an explicit message telling the operator to point the variable at the Supabase Cloud project URL (`https://<project-ref>.supabase.co`).
 
 Auth consumers: `__root.tsx` (`fetchUser`), `_authed.tsx` (`loginFn`), `auth.callback.tsx` (`exchangeCodeFn`), `logout.tsx` (`logoutFn`), `signup.tsx` (`signupFn`), `shared/auth/components/Auth.tsx` (Google OAuth), and the chat server's `auth.getUser()` calls.
+
+`fetchUser` in `__root.tsx` wraps `auth.getUser()` in a `try/catch` and returns `null` (guest) on any thrown error, missing user, or missing email, logging a `console.warn` instead of propagating. A transient Auth-service failure therefore degrades to an unauthenticated render rather than crashing the root route. `RootDocument` reads the route context defensively (`context?.user`) so it renders safely even when the router is in an error state and the context is undefined.
 
 ### DB client — self-hosted PostgREST archive only
 

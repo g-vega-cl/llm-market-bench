@@ -94,6 +94,10 @@ posthog.capture('agent_chat_endpoint_error', {
 
 When capturing errors inside reactive React components or lifecycle hooks, always guard against re-render duplicate submissions using a ref (e.g. `trackedErrorIdRef.current !== item.id`), ensuring a persistent error state is reported exactly once per occurrence.
 
+### 3. Route Error Boundary Integration (`DefaultCatchBoundary`)
+
+TanStack Router's internal catch boundary isolates page, loader, and rendering errors without bubbling them to `window.onerror`. To prevent caught exceptions from becoming invisible in production, `apps/web/src/components/ui/DefaultCatchBoundary.tsx` hooks directly into PostHog via `usePostHog()`. When rendered, it records `posthog.captureException(err, { source: 'DefaultCatchBoundary', is_root, pathname, route_id })` guarded by a deduplication ref.
+
 ---
 
 ## Identity resolution and session lifecycle
@@ -108,9 +112,10 @@ To accurately track conversion funnels without splitting user profiles or leakin
 
 ## Testing
 
-- `src/utils/posthog-filter.test.ts` verifies detection of CefSharp unhandled rejections across `$exception_list`, `$exception_values`, and `$exception_message`, confirming that scanner errors are dropped completely (`return null`) while legitimate errors and analytics events pass unchanged.
-- `src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, enables session recording with privacy masking, sets `disable_surveys: true`, configures `before_send: posthogBeforeSend` dropping scanner errors, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
-- `src/routes/logout.test.tsx` verifies that `LogoutComponent` triggers `posthog.reset()` before executing signout and navigation.
+- `apps/web/src/components/ui/DefaultCatchBoundary.test.tsx` verifies that `DefaultCatchBoundary` records exceptions to PostHog with route context and deduplicates consecutive captures on re-render.
+- `apps/web/src/utils/posthog-filter.test.ts` verifies detection of CefSharp unhandled rejections across `$exception_list`, `$exception_values`, and `$exception_message`, confirming that scanner errors are dropped completely (`return null`) while legitimate errors and analytics events pass unchanged.
+- `apps/web/src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, enables session recording with privacy masking, sets `disable_surveys: true`, configures `before_send: posthogBeforeSend` dropping scanner errors, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
+- `apps/web/src/routes/-logout.test.tsx` verifies that `LogoutComponent` triggers `posthog.reset()` before executing signout and navigation.
 
 ## Related
 

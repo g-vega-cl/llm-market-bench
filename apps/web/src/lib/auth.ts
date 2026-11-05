@@ -5,8 +5,16 @@ import { assertValidAuthUrl, getAuthBrowserClient } from './auth-client';
 export { assertValidAuthUrl, getAuthBrowserClient };
 
 export function getAuthServerClient() {
-    const authUrl = process.env.SUPABASE_AUTH_URL || process.env.SUPABASE_URL;
-    const authAnonKey = process.env.SUPABASE_AUTH_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    const authUrl =
+        process.env.SUPABASE_AUTH_URL ||
+        process.env.SUPABASE_URL ||
+        process.env.VITE_SUPABASE_AUTH_URL ||
+        process.env.VITE_SUPABASE_URL;
+    const authAnonKey =
+        process.env.SUPABASE_AUTH_ANON_KEY ||
+        process.env.SUPABASE_ANON_KEY ||
+        process.env.VITE_SUPABASE_AUTH_ANON_KEY ||
+        process.env.VITE_SUPABASE_ANON_KEY;
 
     assertValidAuthUrl(authUrl, 'SUPABASE_AUTH_URL');
     if (!authAnonKey) {

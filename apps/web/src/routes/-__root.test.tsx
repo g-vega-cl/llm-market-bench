@@ -430,4 +430,29 @@ describe('RootDocument PostHog identity synchronization', () => {
 
         expect(mockReset).toHaveBeenCalled();
     });
+
+    it('should render RootDocument safely when route context is undefined (error state)', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue(undefined as unknown as { user: null });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Error Fallback Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        const content = await screen.findByText('Error Fallback Content');
+        expect(content).toBeInTheDocument();
+    });
 });

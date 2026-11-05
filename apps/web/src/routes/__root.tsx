@@ -44,17 +44,22 @@ export type AuthUser = {
 };
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async (): Promise<AuthUser | null> => {
-    const authClient = getAuthServerClient();
-    const { data, error: _error } = await authClient.auth.getUser();
+    try {
+        const authClient = getAuthServerClient();
+        const { data, error } = await authClient.auth.getUser();
 
-    if (!data.user?.id || !data.user?.email) {
+        if (error || !data?.user?.id || !data?.user?.email) {
+            return null;
+        }
+
+        return {
+            id: data.user.id,
+            email: data.user.email,
+        };
+    } catch (err) {
+        console.warn('[fetchUser] Failed to resolve auth user; defaulting to guest:', err);
         return null;
     }
-
-    return {
-        id: data.user.id,
-        email: data.user.email,
-    };
 });
 
 export const Route = createRootRoute({
@@ -157,7 +162,8 @@ export function PostHogAuthSync({ user: userProp }: { user?: AuthUser | null } =
 }
 
 export function RootDocument({ children }: { children: ReactNode }) {
-    const { user } = Route.useRouteContext();
+    const context = Route.useRouteContext();
+    const user = context?.user;
 
     return (
         <html lang="en">

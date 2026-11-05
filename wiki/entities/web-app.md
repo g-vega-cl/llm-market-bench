@@ -30,6 +30,7 @@ The topbar is a single non-wrapping row (`flex items-center`, no `flex-wrap`). T
 
 - Built with TanStack Start and React Router v7 SSR.
 - Uses TanStack Query for data fetching with SSR-safe QueryClient.
+- Homepage (`/`) utilizes `useWindowFocusRefresh` (`apps/web/src/features/home/hooks/useWindowFocusRefresh.ts`) to invalidate TanStack Router loaders via `router.invalidate()` on window focus and document visibility restoration (throttled to 5s), keeping market feeling, active portfolios, barometer, and tape synchronized without background CPU polling drain, while reloading PostHog flags and capturing telemetry.
 - Styled with Tailwind CSS v4 and `@llm-market-bench/ui-design-system`.
 
 ## Auth / DB client separation

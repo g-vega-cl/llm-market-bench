@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { usePostHog } from '@posthog/react';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { fetchLatestMarketBarometer } from '~/features/home/api/fetch-barometer';
 import {
@@ -8,6 +9,7 @@ import {
     isRegularMarketHours,
     type MarketFeelingRecord,
 } from '~/features/home/api/fetch-intraday-tape';
+import { useWindowFocusRefresh } from '~/features/home/hooks/useWindowFocusRefresh';
 import type { HomePageData } from '~/features/home/pages/HomePage';
 import { HomePage } from '~/features/home/pages/HomePage';
 import {
@@ -127,8 +129,18 @@ export const Route = createFileRoute('/')({
     component: RouteComponent,
 });
 
-function RouteComponent() {
+export function RouteComponent() {
     const data = Route.useLoaderData();
     const context = Route.useRouteContext();
+    const router = useRouter();
+    const posthog = usePostHog();
+
+    useWindowFocusRefresh({
+        onRefresh: () => {
+            router.invalidate();
+        },
+        posthog,
+    });
+
     return <HomePage data={{ ...data, currentUser: context?.user ?? null }} />;
 }

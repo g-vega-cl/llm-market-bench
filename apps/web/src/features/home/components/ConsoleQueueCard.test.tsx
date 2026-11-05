@@ -149,6 +149,14 @@ describe('ConsoleQueueCard', () => {
 
         expect(screen.getByText(/Latest Answered Turn:/i)).toBeInTheDocument();
         expect(screen.getByText(/@g.vega.cl/i)).toBeInTheDocument();
+
+        // Mobile meta-row rules: row wraps, fragments are atomic
+        const metaRow = screen.getByText(/Latest Answered Turn:/i).parentElement
+            ?.parentElement as HTMLElement;
+        expect(metaRow.className).toContain('flex-wrap');
+        expect(metaRow.className).not.toContain('items-center');
+        expect(screen.getByText(/Latest Answered Turn:/i).className).toContain('whitespace-nowrap');
+        expect(screen.getByText(/@g.vega.cl/i).className).toContain('truncate');
         expect(screen.getByText(/Will the market keep crashing\?/i)).toBeInTheDocument();
 
         // Assert clean desk notice is displayed

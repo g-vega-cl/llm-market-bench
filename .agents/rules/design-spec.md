@@ -137,3 +137,11 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Boxel** aesthetic inspired b
 2. **Preformatted text wrapping**: Every `<pre>` tag rendering prompt text, code, or logs must include `whitespace-pre-wrap break-words`.
 3. **Unbroken technical tokens**: Snake_case identifiers (such as `tool_names`, prompt variant hashes, or UUIDs) must declare `break-all`.
 4. **Formula bars**: Mathematical expressions and equation bars must include `wordBreak: 'break-word'`, `overflowWrap: 'anywhere'`, and `overflowX: 'auto'`.
+
+
+## 9. Mobile Text Rows (Labels, Timestamps, Handles)
+
+1. **Meta rows wrap**: Any row holding label/value, author/timestamp, or badge text must use `flex flex-wrap items-baseline gap-x-* gap-y-1`. Never combine `justify-between` with `items-center` on a text row without `flex-wrap`; each child group also gets `min-w-0`.
+2. **Atomic fragments**: Every label, timestamp, and separator (`•`) is its own span with `whitespace-nowrap`. A line may break between fragments, never inside one. Keep the separator in the same span as the value that follows it so it cannot be stranded at a line end.
+3. **Long identifiers**: Handles, emails, and display names must declare `min-w-0 truncate` (or `break-words` where the full text matters).
+4. **Mobile verification**: Every UI change touching text rows must be checked at 360px width, and its component test must assert the `flex-wrap` / `whitespace-nowrap` classes.

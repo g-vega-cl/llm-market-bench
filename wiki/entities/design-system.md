@@ -25,6 +25,7 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 11. **Zero manual child margins ("Flow & Gaps Only")**: Individual elements and components must never declare exterior margins (`m-*`, `mb-*`, `mt-*`, `mr-*`, `ml-*`). Spacing between items is strictly owned by parent containers using `flex gap-*` or `grid gap-*` with a 3-step scale: `gap-2` (8px, micro inline elements), `gap-4` (16px, intra-card/controls), and `gap-6` (24px, inter-card/sections). The only permitted margin utilities are flex edge anchors (`mt-auto` to pin footer blocks to bottom of cards, `ml-auto` to push controls rightward in ribbons).
 12. **Zero hardcoded widths and heights ("Intrinsic Fluid Sizing")**: Avoid rigid fixed dimensions (`w-[...]`, `h-[...]`, `min-w-72`). Multi-column card panels size horizontally via fluid CSS Grid tracks (`repeat(auto-fit, minmax(min(100%, 18rem), 1fr))`) and flex wrappers (`flex-1 basis-96 min-w-0`). Vertical dimensions flow intrinsically from content + padding + container gap.
 13. **High-contrast indicator and badge semantics**: Contrast between badge text and background must meet or exceed WCAG AAA ($\ge 7:1$). Cheddar Gold (`bg-accent`) solid tags must use dark trough text (`text-boxel-trough`), never white. Status badges with indicators must use flex gap (`gap-1.5`) rather than child element margins (`mr-1.5`), ensuring zero phantom whitespace if an indicator is rendered invisible.
+14. **Mobile text rows wrap atomically**: Any row holding label/value, author/timestamp, or badge text uses `flex flex-wrap items-baseline gap-x-* gap-y-1` with `min-w-0` on each child group. Never combine `justify-between` with `items-center` on a text row without `flex-wrap`. Every label, timestamp, and `•` separator is its own `whitespace-nowrap` span (the separator stays in the same span as the value that follows it so it cannot be stranded at a line end), and handles, emails, and display names declare `min-w-0 truncate` (or `break-words` where the full text matters). Every UI change touching text rows must be verified at 360px width, and its component test must assert the `flex-wrap` / `whitespace-nowrap` classes. See section 9 of `.agents/rules/design-spec.md` and [[concepts/fluent-responsive-design]].
 
 ## Matcha & Cedar / Cheddar palette tokens
 
@@ -136,6 +137,7 @@ Beyond the primitives, the feature pages render through the same boxel tokens an
    - `DailyMetricsOverview` renders an `items-stretch` grid with no `text-2xl` values.
    - `HeroPredictionCard` contains no `text-4xl`, `font-black`, `rounded-2xl`, or `mb-*` classes.
    - `ScoreCalculation` contains no `text-3xl`/`text-2xl`/`rounded-2xl`, and its formula block is `text-lg font-bold`.
+   - `ConsoleQueueCard.test.tsx` asserts the answered-turn meta row carries `flex-wrap` and no `items-center`, the `Latest Answered Turn:` label is `whitespace-nowrap`, and the author handle is `truncate` (mobile text-row rule).
 
 ## Related
 

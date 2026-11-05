@@ -110,3 +110,7 @@ Replace breakpoint-dependent direction toggles like `flex-col sm:flex-row` with 
 - [[concepts/cumulative-layout-shift]], Zero layout shift standards and skeleton-free transitions
 - [[entities/daily-market-predictor]], Daily predictor and autoresearch workbench
 - [[entities/daily-score-breakdown]], Multi-pillar composite ratchet score audit
+### Mobile text rows
+
+Rows of labels, timestamps, and handles (for example the console queue card's "Latest Answered Turn" row) must wrap as whole fragments: `flex flex-wrap items-baseline gap-x-2 gap-y-1`, `whitespace-nowrap` on each label, timestamp, and `•` separator, and `min-w-0 truncate` on handles. A `justify-between items-center` row without `flex-wrap` squeezes its groups on narrow screens and splits labels from values mid-phrase. Full rules: section 9 of `.agents/rules/design-spec.md`.
+

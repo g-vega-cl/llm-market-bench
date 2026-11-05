@@ -43,14 +43,14 @@ function AnsweredTurnView({
 
     return (
         <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-1.5 text-xs">
-            <div className="flex items-center justify-between text-boxel-muted font-mono text-xs font-normal">
-                <div className="flex items-center gap-1.5">
-                    <span>Latest Answered Turn:</span>
-                    {injectedTime && <span>{injectedTime}</span>}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-boxel-muted font-mono text-xs font-normal">
+                <div className="flex flex-wrap items-baseline gap-x-2 min-w-0">
+                    <span className="whitespace-nowrap">Latest Answered Turn:</span>
+                    {injectedTime && <span className="whitespace-nowrap">{injectedTime}</span>}
                 </div>
-                <div className="flex items-center gap-1">
-                    <span>@{latestAnswered.display_name}</span>
-                    {createdTime && <span>• {createdTime}</span>}
+                <div className="flex flex-wrap items-baseline gap-x-2 min-w-0">
+                    <span className="min-w-0 truncate">@{latestAnswered.display_name}</span>
+                    {createdTime && <span className="whitespace-nowrap">• {createdTime}</span>}
                 </div>
             </div>
             <div className="font-mono text-boxel-ink text-xs">

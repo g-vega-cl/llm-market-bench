@@ -17,6 +17,10 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
+- [ ] - Benchify: I still see a flashing error when accessing a page sometimes. Set up PostHog so these errors show up there.
+- [ ] - Benchify: refresh data on window focus.
+- [ ] - Benchify: text is horribly positioned on mobile (e.g. "Latest Answered Turn: 11:50 AM ET" and "@g.vega.cl • 11:48 AM ET" labels). What rules do we need to add so this never happens again?
+- [ ] - Benchify: I asked the main homepage chat something and it answered with stale data (Fed's April 29, 2026 decision as the "immediate catalyst", December 2025 hold, P/E 28.65 / forward 20.45). Is it even anchored in the latest data?
 
 ### Marketing & Building in Public
 
@@ -36,13 +40,13 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
  - Not worth it considering how I can do local autoresearch passes now.
 - [ ] - benchify: fine tune the autoresearcher rather than the model?
-- [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
+- [x] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
  - So allow hold? improve the confidence number?
 
 ### Portfolio & Market Execution
 
-- [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
- - [ ] - Do automatically for portfolios sitting on cash, daily, simulate as if 80% of unused cash went to $SGOV. Is it even worth it? Not really since we expect portfolios to use most of their cash and the whole point is investing. Let's discuss
+- [p] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
+ - [p] - Do automatically for portfolios sitting on cash, daily, simulate as if 80% of unused cash went to $SGOV. Is it even worth it? Not really since we expect portfolios to use most of their cash and the whole point is investing. Let's discuss
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
  - This is kindof part of the pivot I'm looking to do, maybe a different category?
 
@@ -50,6 +54,7 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
+- [ ] - Benchify: scrape news from all time (historical backfill).
 - [ ] - Benchify: research every stock/sector mentioned in newsletters individually and decide if it would be worth investing in it. Save all these research reports in a DB where users could "look up all information about X company"
 
 ---
@@ -99,6 +104,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: market data free APIs?
 - [ ] - Benchify: free APIs to the LLMs chat?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
+- [ ] - Benchify: build your AI trading strategy online (agobuilder.com, switchmarkets.com?)
+  - [ ] - Kind of like a visual Unsloth dashboard?
 - [ ] - Benchify: So many posts like this. https://www.reddit.com/r/ai_trading/s/P9KnfLpbAV There must be a better way
 
 ### Gamifying
@@ -122,6 +129,7 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
 - [ ] - Strata + upwork
+- [ ] - Other: build my own job applier/aggregator.
 - [ ] - Idea: A article site like medium or dev.to but it allows for html canvasses (AI native)
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
   - same with text

@@ -43,6 +43,15 @@ The core portfolio auto-research pipeline is located in `apps/engine/autoresearc
   - `query_past_research_memories(track_id, limit)`: Callable tool allowing the portfolio meta-researcher to pull historical hypothesis records on demand.
   - For `track_claude` (the sole track executing skeptical verification), `researcher.py` provides the optional `inspect_verifier_rules_and_rejections` tool inside `run_tool_loop` (see [[concepts/verifier-bypass]]).
 
+## Predictor-Track Baseline Guard
+
+The two predictor loops — Daily SPY (`tasks/daily_autoresearch.py`) and Sector (`tasks/predictor_autoresearch.py`) — no longer scan for a raw maximum stored score when they look for the variant to compare against. Both call `select_baseline_candidate(variants, exclude_tag)` from `apps/engine/core/conviction_scoring.py`, which:
+
+- skips any variant whose `metrics.predictions_evaluated` is below `MIN_BASELINE_SAMPLE = 5` (a single lucky call near 98/100 would otherwise become an unreachable ceiling and force a revert every week), and
+- shrinks each surviving candidate's stored score toward a neutral 50 prior with `shrunk_baseline_score(score, n) = 50 + (score − 50) · n/(n + 10)`, so five calls keep a third of their apparent edge and twenty keep two thirds; a missing sample count shrinks fully to 50.
+
+The parent/active tag is always excluded from its own comparison set, and when no variant clears the guard the loop falls back to the parent prompt's score. Full derivation lives in [[concepts/conviction-points]]. Stored historical scores must be consistent with the current formula for this comparison to be meaningful; `apps/engine/scripts/backfill_conviction_scores.py` rewrites row-level `conviction_score` values and per-experiment metrics for the daily and sector prompts (dry run by default, `--apply` to write), matching predictions by prompt tag with a track-scoped evaluation-window fallback and excluding backtest rows.
+
 ## Portfolio Evaluation Math (Unified Risk-Adjusted Z-Score Model)
 
 Portfolio prompt variants are evaluated weekly using the Unified Risk-Adjusted Z-Score, normalized by weekly effective volatility (see [[concepts/risk-adjusted-z-score]]):
@@ -83,10 +92,12 @@ Early August 2026 variants (`v20260809-221804` in `track_default` and `v20260816
 
 - [[concepts/risk-adjusted-z-score]]
 - [[entities/autoresearch-arena]]
+- [[concepts/conviction-points]]
 - [[concepts/auto-research-prompt-improver]]
 - [[concepts/multi-track-autoresearch]]
 - [[concepts/pending-settlement-state]]
 - [[concepts/prompt-experiment-lifecycle]]
 - [[concepts/verifier-bypass]]
 - [[entities/daily-market-predictor]]
+- [[entities/sector-predictor-arena]]
 - [[entities/pipeline]]

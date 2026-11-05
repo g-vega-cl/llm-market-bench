@@ -317,7 +317,7 @@ async def test_predictor_autoresearch_ratchet_success(mock_get_gemini):
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
             "prompt_content": "BASELINE_PROMPT_CONTENT",
             "status": "baseline",
-            "metrics": {"score": 80.0},
+            "metrics": {"score": 80.0, "predictions_evaluated": 20},
         },
         mock_active_prompt[0],
     ]
@@ -434,7 +434,7 @@ async def test_predictor_autoresearch_ratchet_revert(mock_get_gemini):
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
             "prompt_content": "BASELINE_PROMPT_CONTENT",
             "status": "baseline",
-            "metrics": {"score": 80.0},
+            "metrics": {"score": 80.0, "predictions_evaluated": 20},
         },
         mock_active_prompt[0],
     ]
@@ -541,7 +541,7 @@ async def test_predictor_autoresearch_always_inserts_active(mock_get_gemini):
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
             "prompt_content": "IDENTICAL_CONTENT",
             "status": "baseline",
-            "metrics": {"score": 80.0},
+            "metrics": {"score": 80.0, "predictions_evaluated": 20},
         },
         mock_active_prompt[0],
     ]

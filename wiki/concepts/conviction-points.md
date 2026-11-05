@@ -54,6 +54,15 @@ Mean CP across evaluated predictions feeds three derived values:
 
 An empty or unscored record set resolves to neutral 50, never zero.
 
+## Ratchet Baseline Guard
+
+The weekly ratchet compares the active prompt's live score against the highest stored variant score, so a single lucky week can pin the baseline above anything the model can reproduce and force a revert every cycle. Two guards prevent that:
+
+- `MIN_BASELINE_SAMPLE = 5` — a variant must carry at least five evaluated predictions before it may set the baseline.
+- `shrunk_baseline_score(score, n)` — the candidate ceiling is shrunk toward a neutral 50 prior by $n/(n+10)$. Five calls keep only a third of their apparent edge; twenty keep two thirds.
+
+Both live in `core/conviction_scoring.py` and are applied by `select_baseline_candidate()`, which both autoresearch loops call.
+
 ## Where It Applies
 
 | Surface | Persisted field | Composite weight |
@@ -83,10 +92,13 @@ The engine persists the raw per-prediction log-score in `conviction_score`; the 
 
 Scores drop broadly when this ships. A model that was paid for stated confidence regardless of accuracy — or that was only lightly docked by a `mean_brier × 50` term — loses that subsidy. That is the metric working, not a regression.
 
+Stored scores must be rewritten once, because the ratchet compares against them. `apps/engine/scripts/backfill_conviction_scores.py` recomputes `conviction_score` on every evaluated row and rewrites the daily and sector `prompt_experiments.metrics` under the new formula. It was run against the archive database on 2026-11-05; rerun it with `--apply` after any future scoring change that invalidates stored history.
+
 ## Source
 
 - `apps/engine/core/conviction_scoring.py` — scoring primitive and bundle
 - `apps/engine/core/test_conviction_scoring.py` — properness sweep and anti-degeneracy test
+- `apps/engine/scripts/backfill_conviction_scores.py` — one-shot row and experiment-metric rewrite
 - `apps/web/src/shared/conviction.ts` — presentation aggregation helpers
 - `supabase/migrations/20261105000000_add_conviction_scoring.sql` — columns and leaderboard RPC
 

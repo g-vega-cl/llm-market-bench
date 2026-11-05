@@ -25,6 +25,8 @@ from core.conviction_scoring import (
     conviction_normalized,
     conviction_points,
     mean_conviction_points,
+    select_baseline_candidate,
+    shrunk_baseline_score,
     shrunk_rank_score,
     tail_gap,
 )
@@ -215,3 +217,46 @@ class TestTailGap:
         # Both 90.0% calls are in the tail (claimed 0.90, realised 0.50 => +0.40).
         # The 89.9% call must be excluded from both the claim and the hit rate.
         assert tail_gap(records) == pytest.approx(0.40, abs=1e-9)
+
+
+class TestBaselineSelection:
+    """A tiny fluke sample must not become an unreachable ratchet ceiling."""
+
+    def test_single_lucky_call_cannot_set_the_baseline(self):
+        variants = [
+            {"variant_tag": "active", "metrics": {"score": 40.0, "predictions_evaluated": 20}},
+            {"variant_tag": "lucky", "metrics": {"score": 98.7, "predictions_evaluated": 1}},
+            {"variant_tag": "solid", "metrics": {"score": 62.0, "predictions_evaluated": 8}},
+        ]
+
+        best = select_baseline_candidate(variants, exclude_tag="active")
+
+        assert best is not None
+        assert best[1]["variant_tag"] == "solid"
+        # 62 shrunk by 8/(8+10) toward the neutral 50 prior.
+        assert best[0] == pytest.approx(55.333, abs=1e-3)
+
+    def test_active_variant_is_excluded(self):
+        variants = [{"variant_tag": "active", "metrics": {"score": 90.0, "predictions_evaluated": 10}}]
+        assert select_baseline_candidate(variants, exclude_tag="active") is None
+
+    def test_missing_sample_count_shrinks_to_neutral(self):
+        # An unknown sample size is no evidence, so it cannot pin the ratchet.
+        variants = [{"variant_tag": "legacy", "metrics": {"score": 55.0}}]
+        best = select_baseline_candidate(variants, exclude_tag="active")
+        assert best is not None and best[0] == 50.0
+
+    def test_no_credible_candidate_means_no_ceiling(self):
+        variants = [
+            {"variant_tag": "a", "metrics": {"score": 99.0, "predictions_evaluated": 1}},
+            {"variant_tag": "b", "metrics": {"score": 97.0, "predictions_evaluated": 2}},
+        ]
+        assert select_baseline_candidate(variants, exclude_tag="active") is None
+
+    def test_shrinkage_keeps_small_samples_below_large_ones(self):
+        small = shrunk_baseline_score(80.0, n=5)
+        large = shrunk_baseline_score(80.0, n=40)
+
+        assert small < large < 80.0
+        assert small == pytest.approx(60.0, abs=1e-9)
+        assert shrunk_baseline_score(80.0, n=0) == 50.0

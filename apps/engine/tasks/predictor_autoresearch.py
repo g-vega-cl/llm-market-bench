@@ -15,7 +15,7 @@ from core.config import (
     OPENAI_MODEL,
     logger,
 )
-from core.conviction_scoring import conviction_bundle
+from core.conviction_scoring import conviction_bundle, select_baseline_candidate
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_gemini_client
 from core.llm.predictor_prompts import (
@@ -367,15 +367,11 @@ async def run_predictor_autoresearch_for_model(
     baseline_tag = parent_tag
     baseline_content = current_prompt
 
-    for v in all_variants.data or []:
-        if v["variant_tag"] == parent_tag:
-            continue
-        m = v.get("metrics") or {}
-        score = m.get("score")
-        if score is not None and score > baseline_score:
-            baseline_score = score
-            baseline_tag = v["variant_tag"]
-            baseline_content = v["prompt_content"]
+    best = select_baseline_candidate(all_variants.data or [], parent_tag)
+    if best is not None:
+        baseline_score, baseline_variant = best
+        baseline_tag = baseline_variant["variant_tag"]
+        baseline_content = baseline_variant["prompt_content"]
 
     is_baseline_beat = (baseline_score == -1.0) or (weekly_score >= baseline_score)
 

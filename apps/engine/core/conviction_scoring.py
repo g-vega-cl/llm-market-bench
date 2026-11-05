@@ -39,6 +39,12 @@ TAIL_CONFIDENCE_THRESHOLD = 90.0
 # Pseudo-count for Bayesian shrinkage of small samples toward neutral.
 SHRINKAGE_K = 10.0
 
+# A variant must have at least this many evaluated predictions before it may set
+# the ratchet baseline. Without it, a single lucky call (e.g. one correct 99%
+# prediction scores ~98/100) becomes an unreachable ceiling and the autoresearcher
+# reverts every week instead of evolving.
+MIN_BASELINE_SAMPLE = 5
+
 # CP magnitude that maps to ~76 on the 0-100 normalised scale.
 NORM_SCALE = 50.0
 
@@ -115,6 +121,50 @@ def shrunk_rank_score(mean_cp: float, n: int) -> float:
     if n <= 0:
         return 0.0
     return round(mean_cp * n / (n + SHRINKAGE_K), 4)
+
+
+def shrunk_baseline_score(score: float, n: int, prior: float = 50.0) -> float:
+    """Shrink a historical score toward a neutral prior using its sample size.
+
+    A five-call week that happened to go 5/5 scores in the high 70s and would pin
+    the ratchet above anything the model can reproduce over a trailing month.
+    ``n / (n + SHRINKAGE_K)`` keeps only the evidence-backed portion of the edge:
+    half of it at 10 calls, two thirds at 20.
+    """
+    if n <= 0:
+        return prior
+    return prior + (score - prior) * n / (n + SHRINKAGE_K)
+
+
+def select_baseline_candidate(
+    variants: list[dict[str, Any]],
+    exclude_tag: str | None,
+    min_sample: int = MIN_BASELINE_SAMPLE,
+) -> tuple[float, dict[str, Any]] | None:
+    """Pick the variant that should set the ratchet baseline.
+
+    Returns ``(ceiling, variant)`` where the ceiling is the variant's score shrunk
+    toward neutral by its sample size. Variants with fewer than ``min_sample``
+    evaluated predictions are ignored: a single lucky call scores near 100 and
+    would otherwise become an unreachable ceiling, forcing the ratchet to revert
+    every week instead of evolving.
+    """
+    best: tuple[float, dict[str, Any]] | None = None
+    for variant in variants:
+        if variant.get("variant_tag") == exclude_tag:
+            continue
+        metrics = variant.get("metrics") or {}
+        score = metrics.get("score")
+        if not isinstance(score, (int, float)):
+            continue
+        n = metrics.get("predictions_evaluated")
+        if isinstance(n, (int, float)) and n < min_sample:
+            continue
+        sample = int(n) if isinstance(n, (int, float)) else 0
+        ceiling = shrunk_baseline_score(float(score), sample)
+        if best is None or ceiling > best[0]:
+            best = (ceiling, variant)
+    return best
 
 
 def tail_gap(records: list[dict[str, Any]] | None) -> float | None:

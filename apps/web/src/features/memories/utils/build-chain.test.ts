@@ -44,4 +44,50 @@ describe('buildChain', () => {
         // Even when selecting C, it should traverse up to A, then collect all descendants
         expect(resultC.chain.map((m) => m.id)).toEqual(['A', 'B', 'C', 'D']);
     });
+
+    it('should calculate elapsed times and model process attributions', () => {
+        const memories = [
+            {
+                id: 'm1',
+                content: 'Catalyst event',
+                parent_id: null,
+                created_at: '2026-05-01T10:00:00Z',
+                metadata: {
+                    participating_agents: ['Claude-3-5-Sonnet', 'Gemini-1-5-Pro'],
+                },
+            },
+            {
+                id: 'm2',
+                content: 'Update event',
+                parent_id: 'm1',
+                relationship_type: 'UPDATE',
+                created_at: '2026-05-03T14:30:00Z',
+                metadata: {
+                    models_involved: ['DeepSeek-V3'],
+                    debate: {
+                        adversary_model: 'Claude-3-5-Haiku',
+                    },
+                },
+            },
+        ] as unknown as Memory[];
+
+        const result = buildChain('m2', memories);
+        expect(result.chain).toHaveLength(2);
+
+        // m1 (Root)
+        const root = result.chain[0];
+        expect(root.isRoot).toBe(true);
+        expect(root.elapsedFromRoot).toBe('Origin Catalyst');
+        expect(root.modelsInvolved).toEqual(['Claude-3-5-Sonnet', 'Gemini-1-5-Pro']);
+        expect(root.directSuccessorIds).toContain('m2');
+
+        // m2 (Child)
+        const child = result.chain[1];
+        expect(child.isRoot).toBe(false);
+        expect(child.elapsedFromRoot).toBe('+2d 5h later');
+        expect(child.elapsedFromPreceding).toBe('+2d 5h later');
+        expect(child.modelsInvolved).toContain('DeepSeek-V3');
+        expect(child.modelsInvolved).toContain('Claude-3-5-Haiku');
+        expect(child.directPredecessorId).toBe('m1');
+    });
 });

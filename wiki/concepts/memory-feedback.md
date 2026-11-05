@@ -125,7 +125,7 @@ An offline weekly consolidation pipeline groups overlapping memories to compound
 5. **Execution Environment**: Runs every Friday at 16:00 EST (21:00 UTC) via `.github/workflows/audit.yml` (`python main.py cleanup`), requiring `DEEPSEEK_API_KEY` for synthesis and `GEMINI_API_KEY` for vector embedding generation.
 
 
-### Event Chain Graph Traversal
+### Event Chain Graph Traversal & Thought Journey Timeline
 
 The Event Chain feature visualizes the full geopolitical timeline of a memory by reconstructing its causal tree. When displaying an event chain for a specific memory:
 1. **Database Traversal (RPC)**: Rather than executing slow client-side pagination loops, the system invokes the database function `get_memory_chain` via the Supabase API.
@@ -133,7 +133,35 @@ The Event Chain feature visualizes the full geopolitical timeline of a memory by
 3. **Chronological Assembly & Pre-Formatting**: The resulting subset of connected memories is sorted chronologically by `created_at` in the server loader via `buildChain`. To satisfy the **Zero-Date Frontend Architecture**, dates are pre-formatted on the server using centralized timezone-locked helper utilities (`formatEasternDateTimeWithYear`) to lock the timezone output (Eastern Time `America/New_York`) and normalize whitespaces.
 4. **Hydration-Safe Rendering**: The client component (`EventChainPage`) renders the static pre-formatted date string directly without executing any runtime browser-side Date parses, preventing client-server timezone disparities and narrow non-breaking space warnings (React Error #418).
 
-This architecture ensures optimal edge serverless TTFB (<5ms database select) and guarantees 100% flawless SSR hydration performance.
+#### Chain Annotation (`buildChain`)
+
+`buildChain(memoryId, memories)` in `apps/web/src/features/memories/utils/build-chain.ts` returns `{ chain, targetMemory }` where each `ChainMemory` node is annotated for timeline rendering. `ChainMemory` is a standalone interface (it no longer extends the database `Memory` type) carrying `id`, `content`, `created_at`, `formattedDate`, `isRoot`, `elapsedFromRoot`, `elapsedFromPreceding`, `modelsInvolved`, `directPredecessorId`, `directSuccessorIds`, plus the passthrough `status`, `parent_id`, `relationship_type`, `relevance_score`, `memory_type`, `importance_score`, `target_date`, and `metadata` fields.
+
+- **Elapsed durations** — `formatElapsedDuration(diffMs)` renders `0m later`, `<1m later`, `+Nm later`, `+Nh Nm later`, or `+Nd Nh later`. The root node is stamped `Origin Catalyst` for `elapsedFromRoot` and `Origin` for `elapsedFromPreceding`; every other node gets the delta from the root and from its immediately preceding chain node.
+- **Model attribution** — `extractModelsInvolved(metadata)` unions `metadata.models_involved`, `metadata.participating_agents`, `metadata.model_name`, `metadata.debate.adversary_model`, and `metadata.debate.arbiter_model` into a deduplicated string list, so the red-team challenger appears alongside the synthesizing models.
+- **Graph edges** — `directPredecessorId` is the node's `parent_id`; `directSuccessorIds` lists every chain node whose `parent_id` points at it.
+- **Target resolution** — `targetMemory` is the annotated node from the chain when the selected id is present, otherwise a synthesized annotation of the raw row (root-stamped, empty successors).
+
+#### Thought Journey Timeline UI
+
+`EventChainPage` (`apps/web/src/features/memories/pages/EventChainPage.tsx`) renders the chain as a vertical **Thought Journey & Event Chain** timeline rather than a flat list:
+
+- **Step headers** — each card carries a solid monospace step chip: `STEP 1 • CATALYST ORIGIN` for the root, `STEP n • RESOLUTION` for the final node of a multi-node chain, and `STEP n` otherwise.
+- **Directional connectors** — between consecutive steps a centered connector renders a `↓` glyph, a solid relationship badge colored by `getRelationshipColor` (`RESOLUTION` → success, `REVERSAL` → warning, `UPDATE` → info, default neutral), and the `elapsedFromPreceding` duration.
+- **Metadata ribbon** — type badge (`getTypeBadgeColor`), `$TICKER` badge, impact badge (`getImpactBadgeColor`), and an `★ N/10` importance score, with the pre-formatted Eastern date and `elapsedFromRoot` on the right.
+- **Focus banner** — the selected memory renders an emerald `← You selected this event` strip and a ringed card border.
+- **Model process section** — `Models Involved:` renders one `🤖 <model>` outline badge per attributed model; `metadata.debate` renders a `🛡️ Red-Team Stress-Test` panel with the challenger model, counter-thesis, pre-mortem failure mode, and key risks list; `metadata.scenarios` renders a two-column `Probability Scenarios:` grid of header/percentage/outcome tiles.
+- **Chain switcher** — a `Card variant="glass"` bar above the timeline hosts `ChainMemorySwitcher`.
+- **Chat interrogation footer** — an `💬 Interrogate Chain in AI Chat →` button deep-links to `/chat` with a pre-composed `q` search param summarizing the first and last chain events plus the primary ticker, alongside the `Back to All Memories` action.
+
+#### Chain Switcher (`ChainMemorySwitcher`)
+
+`apps/web/src/features/memories/components/ChainMemorySwitcher.tsx` lets a viewer jump between causal chains without returning to the memories index:
+
+- **Featured ticker pills** — `$TSLA`, `$NVDA`, `$SPY`, `$AAPL`, `$Macro` ghost buttons that seed the search box and immediately run the query.
+- **Search input** — debounce-free `onChange` search with a leading magnifier icon and a trailing `LoadingSpinner` while in flight; the `searchFn` prop is injected (the page passes `searchMemories`), keeping the component hermetic for tests.
+- **Results dropdown** — an absolutely positioned panel listing up to 10 matches, each showing the `$TICKER` badge, the memory date, a two-line clamped content preview, and a `CURRENT` marker for the active chain. Outside `mousedown` closes the panel.
+- **Navigation** — selecting a result calls `navigate({ to: '/memories/chain/$memoryId', params: { memoryId } })`, skipping navigation when the selected id is already current.
 
 
 ### Memory-to-Source Citations (Lazy Newsletter Snapshots Fetching)

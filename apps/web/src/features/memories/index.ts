@@ -15,6 +15,7 @@ export {
     searchMemories,
 } from './api/fetch-memories';
 // Re-export key components for use in other features if needed
+export { ChainMemorySwitcher } from './components/ChainMemorySwitcher';
 export { MemoriesList } from './components/MemoriesList';
 export { MemoryCard } from './components/MemoryCard';
 export { MemoryFlow } from './components/MemoryFlow';
@@ -22,3 +23,4 @@ export { EventChainPage } from './pages/EventChainPage';
 export { MemoriesPage } from './pages/MemoriesPage';
 export { eventChainQueryKeys, memoriesQueryKeys } from './queries/keys';
 export { eventChainQueries, memoriesQueries } from './queries/options';
+export { buildChain } from './utils/build-chain';

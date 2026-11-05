@@ -4,11 +4,12 @@ import type * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventChainPage } from './EventChainPage';
 
-// Mock TanStack Router's Link
+// Mock TanStack Router's Link and useNavigate
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
         <a href={to}>{children}</a>
     ),
+    useNavigate: () => vi.fn(),
 }));
 
 const mockFocusMemory = {
@@ -16,30 +17,43 @@ const mockFocusMemory = {
     content: 'Focus memory content',
     created_at: '2026-05-25T12:00:00.000Z',
     formattedDate: 'May 25, 2026, 12:00 PM ET',
-    metadata: { type: 'consensus_event' },
+    elapsedFromRoot: 'Origin Catalyst',
+    elapsedFromPreceding: 'Origin',
+    isRoot: true,
+    modelsInvolved: ['Claude-3-5-Sonnet', 'Gemini-1-5-Pro'],
+    metadata: {
+        type: 'consensus_event',
+        ticker: 'TSLA',
+        impact: 'BULLISH',
+    },
 };
 
 const mockFullChain = {
     chain: [
-        {
-            id: 'm1',
-            content: 'Focus memory content',
-            created_at: '2026-05-25T12:00:00.000Z',
-            formattedDate: 'May 25, 2026, 12:00 PM ET',
-            metadata: { type: 'consensus_event' },
-        },
+        mockFocusMemory,
         {
             id: 'm2',
             content: 'Next memory content',
-            created_at: '2026-05-26T12:00:00.000Z',
-            formattedDate: 'May 26, 2026, 12:00 PM ET',
-            metadata: { type: 'post_mortem' },
+            created_at: '2026-05-26T14:30:00.000Z',
+            formattedDate: 'May 26, 2026, 02:30 PM ET',
+            elapsedFromRoot: '+1d 2h later',
+            elapsedFromPreceding: '+1d 2h later',
+            isRoot: false,
+            relationship_type: 'UPDATE',
+            modelsInvolved: ['DeepSeek-V3'],
+            metadata: {
+                type: 'post_mortem',
+                debate: {
+                    adversary_model: 'Claude-3-5-Haiku',
+                    counter_thesis: 'Supply chain headwinds persist.',
+                },
+            },
         },
     ],
     targetMemory: mockFocusMemory,
 };
 
-describe('EventChainPage - Loading Indicator', () => {
+describe('EventChainPage', () => {
     let queryClient: QueryClient;
 
     beforeEach(() => {
@@ -94,5 +108,38 @@ describe('EventChainPage - Loading Indicator', () => {
         // 5. Loading indicator should be gone
         expect(screen.queryByText(/Loading other memories in this chain/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/Loading chain/i)).not.toBeInTheDocument();
+    });
+
+    it('should render thought journey timeline with model badges, dates, and directional relationship connector', async () => {
+        const fetchFn = vi.fn().mockResolvedValue(mockFullChain);
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <EventChainPage memoryId="m1" initialData={mockFullChain} fetchFn={fetchFn} />
+            </QueryClientProvider>,
+        );
+
+        // Step headers
+        expect(screen.getByText(/STEP 1 • CATALYST ORIGIN/i)).toBeInTheDocument();
+        expect(screen.getByText(/STEP 2/i)).toBeInTheDocument();
+
+        // Focus indicator
+        expect(screen.getByText(/You selected this event/i)).toBeInTheDocument();
+
+        // Model Badges
+        expect(screen.getByText(/🤖 Claude-3-5-Sonnet/i)).toBeInTheDocument();
+        expect(screen.getByText(/🤖 Gemini-1-5-Pro/i)).toBeInTheDocument();
+        expect(screen.getByText(/🤖 DeepSeek-V3/i)).toBeInTheDocument();
+
+        // Directional relationship badge
+        expect(screen.getByText('UPDATE')).toBeInTheDocument();
+        expect(screen.getByText('+1d 2h later')).toBeInTheDocument();
+
+        // Debate details
+        expect(screen.getByText(/Challenger: Claude-3-5-Haiku/i)).toBeInTheDocument();
+        expect(screen.getByText(/Supply chain headwinds persist/i)).toBeInTheDocument();
+
+        // Chat interrogation button
+        expect(screen.getByText(/Interrogate Chain in AI Chat →/i)).toBeInTheDocument();
     });
 });

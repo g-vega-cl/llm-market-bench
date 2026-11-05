@@ -52,6 +52,18 @@ The two predictor loops — Daily SPY (`tasks/daily_autoresearch.py`) and Sector
 
 The parent/active tag is always excluded from its own comparison set, and when no variant clears the guard the loop falls back to the parent prompt's score. Full derivation lives in [[concepts/conviction-points]]. Stored historical scores must be consistent with the current formula for this comparison to be meaningful; `apps/engine/scripts/backfill_conviction_scores.py` rewrites row-level `conviction_score` values and per-experiment metrics for the daily and sector prompts (dry run by default, `--apply` to write), matching predictions by prompt tag with a track-scoped evaluation-window fallback and excluding backtest rows.
 
+### Shared Backfill & Realignment Core (`core/conviction_backfill.py`)
+
+The one-shot backfill CLI (`apps/engine/scripts/backfill_conviction_scores.py`) and the sector realignment task (`apps/engine/tasks/realign_predictor_baseline.py`) share a single implementation module, `apps/engine/core/conviction_backfill.py`, so the two entry points cannot drift apart. It provides:
+
+- `recompute_daily_conviction(rows)` / `recompute_sector_conviction(rows)` — re-score evaluated prediction rows with `conviction_points()`. The sector variant prices the best leg against `confidence` and the worst leg against `worst_confidence` only when that column is present, averaging the legs; legacy rows without a stated worst-pick probability skip that leg rather than borrowing the best-pick confidence.
+- `match_predictions_by_tag(experiments, predictions, tag_key, date_key, model_key)` — attributes evaluated predictions to the variant that produced them. An exact prompt tag wins; when a variant has no tagged rows (older rows predate the tag column), it falls back to the variant's `week_start`/`week_end` evaluation window, scoped to the experiment's model track so one model's predictions cannot score another model's prompt. `track_default` is treated as a shared scope and pools models. Backtest rows (`is_backtest_tag`) are always excluded from the live ratchet.
+- `recompute_experiment_metrics(experiments, predictions, tag_key, calculator)` — produces a per-experiment report carrying `old_score`, `new_metrics`, and `prediction_count`, skipping backtest experiments.
+- `propose_track_realignment(report)` — groups the report by `track_id` and picks each track's winner through `select_baseline_candidate` (active variant excluded, minimum-sample and shrinkage guards applied). It returns one proposal per experiment carrying the recomputed metrics plus optional `status` (`baseline` / `saved`) and `parent_tag` updates, so callers write metrics and status in a single update.
+- `summarize_tracks(proposals)` — condenses proposals into a per-track `{baseline_tag, baseline_score, active_tag}` summary.
+
+Because realignment is per track, a strong prompt in one model's lineage can never set another model's baseline, and a single-sample fluke is never promoted.
+
 ## Portfolio Evaluation Math (Unified Risk-Adjusted Z-Score Model)
 
 Portfolio prompt variants are evaluated weekly using the Unified Risk-Adjusted Z-Score, normalized by weekly effective volatility (see [[concepts/risk-adjusted-z-score]]):

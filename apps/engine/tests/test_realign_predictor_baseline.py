@@ -1,189 +1,208 @@
-from unittest.mock import MagicMock
+"""Tests for per-track sector baseline realignment."""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
 
 import pytest
 
 from tasks.realign_predictor_baseline import realign_predictor_baselines
 
 
+class FakeQuery:
+    def __init__(self, store: dict[str, list[dict]], table: str):
+        self._store = store
+        self._table = table
+        self._filters: dict[str, object] = {}
+        self._payload: dict | None = None
+
+    def select(self, *args, **kwargs):
+        return self
+
+    def eq(self, column, value):
+        self._filters[column] = value
+        return self
+
+    def order(self, *args, **kwargs):
+        return self
+
+    def update(self, payload):
+        self._payload = payload
+        return self
+
+    def execute(self):
+        rows = self._store.get(self._table, [])
+        matches = [r for r in rows if all(r.get(k) == v for k, v in self._filters.items())]
+        if self._payload is not None:
+            for row in matches:
+                row.update(self._payload)
+            return SimpleNamespace(data=matches)
+        return SimpleNamespace(data=matches)
+
+
+class FakeClient:
+    def __init__(self, store: dict[str, list[dict]]):
+        self.store = store
+
+    def table(self, name: str):
+        return FakeQuery(self.store, name)
+
+
+def _prediction(tag: str, model: str, correct_flags: list[bool], confidence: float = 60.0) -> list[dict]:
+    return [
+        {
+            "id": f"{tag}-{index}",
+            "prompt_tag": tag,
+            "model_name": model,
+            "target_date": "2026-10-05",
+            "status": "evaluated",
+            "confidence": confidence,
+            "sector_percentile_score": 90.0 if correct else 10.0,
+            "pair_percentile_score": 90.0 if correct else 10.0,
+            "worst_sector_percentile_score": None,
+            "sector_sp_diff": 0.0,
+        }
+        for index, correct in enumerate(correct_flags)
+    ]
+
+
 @pytest.fixture
-def mock_supabase_data():
+def store() -> dict[str, list[dict]]:
     experiments = [
+        # Track A: an old baseline, a better credible variant, a one-sample fluke, and the active prompt.
         {
-            "id": "exp-1",
-            "variant_tag": "sector-pred-baseline",
+            "id": "a-old",
+            "variant_tag": "sector-a-old",
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
-            "week_start": "2026-06-07",
-            "week_end": "2026-06-14",
-            "status": "saved",
-            "metrics": {"score": 52.0085},
-            "parent_tag": None,
-        },
-        {
-            "id": "exp-2",
-            "variant_tag": "sector-pred-c60dab58",
-            "prompt_name": "SECTOR_PREDICTOR_PROMPT",
-            "week_start": "2026-07-19",
-            "week_end": "2026-07-26",
+            "track_id": "model-a",
             "status": "baseline",
-            "metrics": {"score": 53.6723},
-            "parent_tag": "sector-pred-baseline",
+            "week_start": "2026-10-01",
+            "week_end": "2026-10-10",
+            "metrics": {"score": 40.0, "predictions_evaluated": 10},
+            "parent_tag": None,
+            "created_at": "2026-10-01T00:00:00Z",
         },
         {
-            "id": "exp-3",
-            "variant_tag": "sector-pred-c6d96ec1",
+            "id": "a-best",
+            "variant_tag": "sector-a-best",
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
-            "week_start": "2026-08-17",
-            "week_end": "2026-08-24",
+            "track_id": "model-a",
             "status": "discarded",
-            "metrics": {"score": 49.7945},
-            "parent_tag": "sector-pred-c60dab58",
+            "week_start": "2026-10-01",
+            "week_end": "2026-10-10",
+            "metrics": {"score": 45.0, "predictions_evaluated": 10},
+            "parent_tag": "sector-a-old",
+            "created_at": "2026-10-02T00:00:00Z",
         },
         {
-            "id": "exp-4",
-            "variant_tag": "sector-pred-eb003dd8",
+            "id": "a-fluke",
+            "variant_tag": "sector-a-fluke",
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
-            "week_start": "2026-09-06",
-            "week_end": "2026-09-13",
+            "track_id": "model-a",
+            "status": "discarded",
+            "week_start": "2026-10-01",
+            "week_end": "2026-10-10",
+            "metrics": {"score": 99.0, "predictions_evaluated": 1},
+            "parent_tag": "sector-a-old",
+            "created_at": "2026-10-03T00:00:00Z",
+        },
+        {
+            "id": "a-active",
+            "variant_tag": "sector-a-active",
+            "prompt_name": "SECTOR_PREDICTOR_PROMPT",
+            "track_id": "model-a",
             "status": "active",
+            "week_start": "2026-10-11",
+            "week_end": "2026-10-18",
             "metrics": {},
-            "parent_tag": "sector-pred-c60dab58",
+            "parent_tag": "sector-a-old",
+            "created_at": "2026-10-11T00:00:00Z",
+        },
+        # Track B: its own baseline must survive even though track A scores higher.
+        {
+            "id": "b-old",
+            "variant_tag": "sector-b-old",
+            "prompt_name": "SECTOR_PREDICTOR_PROMPT",
+            "track_id": "model-b",
+            "status": "baseline",
+            "week_start": "2026-10-01",
+            "week_end": "2026-10-10",
+            "metrics": {"score": 30.0, "predictions_evaluated": 10},
+            "parent_tag": None,
+            "created_at": "2026-10-01T00:00:00Z",
+        },
+        {
+            "id": "b-active",
+            "variant_tag": "sector-b-active",
+            "prompt_name": "SECTOR_PREDICTOR_PROMPT",
+            "track_id": "model-b",
+            "status": "active",
+            "week_start": "2026-10-11",
+            "week_end": "2026-10-18",
+            "metrics": {},
+            "parent_tag": "sector-b-old",
+            "created_at": "2026-10-11T00:00:00Z",
         },
     ]
-
-    predictions = [
-        # Predictions generated by sector-pred-baseline (fallback because window has no predictions)
-        {
-            "id": "pred-0",
-            "prompt_tag": "sector-pred-baseline",
-            "prediction_date": "2026-06-14",
-            "target_date": "2026-06-21",
-            "status": "evaluated",
-            "sector_percentile_score": 60.0,
-            "worst_sector_percentile_score": None,
-            "pair_percentile_score": 60.0,
-            "brier_score": 0.25,
-            "sector_sp_diff": 0.0,
-        },
-        # Predictions maturing during c60dab58's window (2026-07-19 to 2026-07-26)
-        {
-            "id": "pred-1",
-            "prompt_tag": "sector-pred-c60dab58",
-            "prediction_date": "2026-07-19",
-            "target_date": "2026-07-26",
-            "status": "evaluated",
-            "sector_percentile_score": 50.0,
-            "worst_sector_percentile_score": None,
-            "pair_percentile_score": 50.0,
-            "brier_score": 0.25,
-            "sector_sp_diff": 0.0,
-        },
-        # Predictions maturing during c6d96ec1's window (2026-08-17 to 2026-08-24)
-        {
-            "id": "pred-2",
-            "prompt_tag": "sector-pred-c6d96ec1",
-            "prediction_date": "2026-08-17",
-            "target_date": "2026-08-24",
-            "status": "evaluated",
-            "sector_percentile_score": 80.0,
-            "worst_sector_percentile_score": 80.0,
-            "pair_percentile_score": 80.0,
-            "brier_score": 0.10,
-            "sector_sp_diff": 2.0,
-        },
-    ]
-    return experiments, predictions
+    predictions = (
+        _prediction("sector-a-old", "model-a", [True, False] * 5)
+        + _prediction("sector-a-best", "model-a", [True] * 5, confidence=75.0)
+        + _prediction("sector-a-fluke", "model-a", [True], confidence=99.0)
+        + _prediction("sector-b-old", "model-b", [True, False] * 5)
+    )
+    return {"prompt_experiments": experiments, "sector_predictions": predictions}
 
 
-def create_mock_supabase_client(experiments, predictions):
-    client = MagicMock()
-
-    class QueryMock:
-        def __init__(self, table_name):
-            self.table_name = table_name
-            self._filters = {}
-            self._updates = None
-
-        def select(self, *args, **kwargs):
-            return self
-
-        def eq(self, col, val):
-            self._filters[col] = val
-            return self
-
-        def order(self, *args, **kwargs):
-            return self
-
-        def update(self, vals):
-            self._updates = vals
-            return self
-
-        def execute(self):
-            res = MagicMock()
-            if self.table_name == "prompt_experiments":
-                if self._updates is not None:
-                    # Apply update in memory
-                    for exp in experiments:
-                        match = True
-                        for k, v in self._filters.items():
-                            if exp.get(k) != v:
-                                match = False
-                                break
-                        if match:
-                            exp.update(self._updates)
-                    res.data = experiments
-                else:
-                    data = [
-                        e
-                        for e in experiments
-                        if e.get("prompt_name") == self._filters.get("prompt_name", e.get("prompt_name"))
-                    ]
-                    res.data = data
-            elif self.table_name == "sector_predictions":
-                res.data = [p for p in predictions if p.get("status") == "evaluated"]
-            return res
-
-    client.table.side_effect = lambda name: QueryMock(name)
-    return client
-
-
-def test_realign_predictor_baselines_dry_run(mock_supabase_data):
-    experiments, predictions = mock_supabase_data
-    client = create_mock_supabase_client(experiments, predictions)
+def test_dry_run_reports_per_track_baselines_without_writing(store):
+    client = FakeClient(store)
 
     result = realign_predictor_baselines(client=client, dry_run=True)
 
     assert result["dry_run"] is True
-    assert result["new_baseline_tag"] == "sector-pred-c6d96ec1"
-    assert result["new_baseline_score"] > 70.0
-    # Dry run should NOT mutate experiments in DB
-    c60 = next(e for e in experiments if e["variant_tag"] == "sector-pred-c60dab58")
-    assert c60["status"] == "baseline"
-    assert c60["metrics"]["score"] == 53.6723
+    assert result["tracks"]["model-a"]["baseline_tag"] == "sector-a-best"
+    assert result["tracks"]["model-b"]["baseline_tag"] == "sector-b-old"
+    # No mutation.
+    old = next(e for e in store["prompt_experiments"] if e["variant_tag"] == "sector-a-old")
+    assert old["status"] == "baseline"
 
 
-def test_realign_predictor_baselines_apply(mock_supabase_data):
-    experiments, predictions = mock_supabase_data
-    client = create_mock_supabase_client(experiments, predictions)
+def test_apply_realigns_each_track_and_repoints_its_active_prompt(store):
+    client = FakeClient(store)
 
-    result = realign_predictor_baselines(client=client, dry_run=False)
+    realign_predictor_baselines(client=client, dry_run=False)
 
-    assert result["dry_run"] is False
-    assert result["new_baseline_tag"] == "sector-pred-c6d96ec1"
+    by_tag = {e["variant_tag"]: e for e in store["prompt_experiments"]}
+    assert by_tag["sector-a-best"]["status"] == "baseline"
+    assert by_tag["sector-a-old"]["status"] == "saved"
+    assert by_tag["sector-a-active"]["parent_tag"] == "sector-a-best"
+    # Track B must not inherit track A's winner.
+    assert by_tag["sector-b-old"]["status"] == "baseline"
+    assert by_tag["sector-b-active"]["parent_tag"] == "sector-b-old"
 
-    # Verify status and scores updated
-    c60 = next(e for e in experiments if e["variant_tag"] == "sector-pred-c60dab58")
-    assert c60["status"] == "saved"
-    # Base: 50, no confidence -> conviction neutral 50.0
-    # 0.90 * 50.0 + 0.10 * 50.0 = 50.0
-    assert c60["metrics"]["score"] == pytest.approx(50.0)
 
-    c6d = next(e for e in experiments if e["variant_tag"] == "sector-pred-c6d96ec1")
-    assert c6d["status"] == "baseline"
-    # Base: 80, Alpha: +2.0 -> accuracy block 82.0, conviction neutral 50.0
-    # 0.90 * 82.0 + 0.10 * 50.0 = 73.8 + 5.0 = 78.8
-    assert c6d["metrics"]["score"] == pytest.approx(78.8)
+def test_apply_never_promotes_a_single_sample_fluke(store):
+    client = FakeClient(store)
 
-    # Verify active prompt parent_tag re-pointed to new baseline
-    eb0 = next(e for e in experiments if e["variant_tag"] == "sector-pred-eb003dd8")
-    assert eb0["parent_tag"] == "sector-pred-c6d96ec1"
-    assert eb0["status"] == "active"
+    realign_predictor_baselines(client=client, dry_run=False)
+
+    by_tag = {e["variant_tag"]: e for e in store["prompt_experiments"]}
+    assert by_tag["sector-a-fluke"]["status"] == "discarded"
+    assert by_tag["sector-a-fluke"]["metrics"]["score"] > 80.0
+
+
+def test_apply_writes_full_metrics_not_just_the_score(store):
+    client = FakeClient(store)
+
+    realign_predictor_baselines(client=client, dry_run=False)
+
+    best = next(e for e in store["prompt_experiments"] if e["variant_tag"] == "sector-a-best")
+    assert "conviction_norm" in best["metrics"]
+    assert best["metrics"]["predictions_evaluated"] == 5
+
+
+def test_missing_track_data_is_a_no_op():
+    client = FakeClient({"prompt_experiments": [], "sector_predictions": []})
+
+    result = realign_predictor_baselines(client=client, dry_run=True)
+
+    assert result["tracks"] == {}

@@ -61,7 +61,7 @@ The weekly ratchet compares the active prompt's live score against the highest s
 - `MIN_BASELINE_SAMPLE = 5` — a variant must carry at least five evaluated predictions before it may set the baseline.
 - `shrunk_baseline_score(score, n)` — the candidate ceiling is shrunk toward a neutral 50 prior by $n/(n+10)$. Five calls keep only a third of their apparent edge; twenty keep two thirds.
 
-Both live in `core/conviction_scoring.py` and are applied by `select_baseline_candidate()`, which both autoresearch loops call.
+Both live in `core/conviction_scoring.py` and are applied by `select_baseline_candidate()`, which both autoresearch loops call. The historical realignment utility (`apps/engine/tasks/realign_predictor_baseline.py`) uses the same selector per model track, and the one-shot backfill (`apps/engine/scripts/backfill_conviction_scores.py`) shares its recomputation logic through `core/conviction_backfill.py`.
 
 ## Where It Applies
 

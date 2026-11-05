@@ -17,154 +17,24 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import logger
-from core.conviction_scoring import (
-    MIN_BASELINE_SAMPLE,
-    conviction_points,
-    select_baseline_candidate,
+from core.conviction_backfill import (
+    as_date,
+    recompute_daily_conviction,
+    recompute_experiment_metrics,
+    recompute_sector_conviction,
 )
+from core.conviction_scoring import MIN_BASELINE_SAMPLE, select_baseline_candidate
 from core.db import get_supabase_client
 from tasks.daily_autoresearch import calculate_daily_ratchet_metrics
 from tasks.predictor_autoresearch import calculate_baseline_metrics
 
 DAILY_PROMPT = "DAILY_PREDICTOR_PROMPT"
 SECTOR_PROMPT = "SECTOR_PREDICTOR_PROMPT"
-
-
-def _is_backtest_tag(tag: str | None) -> bool:
-    return bool(tag) and "backtest" in tag.lower()
-
-
-def _as_date(value: object) -> date | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    try:
-        return datetime.fromisoformat(str(value)[:10]).date()
-    except ValueError:
-        return None
-
-
-def recompute_daily_conviction(rows: list[dict]) -> list[tuple[str, float | None]]:
-    """Return (id, conviction_score) for each row that can be scored."""
-    updates: list[tuple[str, float | None]] = []
-    for row in rows:
-        confidence = row.get("confidence")
-        correct = row.get("is_correct")
-        if confidence is None or correct is None:
-            continue
-        updates.append((row["id"], round(conviction_points(confidence, bool(correct)), 4)))
-    return updates
-
-
-def recompute_sector_conviction(rows: list[dict]) -> list[tuple[str, float | None]]:
-    """Score the best leg, and the worst leg only when it stated its own probability."""
-    updates: list[tuple[str, float | None]] = []
-    for row in rows:
-        confidence = row.get("confidence")
-        percentile = row.get("sector_percentile_score")
-        if confidence is None or percentile is None:
-            continue
-
-        points = [conviction_points(confidence, float(percentile) >= 50.0)]
-        worst_confidence = row.get("worst_confidence")
-        worst_percentile = row.get("worst_sector_percentile_score")
-        if worst_confidence is not None and worst_percentile is not None:
-            points.append(conviction_points(worst_confidence, float(worst_percentile) >= 50.0))
-
-        updates.append((row["id"], round(sum(points) / len(points), 4)))
-    return updates
-
-
-def _track_scope(experiment: dict) -> str | None:
-    """Return the model a track-scoped experiment belongs to, or None if shared."""
-    track = experiment.get("track_id")
-    if not track or track == "track_default":
-        return None
-    return track
-
-
-def match_predictions_by_tag(
-    experiments: list[dict],
-    predictions: list[dict],
-    tag_key: str,
-    date_key: str = "target_date",
-    model_key: str = "model_name",
-) -> dict[str, list[dict]]:
-    """Attribute evaluated predictions to each experiment.
-
-    Exact prompt tag wins. When a variant has no tagged rows (older rows were
-    written before the tag column was populated), fall back to its evaluation
-    window, scoped to the experiment's model track so one model's predictions
-    cannot score another model's prompt. Backtest rows are always excluded: the
-    live ratchet ignores them.
-    """
-    ranked = [p for p in predictions if not _is_backtest_tag(p.get(tag_key))]
-    by_tag: dict[str, list[dict]] = defaultdict(list)
-    for prediction in ranked:
-        tag = prediction.get(tag_key)
-        if tag:
-            by_tag[tag].append(prediction)
-
-    matched: dict[str, list[dict]] = {}
-    for experiment in experiments:
-        tag = experiment["variant_tag"]
-        rows = by_tag.get(tag)
-        if not rows:
-            start = _as_date(experiment.get("week_start"))
-            end = _as_date(experiment.get("week_end"))
-            track = _track_scope(experiment)
-            if start and end:
-                rows = [
-                    p
-                    for p in ranked
-                    if (target := _as_date(p.get(date_key))) is not None
-                    and start <= target <= end
-                    and (track is None or p.get(model_key) == track)
-                ]
-        matched[tag] = rows or []
-    return matched
-
-
-def recompute_experiment_metrics(
-    experiments: list[dict],
-    predictions: list[dict],
-    tag_key: str,
-    calculator,
-) -> list[dict]:
-    """Recompute metrics for each non-backtest experiment that still has evidence."""
-    matched = match_predictions_by_tag(experiments, predictions, tag_key)
-    report: list[dict] = []
-
-    for experiment in experiments:
-        if experiment.get("is_backtest"):
-            continue
-        tag = experiment["variant_tag"]
-        if _is_backtest_tag(tag):
-            continue
-
-        rows = matched.get(tag, [])
-        metrics = calculator(rows) if rows else None
-        report.append(
-            {
-                "id": experiment["id"],
-                "variant_tag": tag,
-                "track_id": experiment.get("track_id"),
-                "status": experiment.get("status"),
-                "old_score": (experiment.get("metrics") or {}).get("score"),
-                "new_metrics": metrics,
-                "prediction_count": len(rows),
-            }
-        )
-    return report
 
 
 def _recent_track_score(
@@ -179,7 +49,7 @@ def _recent_track_score(
     for prediction in predictions:
         if prediction.get("model_name") != track:
             continue
-        target = _as_date(prediction.get(date_key))
+        target = as_date(prediction.get(date_key))
         if target is None or target < cutoff:
             continue
         rows.append(prediction)

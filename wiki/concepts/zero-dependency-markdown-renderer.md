@@ -56,13 +56,15 @@ Because every node carries a stable `id`, repeated list items (e.g. three identi
 
 The renderer is the shared Markdown surface for LLM prose. `apps/web/src/features/home/components/ConsoleQueueCard.tsx` renders the audience desk explainer's `agent_response` through `MarkdownContent` (see [[entities/live-agent-trader]] and [[entities/conversational-explainer]]), so bold emphasis, `---` rules, headings, and tables in the model's answer display as formatted prose rather than raw Markdown.
 
+The audience **question** itself is rendered through the inline-only `InlineMarkdown` export inside a labeled `Question` block (`data-testid="answered-question"`). That block preserves line breaks with `whitespace-pre-wrap`, wraps long tokens with `break-words`, and applies a muted accent left rule, so multi-line or emphasized questions (e.g. `**inflation**` on one line, a follow-up on the next) are formatted inline instead of dumped as raw text. Because it uses `InlineMarkdown` rather than the full `MarkdownContent`, block-level constructs (headings, tables, rules) are not interpreted inside a question — only inline emphasis, code, and links.
+
 ## Testing
 
-`apps/web/src/components/ui/MarkdownContent.test.tsx` covers horizontal rules, soft line breaks, lists directly after paragraph lines, tables following a paragraph without a blank line, fenced code rendered verbatim, nested lists, unsafe-link stripping, and duplicate-key suppression for repeated list items. `ConsoleQueueCard.test.tsx` verifies the desk answer renders as formatted Markdown (bold, `hr`, `h3`, table) with no raw `**` or `|---|` leaking through.
+`apps/web/src/components/ui/MarkdownContent.test.tsx` covers horizontal rules, soft line breaks, lists directly after paragraph lines, tables following a paragraph without a blank line, fenced code rendered verbatim, nested lists, unsafe-link stripping, and duplicate-key suppression for repeated list items. `ConsoleQueueCard.test.tsx` verifies the desk answer renders as formatted Markdown (bold, `hr`, `h3`, table) with no raw `**` or `|---|` leaking through, and that the audience question renders inline Markdown (bold `**inflation**` becomes a `<strong>`, no raw `**`) inside the `answered-question` block carrying `whitespace-pre-wrap` and `break-words`.
 
 ## Related
 
-- [[entities/live-agent-trader]] — the console card that renders desk answers through this renderer
+- [[entities/live-agent-trader]] — the console card that renders desk answers and audience questions through this renderer
 - [[entities/conversational-explainer]] — the LLM that produces the Markdown prose
 - [[entities/web-app]] — the dashboard that hosts the shared UI components
 - [[concepts/vertical-slice-islands]] — the decomposition pattern the renderer follows

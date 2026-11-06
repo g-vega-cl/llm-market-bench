@@ -68,6 +68,11 @@ describe('fetch-intraday-tape utilities', () => {
         expect(state.lastUpdated).toContain('ET');
     });
 
+    it('never fabricates technicals when the payload has none', () => {
+        const state = buildAgentState({ created_at: '2026-10-29T19:30:00Z' }, null);
+        expect(state.technicals).toBeUndefined();
+    });
+
     describe('mergeIncomingBar', () => {
         const baseBar: CandlestickBar = {
             time: '2026-10-30T16:00:00Z',

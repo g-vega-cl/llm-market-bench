@@ -83,8 +83,10 @@ describe('HomePage 2-Block Boxel Dashboard', () => {
         expect(
             within(feelingBlock).getByText(/Grounded in 1 memory reference/i),
         ).toBeInTheDocument();
-        expect(within(feelingBlock).getByText(/Turn: 14:30:00 ET/)).toBeInTheDocument();
+        expect(within(feelingBlock).getByText(/14:30:00 ET/)).toBeInTheDocument();
         expect(within(feelingBlock).getByText(/Model: MiniMax-Text-01/)).toBeInTheDocument();
+        expect(within(feelingBlock).queryByText(/^VWAP:/)).toBeNull();
+        expect(within(feelingBlock).queryByText(/^RSI:/)).toBeNull();
         expect(within(feelingBlock).queryByText(/Expand Details/i)).toBeNull();
 
         // Segmented confidence bar is rendered

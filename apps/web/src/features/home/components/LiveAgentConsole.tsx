@@ -144,37 +144,6 @@ function ConsoleHeaderRibbon({
     );
 }
 
-function ConsoleTechnicalsRow({ technicals }: { technicals?: LiveAgentState['technicals'] }) {
-    if (!technicals) return null;
-
-    return (
-        <div className="flex flex-wrap gap-2 text-xs font-mono">
-            <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
-                <span className="text-boxel-muted">VWAP:</span>
-                <span className="font-bold text-boxel-ink">${technicals.vwap.toFixed(2)}</span>
-            </div>
-            <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
-                <span className="text-boxel-muted">RSI:</span>
-                <span className="font-bold text-boxel-ink">{technicals.rsi_14.toFixed(1)}</span>
-            </div>
-            <div className="voxel-trough px-2.5 py-1.5 flex items-center gap-1.5">
-                <span className="text-boxel-muted">Trend:</span>
-                <span
-                    className={`font-bold ${
-                        technicals.trend === 'BULLISH'
-                            ? 'text-success'
-                            : technicals.trend === 'BEARISH'
-                              ? 'text-danger'
-                              : 'text-accent'
-                    }`}
-                >
-                    {technicals.trend}
-                </span>
-            </div>
-        </div>
-    );
-}
-
 export function LiveAgentConsole({
     bars,
     trades = [],
@@ -197,6 +166,11 @@ export function LiveAgentConsole({
     });
 
     const currentAgentState = streamedAgentState ?? agentState;
+    const rawTurnTimestamp =
+        currentAgentState.lastUpdated ??
+        (currentAgentState.timestamp ? formatEasternTime(currentAgentState.timestamp) : null);
+    const turnTimestamp =
+        rawTurnTimestamp && rawTurnTimestamp !== 'Unknown' ? rawTurnTimestamp : null;
     const [pendingCount, setPendingCount] = React.useState(0);
     const [latestAnswered, setLatestAnswered] = React.useState<AgentQueueItem | null>(null);
     const [countdownSeconds, setCountdownSeconds] = React.useState(285);
@@ -254,20 +228,17 @@ export function LiveAgentConsole({
                 onRefresh={handleManualRefresh}
             />
 
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs font-mono">
                 {currentAgentState.sentimentLabel && (
                     <div className="text-sm font-bold text-boxel-ink tracking-tight">
                         {currentAgentState.sentimentLabel}
                     </div>
                 )}
-                <div className="flex items-center gap-2 text-boxel-muted">
-                    {currentAgentState.modelUsed && (
-                        <span>Model: {currentAgentState.modelUsed}</span>
-                    )}
-                    {currentAgentState.lastUpdated && (
-                        <span>• Turn: {currentAgentState.lastUpdated}</span>
-                    )}
-                </div>
+                {currentAgentState.modelUsed && (
+                    <span className="whitespace-nowrap text-boxel-muted">
+                        Model: {currentAgentState.modelUsed}
+                    </span>
+                )}
             </div>
 
             <ConfidenceBar
@@ -287,29 +258,24 @@ export function LiveAgentConsole({
             <SPYCandlestickChart bars={currentBars} trades={trades} height={320} />
 
             <div className="voxel-trough p-3.5 flex flex-col gap-2">
-                <div className="flex items-center justify-between text-xs font-normal tracking-wider uppercase text-boxel-muted border-b border-boxel-bevel-hi/50 pb-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                        <span>Intraday Thought Trace</span>
-                        {(currentAgentState.lastUpdated || currentAgentState.timestamp) && (
-                            <span className="font-mono text-boxel-muted/80">
-                                •{' '}
-                                {currentAgentState.lastUpdated ??
-                                    (currentAgentState.timestamp
-                                        ? formatEasternTime(currentAgentState.timestamp)
-                                        : '')}
-                            </span>
-                        )}
-                    </div>
-                    <span className="text-accent font-bold">
+                <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                    Intraday Thought Trace
+                </div>
+                <div
+                    data-testid="thought-trace-meta"
+                    className="flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-xs"
+                >
+                    {turnTimestamp && (
+                        <span className="whitespace-nowrap text-boxel-muted">{turnTimestamp}</span>
+                    )}
+                    <span className="whitespace-nowrap font-bold text-accent">
                         {currentAgentState.action} DECISION
                     </span>
                 </div>
-                <div className="text-xs font-normal leading-relaxed text-boxel-ink">
+                <div className="text-xs font-normal leading-relaxed text-boxel-ink break-words">
                     &quot;{currentAgentState.thought}&quot;
                 </div>
             </div>
-
-            <ConsoleTechnicalsRow technicals={currentAgentState.technicals} />
 
             <ConsoleQueueCard
                 user={currentUser}

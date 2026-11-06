@@ -17,8 +17,8 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
-- [ ] - Benchify : format the user question properly
-- [ ] - Benchify: Intraday Thought Trace layout. Verbatim feedback:
+- [x] - Benchify : format the user question properly
+- [x] - Benchify: Intraday Thought Trace layout. Verbatim feedback:
   • 7:12 PM ET
   HOLD DECISION
 

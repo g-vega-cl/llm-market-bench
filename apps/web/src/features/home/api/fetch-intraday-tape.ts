@@ -95,11 +95,7 @@ export function buildAgentState(
         modelUsed: feeling?.model_used || 'Strata Orca',
         lastUpdated: feeling?.created_at ? formatEasternTime(feeling.created_at) : undefined,
         timestamp: feeling?.created_at || undefined,
-        technicals: payload?.technicals || {
-            vwap: 582.4,
-            rsi_14: 54.2,
-            trend: feeling?.market_direction || 'NEUTRAL',
-        },
+        technicals: payload?.technicals,
         memoriesConsulted:
             payload?.memories_consulted ||
             (feeling?.primary_concern ? [feeling.primary_concern] : []),

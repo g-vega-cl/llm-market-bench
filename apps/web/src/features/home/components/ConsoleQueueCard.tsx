@@ -1,6 +1,6 @@
 import { usePostHog } from '@posthog/react';
 import * as React from 'react';
-import { MarkdownContent } from '~/components/ui/MarkdownContent';
+import { InlineMarkdown, MarkdownContent } from '~/components/ui/MarkdownContent';
 import { formatEasternTime } from '~/utils/date';
 import {
     type AgentQueueItem,
@@ -53,8 +53,16 @@ function AnsweredTurnView({
                     {createdTime && <span className="whitespace-nowrap">• {createdTime}</span>}
                 </div>
             </div>
-            <div className="font-mono text-boxel-ink text-xs">
-                &ldquo;{latestAnswered.message}&rdquo;
+            <div className="flex flex-col gap-2 min-w-0">
+                <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted">
+                    Question
+                </span>
+                <div
+                    data-testid="answered-question"
+                    className="min-w-0 border-l-2 border-accent/40 pl-2.5 text-xs font-normal leading-relaxed text-boxel-ink whitespace-pre-wrap break-words"
+                >
+                    <InlineMarkdown text={latestAnswered.message} />
+                </div>
             </div>
             {latestAnswered.agent_response &&
                 (isOutage ? (

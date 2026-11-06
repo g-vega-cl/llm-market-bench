@@ -130,6 +130,31 @@ describe('ConsoleQueueCard', () => {
         expect(container.textContent).not.toContain('|---|');
     });
 
+    it('formats the user question with inline markdown and preserved line breaks', () => {
+        const { container } = render(
+            <ConsoleQueueCard
+                user={{ id: 'usr-1', email: 'analyst@fund.com' }}
+                latestAnswered={{
+                    id: 'q-fmt',
+                    user_id: 'usr-2',
+                    display_name: 'MacroTrader',
+                    message: 'Is **inflation** still sticky?\nWhat about the 10Y?',
+                    agent_response: 'Watching the 10Y.',
+                    status: 'answered',
+                    created_at: '2026-11-03T15:42:00Z',
+                }}
+            />,
+        );
+
+        expect(screen.getByText(/^Question$/)).toBeInTheDocument();
+        expect(screen.getByText('inflation').tagName).toBe('STRONG');
+        expect(container.textContent).not.toContain('**');
+
+        const question = screen.getByTestId('answered-question');
+        expect(question.className).toContain('whitespace-pre-wrap');
+        expect(question.className).toContain('break-words');
+    });
+
     it('captures error in PostHog and displays user-friendly desk notice when response is emergency JSON fallback', () => {
         render(
             <ConsoleQueueCard

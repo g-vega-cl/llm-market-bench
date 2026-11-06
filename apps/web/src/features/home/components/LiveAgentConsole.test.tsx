@@ -77,17 +77,37 @@ describe('LiveAgentConsole', () => {
         expect(trough?.querySelectorAll('.voxel-badge').length).toBe(0);
     });
 
-    it('renders thought trace with timestamp and technical indicators', () => {
+    it('renders the thought trace title as a row above the turn meta row', () => {
         render(
             <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
         );
-        expect(screen.getByText(/Intraday Thought Trace/i)).toBeInTheDocument();
-        expect(screen.getByText(/• 14:25 ET/i)).toBeInTheDocument();
+        const title = screen.getByText(/Intraday Thought Trace/i);
+        expect(title).toBeInTheDocument();
+        expect(title.className).toContain('uppercase');
+
+        const meta = screen.getByTestId('thought-trace-meta');
+        expect(meta.className).toContain('flex-wrap');
+        expect(meta.className).toContain('items-baseline');
+        expect(meta.contains(title)).toBe(false);
+
+        expect(screen.getByText(/^14:25 ET$/).className).toContain('whitespace-nowrap');
+        expect(screen.getByText(/BUY DECISION/).className).toContain('whitespace-nowrap');
         expect(screen.getByText(/SPY bounced cleanly off the 15m VWAP/i)).toBeInTheDocument();
-        expect(screen.getByText(/VWAP:/i)).toBeInTheDocument();
-        expect(screen.getByText(/\$580.20/i)).toBeInTheDocument();
-        expect(screen.getByText(/RSI:/i)).toBeInTheDocument();
-        expect(screen.getByText(/58.4/i)).toBeInTheDocument();
+    });
+
+    it('does not render VWAP or RSI technical badges', () => {
+        render(
+            <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
+        );
+        expect(screen.queryByText(/^VWAP:/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/^RSI:/)).not.toBeInTheDocument();
+    });
+
+    it('renders the turn timestamp exactly once', () => {
+        render(
+            <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
+        );
+        expect(screen.getAllByText(/14:25 ET/)).toHaveLength(1);
     });
 
     it('renders chat queue with sign in CTA when user is not authenticated', () => {
@@ -170,7 +190,7 @@ describe('LiveAgentConsole', () => {
         expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    it('renders clean technicals row without Ref tags and displays memory vault footer link', () => {
+    it('renders footer with memory vault link and zero Ref tags', () => {
         render(
             <LiveAgentConsole bars={mockBars} agentState={mockAgentState} isMarketOpen={true} />,
         );

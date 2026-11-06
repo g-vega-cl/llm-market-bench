@@ -208,11 +208,6 @@ export function HomePage({ data }: { data: HomePageData }) {
         sentimentLabel: data.feeling?.sentimentLabel || 'Live Surveillance',
         modelUsed: data.feeling?.modelUsed || 'Strata Orca',
         lastUpdated: data.feeling?.lastAnalyzed || '09:30 ET',
-        technicals: {
-            vwap: 582.4,
-            rsi_14: 54.2,
-            trend: data.feeling?.sentiment || 'NEUTRAL',
-        },
         memoriesConsulted: data.feeling?.primaryConcern ? [data.feeling.primaryConcern] : [],
     };
 

@@ -28,6 +28,7 @@ Reusable trading discipline and reasoning blocks dynamically toggled by the Auto
 | `dialectical_thesis_deliberation` | Dual-sided Bull vs Bear conviction scoring (1-10) with mandatory tie-breaking and low-conviction clamping to eliminate the asymmetry pendulum |
 | `regime_gated_confidence_calibration` | Structural confidence clamping (52-55% in range-bound/pinning regimes; >60% reserved strictly for confirmed multi-asset divergences) |
 | `shadow_banking_liquidity_plumbing` | Wholesale liquidity & Pozsar Money View framework — detect institutional cash-pool run risk via `reverse_repo` (`RRPONTSYD`), `fed_balance_sheet` (`WALCL`), and credit spreads, and anticipate forced deleveraging from repo/margin collateral squeezes |
+| `multibagger_entry_and_affordable_growth` | Yartseva (2025) multibagger framework — twin-engine valuation (EPS growth + multiple change), affordable asset growth covered by EBITDA, entry cost measured by the 12-month price range rather than recent momentum, an 8-12pp rate-hike haircut on multiple expansion, and rejection of growth/leverage/buyback headlines as standalone theses |
 
 ## Implementation
 
@@ -36,4 +37,5 @@ Blocks live in `apps/engine/autoresearch/prompt_blocks.py` as dict entries with 
 ## Related
 
 - [[concepts/auto-research-prompt-improver]]
+- [[concepts/multibagger-anatomy]] — the empirical paper behind `multibagger_entry_and_affordable_growth`
 - [[concepts/modular-prompt-blocks]]

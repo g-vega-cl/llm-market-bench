@@ -130,5 +130,6 @@ These anomalies are seeded into the Supabase database via `seed_academic_papers.
 ## Related
 
 * [[entities/academic-paper-seeding]] — The database seeding script
+* [[concepts/multibagger-anatomy]] — Empirical drivers of 10x winners and entry timing
 * [[concepts/rag-strategy]] — Tiered context injection and per-agent RAG
 * [[concepts/reasoning]] — Parallel LLM analysis with tool-calling loops

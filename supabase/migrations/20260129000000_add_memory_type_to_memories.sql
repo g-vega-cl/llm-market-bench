@@ -14,7 +14,7 @@ CREATE INDEX IF NOT EXISTS memories_memory_type_idx ON public.memories (memory_t
 
 -- 3. Update match_memories RPC to include memory_type and filtering support
 CREATE OR REPLACE FUNCTION match_memories (
-  query_embedding VECTOR(768),
+  query_embedding extensions.vector(768),
   match_threshold FLOAT,
   match_count INT,
   filter_memory_types TEXT[] DEFAULT NULL
@@ -27,6 +27,7 @@ RETURNS TABLE (
   similarity FLOAT
 )
 LANGUAGE plpgsql
+SET search_path = public, extensions
 AS $$
 BEGIN
   RETURN QUERY

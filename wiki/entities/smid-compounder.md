@@ -25,6 +25,7 @@ System portfolio (`sys-smid-quality-compounder`) implementing a zero-ceiling sma
 ## Related
 
 - [[concepts/small-cap-quality-premium]] — Academic foundations (Asness et al. 2018, Petajisto 2011, Chen et al. 2006)
+- [[concepts/multibagger-anatomy]] — Empirical drivers of 10x winners (Yartseva 2025)
 - [[entities/engine]] — Python data engine
 - [[entities/pipeline]] — Daily pipeline
 - [[concepts/system-portfolios]] — Mechanical portfolio execution

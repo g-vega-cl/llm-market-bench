@@ -88,6 +88,10 @@ Following [[concepts/supabase-grant-convention]], all tables exposed via the Pos
 ## RPC Functions
 
 - `pop_next_queue_item()` — Atomic FIFO dequeue for the live intraday agent's audience queue (migration `20261029220000_add_pop_next_queue_item_rpc.sql`). Uses `SELECT ... FOR UPDATE SKIP LOCKED` to atomically transition the oldest `pending` row to `injected` (stamping `injected_turn_at = NOW()`) and returns it, avoiding race conditions between concurrent runner turns. Declared `SECURITY DEFINER` and granted `EXECUTE` to `anon`, `authenticated`, and `service_role`.
+- `match_memories(query_embedding extensions.vector(768), match_threshold float, match_count int, filter_memory_types text[] DEFAULT NULL)` — pgvector cosine-similarity search over the `memories` store used by the tiered RAG path (see [[concepts/rag-strategy]]). The embedding argument is qualified as `extensions.vector(768)` and pinned with `SET search_path = public, extensions` because pgvector lives in the `extensions` schema (migrations `20260129000000_add_memory_type_to_memories.sql` and `20260305000000_add_importance_score_to_memories.sql`). The 4-argument signature is canonical; a stale 3-argument definition surfaces as `PGRST202` and silently empties Tier 2 RAG.
+- `match_decisions(query_embedding extensions.vector, match_threshold double precision, match_count integer, filter_model_name text DEFAULT NULL)` — pgvector similarity search over `decisions.embedding`, the per-agent decision half of `retrieve_for_decision()`. Restored by `20261106000000_fix_match_decisions_search_path.sql` after the overload migration dropped the search path (runtime error `42883`: `operator does not exist: extensions.vector <=> extensions.vector`).
+
+After applying any `match_*` DDL, run `NOTIFY pgrst, 'reload schema';` on the primary. `NOTIFY` does not cross a physical standby, so the MiniPC PostgREST replica needs `docker kill -s SIGUSR1 market-bench-archive-postgrest-replica`. Failure-mode notes live in [[concepts/hybrid-database-archival]].
 
 ## Migrations
 

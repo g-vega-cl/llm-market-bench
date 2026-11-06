@@ -13,7 +13,7 @@ The script populates the vector store with structured summaries of seminal paper
 
 ## Papers Included
 
-Source of truth is `PAPERS` in `seed_academic_papers.py`. The dataset covers seven pillars:
+Source of truth is `PAPERS` in `seed_academic_papers.py`. The dataset covers eight pillars:
 
 - **Factor Investing & Risk Premiums**: The Cross-Section of Expected Stock Returns (Fama & French, 1992), Common Risk Factors in the Returns on Stocks and Bonds (Fama & French, 1993), Value and Momentum Everywhere (Asness, Moskowitz & Pedersen, 2013), A Five-Factor Asset Pricing Model (Fama & French, 2015), Size Matters, If You Control Your Junk (Asness, Frazzini, Israel, Moskowitz & Pedersen, 2018)
 - **Behavioral Finance & Market Anomalies**: Contrarian Investment, Extrapolation, and Risk (Lakonishok, Shleifer & Vishny, 1994), The Limits of Arbitrage (Shleifer & Vishny, 1995), A Model of Investor Sentiment (Barberis, Shleifer & Vishny, 1997), Does the Stock Market Overreact? (De Bondt & Thaler, 1985)
@@ -22,6 +22,7 @@ Source of truth is `PAPERS` in `seed_academic_papers.py`. The dataset covers sev
 - **Information & Event-Driven Anomalies**: Post-Earnings-Announcement Drift (PEAD) (Bernard & Thomas, 1989), Pre-FOMC Announcement Drift (Lucca & Moench, 2015)
 - **Structural & Plumbing Anomalies**: The Index Inclusion Effect (The Passive Squeeze) (Shleifer, 1986), Options Expiration Pinning (Max Pain) (Ni, Pearson & Poteshman, 2005), The Index Premium and Its Hidden Cost for Index Funds (Petajisto, 2011), Index Changes and Losses to Index Fund Investors (Chen, Noronha & Singal, 2006), Shadow Banking: The Money View (Hierarchy of Money & Institutional Cash Pools) (Pozsar, 2014), The Fed Reverse Repo Facility (RRP) Floor & Minimum Haircut Channel (Pozsar, 2014), Forced Deleveraging via Bilateral Repo, Margin Calls & Collateral Squeezes (Pozsar, 2014 & Mehrling et al., 2013)
 - **Regime Shifts & Dynamic Labeling**: The Triple Barrier Method and Meta-Labeling (López de Prado, 2018), A New Approach to the Economic Analysis of Nonstationary Time Series and the Business Cycle (Hamilton, 1989), Regime Shifts: Implications for Dynamic Asset Allocation (Kritzman, Page, & Turkington, 2012)
+- **Multibagger Compounding & Entry Timing**: The Anatomy of Multibaggers: Cheap, Small, Profitable, Not Hypergrowth (Yartseva, 2025), Free Cash Flow Yield, Not P/E, Is the Strongest Multibagger Predictor (Yartseva, 2025), Affordable Growth: Asset Expansion Must Be Covered by EBITDA Growth (Yartseva, 2025), Inverted Momentum: Multibagger Entry Points Sit Near 12-Month Lows (Yartseva, 2025), Rising Fed Rates Cost Multibaggers ~10pp of Next-Year Excess Return (Yartseva, 2025), Growth, Leverage, Buybacks and R&D Did Not Predict Multibagger Returns (Yartseva, 2025)
 
 Each paper is stored with metadata (`source_type`, `citation`, `pillar`) for attribution and filtering.
 

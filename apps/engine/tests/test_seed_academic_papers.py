@@ -78,3 +78,34 @@ def test_pozsar_shadow_banking_papers_and_prompt_block():
     rendered = render_prompt_blocks(["shadow_banking_liquidity_plumbing"])
     assert "SHADOW BANKING & WHOLESALE LIQUIDITY PLUMBING" in rendered
     assert "RRPONTSYD" in rendered
+
+
+def test_yartseva_multibagger_papers_and_prompt_block():
+    """Verify Yartseva (2025) multibagger principles in PAPERS and modular prompt block."""
+    from autoresearch.prompt_blocks import AVAILABLE_PROMPT_BLOCKS, render_prompt_blocks
+
+    yartseva_titles = [
+        "The Anatomy of Multibaggers: Cheap, Small, Profitable, Not Hypergrowth",
+        "Free Cash Flow Yield, Not P/E, Is the Strongest Multibagger Predictor",
+        "Affordable Growth: Asset Expansion Must Be Covered by EBITDA Growth",
+        "Inverted Momentum: Multibagger Entry Points Sit Near 12-Month Lows",
+        "Rising Fed Rates Cost Multibaggers ~10pp of Next-Year Excess Return",
+        "Growth, Leverage, Buybacks and R&D Did Not Predict Multibagger Returns",
+    ]
+    paper_titles = [p["title"] for p in PAPERS]
+    for title in yartseva_titles:
+        assert title in paper_titles, f"Missing paper title: {title}"
+
+    pillar = "Multibagger Compounding & Entry Timing"
+    seeded = [p for p in PAPERS if p["title"] in yartseva_titles]
+    assert len(seeded) == len(yartseva_titles)
+    for paper in seeded:
+        assert paper["pillar"] == pillar
+        assert "Yartseva" in paper["citation"]
+        assert all(paper[field].strip() for field in ("core_thesis", "mechanism", "application", "example_scenario"))
+
+    # Verify prompt block registration and rendering
+    assert "multibagger_entry_and_affordable_growth" in AVAILABLE_PROMPT_BLOCKS
+    rendered = render_prompt_blocks(["multibagger_entry_and_affordable_growth"])
+    assert "MULTIBAGGER ENTRY & AFFORDABLE GROWTH" in rendered
+    assert "FCF/P" in rendered

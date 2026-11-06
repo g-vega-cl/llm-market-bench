@@ -17,11 +17,11 @@ CREATE INDEX IF NOT EXISTS memories_importance_score_idx ON public.memories (imp
 -- For now, let's just make sure the column is included in the result.
 
 -- Handle row type changes by dropping existing functions first
-DROP FUNCTION IF EXISTS match_memories(VECTOR(768), FLOAT, INT);
-DROP FUNCTION IF EXISTS match_memories(VECTOR(768), FLOAT, INT, TEXT[]);
+DROP FUNCTION IF EXISTS match_memories(extensions.vector(768), FLOAT, INT);
+DROP FUNCTION IF EXISTS match_memories(extensions.vector(768), FLOAT, INT, TEXT[]);
 
 CREATE OR REPLACE FUNCTION match_memories (
-  query_embedding VECTOR(768),
+  query_embedding extensions.vector(768),
   match_threshold FLOAT,
   match_count INT,
   filter_memory_types TEXT[] DEFAULT NULL
@@ -35,6 +35,7 @@ RETURNS TABLE (
   similarity FLOAT
 )
 LANGUAGE plpgsql
+SET search_path = public, extensions
 AS $$
 BEGIN
   RETURN QUERY

@@ -179,6 +179,17 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "3. Cash-for-Margining Collateral Unwinds: Risk portfolio managers (bond funds, mREITs, macro hedge funds) use repo to finance leverage and meet swap margin. Sudden yield or FX shocks trigger cash margin calls, forcing collateral liquidations. Do not fade initial rate shocks until forced margin-call selling has cleared."
         ),
     },
+    "multibagger_entry_and_affordable_growth": {
+        "title": "MULTIBAGGER ENTRY & AFFORDABLE GROWTH (Yartseva 2025)",
+        "content": (
+            "=== FRAMEWORK: MULTIBAGGER ENTRY & AFFORDABLE GROWTH ===\n"
+            "1. Twin-Engine Valuation: Decompose expected return into EPS growth plus multiple change. Prefer small, profitable companies entering at low FCF/P and B/M multiples; do not pay for growth that is already capitalised in the price.\n"
+            "2. Affordable Investment: Pair asset growth with EBITDA growth. When assets grow faster than EBITDA, treat next-year returns as 4-11pp lower; reward aggressive reinvestment only when operating earnings fund it.\n"
+            "3. Entry Range, Not Recent Momentum: Measure entry cost with the 12-month price range. Three- and six-month momentum is negative for multibaggers, so proximity to the 12-month high lowers expected return; favour staged entries near range lows after a six-month drawdown.\n"
+            "4. Rate-Regime Haircut: In Fed hiking years, haircut expected multiple expansion by roughly 8-12pp of excess return and demand a wider margin of safety on long-duration growth names.\n"
+            "5. Ignore Growth Headlines: EPS, revenue and EBITDA growth, leverage, buybacks and dividend headlines do not predict multibagger returns once valuation is controlled; require cash-backed FCF yield before endorsing a growth thesis."
+        ),
+    },
 }
 
 

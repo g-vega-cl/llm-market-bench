@@ -83,5 +83,6 @@ To capture the true small-cap quality premium without the structural drag of ind
 ## Related
 
 - [[concepts/market-anomalies]] — Broad taxonomy of empirical finance anomalies
+- [[concepts/multibagger-anatomy]] — Empirical drivers of 10x winners and entry timing
 - [[entities/academic-paper-seeding]] — Seeding script for pgvector financial memories
 - [[concepts/system-portfolios]] — Mechanical and rule-based portfolio execution

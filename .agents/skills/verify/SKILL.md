@@ -44,7 +44,7 @@ Or run the bundled verification runner:
 
 ## 2. Verification tiers
 
-Audit all changed files through these seven tiers. Do not skip any tier.
+Audit all changed files through these eight tiers. Do not skip any tier.
 
 ### Tier 1. Static hygiene, size ceilings, and hotspot forensics
 
@@ -150,7 +150,32 @@ Audit all changed files through these seven tiers. Do not skip any tier.
 2. **No swallowed errors**:
    - Never write empty `except:` or `except Exception: pass` blocks without logging the traceback.
 
-### Tier 7. Wiki and documentation synchronization (MANDATORY)
+### Tier 7. Staff/Principal critical code and architecture review
+
+Apply a rigorous staff/principal engineering audit to all changed code. Think counterfactually: **"Could this have been done better?"**, **"Is there a simpler, more robust way?"**, and **"How will this fail?"** See `[[concepts/staff-engineer-verification]]`.
+
+1. **Anti-sycophancy and counterfactual critique**:
+   - Never accept code just because tests pass.
+   - *The delete check*: Could this problem be solved by deleting code, using an existing PostgREST query, or configuring an existing module rather than adding new code?
+   - *The second design comparison*: Articulate at least one alternative design and state the concrete tradeoff (latency, memory footprint, coupling, maintainability) justifying the chosen implementation.
+   - *Tidy First*: Ensure hard changes were made easy before making the change. Do not tack boolean parameters or special cases onto already complex functions.
+2. **SOLID principles & functional core / imperative shell**:
+   - *Single Responsibility (SRP)*: Keep math, modeling, and domain decisions pure; separate them from I/O, database queries, and network clients.
+   - *Open/Closed (OCP)*: Replace growing `if/elif` ladders with declarative dispatch tables or configuration mappings.
+   - *Interface Segregation & Dependency Inversion (ISP/DIP)*: Pass narrow, typed inputs rather than god-objects. Inject external dependencies to keep units hermetically testable.
+3. **Code smells and complexity ceilings**:
+   - *McCabe Cyclomatic Complexity (`C901`)*: Target $\le 10$ decision branches per function; hard ceiling at $15$. Decompose functions exceeding 15 branches into pure helpers or data-driven tables.
+   - *Smell check*: Look for shotgun surgery (touching >4 unrelated modules for one change), primitive obsession (raw untyped dicts passed around), feature envy, boolean blindness, deep nesting (>3 levels), and hidden side effects in getters/calculators.
+4. **Distributed systems invariants and CAP/PACELC tradeoffs**:
+   - *Explicit CAP stance*: Financial ledger mutations and Reg T margin checks must be strictly **CP** (fail closed on partition/staleness). Read paths and non-critical commentary are **AP/EL** (degrade gracefully with cached state).
+   - *Idempotency*: Workflows and DB mutations must be safe to re-run mid-flight (`ON CONFLICT DO UPDATE` or deterministic deduplication keys).
+   - *Bulkheads & timeouts*: Every external network call must define explicit timeouts and concurrency limits (`asyncio.Semaphore`).
+5. **Performance intuition (orders of magnitude)**:
+   - Zero N+1 query loops: Never execute database queries, HTTP calls, or file reads inside loops over records. Batch into `.in_()` queries or bulk inserts.
+   - Avoid $O(N^2)$ scans where $O(1)$ dictionary/set lookups apply.
+   - Strip heavy columns (e.g. pgvector `embedding` arrays) from read queries via explicit column projections (`[[concepts/vector-egress-stripping]]`).
+
+### Tier 8. Wiki and documentation synchronization (MANDATORY)
 
 1. **Synchronize changes everywhere**:
    - When code changes alter formulas, scoring, models, tools, UI components, background tasks, schemas, or architectural patterns, YOU MUST proactively audit and update ALL relevant wiki pages (`wiki/concepts/`, `wiki/entities/`) documenting the new behavior, component interfaces, invariants, and the rationale ("the why"). Never leave new features, model tracks, or schemas undocumented.
@@ -175,7 +200,7 @@ Audit all changed files through these seven tiers. Do not skip any tier.
 
 ## 3. Verification report format
 
-Conclude every verification run with a concise status report:
+Conclude every verification run with an eight-tier status report and a mandatory Staff/Principal critique block:
 
 | Tier | Area | Result | Notes / Action Items |
 | :--- | :--- | :--- | :--- |
@@ -185,4 +210,10 @@ Conclude every verification run with a concise status report:
 | **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, database schema parity |
 | **Tier 5** | Architecture & UI/UX | PASS / FAIL | Zero frontend compute, design system, layout |
 | **Tier 6** | Observability | PASS / FAIL | logger.exception used, zero swallowed exceptions |
-| **Tier 7** | Wiki & docs synchronization | PASS / FAIL | Concepts/entities synced, wiki_lint clean, QMD embeddings updated |
+| **Tier 7** | Staff/Principal critical review | PASS / FAIL | SOLID, code smells, CAP/idempotency, N+1 check, counterfactual critique |
+| **Tier 8** | Wiki & docs synchronization | PASS / FAIL | Concepts/entities synced, wiki_lint clean, QMD embeddings updated |
+
+### Staff/Principal Engineer Critique
+- **Chosen approach vs alternative**: <1-2 sentences stating why the chosen design beats the primary alternative>
+- **Tradeoffs & failure modes**: <CP vs AP stance, idempotency guarantee, complexity/scaling behavior under partial failure>
+- **Refactoring / smells addressed**: <Any smells simplified or why no further abstraction is warranted (YAGNI)>

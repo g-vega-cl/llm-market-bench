@@ -108,6 +108,14 @@ if [ "$ENGINE" = true ] || [ "$FAST" = true ]; then
   echo "--> Running Ruff format check..."
   ./apps/engine/.venv/bin/ruff format --check apps/engine/
 
+  # Check McCabe cyclomatic complexity on modified Python files (Diff-scoped check)
+  MODIFIED_PY=$(git diff --name-only HEAD -- 'apps/engine/*.py' 2>/dev/null || true)
+  if [ -n "$MODIFIED_PY" ]; then
+    echo "--> Auditing McCabe Cyclomatic Complexity (C901 <= 15) on modified Python files..."
+    ./apps/engine/.venv/bin/ruff check $MODIFIED_PY --select C901 --config "lint.mccabe.max-complexity = 15" || \
+      echo "WARNING: High cyclomatic complexity (>15) detected in modified files. Review in Tier 7 (extract pure helpers or guard clauses)."
+  fi
+
   echo "--> Checking Engine import root hygiene (zero forbidden 'apps.engine' in production code)..."
   if git grep -nE "(from|import) apps\.engine\." apps/engine/core/ apps/engine/tasks/ apps/engine/execution/ apps/engine/analytics/ apps/engine/tools/ apps/engine/local_autoresearch/ 2>/dev/null; then
     echo "ERROR: Engine production code must use module imports relative to apps/engine (e.g. 'from core.' or 'from local_autoresearch.', NOT 'from apps.engine.') to guarantee CI/CD parity!" >&2

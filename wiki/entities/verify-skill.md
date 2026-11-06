@@ -5,24 +5,25 @@ category: entity
 
 # Verify Skill
 
-The **verify skill** (`.agents/skills/verify/`) is the post-coding verification protocol for LLM Market Bench. It is invoked after every coding round or via `/verify` to audit changes against production standards — guaranteeing zero regressions, passing builds, hermetic test isolation, financial and domain sanity, and architectural compliance.
+The **verify skill** (`.agents/skills/verify/`) is the post-coding verification protocol for LLM Market Bench. It is invoked after every coding round or via `/verify` to audit changes against production standards — guaranteeing zero regressions, passing builds, hermetic test isolation, financial and domain sanity, architectural compliance, and staff/principal engineer code quality.
 
 The skill ships as two files:
 
-- `.agents/skills/verify/SKILL.md` — the protocol describing seven verification tiers and the required report format.
+- `.agents/skills/verify/SKILL.md` — the protocol describing eight verification tiers and the required report format.
 - `.agents/skills/verify/scripts/verify.sh` — a bundled runner that executes the relevant checks.
 
 ## Verification Tiers
 
-The protocol audits every changed file through seven tiers; none may be skipped.
+The protocol audits every changed file through eight tiers; none may be skipped.
 
-1. **Static hygiene, size ceilings & hotspot forensics** — Ruff (E, F, I, UP, B, SIM) and Biome must pass with zero warnings. Enforces a 400-LOC soft ceiling and 800-LOC hard ceiling per file, colocated tests (`foo.py` ↔ `test_foo.py`, `foo.tsx` ↔ `foo.test.tsx`), checks `apps/engine/hotspots.py` for `CRITICAL`/`HIGH` risk files, and validates engine production import root hygiene.
-2. **Build & type integrity** — `pnpm run typecheck` (`tsc --noEmit`) and `pnpm run build` must pass. Vitest (`pnpm test`) and Biome do not perform type checking because they only transpile; `pnpm run typecheck` is mandatory on all TypeScript changes. Also covers subprocess safety (no compound or multiline `-c` commands), scratch-script usage, and CI workflow secret parity for new `core/config.py` keys.
-3. **Hermetic testing & coverage** — Tests must make zero external network calls and pass without ambient environment variables. Engine coverage must stay ≥ 70%, web coverage ≥ 40%. Bug fixes require a failing-without-change regression test.
-4. **Domain, API & financial invariants** — Financial bounds checks (implied volatility, spot prices, option deltas, put/call distribution), spot vs futures separation, explicit HTTP 401/403/429/400 handling, weekend and zero-row handling, `America/New_York` timezone enforcement, trade idempotency, FIFO lot matching, short-position prevention, RLS on new migration tables, self-hosted PostgreSQL and PostgREST schema parity (verifying migrations hermetically via `apps/engine/tests/test_migration_grants.py` and confirming new `sys-*` portfolio provisioning online), and tool-definition parity across `tools.json`, `core/llm/tools.py`, `program.md`, and `test_tools_consistency.py`.
-5. **Architecture, UI/UX & design system** — Zero frontend compute ([[concepts/zero-frontend-compute]]), consumption of `@llm-market-bench/ui-design-system` components, zero arbitrary Tailwind values, single dark theme, fluent responsive layout with no explicit breakpoints, and tool-first LLM architecture.
-6. **Observability & error resilience** — `logger.exception("...")` in `except` blocks ([[concepts/observability-standard]]) and no swallowed errors.
-7. **Wiki & documentation synchronization** — **Mandatory sync**: Updates concept and entity pages for any modified formulas, models, tools, schemas, or UI flows. Enforces strict config parity against `packages/config/tools.json` and `packages/config/models.json` via `apps/engine/wiki_lint.py`, preserves existing tool definitions during auto-wiki generation, refreshes `wiki/concepts/code-hotspots.md` via `hotspots.py --write-wiki`, auto-indexes new pages via `wiki_lint.py --fix`, and regenerates QMD vector embeddings (`qmd update && qmd embed`). Guarantees all backtick file references are root-relative and internal wikilinks resolve.
+- **Tier 1: Static hygiene, size ceilings & hotspot forensics** — Ruff (E, F, I, UP, B, SIM) and Biome must pass with zero warnings. Enforces a 400-LOC soft ceiling and 800-LOC hard ceiling per file, colocated tests (`foo.py` ↔ `test_foo.py`, `foo.tsx` ↔ `foo.test.tsx`), checks `apps/engine/hotspots.py` for `CRITICAL`/`HIGH` risk files, and validates engine production import root hygiene.
+- **Tier 2: Build & type integrity** — `pnpm run typecheck` (`tsc --noEmit`) and `pnpm run build` must pass. Vitest (`pnpm test`) and Biome do not perform type checking because they only transpile; `pnpm run typecheck` is mandatory on all TypeScript changes. Also covers subprocess safety (no compound or multiline `-c` commands), scratch-script usage, and CI workflow secret parity for new `core/config.py` keys.
+- **Tier 3: Hermetic testing & coverage** — Tests must make zero external network calls and pass without ambient environment variables. Engine coverage must stay ≥ 70%, web coverage ≥ 40%. Bug fixes require a failing-without-change regression test.
+- **Tier 4: Domain, API & financial invariants** — Financial bounds checks (implied volatility, spot prices, option deltas, put/call distribution), spot vs futures separation, explicit HTTP 401/403/429/400 handling, weekend and zero-row handling, `America/New_York` timezone enforcement, trade idempotency, FIFO lot matching, short-position prevention, RLS on new migration tables, self-hosted PostgreSQL and PostgREST schema parity (verifying migrations hermetically via `apps/engine/tests/test_migration_grants.py` and confirming new `sys-*` portfolio provisioning online), and tool-definition parity across `tools.json`, `core/llm/tools.py`, `program.md`, and `test_tools_consistency.py`.
+- **Tier 5: Architecture, UI/UX & design system** — Zero frontend compute ([[concepts/zero-frontend-compute]]), consumption of `@llm-market-bench/ui-design-system` components, zero arbitrary Tailwind values, single dark theme, fluent responsive layout with no explicit breakpoints, and tool-first LLM architecture.
+- **Tier 6: Observability & error resilience** — `logger.exception("...")` in `except` blocks ([[concepts/observability-standard]]) and no swallowed errors.
+- **Tier 7: Staff/Principal critical code & architecture review** — Rigorous counterfactual audit ("Could this have been done better?"). Enforces anti-sycophancy (the delete check, comparing against an alternative design, "Tidy First"), SOLID and functional core / imperative shell separation, code smell detection, diff-scoped McCabe cyclomatic complexity (`C901` ≤ 15), explicit CAP/PACELC trade-off stances (CP for ledger/trade mutations, AP for read paths), idempotency, and physical resource intuition (zero N+1 queries, $O(1)$ dictionary lookups). See `[[concepts/staff-engineer-verification]]`.
+- **Tier 8: Wiki & documentation synchronization** — **Mandatory sync**: Updates concept and entity pages for any modified formulas, models, tools, schemas, or UI flows. Enforces strict config parity against `packages/config/tools.json` and `packages/config/models.json` via `apps/engine/wiki_lint.py`, preserves existing tool definitions during auto-wiki generation, refreshes `wiki/concepts/code-hotspots.md` via `hotspots.py --write-wiki`, auto-indexes new pages via `wiki_lint.py --fix`, and regenerates QMD vector embeddings (`qmd update && qmd embed`). Guarantees all backtick file references are root-relative and internal wikilinks resolve.
 
 ## The Runner
 
@@ -37,14 +38,15 @@ The runner script supports flags to scope the suite:
 ./.agents/skills/verify/scripts/verify.sh --hotspots   # hotspot & churn forensics only
 ```
 
-It synchronizes the wiki (`hotspots.py --write-wiki`, `wiki_lint.py --fix`, `qmd update && qmd embed`), verifies database migration grants and RLS integrity (`apps/engine/tests/test_migration_grants.py`), runs Ruff (`check` and `format --check`), Biome, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage.
+It synchronizes the wiki (`hotspots.py --write-wiki`, `wiki_lint.py --fix`, `qmd update && qmd embed`), verifies database migration grants and RLS integrity (`apps/engine/tests/test_migration_grants.py`), runs Ruff (`check`, `format --check`, and diff-scoped `C901` complexity), Biome, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage.
 
 ## Report Format
 
-Every run concludes with a seven-row status table — one row per tier — using PASS / FAIL plus notes and action items.
+Every run concludes with an eight-row status table — one row per tier — using PASS / FAIL plus notes and action items, followed by a mandatory 3-bullet **Staff/Principal Engineer Critique** (Chosen approach vs alternative, Tradeoffs & failure modes, Refactoring / smells addressed).
 
 ## Related
 
+- [[concepts/staff-engineer-verification]]
 - [[concepts/project-linting]]
 - [[concepts/code-hotspots]]
 - [[concepts/observability-standard]]

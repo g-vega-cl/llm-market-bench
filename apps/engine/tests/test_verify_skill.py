@@ -74,16 +74,30 @@ def test_verify_script_checks_migration_integrity():
     assert "supabase migration list" not in content, "verify.sh must not call obsolete supabase migration list"
 
 
-def test_verify_skill_mandates_tier_7_wiki_docs():
-    """Verify that SKILL.md and wiki entity explicitly mandate Tier 7 for Wiki and documentation synchronization."""
+def test_verify_skill_mandates_tier_8_wiki_docs():
+    """Verify that SKILL.md and wiki entity explicitly mandate 8 tiers, with Tier 7 as Staff/Principal review and Tier 8 as Wiki synchronization."""
     assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
     skill_content = VERIFY_SKILL_MD.read_text()
     assert "Tier 7" in skill_content, "SKILL.md must have a dedicated Tier 7"
-    assert "seven tiers" in skill_content.lower() or "7 tiers" in skill_content.lower()
+    assert "Tier 8" in skill_content, "SKILL.md must have a dedicated Tier 8"
+    assert "eight tiers" in skill_content.lower() or "8 tiers" in skill_content.lower()
+    assert "staff/principal" in skill_content.lower()
+    assert "mccabe" in skill_content.lower() or "c901" in skill_content.lower()
+    assert "staff/principal engineer critique" in skill_content.lower()
 
     assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
     entity_content = VERIFY_ENTITY_MD.read_text()
-    assert "Tier 7" in entity_content or "seven tiers" in entity_content.lower()
+    assert "Tier 7" in entity_content
+    assert "Tier 8" in entity_content
+    assert "eight tiers" in entity_content.lower() or "8 tiers" in entity_content.lower()
+    assert "[[concepts/staff-engineer-verification]]" in entity_content
+
+
+def test_verify_script_checks_mccabe_complexity():
+    """Verify that verify.sh executes diff-scoped McCabe cyclomatic complexity check."""
+    assert VERIFY_SCRIPT.exists(), "verify.sh must exist"
+    content = VERIFY_SCRIPT.read_text()
+    assert "C901" in content or "max-complexity" in content
 
 
 def test_verify_script_checks_strict_wiki_lint():

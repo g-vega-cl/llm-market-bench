@@ -99,6 +99,7 @@
 
 ## Concepts
 
+- [[concepts/staff-engineer-verification]] — Auto-indexed page
 - [[concepts/window-focus-refresh]] — Auto-indexed page
 - [[concepts/zero-dependency-markdown-renderer]] — dependency-free Markdown parser/renderer with URL safety and nested-list support
 - [[concepts/auth-db-client-separation]] — Auth (Supabase Cloud) vs DB (self-hosted PostgREST archive) client split

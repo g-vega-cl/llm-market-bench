@@ -20,6 +20,21 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: I still see a flashing error when accessing a page sometimes. Set up PostHog so these errors show up there.
 - [x] - Benchify: refresh data on window focus.
 - [x] - Benchify: I asked the main homepage chat something and it answered with stale data (Fed's April 29, 2026 decision as the "immediate catalyst", December 2025 hold, P/E 28.65 / forward 20.45). Is it even anchored in the latest data?
+- [ ] - Benchify : format the user question properly
+- [ ] - Benchify: Intraday Thought Trace layout. Verbatim feedback:
+  • 7:12 PM ET
+  HOLD DECISION
+
+  Still looks bad. Always make sure there is a consistent gap between elements. If elements can't fit without wrapping. Or if they are smushed. Delete one element. We would rather have less, but excellent looking.
+
+  Or make two rows.
+
+  In this case. Intraday thought trace could be above the other two elements. Like a title There's also no need to add
+
+  VWAP:
+  $735.52
+  RSI:
+  28.6
 
 ### Marketing & Building in Public
 
@@ -42,6 +57,7 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
  - This is kindof part of the pivot I'm looking to do, maybe a different category?
+- [ ] - Benchify: make sure that the daily homepage trader actually makes trades and has a portfolio. We should make it simple I think. Something like always trade 20 (or what percentage is best?) % of your portfolio..if your position is hold, don't do anything. If it's buy, buy up to that % . If it's sell, sell everything
 
 ### Database & Performance Polish
 
@@ -64,6 +80,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: an option targeter? A predictor that says "in X amount of time, this stock will move Y"
 - [ ] - Benchify; a daily stock picker, which stocks will go up today? And pick 3 up and 3 down.
 - [ ] - Benchify: train small model?
+- [ ] - Benchify: add this paper to sources.
+
+  https://www.open-access.bcu.ac.uk/16180/1/The%20Alchemy%20of%20Multibagger%20Stocks%20-%20Anna%20Yartseva%20-%20CAFE%20Working%20Paper%2033%20%282025%29.pdf
 
 ### Focused Assets (Single Ticker / ETF)
 

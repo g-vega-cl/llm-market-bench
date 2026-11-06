@@ -96,8 +96,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
 - [ ] - Benchify: market data free APIs?
-- [ ] - Benchify: free APIs to the LLMs chat?
-- [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 - [ ] - Benchify: build your AI trading strategy online (agobuilder.com, switchmarkets.com?)
   - [ ] - Kind of like a visual Unsloth dashboard?
 - [ ] - Benchify: So many posts like this. https://www.reddit.com/r/ai_trading/s/P9KnfLpbAV There must be a better way
@@ -110,7 +108,6 @@ A living document of features and improvements in progress or planned for the pl
 ### Autonomous Agents & Meta-Intelligence
 
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
-- [ ] - Benchify: an autoresearch autoresearcher?
 - [ ] - Strata: 24/7 business fit researcher
 - [ ] **A programming/business buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
@@ -122,7 +119,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
 - [ ] - Strata + upwork
 - [ ] - Other: build my own job applier/aggregator.
-- [ ] - Idea: A article site like medium or dev.to but it allows for html canvasses (AI native)
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
   - same with text
 - [ ] - Benchify : fun idea. Every morning do some kind of praying to the market God's funny tiktok video showing your prediction and kind of begging to the gambling gods allow you to win some money.

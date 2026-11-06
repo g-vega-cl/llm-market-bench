@@ -17,9 +17,6 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
-- [x] - Benchify: I still see a flashing error when accessing a page sometimes. Set up PostHog so these errors show up there.
-- [x] - Benchify: refresh data on window focus.
-- [x] - Benchify: I asked the main homepage chat something and it answered with stale data (Fed's April 29, 2026 decision as the "immediate catalyst", December 2025 hold, P/E 28.65 / forward 20.45). Is it even anchored in the latest data?
 - [ ] - Benchify : format the user question properly
 - [ ] - Benchify: Intraday Thought Trace layout. Verbatim feedback:
   • 7:12 PM ET

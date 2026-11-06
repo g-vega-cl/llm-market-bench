@@ -330,6 +330,7 @@ def _fetch_context_signals(sb_client: Any, today_str: str, results: dict[str, An
         news_res = (
             sb_client.table("intraday_market_news")
             .select("source, headline, event_timestamp")
+            .eq("jev_choice", "MARKET_MOVING")
             .order("event_timestamp", desc=True)
             .limit(5)
             .execute()

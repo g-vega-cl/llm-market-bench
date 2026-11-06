@@ -301,19 +301,21 @@ async def test_synthesize_recent_news_updates_market_feeling():
 
     mock_sb = MagicMock()
     mock_news_table = MagicMock()
-    mock_news_table.select.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
-        data=[
-            {
-                "headline": "Jobs Report Beats Expectations with 250k Additions",
-                "source": "Alpaca Benzinga",
-                "event_timestamp": "2026-11-01T19:30:00Z",
-            },
-            {
-                "headline": "Semiconductor Sector Rallies on Hyperscaler Demand",
-                "source": "Polygon Wire",
-                "event_timestamp": "2026-11-01T19:40:00Z",
-            },
-        ]
+    mock_news_table.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = (
+        MagicMock(
+            data=[
+                {
+                    "headline": "Jobs Report Beats Expectations with 250k Additions",
+                    "source": "Alpaca Benzinga",
+                    "event_timestamp": "2026-11-01T19:30:00Z",
+                },
+                {
+                    "headline": "Semiconductor Sector Rallies on Hyperscaler Demand",
+                    "source": "Polygon Wire",
+                    "event_timestamp": "2026-11-01T19:40:00Z",
+                },
+            ]
+        )
     )
 
     mock_feeling_table = MagicMock()
@@ -346,6 +348,7 @@ async def test_synthesize_recent_news_updates_market_feeling():
         )
 
         assert result == "Strong labor data and semiconductor resilience support risk-on momentum."
+        mock_news_table.select.return_value.eq.assert_called_with("jev_choice", "MARKET_MOVING")
         mock_feeling_table.update.assert_called_with(
             {"news_summary": "Strong labor data and semiconductor resilience support risk-on momentum."}
         )

@@ -16,7 +16,7 @@ Each event is submitted to the OpenRouter Decisions API (`https://openrouter.ai/
 
 ## Confidence Threshold
 
-Jev returns a `choice`, a `confidence` (normalized to a 0–100 scale), and a probability distribution. An event is treated as market-moving only when `choice == MARKET_MOVING` **and** `confidence >= 70.0`. Everything else is discarded.
+Jev returns a `choice`, a `confidence` (normalized to a 0–100 scale), and a probability distribution. An event is treated as market-moving only when `choice == MARKET_MOVING` **and** `confidence >= 70.0`. Both `MARKET_MOVING` and `NOISE` evaluations (with `confidence > 0`) are persisted to `intraday_market_news` so rejected headlines are recorded and never re-evaluated on subsequent 5-minute cycles, while AI agent readers filter strictly to `jev_choice == "MARKET_MOVING"`.
 
 ## Failure Behavior
 

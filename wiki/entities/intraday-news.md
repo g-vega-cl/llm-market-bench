@@ -35,13 +35,13 @@ Every event gets a deterministic SHA-256 `source_id_hash` derived from `headline
 
 Each new candidate is evaluated by `evaluate_news_with_jev()` against the OpenRouter Decisions API (`https://openrouter.ai/api/alpha/decisions`) using the `JEV_MODEL`. The single `market_relevance` question classifies the headline as `MARKET_MOVING` or `NOISE` with a confidence score. See [[concepts/jev-news-sieve]] for the classification criteria and threshold logic.
 
-Evaluation runs concurrently under an `asyncio.Semaphore(3)` and only the first 10 new candidates per sync are screened. Items classified `MARKET_MOVING` with confidence ≥ 70 are persisted to the `intraday_market_news` table (see [[entities/database]]).
+Evaluation runs concurrently under an `asyncio.Semaphore(3)` and only the first 10 new candidates per sync are screened. All successfully evaluated items (`confidence > 0`) are persisted to the `intraday_market_news` table with `jev_choice` set to `MARKET_MOVING` (when choice is `MARKET_MOVING` and confidence ≥ 70) or `NOISE` (see [[entities/database]]). Storing `NOISE` records prevents re-evaluating the same rejected headlines on subsequent 5-minute polling cycles.
 
 ## Edge Persistence, Noise Filter & Jev Cost
 
 - **Noise filter**: `is_noise_headline()` in `apps/engine/analysis/intraday_news_aggregator.py` drops law-firm class-action solicitations and "Market Size, Share … Forecast" press releases from every provider before deduplication.
-- **Vetted persistence**: `persist_intraday_news()` in `apps/engine/trading/intraday_news_store.py` (colocated test: `apps/engine/trading/test_intraday_news_store.py`) runs every 5-minute cycle. It skips hashes already stored, drops headlines Jaccard-similar to any stored in the last 24h, then calls Jev once per remaining item (`Semaphore(3)`). Only `MARKET_MOVING` ≥ 70 is stored, with its real confidence (previously a hardcoded 75.0 stamped on everything).
-- **Cost tracking**: each cycle logs `Intraday news Jev calls: N, market-moving kept: M`. Summing `N` over the logs gives the OpenRouter call count for a period.
+- **Vetted persistence**: `persist_intraday_news()` in `apps/engine/trading/intraday_news_store.py` (colocated test: `apps/engine/trading/test_intraday_news_store.py`) runs every 5-minute cycle. It skips hashes already stored, drops headlines Jaccard-similar to any stored in the last 24h, then calls Jev once per remaining item (`Semaphore(3)`). Both `MARKET_MOVING` (≥ 70 confidence) and `NOISE` evaluations are stored with their real confidence so rejected headlines are never re-evaluated on future cycles; AI agent readers (`get_recent_vetted_news`, 30m news synthesis, and conversational Q&A grounding) filter strictly to `jev_choice = "MARKET_MOVING"`.
+- **Cost tracking**: each cycle logs `Intraday news Jev calls: N, market-moving kept: M, noise stored: K`. Summing `N` over the logs gives the OpenRouter call count for a period.
 - **Kill switch**: `INTRADAY_NEWS_JEV_VETTING=false` stops all Jev calls from this path; items are then stored with `jev_choice="UNVETTED"` and `jev_confidence=0`.
 
 ## Sync & Caching

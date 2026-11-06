@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **231**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **232**).
 
 ## Top Hotspots
 
@@ -17,17 +17,17 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 17 | 5 | 29.4% | 245 | 85 | **HIGH** |
 | `apps/web/src/routes/__root.tsx` | 11 | 6 | 54.5% | 239 | 66 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 16 | 3 | 18.8% | 379 | 48 | **HIGH** |
+| `apps/engine/trading/live_intraday_agent.py` | 12 | 4 | 33.3% | 434 | 48 | **HIGH** |
+| `apps/engine/trading/test_live_intraday_agent.py` | 11 | 4 | 36.4% | 356 | 44 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 20 | 2 | 10.0% | 1758 | 40 | **HIGH** |
 | `apps/engine/tests/test_daily_predictor.py` | 10 | 4 | 40.0% | 763 | 40 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 13 | 3 | 23.1% | 295 | 39 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 9 | 4 | 44.4% | 226 | 36 | **HIGH** |
 | `apps/engine/tests/test_workflow_schedule.py` | 9 | 4 | 44.4% | 243 | 36 | **HIGH** |
 | `apps/engine/main.py` | 17 | 2 | 11.8% | 73 | 34 | **HIGH** |
-| `apps/engine/trading/live_intraday_agent.py` | 11 | 3 | 27.3% | 434 | 33 | **HIGH** |
 | `apps/web/src/routes/-__root.test.tsx` | 8 | 4 | 50.0% | 372 | 32 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.test.ts` | 8 | 4 | 50.0% | 540 | 32 | **HIGH** |
 | `apps/engine/tests/test_verify_skill.py` | 10 | 3 | 30.0% | 119 | 30 | **HIGH** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 10 | 3 | 30.0% | 868 | 30 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -35,7 +35,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 | Primary File | Coupled File | Shared Commits | Coupling Strength |
 | :--- | :--- | :---: | :---: |
-| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 10 | 100% |
+| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 11 | 100% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 10 | 59% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 10 | 59% |
 | `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 10 | 59% |

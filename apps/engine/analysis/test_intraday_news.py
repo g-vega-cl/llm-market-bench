@@ -201,6 +201,9 @@ async def test_sync_intraday_market_news_upsert():
     assert saved[0]["headline"] == "Jobs Report Beats Expectations"
     assert saved[0]["jev_choice"] == "MARKET_MOVING"
     mock_sb.table().upsert.assert_called_once()
+    upserted_rows = mock_sb.table().upsert.call_args[0][0]
+    assert len(upserted_rows) == 2
+    assert {r["jev_choice"] for r in upserted_rows} == {"MARKET_MOVING", "NOISE"}
 
 
 @pytest.mark.asyncio

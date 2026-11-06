@@ -235,6 +235,7 @@ async def get_recent_vetted_news(limit: int = 15, sb_client=None) -> list[dict[s
         resp = (
             sb.table("intraday_market_news")
             .select("*")
+            .eq("jev_choice", "MARKET_MOVING")
             .gte("event_timestamp", since_iso)
             .order("event_timestamp", desc=True)
             .limit(limit)
@@ -247,7 +248,7 @@ async def get_recent_vetted_news(limit: int = 15, sb_client=None) -> list[dict[s
 
 
 async def sync_intraday_market_news(force: bool = False, sb_client=None) -> list[dict[str, Any]]:
-    """Ingests raw intraday events, screens them with TypeSafe Jev, and persists MARKET_MOVING items."""
+    """Ingests raw intraday events, screens them with TypeSafe Jev, and persists evaluated items."""
     sb = sb_client or get_supabase_client()
     recent = await get_recent_vetted_news(limit=20, sb_client=sb)
     if not force and recent:
@@ -282,31 +283,32 @@ async def sync_intraday_market_news(force: bool = False, sb_client=None) -> list
     async def _evaluate(candidate: dict[str, Any]) -> dict[str, Any] | None:
         async with sem:
             res = await evaluate_news_with_jev(candidate)
-            if res.get("is_market_moving"):
-                return {
-                    "headline": candidate["headline"],
-                    "summary": candidate.get("summary") or candidate.get("context"),
-                    "source": candidate["source"],
-                    "url": candidate.get("url"),
-                    "tickers": candidate.get("tickers", []),
-                    "event_timestamp": candidate["event_timestamp"],
-                    "jev_choice": res["choice"],
-                    "jev_confidence": res["confidence"],
-                    "source_id_hash": candidate["source_id_hash"],
-                }
-            return None
+            if res.get("confidence", 0.0) <= 0.0:
+                return None
+            choice = "MARKET_MOVING" if res.get("is_market_moving") else "NOISE"
+            return {
+                "headline": candidate["headline"],
+                "summary": candidate.get("summary") or candidate.get("context"),
+                "source": candidate["source"],
+                "url": candidate.get("url"),
+                "tickers": candidate.get("tickers", []),
+                "event_timestamp": candidate["event_timestamp"],
+                "jev_choice": choice,
+                "jev_confidence": res["confidence"],
+                "source_id_hash": candidate["source_id_hash"],
+            }
 
     results = await asyncio.gather(*[_evaluate(c) for c in new_candidates[:10]], return_exceptions=True)
     to_insert = [r for r in results if isinstance(r, dict) and r is not None]
     if to_insert:
         try:
             sb.table("intraday_market_news").upsert(to_insert, on_conflict="source_id_hash").execute()
-            logger.info("Successfully upserted %d Jev-vetted market-moving news items.", len(to_insert))
+            logger.info("Successfully upserted %d Jev-evaluated news items.", len(to_insert))
         except Exception as e:
             logger.exception("Failed to upsert intraday_market_news to Supabase: %s", e)
 
     stored = await get_recent_vetted_news(limit=20, sb_client=sb)
-    return stored if stored else to_insert
+    return stored if stored else [r for r in to_insert if r["jev_choice"] == "MARKET_MOVING"]
 
 
 async def execute_get_market_moving_news_tool(limit: int = 8, force_refresh: bool = False) -> str:

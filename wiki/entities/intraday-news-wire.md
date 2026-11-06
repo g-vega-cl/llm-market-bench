@@ -9,13 +9,17 @@ The Intraday News Wire (`IntradayNewsWire`) is the Today-page component that sur
 
 ## Data Flow
 
-- `fetchIntradayNews(limit=20)` (`features/today/api/fetch-intraday-news.ts`) queries the `intraday_market_news` table ordered by `event_timestamp` descending and attaches `formattedTime`/`formattedDate` in Eastern time.
-- `fetchTodayData()` also loads up to 20 intraday items for the current day into the `TodayData.intradayNews` field, so the wire is part of the single Today-page payload.
+- `fetchIntradayNews(limit=50)` (`apps/web/src/features/today/api/fetch-intraday-news.ts`) queries the `intraday_market_news` table ordered by `event_timestamp` descending and attaches `formattedTime`/`formattedDate` in Eastern time.
+- `fetchTodayData()` loads up to 50 intraday items for the current day into the `TodayData.intradayNews` field, so both vetted catalysts and filtered noise items are part of the single Today-page payload.
 - `TodayPage` lazy-loads `IntradayNewsWire` and renders it full-width (`lg:col-span-3`) in the Row 2 grid. The page's empty-state check now also considers `intradayNews`.
 
-## Rendering
+## Rendering & Tabs
 
-Each card shows the ET timestamp, source, a Jev badge (`⚡ MARKET_MOVING <confidence>%`), the headline, a truncated summary, up to four ticker badges, and an external source link when a URL is present. When there are no items, the component shows a standby state ("No breaking catalysts detected yet today") with a "Vetted by Jev AI" marker.
+The header includes a two-tab switcher built with `@llm-market-bench/ui-design-system` `Button` primitives:
+- **⚡ Catalysts (`MARKET_MOVING`)** — default active tab showing high-impact catalysts with green `success` badges (`⚡ MARKET_MOVING <confidence>%`).
+- **🔇 Filtered Noise (`NOISE`)** — secondary tab showing headlines rejected by Jev with neutral badges (`🔇 NOISE <confidence>%`), allowing human readers to audit what the sieve filtered out.
+
+Each card shows the ET timestamp, source, Jev badge, headline, truncated summary, up to four ticker badges, and an external source link when a URL is present.
 
 ## Related
 

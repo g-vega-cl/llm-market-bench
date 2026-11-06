@@ -7,7 +7,7 @@ export type FormattedIntradayNews = IntradayMarketNews & {
     formattedDate: string;
 };
 
-export async function fetchIntradayNews(limit = 20): Promise<FormattedIntradayNews[]> {
+export async function fetchIntradayNews(limit = 50): Promise<FormattedIntradayNews[]> {
     const supabase = getDbServerClient();
     const { data, error } = await supabase
         .from('intraday_market_news')

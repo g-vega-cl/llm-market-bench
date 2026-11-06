@@ -47,18 +47,30 @@ def _evaluator(choice_by_headline):
 
 
 @pytest.mark.asyncio
-async def test_persists_only_vetted_items_with_real_confidence():
+async def test_persists_both_market_moving_and_noise_items_with_real_confidence():
     sb, table = _sb()
-    items = [_item("Fed cuts rates by 50bp", "h1"), _item("Routine PR blurb", "h2")]
-    ev = _evaluator({"Fed cuts rates by 50bp": ("MARKET_MOVING", 88.5)})
+    items = [
+        _item("Fed cuts rates by 50bp", "h1"),
+        _item("Routine PR blurb", "h2"),
+        _item("Failed evaluation error", "h3"),
+    ]
+    ev = _evaluator(
+        {
+            "Fed cuts rates by 50bp": ("MARKET_MOVING", 88.5),
+            "Routine PR blurb": ("NOISE", 91.0),
+            "Failed evaluation error": ("NOISE", 0.0),
+        }
+    )
 
     count = await persist_intraday_news(items, sb_client=sb, evaluate=ev)
 
-    assert count == 1
+    assert count == 2
     rows = table.upsert.call_args[0][0]
-    assert [r["source_id_hash"] for r in rows] == ["h1"]
+    assert [r["source_id_hash"] for r in rows] == ["h1", "h2"]
     assert rows[0]["jev_confidence"] == 88.5
     assert rows[0]["jev_choice"] == "MARKET_MOVING"
+    assert rows[1]["jev_confidence"] == 91.0
+    assert rows[1]["jev_choice"] == "NOISE"
     assert table.upsert.call_args[1]["on_conflict"] == "source_id_hash"
 
 

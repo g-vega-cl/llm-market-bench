@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { FormattedIntradayNews } from '../api/fetch-intraday-news';
 import { IntradayNewsWire } from './IntradayNewsWire';
@@ -68,6 +68,34 @@ describe('IntradayNewsWire', () => {
             const link = screen.getByRole('link', { name: /Source/i });
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', 'https://example.com/full-story');
+        });
+
+        it('separates MARKET_MOVING catalysts and NOISE items into switchable tabs', () => {
+            const catalyst = makeNewsItem({
+                id: 'cat-1',
+                headline: 'Fed Cuts Interest Rates by 50 bps',
+                jev_choice: 'MARKET_MOVING',
+                jev_confidence: 95.0,
+            });
+            const noise = makeNewsItem({
+                id: 'noise-1',
+                headline: 'Routine Corporate PR Announcement',
+                jev_choice: 'NOISE',
+                jev_confidence: 88.0,
+            });
+
+            render(<IntradayNewsWire items={[catalyst, noise]} />);
+
+            // Default tab shows Catalysts
+            expect(screen.getByText('Fed Cuts Interest Rates by 50 bps')).toBeInTheDocument();
+            expect(screen.queryByText('Routine Corporate PR Announcement')).not.toBeInTheDocument();
+
+            // Switch to Filtered Noise tab
+            const noiseTab = screen.getByRole('button', { name: /Filtered Noise/i });
+            fireEvent.click(noiseTab);
+
+            expect(screen.getByText('Routine Corporate PR Announcement')).toBeInTheDocument();
+            expect(screen.queryByText('Fed Cuts Interest Rates by 50 bps')).not.toBeInTheDocument();
         });
     });
 });

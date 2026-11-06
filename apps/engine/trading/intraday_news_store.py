@@ -102,14 +102,21 @@ async def persist_intraday_news(
     async def _vet(c: dict[str, Any]) -> dict[str, Any] | None:
         async with sem:
             res = await evaluate({**c, "context": c["summary"][:200]})
-        if not res.get("is_market_moving"):
+        if res.get("confidence", 0.0) <= 0.0:
             return None
-        return {**c, "jev_choice": res["choice"], "jev_confidence": res["confidence"]}
+        choice = "MARKET_MOVING" if res.get("is_market_moving") else "NOISE"
+        return {**c, "jev_choice": choice, "jev_confidence": res["confidence"]}
 
     results = await asyncio.gather(*[_vet(c) for c in fresh], return_exceptions=True)
     to_insert = [r for r in results if isinstance(r, dict)]
+    kept = sum(1 for r in to_insert if r["jev_choice"] == "MARKET_MOVING")
     # One line per cycle: grep "Jev calls" to total OpenRouter usage over several days.
-    logger.info("Intraday news Jev calls: %d, market-moving kept: %d", len(fresh), len(to_insert))
+    logger.info(
+        "Intraday news Jev calls: %d, market-moving kept: %d, noise stored: %d",
+        len(fresh),
+        kept,
+        len(to_insert) - kept,
+    )
     return _upsert(sb, to_insert)
 
 

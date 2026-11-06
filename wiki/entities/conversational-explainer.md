@@ -34,7 +34,7 @@ Composite ranking function that guarantees fresh, active records outrank decayed
 Gathers cross-domain context from the archive DB, failing soft per source (each wrapped in `try/except` with `logger.exception`):
 
 - **`market_feeling`** — the 3 most recent desk turns (`sentiment_label`, `confidence_score`, `why_explanation`, `trades_summary`, `news_summary`, `created_at`).
-- **`breaking_news`** — the 5 most recent live headlines from `intraday_market_news` (`source`, `headline`, `event_timestamp`).
+- **`breaking_news`** — the 5 most recent live headlines from `intraday_market_news` (`source`, `headline`, `event_timestamp`), filtered strictly to `jev_choice = "MARKET_MOVING"` so only Jev-vetted catalysts reach the explainer's news grounding (see [[concepts/jev-news-sieve]]).
 - **`trades`** — the 3 most recent executions (`ticker`, `signal`, `price`, `reasoning`, `executed_at`).
 - **`memories`** — keyword-matched active rows combined with fresh active market memories, ranked and filtered by `rank_and_filter_memories`.
 - **`cause_and_effect`** — keyword-matched causal chains, falling back to the most recent rows.
@@ -97,3 +97,4 @@ One worker iteration:
 - [[entities/secondary-minipc-edge]] — the edge host running the trader + QA worker containers
 - [[concepts/private-memory-vault]] — user-isolated memory storage
 - [[concepts/posthog-stealth-proxy]] — canonical `posthog.captureException` error tracking standard
+- [[concepts/jev-news-sieve]] — the sieve whose MARKET_MOVING filter constrains breaking-news grounding

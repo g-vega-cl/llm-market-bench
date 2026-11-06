@@ -286,7 +286,7 @@ async function executeTodayQueries(
             .select('*')
             .gte('event_timestamp', startOfDay)
             .order('event_timestamp', { ascending: false })
-            .limit(20),
+            .limit(50),
         supabase
             .from('trades')
             .select(TRADES_TODAY_SELECT)

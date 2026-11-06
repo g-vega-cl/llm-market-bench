@@ -278,6 +278,7 @@ async def synthesize_recent_news(
         resp = (
             sb.table("intraday_market_news")
             .select("headline, source, event_timestamp")
+            .eq("jev_choice", "MARKET_MOVING")
             .order("event_timestamp", desc=True)
             .limit(limit)
             .execute()

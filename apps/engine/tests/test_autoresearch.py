@@ -406,6 +406,99 @@ class TestQuerySyntax:
 # ---------------------------------------------------------------------------
 
 
+class _DoNothingResponse:
+    def __init__(self, data):
+        self.data = data
+
+
+class _DoNothingQuery:
+    def __init__(self, table_name, data_map):
+        self.table_name = table_name
+        self.data_map = data_map
+        self.gte_filters = {}
+        self.lte_filters = {}
+        self.lt_filters = {}
+        self.eq_filters = {}
+        self._order_col = None
+        self._order_desc = False
+        self._limit = None
+
+    def select(self, *args, **kwargs):
+        return self
+
+    def in_(self, *args, **kwargs):
+        return self
+
+    def gte(self, col, val):
+        self.gte_filters[col] = val
+        return self
+
+    def lte(self, col, val):
+        self.lte_filters[col] = val
+        return self
+
+    def lt(self, col, val):
+        self.lt_filters[col] = val
+        return self
+
+    def eq(self, col, val):
+        self.eq_filters[col] = val
+        return self
+
+    def order(self, col, desc=False, *args, **kwargs):
+        self._order_col = col
+        self._order_desc = desc
+        return self
+
+    def limit(self, count, *args, **kwargs):
+        self._limit = count
+        return self
+
+    def _matches_filters(self, row):
+        if self.eq_filters:
+            for col, val in self.eq_filters.items():
+                if row.get(col) != val:
+                    return False
+        if self.table_name == "price_history" and row.get("fetched_at"):
+            f_at = row["fetched_at"]
+            if "fetched_at" in self.gte_filters and f_at < self.gte_filters["fetched_at"]:
+                return False
+            if "fetched_at" in self.lte_filters:
+                val_str = self.lte_filters["fetched_at"]
+                if f_at > val_str:
+                    return False
+        if self.table_name == "portfolio_performance" and row.get("date"):
+            d = row["date"]
+            if "date" in self.gte_filters and d < self.gte_filters["date"]:
+                return False
+            if "date" in self.lte_filters and d > self.lte_filters["date"]:
+                return False
+            if "date" in self.lt_filters and d >= self.lt_filters["date"]:
+                return False
+        if self.table_name == "trades" and "executed_at" in self.lt_filters:
+            ex = row.get("executed_at")
+            if ex is not None and ex >= self.lt_filters["executed_at"]:
+                return False
+        return True
+
+    async def execute(self):
+        data = self.data_map.get(self.table_name, [])
+        filtered = [row for row in data if self._matches_filters(row)]
+        if self._order_col:
+            filtered.sort(key=lambda r: r.get(self._order_col, ""), reverse=self._order_desc)
+        if self._limit is not None:
+            filtered = filtered[: self._limit]
+        return _DoNothingResponse(filtered)
+
+
+class _DoNothingClient:
+    def __init__(self, data_map):
+        self.data_map = data_map
+
+    def table(self, name):
+        return _DoNothingQuery(name, self.data_map)
+
+
 class TestDoNothingReturn:
     @pytest.mark.asyncio
     async def test_do_nothing_return_with_legacy_positions(self, monkeypatch):
@@ -417,87 +510,6 @@ class TestDoNothingReturn:
         week_start = date(2026, 5, 25)
         week_end = date(2026, 5, 31)
 
-        class FakeResponse:
-            def __init__(self, data):
-                self.data = data
-
-        class FakeQuery:
-            def __init__(self, table_name, data_map):
-                self.table_name = table_name
-                self.data_map = data_map
-                self.gte_filters = {}
-                self.lte_filters = {}
-                self.eq_filters = {}
-
-            def select(self, *args, **kwargs):
-                return self
-
-            def in_(self, *args, **kwargs):
-                return self
-
-            def gte(self, col, val):
-                self.gte_filters[col] = val
-                return self
-
-            def lte(self, col, val):
-                self.lte_filters[col] = val
-                return self
-
-            def lt(self, *args, **kwargs):
-                return self
-
-            def eq(self, col, val):
-                self.eq_filters[col] = val
-                return self
-
-            def order(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            async def execute(self):
-                data = self.data_map.get(self.table_name, [])
-                filtered = []
-                print(f"\n[FakeQuery execute] Table: {self.table_name}")
-                print(f"  GTE filters: {self.gte_filters}")
-                print(f"  LTE filters: {self.lte_filters}")
-                print(f"  EQ filters: {self.eq_filters}")
-                for row in data:
-                    keep = True
-                    if self.eq_filters:
-                        for col, val in self.eq_filters.items():
-                            if row.get(col) != val:
-                                keep = False
-                    if self.table_name == "price_history" and row.get("fetched_at"):
-                        fetched_at = row["fetched_at"]
-                        if "fetched_at" in self.gte_filters and fetched_at < self.gte_filters["fetched_at"]:
-                            print(f"    Filtering out {row} because fetched_at < {self.gte_filters['fetched_at']}")
-                            keep = False
-                        if "fetched_at" in self.lte_filters:
-                            # Strip trailing T23:59:59 if any to do string comparison
-                            val_str = self.lte_filters["fetched_at"].split("T")[0]
-                            if fetched_at.split("T")[0] > val_str:
-                                print(f"    Filtering out {row} because fetched_at > {val_str}")
-                                keep = False
-
-                    if keep:
-                        filtered.append(row)
-                print(f"  Result count: {len(filtered)}")
-                return FakeResponse(filtered)
-
-        class FakeClient:
-            def __init__(self, data_map):
-                self.data_map = data_map
-
-            def table(self, name):
-                return FakeQuery(name, self.data_map)
-
-        # Mock database data:
-        # Portfolio initial state has 10,000 equity and 3,500 cash.
-        # Trades before week start has 20 shares of IBM (legacy) and 10 shares of AAPL (active).
-        # Price history has IBM at $250 fetched on April 15 (older than 14 days),
-        # and AAPL at $150 fetched on May 28 (fresh).
         data_map = {
             "portfolio_performance": [
                 {
@@ -538,9 +550,8 @@ class TestDoNothingReturn:
             ],
         }
 
-        fake_sb = FakeClient(data_map)
+        fake_sb = _DoNothingClient(data_map)
 
-        # Call _do_nothing_return with our mock client
         ret, details = await metrics._do_nothing_return(
             fake_sb,
             owner_ids=frozenset({"agent-1"}),
@@ -548,8 +559,6 @@ class TestDoNothingReturn:
             week_end=week_end,
         )
 
-        # Expected return is 0.0% (3500 cash + 20 * 250 IBM + 10 * 150 AAPL = 10000 equity).
-        # Before the fix, the return will be -50.0% because IBM is valued at 0.0.
         assert ret == pytest.approx(0.0)
         assert len(details) == 1
 
@@ -563,82 +572,6 @@ class TestDoNothingReturn:
         week_start = date(2026, 8, 10)  # Monday
         week_end = date(2026, 8, 16)  # Sunday
 
-        class FakeResponse:
-            def __init__(self, data):
-                self.data = data
-
-        class FakeQuery:
-            def __init__(self, table_name, data_map):
-                self.table_name = table_name
-                self.data_map = data_map
-                self.gte_filters = {}
-                self.lte_filters = {}
-                self.lt_filters = {}
-                self.eq_filters = {}
-
-            def select(self, *args, **kwargs):
-                return self
-
-            def in_(self, *args, **kwargs):
-                return self
-
-            def gte(self, col, val):
-                self.gte_filters[col] = val
-                return self
-
-            def lte(self, col, val):
-                self.lte_filters[col] = val
-                return self
-
-            def lt(self, col, val):
-                self.lt_filters[col] = val
-                return self
-
-            def eq(self, col, val):
-                self.eq_filters[col] = val
-                return self
-
-            def order(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            async def execute(self):
-                data = self.data_map.get(self.table_name, [])
-                filtered = []
-                for row in data:
-                    keep = True
-                    if self.eq_filters:
-                        for col, val in self.eq_filters.items():
-                            if row.get(col) != val:
-                                keep = False
-                    if self.table_name == "portfolio_performance" and row.get("date"):
-                        d = row["date"]
-                        if "date" in self.gte_filters and d < self.gte_filters["date"]:
-                            keep = False
-                        if "date" in self.lte_filters and d > self.lte_filters["date"]:
-                            keep = False
-                        if "date" in self.lt_filters and d >= self.lt_filters["date"]:
-                            keep = False
-                    if self.table_name == "trades" and row.get("executed_at"):
-                        ex = row["executed_at"]
-                        if "executed_at" in self.lt_filters and ex >= self.lt_filters["executed_at"]:
-                            keep = False
-                    if keep:
-                        filtered.append(row)
-                return FakeResponse(filtered)
-
-        class FakeClient:
-            def __init__(self, data_map):
-                self.data_map = data_map
-
-            def table(self, name):
-                return FakeQuery(name, self.data_map)
-
-        # Gemini Flash Lite starts with $10,000 cash before week_start (no pre-week trades).
-        # On Monday (2026-08-10), it buys $5,000 of NVDA.
-        # Monday EOD portfolio_performance snapshot has total_equity=10000, cash_balance=5000.
         data_map = {
             "portfolio_performance": [
                 {
@@ -650,7 +583,6 @@ class TestDoNothingReturn:
                 }
             ],
             "trades": [
-                # Trade executed on Monday during trading hours:
                 {
                     "portfolio_id": "gemini-p1",
                     "ticker": "NVDA",
@@ -665,7 +597,7 @@ class TestDoNothingReturn:
             "price_history": [],
         }
 
-        fake_sb = FakeClient(data_map)
+        fake_sb = _DoNothingClient(data_map)
 
         ret, details = await metrics._do_nothing_return(
             fake_sb,
@@ -674,7 +606,6 @@ class TestDoNothingReturn:
             week_end=week_end,
         )
 
-        # Do-nothing return MUST be 0.0% because the starting portfolio was 100% cash ($10,000).
         assert ret == pytest.approx(0.0)
         assert "gemini-p1" in details
         assert details["gemini-p1"]["do_nothing_return_pct"] == pytest.approx(0.0)
@@ -695,84 +626,6 @@ class TestDoNothingReturn:
 
         monkeypatch.setattr(MarketDataManager, "get_history", fake_get_history)
 
-        class FakeResponse:
-            def __init__(self, data):
-                self.data = data
-
-        class FakeQuery:
-            def __init__(self, table_name, data_map):
-                self.table_name = table_name
-                self.data_map = data_map
-                self.gte_filters = {}
-                self.lte_filters = {}
-                self.lt_filters = {}
-                self.eq_filters = {}
-
-            def select(self, *args, **kwargs):
-                return self
-
-            def in_(self, *args, **kwargs):
-                return self
-
-            def gte(self, col, val):
-                self.gte_filters[col] = val
-                return self
-
-            def lte(self, col, val):
-                self.lte_filters[col] = val
-                return self
-
-            def lt(self, col, val):
-                self.lt_filters[col] = val
-                return self
-
-            def eq(self, col, val):
-                self.eq_filters[col] = val
-                return self
-
-            def order(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            async def execute(self):
-                data = self.data_map.get(self.table_name, [])
-                filtered = []
-                for row in data:
-                    keep = True
-                    if self.eq_filters:
-                        for col, val in self.eq_filters.items():
-                            if row.get(col) != val:
-                                keep = False
-                    if self.table_name == "portfolio_performance" and row.get("date"):
-                        d = row["date"]
-                        if "date" in self.gte_filters and d < self.gte_filters["date"]:
-                            keep = False
-                        if "date" in self.lte_filters and d > self.lte_filters["date"]:
-                            keep = False
-                        if "date" in self.lt_filters and d >= self.lt_filters["date"]:
-                            keep = False
-                    if self.table_name == "trades" and row.get("executed_at"):
-                        ex = row["executed_at"]
-                        if "executed_at" in self.lt_filters and ex >= self.lt_filters["executed_at"]:
-                            keep = False
-                    if keep:
-                        filtered.append(row)
-                return FakeResponse(filtered)
-
-        class FakeClient:
-            def __init__(self, data_map):
-                self.data_map = data_map
-
-            def table(self, name):
-                return FakeQuery(name, self.data_map)
-
-        # Claude Haiku starts week with 10 shares AAPL ($150 = $1,500) and $8,500 cash = $10,000 equity.
-        # On Monday (2026-08-10), it buys $5,000 NVDA, reducing cash to $3,500.
-        # Monday EOD performance snapshot shows cash_balance=3500.0, total_equity=10000.0.
-        # AAPL end-of-week price remains $150.
-        # If doing nothing, equity remains $8,500 cash + $1,500 AAPL = $10,000 (0.0% return).
         data_map = {
             "portfolio_performance": [
                 {
@@ -817,7 +670,7 @@ class TestDoNothingReturn:
             ],
         }
 
-        fake_sb = FakeClient(data_map)
+        fake_sb = _DoNothingClient(data_map)
 
         ret, details = await metrics._do_nothing_return(
             fake_sb,
@@ -839,7 +692,6 @@ class TestDoNothingReturn:
         week_start = date(2026, 5, 25)
         week_end = date(2026, 5, 31)
 
-        # Track tickers called
         called_tickers = []
         called_days = []
 
@@ -850,40 +702,8 @@ class TestDoNothingReturn:
 
         monkeypatch.setattr(MarketDataManager, "get_history", fake_get_history)
 
-        class FakeResponse:
-            def __init__(self, data):
-                self.data = data
-
-        class FakeQuery:
-            def select(self, *args, **kwargs):
-                return self
-
-            def in_(self, *args, **kwargs):
-                return self
-
-            def gte(self, *args, **kwargs):
-                return self
-
-            def lte(self, *args, **kwargs):
-                return self
-
-            def lt(self, *args, **kwargs):
-                return self
-
-            def eq(self, *args, **kwargs):
-                return self
-
-            def order(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            async def execute(self):
-                return FakeResponse([])
-
-        original_res_perf = FakeResponse(
-            [
+        data_map = {
+            "portfolio_performance": [
                 {
                     "portfolio_id": "p1",
                     "total_equity": 10000.0,
@@ -891,11 +711,8 @@ class TestDoNothingReturn:
                     "date": "2026-05-25",
                     "portfolios": {"owner_id": "agent-1"},
                 }
-            ]
-        )
-
-        original_res_trades = FakeResponse(
-            [
+            ],
+            "trades": [
                 {
                     "portfolio_id": "p1",
                     "ticker": "AAPL",
@@ -903,26 +720,12 @@ class TestDoNothingReturn:
                     "quantity": 10,
                     "portfolios": {"owner_id": "agent-1"},
                 }
-            ]
-        )
-
-        class AdvancedFakeQuery(FakeQuery):
-            def __init__(self, table_name):
-                self.table_name = table_name
-
-            async def execute(self):
-                if self.table_name == "portfolio_performance":
-                    return original_res_perf
-                elif self.table_name == "trades":
-                    return original_res_trades
-                return FakeResponse([])
-
-        class AdvancedFakeClient:
-            def table(self, name):
-                return AdvancedFakeQuery(name)
+            ],
+            "price_history": [],
+        }
 
         await metrics._do_nothing_return(
-            AdvancedFakeClient(),
+            _DoNothingClient(data_map),
             owner_ids=frozenset({"agent-1"}),
             week_start=week_start,
             week_end=week_end,
@@ -936,11 +739,11 @@ class TestDoNothingReturn:
     async def test_do_nothing_stale_price_logs_error(self, monkeypatch):
         """Verify that _do_nothing_return logs a critical error when using a stale price."""
         from autoresearch import metrics
+        from execution.market_data import MarketDataManager
 
         week_start = date(2026, 5, 25)
         week_end = date(2026, 5, 31)
 
-        # Track logged errors
         logged_errors = []
 
         def fake_error(msg, *args):
@@ -948,40 +751,8 @@ class TestDoNothingReturn:
 
         monkeypatch.setattr(metrics.logger, "error", fake_error)
 
-        class FakeResponse:
-            def __init__(self, data):
-                self.data = data
-
-        class FakeQuery:
-            def select(self, *args, **kwargs):
-                return self
-
-            def in_(self, *args, **kwargs):
-                return self
-
-            def gte(self, *args, **kwargs):
-                return self
-
-            def lte(self, *args, **kwargs):
-                return self
-
-            def lt(self, *args, **kwargs):
-                return self
-
-            def eq(self, *args, **kwargs):
-                return self
-
-            def order(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            async def execute(self):
-                return FakeResponse([])
-
-        original_res_perf = FakeResponse(
-            [
+        data_map = {
+            "portfolio_performance": [
                 {
                     "portfolio_id": "p1",
                     "total_equity": 10000.0,
@@ -989,11 +760,8 @@ class TestDoNothingReturn:
                     "date": "2026-05-25",
                     "portfolios": {"owner_id": "agent-1"},
                 }
-            ]
-        )
-
-        original_res_trades = FakeResponse(
-            [
+            ],
+            "trades": [
                 {
                     "portfolio_id": "p1",
                     "ticker": "AAPL",
@@ -1001,38 +769,17 @@ class TestDoNothingReturn:
                     "quantity": 10,
                     "portfolios": {"owner_id": "agent-1"},
                 }
-            ]
-        )
+            ],
+            "price_history": [{"ticker": "AAPL", "price": 100.0, "fetched_at": "2026-04-20T00:00:00+00:00"}],
+        }
 
-        price_res = FakeResponse([{"price": 100.0, "fetched_at": "2026-04-20T00:00:00+00:00"}])
-
-        class AdvancedFakeQuery(FakeQuery):
-            def __init__(self, table_name):
-                self.table_name = table_name
-
-            async def execute(self):
-                if self.table_name == "portfolio_performance":
-                    return original_res_perf
-                elif self.table_name == "trades":
-                    return original_res_trades
-                elif self.table_name == "price_history":
-                    return price_res
-                return FakeResponse([])
-
-        class AdvancedFakeClient:
-            def table(self, name):
-                return AdvancedFakeQuery(name)
-
-        from execution.market_data import MarketDataManager
-
-        # Use an async mock function
         async def fake_get_history(*args, **kwargs):
             pass
 
         monkeypatch.setattr(MarketDataManager, "get_history", fake_get_history)
 
         await metrics._do_nothing_return(
-            AdvancedFakeClient(),
+            _DoNothingClient(data_map),
             owner_ids=frozenset({"agent-1"}),
             week_start=week_start,
             week_end=week_end,
@@ -1044,83 +791,35 @@ class TestDoNothingReturn:
     async def test_do_nothing_includes_initial_and_end_prices(self, monkeypatch):
         """Verify that _do_nothing_return fetches and returns both start and end prices for held positions."""
         from autoresearch import metrics
+        from execution.market_data import MarketDataManager
 
         week_start = date(2026, 5, 25)
         week_end = date(2026, 5, 31)
 
-        class FakeResponse:
-            def __init__(self, data):
-                self.data = data
-
-        class FakeQuery:
-            def __init__(self, table_name):
-                self.table_name = table_name
-                self.lte_val = None
-
-            def select(self, *args, **kwargs):
-                return self
-
-            def in_(self, *args, **kwargs):
-                return self
-
-            def gte(self, *args, **kwargs):
-                return self
-
-            def lte(self, col, val):
-                self.lte_val = val
-                return self
-
-            def lt(self, *args, **kwargs):
-                return self
-
-            def eq(self, *args, **kwargs):
-                return self
-
-            def order(self, *args, **kwargs):
-                return self
-
-            def limit(self, *args, **kwargs):
-                return self
-
-            async def execute(self):
-                if self.table_name == "portfolio_performance":
-                    return FakeResponse(
-                        [
-                            {
-                                "portfolio_id": "p1",
-                                "total_equity": 10000.0,
-                                "cash_balance": 3500.0,
-                                "date": "2026-05-25",
-                                "portfolios": {"owner_id": "agent-1"},
-                            }
-                        ]
-                    )
-                elif self.table_name == "trades":
-                    return FakeResponse(
-                        [
-                            {
-                                "portfolio_id": "p1",
-                                "ticker": "IBM",
-                                "signal": "BUY",
-                                "quantity": 20,
-                                "portfolios": {"owner_id": "agent-1"},
-                            }
-                        ]
-                    )
-                elif self.table_name == "price_history":
-                    # If fetching start price (lte week_start: 2026-05-25)
-                    if self.lte_val and "2026-05-25" in self.lte_val:
-                        return FakeResponse([{"price": 240.0, "fetched_at": "2026-05-25T00:00:00"}])
-                    # If fetching end price (lte week_end: 2026-05-31)
-                    if self.lte_val and "2026-05-31" in self.lte_val:
-                        return FakeResponse([{"price": 250.0, "fetched_at": "2026-05-31T00:00:00"}])
-                return FakeResponse([])
-
-        class FakeClient:
-            def table(self, name):
-                return FakeQuery(name)
-
-        from execution.market_data import MarketDataManager
+        data_map = {
+            "portfolio_performance": [
+                {
+                    "portfolio_id": "p1",
+                    "total_equity": 10000.0,
+                    "cash_balance": 3500.0,
+                    "date": "2026-05-25",
+                    "portfolios": {"owner_id": "agent-1"},
+                }
+            ],
+            "trades": [
+                {
+                    "portfolio_id": "p1",
+                    "ticker": "IBM",
+                    "signal": "BUY",
+                    "quantity": 20,
+                    "portfolios": {"owner_id": "agent-1"},
+                }
+            ],
+            "price_history": [
+                {"ticker": "IBM", "price": 240.0, "fetched_at": "2026-05-25T00:00:00"},
+                {"ticker": "IBM", "price": 250.0, "fetched_at": "2026-05-31T00:00:00"},
+            ],
+        }
 
         async def fake_get_history(*args, **kwargs):
             pass
@@ -1128,13 +827,13 @@ class TestDoNothingReturn:
         monkeypatch.setattr(MarketDataManager, "get_history", fake_get_history)
 
         ret, details = await metrics._do_nothing_return(
-            FakeClient(),
+            _DoNothingClient(data_map),
             owner_ids=frozenset({"agent-1"}),
             week_start=week_start,
             week_end=week_end,
         )
 
-        # Assert correct return return calculation
+        # Assert correct return calculation
         assert ret == pytest.approx(-15.0)  # (3500 cash + 20 * 250 end_price - 10000) / 10000 * 100 = -15%
         assert "p1" in details
         positions = details["p1"]["positions"]

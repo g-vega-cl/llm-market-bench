@@ -91,14 +91,7 @@ async def _spy_returns(sb_client, week_start: date, week_end: date) -> list[floa
     return returns
 
 
-async def _do_nothing_return(
-    sb_client, owner_ids: frozenset | set, week_start: date, week_end: date
-) -> tuple[float, dict]:
-    from collections import defaultdict
-
-    owner_list = list(owner_ids)
-
-    # 1. Get initial performance (prefer latest snapshot strictly prior to week_start to avoid intra-week trade distortions)
+async def _fetch_initial_portfolio_states(sb_client, owner_list: list[str], week_start: date, week_end: date) -> dict:
     res_pre = (
         sb_client.table("portfolio_performance")
         .select("portfolio_id, total_equity, cash_balance, date, portfolios!inner(owner_id)")
@@ -115,7 +108,6 @@ async def _do_nothing_return(
         if pid not in initial_states:
             initial_states[pid] = row
 
-    # Fall back to earliest snapshot in the week for any portfolios missing a pre-week snapshot
     missing_owners = set(owner_list) - {
         r["portfolios"]["owner_id"]
         for r in initial_states.values()
@@ -137,10 +129,12 @@ async def _do_nothing_return(
             if pid not in initial_states:
                 initial_states[pid] = row
 
-    if not initial_states:
-        return 0.0, {}
+    return initial_states
 
-    # 2. Get all trades before the starting date for each portfolio
+
+async def _fetch_pre_week_positions(sb_client, owner_list: list[str], week_start: date) -> dict[str, dict[str, int]]:
+    from collections import defaultdict
+
     res_trades = (
         sb_client.table("trades")
         .select("portfolio_id, ticker, signal, quantity, portfolios!inner(owner_id)")
@@ -150,7 +144,7 @@ async def _do_nothing_return(
     )
     trades = (await res_trades).data or []
 
-    positions = defaultdict(lambda: defaultdict(int))
+    positions: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for t in trades:
         pid = t["portfolio_id"]
         qty = t["quantity"]
@@ -158,77 +152,154 @@ async def _do_nothing_return(
             positions[pid][t["ticker"]] += qty
         elif t["signal"] == "SELL":
             positions[pid][t["ticker"]] -= qty
+    return positions
 
-    # 3. Get week_end prices for these tickers (using last known price up to week_end, no 14-day limit)
-    all_tickers = {ticker for p_pos in positions.values() for ticker, qty in p_pos.items() if qty > 0}
 
-    ticker_prices = {}
-    if all_tickers:
-        try:
-            from execution.market_data import MarketDataManager
+def _check_price_freshness(ticker: str, fetched_at_str: str, week_end: date) -> None:
+    try:
+        fetched_date = date.fromisoformat(fetched_at_str[:10])
+        age_days = (week_end - fetched_date).days
+        if age_days > 4:
+            logger.error(
+                "CRITICAL METRIC ERROR: Stale price used for ticker %s in do-nothing return calculation. "
+                "Price fetched_at is %s (%d days before week_end %s). "
+                "Metrics calculation might be incorrect.",
+                ticker,
+                fetched_at_str,
+                age_days,
+                week_end.isoformat(),
+            )
+    except Exception as ex:
+        logger.warning("Failed to validate price freshness for ticker %s: %s", ticker, ex)
 
-            mdm = MarketDataManager()
-            # Calculate days needed to cover the week to avoid stale cache
-            days_needed = (date.today() - week_start).days + 7
-            for ticker in all_tickers:
-                await mdm.get_history(ticker, days=max(14, days_needed))
-        except Exception as e:
-            logger.warning(f"Failed to pre-populate price history for tickers {all_tickers}: {e}")
 
-        ticker_start_prices = {}
-        ticker_end_dates = {}
-        ticker_start_dates = {}
+async def _fetch_ticker_price_bounds(
+    sb_client, all_tickers: set[str], week_start: date, week_end: date
+) -> tuple[dict[str, float], dict[str, float], dict[str, str], dict[str, str]]:
+    ticker_prices: dict[str, float] = {}
+    ticker_start_prices: dict[str, float] = {}
+    ticker_end_dates: dict[str, str] = {}
+    ticker_start_dates: dict[str, str] = {}
+    if not all_tickers:
+        return ticker_prices, ticker_start_prices, ticker_end_dates, ticker_start_dates
+
+    try:
+        from execution.market_data import MarketDataManager
+
+        mdm = MarketDataManager()
+        days_needed = (date.today() - week_start).days + 7
         for ticker in all_tickers:
-            res_price = (
-                sb_client.table("price_history")
-                .select("price, fetched_at")
-                .eq("ticker", ticker)
-                .lte("fetched_at", f"{week_end.isoformat()}T23:59:59")
-                .order("fetched_at", desc=True)
-                .limit(1)
-                .execute()
-            )
-            price_data = (await res_price).data
-            if price_data:
-                price_val = float(price_data[0]["price"] or 0)
-                ticker_prices[ticker] = price_val
+            await mdm.get_history(ticker, days=max(14, days_needed))
+    except Exception as e:
+        logger.warning(f"Failed to pre-populate price history for tickers {all_tickers}: {e}")
 
-                # Freshness Guardrail: Ensure price is not stale compared to week_end
-                fetched_at_str = price_data[0].get("fetched_at", "")
-                if fetched_at_str:
-                    ticker_end_dates[ticker] = fetched_at_str.replace("T", " ")[:16]
-                    try:
-                        fetched_date = date.fromisoformat(fetched_at_str[:10])
-                        age_days = (week_end - fetched_date).days
-                        if age_days > 4:
-                            logger.error(
-                                "CRITICAL METRIC ERROR: Stale price used for ticker %s in do-nothing return calculation. "
-                                "Price fetched_at is %s (%d days before week_end %s). "
-                                "Metrics calculation might be incorrect.",
-                                ticker,
-                                fetched_at_str,
-                                age_days,
-                                week_end.isoformat(),
-                            )
-                    except Exception as ex:
-                        logger.warning("Failed to validate price freshness for ticker %s: %s", ticker, ex)
+    for ticker in all_tickers:
+        res_price = (
+            sb_client.table("price_history")
+            .select("price, fetched_at")
+            .eq("ticker", ticker)
+            .lte("fetched_at", f"{week_end.isoformat()}T23:59:59")
+            .order("fetched_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        price_data = (await res_price).data
+        if price_data:
+            price_val = float(price_data[0]["price"] or 0)
+            ticker_prices[ticker] = price_val
+            fetched_at_str = price_data[0].get("fetched_at", "")
+            if fetched_at_str:
+                ticker_end_dates[ticker] = fetched_at_str.replace("T", " ")[:16]
+                _check_price_freshness(ticker, fetched_at_str, week_end)
 
-            # Query starting price at the beginning of the week
-            res_start_price = (
-                sb_client.table("price_history")
-                .select("price, fetched_at")
-                .eq("ticker", ticker)
-                .lte("fetched_at", f"{week_start.isoformat()}T23:59:59")
-                .order("fetched_at", desc=True)
-                .limit(1)
-                .execute()
-            )
-            start_price_data = (await res_start_price).data
-            if start_price_data:
-                ticker_start_prices[ticker] = float(start_price_data[0]["price"] or 0)
-                start_fetched_at_str = start_price_data[0].get("fetched_at", "")
-                if start_fetched_at_str:
-                    ticker_start_dates[ticker] = start_fetched_at_str.replace("T", " ")[:16]
+        res_start_price = (
+            sb_client.table("price_history")
+            .select("price, fetched_at")
+            .eq("ticker", ticker)
+            .lte("fetched_at", f"{week_start.isoformat()}T23:59:59")
+            .order("fetched_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        start_price_data = (await res_start_price).data
+        if start_price_data:
+            ticker_start_prices[ticker] = float(start_price_data[0]["price"] or 0)
+            start_fetched_at_str = start_price_data[0].get("fetched_at", "")
+            if start_fetched_at_str:
+                ticker_start_dates[ticker] = start_fetched_at_str.replace("T", " ")[:16]
+
+    return ticker_prices, ticker_start_prices, ticker_end_dates, ticker_start_dates
+
+
+def _compute_portfolio_do_nothing_positions(
+    pos_for_pid: dict[str, int],
+    initial_cash: float,
+    ticker_prices: dict[str, float],
+    ticker_start_prices: dict[str, float],
+    ticker_start_dates: dict[str, str],
+    ticker_end_dates: dict[str, str],
+    week_start: date,
+    week_end: date,
+) -> tuple[float, dict]:
+    end_equity = initial_cash
+    pos_details = {}
+    for ticker, qty in pos_for_pid.items():
+        if qty <= 0:
+            continue
+        price = ticker_prices.get(ticker)
+        start_price = ticker_start_prices.get(ticker)
+        start_date = ticker_start_dates.get(ticker) or week_start.isoformat()
+        end_date = ticker_end_dates.get(ticker) or week_end.isoformat()
+
+        if price is not None:
+            val = qty * price
+            end_equity += val
+            if start_price is None:
+                start_price = price
+            pos_details[ticker] = {
+                "qty": qty,
+                "start_price": start_price,
+                "start_value": qty * start_price,
+                "start_date": start_date,
+                "end_price": price,
+                "value": val,
+                "end_value": val,
+                "end_date": end_date,
+            }
+        else:
+            if start_price is None:
+                start_price = 0.0
+            pos_details[ticker] = {
+                "qty": qty,
+                "start_price": start_price,
+                "start_value": qty * start_price,
+                "start_date": start_date,
+                "end_price": 0.0,
+                "value": 0.0,
+                "end_value": 0.0,
+                "end_date": end_date,
+            }
+    return end_equity, pos_details
+
+
+async def _do_nothing_return(
+    sb_client, owner_ids: frozenset | set, week_start: date, week_end: date
+) -> tuple[float, dict]:
+    owner_list = list(owner_ids)
+
+    # 1. Get initial performance
+    initial_states = await _fetch_initial_portfolio_states(sb_client, owner_list, week_start, week_end)
+    if not initial_states:
+        return 0.0, {}
+
+    # 2. Get all trades before the starting date for each portfolio
+    positions = await _fetch_pre_week_positions(sb_client, owner_list, week_start)
+
+    # 3. Get week_end prices for these tickers
+    all_tickers = {ticker for p_pos in positions.values() for ticker, qty in p_pos.items() if qty > 0}
+    ticker_prices, ticker_start_prices, ticker_end_dates, ticker_start_dates = await _fetch_ticker_price_bounds(
+        sb_client, all_tickers, week_start, week_end
+    )
 
     # 4. Calculate return for each portfolio
     agent_returns = []
@@ -245,8 +316,6 @@ async def _do_nothing_return(
         has_held_positions = any(qty > 0 for qty in pos_for_pid.values())
 
         if not has_held_positions:
-            # If the portfolio held no stock positions going into the week,
-            # doing nothing simply holds cash with exactly 0.0% return.
             agent_returns.append(0.0)
             portfolio_details[pid] = {
                 "owner_id": owner_id,
@@ -258,45 +327,16 @@ async def _do_nothing_return(
             }
             continue
 
-        end_equity = initial_cash
-        pos_details = {}
-        for ticker, qty in pos_for_pid.items():
-            if qty > 0:
-                price = ticker_prices.get(ticker)
-                start_price = ticker_start_prices.get(ticker)
-                start_date = ticker_start_dates.get(ticker) or week_start.isoformat()
-                end_date = ticker_end_dates.get(ticker) or week_end.isoformat()
-
-                if price is not None:
-                    val = qty * price
-                    end_equity += val
-
-                    if start_price is None:
-                        start_price = price
-
-                    pos_details[ticker] = {
-                        "qty": qty,
-                        "start_price": start_price,
-                        "start_value": qty * start_price,
-                        "start_date": start_date,
-                        "end_price": price,
-                        "value": val,
-                        "end_value": val,
-                        "end_date": end_date,
-                    }
-                else:
-                    if start_price is None:
-                        start_price = 0.0
-                    pos_details[ticker] = {
-                        "qty": qty,
-                        "start_price": start_price,
-                        "start_value": qty * start_price,
-                        "start_date": start_date,
-                        "end_price": 0.0,
-                        "value": 0.0,
-                        "end_value": 0.0,
-                        "end_date": end_date,
-                    }
+        end_equity, pos_details = _compute_portfolio_do_nothing_positions(
+            pos_for_pid,
+            initial_cash,
+            ticker_prices,
+            ticker_start_prices,
+            ticker_start_dates,
+            ticker_end_dates,
+            week_start,
+            week_end,
+        )
 
         if pos_for_pid and sum(pos_for_pid.values()) > 0 and end_equity == initial_cash:
             agent_returns.append(0.0)

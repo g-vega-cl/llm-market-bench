@@ -197,6 +197,162 @@ def get_price_for_date(history: list[dict], target_date) -> float | None:
     return closest_price
 
 
+def _fetch_run_tickers_by_date(client, prediction_dates: set[str]) -> dict[str, list[str]]:
+    run_tickers_by_date: dict[str, list[str]] = {}
+    for pred_date in prediction_dates:
+        try:
+            run_res = (
+                client.table("correlation_runs")
+                .select("tickers")
+                .lte("run_date", pred_date)
+                .order("run_date", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if run_res.data and run_res.data[0].get("tickers"):
+                run_tickers_by_date[pred_date] = run_res.data[0]["tickers"]
+            else:
+                run_tickers_by_date[pred_date] = SECTOR_TICKERS
+        except Exception as e:
+            logger.warning(f"Failed to query correlation run for {pred_date}: {e}")
+            run_tickers_by_date[pred_date] = SECTOR_TICKERS
+    return run_tickers_by_date
+
+
+def _collect_tickers_to_fetch(pending: list[dict], run_tickers_by_date: dict[str, list[str]]) -> set[str]:
+    tickers_to_fetch = {"SPY"}
+    for p in pending:
+        pred_date = p["prediction_date"]
+        for t in run_tickers_by_date.get(pred_date, SECTOR_TICKERS):
+            tickers_to_fetch.add(t.upper())
+        sec = p.get("predicted_sector")
+        if sec:
+            tickers_to_fetch.add(sec.upper())
+        worst_sec = p.get("predicted_worst_sector")
+        if worst_sec and worst_sec != "UNKNOWN":
+            tickers_to_fetch.add(worst_sec.upper())
+        for t in p.get("predicted_pair") or []:
+            if t:
+                tickers_to_fetch.add(t.upper())
+    return tickers_to_fetch
+
+
+def _evaluate_single_sector_prediction(
+    p: dict,
+    client,
+    run_tickers_by_date: dict[str, list[str]],
+    prices_history: dict[str, list],
+) -> None:
+    pred_id = p["id"]
+    pred_date_str = p["prediction_date"]
+    pred_date = datetime.strptime(pred_date_str, "%Y-%m-%d").date()
+    target_date = datetime.strptime(p["target_date"], "%Y-%m-%d").date()
+
+    ref_tickers = run_tickers_by_date.get(pred_date_str, SECTOR_TICKERS)
+    ref_tickers_upper = {t.upper() for t in ref_tickers} | {"SPY"}
+
+    predicted_sec = p.get("predicted_sector")
+    if predicted_sec:
+        predicted_sec = predicted_sec.upper()
+        ref_tickers_upper.add(predicted_sec)
+
+    predicted_worst_sec = p.get("predicted_worst_sector")
+    if predicted_worst_sec and predicted_worst_sec != "UNKNOWN":
+        predicted_worst_sec = predicted_worst_sec.upper()
+        ref_tickers_upper.add(predicted_worst_sec)
+    else:
+        predicted_worst_sec = None
+
+    predicted_pair = [t.upper() for t in (p.get("predicted_pair") or []) if t]
+    ref_tickers_upper.update(predicted_pair)
+
+    sector_returns = {}
+    ticker_prices = {}
+    for ticker in ref_tickers_upper:
+        history = prices_history.get(ticker, [])
+        p_start = get_price_for_date(history, pred_date)
+        p_end = get_price_for_date(history, target_date)
+        if p_start is not None and p_end is not None and p_start > 0:
+            ret = ((p_end / p_start) - 1.0) * 100.0
+            sector_returns[ticker] = ret
+            ticker_prices[ticker] = {"start_price": p_start, "end_price": p_end, "return_pct": ret}
+
+    if not sector_returns:
+        logger.warning(f"No price history found for any sectors for prediction {pred_id}. Skipping.")
+        return
+    if predicted_sec not in sector_returns:
+        logger.warning(f"Predicted sector {predicted_sec} has no return data. Skipping.")
+        return
+    if any(t not in sector_returns for t in predicted_pair):
+        logger.warning(f"Predicted pair {predicted_pair} contains tickers without return data. Skipping.")
+        return
+
+    sec_score = calculate_percentile_score(predicted_sec, sector_returns)
+    pair_score = calculate_pair_percentile_score(predicted_pair, sector_returns)
+
+    worst_sec_score = None
+    predicted_worst_sec_ret = None
+    if predicted_worst_sec and predicted_worst_sec in sector_returns:
+        worst_sec_score = calculate_worst_sector_percentile_score(predicted_worst_sec, sector_returns)
+        predicted_worst_sec_ret = sector_returns.get(predicted_worst_sec)
+
+    confidence_val = p.get("confidence")
+    worst_confidence_val = p.get("worst_confidence")
+    brier_score = calculate_sector_brier_score(confidence_val, sec_score, worst_sec_score)
+
+    conviction_records = calculate_sector_conviction_records(
+        confidence=confidence_val,
+        sector_percentile_score=sec_score,
+        worst_confidence=worst_confidence_val,
+        worst_sector_percentile_score=worst_sec_score,
+    )
+    conviction_score = round(mean_conviction_points(conviction_records), 4) if conviction_records else None
+
+    predicted_sec_ret = sector_returns.get(predicted_sec)
+    pair_rets = [sector_returns.get(t) for t in predicted_pair if t in sector_returns]
+    predicted_pair_ret = (sum(pair_rets) / len(pair_rets)) if pair_rets else None
+    spy_ret = sector_returns.get("SPY")
+    sector_sp_diff = (predicted_sec_ret - spy_ret) if (predicted_sec_ret is not None and spy_ret is not None) else None
+
+    audit_data = {
+        "start_date": pred_date_str,
+        "end_date": target_date.isoformat(),
+        "spy": ticker_prices.get("SPY"),
+        "sector": (
+            {"ticker": predicted_sec, **ticker_prices[predicted_sec]} if predicted_sec in ticker_prices else None
+        ),
+        "worst_sector": (
+            {"ticker": predicted_worst_sec, **ticker_prices[predicted_worst_sec]}
+            if predicted_worst_sec and predicted_worst_sec in ticker_prices
+            else None
+        ),
+        "pair": [{"ticker": t, **ticker_prices[t]} for t in predicted_pair if t in ticker_prices],
+    }
+
+    try:
+        client.table("sector_predictions").update(
+            {
+                "sector_percentile_score": sec_score,
+                "worst_sector_percentile_score": worst_sec_score,
+                "pair_percentile_score": pair_score,
+                "brier_score": brier_score,
+                "conviction_score": conviction_score,
+                "predicted_sector_return": predicted_sec_ret,
+                "predicted_worst_sector_return": predicted_worst_sec_ret,
+                "predicted_pair_return": predicted_pair_ret,
+                "benchmark_spy_return": spy_ret,
+                "sector_sp_diff": sector_sp_diff,
+                "evaluation_audit_data": audit_data,
+                "status": "evaluated",
+            }
+        ).eq("id", pred_id).execute()
+        logger.info(
+            f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Worst Sector {predicted_worst_sec}: {worst_sec_score}, Pair {predicted_pair}: {pair_score:.1f}%, Brier: {brier_score:.4f}, SPY diff: {sector_sp_diff})"
+        )
+    except Exception as e:
+        logger.exception(f"Failed to update prediction {pred_id} in database: {e}")
+
+
 async def run_evaluation(force: bool = False, date_anchor: date | None = None):
     """Find pending sector predictions whose target_date has passed, fetch returns, and score them.
 
@@ -205,18 +361,14 @@ async def run_evaluation(force: bool = False, date_anchor: date | None = None):
     client = get_supabase_client()
     today = date_anchor or datetime.now(EASTERN_TZ).date()
 
-    # On weekend (Sat=5, Sun=6), equity markets are closed until Monday 9:30 AM ET.
-    # Weekly sector predictions maturing on Monday (e.g. 7d target from prior Monday)
-    # have completed their entire trading week at Friday's close and are mature for evaluation.
-    if today.weekday() == 6:  # Sunday
+    if today.weekday() == 6:
         max_eval_date = today + timedelta(days=1)
-    elif today.weekday() == 5:  # Saturday
+    elif today.weekday() == 5:
         max_eval_date = today + timedelta(days=2)
     else:
         max_eval_date = today
 
     try:
-        # Fetch pending predictions OR evaluated predictions missing evaluation_audit_data where target_date <= max_eval_date
         query = client.table("sector_predictions").select("*")
         if not force:
             query = query.or_("status.eq.pending,evaluation_audit_data.is.null")
@@ -233,198 +385,26 @@ async def run_evaluation(force: bool = False, date_anchor: date | None = None):
     logger.info(f"Found {len(pending)} pending predictions to evaluate.")
     provider = get_financial_provider()
 
-    # Get unique prediction dates to fetch correlation runs
     prediction_dates = {p["prediction_date"] for p in pending}
-    run_tickers_by_date = {}
+    run_tickers_by_date = _fetch_run_tickers_by_date(client, prediction_dates)
+    tickers_to_fetch = _collect_tickers_to_fetch(pending, run_tickers_by_date)
 
-    for pred_date in prediction_dates:
-        try:
-            # Query closest correlation run on or before prediction_date
-            run_res = (
-                client.table("correlation_runs")
-                .select("tickers")
-                .lte("run_date", pred_date)
-                .order("run_date", desc=True)
-                .limit(1)
-                .execute()
-            )
-            if run_res.data and run_res.data[0].get("tickers"):
-                run_tickers_by_date[pred_date] = run_res.data[0]["tickers"]
-            else:
-                run_tickers_by_date[pred_date] = SECTOR_TICKERS
-        except Exception as e:
-            logger.warning(f"Failed to query correlation run for {pred_date}: {e}")
-            run_tickers_by_date[pred_date] = SECTOR_TICKERS
-
-    # Collect all unique tickers we need to fetch history for
-    tickers_to_fetch = set()
-    for p in pending:
-        pred_date = p["prediction_date"]
-        # Always include SPY benchmark in tickers to fetch
-        tickers_to_fetch.add("SPY")
-        # Add tickers from this prediction's reference universe
-        ref_tickers = run_tickers_by_date.get(pred_date, SECTOR_TICKERS)
-        for t in ref_tickers:
-            tickers_to_fetch.add(t.upper())
-        # Add predicted sector/worst sector/pair
-        sec = p.get("predicted_sector")
-        if sec:
-            tickers_to_fetch.add(sec.upper())
-        worst_sec = p.get("predicted_worst_sector")
-        if worst_sec and worst_sec != "UNKNOWN":
-            tickers_to_fetch.add(worst_sec.upper())
-        pair = p.get("predicted_pair") or []
-        for t in pair:
-            if t:
-                tickers_to_fetch.add(t.upper())
-
-    # Fetch price history for all needed tickers in parallel
     prices_history = {}
 
     async def fetch_history_for_ticker(ticker: str, days_needed: int):
         try:
-            # Fetch with a small buffer to ensure coverage
             history = await provider.get_history(ticker, days=days_needed + 7)
             prices_history[ticker] = history
         except Exception as e:
             logger.error(f"Failed to fetch history for ticker {ticker}: {e}")
 
-    # Find the maximum days back we need to fetch
-    min_pred_date = today
+    min_pred_date = min((datetime.strptime(p["prediction_date"], "%Y-%m-%d").date() for p in pending), default=today)
+    days_back = max(0, (today - min_pred_date).days)
+
+    await asyncio.gather(*(fetch_history_for_ticker(t, days_back) for t in tickers_to_fetch))
+
     for p in pending:
-        pred_date = datetime.strptime(p["prediction_date"], "%Y-%m-%d").date()
-        if pred_date < min_pred_date:
-            min_pred_date = pred_date
-
-    days_back = (today - min_pred_date).days
-
-    tasks = [fetch_history_for_ticker(t, days_back) for t in tickers_to_fetch]
-    await asyncio.gather(*tasks)
-
-    # Evaluate each prediction
-    for p in pending:
-        pred_id = p["id"]
-        pred_date_str = p["prediction_date"]
-        pred_date = datetime.strptime(pred_date_str, "%Y-%m-%d").date()
-        target_date = datetime.strptime(p["target_date"], "%Y-%m-%d").date()
-
-        # Get the reference universe specific to this prediction date
-        ref_tickers = run_tickers_by_date.get(pred_date_str, SECTOR_TICKERS)
-        ref_tickers_upper = {t.upper() for t in ref_tickers}
-
-        # Always include SPY benchmark, predicted sector, worst sector, and predicted pair in the universe
-        ref_tickers_upper.add("SPY")
-
-        predicted_sec = p.get("predicted_sector")
-        if predicted_sec:
-            predicted_sec = predicted_sec.upper()
-            ref_tickers_upper.add(predicted_sec)
-
-        predicted_worst_sec = p.get("predicted_worst_sector")
-        if predicted_worst_sec and predicted_worst_sec != "UNKNOWN":
-            predicted_worst_sec = predicted_worst_sec.upper()
-            ref_tickers_upper.add(predicted_worst_sec)
-        else:
-            predicted_worst_sec = None
-
-        predicted_pair = p.get("predicted_pair") or []
-        predicted_pair = [t.upper() for t in predicted_pair if t]
-        for t in predicted_pair:
-            ref_tickers_upper.add(t)
-
-        # Calculate returns and capture audit prices for the specific reference universe
-        sector_returns = {}
-        ticker_prices = {}
-        for ticker in ref_tickers_upper:
-            history = prices_history.get(ticker, [])
-            p_start = get_price_for_date(history, pred_date)
-            p_end = get_price_for_date(history, target_date)
-
-            if p_start is not None and p_end is not None and p_start > 0:
-                ret = ((p_end / p_start) - 1.0) * 100.0
-                sector_returns[ticker] = ret
-                ticker_prices[ticker] = {"start_price": p_start, "end_price": p_end, "return_pct": ret}
-
-        if not sector_returns:
-            logger.warning(f"No price history found for any sectors for prediction {pred_id}. Skipping.")
-            continue
-
-        if predicted_sec not in sector_returns:
-            logger.warning(f"Predicted sector {predicted_sec} has no return data. Skipping.")
-            continue
-
-        if any(t not in sector_returns for t in predicted_pair):
-            logger.warning(f"Predicted pair {predicted_pair} contains tickers without return data. Skipping.")
-            continue
-
-        # Compute percentile scores, brier score, and actual returns
-        sec_score = calculate_percentile_score(predicted_sec, sector_returns)
-        pair_score = calculate_pair_percentile_score(predicted_pair, sector_returns)
-
-        worst_sec_score = None
-        predicted_worst_sec_ret = None
-        if predicted_worst_sec and predicted_worst_sec in sector_returns:
-            worst_sec_score = calculate_worst_sector_percentile_score(predicted_worst_sec, sector_returns)
-            predicted_worst_sec_ret = sector_returns.get(predicted_worst_sec)
-
-        confidence_val = p.get("confidence")
-        worst_confidence_val = p.get("worst_confidence")
-        brier_score = calculate_sector_brier_score(confidence_val, sec_score, worst_sec_score)
-
-        conviction_records = calculate_sector_conviction_records(
-            confidence=confidence_val,
-            sector_percentile_score=sec_score,
-            worst_confidence=worst_confidence_val,
-            worst_sector_percentile_score=worst_sec_score,
-        )
-        conviction_score = round(mean_conviction_points(conviction_records), 4) if conviction_records else None
-
-        predicted_sec_ret = sector_returns.get(predicted_sec)
-        pair_rets = [sector_returns.get(t) for t in predicted_pair if t in sector_returns]
-        predicted_pair_ret = (sum(pair_rets) / len(pair_rets)) if pair_rets else None
-        spy_ret = sector_returns.get("SPY")
-
-        sector_sp_diff = (
-            (predicted_sec_ret - spy_ret) if (predicted_sec_ret is not None and spy_ret is not None) else None
-        )
-
-        audit_data = {
-            "start_date": pred_date_str,
-            "end_date": target_date.isoformat(),
-            "spy": ticker_prices.get("SPY"),
-            "sector": (
-                {"ticker": predicted_sec, **ticker_prices[predicted_sec]} if predicted_sec in ticker_prices else None
-            ),
-            "worst_sector": (
-                {"ticker": predicted_worst_sec, **ticker_prices[predicted_worst_sec]}
-                if predicted_worst_sec and predicted_worst_sec in ticker_prices
-                else None
-            ),
-            "pair": [{"ticker": t, **ticker_prices[t]} for t in predicted_pair if t in ticker_prices],
-        }
-
-        try:
-            client.table("sector_predictions").update(
-                {
-                    "sector_percentile_score": sec_score,
-                    "worst_sector_percentile_score": worst_sec_score,
-                    "pair_percentile_score": pair_score,
-                    "brier_score": brier_score,
-                    "conviction_score": conviction_score,
-                    "predicted_sector_return": predicted_sec_ret,
-                    "predicted_worst_sector_return": predicted_worst_sec_ret,
-                    "predicted_pair_return": predicted_pair_ret,
-                    "benchmark_spy_return": spy_ret,
-                    "sector_sp_diff": sector_sp_diff,
-                    "evaluation_audit_data": audit_data,
-                    "status": "evaluated",
-                }
-            ).eq("id", pred_id).execute()
-            logger.info(
-                f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Worst Sector {predicted_worst_sec}: {worst_sec_score}, Pair {predicted_pair}: {pair_score:.1f}%, Brier: {brier_score:.4f}, SPY diff: {sector_sp_diff})"
-            )
-        except Exception as e:
-            logger.exception(f"Failed to update prediction {pred_id} in database: {e}")
+        _evaluate_single_sector_prediction(p, client, run_tickers_by_date, prices_history)
 
 
 if __name__ == "__main__":

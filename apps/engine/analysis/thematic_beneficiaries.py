@@ -387,26 +387,14 @@ async def fetch_ticker_profiles(
     return profiles
 
 
-async def compute_thematic_beneficiaries(
-    anchor_ticker: str,
-    theme: str | None = None,
-    candidate_tickers: list[str] | None = None,
-    candidate_industries: list[str] | None = None,
-    candidate_sectors: list[str] | None = None,
-    lookback_days: int = 60,
-    options_top_n: int = 3,
-    include_financials: bool = True,
-    include_institutional: bool = False,
-    fund_ciks: dict[str, str] | None = None,
-    mdm: MarketDataManager | None = None,
-    options_client: MassiveOptionsClient | None = None,
-    http_client: httpx.AsyncClient | None = None,
-) -> dict[str, Any]:
-    """Computes second-order beneficiaries for an anchor ticker across candidate peers."""
-    manager = mdm or MarketDataManager()
-    anchor = anchor_ticker.strip().upper()
-
-    # Step 1: Collect candidate ticker list
+async def _collect_candidates_meta(
+    anchor: str,
+    candidate_tickers: list[str] | None,
+    candidate_industries: list[str] | None,
+    candidate_sectors: list[str] | None,
+    http_client: httpx.AsyncClient | None,
+) -> dict[str, dict[str, Any]]:
+    """Helper to collect candidate ticker profiles and screener results."""
     candidates_meta: dict[str, dict[str, Any]] = {}
     if candidate_tickers:
         profiles = await fetch_ticker_profiles(candidate_tickers, http_client=http_client)
@@ -429,6 +417,32 @@ async def compute_thematic_beneficiaries(
             sym = res["symbol"]
             if sym != anchor:
                 candidates_meta[sym] = res
+    return candidates_meta
+
+
+async def compute_thematic_beneficiaries(
+    anchor_ticker: str,
+    theme: str | None = None,
+    candidate_tickers: list[str] | None = None,
+    candidate_industries: list[str] | None = None,
+    candidate_sectors: list[str] | None = None,
+    lookback_days: int = 60,
+    options_top_n: int = 3,
+    include_financials: bool = True,
+    include_institutional: bool = False,
+    fund_ciks: dict[str, str] | None = None,
+    mdm: MarketDataManager | None = None,
+    options_client: MassiveOptionsClient | None = None,
+    http_client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    """Computes second-order beneficiaries for an anchor ticker across candidate peers."""
+    manager = mdm or MarketDataManager()
+    anchor = anchor_ticker.strip().upper()
+
+    # Step 1: Collect candidate ticker list
+    candidates_meta = await _collect_candidates_meta(
+        anchor, candidate_tickers, candidate_industries, candidate_sectors, http_client
+    )
 
     if not candidates_meta:
         return {

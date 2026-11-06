@@ -189,7 +189,7 @@ def test_tool_available_in_all_flows():
 
     from core.llm import verification
 
-    source = inspect.getsource(verification.verify_trading_decision)
+    source = inspect.getsource(verification._run_verifier_tool_loop)
     assert "tools.GET_TICKER_NEWS_TOOL" in source
 
     # 5. Autoresearch modular block

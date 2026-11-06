@@ -13,6 +13,7 @@ Env:
 """
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -169,6 +170,62 @@ def collect_wiki_content(
     return "\n".join(parts)
 
 
+def _parse_llm_json_response(raw: str) -> dict:
+    raw = raw.strip()
+    json_blocks = re.findall(r"```(?:json)?\s*(.*?)\s*```", raw, re.DOTALL)
+    for block in json_blocks:
+        with contextlib.suppress(json.JSONDecodeError):
+            return json.loads(block)
+
+    for match in re.finditer(r"\{", raw):
+        start_index = match.start()
+        with contextlib.suppress(json.JSONDecodeError):
+            decoder = json.JSONDecoder()
+            obj, _ = decoder.raw_decode(raw[start_index:])
+            if isinstance(obj, dict) and ("findings" in obj or "summary" in obj):
+                return obj
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse LLM response as JSON: {e}")
+        logger.error(f"Raw content (len {len(raw)}):\n{raw}")
+        raise
+
+
+def _validate_openrouter_payload(data: dict) -> tuple[str, str | None, str | None]:
+    if "error" in data:
+        error_msg = data["error"].get("message", "Unknown OpenRouter error")
+        logger.error(f"OpenRouter error response: {json.dumps(data, indent=2)}")
+        raise requests.RequestException(f"OpenRouter API error: {error_msg}")
+
+    if not data.get("choices"):
+        logger.error(f"OpenRouter unexpected response structure: {json.dumps(data, indent=2)}")
+        raise requests.RequestException("OpenRouter returned no choices")
+
+    choice = data["choices"][0]
+    msg = choice.get("message", {})
+    raw = msg.get("content")
+    reasoning = msg.get("reasoning") or msg.get("reasoning_content")
+    finish_reason = choice.get("finish_reason")
+
+    if raw is None or not raw.strip():
+        if finish_reason == "length":
+            error_detail = (
+                "OpenRouter returned empty content because token limit was exhausted during reasoning "
+                f"(finish_reason: length, reasoning_len: {len(reasoning) if reasoning else 0})."
+            )
+            logger.error(error_detail)
+            raise requests.RequestException(error_detail)
+        logger.error(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
+        raise requests.RequestException(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
+
+    if finish_reason == "length":
+        logger.warning("LLM response was truncated due to max_tokens limit.")
+
+    return raw, reasoning, finish_reason
+
+
 def call_openrouter(
     content: str,
     model: str,
@@ -177,9 +234,7 @@ def call_openrouter(
     commits_summary: str = "",
 ) -> dict:
     """Send wiki content and recent commit summary to the LLM and return parsed findings."""
-    if all_files is None:
-        all_files = []
-
+    all_files = all_files or []
     user_parts = []
     if commits_summary:
         user_parts.append(f"Recent Git Commits:\n{commits_summary}\n")
@@ -187,26 +242,19 @@ def call_openrouter(
         user_parts.append(
             f"Here is a manifest of all files present in the wiki directory:\n"
             f"{json.dumps(all_files, indent=2)}\n\n"
-            f"Use this manifest to verify if cross-referenced links/pages actually exist in the project "
-            f"(even if their contents were truncated or not fully provided in the content below).\n"
+            f"Use this manifest to verify if cross-referenced links/pages actually exist in the project.\n"
         )
     user_parts.append(f"Lint these wiki pages:\n\n{content}")
-    user_content = "\n".join(user_parts)
 
     payload = {
         "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": user_content,
-            },
+            {"role": "user", "content": "\n".join(user_parts)},
         ],
-        "temperature": 0.1,  # Lower temperature for more stable JSON
-        "max_tokens": 16384,  # Provide sufficient headroom for reasoning + JSON output
-        "reasoning": {
-            "max_tokens": 4096,
-        },
+        "temperature": 0.1,
+        "max_tokens": 16384,
+        "reasoning": {"max_tokens": 4096},
     }
 
     headers = {
@@ -227,69 +275,8 @@ def call_openrouter(
         logger.error(f"OpenRouter API error response ({resp.status_code}): {error_msg}")
         raise requests.RequestException(f"OpenRouter API error ({resp.status_code}): {error_msg}")
 
-    data = resp.json()
-
-    if "error" in data:
-        logger.error(f"OpenRouter error response: {json.dumps(data, indent=2)}")
-        error_msg = data["error"].get("message", "Unknown OpenRouter error")
-        raise requests.RequestException(f"OpenRouter API error: {error_msg}")
-
-    if not data.get("choices"):
-        logger.error(f"OpenRouter unexpected response structure: {json.dumps(data, indent=2)}")
-        raise requests.RequestException("OpenRouter returned no choices")
-
-    choice = data["choices"][0]
-    msg = choice.get("message", {})
-    raw = msg.get("content")
-    reasoning = msg.get("reasoning") or msg.get("reasoning_content")
-    finish_reason = choice.get("finish_reason")
-
-    if raw is None or not raw.strip():
-        if finish_reason == "length":
-            error_detail = (
-                "OpenRouter returned empty content because token limit was exhausted during reasoning "
-                f"(finish_reason: length, reasoning_len: {len(reasoning) if reasoning else 0}). "
-                "Consider increasing max_tokens or adjusting reasoning effort."
-            )
-            logger.error(error_detail)
-            raise requests.RequestException(error_detail)
-        logger.error(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
-        raise requests.RequestException(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
-
-    if finish_reason == "length":
-        logger.warning("LLM response was truncated due to max_tokens limit.")
-
-    # Try to extract JSON from the response
-    raw = raw.strip()
-
-    # Strategy 1: Look for ```json ... ``` blocks
-    json_blocks = re.findall(r"```(?:json)?\s*(.*?)\s*```", raw, re.DOTALL)
-    for block in json_blocks:
-        try:
-            return json.loads(block)
-        except json.JSONDecodeError:
-            continue
-
-    # Strategy 2: Look for anything starting with {
-    for match in re.finditer(r"\{", raw):
-        start_index = match.start()
-        try:
-            decoder = json.JSONDecoder()
-            obj, end_index = decoder.raw_decode(raw[start_index:])
-            # Basic validation that it's our expected schema
-            if isinstance(obj, dict) and ("findings" in obj or "summary" in obj):
-                return obj
-        except json.JSONDecodeError:
-            continue
-
-    # Strategy 3: Try to parse the whole string
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse LLM response as JSON: {e}")
-        # Log more of the raw content to debug truncation
-        logger.error(f"Raw content (len {len(raw)}):\n{raw}")
-        raise
+    raw, _, _ = _validate_openrouter_payload(resp.json())
+    return _parse_llm_json_response(raw)
 
 
 def main():

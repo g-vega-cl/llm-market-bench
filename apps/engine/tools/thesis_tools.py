@@ -54,6 +54,98 @@ def format_thesis_markdown(thesis: dict[str, Any]) -> str:
     )
 
 
+def _handle_thesis_create(
+    ticker: str,
+    thesis_statement: str | None,
+    pillars: list[str] | None,
+    risks: list[str] | None,
+    price_target: float | None,
+    stop_loss: float | None,
+    conviction: str | None,
+    now_iso: str,
+    sb: Any,
+) -> dict[str, Any]:
+    """Helper to handle create action."""
+    initial_conviction = conviction or "HIGH"
+    thesis_data = {
+        "ticker": ticker,
+        "thesis_statement": thesis_statement or f"Core conviction thesis on {ticker}.",
+        "pillars": pillars or [],
+        "risks": risks or [],
+        "disconfirming_evidence": [],
+        "conviction": initial_conviction,
+        "status": "ACTIVE",
+        "price_target": price_target,
+        "stop_loss": stop_loss,
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    _IN_MEMORY_THESES[ticker] = thesis_data
+    if sb:
+        try:
+            res = sb.table("theses").insert(thesis_data).execute()
+            if res.data:
+                thesis_data["id"] = res.data[0].get("id")
+        except Exception as e:
+            logger.debug(f"Could not persist thesis to database (falling back to memory): {e}")
+
+    result = dict(thesis_data)
+    result["status"] = "CREATED"
+    result["markdown"] = format_thesis_markdown(thesis_data)
+    return result
+
+
+def _handle_thesis_disconfirm(
+    ticker: str,
+    disconfirming_factor: str | None,
+    pillar_impacted: str | None,
+    now_iso: str,
+    sb: Any,
+) -> dict[str, Any]:
+    """Helper to handle disconfirm action."""
+    existing = _IN_MEMORY_THESES.get(ticker)
+    if not existing and sb:
+        try:
+            res = sb.table("theses").select("*").eq("ticker", ticker).order("updated_at", desc=True).limit(1).execute()
+            if res.data:
+                existing = res.data[0]
+        except Exception as e:
+            logger.debug(f"Error reading thesis from database: {e}")
+
+    if not existing:
+        existing = {
+            "ticker": ticker,
+            "thesis_statement": f"Baseline trade thesis on {ticker}.",
+            "pillars": [pillar_impacted or "Momentum / Fundamental Support"],
+            "risks": ["Adverse price trend"],
+            "disconfirming_evidence": [],
+            "conviction": "HIGH",
+            "status": "ACTIVE",
+        }
+
+    disconf_entry = {
+        "date": datetime.now(UTC).date().isoformat(),
+        "factor": disconfirming_factor or "Unspecified disconfirming signal observed.",
+        "pillar_impacted": pillar_impacted or "General Thesis",
+    }
+    evidence_list = list(existing.get("disconfirming_evidence", []))
+    evidence_list.append(disconf_entry)
+    existing["disconfirming_evidence"] = evidence_list
+    existing["conviction"] = "WEAKENED"
+    existing["updated_at"] = now_iso
+
+    _IN_MEMORY_THESES[ticker] = existing
+    if sb and existing.get("id"):
+        try:
+            sb.table("theses").update(existing).eq("id", existing["id"]).execute()
+        except Exception as e:
+            logger.debug(f"Error updating thesis in database: {e}")
+
+    result = dict(existing)
+    result["markdown"] = format_thesis_markdown(existing)
+    return result
+
+
 async def execute_track_thesis_pillars(
     ticker: str,
     action: str = "get",
@@ -74,85 +166,13 @@ async def execute_track_thesis_pillars(
 
     # 1. CREATE ACTION
     if action == "create":
-        initial_conviction = conviction or "HIGH"
-        thesis_data = {
-            "ticker": ticker,
-            "thesis_statement": thesis_statement or f"Core conviction thesis on {ticker}.",
-            "pillars": pillars or [],
-            "risks": risks or [],
-            "disconfirming_evidence": [],
-            "conviction": initial_conviction,
-            "status": "ACTIVE",
-            "price_target": price_target,
-            "stop_loss": stop_loss,
-            "created_at": now_iso,
-            "updated_at": now_iso,
-        }
-        _IN_MEMORY_THESES[ticker] = thesis_data
-
-        if sb:
-            try:
-                res = sb.table("theses").insert(thesis_data).execute()
-                if res.data:
-                    thesis_data["id"] = res.data[0].get("id")
-            except Exception as e:
-                logger.debug(f"Could not persist thesis to database (falling back to memory): {e}")
-
-        result = dict(thesis_data)
-        result["status"] = "CREATED"
-        result["markdown"] = format_thesis_markdown(thesis_data)
-        return result
+        return _handle_thesis_create(
+            ticker, thesis_statement, pillars, risks, price_target, stop_loss, conviction, now_iso, sb
+        )
 
     # 2. DISCONFIRM ACTION
     if action == "disconfirm":
-        existing = _IN_MEMORY_THESES.get(ticker)
-        if not existing and sb:
-            try:
-                res = (
-                    sb.table("theses")
-                    .select("*")
-                    .eq("ticker", ticker)
-                    .order("updated_at", desc=True)
-                    .limit(1)
-                    .execute()
-                )
-                if res.data:
-                    existing = res.data[0]
-            except Exception as e:
-                logger.debug(f"Error reading thesis from database: {e}")
-
-        if not existing:
-            existing = {
-                "ticker": ticker,
-                "thesis_statement": f"Baseline trade thesis on {ticker}.",
-                "pillars": [pillar_impacted or "Momentum / Fundamental Support"],
-                "risks": ["Adverse price trend"],
-                "disconfirming_evidence": [],
-                "conviction": "HIGH",
-                "status": "ACTIVE",
-            }
-
-        disconf_entry = {
-            "date": datetime.now(UTC).date().isoformat(),
-            "factor": disconfirming_factor or "Unspecified disconfirming signal observed.",
-            "pillar_impacted": pillar_impacted or "General Thesis",
-        }
-        evidence_list = list(existing.get("disconfirming_evidence", []))
-        evidence_list.append(disconf_entry)
-        existing["disconfirming_evidence"] = evidence_list
-        existing["conviction"] = "WEAKENED"
-        existing["updated_at"] = now_iso
-
-        _IN_MEMORY_THESES[ticker] = existing
-        if sb and existing.get("id"):
-            try:
-                sb.table("theses").update(existing).eq("id", existing["id"]).execute()
-            except Exception as e:
-                logger.debug(f"Error updating thesis in database: {e}")
-
-        result = dict(existing)
-        result["markdown"] = format_thesis_markdown(existing)
-        return result
+        return _handle_thesis_disconfirm(ticker, disconfirming_factor, pillar_impacted, now_iso, sb)
 
     # 3. GET ACTION
     existing = _IN_MEMORY_THESES.get(ticker)

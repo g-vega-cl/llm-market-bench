@@ -199,6 +199,76 @@ class TapeHttpServer:
     def __init__(self, broadcaster: TapeBroadcaster) -> None:
         self.broadcaster = broadcaster
 
+    async def _handle_stream(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+    ) -> None:
+        sse_headers = (
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: text/event-stream\r\n"
+            b"Cache-Control: no-cache, no-transform\r\n"
+            b"Connection: keep-alive\r\n"
+            b"Access-Control-Allow-Origin: *\r\n"
+            b"X-Accel-Buffering: no\r\n\r\n"
+        )
+        writer.write(sse_headers)
+        await writer.drain()
+
+        queue = self.broadcaster.subscribe()
+        try:
+            snapshot = self.broadcaster.get_snapshot_payload()
+            initial_event = f"event: snapshot\ndata: {json.dumps(snapshot)}\n\n".encode()
+            writer.write(initial_event)
+            await writer.drain()
+
+            while not reader.at_eof():
+                read_task = asyncio.create_task(reader.read(1))
+                queue_task = asyncio.create_task(queue.get())
+                done, pending = await asyncio.wait(
+                    [read_task, queue_task],
+                    timeout=15.0,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
+
+                if read_task in done:
+                    break
+                if queue_task in done:
+                    msg = queue_task.result()
+                    writer.write(msg.encode("utf-8"))
+                    await writer.drain()
+                elif not done:
+                    writer.write(b": ping\n\n")
+                    await writer.drain()
+        except (ConnectionResetError, BrokenPipeError, asyncio.CancelledError):
+            pass
+        finally:
+            self.broadcaster.unsubscribe(queue)
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
+
+    async def _handle_health(self, writer: asyncio.StreamWriter) -> None:
+        body = json.dumps(
+            {
+                "status": "ok",
+                "clients": self.broadcaster.client_count,
+                "bars_count": len(self.broadcaster.latest_bars),
+            }
+        ).encode("utf-8")
+        resp = (
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Access-Control-Allow-Origin: *\r\n"
+            b"Content-Length: " + str(len(body)).encode("ascii") + b"\r\n\r\n" + body
+        )
+        writer.write(resp)
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+
     async def handle_client(
         self,
         reader: asyncio.StreamReader,
@@ -220,7 +290,6 @@ class TapeHttpServer:
 
             method, path = parts[0].upper(), parts[1]
 
-            # Read headers until empty line
             while True:
                 h = await reader.readline()
                 if not h or h in (b"\r\n", b"\n"):
@@ -241,78 +310,13 @@ class TapeHttpServer:
                 return
 
             if path == "/api/tape/health":
-                body = json.dumps(
-                    {
-                        "status": "ok",
-                        "clients": self.broadcaster.client_count,
-                        "bars_count": len(self.broadcaster.latest_bars),
-                    }
-                ).encode("utf-8")
-                resp = (
-                    b"HTTP/1.1 200 OK\r\n"
-                    b"Content-Type: application/json\r\n"
-                    b"Access-Control-Allow-Origin: *\r\n"
-                    b"Content-Length: " + str(len(body)).encode("ascii") + b"\r\n\r\n" + body
-                )
-                writer.write(resp)
-                await writer.drain()
-                writer.close()
-                await writer.wait_closed()
+                await self._handle_health(writer)
                 return
 
             if path.startswith("/api/tape/stream"):
-                sse_headers = (
-                    b"HTTP/1.1 200 OK\r\n"
-                    b"Content-Type: text/event-stream\r\n"
-                    b"Cache-Control: no-cache, no-transform\r\n"
-                    b"Connection: keep-alive\r\n"
-                    b"Access-Control-Allow-Origin: *\r\n"
-                    b"X-Accel-Buffering: no\r\n\r\n"
-                )
-                writer.write(sse_headers)
-                await writer.drain()
-
-                queue = self.broadcaster.subscribe()
-                try:
-                    # Send snapshot immediately on connect
-                    snapshot = self.broadcaster.get_snapshot_payload()
-                    initial_event = f"event: snapshot\ndata: {json.dumps(snapshot)}\n\n".encode()
-                    writer.write(initial_event)
-                    await writer.drain()
-
-                    while not reader.at_eof():
-                        read_task = asyncio.create_task(reader.read(1))
-                        queue_task = asyncio.create_task(queue.get())
-                        done, pending = await asyncio.wait(
-                            [read_task, queue_task],
-                            timeout=15.0,
-                            return_when=asyncio.FIRST_COMPLETED,
-                        )
-                        for task in pending:
-                            task.cancel()
-
-                        if read_task in done:
-                            # Client closed connection
-                            break
-
-                        if queue_task in done:
-                            msg = queue_task.result()
-                            writer.write(msg.encode("utf-8"))
-                            await writer.drain()
-                        elif not done:
-                            # Keepalive ping for Cloudflare / Nginx timeouts
-                            writer.write(b": ping\n\n")
-                            await writer.drain()
-                except (ConnectionResetError, BrokenPipeError, asyncio.CancelledError):
-                    pass
-                finally:
-                    self.broadcaster.unsubscribe(queue)
-                    writer.close()
-                    with contextlib.suppress(Exception):
-                        await writer.wait_closed()
+                await self._handle_stream(reader, writer)
                 return
 
-            # Default 404
             not_found = b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n"
             writer.write(not_found)
             await writer.drain()

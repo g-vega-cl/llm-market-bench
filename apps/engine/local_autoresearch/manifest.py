@@ -120,108 +120,104 @@ class DoubleRatchetMutation(BaseModel):
     )
 
 
-def pack_daily_context(day_record: dict[str, Any], manifest: DataManifest) -> str:
-    """Compile a point-in-time market context string strictly based on the provided manifest.
+def _pack_newsletters(newsletters: list[dict[str, Any]], manifest: DataManifest) -> list[str]:
+    selected_news = []
+    for item in newsletters:
+        sender = item.get("sender", "Unknown")
+        if manifest.selected_newsletters is not None:
+            matches = any(
+                sel.lower() in sender.lower() or sender.lower() in sel.lower() for sel in manifest.selected_newsletters
+            )
+            if not matches:
+                continue
+        subject = item.get("subject", "No Subject")
+        content = item.get("content", "").strip()[:400]
+        selected_news.append(f"[{sender}] {subject}: {content}")
+    return selected_news
 
-    Guarantees:
-    - Zero lookahead: Only incorporates fields timestamped prior to 09:15 AM ET on target_date.
-    - Deterministic: Same day_record + manifest produces identical text.
-    """
-    target_date = day_record.get("target_date", "UNKNOWN_DATE")
-    ticker = day_record.get("ticker", "SPY")
-    lines: list[str] = [f"=== POINT-IN-TIME MARKET CONTEXT: {ticker} ({target_date}) ==="]
 
-    # 0. Multi-Day Momentum & Trend Vector
-    if manifest.include_trend_vector:
-        trend = day_record.get("trend_vector")
-        if isinstance(trend, dict) and trend.get("summary"):
-            lines.append("--- Multi-Day Momentum & Trend Vector ---")
-            lines.append(trend["summary"].strip())
+def _pack_proxies(proxies_data: dict[str, Any], manifest: DataManifest) -> list[str]:
+    allowed_proxies = set(manifest.include_macro_proxies)
+    if manifest.include_currency_uup:
+        allowed_proxies.add("UUP")
+    else:
+        allowed_proxies.discard("UUP")
 
-    # 1. Economic releases
-    if manifest.include_economic_calendar:
-        econ = day_record.get("economic_calendar")
-        if econ:
-            lines.append("--- High-Impact Economic Releases ---")
-            lines.append(econ.strip())
+    proxy_lines = []
+    for sym in sorted(allowed_proxies):
+        info = proxies_data.get(sym)
+        if info:
+            p = info.get("price", 0.0)
+            chg = info.get("change_pct", 0.0)
+            proxy_lines.append(f"- {sym}: ${p:.2f} ({chg:+.2f}%)")
+    return proxy_lines
 
-    # 2. AI Synthesized Newsletter Briefing
-    if manifest.include_synthetic_newsletter:
-        synth = day_record.get("synthetic_newsletter")
-        if synth:
-            lines.append("--- Morning Newsletter Briefing ---")
-            lines.append(synth.strip())
 
-    # 3. Selected Ingested Newsletters
-    newsletters = day_record.get("newsletters", [])
-    if newsletters:
-        selected_news = []
-        for item in newsletters:
-            sender = item.get("sender", "Unknown")
-            # If selected_newsletters filter is provided, enforce it
-            if manifest.selected_newsletters is not None:
-                matches = any(
-                    sel.lower() in sender.lower() or sender.lower() in sel.lower()
-                    for sel in manifest.selected_newsletters
-                )
-                if not matches:
-                    continue
-            subject = item.get("subject", "No Subject")
-            content = item.get("content", "").strip()[:400]
-            selected_news.append(f"[{sender}] {subject}: {content}")
-
-        if selected_news:
-            lines.append("--- Curated Individual Newsletters ---")
-            lines.extend(selected_news)
-
-    # 4. Pre-Market Quotes & Proxies
-    proxies_data = day_record.get("proxies", {})
-    if proxies_data:
-        allowed_proxies = set(manifest.include_macro_proxies)
-        if manifest.include_currency_uup:
-            allowed_proxies.add("UUP")
-        else:
-            allowed_proxies.discard("UUP")
-
-        proxy_lines = []
-        for sym in sorted(allowed_proxies):
-            info = proxies_data.get(sym)
-            if info:
-                p = info.get("price", 0.0)
-                chg = info.get("change_pct", 0.0)
-                proxy_lines.append(f"- {sym}: ${p:.2f} ({chg:+.2f}%)")
-
-        if proxy_lines:
-            lines.append("--- Macro Benchmark Overnight Gaps ---")
-            lines.extend(proxy_lines)
-
-    # 5. Options Derivatives & Volatility Skew
+def _pack_optional_sections(lines: list[str], day_record: dict[str, Any], manifest: DataManifest) -> None:
     if manifest.include_options_derivatives:
         options = day_record.get("options_sentiment")
         if options:
             lines.append("--- Options Derivatives & Volatility Skew ---")
             lines.append(options.strip())
 
-    # 6. Prior Session Intraday Profile
     if manifest.include_intraday_profile:
         profile = day_record.get("intraday_profile")
         if profile:
             lines.append("--- Prior Session Intraday Technical Profile ---")
             lines.append(profile.strip())
 
-    # 7. Market Barometer
     if manifest.include_market_health_barometer:
         baro = day_record.get("market_barometer")
         if baro:
             lines.append("--- Market Health Barometer ---")
             lines.append(baro.strip())
 
-    # 8. Market Feeling
     if manifest.include_recent_market_feeling:
         feeling = day_record.get("market_feeling")
         if feeling:
             lines.append("--- Qualitative Market Feeling ---")
             lines.append(feeling.strip())
+
+
+def pack_daily_context(day_record: dict[str, Any], manifest: DataManifest) -> str:
+    """Compile a point-in-time market context string strictly based on the provided manifest."""
+    target_date = day_record.get("target_date", "UNKNOWN_DATE")
+    ticker = day_record.get("ticker", "SPY")
+    lines: list[str] = [f"=== POINT-IN-TIME MARKET CONTEXT: {ticker} ({target_date}) ==="]
+
+    if manifest.include_trend_vector:
+        trend = day_record.get("trend_vector")
+        if isinstance(trend, dict) and trend.get("summary"):
+            lines.append("--- Multi-Day Momentum & Trend Vector ---")
+            lines.append(trend["summary"].strip())
+
+    if manifest.include_economic_calendar:
+        econ = day_record.get("economic_calendar")
+        if econ:
+            lines.append("--- High-Impact Economic Releases ---")
+            lines.append(econ.strip())
+
+    if manifest.include_synthetic_newsletter:
+        synth = day_record.get("synthetic_newsletter")
+        if synth:
+            lines.append("--- Morning Newsletter Briefing ---")
+            lines.append(synth.strip())
+
+    newsletters = day_record.get("newsletters", [])
+    if newsletters:
+        selected_news = _pack_newsletters(newsletters, manifest)
+        if selected_news:
+            lines.append("--- Curated Individual Newsletters ---")
+            lines.extend(selected_news)
+
+    proxies_data = day_record.get("proxies", {})
+    if proxies_data:
+        proxy_lines = _pack_proxies(proxies_data, manifest)
+        if proxy_lines:
+            lines.append("--- Macro Benchmark Overnight Gaps ---")
+            lines.extend(proxy_lines)
+
+    _pack_optional_sections(lines, day_record, manifest)
 
     lines.append("==================================================")
     return "\n".join(lines)

@@ -3,6 +3,7 @@ import os
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -248,6 +249,95 @@ async def generate_new_prompt(
         return old_prompt, None
 
 
+async def _resolve_active_sector_prompt(client: Any, model_name: str) -> tuple[str, str] | None:
+    """Helper to fetch or seed the active prompt for a sector model track."""
+    prompt_response = (
+        client.table("prompt_experiments")
+        .select("*")
+        .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+        .eq("track_id", model_name)
+        .eq("status", "active")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not prompt_response.data:
+        prompt_response = (
+            client.table("prompt_experiments")
+            .select("*")
+            .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+            .eq("track_id", model_name)
+            .eq("status", "baseline")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+    if not prompt_response.data:
+        from tasks.sector_predictor import fetch_active_prompt
+
+        tag, content = await fetch_active_prompt(model_name=model_name)
+        prompt_response = (
+            client.table("prompt_experiments")
+            .select("*")
+            .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+            .eq("track_id", model_name)
+            .eq("variant_tag", tag)
+            .execute()
+        )
+    if not prompt_response.data:
+        return None
+    return prompt_response.data[0]["variant_tag"], prompt_response.data[0]["prompt_content"]
+
+
+def _apply_sector_ratchet(
+    client: Any,
+    model_name: str,
+    weekly_score: float,
+    parent_tag: str,
+    current_prompt: str,
+    dry_run: bool,
+) -> tuple[str, str, bool, float]:
+    """Helper to evaluate weekly score against track baseline and update DB."""
+    all_variants = (
+        client.table("prompt_experiments")
+        .select("*")
+        .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
+        .eq("track_id", model_name)
+        .execute()
+    )
+    baseline_score = -1.0
+    baseline_tag = parent_tag
+    baseline_content = current_prompt
+
+    best = select_baseline_candidate(all_variants.data or [], parent_tag)
+    if best is not None:
+        baseline_score, baseline_variant = best
+        baseline_tag = baseline_variant["variant_tag"]
+        baseline_content = baseline_variant["prompt_content"]
+
+    is_baseline_beat = (baseline_score == -1.0) or (weekly_score >= baseline_score)
+
+    if baseline_score != -1.0 and weekly_score < baseline_score:
+        logger.info(
+            f"SECTOR RATCHET ({model_name}): Weekly score {weekly_score:.4f} failed to beat baseline {baseline_score:.4f}. "
+            f"Reverting to {baseline_tag}."
+        )
+        if not dry_run:
+            client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
+        return baseline_tag, baseline_content, is_baseline_beat, baseline_score
+
+    logger.info(
+        f"SECTOR RATCHET ({model_name}): Weekly score {weekly_score:.4f} beats/equals baseline {baseline_score:.4f}. "
+        f"Establishing {parent_tag} as baseline."
+    )
+    if not dry_run:
+        client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
+        client.table("prompt_experiments").update({"status": "saved"}).in_("status", ["active", "baseline"]).eq(
+            "prompt_name", "SECTOR_PREDICTOR_PROMPT"
+        ).eq("track_id", model_name).neq("variant_tag", parent_tag).execute()
+    return parent_tag, current_prompt, is_baseline_beat, baseline_score
+
+
 async def run_predictor_autoresearch_for_model(
     model_name: str,
     client,
@@ -303,50 +393,12 @@ async def run_predictor_autoresearch_for_model(
     weekly_score = weekly_metrics["score"]
 
     # 2. Fetch current active prompt for this model track
-    prompt_response = (
-        client.table("prompt_experiments")
-        .select("*")
-        .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
-        .eq("track_id", model_name)
-        .eq("status", "active")
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-
-    if not prompt_response.data:
-        # Check model track baseline
-        prompt_response = (
-            client.table("prompt_experiments")
-            .select("*")
-            .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
-            .eq("track_id", model_name)
-            .eq("status", "baseline")
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-
-    if not prompt_response.data:
-        # Seed baseline for this model track
-        from tasks.sector_predictor import fetch_active_prompt
-
-        tag, content = await fetch_active_prompt(model_name=model_name)
-        prompt_response = (
-            client.table("prompt_experiments")
-            .select("*")
-            .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
-            .eq("track_id", model_name)
-            .eq("variant_tag", tag)
-            .execute()
-        )
-
-    if not prompt_response.data:
+    active_prompt_res = await _resolve_active_sector_prompt(client, model_name)
+    if not active_prompt_res:
         logger.warning(f"No active prompt found for {model_name} and seeding failed. Skipping autoresearch.")
         return
 
-    parent_tag = prompt_response.data[0]["variant_tag"]
-    current_prompt = prompt_response.data[0]["prompt_content"]
+    parent_tag, current_prompt = active_prompt_res
 
     if dry_run:
         logger.info(f"[DRY RUN] Would update metrics for {parent_tag}: {weekly_metrics}")
@@ -354,47 +406,10 @@ async def run_predictor_autoresearch_for_model(
         client.table("prompt_experiments").update({"metrics": weekly_metrics}).eq("variant_tag", parent_tag).execute()
     logger.info(f"Updated prompt variant {parent_tag} ({model_name}) with weekly score {weekly_score:.4f}")
 
-    # 4. Fetch all variants for ratchet check strictly within this model track
-    all_variants = (
-        client.table("prompt_experiments")
-        .select("*")
-        .eq("prompt_name", "SECTOR_PREDICTOR_PROMPT")
-        .eq("track_id", model_name)
-        .execute()
+    # 4. Ratchet check strictly within this model track
+    parent_tag, current_prompt, is_baseline_beat, baseline_score = _apply_sector_ratchet(
+        client, model_name, weekly_score, parent_tag, current_prompt, dry_run
     )
-
-    baseline_score = -1.0
-    baseline_tag = parent_tag
-    baseline_content = current_prompt
-
-    best = select_baseline_candidate(all_variants.data or [], parent_tag)
-    if best is not None:
-        baseline_score, baseline_variant = best
-        baseline_tag = baseline_variant["variant_tag"]
-        baseline_content = baseline_variant["prompt_content"]
-
-    is_baseline_beat = (baseline_score == -1.0) or (weekly_score >= baseline_score)
-
-    # Compare weekly score with baseline
-    if baseline_score != -1.0 and weekly_score < baseline_score:
-        logger.info(
-            f"SECTOR RATCHET ({model_name}): Weekly score {weekly_score:.4f} failed to beat baseline {baseline_score:.4f}. "
-            f"Reverting to {baseline_tag}."
-        )
-        if not dry_run:
-            client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
-        current_prompt = baseline_content
-        parent_tag = baseline_tag
-    else:
-        logger.info(
-            f"SECTOR RATCHET ({model_name}): Weekly score {weekly_score:.4f} beats/equals baseline {baseline_score:.4f}. "
-            f"Establishing {parent_tag} as baseline."
-        )
-        if not dry_run:
-            client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
-            client.table("prompt_experiments").update({"status": "saved"}).in_("status", ["active", "baseline"]).eq(
-                "prompt_name", "SECTOR_PREDICTOR_PROMPT"
-            ).eq("track_id", model_name).neq("variant_tag", parent_tag).execute()
 
     # 5. Fetch isolated memories and macro context for this sector track
     track_memories = ""

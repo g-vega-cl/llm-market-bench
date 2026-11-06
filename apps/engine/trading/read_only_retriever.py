@@ -25,33 +25,7 @@ def _extract_keywords(text: str) -> list[str]:
     return [w for w in words if w.lower() not in stopwords][:5]
 
 
-async def retrieve_read_only_market_data(
-    sb_client: Any,
-    query: str | None = None,
-    ticker: str = "SPY",
-    limit_per_domain: int = 5,
-) -> dict[str, Any]:
-    """Retrieve read-only context across all database memory and historical data tables."""
-    if not sb_client:
-        return {
-            "memories": [],
-            "cause_and_effect": [],
-            "trades": [],
-            "decisions": [],
-            "barometer": None,
-            "catalyst_radar": [],
-        }
-
-    results: dict[str, Any] = {
-        "memories": [],
-        "cause_and_effect": [],
-        "trades": [],
-        "decisions": [],
-        "barometer": None,
-        "catalyst_radar": [],
-    }
-
-    # 1. Memories (active and relevant priority)
+def _retrieve_memories(sb_client: Any, ticker: str, limit_per_domain: int) -> list[dict[str, Any]]:
     try:
         mem_builder = (
             sb_client.table("memories")
@@ -64,62 +38,62 @@ async def retrieve_read_only_market_data(
             mem_builder = mem_builder.ilike("content", f"%{ticker}%")
         mem_resp = mem_builder.order("importance_score", desc=True).limit(limit_per_domain * 2).execute()
         raw_mems = mem_resp.data or []
-        # Filter out expired calendar events and academic papers
+
         from datetime import UTC, datetime
 
         today_str = datetime.now(UTC).strftime("%Y-%m-%d")
         filtered_mems = []
         for m in raw_mems:
-            if (m.get("memory_type") or "").upper() == "ACADEMIC_PAPER":
+            mtype = (m.get("memory_type") or "").upper()
+            if mtype == "ACADEMIC_PAPER":
                 continue
-            if (
-                (m.get("memory_type") or "").upper() == "CALENDAR_EVENT"
-                and m.get("target_date")
-                and str(m.get("target_date")) < today_str
-            ):
+            if mtype == "CALENDAR_EVENT" and m.get("target_date") and str(m.get("target_date")) < today_str:
                 continue
             filtered_mems.append(m)
-        results["memories"] = filtered_mems[:limit_per_domain] if filtered_mems else raw_mems[:limit_per_domain]
+        return filtered_mems[:limit_per_domain] if filtered_mems else raw_mems[:limit_per_domain]
     except Exception:
-        # Fallback if mock does not support chained eq/gte
         try:
             mem_builder = sb_client.table("memories").select("id, content, importance_score, metadata")
             if ticker:
                 mem_builder = mem_builder.ilike("content", f"%{ticker}%")
             mem_resp = mem_builder.order("importance_score", desc=True).limit(limit_per_domain).execute()
-            results["memories"] = mem_resp.data or []
+            return mem_resp.data or []
         except Exception:
             logger.exception("Failed to retrieve read-only memories")
+            return []
 
-    # 2. Causal Chains (cause_and_effect)
+
+def _retrieve_tabular_signals(sb_client: Any, ticker: str, limit_per_domain: int) -> dict[str, Any]:
+    res = {"cause_and_effect": [], "trades": [], "decisions": []}
     try:
         ce_builder = sb_client.table("cause_and_effect").select("id, analysis, market_outcome, confidence, tags")
         ce_resp = ce_builder.order("created_at", desc=True).limit(limit_per_domain).execute()
-        results["cause_and_effect"] = ce_resp.data or []
+        res["cause_and_effect"] = ce_resp.data or []
     except Exception:
         logger.exception("Failed to retrieve read-only cause_and_effect")
 
-    # 3. Recent Trades
     try:
         trades_builder = sb_client.table("trades").select("id, ticker, signal, price, reasoning")
         if ticker:
             trades_builder = trades_builder.ilike("ticker", f"%{ticker}%")
         trades_resp = trades_builder.order("executed_at", desc=True).limit(limit_per_domain).execute()
-        results["trades"] = trades_resp.data or []
+        res["trades"] = trades_resp.data or []
     except Exception:
         logger.exception("Failed to retrieve read-only trades")
 
-    # 4. Recent Decisions
     try:
         dec_builder = sb_client.table("decisions").select("id, ticker, signal, confidence, reasoning")
         if ticker:
             dec_builder = dec_builder.ilike("ticker", f"%{ticker}%")
         dec_resp = dec_builder.order("created_at", desc=True).limit(limit_per_domain).execute()
-        results["decisions"] = dec_resp.data or []
+        res["decisions"] = dec_resp.data or []
     except Exception:
         logger.exception("Failed to retrieve read-only decisions")
+    return res
 
-    # 5. Market Barometer (Breadth / Macro from market_barometer_history)
+
+def _retrieve_barometer_and_radar(sb_client: Any) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    baro = None
     try:
         baro_resp = (
             sb_client.table("market_barometer_history")
@@ -129,11 +103,11 @@ async def retrieve_read_only_market_data(
             .execute()
         )
         if baro_resp.data and len(baro_resp.data) > 0:
-            results["barometer"] = baro_resp.data[0]
+            baro = baro_resp.data[0]
     except Exception:
         logger.exception("Failed to retrieve read-only market_barometer_history")
 
-    # 6. Catalyst Radar
+    radar = []
     try:
         radar_resp = (
             sb_client.table("catalyst_radar")
@@ -142,11 +116,41 @@ async def retrieve_read_only_market_data(
             .limit(3)
             .execute()
         )
-        results["catalyst_radar"] = radar_resp.data or []
+        radar = radar_resp.data or []
     except Exception:
         logger.exception("Failed to retrieve read-only catalyst_radar")
+    return baro, radar
 
-    return results
+
+async def retrieve_read_only_market_data(
+    sb_client: Any,
+    query: str | None = None,
+    ticker: str = "SPY",
+    limit_per_domain: int = 5,
+) -> dict[str, Any]:
+    """Retrieve read-only context across all database memory and historical data tables."""
+    empty_result = {
+        "memories": [],
+        "cause_and_effect": [],
+        "trades": [],
+        "decisions": [],
+        "barometer": None,
+        "catalyst_radar": [],
+    }
+    if not sb_client:
+        return empty_result
+
+    baro, radar = _retrieve_barometer_and_radar(sb_client)
+    tab_signals = _retrieve_tabular_signals(sb_client, ticker, limit_per_domain)
+
+    return {
+        "memories": _retrieve_memories(sb_client, ticker, limit_per_domain),
+        "cause_and_effect": tab_signals["cause_and_effect"],
+        "trades": tab_signals["trades"],
+        "decisions": tab_signals["decisions"],
+        "barometer": baro,
+        "catalyst_radar": radar,
+    }
 
 
 def format_read_only_grounding(data: dict[str, Any], max_items_per_section: int = 3) -> str:

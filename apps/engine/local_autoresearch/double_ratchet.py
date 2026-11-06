@@ -15,7 +15,7 @@ import random
 import sqlite3
 import sys
 import uuid
-from contextlib import closing
+from contextlib import closing, suppress
 from typing import Any
 
 import httpx
@@ -706,6 +706,104 @@ async def evaluate_curriculum_batch(
     return metrics, all_results, all_lessons
 
 
+def _load_tournament_checkpoint(
+    checkpoint_file: str,
+    iterations: int,
+) -> dict[str, Any] | None:
+    if not os.path.exists(checkpoint_file):
+        return None
+    try:
+        with open(checkpoint_file, encoding="utf-8") as f:
+            saved_chk = json.load(f)
+        last_done = saved_chk.get("last_completed_iteration", 0)
+        if 0 < last_done < iterations:
+            champion_criteria = JevCriteriaConfig(**saved_chk["champion_criteria"])
+            history = saved_chk.get("history", [])
+            logger.info(
+                f"Resuming Double-Ratchet Curriculum Tournament from iteration {last_done + 1} "
+                f"(Champion Score: {saved_chk['champion_score']:.2f}, history steps: {len(history)})"
+            )
+            return {
+                "start_it": last_done + 1,
+                "champion_score": saved_chk["champion_score"],
+                "champion_prompt": saved_chk["champion_ingestion_prompt"],
+                "champion_criteria": champion_criteria,
+                "champion_metrics": saved_chk["champion_metrics"],
+                "history": history,
+            }
+    except Exception as err:
+        logger.warning(f"Failed to load checkpoint from {checkpoint_file}: {err}")
+    return None
+
+
+async def _run_stage2_if_eligible(
+    cand_metrics: dict[str, Any],
+    cand_results: list[dict[str, Any]],
+    cand_lessons: list[str],
+    cand_score: float,
+    champion_score: float,
+    curriculum_batch: list[tuple[str, list[dict[str, Any]]]],
+    mutation: DoubleRatchetMutation,
+    all_weeks: dict[str, list[dict[str, Any]]],
+    it: int,
+    seed: int | None,
+    stage2_params: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[str], float, bool]:
+    is_early_pruned = cand_metrics.get("early_pruned", False)
+    if is_early_pruned or cand_score <= champion_score:
+        return cand_metrics, cand_results, cand_lessons, cand_score, is_early_pruned
+
+    funnel_config = SignificanceFunnelConfig(
+        promising_win_rate=stage2_params["promising_win_rate"],
+        significance_alpha=stage2_params["significance_alpha"],
+        stage2_expansion_weeks=stage2_params["stage2_expansion_weeks"],
+        early_prune_stage2=stage2_params["early_prune"],
+    )
+    if not should_escalate_to_stage2(cand_metrics, funnel_config):
+        return cand_metrics, cand_results, cand_lessons, cand_score, is_early_pruned
+
+    stage1_keys = {w[0] for w in curriculum_batch}
+    expansion_weeks = sample_contrasting_regime_weeks(
+        all_weeks=all_weeks,
+        stage1_week_keys=stage1_keys,
+        num_weeks=stage2_params["stage2_expansion_weeks"],
+        seed=(seed or 42) + it,
+    )
+    if not expansion_weeks:
+        return cand_metrics, cand_results, cand_lessons, cand_score, is_early_pruned
+
+    logger.info(
+        f"Candidate Batch {it}: STAGE 1 PASSED (WR: {cand_metrics['traded_win_rate_pct']:.1f}%) "
+        f"──▶ 🚀 ESCALATING TO STAGE 2 MULTI-REGIME EXPANSION ({len(expansion_weeks)} weeks)..."
+    )
+    escalation_res = await evaluate_stage2_escalation(
+        expansion_weeks=expansion_weeks,
+        stage1_results=cand_results,
+        ingestion_prompt=mutation.ingestion_prompt,
+        criteria=mutation.criteria,
+        config=funnel_config,
+        strata_url=stage2_params["strata_url"],
+        laya_url=stage2_params["laya_url"],
+        db_path=stage2_params["cache_db_path"],
+        document_cache=stage2_params["cand_doc_cache"],
+        api_key=stage2_params["api_key"],
+        run_id=stage2_params["cand_run_id"],
+    )
+    if escalation_res["passed"]:
+        cand_metrics = escalation_res["cumulative_metrics"]
+        cand_results = escalation_res["combined_results"]
+        cand_score = cand_metrics["score"]
+        cand_lessons.extend(escalation_res.get("stage2_lessons", []))
+    else:
+        is_early_pruned = True
+        cand_metrics["early_pruned"] = True
+        p_val = escalation_res["significance"]["p_value"]
+        cand_metrics["prune_reason"] = (
+            f"Stage 2 significance failed (p-value {p_val:.4f} >= alpha {stage2_params['significance_alpha']})"
+        )
+    return cand_metrics, cand_results, cand_lessons, cand_score, is_early_pruned
+
+
 async def run_double_ratchet_curriculum_tournament(
     all_weeks: dict[str, list[dict[str, Any]]],
     num_curriculum_weeks: int = 10,
@@ -732,15 +830,7 @@ async def run_double_ratchet_curriculum_tournament(
     significance_alpha: float = 0.05,
     stage2_expansion_weeks: int = 10,
 ) -> dict[str, Any]:
-    """Execute iterative double-ratchet tournament across walk-forward batches with Friday mini-cycles.
-
-    1. Sequesters 10% of weeks into a stashed test set (never seen by autoresearch).
-    2. Partitions active weeks into N walk-forward batches (e.g. 10 batches x ~10 weeks = 100 weeks).
-       If shuffle_weeks is True (default), batches sample multi-regime cross-sections across all years.
-    3. Batch 0 evaluates baseline prompts, creating point-in-time memories and Friday lessons.
-    4. Iterations 1..N-1 mutate Prompt 1 & Prompt 2 using accumulated memories and evaluate on Batch 1..N-1.
-    5. Evaluates champion on stashed test set after tournament completion.
-    """
+    """Execute iterative double-ratchet tournament across walk-forward batches with Friday mini-cycles."""
     n_batches = max(iterations, 1)
     batches, stashed_weeks = partition_into_curriculum_batches(
         all_weeks,
@@ -778,39 +868,28 @@ async def run_double_ratchet_curriculum_tournament(
             "champion_metrics": champion_metrics,
             "history": history,
         }
-        try:
-            with open(checkpoint_file, "w", encoding="utf-8") as f:
-                json.dump(chk, f, indent=2)
-        except Exception as err:
-            logger.warning(f"Failed to save tournament checkpoint: {err}")
+        with suppress(Exception), open(checkpoint_file, "w", encoding="utf-8") as f:
+            json.dump(chk, f, indent=2)
 
     start_it = 1
-    # Check if a valid checkpoint exists to resume
-    if os.path.exists(checkpoint_file):
-        try:
-            with open(checkpoint_file, encoding="utf-8") as f:
-                saved_chk = json.load(f)
-            last_done = saved_chk.get("last_completed_iteration", 0)
-            if 0 < last_done < iterations:
-                start_it = last_done + 1
-                champion_score = saved_chk["champion_score"]
-                champion_prompt = saved_chk["champion_ingestion_prompt"]
-                champion_criteria = JevCriteriaConfig(**saved_chk["champion_criteria"])
-                champion_metrics = saved_chk["champion_metrics"]
-                history = saved_chk.get("history", [])
-                champion_results = []
-                baseline_metrics = history[0].get("metrics", champion_metrics) if history else champion_metrics
-                baseline_results = []
-                baseline_lessons = []
-                logger.info(
-                    f"Resuming Double-Ratchet Curriculum Tournament from iteration {start_it} "
-                    f"(Champion Score: {champion_score:.2f}, history steps: {len(history)})"
-                )
-        except Exception as err:
-            logger.warning(f"Failed to load checkpoint from {checkpoint_file}: {err}")
+    chk_data = _load_tournament_checkpoint(checkpoint_file, iterations)
+    if chk_data:
+        start_it = chk_data["start_it"]
+        champion_score = chk_data["champion_score"]
+        champion_prompt = chk_data["champion_prompt"]
+        champion_criteria = chk_data["champion_criteria"]
+        champion_metrics = chk_data["champion_metrics"]
+        history = chk_data["history"]
+        champion_results = []
+    else:
+        champion_score = 0.0
+        champion_prompt = initial_ingestion_prompt
+        champion_criteria = initial_criteria
+        champion_metrics = {}
+        history = []
+        champion_results = []
 
     if start_it == 1:
-        # 1. Baseline Evaluation on Batch 0
         curriculum_batch_0 = batches[0]
         batch_0_days = sum(len(days) for _, days in curriculum_batch_0)
         logger.info(
@@ -835,13 +914,6 @@ async def run_double_ratchet_curriculum_tournament(
         champion_metrics = baseline_metrics
         champion_results = baseline_results
 
-        logger.info(
-            f"Baseline Batch 0 Score: {champion_score:.2f} | "
-            f"Win Rate: {baseline_metrics['traded_win_rate_pct']:.1f}% | "
-            f"Traded: {baseline_metrics['traded_days']}/{baseline_metrics['total_days']} | "
-            f"Generated Lessons: {len(baseline_lessons)}"
-        )
-
         history = [
             {
                 "iteration": 0,
@@ -854,10 +926,8 @@ async def run_double_ratchet_curriculum_tournament(
                 "lessons_count": len(baseline_lessons),
             }
         ]
-
         save_checkpoint(0)
 
-        # If iterations <= 1, this was a single dry run pass!
         if iterations <= 1:
             return {
                 "iterations_run": iterations,
@@ -872,20 +942,10 @@ async def run_double_ratchet_curriculum_tournament(
                 "lessons": baseline_lessons,
             }
 
-    # 2. Tournament Iteration Loop Across Batches start_it..iterations-1
     for it in range(start_it, iterations):
         batch_idx = it % len(batches)
         curriculum_batch = batches[batch_idx]
         cand_run_id = f"batch_{it}_{uuid.uuid4().hex[:6]}"
-        batch_days = sum(len(days) for _, days in curriculum_batch)
-        cycle_str = f" [Cycle {it // len(batches)}]" if it >= len(batches) else ""
-        logger.info(
-            f"\n--- Walk-Forward Iteration {it}/{iterations - 1} "
-            f"(Batch {batch_idx}{cycle_str}: {len(curriculum_batch)} weeks, {batch_days} sessions, "
-            f"{curriculum_batch[0][0]} to {curriculum_batch[-1][0]}, run_id: {cand_run_id}) ---"
-        )
-
-        # Query database memories (Supabase/local SQLite) and champion errors to improve Prompt 2
         memories_ctx = query_memories_for_autoresearch(db_path=cache_db_path, limit=12)
         errors_summary = summarize_recent_errors(champion_results, limit=8)
 
@@ -900,20 +960,14 @@ async def run_double_ratchet_curriculum_tournament(
                 recent_errors_summary=errors_summary,
                 base_url=strata_url,
             )
-            logger.info(f"Iteration {it} Hypothesis: {mutation.hypothesis}")
-            logger.info(f"Iteration {it} Criteria UP: {mutation.criteria.criteria_up}")
-            logger.info(f"Iteration {it} Criteria DOWN: {mutation.criteria.criteria_down}")
         except Exception as e:
-            logger.error(
-                f"Strata mutation failed on iteration {it} after retries: {e}. Falling back to champion prompts for batch {it}."
-            )
+            logger.error(f"Strata mutation failed on iteration {it}: {e}. Falling back to champion prompts.")
             mutation = DoubleRatchetMutation(
                 ingestion_prompt=champion_prompt,
                 criteria=champion_criteria,
-                hypothesis=f"Fallback to champion prompt pair on batch {it} due to mutation synthesis error: {e}",
+                hypothesis=f"Fallback on batch {it}: {e}",
             )
 
-        # Dynamic catalyst re-generation: candidate Prompt 1 re-generates catalyst across new batch
         cand_doc_cache = None if (no_cache or mutation.ingestion_prompt != champion_prompt) else doc_cache
         cand_metrics, cand_results, cand_lessons = await evaluate_curriculum_batch(
             curriculum_weeks=curriculum_batch,
@@ -936,66 +990,36 @@ async def run_double_ratchet_curriculum_tournament(
         )
 
         cand_score = cand_metrics["score"]
-        is_early_pruned = cand_metrics.get("early_pruned", False)
-
-        # Adaptive Significance Funnel: Escalate promising Stage 1 candidates to Stage 2 multi-regime testing
-        if escalate_promising and not is_early_pruned and cand_score > champion_score:
-            funnel_config = SignificanceFunnelConfig(
-                promising_win_rate=promising_win_rate,
-                significance_alpha=significance_alpha,
-                stage2_expansion_weeks=stage2_expansion_weeks,
-                early_prune_stage2=early_prune,
+        if escalate_promising:
+            stage2_params = {
+                "promising_win_rate": promising_win_rate,
+                "significance_alpha": significance_alpha,
+                "stage2_expansion_weeks": stage2_expansion_weeks,
+                "early_prune": early_prune,
+                "strata_url": strata_url,
+                "laya_url": laya_url,
+                "cache_db_path": cache_db_path,
+                "cand_doc_cache": cand_doc_cache,
+                "api_key": api_key,
+                "cand_run_id": cand_run_id,
+            }
+            cand_metrics, cand_results, cand_lessons, cand_score, is_early_pruned = await _run_stage2_if_eligible(
+                cand_metrics,
+                cand_results,
+                cand_lessons,
+                cand_score,
+                champion_score,
+                curriculum_batch,
+                mutation,
+                all_weeks,
+                it,
+                seed,
+                stage2_params,
             )
-            if should_escalate_to_stage2(cand_metrics, funnel_config):
-                stage1_keys = {w[0] for w in curriculum_batch}
-                expansion_weeks = sample_contrasting_regime_weeks(
-                    all_weeks=all_weeks,
-                    stage1_week_keys=stage1_keys,
-                    num_weeks=stage2_expansion_weeks,
-                    seed=(seed or 42) + it,
-                )
-                if expansion_weeks:
-                    logger.info(
-                        f"Candidate Batch {it}: STAGE 1 PASSED (WR: {cand_metrics['traded_win_rate_pct']:.1f}%) "
-                        f"──▶ 🚀 ESCALATING TO STAGE 2 MULTI-REGIME EXPANSION ({len(expansion_weeks)} weeks)..."
-                    )
-                    escalation_res = await evaluate_stage2_escalation(
-                        expansion_weeks=expansion_weeks,
-                        stage1_results=cand_results,
-                        ingestion_prompt=mutation.ingestion_prompt,
-                        criteria=mutation.criteria,
-                        config=funnel_config,
-                        strata_url=strata_url,
-                        laya_url=laya_url,
-                        db_path=cache_db_path,
-                        document_cache=cand_doc_cache,
-                        api_key=api_key,
-                        run_id=cand_run_id,
-                    )
-                    if escalation_res["passed"]:
-                        cand_metrics = escalation_res["cumulative_metrics"]
-                        cand_results = escalation_res["combined_results"]
-                        cand_score = cand_metrics["score"]
-                        cand_lessons.extend(escalation_res.get("stage2_lessons", []))
-                    else:
-                        is_early_pruned = True
-                        cand_metrics["early_pruned"] = True
-                        p_val = escalation_res["significance"]["p_value"]
-                        cand_metrics["prune_reason"] = (
-                            f"Stage 2 significance failed (p-value {p_val:.4f} >= alpha {significance_alpha})"
-                        )
+        else:
+            is_early_pruned = cand_metrics.get("early_pruned", False)
 
         is_accepted = (not is_early_pruned) and (cand_score > champion_score)
-
-        pruned_reason = f" ({cand_metrics.get('prune_reason')})" if cand_metrics.get("prune_reason") else ""
-        pruned_tag = f" [EARLY PRUNED{pruned_reason}]" if is_early_pruned else ""
-        logger.info(
-            f"Candidate Batch {it} Score: {cand_score:.2f} (Delta: {cand_score - champion_score:+.2f}){pruned_tag} | "
-            f"Win Rate: {cand_metrics['traded_win_rate_pct']:.1f}% | "
-            f"Traded: {cand_metrics['traded_days']}/{cand_metrics['total_days']} | "
-            f"{'🏆 ACCEPTED' if is_accepted else '❌ DISCARDED'}"
-        )
-
         if is_accepted:
             champion_score = cand_score
             champion_prompt = mutation.ingestion_prompt
@@ -1019,13 +1043,8 @@ async def run_double_ratchet_curriculum_tournament(
         )
         save_checkpoint(it)
 
-    # 3. Post-Autoresearch Evaluation on Stashed 10% Test Weeks
     test_metrics = None
     if stashed_weeks and iterations > 1:
-        logger.info(
-            f"\n=== POST-AUTORESEARCH EVALUATION ON STASHED TEST WEEKS "
-            f"({len(stashed_weeks)} weeks, {stashed_eval_days} sessions) ==="
-        )
         test_weeks_list = [
             (k, sorted(days, key=lambda d: str(d.get("target_date", "")))) for k, days in sorted(stashed_weeks.items())
         ]
@@ -1050,14 +1069,15 @@ async def run_double_ratchet_curriculum_tournament(
 
     return {
         "iterations_run": iterations,
-        "baseline_score": baseline_metrics["score"],
+        "baseline_score": history[0]["score"] if history else champion_score,
         "champion_score": champion_score,
         "champion_ingestion_prompt": champion_prompt,
         "champion_criteria": champion_criteria.model_dump(),
         "champion_metrics": champion_metrics,
-        "stashed_test_metrics": test_metrics,
         "stashed_test_weeks_count": len(stashed_weeks),
+        "stashed_test_metrics": test_metrics,
         "history": history,
+        "champion_results": champion_results,
     }
 
 

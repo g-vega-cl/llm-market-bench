@@ -198,6 +198,232 @@ SEED_ARCHETYPES: dict[str, tuple[JevCriteriaConfig, DataManifest, str]] = {
 }
 
 
+async def _init_archetype_baseline(
+    seed_archetype: str,
+    active_weeks_data: dict[str, Any],
+    vault_weeks_data: dict[str, Any],
+    seed: int,
+    max_concurrency: int,
+    local_db: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    if seed_archetype not in SEED_ARCHETYPES:
+        raise ValueError(f"Unknown seed archetype: {seed_archetype}. Must be one of {list(SEED_ARCHETYPES.keys())}")
+    crit, man, hyp = SEED_ARCHETYPES[seed_archetype]
+    logger.info(f"Initializing baseline from seed archetype [{seed_archetype}]: {hyp}")
+    seed_eval = await evaluate_weekly_kfold(
+        weekly_data=active_weeks_data,
+        criteria=crit,
+        manifest=man,
+        seed=seed,
+        max_concurrency=max_concurrency,
+    )
+    baseline_vault_score = 0.0
+    if vault_weeks_data:
+        seed_vault = await evaluate_vault(
+            vault_data=vault_weeks_data,
+            criteria=crit,
+            manifest=man,
+            max_concurrency=max_concurrency,
+        )
+        baseline_vault_score = seed_vault["score"]
+        logger.info(f"Initial Locked Vault Score: {baseline_vault_score:.2f}")
+
+    base_tag = f"seed-{seed_archetype}-{uuid.uuid4().hex[:6]}"
+    save_local_experiment(
+        variant_tag=base_tag,
+        criteria=crit,
+        manifest=man,
+        train_score=seed_eval["train_metrics"]["score"],
+        test_score=seed_eval["test_metrics"]["score"],
+        overfit_penalty=seed_eval["overfit_penalty"],
+        effective_score=seed_eval["effective_score"],
+        is_baseline_beat=True,
+        status="baseline",
+        hypothesis=hyp,
+        db_path=local_db,
+    )
+    history_entry = {
+        "iteration": 0,
+        "variant_tag": base_tag,
+        "train_score": seed_eval["train_metrics"]["score"],
+        "test_score": seed_eval["test_metrics"]["score"],
+        "overfit_penalty": seed_eval["overfit_penalty"],
+        "effective_score": seed_eval["effective_score"],
+        "vault_score": baseline_vault_score if vault_weeks_data else None,
+        "is_baseline_beat": True,
+        "hypothesis": hyp,
+    }
+    return get_active_baseline(local_db), history_entry
+
+
+async def _init_clean_sheet_baseline(
+    active_weeks_data: dict[str, Any],
+    vault_weeks_data: dict[str, Any],
+    seed: int,
+    max_concurrency: int,
+    local_db: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    logger.info("Starting from 0 (clean sheet): evaluating bare format blocks to establish baseline...")
+    base_manifest = DataManifest()
+    seed_eval = await evaluate_weekly_kfold(
+        weekly_data=active_weeks_data,
+        criteria=CLEAN_SHEET_INITIAL_CRITERIA,
+        manifest=base_manifest,
+        seed=seed,
+        max_concurrency=max_concurrency,
+    )
+    baseline_vault_score = 0.0
+    if vault_weeks_data:
+        seed_vault = await evaluate_vault(
+            vault_data=vault_weeks_data,
+            criteria=CLEAN_SHEET_INITIAL_CRITERIA,
+            manifest=base_manifest,
+            max_concurrency=max_concurrency,
+        )
+        baseline_vault_score = seed_vault["score"]
+        logger.info(f"Initial Locked Vault Score: {baseline_vault_score:.2f}")
+
+    base_tag = f"clean-start-{uuid.uuid4().hex[:6]}"
+    save_local_experiment(
+        variant_tag=base_tag,
+        criteria=CLEAN_SHEET_INITIAL_CRITERIA,
+        manifest=base_manifest,
+        train_score=seed_eval["train_metrics"]["score"],
+        test_score=seed_eval["test_metrics"]["score"],
+        overfit_penalty=seed_eval["overfit_penalty"],
+        effective_score=seed_eval["effective_score"],
+        is_baseline_beat=True,
+        status="baseline",
+        hypothesis="Clean sheet start from 0 (bare format blocks, no trading heuristics).",
+        db_path=local_db,
+    )
+    history_entry = {
+        "iteration": 0,
+        "variant_tag": base_tag,
+        "train_score": seed_eval["train_metrics"]["score"],
+        "test_score": seed_eval["test_metrics"]["score"],
+        "overfit_penalty": seed_eval["overfit_penalty"],
+        "effective_score": seed_eval["effective_score"],
+        "vault_score": baseline_vault_score if vault_weeks_data else None,
+        "is_baseline_beat": True,
+        "hypothesis": "Clean sheet start from 0",
+    }
+    return get_active_baseline(local_db), history_entry
+
+
+async def _calibrate_existing_baseline(
+    baseline: dict[str, Any],
+    active_weeks_data: dict[str, Any],
+    vault_weeks_data: dict[str, Any],
+    seed: int,
+    max_concurrency: int,
+    local_db: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    logger.info(f"Calibrating active baseline [{baseline['variant_tag']}] dynamically on current dataset...")
+    curr_crit = JevCriteriaConfig(
+        criteria_up=baseline["criteria_up"],
+        criteria_down=baseline["criteria_down"],
+        min_confidence=baseline["min_confidence"],
+    )
+    curr_man = DataManifest(**baseline["manifest"])
+    cal_eval = await evaluate_weekly_kfold(
+        weekly_data=active_weeks_data,
+        criteria=curr_crit,
+        manifest=curr_man,
+        seed=seed,
+        max_concurrency=max_concurrency,
+    )
+    baseline_vault_score = 0.0
+    if vault_weeks_data:
+        seed_vault = await evaluate_vault(
+            vault_data=vault_weeks_data,
+            criteria=curr_crit,
+            manifest=curr_man,
+            max_concurrency=max_concurrency,
+        )
+        baseline_vault_score = seed_vault["score"]
+
+    save_local_experiment(
+        variant_tag=baseline["variant_tag"],
+        criteria=curr_crit,
+        manifest=curr_man,
+        train_score=cal_eval["train_metrics"]["score"],
+        test_score=cal_eval["test_metrics"]["score"],
+        overfit_penalty=cal_eval["overfit_penalty"],
+        effective_score=cal_eval["effective_score"],
+        is_baseline_beat=True,
+        status="baseline",
+        hypothesis=baseline.get("hypothesis", "Calibrated baseline"),
+        db_path=local_db,
+    )
+    history_entry = {
+        "iteration": 0,
+        "variant_tag": baseline["variant_tag"],
+        "train_score": cal_eval["train_metrics"]["score"],
+        "test_score": cal_eval["test_metrics"]["score"],
+        "overfit_penalty": cal_eval["overfit_penalty"],
+        "effective_score": cal_eval["effective_score"],
+        "vault_score": baseline_vault_score if vault_weeks_data else None,
+        "is_baseline_beat": True,
+        "hypothesis": baseline.get("hypothesis", "Calibrated baseline"),
+    }
+    return get_active_baseline(local_db), history_entry
+
+
+async def _setup_tournament_baseline(
+    seed_archetype: str | None,
+    calibrate_baseline: bool,
+    active_weeks_data: dict[str, Any],
+    vault_weeks_data: dict[str, Any],
+    seed: int,
+    max_concurrency: int,
+    local_db: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]], float]:
+    """Resolves or initializes active baseline, history, and baseline vault score."""
+    history: list[dict[str, Any]] = []
+    baseline = get_active_baseline(local_db)
+    baseline_vault_score = 0.0
+
+    if seed_archetype:
+        baseline, h_entry = await _init_archetype_baseline(
+            seed_archetype, active_weeks_data, vault_weeks_data, seed, max_concurrency, local_db
+        )
+        history.append(h_entry)
+        if h_entry.get("vault_score") is not None:
+            baseline_vault_score = h_entry["vault_score"]
+    elif not baseline:
+        baseline, h_entry = await _init_clean_sheet_baseline(
+            active_weeks_data, vault_weeks_data, seed, max_concurrency, local_db
+        )
+        history.append(h_entry)
+        if h_entry.get("vault_score") is not None:
+            baseline_vault_score = h_entry["vault_score"]
+    elif baseline and calibrate_baseline:
+        baseline, h_entry = await _calibrate_existing_baseline(
+            baseline, active_weeks_data, vault_weeks_data, seed, max_concurrency, local_db
+        )
+        history.append(h_entry)
+        if h_entry.get("vault_score") is not None:
+            baseline_vault_score = h_entry["vault_score"]
+    elif vault_weeks_data and baseline:
+        curr_crit = JevCriteriaConfig(
+            criteria_up=baseline["criteria_up"],
+            criteria_down=baseline["criteria_down"],
+            min_confidence=baseline["min_confidence"],
+        )
+        curr_man = DataManifest(**baseline["manifest"])
+        seed_vault = await evaluate_vault(
+            vault_data=vault_weeks_data,
+            criteria=curr_crit,
+            manifest=curr_man,
+            max_concurrency=max_concurrency,
+        )
+        baseline_vault_score = seed_vault["score"]
+
+    assert baseline is not None
+    return baseline, history, baseline_vault_score
+
+
 async def run_local_autoresearch_loop(
     iterations: int = 5,
     cache_db: str = DEFAULT_CACHE_DB,
@@ -213,7 +439,6 @@ async def run_local_autoresearch_loop(
     """Execute the autonomous local prompt & manifest improvement loop."""
     logger.info(f"=== Starting Local Autoresearch: {iterations} iterations ===")
 
-    # 1. Load cached weekly blocks and partition Locked Vault
     weeks_data = load_cached_weeks(cache_db)
     if not weeks_data:
         raise RuntimeError(
@@ -230,177 +455,15 @@ async def run_local_autoresearch_loop(
         f"and {len(vault_weeks_data)} Locked Vault Weeks ({vault_days} days)."
     )
 
-    history: list[dict[str, Any]] = []
-
-    # 2. Check or initialize baseline in local_store
-    baseline = get_active_baseline(local_db)
-    baseline_vault_score = 0.0
-
-    if seed_archetype:
-        if seed_archetype not in SEED_ARCHETYPES:
-            raise ValueError(f"Unknown seed archetype: {seed_archetype}. Must be one of {list(SEED_ARCHETYPES.keys())}")
-        crit, man, hyp = SEED_ARCHETYPES[seed_archetype]
-        logger.info(f"Initializing baseline from seed archetype [{seed_archetype}]: {hyp}")
-        seed_eval = await evaluate_weekly_kfold(
-            weekly_data=active_weeks_data,
-            criteria=crit,
-            manifest=man,
-            seed=seed,
-            max_concurrency=max_concurrency,
-        )
-        if vault_weeks_data:
-            seed_vault = await evaluate_vault(
-                vault_data=vault_weeks_data,
-                criteria=crit,
-                manifest=man,
-                max_concurrency=max_concurrency,
-            )
-            baseline_vault_score = seed_vault["score"]
-            logger.info(f"Initial Locked Vault Score: {baseline_vault_score:.2f}")
-
-        base_tag = f"seed-{seed_archetype}-{uuid.uuid4().hex[:6]}"
-        save_local_experiment(
-            variant_tag=base_tag,
-            criteria=crit,
-            manifest=man,
-            train_score=seed_eval["train_metrics"]["score"],
-            test_score=seed_eval["test_metrics"]["score"],
-            overfit_penalty=seed_eval["overfit_penalty"],
-            effective_score=seed_eval["effective_score"],
-            is_baseline_beat=True,
-            status="baseline",
-            hypothesis=hyp,
-            db_path=local_db,
-        )
-        baseline = get_active_baseline(local_db)
-        history.append(
-            {
-                "iteration": 0,
-                "variant_tag": base_tag,
-                "train_score": seed_eval["train_metrics"]["score"],
-                "test_score": seed_eval["test_metrics"]["score"],
-                "overfit_penalty": seed_eval["overfit_penalty"],
-                "effective_score": seed_eval["effective_score"],
-                "vault_score": baseline_vault_score if vault_weeks_data else None,
-                "is_baseline_beat": True,
-                "hypothesis": hyp,
-            }
-        )
-    elif not baseline:
-        logger.info("Starting from 0 (clean sheet): evaluating bare format blocks to establish baseline...")
-        base_manifest = DataManifest()
-        seed_eval = await evaluate_weekly_kfold(
-            weekly_data=active_weeks_data,
-            criteria=CLEAN_SHEET_INITIAL_CRITERIA,
-            manifest=base_manifest,
-            seed=seed,
-            max_concurrency=max_concurrency,
-        )
-        if vault_weeks_data:
-            seed_vault = await evaluate_vault(
-                vault_data=vault_weeks_data,
-                criteria=CLEAN_SHEET_INITIAL_CRITERIA,
-                manifest=base_manifest,
-                max_concurrency=max_concurrency,
-            )
-            baseline_vault_score = seed_vault["score"]
-            logger.info(f"Initial Locked Vault Score: {baseline_vault_score:.2f}")
-
-        base_tag = f"clean-start-{uuid.uuid4().hex[:6]}"
-        save_local_experiment(
-            variant_tag=base_tag,
-            criteria=CLEAN_SHEET_INITIAL_CRITERIA,
-            manifest=base_manifest,
-            train_score=seed_eval["train_metrics"]["score"],
-            test_score=seed_eval["test_metrics"]["score"],
-            overfit_penalty=seed_eval["overfit_penalty"],
-            effective_score=seed_eval["effective_score"],
-            is_baseline_beat=True,
-            status="baseline",
-            hypothesis="Clean sheet start from 0 (bare format blocks, no trading heuristics).",
-            db_path=local_db,
-        )
-        baseline = get_active_baseline(local_db)
-        history.append(
-            {
-                "iteration": 0,
-                "variant_tag": base_tag,
-                "train_score": seed_eval["train_metrics"]["score"],
-                "test_score": seed_eval["test_metrics"]["score"],
-                "overfit_penalty": seed_eval["overfit_penalty"],
-                "effective_score": seed_eval["effective_score"],
-                "vault_score": baseline_vault_score if vault_weeks_data else None,
-                "is_baseline_beat": True,
-                "hypothesis": "Clean sheet start from 0",
-            }
-        )
-    elif baseline and calibrate_baseline:
-        logger.info(f"Calibrating active baseline [{baseline['variant_tag']}] dynamically on current dataset...")
-        curr_crit = JevCriteriaConfig(
-            criteria_up=baseline["criteria_up"],
-            criteria_down=baseline["criteria_down"],
-            min_confidence=baseline["min_confidence"],
-        )
-        curr_man = DataManifest(**baseline["manifest"])
-        cal_eval = await evaluate_weekly_kfold(
-            weekly_data=active_weeks_data,
-            criteria=curr_crit,
-            manifest=curr_man,
-            seed=seed,
-            max_concurrency=max_concurrency,
-        )
-        if vault_weeks_data:
-            seed_vault = await evaluate_vault(
-                vault_data=vault_weeks_data,
-                criteria=curr_crit,
-                manifest=curr_man,
-                max_concurrency=max_concurrency,
-            )
-            baseline_vault_score = seed_vault["score"]
-
-        save_local_experiment(
-            variant_tag=baseline["variant_tag"],
-            criteria=curr_crit,
-            manifest=curr_man,
-            train_score=cal_eval["train_metrics"]["score"],
-            test_score=cal_eval["test_metrics"]["score"],
-            overfit_penalty=cal_eval["overfit_penalty"],
-            effective_score=cal_eval["effective_score"],
-            is_baseline_beat=True,
-            status="baseline",
-            hypothesis=baseline.get("hypothesis", "Calibrated baseline"),
-            db_path=local_db,
-        )
-        baseline = get_active_baseline(local_db)
-        history.append(
-            {
-                "iteration": 0,
-                "variant_tag": baseline["variant_tag"],
-                "train_score": cal_eval["train_metrics"]["score"],
-                "test_score": cal_eval["test_metrics"]["score"],
-                "overfit_penalty": cal_eval["overfit_penalty"],
-                "effective_score": cal_eval["effective_score"],
-                "vault_score": baseline_vault_score if vault_weeks_data else None,
-                "is_baseline_beat": True,
-                "hypothesis": baseline.get("hypothesis", "Calibrated baseline"),
-            }
-        )
-    elif vault_weeks_data:
-        curr_crit = JevCriteriaConfig(
-            criteria_up=baseline["criteria_up"],
-            criteria_down=baseline["criteria_down"],
-            min_confidence=baseline["min_confidence"],
-        )
-        curr_man = DataManifest(**baseline["manifest"])
-        seed_vault = await evaluate_vault(
-            vault_data=vault_weeks_data,
-            criteria=curr_crit,
-            manifest=curr_man,
-            max_concurrency=max_concurrency,
-        )
-        baseline_vault_score = seed_vault["score"]
-
-    assert baseline is not None
+    baseline, history, baseline_vault_score = await _setup_tournament_baseline(
+        seed_archetype,
+        calibrate_baseline,
+        active_weeks_data,
+        vault_weeks_data,
+        seed,
+        max_concurrency,
+        local_db,
+    )
     current_criteria = JevCriteriaConfig(
         criteria_up=baseline["criteria_up"],
         criteria_down=baseline["criteria_down"],
@@ -734,6 +797,150 @@ async def run_archetype_curriculum(
     return results
 
 
+def _handle_double_ratchet_cli(args: argparse.Namespace) -> None:
+    cached_weeks = load_cached_weeks(args.cache_db)
+
+    if args.curriculum_weeks or args.dry_run_set:
+        from local_autoresearch.double_ratchet import run_double_ratchet_curriculum_tournament
+
+        num_weeks = args.curriculum_weeks or 10
+        its = 0 if args.dry_run_set else args.iterations
+        no_cache_flag = not args.use_cache
+        shuffle_flag = not args.sequential_curriculum
+        print("=" * 60)
+        print(f"STARTING DOUBLE-RATCHET CURRICULUM ({num_weeks} WEEKS, {its} ITERATIONS)")
+        print(f"Dry-run baseline only: {args.dry_run_set}")
+        print(f"Random seed: {args.seed} ({'deterministic' if args.seed is not None else 'randomized per run'})")
+        print(
+            f"Batch distribution: {'Randomized multi-regime cross-sections' if shuffle_flag else 'Sequential calendar blocks'}"
+        )
+        print(f"Fresh newsletter ingestion (no-cache): {no_cache_flag}")
+        print(f"Early pruning unviable candidates: {args.early_prune}")
+        print(f"Early pruning directional bias degeneracy: {args.early_prune_directional_bias}")
+        print(f"Escalate promising candidates (Stage 2 expansion): {args.escalate_promising}")
+        if args.escalate_promising:
+            print(
+                f"  Promising threshold: {args.promising_win_rate * 100:.1f}% WR | "
+                f"Expansion: +{args.stage2_expansion_weeks} weeks | Alpha: {args.significance_alpha}"
+            )
+        print("=" * 60)
+
+        summary = asyncio.run(
+            run_double_ratchet_curriculum_tournament(
+                all_weeks=cached_weeks,
+                num_curriculum_weeks=num_weeks,
+                iterations=its,
+                strata_url=args.strata_url,
+                laya_url=args.laya_url,
+                seed=args.seed,
+                cache_db_path=args.cache_db,
+                no_cache=no_cache_flag,
+                shuffle_weeks=shuffle_flag,
+                early_prune=args.early_prune,
+                early_prune_directional_bias=args.early_prune_directional_bias,
+                escalate_promising=args.escalate_promising,
+                promising_win_rate=args.promising_win_rate,
+                significance_alpha=args.significance_alpha,
+                stage2_expansion_weeks=args.stage2_expansion_weeks,
+            )
+        )
+        print("=" * 60)
+        print("DOUBLE-RATCHET CURRICULUM RUN COMPLETE")
+        print(f"Baseline Score: {summary['baseline_score']:.2f}")
+        print(f"Champion Score: {summary['champion_score']:.2f}")
+        if summary.get("stashed_test_metrics"):
+            st_m = summary["stashed_test_metrics"]
+            print(
+                f"Stashed Test Score (Unseen {summary.get('stashed_test_weeks_count', 0)} weeks): "
+                f"{st_m['score']:.2f} | Win Rate: {st_m['traded_win_rate_pct']:.1f}% | "
+                f"Traded: {st_m['traded_days']}/{st_m['total_days']}"
+            )
+        print(f"Total History Steps: {len(summary['history'])}")
+        if len(summary["history"]) > 1:
+            print("\n" + "=" * 30 + " AUTORESEARCHED PROMPT MUTATIONS " + "=" * 30)
+            for h in summary["history"][1:]:
+                print(f"\n[Iteration {h['iteration']} - Accepted: {h['accepted']}]")
+                print(f"Hypothesis: {h.get('hypothesis', 'N/A')}")
+                print(f"Score: {h['score']:.2f} (Win Rate: {h['metrics']['traded_win_rate_pct']:.1f}%)")
+            print("\n--- CHAMPION CRITERIA (PROMPT 2) ---")
+            print(f"Criteria UP: {summary['champion_criteria']['criteria_up']}")
+            print(f"Criteria DOWN: {summary['champion_criteria']['criteria_down']}")
+            print(f"Min Confidence: {summary['champion_criteria']['min_confidence']:.1f}%")
+            print("\n--- CHAMPION INGESTION PROMPT (PROMPT 1) ---")
+            print(summary["champion_ingestion_prompt"].strip())
+        print("=" * 60)
+        return
+
+    from local_autoresearch.double_ratchet import run_double_ratchet_tournament
+
+    all_days = [day for days in cached_weeks.values() for day in days]
+    if args.max_eval_days and len(all_days) > args.max_eval_days:
+        all_days = all_days[: args.max_eval_days]
+
+    summary = asyncio.run(
+        run_double_ratchet_tournament(
+            all_days=all_days,
+            iterations=args.iterations,
+            strata_url=args.strata_url,
+            laya_url=args.laya_url,
+            held_out_ratio=0.15,
+            seed=args.seed,
+            cache_db_path=args.cache_db,
+            no_cache=args.no_cache,
+        )
+    )
+    print("=" * 60)
+    print("DOUBLE-RATCHET TOURNAMENT COMPLETE")
+    print(f"Baseline Score: {summary['baseline_score']:.2f}")
+    print(f"Champion Score: {summary['champion_score']:.2f}")
+    print(f"Held-Out Score: {summary['held_out_metrics']['score']:.2f}")
+    print("=" * 60)
+
+
+def _handle_raw_data_and_cache(args: argparse.Namespace) -> bool:
+    if args.download_raw:
+        syms = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+        pm_syms = [s.strip().upper() for s in args.pm_symbols.split(",") if s.strip()]
+        downloader = HistoricalDownloader(db_path=args.raw_db)
+        print(f"Starting raw historical download into {args.raw_db} ({args.start_date} to {args.end_date})...")
+        eod_c = downloader.download_fmp_eod(syms, args.start_date, args.end_date)
+        pm_stats = downloader.download_multi_polygon_bars(pm_syms, args.start_date, args.end_date)
+        print(f"Download complete: {eod_c} EOD bars, Polygon 5-min bars: {pm_stats}.")
+        if not any(arg.startswith("--iterations") for arg in sys.argv):
+            return True
+
+    if args.build_historical_cache:
+        target_cache = args.vault_cache_db if args.regime_vault else args.cache_db
+        cnt = build_cache_from_raw_db(
+            raw_db_path=args.raw_db,
+            cache_db_path=target_cache,
+            start_date=args.start_date,
+            end_date=args.end_date,
+            is_regime_vault=args.regime_vault,
+        )
+        print(f"Materialized {cnt} days into {target_cache} (regime_vault={args.regime_vault}).")
+        if not any(arg.startswith("--iterations") for arg in sys.argv):
+            return True
+
+    if args.eval_vault:
+        asyncio.run(
+            evaluate_baseline_on_vault(
+                local_db=args.local_db,
+                vault_cache_db=args.vault_cache_db,
+                cache_db=args.cache_db,
+            )
+        )
+        return True
+
+    if args.init_cache:
+        client = get_supabase_client()
+        count = asyncio.run(build_cache_from_supabase(client, limit_days=args.limit_cache_days, db_path=args.cache_db))
+        print(f"Cache initialization complete: {count} historical days cached in {args.cache_db}.")
+        if not any(arg.startswith("--iterations") for arg in sys.argv):
+            return True
+    return False
+
+
 def main() -> None:
     """CLI entrypoint."""
     parser = argparse.ArgumentParser(description="Local Autoresearch with Strata and Jev")
@@ -751,7 +958,6 @@ def main() -> None:
         "--seed", type=int, default=None, help="Random seed for data partition (default None: randomized per run)"
     )
     parser.add_argument("--artifact-path", type=str, default=DEFAULT_ARTIFACT_PATH, help="Path for session artifact")
-    # Historical downloader & vault flags
     parser.add_argument("--download-raw", action="store_true", help="Download raw historical data via APIs & IMAP")
     parser.add_argument("--build-historical-cache", action="store_true", help="Compile raw DB into feature cache")
     parser.add_argument("--raw-db", type=str, default=DEFAULT_RAW_DB, help="Raw SQLite DB path")
@@ -813,7 +1019,6 @@ def main() -> None:
         default=None,
         help="Limit number of evaluation days for quick testing passes",
     )
-
     parser.add_argument(
         "--no-cache",
         action="store_true",
@@ -841,19 +1046,19 @@ def main() -> None:
         "--sequential-curriculum",
         action="store_true",
         default=False,
-        help="Batch curriculum weeks chronologically/sequentially rather than randomized multi-regime cross-sections (default False)",
+        help="Batch curriculum weeks chronologically rather than randomized multi-regime cross-sections",
     )
     parser.add_argument(
         "--early-prune",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Early-prune unviable candidates in multi-week curriculum if early win rate is <=25% or cannot mathematically beat champion (default True)",
+        help="Early-prune unviable candidates in multi-week curriculum (default True)",
     )
     parser.add_argument(
         "--early-prune-directional-bias",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Early-prune candidates that collapse into unidirectional bias (>=80% same direction) with <=52% win rate (default True)",
+        help="Early-prune candidates that collapse into unidirectional bias (default True)",
     )
     parser.add_argument(
         "--escalate-promising",
@@ -900,145 +1105,11 @@ def main() -> None:
         return
 
     if args.double_ratchet:
-        cached_weeks = load_cached_weeks(args.cache_db)
-
-        if args.curriculum_weeks or args.dry_run_set:
-            from local_autoresearch.double_ratchet import run_double_ratchet_curriculum_tournament
-
-            num_weeks = args.curriculum_weeks or 10
-            its = 0 if args.dry_run_set else args.iterations
-            no_cache_flag = not args.use_cache
-            shuffle_flag = not args.sequential_curriculum
-            print("=" * 60)
-            print(f"STARTING DOUBLE-RATCHET CURRICULUM ({num_weeks} WEEKS, {its} ITERATIONS)")
-            print(f"Dry-run baseline only: {args.dry_run_set}")
-            print(f"Random seed: {args.seed} ({'deterministic' if args.seed is not None else 'randomized per run'})")
-            print(
-                f"Batch distribution: {'Randomized multi-regime cross-sections' if shuffle_flag else 'Sequential calendar blocks'}"
-            )
-            print(f"Fresh newsletter ingestion (no-cache): {no_cache_flag}")
-            print(f"Early pruning unviable candidates: {args.early_prune}")
-            print(f"Early pruning directional bias degeneracy: {args.early_prune_directional_bias}")
-            print(f"Escalate promising candidates (Stage 2 expansion): {args.escalate_promising}")
-            if args.escalate_promising:
-                print(
-                    f"  Promising threshold: {args.promising_win_rate * 100:.1f}% WR | "
-                    f"Expansion: +{args.stage2_expansion_weeks} weeks | Alpha: {args.significance_alpha}"
-                )
-            print("=" * 60)
-
-            summary = asyncio.run(
-                run_double_ratchet_curriculum_tournament(
-                    all_weeks=cached_weeks,
-                    num_curriculum_weeks=num_weeks,
-                    iterations=its,
-                    strata_url=args.strata_url,
-                    laya_url=args.laya_url,
-                    seed=args.seed,
-                    cache_db_path=args.cache_db,
-                    no_cache=no_cache_flag,
-                    shuffle_weeks=shuffle_flag,
-                    early_prune=args.early_prune,
-                    early_prune_directional_bias=args.early_prune_directional_bias,
-                    escalate_promising=args.escalate_promising,
-                    promising_win_rate=args.promising_win_rate,
-                    significance_alpha=args.significance_alpha,
-                    stage2_expansion_weeks=args.stage2_expansion_weeks,
-                )
-            )
-            print("=" * 60)
-            print("DOUBLE-RATCHET CURRICULUM RUN COMPLETE")
-            print(f"Baseline Score: {summary['baseline_score']:.2f}")
-            print(f"Champion Score: {summary['champion_score']:.2f}")
-            if summary.get("stashed_test_metrics"):
-                st_m = summary["stashed_test_metrics"]
-                print(
-                    f"Stashed Test Score (Unseen {summary.get('stashed_test_weeks_count', 0)} weeks): "
-                    f"{st_m['score']:.2f} | Win Rate: {st_m['traded_win_rate_pct']:.1f}% | "
-                    f"Traded: {st_m['traded_days']}/{st_m['total_days']}"
-                )
-            print(f"Total History Steps: {len(summary['history'])}")
-            if len(summary["history"]) > 1:
-                print("\n" + "=" * 30 + " AUTORESEARCHED PROMPT MUTATIONS " + "=" * 30)
-                for h in summary["history"][1:]:
-                    print(f"\n[Iteration {h['iteration']} - Accepted: {h['accepted']}]")
-                    print(f"Hypothesis: {h.get('hypothesis', 'N/A')}")
-                    print(f"Score: {h['score']:.2f} (Win Rate: {h['metrics']['traded_win_rate_pct']:.1f}%)")
-                print("\n--- CHAMPION CRITERIA (PROMPT 2) ---")
-                print(f"Criteria UP: {summary['champion_criteria']['criteria_up']}")
-                print(f"Criteria DOWN: {summary['champion_criteria']['criteria_down']}")
-                print(f"Min Confidence: {summary['champion_criteria']['min_confidence']:.1f}%")
-                print("\n--- CHAMPION INGESTION PROMPT (PROMPT 1) ---")
-                print(summary["champion_ingestion_prompt"].strip())
-            print("=" * 60)
-            return
-
-        from local_autoresearch.double_ratchet import run_double_ratchet_tournament
-
-        all_days = [day for days in cached_weeks.values() for day in days]
-        if args.max_eval_days and len(all_days) > args.max_eval_days:
-            all_days = all_days[: args.max_eval_days]
-
-        summary = asyncio.run(
-            run_double_ratchet_tournament(
-                all_days=all_days,
-                iterations=args.iterations,
-                strata_url=args.strata_url,
-                laya_url=args.laya_url,
-                held_out_ratio=0.15,
-                seed=args.seed,
-                cache_db_path=args.cache_db,
-                no_cache=args.no_cache,
-            )
-        )
-        print("=" * 60)
-        print("DOUBLE-RATCHET TOURNAMENT COMPLETE")
-        print(f"Baseline Score: {summary['baseline_score']:.2f}")
-        print(f"Champion Score: {summary['champion_score']:.2f}")
-        print(f"Held-Out Score: {summary['held_out_metrics']['score']:.2f}")
-        print("=" * 60)
+        _handle_double_ratchet_cli(args)
         return
 
-    if args.download_raw:
-        syms = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
-        pm_syms = [s.strip().upper() for s in args.pm_symbols.split(",") if s.strip()]
-        downloader = HistoricalDownloader(db_path=args.raw_db)
-        print(f"Starting raw historical download into {args.raw_db} ({args.start_date} to {args.end_date})...")
-        eod_c = downloader.download_fmp_eod(syms, args.start_date, args.end_date)
-        pm_stats = downloader.download_multi_polygon_bars(pm_syms, args.start_date, args.end_date)
-        print(f"Download complete: {eod_c} EOD bars, Polygon 5-min bars: {pm_stats}.")
-        if not any(arg.startswith("--iterations") for arg in sys.argv):
-            return
-
-    if args.build_historical_cache:
-        target_cache = args.vault_cache_db if args.regime_vault else args.cache_db
-        cnt = build_cache_from_raw_db(
-            raw_db_path=args.raw_db,
-            cache_db_path=target_cache,
-            start_date=args.start_date,
-            end_date=args.end_date,
-            is_regime_vault=args.regime_vault,
-        )
-        print(f"Materialized {cnt} days into {target_cache} (regime_vault={args.regime_vault}).")
-        if not any(arg.startswith("--iterations") for arg in sys.argv):
-            return
-
-    if args.eval_vault:
-        asyncio.run(
-            evaluate_baseline_on_vault(
-                local_db=args.local_db,
-                vault_cache_db=args.vault_cache_db,
-                cache_db=args.cache_db,
-            )
-        )
+    if _handle_raw_data_and_cache(args):
         return
-
-    if args.init_cache:
-        client = get_supabase_client()
-        count = asyncio.run(build_cache_from_supabase(client, limit_days=args.limit_cache_days, db_path=args.cache_db))
-        print(f"Cache initialization complete: {count} historical days cached in {args.cache_db}.")
-        if not any(arg.startswith("--iterations") for arg in sys.argv):
-            return
 
     if args.promote_best and not any(arg.startswith("--iterations") for arg in sys.argv):
         rec = promote_baseline_to_supabase(

@@ -78,6 +78,151 @@ def _matches_category(owner_id: str, category: str) -> bool:
     return cat == "thematic" and owner_id in ("sys-future-forces", "sys-frontier-tech")
 
 
+def _fetch_open_short_positions(client: Any, matched_pids: set[str]) -> dict[str, list[dict[str, Any]]]:
+    """Helper to query trades table, reconstruct open short lots, and price them."""
+    shorts_by_pid: dict[str, list[dict[str, Any]]] = {}
+    try:
+        short_res = (
+            client.table("trades")
+            .select("portfolio_id, ticker, quantity, price, signal, realized_pnl, executed_at")
+            .in_("signal", ["SHORT", "COVER"])
+            .order("executed_at")
+            .execute()
+        )
+        trade_records = short_res.data or []
+        lots_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for tr in trade_records:
+            pid = tr.get("portfolio_id")
+            t_sym = tr.get("ticker", "").upper()
+            if not pid or not t_sym:
+                continue
+            key = (pid, t_sym)
+            sig = str(tr.get("signal", "")).upper()
+            qty = float(tr.get("quantity", 0) or 0)
+            if sig == "SHORT":
+                if tr.get("realized_pnl") is not None:
+                    continue
+                lots_by_key.setdefault(key, []).append({"trade": tr, "remainingQty": qty})
+            elif sig == "COVER":
+                lots = lots_by_key.get(key, [])
+                needed = qty
+                while lots and needed > 0:
+                    oldest = lots[0]
+                    if oldest["remainingQty"] <= needed:
+                        needed -= oldest["remainingQty"]
+                        lots.pop(0)
+                    else:
+                        oldest["remainingQty"] -= needed
+                        needed = 0
+
+        open_shorts = []
+        for lots in lots_by_key.values():
+            for lot in lots:
+                if lot["remainingQty"] > 0:
+                    tr = dict(lot["trade"])
+                    tr["quantity"] = lot["remainingQty"]
+                    open_shorts.append(tr)
+
+        if open_shorts:
+            short_tickers = list({s["ticker"] for s in open_shorts if s.get("ticker")})
+            cache_res = client.table("market_data_cache").select("ticker, price").in_("ticker", short_tickers).execute()
+            price_cache = {
+                item["ticker"]: float(item["price"])
+                for item in (cache_res.data or [])
+                if item.get("ticker") and item.get("price") is not None
+            }
+            for s in open_shorts:
+                pid = s.get("portfolio_id")
+                if pid in matched_pids:
+                    qty = float(s.get("quantity", 0))
+                    avg_cost = float(s.get("price", 0.0) or 0.0)
+                    curr_p = price_cache.get(s.get("ticker", ""), avg_cost)
+                    pnl_usd = (avg_cost - curr_p) * qty
+                    pnl_pct = ((avg_cost - curr_p) / avg_cost * 100.0) if avg_cost > 0 else 0.0
+                    shorts_by_pid.setdefault(pid, []).append(
+                        {
+                            "portfolio_id": pid,
+                            "ticker": s.get("ticker"),
+                            "quantity": qty,
+                            "average_cost_basis": avg_cost,
+                            "current_price": curr_p,
+                            "unrealized_pnl_usd": pnl_usd,
+                            "unrealized_pnl_pct": pnl_pct,
+                            "side": "SHORT",
+                        }
+                    )
+    except Exception as e:
+        logger.debug("Failed to query open shorts in execute_get_system_portfolios_tool: %s", e)
+    return shorts_by_pid
+
+
+def _format_portfolio_positions(pos_list: list[dict[str, Any]]) -> list[str]:
+    """Helper to format active position holdings for a portfolio."""
+    lines: list[str] = []
+    if pos_list:
+        lines.append("- Active Holdings:")
+        for pos in pos_list:
+            ticker = pos.get("ticker", "UNKNOWN")
+            qty = pos.get("quantity", 0)
+            avg_cost = float(pos.get("average_cost_basis", 0.0) or 0.0)
+            curr_p = float(pos.get("current_price", 0.0) or 0.0)
+            pnl_usd = float(pos.get("unrealized_pnl_usd", 0.0) or 0.0)
+            pnl_pct = float(pos.get("unrealized_pnl_pct", 0.0) or 0.0)
+            side_tag = " [SHORT]" if pos.get("side") == "SHORT" else ""
+            cost_label = "Short Entry" if pos.get("side") == "SHORT" else "Avg Cost"
+            lines.append(
+                f"  * {ticker}{side_tag}: {qty:g} shares | {cost_label}: ${avg_cost:.2f} | "
+                f"Current Price: ${curr_p:.2f} | Unrealized PnL: ${pnl_usd:+,.2f} ({pnl_pct:+.2f}%)"
+            )
+    else:
+        lines.append("- Active Holdings: None (100% Cash)")
+    return lines
+
+
+def _format_system_portfolios_report(
+    matched_portfolios: list[dict[str, Any]],
+    positions_by_pid: dict[str, list[dict[str, Any]]],
+    perf_by_pid: dict[str, list[dict[str, Any]]],
+    category: str,
+    include_positions: bool,
+    lookback_days: int,
+) -> str:
+    """Helper to assemble markdown report lines."""
+    lines = [
+        f"=== SYSTEM PORTFOLIOS & MECHANICAL BENCHMARKS (Category: {category.upper()}, Lookback: {lookback_days}d) ===",
+        "Mechanical control strategies provide objective baselines for mean reversion, momentum, and sector rotation.",
+        "",
+    ]
+    for p in sorted(matched_portfolios, key=lambda x: str(x.get("owner_id", ""))):
+        pid = str(p.get("id", ""))
+        owner_id = str(p.get("owner_id", ""))
+        equity = float(p.get("total_equity", 0.0) or 0.0)
+        cash = float(p.get("cash_balance", 0.0) or 0.0)
+        strat_meta = STRATEGY_DESCRIPTIONS.get(owner_id, {})
+        strat_name = strat_meta.get("name", owner_id)
+        strat_signal = strat_meta.get("signal", "Systematic execution strategy.")
+
+        return_str = "N/A"
+        snaps = perf_by_pid.get(pid, [])
+        if len(snaps) >= 2:
+            start_eq = float(snaps[0].get("total_equity", 0.0) or 0.0)
+            end_eq = float(snaps[-1].get("total_equity", 0.0) or 0.0)
+            if start_eq > 0:
+                ret_pct = ((end_eq - start_eq) / start_eq) * 100.0
+                return_str = f"{ret_pct:+.2f}% (${start_eq:,.2f} -> ${end_eq:,.2f})"
+
+        lines.append(f"### {strat_name} (`{owner_id}`)")
+        lines.append(f"- Strategy: {strat_signal}")
+        lines.append(f"- Total Equity: ${equity:,.2f} | Cash: ${cash:,.2f} | {lookback_days}d Return: {return_str}")
+
+        if include_positions:
+            lines.extend(_format_portfolio_positions(positions_by_pid.get(pid, [])))
+        else:
+            lines.append("- Holdings: omitted")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
 async def execute_get_system_portfolios_tool(
     category: str = "all",
     include_positions: bool = True,
@@ -129,80 +274,9 @@ async def execute_get_system_portfolios_tool(
                     pos_dict["side"] = "LONG"
                     positions_by_pid.setdefault(pid, []).append(pos_dict)
 
-            try:
-                short_res = (
-                    client.table("trades")
-                    .select("portfolio_id, ticker, quantity, price, signal, realized_pnl, executed_at")
-                    .in_("signal", ["SHORT", "COVER"])
-                    .order("executed_at")
-                    .execute()
-                )
-                trade_records = short_res.data or []
-                lots_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
-                for tr in trade_records:
-                    pid = tr.get("portfolio_id")
-                    t_sym = tr.get("ticker", "").upper()
-                    if not pid or not t_sym:
-                        continue
-                    key = (pid, t_sym)
-                    sig = str(tr.get("signal", "")).upper()
-                    qty = float(tr.get("quantity", 0) or 0)
-                    if sig == "SHORT":
-                        if tr.get("realized_pnl") is not None:
-                            continue
-                        lots_by_key.setdefault(key, []).append({"trade": tr, "remainingQty": qty})
-                    elif sig == "COVER":
-                        lots = lots_by_key.get(key, [])
-                        needed = qty
-                        while lots and needed > 0:
-                            oldest = lots[0]
-                            if oldest["remainingQty"] <= needed:
-                                needed -= oldest["remainingQty"]
-                                lots.pop(0)
-                            else:
-                                oldest["remainingQty"] -= needed
-                                needed = 0
-
-                open_shorts = []
-                for lots in lots_by_key.values():
-                    for lot in lots:
-                        if lot["remainingQty"] > 0:
-                            tr = dict(lot["trade"])
-                            tr["quantity"] = lot["remainingQty"]
-                            open_shorts.append(tr)
-
-                if open_shorts:
-                    short_tickers = list({s["ticker"] for s in open_shorts if s.get("ticker")})
-                    cache_res = (
-                        client.table("market_data_cache").select("ticker, price").in_("ticker", short_tickers).execute()
-                    )
-                    price_cache = {
-                        item["ticker"]: float(item["price"])
-                        for item in (cache_res.data or [])
-                        if item.get("ticker") and item.get("price") is not None
-                    }
-                    for s in open_shorts:
-                        pid = s.get("portfolio_id")
-                        if pid in matched_pids:
-                            qty = float(s.get("quantity", 0))
-                            avg_cost = float(s.get("price", 0.0) or 0.0)
-                            curr_p = price_cache.get(s.get("ticker", ""), avg_cost)
-                            pnl_usd = (avg_cost - curr_p) * qty
-                            pnl_pct = ((avg_cost - curr_p) / avg_cost * 100.0) if avg_cost > 0 else 0.0
-                            positions_by_pid.setdefault(pid, []).append(
-                                {
-                                    "portfolio_id": pid,
-                                    "ticker": s.get("ticker"),
-                                    "quantity": qty,
-                                    "average_cost_basis": avg_cost,
-                                    "current_price": curr_p,
-                                    "unrealized_pnl_usd": pnl_usd,
-                                    "unrealized_pnl_pct": pnl_pct,
-                                    "side": "SHORT",
-                                }
-                            )
-            except Exception as e:
-                logger.debug("Failed to query open shorts in execute_get_system_portfolios_tool: %s", e)
+            short_positions = _fetch_open_short_positions(client, matched_pids)
+            for pid, s_list in short_positions.items():
+                positions_by_pid.setdefault(pid, []).extend(s_list)
 
         # 3. Fetch performance trajectory over lookback
         perf_by_pid: dict[str, list[dict[str, Any]]] = {}
@@ -223,60 +297,9 @@ async def execute_get_system_portfolios_tool(
             logger.debug("Failed to query portfolio_performance in execute_get_system_portfolios_tool: %s", e)
 
         # 4. Format report
-        lines = [
-            f"=== SYSTEM PORTFOLIOS & MECHANICAL BENCHMARKS (Category: {category.upper()}, Lookback: {lookback_days}d) ===",
-            "Mechanical control strategies provide objective baselines for mean reversion, momentum, and sector rotation.",
-            "",
-        ]
-
-        for p in sorted(matched_portfolios, key=lambda x: str(x.get("owner_id", ""))):
-            pid = str(p.get("id", ""))
-            owner_id = str(p.get("owner_id", ""))
-            equity = float(p.get("total_equity", 0.0) or 0.0)
-            cash = float(p.get("cash_balance", 0.0) or 0.0)
-            strat_meta = STRATEGY_DESCRIPTIONS.get(owner_id, {})
-            strat_name = strat_meta.get("name", owner_id)
-            strat_signal = strat_meta.get("signal", "Systematic execution strategy.")
-
-            # Calculate trailing return
-            return_str = "N/A"
-            snaps = perf_by_pid.get(pid, [])
-            if len(snaps) >= 2:
-                start_eq = float(snaps[0].get("total_equity", 0.0) or 0.0)
-                end_eq = float(snaps[-1].get("total_equity", 0.0) or 0.0)
-                if start_eq > 0:
-                    ret_pct = ((end_eq - start_eq) / start_eq) * 100.0
-                    return_str = f"{ret_pct:+.2f}% (${start_eq:,.2f} -> ${end_eq:,.2f})"
-
-            lines.append(f"### {strat_name} (`{owner_id}`)")
-            lines.append(f"- Strategy: {strat_signal}")
-            lines.append(f"- Total Equity: ${equity:,.2f} | Cash: ${cash:,.2f} | {lookback_days}d Return: {return_str}")
-
-            if include_positions:
-                pos_list = positions_by_pid.get(pid, [])
-                if pos_list:
-                    lines.append("- Active Holdings:")
-                    for pos in pos_list:
-                        ticker = pos.get("ticker", "UNKNOWN")
-                        qty = pos.get("quantity", 0)
-                        avg_cost = float(pos.get("average_cost_basis", 0.0) or 0.0)
-                        curr_p = float(pos.get("current_price", 0.0) or 0.0)
-                        pnl_usd = float(pos.get("unrealized_pnl_usd", 0.0) or 0.0)
-                        pnl_pct = float(pos.get("unrealized_pnl_pct", 0.0) or 0.0)
-                        side_tag = " [SHORT]" if pos.get("side") == "SHORT" else ""
-                        cost_label = "Short Entry" if pos.get("side") == "SHORT" else "Avg Cost"
-                        lines.append(
-                            f"  * {ticker}{side_tag}: {qty:g} shares | {cost_label}: ${avg_cost:.2f} | "
-                            f"Current Price: ${curr_p:.2f} | Unrealized PnL: ${pnl_usd:+,.2f} ({pnl_pct:+.2f}%)"
-                        )
-                else:
-                    lines.append("- Active Holdings: None (100% Cash)")
-            else:
-                lines.append("- Holdings: omitted")
-
-            lines.append("")
-
-        return "\n".join(lines).strip()
+        return _format_system_portfolios_report(
+            matched_portfolios, positions_by_pid, perf_by_pid, category, include_positions, lookback_days
+        )
 
     except Exception as e:
         logger.exception("Error executing get_system_portfolios tool: %s", e)

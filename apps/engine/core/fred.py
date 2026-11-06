@@ -220,6 +220,126 @@ def format_fred_observations_markdown(
     return "\n".join(lines)
 
 
+def _format_cached_fred_result(
+    cached_record: dict[str, Any],
+    resolved_id: str,
+    title: str,
+    units: str,
+    lookback_periods: int,
+) -> dict[str, Any]:
+    """Formats a cached Supabase record into the standard FRED observation dict."""
+    cached_obs = cached_record.get("observations") or []
+    return {
+        "series_id": resolved_id,
+        "title": cached_record.get("title") or title,
+        "units": cached_record.get("units") or units,
+        "frequency": cached_record.get("frequency") or "N/A",
+        "latest_date": cached_record.get("latest_date") or "",
+        "latest_value": cached_record.get("latest_value"),
+        "observations": cached_obs[-lookback_periods:] if cached_obs else [],
+    }
+
+
+async def _fetch_cached_fred_record(resolved_id: str) -> dict[str, Any] | None:
+    """Queries fred_series_cache in Supabase for a series_id."""
+    try:
+        sb = await get_async_supabase_client()
+        res = (
+            await sb.table("fred_series_cache")
+            .select("series_id, title, units, frequency, latest_date, latest_value, observations, fetched_at")
+            .eq("series_id", resolved_id)
+            .execute()
+        )
+        if res and res.data and len(res.data) > 0:
+            return res.data[0]
+    except Exception as e:
+        logger.warning(f"Error querying fred_series_cache in Supabase: {e}")
+    return None
+
+
+def _is_cache_fresh(cached_record: dict[str, Any], force_refresh: bool) -> bool:
+    """Checks whether a cached FRED record is still within TTL."""
+    if force_refresh:
+        return False
+    fetched_at_str = cached_record.get("fetched_at")
+    if not fetched_at_str:
+        return False
+    fetched_at = datetime.fromisoformat(fetched_at_str.replace("Z", "+00:00"))
+    return datetime.now(UTC) - fetched_at < timedelta(hours=FRED_CACHE_TTL_HOURS)
+
+
+def _parse_fred_observations(obs_data: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Parses raw FRED observation items into chronological date/float dicts."""
+    parsed_obs = []
+    for item in reversed(obs_data):
+        raw_val = item.get("value")
+        val = None
+        if raw_val not in (None, ".", ""):
+            try:
+                val = float(raw_val)
+            except ValueError:
+                val = None
+        parsed_obs.append({"date": item.get("date"), "value": val})
+    return parsed_obs
+
+
+async def _upsert_fred_cache(
+    resolved_id: str,
+    meta_title: str,
+    meta_units: str,
+    meta_frequency: str,
+    latest_date: str,
+    latest_value: float | None,
+    parsed_obs: list[dict[str, Any]],
+) -> None:
+    """Upserts fetched FRED series observations into Supabase cache."""
+    try:
+        sb = await get_async_supabase_client()
+        await (
+            sb.table("fred_series_cache")
+            .upsert(
+                {
+                    "series_id": resolved_id,
+                    "title": meta_title,
+                    "units": meta_units,
+                    "frequency": meta_frequency,
+                    "latest_date": latest_date,
+                    "latest_value": latest_value,
+                    "observations": parsed_obs,
+                    "fetched_at": datetime.now(UTC).isoformat(),
+                }
+            )
+            .execute()
+        )
+    except Exception as e:
+        logger.warning(f"Failed to upsert series {resolved_id} to fred_series_cache: {e}")
+
+
+async def _fetch_fred_metadata(
+    client: httpx.AsyncClient,
+    resolved_id: str,
+    default_title: str,
+    default_units: str,
+    default_frequency: str,
+) -> tuple[str, str, str]:
+    """Fetches series title, units, and frequency from FRED /series endpoint."""
+    meta_params = {
+        "series_id": resolved_id,
+        "api_key": FRED_API_KEY,
+        "file_type": "json",
+    }
+    meta_resp = await client.get(f"{FRED_BASE_URL}/series", params=meta_params)
+    meta_data = meta_resp.json() if meta_resp.status_code == 200 else {}
+    seriess = meta_data.get("seriess", [{}])
+    if seriess:
+        return (
+            seriess[0].get("title", default_title),
+            seriess[0].get("units_short", default_units),
+            seriess[0].get("frequency", "N/A"),
+        )
+    return default_title, default_units, default_frequency
+
+
 async def fetch_fred_series_observations(
     series_id_or_alias: str,
     lookback_periods: int = 12,
@@ -244,49 +364,15 @@ async def fetch_fred_series_observations(
     title = alias_meta.get("title", resolved_id)
 
     # 1. Check Supabase cache
-    cached_record = None
-    try:
-        sb = await get_async_supabase_client()
-        res = (
-            await sb.table("fred_series_cache")
-            .select("series_id, title, units, frequency, latest_date, latest_value, observations, fetched_at")
-            .eq("series_id", resolved_id)
-            .execute()
-        )
-        if res and res.data and len(res.data) > 0:
-            cached_record = res.data[0]
-            fetched_at_str = cached_record.get("fetched_at")
-            if fetched_at_str and not force_refresh:
-                # Check TTL
-                fetched_at = datetime.fromisoformat(fetched_at_str.replace("Z", "+00:00"))
-                if datetime.now(UTC) - fetched_at < timedelta(hours=FRED_CACHE_TTL_HOURS):
-                    cached_obs = cached_record.get("observations") or []
-                    return {
-                        "series_id": resolved_id,
-                        "title": cached_record.get("title") or title,
-                        "units": cached_record.get("units") or units,
-                        "frequency": cached_record.get("frequency") or "N/A",
-                        "latest_date": cached_record.get("latest_date") or "",
-                        "latest_value": cached_record.get("latest_value"),
-                        "observations": cached_obs[-lookback_periods:] if cached_obs else [],
-                    }
-    except Exception as e:
-        logger.warning(f"Error querying fred_series_cache in Supabase: {e}")
+    cached_record = await _fetch_cached_fred_record(resolved_id)
+    if cached_record and _is_cache_fresh(cached_record, force_refresh):
+        return _format_cached_fred_result(cached_record, resolved_id, title, units, lookback_periods)
 
     # 2. Fetch from FRED API
     if not FRED_API_KEY:
         logger.warning("FRED_API_KEY is not configured; using cached data or fallback.")
         if cached_record:
-            cached_obs = cached_record.get("observations") or []
-            return {
-                "series_id": resolved_id,
-                "title": cached_record.get("title") or title,
-                "units": cached_record.get("units") or units,
-                "frequency": cached_record.get("frequency") or "N/A",
-                "latest_date": cached_record.get("latest_date") or "",
-                "latest_value": cached_record.get("latest_value"),
-                "observations": cached_obs[-lookback_periods:] if cached_obs else [],
-            }
+            return _format_cached_fred_result(cached_record, resolved_id, title, units, lookback_periods)
         return {
             "series_id": resolved_id,
             "title": title,
@@ -300,25 +386,10 @@ async def fetch_fred_series_observations(
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            meta_title = title
-            meta_units = units
-            meta_frequency = frequency or "N/A"
+            meta_title, meta_units, meta_frequency = await _fetch_fred_metadata(
+                client, resolved_id, title, units, frequency or "N/A"
+            )
 
-            # Fetch metadata
-            meta_params = {
-                "series_id": resolved_id,
-                "api_key": FRED_API_KEY,
-                "file_type": "json",
-            }
-            meta_resp = await client.get(f"{FRED_BASE_URL}/series", params=meta_params)
-            meta_data = meta_resp.json() if meta_resp.status_code == 200 else {}
-            seriess = meta_data.get("seriess", [{}])
-            if seriess:
-                meta_title = seriess[0].get("title", title)
-                meta_units = seriess[0].get("units_short", units)
-                meta_frequency = seriess[0].get("frequency", "N/A")
-
-            # Fetch observations
             obs_params: dict[str, Any] = {
                 "series_id": resolved_id,
                 "api_key": FRED_API_KEY,
@@ -328,7 +399,6 @@ async def fetch_fred_series_observations(
             }
             if units:
                 obs_params["units"] = units
-            # Only include frequency in observations query if explicitly passed as a short code (e.g. 'd', 'w', 'm', 'q', 'a')
             if frequency and len(frequency) <= 3:
                 obs_params["frequency"] = frequency.lower()
 
@@ -336,16 +406,7 @@ async def fetch_fred_series_observations(
             if obs_resp.status_code != 200:
                 logger.error(f"FRED API observations error for {resolved_id}: {obs_resp.status_code} {obs_resp.text}")
                 if cached_record:
-                    cached_obs = cached_record.get("observations") or []
-                    return {
-                        "series_id": resolved_id,
-                        "title": cached_record.get("title") or title,
-                        "units": cached_record.get("units") or units,
-                        "frequency": cached_record.get("frequency") or "N/A",
-                        "latest_date": cached_record.get("latest_date") or "",
-                        "latest_value": cached_record.get("latest_value"),
-                        "observations": cached_obs[-lookback_periods:] if cached_obs else [],
-                    }
+                    return _format_cached_fred_result(cached_record, resolved_id, title, units, lookback_periods)
                 return {
                     "series_id": resolved_id,
                     "title": title,
@@ -357,42 +418,13 @@ async def fetch_fred_series_observations(
                     "error": f"FRED API error: HTTP {obs_resp.status_code}",
                 }
 
-            obs_data = obs_resp.json().get("observations", [])
-            parsed_obs = []
-            for item in reversed(obs_data):  # Put in chronological order
-                raw_val = item.get("value")
-                val = None
-                if raw_val not in (None, ".", ""):
-                    try:
-                        val = float(raw_val)
-                    except ValueError:
-                        val = None
-                parsed_obs.append({"date": item.get("date"), "value": val})
-
+            parsed_obs = _parse_fred_observations(obs_resp.json().get("observations", []))
             latest_date = parsed_obs[-1]["date"] if parsed_obs else ""
             latest_value = parsed_obs[-1]["value"] if parsed_obs else None
 
-            # Upsert into Supabase cache
-            try:
-                sb = await get_async_supabase_client()
-                await (
-                    sb.table("fred_series_cache")
-                    .upsert(
-                        {
-                            "series_id": resolved_id,
-                            "title": meta_title,
-                            "units": meta_units,
-                            "frequency": meta_frequency,
-                            "latest_date": latest_date,
-                            "latest_value": latest_value,
-                            "observations": parsed_obs,
-                            "fetched_at": datetime.now(UTC).isoformat(),
-                        }
-                    )
-                    .execute()
-                )
-            except Exception as e:
-                logger.warning(f"Failed to upsert series {resolved_id} to fred_series_cache: {e}")
+            await _upsert_fred_cache(
+                resolved_id, meta_title, meta_units, meta_frequency, latest_date, latest_value, parsed_obs
+            )
 
             return {
                 "series_id": resolved_id,
@@ -407,16 +439,7 @@ async def fetch_fred_series_observations(
     except Exception as e:
         logger.exception(f"Exception fetching FRED series {resolved_id}: {e}")
         if cached_record:
-            cached_obs = cached_record.get("observations") or []
-            return {
-                "series_id": resolved_id,
-                "title": cached_record.get("title") or title,
-                "units": cached_record.get("units") or units,
-                "frequency": cached_record.get("frequency") or "N/A",
-                "latest_date": cached_record.get("latest_date") or "",
-                "latest_value": cached_record.get("latest_value"),
-                "observations": cached_obs[-lookback_periods:] if cached_obs else [],
-            }
+            return _format_cached_fred_result(cached_record, resolved_id, title, units, lookback_periods)
         return {
             "series_id": resolved_id,
             "title": title,

@@ -169,6 +169,66 @@ def test_should_run_monthly_meta_autoresearch_gate():
     assert should_run_monthly_meta_autoresearch(date(2026, 11, 5), existing) is False
 
 
+class _MetaPromptExperimentsBuilder:
+    def __init__(
+        self, meta_variants: list[dict], experiments: list[dict], inserted_rows: list[dict], updated_calls: list
+    ):
+        self._filters: dict = {}
+        self._op = "select"
+        self._payload = None
+        self._meta_variants = meta_variants
+        self._experiments = experiments
+        self._inserted_rows = inserted_rows
+        self._updated_calls = updated_calls
+
+    def select(self, *_args, **_kwargs):
+        self._op = "select"
+        return self
+
+    def update(self, payload):
+        self._op = "update"
+        self._payload = payload
+        return self
+
+    def insert(self, payload):
+        self._op = "insert"
+        self._payload = payload
+        self._inserted_rows.append(payload)
+        return self
+
+    def eq(self, k, v):
+        self._filters[k] = v
+        return self
+
+    def in_(self, k, v):
+        self._filters[k] = v
+        return self
+
+    def __getattr__(self, name):
+        if name in ("gte", "lte", "order", "limit"):
+            return lambda *_a, **_kw: self
+        raise AttributeError(name)
+
+    def execute(self):
+        res = MagicMock()
+        if self._op == "insert":
+            res.data = [self._payload]
+            return res
+        if self._op == "update":
+            self._updated_calls.append((self._payload, str(self._filters)))
+            res.data = []
+            return res
+        if self._filters.get("prompt_name") == META_PROMPT_NAME:
+            status_filter = self._filters.get("status")
+            if status_filter == "active":
+                res.data = [v for v in self._meta_variants if v["status"] == "active"]
+            else:
+                res.data = list(self._meta_variants)
+        else:
+            res.data = list(self._experiments)
+        return res
+
+
 @pytest.mark.asyncio
 async def test_run_monthly_meta_autoresearch_ratchet_and_mutation():
     """Verify monthly meta-autoresearch scores Mutation Yield, applies ratchet, and saves new active meta-program."""
@@ -204,71 +264,9 @@ async def test_run_monthly_meta_autoresearch_ratchet_and_mutation():
     mock_client = MagicMock()
 
     def _table_router(table_name: str):
-        tbl = MagicMock()
         if table_name == "prompt_experiments":
-
-            class _Builder:
-                def __init__(self):
-                    self._filters = {}
-                    self._op = "select"
-                    self._payload = None
-
-                def select(self, *_args, **_kwargs):
-                    self._op = "select"
-                    return self
-
-                def update(self, payload):
-                    self._op = "update"
-                    self._payload = payload
-                    return self
-
-                def insert(self, payload):
-                    self._op = "insert"
-                    self._payload = payload
-                    inserted_rows.append(payload)
-                    return self
-
-                def eq(self, k, v):
-                    self._filters[k] = v
-                    return self
-
-                def in_(self, k, v):
-                    self._filters[k] = v
-                    return self
-
-                def gte(self, *_args):
-                    return self
-
-                def lte(self, *_args):
-                    return self
-
-                def order(self, *_args, **_kwargs):
-                    return self
-
-                def limit(self, *_args):
-                    return self
-
-                def execute(self):
-                    res = MagicMock()
-                    if self._op == "insert":
-                        res.data = [self._payload]
-                        return res
-                    if self._op == "update":
-                        updated_calls.append((self._payload, str(self._filters)))
-                        res.data = []
-                        return res
-                    if self._filters.get("prompt_name") == META_PROMPT_NAME:
-                        status_filter = self._filters.get("status")
-                        if status_filter == "active":
-                            res.data = [v for v in meta_variants if v["status"] == "active"]
-                        else:
-                            res.data = list(meta_variants)
-                    else:
-                        res.data = list(experiments)
-                    return res
-
-            return _Builder()
-        return tbl
+            return _MetaPromptExperimentsBuilder(meta_variants, experiments, inserted_rows, updated_calls)
+        return MagicMock()
 
     mock_client.table.side_effect = _table_router
 

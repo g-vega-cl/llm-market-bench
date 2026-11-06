@@ -224,13 +224,7 @@ def get_point_in_time_memories(
         return []
 
 
-def format_raw_point_in_time_inputs(day_record: dict[str, Any], db_path: str = DEFAULT_CACHE_DB) -> str:
-    """Format raw daily observations into an uncompressed pre-market context block with zero lookahead."""
-    target_date = day_record.get("target_date", "UNKNOWN_DATE")
-    ticker = day_record.get("ticker", "SPY")
-    lines: list[str] = [f"=== POINT-IN-TIME MARKET INPUTS: {ticker} ({target_date}) ==="]
-
-    # 1. Multi-Day Momentum & Trend Vector (Zero lookahead)
+def _append_trend_and_memories(lines: list[str], day_record: dict[str, Any], target_date: str, db_path: str) -> None:
     trend = get_rolling_trend_vector(target_date, db_path=db_path)
     if trend.get("summary"):
         lines.append("--- Multi-Day Momentum & Trend Vector ---")
@@ -241,7 +235,6 @@ def format_raw_point_in_time_inputs(day_record: dict[str, Any], db_path: str = D
             lines.append("--- Multi-Day Momentum & Trend Vector ---")
             lines.append(rec_trend.strip())
 
-    # 2. Historical Memories & Lessons Learned (Strictly prior to target_date)
     memories = get_point_in_time_memories(target_date, db_path=db_path, limit=5)
     if memories:
         lines.append("--- Historical Lessons & Point-in-Time Memories ---")
@@ -250,13 +243,13 @@ def format_raw_point_in_time_inputs(day_record: dict[str, Any], db_path: str = D
             m_content = mem.get("content", "").strip()
             lines.append(f"[{m_type}] {m_content}")
 
-    # 3. Economic releases
+
+def _append_market_features(lines: list[str], day_record: dict[str, Any]) -> None:
     econ = day_record.get("economic_calendar")
     if econ:
         lines.append("--- High-Impact Economic Releases ---")
         lines.append(econ.strip())
 
-    # 4. Benchmark Pre-Market Quotes & Proxies
     proxies_data = day_record.get("proxies", {})
     if proxies_data:
         lines.append("--- Benchmark Pre-Market Overnight Quotes ---")
@@ -266,19 +259,18 @@ def format_raw_point_in_time_inputs(day_record: dict[str, Any], db_path: str = D
             chg = info.get("change_pct", 0.0)
             lines.append(f"- {sym}: ${p:.2f} ({chg:+.2f}%)")
 
-    # 5. Options Derivatives & Positioning
     options = day_record.get("options_sentiment")
     if options:
         lines.append("--- Options Derivatives & Positioning ---")
         lines.append(options.strip())
 
-    # 6. Prior Session Intraday Profile
     profile = day_record.get("intraday_profile")
     if profile:
         lines.append("--- Prior Session Intraday Profile ---")
         lines.append(profile.strip())
 
-    # 7. Ingested Newsletters (Full content with local de-ad/boilerplate cleaner, zero truncation)
+
+def _append_newsletters(lines: list[str], day_record: dict[str, Any]) -> None:
     newsletters = day_record.get("newsletters", [])
     if newsletters:
         lines.append("--- Ingested Financial Newsletters ---")
@@ -290,11 +282,21 @@ def format_raw_point_in_time_inputs(day_record: dict[str, Any], db_path: str = D
             if cleaned_content:
                 lines.append(f"[{sender}] {subject}:\n{cleaned_content}\n")
 
-    # 8. AI Synthetic Newsletter if present
     synth = day_record.get("synthetic_newsletter")
     if synth:
         lines.append("--- Synthetic Morning Summary ---")
         lines.append(synth.strip())
+
+
+def format_raw_point_in_time_inputs(day_record: dict[str, Any], db_path: str = DEFAULT_CACHE_DB) -> str:
+    """Format raw daily observations into an uncompressed pre-market context block with zero lookahead."""
+    target_date = day_record.get("target_date", "UNKNOWN_DATE")
+    ticker = day_record.get("ticker", "SPY")
+    lines: list[str] = [f"=== POINT-IN-TIME MARKET INPUTS: {ticker} ({target_date}) ==="]
+
+    _append_trend_and_memories(lines, day_record, target_date, db_path)
+    _append_market_features(lines, day_record)
+    _append_newsletters(lines, day_record)
 
     lines.append("==================================================")
     full_text = "\n".join(lines)

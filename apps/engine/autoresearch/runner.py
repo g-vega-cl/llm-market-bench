@@ -87,34 +87,7 @@ async def _check_safety(
     return False, ""
 
 
-async def run(
-    dry_run: bool = False,
-    track_id: str = "track_default",
-    cold_start: bool | None = None,
-):
-    """Run the full auto-research cycle.
-
-    Args:
-        dry_run: If True, evaluate and research — but do not write to the
-                 database or change the active prompt.
-        track_id: ID of the track to optimize prompts for.
-        cold_start: If True, generate fresh prompt ignoring past prompt context.
-                    If False, explicitly run incrementally without cold start.
-                    If None (default), automatically roll 1-in-6 stochastic dice.
-    """
-    is_cold_start = roll_cold_start_dice() if cold_start is None else cold_start
-    if is_cold_start:
-        logger.info("COLD START: Stochastic reset triggered for %s (generating prompt from 0)", track_id)
-
-    week_start, week_end = get_week_window()
-
-    label = " DRY RUN" if dry_run else ""
-    logger.info("=== Auto-Research Cycle%s (Track: %s) ===", label, track_id)
-    if dry_run:
-        logger.info("DRY RUN: No database writes will be performed.")
-    logger.info("Evaluating week %s to %s", week_start, week_end)
-
-    # Check if the current prompt caused a crash
+async def _handle_crash_check(week_start: date, week_end: date, track_id: str, dry_run: bool) -> bool:
     try:
         is_crash, crash_reason = await _check_safety(week_start, week_end, track_id=track_id)
     except TypeError:
@@ -134,9 +107,12 @@ async def run(
                 logger.info("Reverted to %s. Continuing auto-research generation off baseline.", reverted)
             else:
                 logger.warning("No previous variant to revert to. Keeping current prompt.")
+    return is_crash
 
-    # Evaluate the week
-    logger.info("Gathering performance data...")
+
+async def _evaluate_week_compat(
+    week_start: date, week_end: date, track_id: str, is_cold_start: bool
+) -> tuple[str, dict, str | None] | None:
     try:
         try:
             eval_res = await evaluate_week(week_start, week_end, track_id=track_id, cold_start=is_cold_start)
@@ -147,30 +123,24 @@ async def run(
                 eval_res = await evaluate_week(week_start, week_end)
 
         if isinstance(eval_res, tuple) and len(eval_res) == 3:
-            report, metrics, baseline_tag = eval_res
-        else:
-            report, metrics = eval_res[0], eval_res[1]
-            baseline_tag = None
+            return eval_res
+        return eval_res[0], eval_res[1], None
     except Exception as e:
         logger.error("Failed to evaluate week: %s", e)
         logger.error("AUTORESEARCH_RESULT: FAILED_EVALUATION | error=%s", e)
-        return
+        return None
 
-    # Fetch currently active variant (the one that ran during the evaluated week, or restored baseline if crashed)
-    try:
-        active_variant = await get_active_variant(track_id=track_id)
-    except TypeError:
-        active_variant = await get_active_variant()
 
-    # Log baseline comparison — enforce the Karpathy ratchet.
-    # Get baseline metrics BEFORE we update the active variant's metrics in the DB,
-    # so we don't accidentally overwrite the baseline we are comparing against.
-    score = metrics.get("score", metrics.get("composite", 0.0))
-    try:
-        baseline_metrics = await get_baseline_metrics(track_id=track_id)
-    except TypeError:
-        baseline_metrics = await get_baseline_metrics()
-
+async def _apply_ratchet_and_resolve_parent(
+    track_id: str,
+    dry_run: bool,
+    is_crash: bool,
+    active_variant: dict | None,
+    baseline_metrics: dict | None,
+    score: float,
+    baseline_tag: str | None,
+    metrics: dict,
+) -> str | None:
     if not dry_run and active_variant and not is_crash:
         await update_variant_metrics(active_variant["variant_tag"], metrics)
         logger.info("Updated active variant %s with evaluated week's metrics", active_variant["variant_tag"])
@@ -182,8 +152,6 @@ async def run(
         baseline_score = baseline_metrics.get("score", 0)
         if score > baseline_score:
             logger.info("RATCHET: New score %.4f BEATS baseline %.4f. New baseline established.", score, baseline_score)
-            # If it beats the baseline, this active variant is our new baseline,
-            # so the parent tag for the next iteration is this variant's tag!
             parent_tag = active_variant["variant_tag"] if active_variant else baseline_tag
         else:
             logger.info(
@@ -202,8 +170,10 @@ async def run(
     else:
         logger.info("RATCHET: No baseline found. Establishing first baseline with score %.4f", score)
         parent_tag = active_variant["variant_tag"] if active_variant else baseline_tag
+    return parent_tag
 
-    # Extract baseline mutable text to ensure run_research does not return duplicate text
+
+async def _resolve_mutable_prompts(track_id: str, active_variant: dict | None) -> tuple[str | None, str | None]:
     from core.llm.prompts import split_prompt
 
     baseline_prompt_mutable = None
@@ -222,66 +192,56 @@ async def run(
     current_prompt_mutable = None
     if active_variant and active_variant.get("prompt_content"):
         _, current_prompt_mutable, _ = split_prompt(active_variant["prompt_content"])
+    return baseline_prompt_mutable, current_prompt_mutable
 
-    # Run the auto-research LLM
-    logger.info("Calling auto-research LLM...")
+
+async def _call_run_research_compat(
+    report: str,
+    current_prompt_mutable: str | None,
+    is_cold_start: bool,
+    baseline_prompt_mutable: str | None,
+    track_id: str,
+):
     try:
+        return await run_research(
+            report,
+            current_prompt=current_prompt_mutable,
+            cold_start=is_cold_start,
+            baseline_prompt=baseline_prompt_mutable,
+            track_id=track_id,
+        )
+    except TypeError:
         try:
-            result = await run_research(
+            return await run_research(
                 report,
                 current_prompt=current_prompt_mutable,
                 cold_start=is_cold_start,
                 baseline_prompt=baseline_prompt_mutable,
-                track_id=track_id,
             )
         except TypeError:
             try:
-                result = await run_research(
-                    report,
-                    current_prompt=current_prompt_mutable,
-                    cold_start=is_cold_start,
-                    baseline_prompt=baseline_prompt_mutable,
-                )
+                return await run_research(report, cold_start=is_cold_start)
             except TypeError:
-                try:
-                    result = await run_research(report, cold_start=is_cold_start)
-                except TypeError:
-                    result = await run_research(report)
-    except Exception as e:
-        logger.error("Auto-research LLM call failed: %s", e)
-        return
+                return await run_research(report)
 
-    if result is None:
-        logger.error("Auto-research returned no result. Skipping prompt update.")
-        logger.error("AUTORESEARCH_RESULT: FAILED_RESEARCH | reason=empty_response")
-        return
 
-    logger.info(
-        "Auto-research result: type=%s, confidence=%d, description=%s",
-        result.experiment_type,
-        result.confidence,
-        result.change_description,
-    )
-
-    score = metrics.get("score", metrics.get("composite", 0.0))
-
-    if dry_run:
-        logger.info("DRY RUN: Score: %.4f", score)
-        logger.info("DRY RUN: Change description: %s", result.change_description)
-        logger.info("DRY RUN: Full research output: %s", result.model_dump())
-        logger.info("=== Auto-Research Dry Run Complete ===")
-        return
-
-    # Save and activate the new variant
+async def _save_and_record_variant(
+    result,
+    week_start: date,
+    week_end: date,
+    is_cold_start: bool,
+    parent_tag: str | None,
+    track_id: str,
+    baseline_metrics: dict | None,
+    score: float,
+) -> tuple[str, str] | None:
     from datetime import timedelta
-
-    next_week_start = week_start + timedelta(days=7)
-    next_week_end = week_end + timedelta(days=7)
 
     from core.llm.prompts import SYSTEM_PROMPT_CONSTRAINTS_FOOTER, SYSTEM_PROMPT_CONSTRAINTS_HEADER
 
+    next_week_start = week_start + timedelta(days=7)
+    next_week_end = week_end + timedelta(days=7)
     full_prompt_content = SYSTEM_PROMPT_CONSTRAINTS_HEADER + result.new_prompt_text + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
-
     effective_exp_type = "radical" if is_cold_start else result.experiment_type
     research_output_data = copy.deepcopy(result.model_dump())
     if is_cold_start:
@@ -338,10 +298,113 @@ async def run(
                 logger.info("Recorded autoresearch memory for track %s: %s", track_id, result.research_insight[:80])
             except Exception as e:
                 logger.warning("Failed to record autoresearch memory for track %s: %s", track_id, e)
+        return tag, effective_exp_type
     except Exception as e:
         logger.error("Failed to save variant: %s", e)
         logger.error("AUTORESEARCH_RESULT: FAILED_SAVE | error=%s", e)
+        return None
+
+
+async def run(
+    dry_run: bool = False,
+    track_id: str = "track_default",
+    cold_start: bool | None = None,
+):
+    """Run the full auto-research cycle.
+
+    Args:
+        dry_run: If True, evaluate and research — but do not write to the
+                 database or change the active prompt.
+        track_id: ID of the track to optimize prompts for.
+        cold_start: If True, generate fresh prompt ignoring past prompt context.
+                    If False, explicitly run incrementally without cold start.
+                    If None (default), automatically roll 1-in-6 stochastic dice.
+    """
+    is_cold_start = roll_cold_start_dice() if cold_start is None else cold_start
+    if is_cold_start:
+        logger.info("COLD START: Stochastic reset triggered for %s (generating prompt from 0)", track_id)
+
+    week_start, week_end = get_week_window()
+
+    label = " DRY RUN" if dry_run else ""
+    logger.info("=== Auto-Research Cycle%s (Track: %s) ===", label, track_id)
+    if dry_run:
+        logger.info("DRY RUN: No database writes will be performed.")
+    logger.info("Evaluating week %s to %s", week_start, week_end)
+
+    is_crash = await _handle_crash_check(week_start, week_end, track_id, dry_run)
+
+    logger.info("Gathering performance data...")
+    eval_out = await _evaluate_week_compat(week_start, week_end, track_id, is_cold_start)
+    if eval_out is None:
         return
+    report, metrics, baseline_tag = eval_out
+
+    try:
+        active_variant = await get_active_variant(track_id=track_id)
+    except TypeError:
+        active_variant = await get_active_variant()
+
+    score = metrics.get("score", metrics.get("composite", 0.0))
+    try:
+        baseline_metrics = await get_baseline_metrics(track_id=track_id)
+    except TypeError:
+        baseline_metrics = await get_baseline_metrics()
+
+    parent_tag = await _apply_ratchet_and_resolve_parent(
+        track_id=track_id,
+        dry_run=dry_run,
+        is_crash=is_crash,
+        active_variant=active_variant,
+        baseline_metrics=baseline_metrics,
+        score=score,
+        baseline_tag=baseline_tag,
+        metrics=metrics,
+    )
+
+    baseline_prompt_mutable, current_prompt_mutable = await _resolve_mutable_prompts(track_id, active_variant)
+
+    logger.info("Calling auto-research LLM...")
+    try:
+        result = await _call_run_research_compat(
+            report, current_prompt_mutable, is_cold_start, baseline_prompt_mutable, track_id
+        )
+    except Exception as e:
+        logger.error("Auto-research LLM call failed: %s", e)
+        return
+
+    if result is None:
+        logger.error("Auto-research returned no result. Skipping prompt update.")
+        logger.error("AUTORESEARCH_RESULT: FAILED_RESEARCH | reason=empty_response")
+        return
+
+    logger.info(
+        "Auto-research result: type=%s, confidence=%d, description=%s",
+        result.experiment_type,
+        result.confidence,
+        result.change_description,
+    )
+
+    if dry_run:
+        logger.info("DRY RUN: Score: %.4f", score)
+        logger.info("DRY RUN: Change description: %s", result.change_description)
+        logger.info("DRY RUN: Full research output: %s", result.model_dump())
+        logger.info("=== Auto-Research Dry Run Complete ===")
+        return
+
+    saved = await _save_and_record_variant(
+        result=result,
+        week_start=week_start,
+        week_end=week_end,
+        is_cold_start=is_cold_start,
+        parent_tag=parent_tag,
+        track_id=track_id,
+        baseline_metrics=baseline_metrics,
+        score=score,
+    )
+    if saved is None:
+        return
+    tag, effective_exp_type = saved
 
     logger.info("=== Auto-Research Cycle Complete ===")
     logger.info("Next week's prompt: %s (%s)", tag, effective_exp_type)

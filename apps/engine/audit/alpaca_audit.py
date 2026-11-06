@@ -48,87 +48,74 @@ class AlpacaAuditReconciler:
             except Exception as e:
                 logger.warning(f"[AlpacaAudit] Could not initialize Alpaca client: {e}")
 
-    async def audit_model_portfolio(self, model_name: str, days: int = 7) -> dict:
-        """Run a full reconciliation audit for a specific model."""
-        # 1. Fetch Portfolio
-        res_p = self.supabase.table("portfolios").select("*").eq("owner_id", model_name).single().execute()
-        portfolio = res_p.data
-        if not portfolio:
-            raise ValueError(f"Portfolio for model '{model_name}' not found in Supabase.")
-
-        portfolio_id = portfolio["id"]
-        supabase_equity = float(portfolio.get("total_equity", 10000.0))
-        supabase_cash = float(portfolio.get("cash_balance", 10000.0))
-
-        # 2. Fetch Supabase Positions
-        res_pos = self.supabase.table("portfolio_positions").select("*").eq("portfolio_id", portfolio_id).execute()
-        supabase_positions = res_pos.data or []
-
-        # 3. Fetch Portfolio Performance History (last N days)
-        cutoff_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
-        res_perf = (
-            self.supabase.table("portfolio_performance")
-            .select("*")
-            .eq("portfolio_id", portfolio_id)
-            .order("date", desc=False)
-            .execute()
-        )
-        perf_history = res_perf.data or []
-
+    def _calculate_chart_performance(
+        self, perf_history: list[dict], cutoff_date: str, supabase_equity: float
+    ) -> tuple[float, float, float]:
+        """Compute start equity, end equity, and pct change from performance history."""
         chart_start_equity = 10000.0
         chart_end_equity = supabase_equity
         chart_pct_change = 0.0
 
         if perf_history:
             recent_perf = [p for p in perf_history if p["date"] >= cutoff_date]
-            if recent_perf:
-                chart_start_equity = float(recent_perf[0]["total_equity"])
-                chart_end_equity = float(recent_perf[-1]["total_equity"])
-            else:
-                chart_start_equity = float(perf_history[0]["total_equity"])
-                chart_end_equity = float(perf_history[-1]["total_equity"])
-
+            target_perf = recent_perf if recent_perf else perf_history
+            chart_start_equity = float(target_perf[0]["total_equity"])
+            chart_end_equity = float(target_perf[-1]["total_equity"])
             if chart_start_equity > 0:
                 chart_pct_change = ((chart_end_equity - chart_start_equity) / chart_start_equity) * 100
 
-        # 4. Fetch Supabase Trades
-        res_trades = (
-            self.supabase.table("trades")
-            .select("*")
-            .eq("portfolio_id", portfolio_id)
-            .order("executed_at", desc=False)
-            .execute()
-        )
-        supabase_trades = res_trades.data or []
+        return chart_start_equity, chart_end_equity, chart_pct_change
 
-        # 5. Fetch Alpaca Orders
+    def _fetch_alpaca_order_maps(self, model_name: str) -> tuple[dict, dict]:
+        """Query Alpaca orders and index by order_id and client trade_id."""
         alpaca_orders_by_id = {}
         alpaca_orders_by_trade_id = {}
 
-        if self._alpaca:
-            try:
-                orders = self._alpaca.get_orders(GetOrdersRequest(status=QueryOrderStatus.ALL, limit=500))
-                for ord_obj in orders:
-                    oid = str(ord_obj.id)
-                    alpaca_orders_by_id[oid] = ord_obj
-                    cid = getattr(ord_obj, "client_order_id", "") or ""
-                    # client_order_id format: {agent_id}__{ticker}__{signal}__{trade_id}
-                    if f"{model_name}__" in cid:
-                        parts = cid.split("__")
-                        if len(parts) >= 4:
-                            t_id = parts[3]
-                            alpaca_orders_by_trade_id[t_id] = ord_obj
-            except Exception as e:
-                logger.warning(f"[AlpacaAudit] Error querying Alpaca orders: {e}")
+        if not self._alpaca:
+            return alpaca_orders_by_id, alpaca_orders_by_trade_id
 
-        # 6. Reconcile Trades & Calculate Slippage
+        try:
+            orders = self._alpaca.get_orders(GetOrdersRequest(status=QueryOrderStatus.ALL, limit=500))
+            for ord_obj in orders:
+                oid = str(ord_obj.id)
+                alpaca_orders_by_id[oid] = ord_obj
+                cid = getattr(ord_obj, "client_order_id", "") or ""
+                if f"{model_name}__" in cid:
+                    parts = cid.split("__")
+                    if len(parts) >= 4:
+                        alpaca_orders_by_trade_id[parts[3]] = ord_obj
+        except Exception as e:
+            logger.warning(f"[AlpacaAudit] Error querying Alpaca orders: {e}")
+
+        return alpaca_orders_by_id, alpaca_orders_by_trade_id
+
+    @staticmethod
+    def _resolve_alpaca_order_status(alpaca_ord, sb_status: str, sim_price: float, default_filled_at):
+        """Extract normalized order status, fill price, and filled_at from an Alpaca order object."""
+        if not alpaca_ord:
+            return sb_status, None, default_filled_at
+
+        stat_val = alpaca_ord.status.value if hasattr(alpaca_ord.status, "value") else str(alpaca_ord.status).lower()
+        if stat_val == "filled":
+            fill_price = float(alpaca_ord.filled_avg_price) if alpaca_ord.filled_avg_price is not None else sim_price
+            return "FILLED", fill_price, getattr(alpaca_ord, "filled_at", default_filled_at)
+        if "cancel" in stat_val:
+            return "CANCELED", None, default_filled_at
+        if "reject" in stat_val:
+            return "REJECTED", None, default_filled_at
+        if "expired" in stat_val:
+            return "EXPIRED", None, default_filled_at
+        return sb_status, None, default_filled_at
+
+    def _reconcile_trades(
+        self, supabase_trades: list[dict], alpaca_orders_by_id: dict, alpaca_orders_by_trade_id: dict
+    ) -> tuple[list[dict], float, int, int, list[dict], float, dict]:
+        """Reconcile Supabase trades with Alpaca orders and reconstruct cash/positions."""
         matched_trades = []
         total_slippage_usd = 0.0
         filled_count = 0
         skipped_or_failed_count = 0
         anomalies = []
-
-        # Reconstructed Alpaca state
         alpaca_reconstructed_cash = 10000.0
         alpaca_positions_map = defaultdict(lambda: {"quantity": 0, "total_cost": 0.0})
 
@@ -143,39 +130,19 @@ class AlpacaAuditReconciler:
             alpaca_ord = alpaca_orders_by_id.get(tr.get("alpaca_order_id") or "") or alpaca_orders_by_trade_id.get(
                 trade_id
             )
-
-            fill_price = None
-            order_status = sb_status
-            filled_at = tr.get("alpaca_filled_at")
-
-            if alpaca_ord:
-                stat_val = (
-                    alpaca_ord.status.value if hasattr(alpaca_ord.status, "value") else str(alpaca_ord.status).lower()
-                )
-                if stat_val == "filled":
-                    order_status = "FILLED"
-                    fill_price = (
-                        float(alpaca_ord.filled_avg_price) if alpaca_ord.filled_avg_price is not None else sim_price
-                    )
-                    filled_at = getattr(alpaca_ord, "filled_at", filled_at)
-                elif "cancel" in stat_val:
-                    order_status = "CANCELED"
-                elif "reject" in stat_val:
-                    order_status = "REJECTED"
-                elif "expired" in stat_val:
-                    order_status = "EXPIRED"
+            order_status, fill_price, filled_at = self._resolve_alpaca_order_status(
+                alpaca_ord, sb_status, sim_price, tr.get("alpaca_filled_at")
+            )
 
             if order_status == "FILLED":
                 filled_count += 1
                 effective_price = fill_price if fill_price is not None else sim_price
-
-                # Slippage = Actual Alpaca cost vs Sim cost
                 if signal == "BUY":
                     slippage_usd = (effective_price - sim_price) * qty
                     alpaca_reconstructed_cash -= effective_price * qty
                     alpaca_positions_map[ticker]["quantity"] += qty
                     alpaca_positions_map[ticker]["total_cost"] += effective_price * qty
-                else:  # SELL
+                else:
                     slippage_usd = (sim_price - effective_price) * qty
                     alpaca_reconstructed_cash += effective_price * qty
                     alpaca_positions_map[ticker]["quantity"] -= qty
@@ -216,36 +183,49 @@ class AlpacaAuditReconciler:
                 }
             )
 
-        # 7. Reconcile Positions & Mark-to-Market
+        return (
+            matched_trades,
+            total_slippage_usd,
+            filled_count,
+            skipped_or_failed_count,
+            anomalies,
+            alpaca_reconstructed_cash,
+            alpaca_positions_map,
+        )
+
+    async def _resolve_position_price(self, ticker: str, sb_pos: dict | None) -> float:
+        """Fetch live price for ticker, falling back to average_cost_basis."""
+        try:
+            quote = await self._mdm.get_quote(ticker)
+            if quote and hasattr(quote, "price") and quote.price:
+                return float(quote.price)
+            if sb_pos and sb_pos.get("average_cost_basis"):
+                return float(sb_pos["average_cost_basis"])
+        except Exception as e:
+            logger.warning(f"[AlpacaAudit] Could not fetch price for {ticker}: {e}")
+            if sb_pos:
+                return float(sb_pos.get("average_cost_basis", 0.0))
+        return 0.0
+
+    async def _reconcile_positions(
+        self, supabase_positions: list[dict], alpaca_positions_map: dict, anomalies: list[dict]
+    ) -> tuple[list[dict], float]:
+        """Reconcile Supabase positions with reconstructed Alpaca positions and mark-to-market."""
         all_tickers = set(alpaca_positions_map.keys()) | {p["ticker"] for p in supabase_positions}
         positions_reconciliation = []
         alpaca_holdings_val = 0.0
-        supabase_holdings_val = 0.0
 
         for ticker in sorted(all_tickers):
             sb_pos = next((p for p in supabase_positions if p["ticker"] == ticker), None)
             sb_qty = int(sb_pos["quantity"]) if sb_pos else 0
             alpaca_qty = alpaca_positions_map[ticker]["quantity"]
 
-            # Skip fully closed positions in both systems
             if sb_qty == 0 and alpaca_qty == 0:
                 continue
 
-            price = 0.0
-            try:
-                quote = await self._mdm.get_quote(ticker)
-                if quote and hasattr(quote, "price") and quote.price:
-                    price = float(quote.price)
-                elif sb_pos and sb_pos.get("average_cost_basis"):
-                    price = float(sb_pos["average_cost_basis"])
-            except Exception as e:
-                logger.warning(f"[AlpacaAudit] Could not fetch price for {ticker}: {e}")
-                if sb_pos:
-                    price = float(sb_pos.get("average_cost_basis", 0.0))
-
+            price = await self._resolve_position_price(ticker, sb_pos)
             sb_val = sb_qty * price
             alp_val = alpaca_qty * price
-            supabase_holdings_val += sb_val
             alpaca_holdings_val += alp_val
 
             delta_qty = alpaca_qty - sb_qty
@@ -273,10 +253,69 @@ class AlpacaAuditReconciler:
                 }
             )
 
+        return positions_reconciliation, alpaca_holdings_val
+
+    async def audit_model_portfolio(self, model_name: str, days: int = 7) -> dict:
+        """Run a full reconciliation audit for a specific model."""
+        # 1. Fetch Portfolio
+        res_p = self.supabase.table("portfolios").select("*").eq("owner_id", model_name).single().execute()
+        portfolio = res_p.data
+        if not portfolio:
+            raise ValueError(f"Portfolio for model '{model_name}' not found in Supabase.")
+
+        portfolio_id = portfolio["id"]
+        supabase_equity = float(portfolio.get("total_equity", 10000.0))
+        supabase_cash = float(portfolio.get("cash_balance", 10000.0))
+
+        # 2. Fetch Supabase Positions
+        res_pos = self.supabase.table("portfolio_positions").select("*").eq("portfolio_id", portfolio_id).execute()
+        supabase_positions = res_pos.data or []
+
+        # 3. Fetch Portfolio Performance History (last N days)
+        cutoff_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+        res_perf = (
+            self.supabase.table("portfolio_performance")
+            .select("*")
+            .eq("portfolio_id", portfolio_id)
+            .order("date", desc=False)
+            .execute()
+        )
+        chart_start_equity, chart_end_equity, chart_pct_change = self._calculate_chart_performance(
+            res_perf.data or [], cutoff_date, supabase_equity
+        )
+
+        # 4. Fetch Supabase Trades
+        res_trades = (
+            self.supabase.table("trades")
+            .select("*")
+            .eq("portfolio_id", portfolio_id)
+            .order("executed_at", desc=False)
+            .execute()
+        )
+        supabase_trades = res_trades.data or []
+
+        # 5. Fetch Alpaca Orders
+        alpaca_orders_by_id, alpaca_orders_by_trade_id = self._fetch_alpaca_order_maps(model_name)
+
+        # 6. Reconcile Trades & Calculate Slippage
+        (
+            matched_trades,
+            total_slippage_usd,
+            filled_count,
+            skipped_or_failed_count,
+            anomalies,
+            alpaca_reconstructed_cash,
+            alpaca_positions_map,
+        ) = self._reconcile_trades(supabase_trades, alpaca_orders_by_id, alpaca_orders_by_trade_id)
+
+        # 7. Reconcile Positions & Mark-to-Market
+        positions_reconciliation, alpaca_holdings_val = await self._reconcile_positions(
+            supabase_positions, alpaca_positions_map, anomalies
+        )
+
         alpaca_reconstructed_equity = alpaca_reconstructed_cash + alpaca_holdings_val
         equity_delta = alpaca_reconstructed_equity - supabase_equity
         equity_delta_pct = (equity_delta / supabase_equity) * 100 if supabase_equity > 0 else 0.0
-
         avg_slippage = (total_slippage_usd / filled_count) if filled_count > 0 else 0.0
 
         return {

@@ -93,6 +93,242 @@ class PromptResearchResult(BaseModel):
     )
 
 
+async def _build_research_context(report: str, cold_start: bool, track_id: str) -> tuple[str, str]:
+    try:
+        from autoresearch.tools import query_trade_postmortems
+
+        db_context = await query_trade_postmortems(track_id=track_id, limit=20)
+        if db_context:
+            report += f"\n\n{db_context}"
+    except Exception as e:
+        logger.warning("Failed to pre-query DB trade postmortems for autoresearcher: %s", e)
+
+    system_program = _load_research_program()
+    try:
+        from autoresearch.meta_autoresearch import get_active_meta_directives_sync
+
+        meta_directives = get_active_meta_directives_sync()
+        if meta_directives:
+            system_program += f"\n\n=== MONTHLY META-AUTORESEARCH DIRECTIVES ===\n{meta_directives}"
+    except Exception:
+        logger.exception("Failed to load monthly meta-autoresearch directives in run_research.")
+
+    if cold_start:
+        system_program += (
+            "\n\n=== COLD START RESET ===\n"
+            "This cycle is a COLD START RESET (1-in-6 stochastic exploration to avoid local optima).\n"
+            "DO NOT anchor on or adapt the prior system prompt strategy.\n"
+            "Generate a novel, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch using the multi-week performance context and trade postmortems.\n"
+            "Remember that engine constraints, pricing rules, and the JSON output schema are FROZEN and managed automatically by the engine.\n"
+            "Output ONLY the new strategy and analysis section in new_prompt_text."
+        )
+
+    if track_id == "track_claude":
+        system_program += (
+            "\n\n=== TRACK NOTE: SKEPTICAL VERIFIER ACTIVE ===\n"
+            "This portfolio track (track_claude) runs under a skeptical second-step Verifier. "
+            "You have access to the tool 'inspect_verifier_rules_and_rejections'. "
+            "You may optionally call this tool to inspect the Verifier's 5 skeptical SOP checks, "
+            "intrinsic valuation rules, and recent verifier-rejected trades before proposing prompt updates."
+        )
+
+    return system_program, report
+
+
+async def _run_track_claude_tool_loop(
+    client, model_name: str, provider: str, messages: list[dict], track_id: str
+) -> list[dict]:
+    from core.llm import tools
+
+    override_tools = [tools.INSPECT_VERIFIER_RULES_TOOL]
+    max_tool_steps = 3
+
+    try:
+        if provider == "openai":
+            from core.llm.handlers.openai import run_tool_loop
+
+            await run_tool_loop(
+                client.client,
+                model_name,
+                messages,
+                provider=provider,
+                max_tool_steps=max_tool_steps,
+                override_tools=override_tools,
+                enable_web_search=False,
+            )
+        elif provider == "deepseek":
+            from core.llm.handlers.deepseek import run_tool_loop
+
+            await run_tool_loop(
+                client.client,
+                model_name,
+                messages,
+                provider=provider,
+                max_tool_steps=max_tool_steps,
+                override_tools=override_tools,
+                enable_web_search=False,
+            )
+        elif provider == "anthropic":
+            from core.llm.handlers.anthropic import run_tool_loop
+
+            await run_tool_loop(
+                client.client,
+                model_name,
+                messages,
+                max_tool_steps=max_tool_steps,
+                override_tools=override_tools,
+                thinking_budget=4096,
+            )
+        elif provider == "gemini":
+            from core.llm.handlers.gemini import run_tool_loop
+
+            await run_tool_loop(
+                client.client,
+                model_name,
+                messages,
+                max_tool_steps=max_tool_steps,
+                override_tools=override_tools,
+            )
+    except Exception as e:
+        logger.warning("Tool execution loop failed in autoresearcher for %s: %s", track_id, e)
+
+    if provider == "deepseek":
+        from core.llm.handlers import deepseek as deepseek_handler
+
+        messages = deepseek_handler.prepare_messages_for_instructor(messages)
+
+    return messages
+
+
+def _build_instructor_create_args(model_name: str, provider: str, messages: list[dict]) -> dict:
+    create_args = {
+        "model": model_name,
+        "response_model": PromptResearchResult,
+        "messages": messages,
+        "max_tokens": 64000,
+        "max_retries": 2,
+    }
+    if provider == "openai":
+        create_args["reasoning_effort"] = "none"
+    if provider == "deepseek" or "deepseek" in model_name.lower():
+        create_args["extra_body"] = {"thinking": {"type": "enabled"}}
+    if provider == "anthropic":
+        from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
+        create_args["cache_control"] = {"type": "ephemeral"}
+        create_args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=4096, effort="high"))
+    if provider == "gemini":
+        from google.genai import types
+
+        if hasattr(types, "ThinkingConfig"):
+            create_args["thinking_config"] = types.ThinkingConfig(thinking_level="high")
+    return create_args
+
+
+async def _execute_instructor_attempts(
+    client,
+    create_args: dict,
+    messages: list[dict],
+    baseline_prompt: str | None,
+    provider: str,
+    model_name: str,
+) -> PromptResearchResult | None:
+    wrapper = None
+    last_error = None
+    instructor_messages = list(messages)
+
+    for attempt in range(3):
+        try:
+            resp_awaitable = client.chat.completions.create(**create_args)
+            if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                wrapper = await resp_awaitable
+            else:
+                wrapper = resp_awaitable
+
+            if wrapper is not None:
+                if baseline_prompt and wrapper.new_prompt_text.strip() == baseline_prompt.strip():
+                    logger.warning(
+                        "[%s/%s] Auto-research proposed prompt identical to baseline (attempt %d/3). Retrying...",
+                        provider,
+                        model_name,
+                        attempt + 1,
+                    )
+                    instructor_messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Your proposed new_prompt_text is 100% identical to the Baseline Prompt. "
+                                "You MUST propose a NEW modification or refined strategy built on top of the baseline, "
+                                "or a RADICAL alternative. Do NOT return identical text to the baseline."
+                            ),
+                        }
+                    )
+                    create_args["messages"] = copy.deepcopy(instructor_messages)
+                    wrapper = None
+                    continue
+
+                break
+
+            logger.warning(
+                "[%s/%s] Auto-research empty response (attempt %d/3). Retrying...",
+                provider,
+                model_name,
+                attempt + 1,
+            )
+            instructor_messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        "Your response was empty. You MUST output a valid JSON object with "
+                        "new_prompt_text, change_description, experiment_type, research_reasoning, "
+                        "and confidence fields. No other text."
+                    ),
+                }
+            )
+            create_args["messages"] = copy.deepcopy(instructor_messages)
+        except Exception as e:
+            last_error = e
+            error_str = str(e).lower()
+            if "validation error" in error_str or "input should be a valid" in error_str:
+                logger.warning(
+                    "[%s/%s] Auto-research validation error (attempt %d/3): %s",
+                    provider,
+                    model_name,
+                    attempt + 1,
+                    str(e)[:200],
+                )
+                instructor_messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your response must be valid JSON matching the schema exactly. "
+                            "Ensure new_prompt_text is the complete prompt, experiment_type is "
+                            "'incremental' or 'radical', and confidence is 0-100."
+                        ),
+                    }
+                )
+                create_args["messages"] = copy.deepcopy(instructor_messages)
+            else:
+                logger.error(
+                    "[%s/%s] Auto-research non-retryable error: %s",
+                    provider,
+                    model_name,
+                    str(e),
+                )
+                raise
+
+    if wrapper is None:
+        logger.error(
+            "[%s/%s] All auto-research attempts failed. Last error: %s",
+            provider,
+            model_name,
+            last_error or "empty response or duplicate baseline",
+        )
+        return None
+
+    return wrapper
+
+
 async def run_research(
     report: str,
     current_prompt: str | None = None,
@@ -118,46 +354,7 @@ async def run_research(
         model_name = AUTORESEARCH_TRACK_MODELS.get(track_id, AUTORESEARCH_MODEL)
 
     client, provider = _get_client_and_provider_for_model(model_name)
-
-    # Perform DB search pre-query to enrich autoresearcher context with empirical trade postmortems
-    try:
-        from autoresearch.tools import query_trade_postmortems
-
-        db_context = await query_trade_postmortems(track_id=track_id, limit=20)
-        if db_context:
-            report += f"\n\n{db_context}"
-    except Exception as e:
-        logger.warning("Failed to pre-query DB trade postmortems for autoresearcher: %s", e)
-
-    system_program = _load_research_program()
-    try:
-        from autoresearch.meta_autoresearch import get_active_meta_directives_sync
-
-        meta_directives = get_active_meta_directives_sync()
-        if meta_directives:
-            system_program += f"\n\n=== MONTHLY META-AUTORESEARCH DIRECTIVES ===\n{meta_directives}"
-    except Exception:
-        logger.exception("Failed to load monthly meta-autoresearch directives in run_research.")
-    user_content = report
-
-    if cold_start:
-        system_program += (
-            "\n\n=== COLD START RESET ===\n"
-            "This cycle is a COLD START RESET (1-in-6 stochastic exploration to avoid local optima).\n"
-            "DO NOT anchor on or adapt the prior system prompt strategy.\n"
-            "Generate a novel, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch using the multi-week performance context and trade postmortems.\n"
-            "Remember that engine constraints, pricing rules, and the JSON output schema are FROZEN and managed automatically by the engine.\n"
-            "Output ONLY the new strategy and analysis section in new_prompt_text."
-        )
-
-    if track_id == "track_claude":
-        system_program += (
-            "\n\n=== TRACK NOTE: SKEPTICAL VERIFIER ACTIVE ===\n"
-            "This portfolio track (track_claude) runs under a skeptical second-step Verifier. "
-            "You have access to the tool 'inspect_verifier_rules_and_rejections'. "
-            "You may optionally call this tool to inspect the Verifier's 5 skeptical SOP checks, "
-            "intrinsic valuation rules, and recent verifier-rejected trades before proposing prompt updates."
-        )
+    system_program, user_content = await _build_research_context(report, cold_start, track_id)
 
     try:
         messages = [
@@ -166,185 +363,17 @@ async def run_research(
         ]
 
         if track_id == "track_claude":
-            from core.llm import tools
+            messages = await _run_track_claude_tool_loop(client, model_name, provider, messages, track_id)
 
-            override_tools = [tools.INSPECT_VERIFIER_RULES_TOOL]
-            max_tool_steps = 3
-
-            try:
-                if provider == "openai":
-                    from core.llm.handlers.openai import run_tool_loop
-
-                    await run_tool_loop(
-                        client.client,
-                        model_name,
-                        messages,
-                        provider=provider,
-                        max_tool_steps=max_tool_steps,
-                        override_tools=override_tools,
-                        enable_web_search=False,
-                    )
-                elif provider == "deepseek":
-                    from core.llm.handlers.deepseek import run_tool_loop
-
-                    await run_tool_loop(
-                        client.client,
-                        model_name,
-                        messages,
-                        provider=provider,
-                        max_tool_steps=max_tool_steps,
-                        override_tools=override_tools,
-                        enable_web_search=False,
-                    )
-                elif provider == "anthropic":
-                    from core.llm.handlers.anthropic import run_tool_loop
-
-                    await run_tool_loop(
-                        client.client,
-                        model_name,
-                        messages,
-                        max_tool_steps=max_tool_steps,
-                        override_tools=override_tools,
-                        thinking_budget=4096,
-                    )
-                elif provider == "gemini":
-                    from core.llm.handlers.gemini import run_tool_loop
-
-                    await run_tool_loop(
-                        client.client,
-                        model_name,
-                        messages,
-                        max_tool_steps=max_tool_steps,
-                        override_tools=override_tools,
-                    )
-            except Exception as e:
-                logger.warning("Tool execution loop failed in autoresearcher for %s: %s", track_id, e)
-
-            if provider == "deepseek":
-                from core.llm.handlers import deepseek as deepseek_handler
-
-                messages = deepseek_handler.prepare_messages_for_instructor(messages)
-
-        create_args = {
-            "model": model_name,
-            "response_model": PromptResearchResult,
-            "messages": messages,
-            "max_tokens": 64000,
-            "max_retries": 2,
-        }
-        if provider == "openai":
-            create_args["reasoning_effort"] = "none"
-        if provider == "deepseek" or "deepseek" in model_name.lower():
-            create_args["extra_body"] = {"thinking": {"type": "enabled"}}
-        if provider == "anthropic":
-            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
-
-            create_args["cache_control"] = {"type": "ephemeral"}
-            create_args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=4096, effort="high"))
-        if provider == "gemini":
-            from google.genai import types
-
-            if hasattr(types, "ThinkingConfig"):
-                create_args["thinking_config"] = types.ThinkingConfig(thinking_level="high")
-
-        wrapper = None
-        last_error = None
-        instructor_messages = list(messages)
-
-        for attempt in range(3):
-            try:
-                resp_awaitable = client.chat.completions.create(**create_args)
-                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-                    wrapper = await resp_awaitable
-                else:
-                    wrapper = resp_awaitable
-
-                if wrapper is not None:
-                    # Check if proposed prompt is identical to baseline
-                    if baseline_prompt and wrapper.new_prompt_text.strip() == baseline_prompt.strip():
-                        attempt_num = attempt + 1
-                        logger.warning(
-                            "[%s/%s] Auto-research proposed prompt identical to baseline (attempt %d/3). Retrying...",
-                            provider,
-                            model_name,
-                            attempt_num,
-                        )
-                        instructor_messages.append(
-                            {
-                                "role": "user",
-                                "content": (
-                                    "Your proposed new_prompt_text is 100% identical to the Baseline Prompt. "
-                                    "You MUST propose a NEW modification or refined strategy built on top of the baseline, "
-                                    "or a RADICAL alternative. Do NOT return identical text to the baseline."
-                                ),
-                            }
-                        )
-                        create_args["messages"] = copy.deepcopy(instructor_messages)
-                        wrapper = None
-                        continue
-
-                    break
-
-                attempt_num = attempt + 1
-                logger.warning(
-                    "[%s/%s] Auto-research empty response (attempt %d/3). Retrying...",
-                    provider,
-                    model_name,
-                    attempt_num,
-                )
-                instructor_messages.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            "Your response was empty. You MUST output a valid JSON object with "
-                            "new_prompt_text, change_description, experiment_type, research_reasoning, "
-                            "and confidence fields. No other text."
-                        ),
-                    }
-                )
-                create_args["messages"] = copy.deepcopy(instructor_messages)
-            except Exception as e:
-                last_error = e
-                attempt_num = attempt + 1
-                error_str = str(e).lower()
-                if "validation error" in error_str or "input should be a valid" in error_str:
-                    logger.warning(
-                        "[%s/%s] Auto-research validation error (attempt %d/3): %s",
-                        provider,
-                        model_name,
-                        attempt_num,
-                        str(e)[:200],
-                    )
-                    instructor_messages.append(
-                        {
-                            "role": "user",
-                            "content": (
-                                "Your response must be valid JSON matching the schema exactly. "
-                                "Ensure new_prompt_text is the complete prompt, experiment_type is "
-                                "'incremental' or 'radical', and confidence is 0-100."
-                            ),
-                        }
-                    )
-                    create_args["messages"] = copy.deepcopy(instructor_messages)
-                else:
-                    logger.error(
-                        "[%s/%s] Auto-research non-retryable error: %s",
-                        provider,
-                        model_name,
-                        str(e),
-                    )
-                    raise
-
-        if wrapper is None:
-            logger.error(
-                "[%s/%s] All auto-research attempts failed. Last error: %s",
-                provider,
-                model_name,
-                last_error or "empty response or duplicate baseline",
-            )
-            return None
-
-        return wrapper
+        create_args = _build_instructor_create_args(model_name, provider, messages)
+        return await _execute_instructor_attempts(
+            client=client,
+            create_args=create_args,
+            messages=messages,
+            baseline_prompt=baseline_prompt,
+            provider=provider,
+            model_name=model_name,
+        )
 
     except Exception as e:
         logger.error("Auto-research failed: %s", e)

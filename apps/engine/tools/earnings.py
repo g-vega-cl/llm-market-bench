@@ -1,20 +1,15 @@
 """Earnings and company peer analysis tools: earnings history, revisions, sector alternatives, and PEAD."""
 
+from typing import Any
+
 from core.config import logger
 from tools._compat import MarketDataManager, get_embedding, get_supabase_client
 
 
-async def execute_sector_alternatives_tool(ticker: str) -> str:
-    """Identifies sector alternatives for a ticker using FMP industry screener, correlation matrix, and decision history."""
-    client = get_supabase_client()
-    ticker = ticker.upper()
-
+async def _fetch_industry_competitors(
+    ticker: str, manager: MarketDataManager
+) -> tuple[str | None, str | None, list[str]]:
     industry_competitors = []
-    correlated_plays = []
-    historical_plays = []
-
-    # 1. Fetch Company Profile & Screen Stocks from FMP
-    manager = MarketDataManager()
     sector = None
     industry = None
     try:
@@ -37,56 +32,67 @@ async def execute_sector_alternatives_tool(ticker: str) -> str:
                         industry_competitors.append(f"{sym} ({name}) - Price: ${price:.2f}, Market Cap: {mcap_str}")
     except Exception as e:
         logger.warning(f"Error fetching company profile/screening for sector alternatives: {e}")
+    return sector, industry, industry_competitors
 
-    # 2. Fetch Statistical Correlations from Database
+
+def _fetch_correlated_plays(ticker: str, client: Any) -> list[str]:
+    correlated_plays = []
     try:
         runs = client.table("correlation_runs").select("id").order("run_date", desc=True).limit(1).execute()
-        if runs.data:
-            run_id = runs.data[0]["id"]
-            res_a = client.table("correlation_data").select("*").eq("run_id", run_id).eq("ticker_a", ticker).execute()
-            res_b = client.table("correlation_data").select("*").eq("run_id", run_id).eq("ticker_b", ticker).execute()
+        if not runs.data:
+            return correlated_plays
+        run_id = runs.data[0]["id"]
+        res_a = client.table("correlation_data").select("*").eq("run_id", run_id).eq("ticker_a", ticker).execute()
+        res_b = client.table("correlation_data").select("*").eq("run_id", run_id).eq("ticker_b", ticker).execute()
 
-            corr_rows = (res_a.data or []) + (res_b.data or [])
+        filtered_corrs = []
+        for row in (res_a.data or []) + (res_b.data or []):
+            corr = row.get("pearson_corr")
+            if corr is not None and corr >= 0.40:
+                other_ticker = row.get("ticker_b") if row.get("ticker_a") == ticker else row.get("ticker_a")
+                ret_other = row.get("returns_b_90d") if row.get("ticker_a") == ticker else row.get("returns_a_90d")
+                ret_other_val = f"{ret_other:.2f}%" if ret_other is not None else "N/A"
+                filtered_corrs.append({"ticker": other_ticker, "corr": corr, "ret": ret_other_val})
 
-            filtered_corrs = []
-            for row in corr_rows:
-                corr = row.get("pearson_corr")
-                if corr is not None and corr >= 0.40:
-                    other_ticker = row.get("ticker_b") if row.get("ticker_a") == ticker else row.get("ticker_a")
-                    ret_other = row.get("returns_b_90d") if row.get("ticker_a") == ticker else row.get("returns_a_90d")
-                    ret_other_val = f"{ret_other:.2f}%" if ret_other is not None else "N/A"
-                    filtered_corrs.append({"ticker": other_ticker, "corr": corr, "ret": ret_other_val})
-
-            filtered_corrs.sort(key=lambda x: x["corr"], reverse=True)
-            for c in filtered_corrs[:5]:
-                correlated_plays.append(f"{c['ticker']} (Correlation: {c['corr']:.4f} | 90d Return: {c['ret']})")
+        filtered_corrs.sort(key=lambda x: x["corr"], reverse=True)
+        for c in filtered_corrs[:5]:
+            correlated_plays.append(f"{c['ticker']} (Correlation: {c['corr']:.4f} | 90d Return: {c['ret']})")
     except Exception as e:
         logger.warning(f"Error fetching correlation data for sector alternatives: {e}")
+    return correlated_plays
 
-    # 3. Vector Search on Past Decisions
+
+def _fetch_historical_plays(ticker: str, client: Any) -> list[str]:
+    historical_plays = []
     try:
         query_text = f"Market analysis and trading decision for {ticker} stock in this sector"
         embedding = get_embedding(query_text)
         if embedding:
             res = client.rpc(
                 "match_decisions",
-                {
-                    "query_embedding": embedding,
-                    "match_threshold": 0.5,
-                    "match_count": 10,
-                },
+                {"query_embedding": embedding, "match_threshold": 0.5, "match_count": 10},
             ).execute()
             if res.data:
-                related_tickers_set = set()
-                for item in res.data:
-                    t = item.get("ticker")
-                    if t and t != ticker:
-                        related_tickers_set.add(t)
+                related_tickers_set = {
+                    item.get("ticker") for item in res.data if item.get("ticker") and item.get("ticker") != ticker
+                }
                 historical_plays = list(related_tickers_set)[:5]
     except Exception as e:
         logger.warning(f"Error fetching decision history vector search: {e}")
+    return historical_plays
 
-    # Aggregating results
+
+async def execute_sector_alternatives_tool(ticker: str) -> str:
+    """Identifies sector alternatives for a ticker using FMP industry screener, correlation matrix, and decision history."""
+
+    client = get_supabase_client()
+    ticker = ticker.upper()
+    manager = MarketDataManager()
+
+    sector, industry, industry_competitors = await _fetch_industry_competitors(ticker, manager)
+    correlated_plays = _fetch_correlated_plays(ticker, client)
+    historical_plays = _fetch_historical_plays(ticker, client)
+
     output = f"Sector Alternatives & Related Plays for {ticker}:\n\n"
     has_results = False
 
@@ -109,8 +115,7 @@ async def execute_sector_alternatives_tool(ticker: str) -> str:
 
     if historical_plays:
         output += "3. Historical Related Plays (From past agent decisions):\n"
-        output += f"   - {', '.join(historical_plays)}\n"
-        output += "\n"
+        output += f"   - {', '.join(historical_plays)}\n\n"
         has_results = True
 
     if not has_results:

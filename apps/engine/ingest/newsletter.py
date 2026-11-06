@@ -490,18 +490,106 @@ async def _fetch_raw_message(
     return None, sender
 
 
+async def _fetch_gmail_oauth_raw(
+    service: Any,
+    newer_than_days: int,
+) -> tuple[list[tuple[NewsletterSnapshot, str]], set[str]]:
+    sender_filter = " OR ".join(NEWSLETTER_SENDERS)
+    query = f"from:({sender_filter}) newer_than:{newer_than_days}d"
+    logger.info(f"Fetching newsletters with query: {query}")
+
+    max_query_attempts = 3
+    messages = []
+    for attempt in range(1, max_query_attempts + 1):
+        try:
+            results = await asyncio.to_thread(
+                service.users().messages().list(userId="me", q=query, maxResults=20).execute
+            )
+            messages = results.get("messages", [])
+            break
+        except Exception as error:
+            if attempt < max_query_attempts:
+                wait_seconds = attempt * 1.5
+                logger.warning(
+                    f"Attempt {attempt}/{max_query_attempts} failed querying Gmail messages: {error}. Retrying in {wait_seconds}s..."
+                )
+                await asyncio.sleep(wait_seconds)
+            else:
+                logger.error(f"An error occurred fetching from Gmail after {max_query_attempts} attempts: {error}")
+                return [], set()
+
+    if not messages:
+        logger.info(
+            f"No messages found matching query. Senders checked: {len(NEWSLETTER_SENDERS)}, Time window: {newer_than_days} day(s)."
+        )
+        return [], set()
+
+    logger.info(f"Found {len(messages)} messages. Starting processing...")
+    lock = asyncio.Lock()
+    fetch_tasks = [_fetch_raw_message(service, msg_ref, lock=lock) for msg_ref in messages]
+    fetch_results = await asyncio.gather(*fetch_tasks)
+
+    attempted_senders = set()
+    raw_results = []
+    for raw_snapshot, sender in fetch_results:
+        if sender:
+            attempted_senders.add(sender)
+        if raw_snapshot:
+            raw_results.append((raw_snapshot, sender))
+    return raw_results, attempted_senders
+
+
+async def _clean_and_assemble_snapshots(
+    raw_results: list[tuple[NewsletterSnapshot, str]],
+) -> tuple[list[dict[str, Any]], set[str]]:
+    snapshots = []
+    pure_ad_senders = set()
+    if not raw_results:
+        return snapshots, pure_ad_senders
+
+    cleaning_tasks = [clean_newsletter_content(snapshot.content) for snapshot, _ in raw_results]
+    cleaned_bodies = await asyncio.gather(*cleaning_tasks, return_exceptions=True)
+
+    for (raw_snapshot, sender), cleaned_body in zip(raw_results, cleaned_bodies, strict=True):
+        if isinstance(cleaned_body, Exception):
+            logger.error("Cleaning failed for %s: %s. Using raw body.", sender, cleaned_body)
+            cleaned_body = raw_snapshot.content
+
+        if getattr(cleaned_body, "is_pure_ad", False) or not str(cleaned_body).strip():
+            logger.info("Filtered out pure promotional or empty email from %s: '%s'", sender, raw_snapshot.subject)
+            if sender:
+                pure_ad_senders.add(sender)
+            continue
+
+        raw_snapshot.content = str(cleaned_body)
+        raw_snapshot.chunk_hash = generate_chunk_hash(raw_snapshot.content)
+        snapshots.append(asdict(raw_snapshot))
+    return snapshots, pure_ad_senders
+
+
+def _log_fragility_and_stats(
+    snapshots: list[dict[str, Any]],
+    attempted_senders: set[str],
+    pure_ad_senders: set[str],
+) -> None:
+    sender_counts = Counter(s["sender"] for s in snapshots)
+    for attempted_sender in attempted_senders:
+        found = any(attempted_sender.lower() in s["sender"].lower() for s in snapshots)
+        if not found and attempted_sender not in pure_ad_senders:
+            logger.warning(
+                f"SEMANTIC FRAGILITY ALERT: Found message(s) from '{attempted_sender}' "
+                f"but yielded 0 valid snapshots. Check if the newsletter template has changed!"
+            )
+
+    if snapshots:
+        stats = ", ".join([f"{count} from {sender}" for sender, count in sender_counts.items()])
+        logger.info(f"Successfully ingested {len(snapshots)} newsletters: {stats}")
+    else:
+        logger.info("No messages were successfully processed into snapshots.")
+
+
 async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
-    """Fetch and process newsletters from Gmail.
-
-    Prefers IMAP via GMAIL_APP_PASSWORD and GMAIL_EMAIL when set.
-    Falls back to Google OAuth REST API if GMAIL_TOKEN_JSON is provided.
-
-    Args:
-        newer_than_days: Only fetch emails from the last N days.
-
-    Returns:
-        List of newsletter snapshots as dictionaries.
-    """
+    """Fetch and process newsletters from Gmail."""
     raw_results: list[tuple[NewsletterSnapshot, str]] = []
     attempted_senders: set[str] = set()
 
@@ -518,103 +606,13 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
         service = get_gmail_service()
         if not service:
             return []
-
-        sender_filter = " OR ".join(NEWSLETTER_SENDERS)
-        query = f"from:({sender_filter}) newer_than:{newer_than_days}d"
-        logger.info(f"Fetching newsletters with query: {query}")
-
-        max_query_attempts = 3
-        messages = []
-        for attempt in range(1, max_query_attempts + 1):
-            try:
-                results = await asyncio.to_thread(
-                    service.users().messages().list(userId="me", q=query, maxResults=20).execute
-                )
-                messages = results.get("messages", [])
-                break
-            except Exception as error:
-                if attempt < max_query_attempts:
-                    wait_seconds = attempt * 1.5
-                    logger.warning(
-                        f"Attempt {attempt}/{max_query_attempts} failed querying Gmail messages: {error}. "
-                        f"Retrying in {wait_seconds}s..."
-                    )
-                    await asyncio.sleep(wait_seconds)
-                else:
-                    logger.error(f"An error occurred fetching from Gmail after {max_query_attempts} attempts: {error}")
-                    return []
-
-        if not messages:
-            logger.info(
-                f"No messages found matching query. "
-                f"Senders checked: {len(NEWSLETTER_SENDERS)}, "
-                f"Time window: {newer_than_days} day(s)."
-            )
+        raw_results, attempted_senders = await _fetch_gmail_oauth_raw(service, newer_than_days)
+        if not raw_results and not attempted_senders:
             return []
 
-        logger.info(f"Found {len(messages)} messages. Starting processing...")
-
-        # Phase 1: Fetch all raw message bodies (Gmail API calls locked to protect thread-unsafe service)
-        lock = asyncio.Lock()
-        fetch_tasks = [_fetch_raw_message(service, msg_ref, lock=lock) for msg_ref in messages]
-        fetch_results = await asyncio.gather(*fetch_tasks)
-
-        for raw_snapshot, sender in fetch_results:
-            if sender:
-                attempted_senders.add(sender)
-            if raw_snapshot:
-                raw_results.append((raw_snapshot, sender))
-
     try:
-        # Phase 2: Clean all bodies in parallel via LLM
-        snapshots = []
-        pure_ad_senders = set()
-        if raw_results:
-            cleaning_tasks = [clean_newsletter_content(snapshot.content) for snapshot, _ in raw_results]
-            cleaned_bodies = await asyncio.gather(*cleaning_tasks, return_exceptions=True)
-
-            # Phase 3: Assemble cleaned snapshots
-            for (raw_snapshot, sender), cleaned_body in zip(raw_results, cleaned_bodies, strict=True):
-                if isinstance(cleaned_body, Exception):
-                    logger.error("Cleaning failed for %s: %s. Using raw body.", sender, cleaned_body)
-                    cleaned_body = raw_snapshot.content
-
-                # Filter out pure marketing/promotional emails and empty bodies
-                if getattr(cleaned_body, "is_pure_ad", False) or not str(cleaned_body).strip():
-                    logger.info(
-                        "Filtered out pure promotional or empty email from %s: '%s'",
-                        sender,
-                        raw_snapshot.subject,
-                    )
-                    if sender:
-                        pure_ad_senders.add(sender)
-                    continue
-
-                raw_snapshot.content = str(cleaned_body)
-                raw_snapshot.chunk_hash = generate_chunk_hash(raw_snapshot.content)
-                snapshots.append(asdict(raw_snapshot))
-
-        # Summarize results by sender
-        sender_counts = Counter(s["sender"] for s in snapshots)
-
-        # --- Semantic Fragility Monitoring ---
-        # Detect if any sender found in today's messages failed to produce a snapshot
-        # This indicates a template change or parsing error.
-        for attempted_sender in attempted_senders:
-            # Check if this attempted sender resulted in any snapshot or pure ad
-            found = any(attempted_sender.lower() in s["sender"].lower() for s in snapshots)
-            if not found and attempted_sender not in pure_ad_senders:
-                logger.warning(
-                    f"SEMANTIC FRAGILITY ALERT: Found message(s) from '{attempted_sender}' "
-                    f"but yielded 0 valid snapshots. Check if the newsletter template has changed!"
-                )
-
-        if snapshots:
-            stats = ", ".join([f"{count} from {sender}" for sender, count in sender_counts.items()])
-            logger.info(f"Successfully ingested {len(snapshots)} newsletters: {stats}")
-        else:
-            logger.info("No messages were successfully processed into snapshots.")
-
+        snapshots, pure_ad_senders = await _clean_and_assemble_snapshots(raw_results)
+        _log_fragility_and_stats(snapshots, attempted_senders, pure_ad_senders)
         return snapshots
     except HttpError as error:
         logger.error(f"An error occurred fetching from Gmail: {error}")

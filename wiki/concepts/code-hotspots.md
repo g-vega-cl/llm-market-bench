@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **227**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **228**).
 
 ## Top Hotspots
 
@@ -13,7 +13,7 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/engine/tasks/daily_predictor.py` | 20 | 5 | 25.0% | 693 | 100 | **CRITICAL** |
+| `apps/engine/tasks/daily_predictor.py` | 20 | 5 | 25.0% | 661 | 100 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 17 | 5 | 29.4% | 245 | 85 | **HIGH** |
 | `apps/web/src/routes/__root.tsx` | 11 | 6 | 54.5% | 239 | 66 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 16 | 3 | 18.8% | 379 | 48 | **HIGH** |
@@ -27,7 +27,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 10 | 3 | 30.0% | 868 | 30 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 10 | 3 | 30.0% | 385 | 30 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.ts` | 7 | 4 | 57.1% | 460 | 28 | **MEDIUM** |
-| `apps/engine/tasks/daily_autoresearch.py` | 13 | 2 | 15.4% | 750 | 26 | **MEDIUM** |
+| `apps/engine/tests/test_verify_skill.py` | 9 | 3 | 33.3% | 119 | 27 | **MEDIUM** |
 
 ## Temporal Coupling (Co-churn)
 

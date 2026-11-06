@@ -97,6 +97,110 @@ def classify_market_regime(
     }
 
 
+def _simulate_single_barrier_path(
+    i: int,
+    horizon_bars: int,
+    closes: list[float],
+    highs: list[float],
+    lows: list[float],
+    upper_multiplier: float,
+    lower_multiplier: float,
+) -> tuple[str | None, int, float]:
+    """Evaluate a single forward path against upper, lower, and vertical barriers."""
+    entry_price = closes[i]
+    upper_barrier = entry_price * upper_multiplier
+    lower_barrier = entry_price * lower_multiplier
+
+    for step in range(1, horizon_bars + 1):
+        bar_idx = i + step
+        hit_upper = highs[bar_idx] >= upper_barrier
+        hit_lower = lows[bar_idx] <= lower_barrier
+
+        if hit_upper and hit_lower:
+            return "LOWER", step, 0.0
+        if hit_upper:
+            return "UPPER", step, 0.0
+        if hit_lower:
+            return "LOWER", step, 0.0
+
+    exit_price = closes[i + horizon_bars]
+    ret = ((exit_price - entry_price) / entry_price) * 100.0
+    return None, horizon_bars, ret
+
+
+def _run_barrier_simulation(
+    eval_limit: int,
+    horizon_bars: int,
+    closes: list[float],
+    highs: list[float],
+    lows: list[float],
+    smas: list[float | None],
+    atr_pcts: list[float],
+    current_atr_pct: float,
+    target_trend: str | None,
+    upper_multiplier: float,
+    lower_multiplier: float,
+) -> tuple[int, int, int, int, list[int], list[int], list[float]]:
+    """Run barrier simulation across historical bars, optionally filtering by trend regime."""
+    sample_count = 0
+    upper_hit_count = 0
+    lower_hit_count = 0
+    vertical_exit_count = 0
+    bars_to_upper: list[int] = []
+    bars_to_lower: list[int] = []
+    vertical_returns: list[float] = []
+
+    for i in range(20, eval_limit):
+        if target_trend is not None:
+            hist_atr_pct = atr_pcts[i] if i < len(atr_pcts) else current_atr_pct
+            hist_regime = classify_market_regime(
+                current_close=closes[i],
+                current_sma=smas[i],
+                prev_sma=smas[i - 1] if i > 0 else smas[i],
+                current_atr_pct=hist_atr_pct,
+                historical_atr_pcts=atr_pcts[: i + 1],
+            )
+            if hist_regime["trend"] != target_trend:
+                continue
+
+        sample_count += 1
+        barrier_hit, step, ret = _simulate_single_barrier_path(
+            i, horizon_bars, closes, highs, lows, upper_multiplier, lower_multiplier
+        )
+        if barrier_hit == "UPPER":
+            upper_hit_count += 1
+            bars_to_upper.append(step)
+        elif barrier_hit == "LOWER":
+            lower_hit_count += 1
+            bars_to_lower.append(step)
+        else:
+            vertical_exit_count += 1
+            vertical_returns.append(ret)
+
+    return (
+        sample_count,
+        upper_hit_count,
+        lower_hit_count,
+        vertical_exit_count,
+        bars_to_upper,
+        bars_to_lower,
+        vertical_returns,
+    )
+
+
+def _classify_barrier_verdict(
+    expected_value_pct: float, upper_pct: float, lower_pct: float, vertical_pct: float
+) -> str:
+    """Determine statistical strategy verdict from barrier simulation metrics."""
+    if expected_value_pct > 0.25 and upper_pct >= 48.0:
+        return "FAVORABLE_LONG"
+    if expected_value_pct < -0.25 and lower_pct >= 48.0:
+        return "FAVORABLE_SHORT"
+    if vertical_pct >= 50.0:
+        return "RANGE_BOUND_NO_TOUCH"
+    return "UNFAVORABLE_ASYMMETRY"
+
+
 def calculate_barrier_probabilities(
     bars: list[dict],
     target_pct: float | None = None,
@@ -109,7 +213,6 @@ def calculate_barrier_probabilities(
     if not bars or len(bars) < 30:
         return {"error": "Insufficient historical bar data for barrier calculation"}
 
-    # Take lookback slice
     window_bars = bars[-lookback_days:] if len(bars) > lookback_days else bars
     n = len(window_bars)
 
@@ -120,12 +223,7 @@ def calculate_barrier_probabilities(
     atrs = calculate_atr(highs, lows, closes, period=14)
     smas = calculate_sma(closes, period=20)
 
-    # Calculate historical ATR percentages for volatility regime terciles
-    atr_pcts: list[float] = []
-    for i in range(n):
-        atr_val = atrs[i]
-        if atr_val is not None and closes[i] > 0:
-            atr_pcts.append((atr_val / closes[i]) * 100.0)
+    atr_pcts = [(atrs[i] / closes[i]) * 100.0 for i in range(n) if atrs[i] is not None and closes[i] > 0]
 
     current_atr_pct = atr_pcts[-1] if atr_pcts else 1.5
     current_close = closes[-1]
@@ -140,7 +238,6 @@ def calculate_barrier_probabilities(
         historical_atr_pcts=atr_pcts,
     )
 
-    # Dynamic scaling if parameters omitted
     if target_pct is None or target_pct <= 0:
         target_pct = round(max(0.5, 1.5 * current_atr_pct), 2)
     if stop_pct is None or stop_pct <= 0:
@@ -148,117 +245,52 @@ def calculate_barrier_probabilities(
 
     upper_multiplier = 1.0 + (target_pct / 100.0)
     lower_multiplier = 1.0 - (stop_pct / 100.0)
-
-    sample_count = 0
-    upper_hit_count = 0
-    lower_hit_count = 0
-    vertical_exit_count = 0
-
-    bars_to_upper: list[int] = []
-    bars_to_lower: list[int] = []
-    vertical_returns: list[float] = []
-
-    # Evaluate paths across historical days
     eval_limit = n - horizon_bars
-    for i in range(20, eval_limit):
-        hist_atr_pct = atr_pcts[i] if i < len(atr_pcts) else current_atr_pct
-        hist_regime = classify_market_regime(
-            current_close=closes[i],
-            current_sma=smas[i],
-            prev_sma=smas[i - 1] if i > 0 else smas[i],
-            current_atr_pct=hist_atr_pct,
-            historical_atr_pcts=atr_pcts[: i + 1],
-        )
 
-        # Match regime
-        if hist_regime["trend"] != current_regime["trend"]:
-            continue
+    (
+        sample_count,
+        upper_hit_count,
+        lower_hit_count,
+        vertical_exit_count,
+        bars_to_upper,
+        bars_to_lower,
+        vertical_returns,
+    ) = _run_barrier_simulation(
+        eval_limit,
+        horizon_bars,
+        closes,
+        highs,
+        lows,
+        smas,
+        atr_pcts,
+        current_atr_pct,
+        current_regime["trend"],
+        upper_multiplier,
+        lower_multiplier,
+    )
 
-        sample_count += 1
-        entry_price = closes[i]
-        upper_barrier = entry_price * upper_multiplier
-        lower_barrier = entry_price * lower_multiplier
-
-        barrier_hit = None
-        for step in range(1, horizon_bars + 1):
-            bar_idx = i + step
-            h = highs[bar_idx]
-            low_val = lows[bar_idx]
-
-            hit_upper = h >= upper_barrier
-            hit_lower = low_val <= lower_barrier
-
-            if hit_upper and hit_lower:
-                # Conservative quant convention: count as stop loss hit
-                barrier_hit = "LOWER"
-                bars_to_lower.append(step)
-                break
-            elif hit_upper:
-                barrier_hit = "UPPER"
-                bars_to_upper.append(step)
-                break
-            elif hit_lower:
-                barrier_hit = "LOWER"
-                bars_to_lower.append(step)
-                break
-
-        if barrier_hit == "UPPER":
-            upper_hit_count += 1
-        elif barrier_hit == "LOWER":
-            lower_hit_count += 1
-        else:
-            vertical_exit_count += 1
-            exit_price = closes[i + horizon_bars]
-            ret = ((exit_price - entry_price) / entry_price) * 100.0
-            vertical_returns.append(ret)
-
-    # Fallback to entire sample if regime matches were scarce
     if sample_count < 5:
-        sample_count = 0
-        upper_hit_count = 0
-        lower_hit_count = 0
-        vertical_exit_count = 0
-        bars_to_upper.clear()
-        bars_to_lower.clear()
-        vertical_returns.clear()
-
-        for i in range(20, eval_limit):
-            sample_count += 1
-            entry_price = closes[i]
-            upper_barrier = entry_price * upper_multiplier
-            lower_barrier = entry_price * lower_multiplier
-
-            barrier_hit = None
-            for step in range(1, horizon_bars + 1):
-                bar_idx = i + step
-                h = highs[bar_idx]
-                low_val = lows[bar_idx]
-
-                hit_upper = h >= upper_barrier
-                hit_lower = low_val <= lower_barrier
-
-                if hit_upper and hit_lower:
-                    barrier_hit = "LOWER"
-                    bars_to_lower.append(step)
-                    break
-                elif hit_upper:
-                    barrier_hit = "UPPER"
-                    bars_to_upper.append(step)
-                    break
-                elif hit_lower:
-                    barrier_hit = "LOWER"
-                    bars_to_lower.append(step)
-                    break
-
-            if barrier_hit == "UPPER":
-                upper_hit_count += 1
-            elif barrier_hit == "LOWER":
-                lower_hit_count += 1
-            else:
-                vertical_exit_count += 1
-                exit_price = closes[i + horizon_bars]
-                ret = ((exit_price - entry_price) / entry_price) * 100.0
-                vertical_returns.append(ret)
+        (
+            sample_count,
+            upper_hit_count,
+            lower_hit_count,
+            vertical_exit_count,
+            bars_to_upper,
+            bars_to_lower,
+            vertical_returns,
+        ) = _run_barrier_simulation(
+            eval_limit,
+            horizon_bars,
+            closes,
+            highs,
+            lows,
+            smas,
+            atr_pcts,
+            current_atr_pct,
+            None,
+            upper_multiplier,
+            lower_multiplier,
+        )
 
     upper_pct = round((upper_hit_count / sample_count) * 100.0, 1) if sample_count > 0 else 0.0
     lower_pct = round((lower_hit_count / sample_count) * 100.0, 1) if sample_count > 0 else 0.0
@@ -276,16 +308,7 @@ def calculate_barrier_probabilities(
         - friction_pct
     )
     expected_value_pct = round(expected_value, 2)
-
-    # Strategy verdict
-    if expected_value_pct > 0.25 and upper_pct >= 48.0:
-        verdict = "FAVORABLE_LONG"
-    elif expected_value_pct < -0.25 and lower_pct >= 48.0:
-        verdict = "FAVORABLE_SHORT"
-    elif vertical_pct >= 50.0:
-        verdict = "RANGE_BOUND_NO_TOUCH"
-    else:
-        verdict = "UNFAVORABLE_ASYMMETRY"
+    verdict = _classify_barrier_verdict(expected_value_pct, upper_pct, lower_pct, vertical_pct)
 
     return {
         "current_price": round(current_close, 2),

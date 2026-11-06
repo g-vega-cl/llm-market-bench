@@ -13,6 +13,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -166,103 +167,121 @@ def build_link_graph(pages: dict[str, Path]) -> dict[str, tuple[set[str], set[st
     return graph
 
 
+def _lint_page_content(
+    rel: str,
+    content: str,
+    graph: dict[str, Any],
+) -> list[str]:
+    issues = []
+    if rel not in SCAFFOLD_FILES:
+        fm = parse_frontmatter(content)
+        if fm is None:
+            issues.append(f"[frontmatter] {rel}: missing or malformed YAML frontmatter")
+        elif not isinstance(fm, dict):
+            issues.append(f"[frontmatter] {rel}: frontmatter is not a YAML mapping")
+        else:
+            for field in ("tags", "category"):
+                if field not in fm or not fm[field]:
+                    issues.append(f"[frontmatter] {rel}: missing '{field}' field")
+
+        for link in extract_links(content):
+            if not resolve_link(link):
+                issues.append(f"[broken-link] {rel}: [[{link}]] does not resolve to a file")
+
+        incoming = graph[rel][1]
+        if not incoming:
+            issues.append(f"[orphan] {rel}: no incoming links from any wiki page")
+
+    code_errors = validate_codebase_references(content, REPO_ROOT, rel)
+    for err in code_errors:
+        issues.append(f"[broken-code-ref] {rel}: {err}")
+
+    secret_findings = scan_text(content, filename=rel)
+    for finding in secret_findings:
+        issues.append(f"[leaked-secret] {rel}:{finding['line']}: [{finding['rule']}] {finding['masked']}")
+
+    return issues
+
+
+def _try_fix_index_gap(
+    rel: str,
+    link_without_ext: str,
+    new_index_content: str,
+) -> tuple[str, str | None]:
+    category = rel.split("/")[0].capitalize()
+    if not category.endswith("s"):
+        return new_index_content, f"[index-gap] {rel}: not referenced in index.md"
+
+    section_header = f"## {category}"
+    if section_header not in new_index_content:
+        return (
+            new_index_content,
+            f"[index-gap] {rel}: not referenced in index.md (could not find section {section_header})",
+        )
+
+    lines = new_index_content.split("\n")
+    for i, line in enumerate(lines):
+        if line.strip() == section_header:
+            insert_pos = i + 1
+            while insert_pos < len(lines) and not lines[insert_pos].strip():
+                insert_pos += 1
+            lines.insert(insert_pos, f"- [[{link_without_ext}]] — Auto-indexed page")
+            print(f"  [fix] index.md: added [[{link_without_ext}]] to {category}")
+            return "\n".join(lines), None
+    return new_index_content, f"[index-gap] {rel}: not referenced in index.md"
+
+
+def _check_index_coverage(
+    pages: dict[str, Path],
+    fix: bool,
+) -> tuple[list[str], bool]:
+    issues: list[str] = []
+    index_path = WIKI_DIR / "index.md"
+    if not index_path.is_file():
+        return issues, False
+
+    index_content = index_path.read_text()
+    index_links = set(extract_links(index_content))
+    new_index_content = index_content
+
+    for rel in sorted(pages):
+        if rel in SCAFFOLD_FILES:
+            continue
+        link_without_ext = rel[:-3] if rel.endswith(".md") else rel
+
+        if link_without_ext not in index_links and rel not in index_links:
+            if fix:
+                new_index_content, err = _try_fix_index_gap(rel, link_without_ext, new_index_content)
+                if err:
+                    issues.append(err)
+            else:
+                issues.append(f"[index-gap] {rel}: not referenced in index.md")
+
+    if fix and new_index_content != index_content:
+        index_path.write_text(new_index_content)
+        return issues, True
+
+    for link in index_links:
+        if not resolve_link(link):
+            issues.append(f"[dead-index] index.md: [[{link}]] does not resolve to a file")
+
+    return issues, False
+
+
 def lint(fix: bool = False) -> list[str]:
     issues = []
     pages = find_all_pages()
     graph = build_link_graph(pages)
 
     for rel, path in sorted(pages.items()):
-        content = path.read_text()
+        issues.extend(_lint_page_content(rel, path.read_text(), graph))
 
-        # 1. Frontmatter check (skip scaffold files)
-        if rel not in SCAFFOLD_FILES:
-            fm = parse_frontmatter(content)
-            if fm is None:
-                issues.append(f"[frontmatter] {rel}: missing or malformed YAML frontmatter")
-            elif not isinstance(fm, dict):
-                issues.append(f"[frontmatter] {rel}: frontmatter is not a YAML mapping")
-            else:
-                for field in ("tags", "category"):
-                    if field not in fm or not fm[field]:
-                        issues.append(f"[frontmatter] {rel}: missing '{field}' field")
+    index_issues, did_reindex = _check_index_coverage(pages, fix)
+    if did_reindex:
+        return lint(fix=False)
+    issues.extend(index_issues)
 
-        # 2. Broken outgoing links (skip scaffold files — they contain examples)
-        if rel not in SCAFFOLD_FILES:
-            for link in extract_links(content):
-                if not resolve_link(link):
-                    issues.append(f"[broken-link] {rel}: [[{link}]] does not resolve to a file")
-
-        # 3. Orphan check (no incoming links)
-        incoming = graph[rel][1]
-        if rel not in SCAFFOLD_FILES and not incoming:
-            issues.append(f"[orphan] {rel}: no incoming links from any wiki page")
-
-        # 4. Codebase references validation
-        code_errors = validate_codebase_references(content, REPO_ROOT, rel)
-        for err in code_errors:
-            issues.append(f"[broken-code-ref] {rel}: {err}")
-
-        # 5. Secret scanning validation
-        secret_findings = scan_text(content, filename=rel)
-        for finding in secret_findings:
-            issues.append(f"[leaked-secret] {rel}:{finding['line']}: [{finding['rule']}] {finding['masked']}")
-
-    # 4. Index coverage
-    index_path = WIKI_DIR / "index.md"
-    if index_path.is_file():
-        index_content = index_path.read_text()
-        index_links = set(extract_links(index_content))
-        new_index_content = index_content
-
-        # Pages not in index (exclude scaffold)
-        for rel in sorted(pages):
-            if rel in SCAFFOLD_FILES:
-                continue
-            link_without_ext = rel
-            if link_without_ext.endswith(".md"):
-                link_without_ext = link_without_ext[:-3]
-
-            if link_without_ext not in index_links and rel not in index_links:
-                if fix:
-                    # Attempt to auto-fix index-gap
-                    category = rel.split("/")[0].capitalize()
-                    if category.endswith("s"):  # Entities, Concepts, etc.
-                        section_header = f"## {category}"
-                        if section_header in new_index_content:
-                            # Simple append to the end of the section
-                            lines = new_index_content.split("\n")
-                            for i, line in enumerate(lines):
-                                if line.strip() == section_header:
-                                    # Insert after header and any following blank lines
-                                    insert_pos = i + 1
-                                    while insert_pos < len(lines) and not lines[insert_pos].strip():
-                                        insert_pos += 1
-                                    lines.insert(insert_pos, f"- [[{link_without_ext}]] — Auto-indexed page")
-                                    new_index_content = "\n".join(lines)
-                                    print(f"  [fix] index.md: added [[{link_without_ext}]] to {category}")
-                                    break
-                        else:
-                            issues.append(
-                                f"[index-gap] {rel}: not referenced in index.md (could not find section {section_header})"
-                            )
-                    else:
-                        issues.append(f"[index-gap] {rel}: not referenced in index.md")
-                else:
-                    issues.append(f"[index-gap] {rel}: not referenced in index.md")
-
-        if fix and new_index_content != index_content:
-            index_path.write_text(new_index_content)
-            # Re-run lint to see remaining issues
-            return lint(fix=False)
-
-        # Index links pointing nowhere
-        for link in index_links:
-            if not resolve_link(link):
-                issues.append(f"[dead-index] index.md: [[{link}]] does not resolve to a file")
-
-    # 5. Config parity validation (models.json, tools.json)
-    config_errors = validate_config_parity(pages, REPO_ROOT)
-    for err in config_errors:
+    for err in validate_config_parity(pages, REPO_ROOT):
         issues.append(f"[config-parity] {err}")
 
     return issues

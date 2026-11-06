@@ -82,6 +82,133 @@ def _build_gemini_tools(function_tools: list | None = None, enable_google_search
     return gemini_tools
 
 
+def _resolve_tool_name_from_history(messages: list, tool_call_id: str) -> str:
+    """Finds the function name corresponding to a tool_call_id in message history."""
+    for prev in reversed(messages):
+        if isinstance(prev, dict) and prev.get("tool_calls"):
+            for ptc in prev["tool_calls"]:
+                if ptc["id"] == tool_call_id:
+                    return ptc["function"]["name"]
+    return "unknown"
+
+
+def _convert_dict_message_parts(m: dict, messages: list) -> tuple[str, list]:
+    """Converts a single dict message into (role, parts) for Gemini API."""
+    role = "model" if m["role"] in ["assistant", "model"] else "user"
+    parts = []
+
+    content = m.get("content")
+    if content:
+        if isinstance(content, str):
+            parts.append({"text": content})
+        elif isinstance(content, list):
+            for part in content:
+                if part.get("type") == "text":
+                    parts.append({"text": part["text"]})
+                elif part.get("type") == "tool_result":
+                    parts.append(
+                        {
+                            "function_response": {
+                                "name": part["tool_use_id"].split("-")[0],
+                                "response": {"result": part["content"]},
+                            }
+                        }
+                    )
+
+    if m.get("tool_calls"):
+        for tc in m["tool_calls"]:
+            part = {
+                "function_call": {
+                    "name": tc["function"]["name"],
+                    "args": json.loads(tc["function"]["arguments"]),
+                }
+            }
+            if "thought" in tc:
+                part["thought"] = tc["thought"]
+            if "thought_signature" in tc:
+                part["thought_signature"] = tc["thought_signature"]
+            parts.append(part)
+
+    if m["role"] == "tool":
+        tool_name = _resolve_tool_name_from_history(messages, m["tool_call_id"])
+        parts.append({"function_response": {"name": tool_name, "response": {"result": m["content"]}}})
+        role = "user"
+
+    return role, parts
+
+
+def _build_gemini_contents(messages: list) -> tuple[list, str | None]:
+    """Converts message history into Gemini contents list and system_instruction."""
+    contents = []
+    system_instruction = None
+    for m in messages:
+        if isinstance(m, types.Content):
+            contents.append(m)
+            continue
+
+        if isinstance(m, dict) and m["role"] == "system":
+            system_instruction = m["content"]
+            continue
+
+        role, parts = _convert_dict_message_parts(m, messages)
+        if parts:
+            contents.append({"role": role, "parts": parts})
+
+    return contents, system_instruction
+
+
+def _build_generate_content_config(
+    system_instruction: str | None,
+    tool_defs: list,
+    enable_google_search: bool,
+    thinking_level: str,
+) -> types.GenerateContentConfig:
+    """Constructs the GenerateContentConfig for a Gemini tool loop iteration."""
+    gemini_tools = _build_gemini_tools(tool_defs, enable_google_search)
+
+    config_kwargs = {
+        "system_instruction": system_instruction,
+        "tools": gemini_tools,
+        "automatic_function_calling": types.AutomaticFunctionCallingConfig(disable=True),
+        "safety_settings": [
+            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="BLOCK_NONE"),
+        ],
+    }
+    if hasattr(types, "ThinkingConfig"):
+        config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level=thinking_level)
+
+    if enable_google_search:
+        sdk_supports_tool_config = (
+            _generate_content_config_supports("tool_config")
+            and hasattr(types, "ToolConfig")
+            and "include_server_side_tool_invocations" in types.ToolConfig.model_fields
+        )
+        if sdk_supports_tool_config:
+            config_kwargs["tool_config"] = types.ToolConfig(include_server_side_tool_invocations=True)
+
+    return types.GenerateContentConfig(**config_kwargs)
+
+
+async def _execute_gemini_tool_calls(tool_calls: list[dict], model_name: str) -> list[types.Part]:
+    """Executes extracted Gemini function calls and returns FunctionResponse parts."""
+    response_parts = []
+    for tc in tool_calls:
+        result = await base.execute_tool(tc["name"], tc["args"], model_name)
+        fr_kwargs = {
+            "name": tc["name"],
+            "response": {"result": result},
+        }
+        if tc.get("id") and isinstance(tc["id"], str) and "id" in types.FunctionResponse.__annotations__:
+            fr_kwargs["id"] = tc["id"]
+
+        response_parts.append(types.Part(function_response=types.FunctionResponse(**fr_kwargs)))
+    return response_parts
+
+
 async def run_tool_loop(
     raw_client,
     model_name: str,
@@ -106,114 +233,10 @@ async def run_tool_loop(
     tool_defs = [tools.to_gemini(t) for t in override_tools] if override_tools is not None else DEFAULT_GEMINI_TOOLS
 
     for _ in range(max_tool_steps):
-        # Convert OpenAI-style messages or pass native Content
-        contents = []
-        system_instruction = None
-        for m in messages:
-            if isinstance(m, types.Content):
-                contents.append(m)
-                continue
-
-            if isinstance(m, dict) and m["role"] == "system":
-                system_instruction = m["content"]
-                continue
-
-            role = "model" if m["role"] in ["assistant", "model"] else "user"
-            parts = []
-
-            if m.get("content"):
-                if isinstance(m["content"], str):
-                    parts.append({"text": m["content"]})
-                elif isinstance(m["content"], list):
-                    for part in m["content"]:
-                        if part.get("type") == "text":
-                            parts.append({"text": part["text"]})
-                        elif part.get("type") == "tool_result":
-                            parts.append(
-                                {
-                                    "function_response": {
-                                        "name": part["tool_use_id"].split("-")[0],
-                                        "response": {"result": part["content"]},
-                                    }
-                                }
-                            )
-
-            if m.get("tool_calls"):
-                for tc in m["tool_calls"]:
-                    part = {
-                        "function_call": {
-                            "name": tc["function"]["name"],
-                            "args": json.loads(tc["function"]["arguments"]),
-                        }
-                    }
-                    if "thought" in tc:
-                        part["thought"] = tc["thought"]
-                    if "thought_signature" in tc:
-                        part["thought_signature"] = tc["thought_signature"]
-                    parts.append(part)
-
-            if m["role"] == "tool":
-                tool_name = "unknown"
-                for prev in reversed(messages):
-                    if prev.get("tool_calls"):
-                        for ptc in prev["tool_calls"]:
-                            if ptc["id"] == m["tool_call_id"]:
-                                tool_name = ptc["function"]["name"]
-                                break
-
-                parts.append({"function_response": {"name": tool_name, "response": {"result": m["content"]}}})
-                role = "user"
-
-            if parts:
-                contents.append({"role": role, "parts": parts})
+        contents, system_instruction = _build_gemini_contents(messages)
 
         try:
-            # Build tools list with Google Search if enabled
-            gemini_tools = _build_gemini_tools(tool_defs, enable_google_search)
-
-            config_kwargs = {
-                "system_instruction": system_instruction,
-                "tools": gemini_tools,
-                # Always disable SDK-side automatic function calling. We read
-                # `part.function_call` manually from the response, so we never
-                # want the SDK to execute tools server-side. This also
-                # suppresses the noisy '[AFC] Tools at indices [0] are not
-                # compatible' warning printed at every request.
-                "automatic_function_calling": types.AutomaticFunctionCallingConfig(disable=True),
-                "safety_settings": [
-                    types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
-                    types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
-                    types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
-                    types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
-                    types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="BLOCK_NONE"),
-                ],
-            }
-            if hasattr(types, "ThinkingConfig"):
-                config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level=thinking_level)
-
-            if enable_google_search:
-                # Gemini 3 requires this flag to mix built-in tools (google_search) with
-                # client-side function calling. Enabling it locks tool mode to VALIDATED
-                # and activates tool context circulation across turns.
-                # Without it the API throws 400 INVALID_ARGUMENT, the loop falls back to
-                # basic analysis, and HARD ENFORCEMENT discards all trade signals.
-                #
-                # Note: tool_config and automatic_function_calling are mutually
-                # exclusive (per the SDK). When tool_config is set, the SDK ignores
-                # AFC. We still set AFC=disable above to suppress SDK warnings when
-                # google_search is OFF (the common case for analysis).
-                sdk_supports_tool_config = (
-                    _generate_content_config_supports("tool_config")
-                    and hasattr(types, "ToolConfig")
-                    and "include_server_side_tool_invocations" in types.ToolConfig.model_fields
-                )
-                if sdk_supports_tool_config:
-                    config_kwargs["tool_config"] = types.ToolConfig(include_server_side_tool_invocations=True)
-                # Old-SDK fallback no longer needs the explicit AFC disable line
-                # — the default config_kwargs already sets it.
-
-            config = types.GenerateContentConfig(**config_kwargs)
-
+            config = _build_generate_content_config(system_instruction, tool_defs, enable_google_search, thinking_level)
             resp = await raw_client.aio.models.generate_content(model=model_name, contents=contents, config=config)
         except Exception as e:
             logger.warning(f"Tool execution failed for gemini/{model_name}, falling back to basic analysis: {e}")
@@ -222,48 +245,20 @@ async def run_tool_loop(
             break
 
         candidate = resp.candidates[0]
-
-        # Check if this is a multi-function-call response (Gemini sometimes splits responses)
-        # Count function calls in this response
-        sum(1 for part in candidate.content.parts if part.function_call)
-
-        # Append native Content object to history to preserve thought_signature
         messages.append(candidate.content)
 
-        has_tool_call = False
-        tool_calls = []
-        for part in candidate.content.parts:
-            if part.function_call:
-                has_tool_call = True
-                tool_calls.append(
-                    {
-                        "name": part.function_call.name,
-                        "args": part.function_call.args,
-                        # Gemini 3 assigns a unique id per function_call that must be echoed
-                        # back in the function_response for tool context circulation to work.
-                        # getattr guards against older SDK versions that don't have this field.
-                        "id": getattr(part.function_call, "id", None),
-                    }
-                )
+        tool_calls = [
+            {
+                "name": part.function_call.name,
+                "args": part.function_call.args,
+                "id": getattr(part.function_call, "id", None),
+            }
+            for part in candidate.content.parts
+            if part.function_call
+        ]
 
-        # If Gemini returned multiple function calls in one response,
-        # we need to execute all of them before breaking
-        if not has_tool_call:
+        if not tool_calls:
             break
 
-        # Execute tools and append response as native Content
-        response_parts = []
-        for tc in tool_calls:
-            result = await base.execute_tool(tc["name"], tc["args"], model_name)
-            # Construct FunctionResponse. Older google-genai versions might not have 'id'
-            # in FunctionResponse's attributes, so we check annotations.
-            fr_kwargs = {
-                "name": tc["name"],
-                "response": {"result": result},
-            }
-            if tc.get("id") and isinstance(tc["id"], str) and "id" in types.FunctionResponse.__annotations__:
-                fr_kwargs["id"] = tc["id"]
-
-            response_parts.append(types.Part(function_response=types.FunctionResponse(**fr_kwargs)))
-
+        response_parts = await _execute_gemini_tool_calls(tool_calls, model_name)
         messages.append(types.Content(role="user", parts=response_parts))

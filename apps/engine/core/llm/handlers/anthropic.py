@@ -102,6 +102,112 @@ def _build_tool_list(enable_web_search: bool = False, override_tools: list | Non
     return base_tools
 
 
+def _build_anthropic_request_args(
+    raw_client: Any,
+    model_name: str,
+    messages: list,
+    override_tools: list | None,
+    enable_web_search: bool,
+    thinking_budget: int,
+) -> dict[str, Any]:
+    """Constructs the request arguments for Anthropic messages.create."""
+    system_prompt = None
+    current_messages = messages
+    if messages[0]["role"] == "system":
+        system_prompt = messages[0]["content"]
+        current_messages = messages[1:]
+
+    is_anthropic = not (
+        "minimax" in str(getattr(raw_client, "base_url", "")).lower() or "minimax" in model_name.lower()
+    )
+
+    args: dict[str, Any] = {
+        "model": model_name,
+        "messages": current_messages,
+        "max_tokens": 32000,
+        "tools": _build_tool_list(enable_web_search, override_tools=override_tools),
+    }
+    if system_prompt:
+        if is_anthropic and isinstance(system_prompt, str):
+            args["system"] = [
+                {
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
+        else:
+            args["system"] = system_prompt
+
+    if is_anthropic:
+        args["cache_control"] = {"type": "ephemeral"}
+
+    if "claude" in model_name.lower() or "haiku" in model_name.lower() or "sonnet" in model_name.lower():
+        args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=thinking_budget, effort="medium"))
+
+    return args
+
+
+def _log_anthropic_cache_usage(resp: Any, model_name: str) -> None:
+    """Logs prompt cache telemetry if present on the response."""
+    usage = getattr(resp, "usage", None)
+    if not usage:
+        return
+    cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+    cache_create = getattr(usage, "cache_creation_input_tokens", 0) or 0
+    uncached_input = getattr(usage, "input_tokens", 0) or 0
+    output_tokens = getattr(usage, "output_tokens", 0) or 0
+    if cache_read or cache_create:
+        logger.info(
+            "Anthropic [%s] cache usage: read=%d, create=%d, uncached_input=%d, output=%d",
+            model_name,
+            cache_read,
+            cache_create,
+            uncached_input,
+            output_tokens,
+        )
+
+
+def _extract_assistant_content(resp_content: list) -> list[dict[str, Any]]:
+    """Extracts assistant content blocks while filtering out server_tool_use blocks."""
+    assistant_content = []
+    for content_block in resp_content:
+        if content_block.type == "text":
+            text = content_block.text.rstrip() if content_block.text else ""
+            if text:
+                assistant_content.append({"type": "text", "text": text})
+        elif content_block.type == "tool_use":
+            assistant_content.append(
+                {
+                    "type": "tool_use",
+                    "id": content_block.id,
+                    "name": content_block.name,
+                    "input": content_block.input,
+                }
+            )
+        elif content_block.type == "thinking":
+            thinking_text = getattr(content_block, "thinking", "")
+            signature = getattr(content_block, "signature", None)
+            thinking_block = {
+                "type": "thinking",
+                "thinking": thinking_text or "",
+            }
+            if signature:
+                thinking_block["signature"] = signature
+            assistant_content.append(thinking_block)
+        elif content_block.type == "redacted_thinking":
+            assistant_content.append(
+                {
+                    "type": "redacted_thinking",
+                    "data": getattr(content_block, "data", ""),
+                }
+            )
+
+    if not assistant_content:
+        assistant_content.append({"type": "text", "text": "Processing..."})
+    return assistant_content
+
+
 async def run_tool_loop(
     raw_client,
     model_name: str,
@@ -122,44 +228,9 @@ async def run_tool_loop(
         enable_web_search: Whether to enable native web search tool.
     """
     for _ in range(max_tool_steps):
-        # Anthropic requires system prompt separately if present
-        system_prompt = None
-        current_messages = messages
-        if messages[0]["role"] == "system":
-            system_prompt = messages[0]["content"]
-            current_messages = messages[1:]
-
-        is_anthropic = not (
-            "minimax" in str(getattr(raw_client, "base_url", "")).lower() or "minimax" in model_name.lower()
+        args = _build_anthropic_request_args(
+            raw_client, model_name, messages, override_tools, enable_web_search, thinking_budget
         )
-
-        args = {
-            "model": model_name,
-            "messages": current_messages,
-            "max_tokens": 32000,  # Increased from 8000 to handle long tool execution loops
-            "tools": _build_tool_list(enable_web_search, override_tools=override_tools),
-        }
-        if system_prompt:
-            if is_anthropic:
-                if isinstance(system_prompt, str):
-                    args["system"] = [
-                        {
-                            "type": "text",
-                            "text": system_prompt,
-                            "cache_control": {"type": "ephemeral"},
-                        }
-                    ]
-                elif isinstance(system_prompt, list):
-                    args["system"] = system_prompt
-            else:
-                args["system"] = system_prompt
-
-        if is_anthropic:
-            args["cache_control"] = {"type": "ephemeral"}
-
-        # Extended thinking for Claude models that support it
-        if "claude" in model_name.lower() or "haiku" in model_name.lower() or "sonnet" in model_name.lower():
-            args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=thinking_budget, effort="medium"))
 
         try:
             resp = await raw_client.messages.create(**args)
@@ -167,87 +238,21 @@ async def run_tool_loop(
             logger.warning(f"Tool execution failed for anthropic/{model_name}, falling back to basic analysis: {e}")
             break
 
-        # Log prompt cache telemetry for observability
-        usage = getattr(resp, "usage", None)
-        if usage:
-            cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
-            cache_create = getattr(usage, "cache_creation_input_tokens", 0) or 0
-            uncached_input = getattr(usage, "input_tokens", 0) or 0
-            output_tokens = getattr(usage, "output_tokens", 0) or 0
-            if cache_read or cache_create:
-                logger.info(
-                    "Anthropic [%s] cache usage: read=%d, create=%d, uncached_input=%d, output=%d",
-                    model_name,
-                    cache_read,
-                    cache_create,
-                    uncached_input,
-                    output_tokens,
-                )
+        _log_anthropic_cache_usage(resp, model_name)
 
-        # Check for function tool calls (client-side tools that we need to execute)
         tool_uses = [c for c in resp.content if c.type == "tool_use"]
-
-        # Check for server tool calls (web_search - executed server-side by Anthropic)
         server_tool_uses = [c for c in resp.content if c.type == "server_tool_use"]
 
-        # Log server tool usage for visibility (web searches performed)
         for server_tool in server_tool_uses:
             logger.info(f"Server tool executed by Anthropic: {server_tool.name}")
 
-        # Build assistant message content
-        # IMPORTANT: Do NOT include server_tool_use blocks in message history
-        # Anthropic executes these server-side and they don't need tool_result blocks
-        # Including them in history causes "tool_use without tool_result" errors
-        assistant_content = []
-        for content_block in resp.content:
-            if content_block.type == "text":
-                # Strip trailing whitespace to avoid "messages: final assistant content cannot end with trailing whitespace"
-                text = content_block.text.rstrip() if content_block.text else ""
-                if text:
-                    assistant_content.append({"type": "text", "text": text})
-            elif content_block.type == "tool_use":
-                # Only include function tool calls (client-side tools)
-                assistant_content.append(
-                    {
-                        "type": "tool_use",
-                        "id": content_block.id,
-                        "name": content_block.name,
-                        "input": content_block.input,
-                    }
-                )
-            elif content_block.type == "thinking":
-                thinking_text = getattr(content_block, "thinking", "")
-                signature = getattr(content_block, "signature", None)
-                thinking_block = {
-                    "type": "thinking",
-                    "thinking": thinking_text or "",
-                }
-                if signature:
-                    thinking_block["signature"] = signature
-                assistant_content.append(thinking_block)
-            elif content_block.type == "redacted_thinking":
-                assistant_content.append(
-                    {
-                        "type": "redacted_thinking",
-                        "data": getattr(content_block, "data", ""),
-                    }
-                )
-            # Skip server_tool_use blocks - they are internal to Anthropic's server
-
-        # Ensure assistant content is never empty to avoid 400 errors from API
-        if not assistant_content:
-            assistant_content.append({"type": "text", "text": "Processing..."})
-
+        assistant_content = _extract_assistant_content(resp.content)
         messages.append({"role": "assistant", "content": assistant_content})
 
-        # Only break if no function tool calls (server tools don't require our action)
         if not tool_uses:
             break
 
-        # Collect tool results for function calls only
         tool_results_content = []
-
-        # Handle function tool calls
         for tool_use in tool_uses:
             result = await base.execute_tool(tool_use.name, tool_use.input, model_name)
             tool_results_content.append(

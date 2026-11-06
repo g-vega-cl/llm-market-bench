@@ -9,6 +9,103 @@ from core.llm.analysis_pipeline.prompt_assembly import extract_held_tickers
 logger = logging.getLogger("engine")
 
 
+def _extract_dict_tool_calls(tool_calls: list) -> list[tuple[Any, Any]]:
+    """Extract (name, arguments) pairs from a list of tool_call dicts or objects."""
+    calls = []
+    for tc in tool_calls:
+        if isinstance(tc, dict):
+            func = tc.get("function", {})
+            if isinstance(func, dict):
+                calls.append((func.get("name"), func.get("arguments", "{}")))
+            else:
+                calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
+        else:
+            func = getattr(tc, "function", None)
+            if func is not None:
+                calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
+    return calls
+
+
+def _extract_calls_from_dict(value: dict) -> list[tuple[Any, Any]]:
+    """Extract tool calls from a dict message or content block."""
+    calls = []
+    tool_calls = value.get("tool_calls")
+    if tool_calls:
+        calls.extend(_extract_dict_tool_calls(tool_calls))
+
+    for key in ("content", "parts"):
+        sub_items = value.get(key)
+        if isinstance(sub_items, list):
+            for part in sub_items:
+                calls.extend(_extract_tool_calls_from_value(part))
+
+    if value.get("type") in {"tool_use", "function_call", "functionCall"}:
+        if "name" in value:
+            calls.append((value.get("name"), value.get("input", value.get("arguments", {}))))
+        elif "function" in value:
+            func = value.get("function", {})
+            if isinstance(func, dict):
+                calls.append((func.get("name"), func.get("arguments", "{}")))
+
+    return calls
+
+
+def _extract_calls_from_object(value: Any) -> list[tuple[Any, Any]]:
+    """Extract tool calls from an SDK message or content object."""
+    calls = []
+    tool_calls = getattr(value, "tool_calls", None)
+    if tool_calls:
+        for tc in tool_calls:
+            func = getattr(tc, "function", None)
+            if func is not None:
+                calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
+
+    parts = getattr(value, "parts", None)
+    if parts:
+        for part in parts:
+            for attr in ("function_call", "tool_call"):
+                call_obj = getattr(part, attr, None)
+                if call_obj is not None:
+                    calls.append(
+                        (
+                            getattr(call_obj, "name", None),
+                            getattr(call_obj, "args", getattr(call_obj, "arguments", {})),
+                        )
+                    )
+
+    content = getattr(value, "content", None)
+    if isinstance(content, list):
+        for part in content:
+            calls.extend(_extract_tool_calls_from_value(part))
+
+    if getattr(value, "type", None) in {"tool_use", "function_call", "functionCall"}:
+        name = getattr(value, "name", None)
+        args = getattr(value, "input", getattr(value, "arguments", {}))
+        if name is not None:
+            calls.append((name, args))
+
+    return calls
+
+
+def _extract_tool_calls_from_value(value: Any) -> list[tuple[Any, Any]]:
+    """Extract all (tool_name, args) tuples from a message or content value."""
+    if value is None:
+        return []
+    if isinstance(value, dict):
+        return _extract_calls_from_dict(value)
+    return _extract_calls_from_object(value)
+
+
+def _parse_call_args_dict(args: Any) -> dict | None:
+    """Parse tool arguments into a dictionary if possible."""
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except Exception:
+            return None
+    return args if isinstance(args, dict) else None
+
+
 def scan_history_for_tools(messages: list, ticker: str) -> dict[str, bool]:
     """Scan message history for quantity calculation tool calls related to a specific ticker.
 
@@ -18,112 +115,22 @@ def scan_history_for_tools(messages: list, ticker: str) -> dict[str, bool]:
     buy_tool_found = False
     sell_tool_found = False
 
-    def _record_call(name: Any, args: Any) -> None:
-        nonlocal buy_tool_found, sell_tool_found
-
-        if not name:
-            return
-
-        if isinstance(args, str):
-            try:
-                args = json.loads(args)
-            except Exception:
-                return
-
-        if not isinstance(args, dict):
-            return
-
-        call_ticker = str(args.get("ticker", "")).strip().upper()
-        if call_ticker != ticker:
-            return
-
-        if name == "calculate_buy_quantity":
-            buy_tool_found = True
-            logger.debug("Confirmed 'calculate_buy_quantity' call for %s in history.", ticker)
-        elif name == "calculate_sell_quantity":
-            sell_tool_found = True
-            logger.debug("Confirmed 'calculate_sell_quantity' call for %s in history.", ticker)
-
-    def _extract_calls(value: Any) -> list[tuple[Any, Any]]:
-        calls = []
-        if value is None:
-            return calls
-
-        if isinstance(value, dict):
-            tool_calls = value.get("tool_calls")
-            if tool_calls:
-                for tc in tool_calls:
-                    if isinstance(tc, dict):
-                        func = tc.get("function", {})
-                        if isinstance(func, dict):
-                            calls.append((func.get("name"), func.get("arguments", "{}")))
-                        else:
-                            calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
-                    else:
-                        func = getattr(tc, "function", None)
-                        if func is not None:
-                            calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
-
-            content = value.get("content")
-            if isinstance(content, list):
-                for part in content:
-                    calls.extend(_extract_calls(part))
-
-            parts = value.get("parts")
-            if isinstance(parts, list):
-                for part in parts:
-                    calls.extend(_extract_calls(part))
-
-            if value.get("type") in {"tool_use", "function_call", "functionCall"}:
-                if "name" in value:
-                    calls.append((value.get("name"), value.get("input", value.get("arguments", {}))))
-                elif "function" in value:
-                    func = value.get("function", {})
-                    if isinstance(func, dict):
-                        calls.append((func.get("name"), func.get("arguments", "{}")))
-
-            return calls
-
-        tool_calls = getattr(value, "tool_calls", None)
-        if tool_calls:
-            for tc in tool_calls:
-                func = getattr(tc, "function", None)
-                if func is not None:
-                    calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
-
-        parts = getattr(value, "parts", None)
-        if parts:
-            for part in parts:
-                f_call = getattr(part, "function_call", None)
-                if f_call is not None:
-                    calls.append(
-                        (getattr(f_call, "name", None), getattr(f_call, "args", getattr(f_call, "arguments", {})))
-                    )
-                tool_call = getattr(part, "tool_call", None)
-                if tool_call is not None:
-                    calls.append(
-                        (
-                            getattr(tool_call, "name", None),
-                            getattr(tool_call, "args", getattr(tool_call, "arguments", {})),
-                        )
-                    )
-
-        content = getattr(value, "content", None)
-        if isinstance(content, list):
-            for part in content:
-                calls.extend(_extract_calls(part))
-
-        if getattr(value, "type", None) in {"tool_use", "function_call", "functionCall"}:
-            name = getattr(value, "name", None)
-            args = getattr(value, "input", getattr(value, "arguments", {}))
-            if name is not None:
-                calls.append((name, args))
-
-        return calls
-
     for message in messages:
-        for name, args in _extract_calls(message):
-            _record_call(name, args)
+        for name, args in _extract_tool_calls_from_value(message):
+            if not name:
+                continue
+            args_dict = _parse_call_args_dict(args)
+            if not args_dict:
+                continue
+            call_ticker = str(args_dict.get("ticker", "")).strip().upper()
+            if call_ticker != ticker:
+                continue
+            if name == "calculate_buy_quantity":
+                buy_tool_found = True
+                logger.debug("Confirmed 'calculate_buy_quantity' call for %s in history.", ticker)
+            elif name == "calculate_sell_quantity":
+                sell_tool_found = True
+                logger.debug("Confirmed 'calculate_sell_quantity' call for %s in history.", ticker)
 
     return {"buy_tool_found": buy_tool_found, "sell_tool_found": sell_tool_found}
 
@@ -131,90 +138,11 @@ def scan_history_for_tools(messages: list, ticker: str) -> dict[str, bool]:
 def get_history_tool_calls_diagnostic(messages: list) -> list[str]:
     """Extract a diagnostic summary list of all tool calls made in the message history."""
     tool_calls = []
-
-    def _extract(value: Any) -> list[tuple[Any, Any]]:
-        calls = []
-        if value is None:
-            return calls
-
-        if isinstance(value, dict):
-            t_calls = value.get("tool_calls")
-            if t_calls:
-                for tc in t_calls:
-                    if isinstance(tc, dict):
-                        func = tc.get("function", {})
-                        if isinstance(func, dict):
-                            calls.append((func.get("name"), func.get("arguments", "{}")))
-                        else:
-                            calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
-                    else:
-                        func = getattr(tc, "function", None)
-                        if func is not None:
-                            calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
-
-            content = value.get("content")
-            if isinstance(content, list):
-                for part in content:
-                    calls.extend(_extract(part))
-
-            parts = value.get("parts")
-            if isinstance(parts, list):
-                for part in parts:
-                    calls.extend(_extract(part))
-
-            if value.get("type") in {"tool_use", "function_call", "functionCall"}:
-                if "name" in value:
-                    calls.append((value.get("name"), value.get("input", value.get("arguments", {}))))
-                elif "function" in value:
-                    func = value.get("function", {})
-                    if isinstance(func, dict):
-                        calls.append((func.get("name"), func.get("arguments", "{}")))
-
-            return calls
-
-        t_calls = getattr(value, "tool_calls", None)
-        if t_calls:
-            for tc in t_calls:
-                func = getattr(tc, "function", None)
-                if func is not None:
-                    calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
-
-        parts = getattr(value, "parts", None)
-        if parts:
-            for part in parts:
-                f_call = getattr(part, "function_call", None)
-                if f_call is not None:
-                    calls.append(
-                        (getattr(f_call, "name", None), getattr(f_call, "args", getattr(f_call, "arguments", {})))
-                    )
-                tool_call = getattr(part, "tool_call", None)
-                if tool_call is not None:
-                    calls.append(
-                        (
-                            getattr(tool_call, "name", None),
-                            getattr(tool_call, "args", getattr(tool_call, "arguments", {})),
-                        )
-                    )
-
-        content = getattr(value, "content", None)
-        if isinstance(content, list):
-            for part in content:
-                calls.extend(_extract(part))
-
-        if getattr(value, "type", None) in {"tool_use", "function_call", "functionCall"}:
-            name = getattr(value, "name", None)
-            args = getattr(value, "input", getattr(value, "arguments", {}))
-            if name is not None:
-                calls.append((name, args))
-
-        return calls
-
     for message in messages:
-        for name, args in _extract(message):
+        for name, args in _extract_tool_calls_from_value(message):
             if name:
                 args_str = str(args).strip().replace("\n", " ")
                 tool_calls.append(f"{name}({args_str})")
-
     return tool_calls
 
 

@@ -20,6 +20,80 @@ from execution.system_portfolios import (
 )
 
 
+def _enter_sector_legs(
+    client,
+    portfolio_id: str,
+    sectors: list[str],
+    price_map: dict[str, float],
+    per_alloc: float,
+    slip_factor: float,
+    side: str,
+    start_ts: str,
+    dry_run: bool,
+) -> list[dict[str, Any]]:
+    """Enter LONG or SHORT sector leg positions and record trades."""
+    entered = []
+    is_long = side == "LONG"
+    signal = "BUY" if is_long else "SHORT"
+    price_mult = (1.0 + slip_factor) if is_long else (1.0 - slip_factor)
+
+    for ticker in sectors:
+        p = price_map.get(ticker)
+        if not p or p <= 0:
+            continue
+        entry_p = p * price_mult
+        shares = int(per_alloc // entry_p) if entry_p > 0 else 0
+        if shares <= 0:
+            continue
+
+        trade_record = {
+            "portfolio_id": portfolio_id,
+            "ticker": ticker,
+            "signal": signal,
+            "quantity": shares,
+            "price": entry_p,
+            "total_cost": shares * entry_p,
+            "executed_at": start_ts,
+        }
+        trade_id = None
+        if not dry_run:
+            ins_res = client.table("trades").insert(trade_record).execute()
+            trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
+            if is_long:
+                client.table("portfolio_positions").upsert(
+                    {
+                        "portfolio_id": portfolio_id,
+                        "ticker": ticker,
+                        "quantity": shares,
+                        "average_cost_basis": entry_p,
+                        "last_updated_at": datetime.now(UTC).isoformat(),
+                    },
+                    on_conflict="portfolio_id,ticker",
+                ).execute()
+        entered.append({"ticker": ticker, "side": side, "shares": shares, "entry_price": entry_p, "trade_id": trade_id})
+    return entered
+
+
+async def _mirror_long_legs_to_alpaca(entered_trades: list[dict[str, Any]], owner_id: str) -> None:
+    """Submit Alpaca limit orders for LONG legs only."""
+    try:
+        from execution.alpaca_broker import AlpacaBroker
+
+        broker = AlpacaBroker()
+        for t in entered_trades:
+            if t["side"] == "LONG":
+                await broker.submit_limit_order(
+                    trade_id=t.get("trade_id") or uuid4(),
+                    ticker=t["ticker"],
+                    quantity=t["shares"],
+                    signal="BUY",
+                    limit_price=round(t["entry_price"], 2),
+                    agent_id=owner_id,
+                )
+    except Exception as exc:
+        logger.warning(f"Alpaca mirror error during sector entry: {exc}")
+
+
 async def execute_system_sector_entry(
     week_start_date: str,
     predictions: list[dict],
@@ -41,10 +115,8 @@ async def execute_system_sector_entry(
     current_cash = portfolio.cash_balance
     slip_factor = slippage_bps / 10000.0
     client = get_supabase_client()
-
     start_ts = f"{week_start_date}T13:30:00Z"
 
-    # Idempotency check: verify if entry trades already exist for this start date
     existing_res = (
         client.table("trades")
         .select("id, ticker, signal")
@@ -56,85 +128,29 @@ async def execute_system_sector_entry(
         logger.info(f"Entry trades already exist for {owner_id} at {start_ts}. Skipping re-entry.")
         return {"status": "skipped", "reason": "Already entered for this cycle", "trades": existing_res.data}
 
-    long_budget = (current_cash * 0.5) if (long_sectors and short_sectors) else (current_cash if long_sectors else 0.0)
-    short_budget = (
-        (current_cash * 0.5) if (long_sectors and short_sectors) else (current_cash if short_sectors else 0.0)
-    )
-
+    both_sides = bool(long_sectors and short_sectors)
+    long_budget = (current_cash * 0.5) if both_sides else (current_cash if long_sectors else 0.0)
+    short_budget = (current_cash * 0.5) if both_sides else (current_cash if short_sectors else 0.0)
     per_long_alloc = (long_budget / len(long_sectors)) if long_sectors else 0.0
     per_short_alloc = (short_budget / len(short_sectors)) if short_sectors else 0.0
 
-    entered_trades = []
-
-    # 1. Long Legs Entry
-    for ticker in long_sectors:
-        p = price_map.get(ticker)
-        if not p or p <= 0:
-            continue
-        entry_p = p * (1.0 + slip_factor)
-        shares = int(per_long_alloc // entry_p) if entry_p > 0 else 0
-        if shares <= 0:
-            continue
-
-        trade_record = {
-            "portfolio_id": str(portfolio.id),
-            "ticker": ticker,
-            "signal": "BUY",
-            "quantity": shares,
-            "price": entry_p,
-            "total_cost": shares * entry_p,
-            "executed_at": start_ts,
-        }
-        trade_id = None
-        if not dry_run:
-            ins_res = client.table("trades").insert(trade_record).execute()
-            trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
-
-            # Upsert active holding into portfolio_positions
-            client.table("portfolio_positions").upsert(
-                {
-                    "portfolio_id": str(portfolio.id),
-                    "ticker": ticker,
-                    "quantity": shares,
-                    "average_cost_basis": entry_p,
-                    "last_updated_at": datetime.now(UTC).isoformat(),
-                },
-                on_conflict="portfolio_id,ticker",
-            ).execute()
-        entered_trades.append(
-            {"ticker": ticker, "side": "LONG", "shares": shares, "entry_price": entry_p, "trade_id": trade_id}
+    entered_trades = _enter_sector_legs(
+        client, str(portfolio.id), long_sectors, price_map, per_long_alloc, slip_factor, "LONG", start_ts, dry_run
+    )
+    entered_trades.extend(
+        _enter_sector_legs(
+            client,
+            str(portfolio.id),
+            short_sectors,
+            price_map,
+            per_short_alloc,
+            slip_factor,
+            "SHORT",
+            start_ts,
+            dry_run,
         )
+    )
 
-    # 2. Short Legs Entry
-    for ticker in short_sectors:
-        p = price_map.get(ticker)
-        if not p or p <= 0:
-            continue
-        entry_p = p * (1.0 - slip_factor)
-        shares = int(per_short_alloc // entry_p) if entry_p > 0 else 0
-        if shares <= 0:
-            continue
-
-        trade_record = {
-            "portfolio_id": str(portfolio.id),
-            "ticker": ticker,
-            "signal": "SHORT",
-            "quantity": shares,
-            "price": entry_p,
-            "total_cost": shares * entry_p,
-            "executed_at": start_ts,
-        }
-        trade_id = None
-        if not dry_run:
-            ins_res = client.table("trades").insert(trade_record).execute()
-            trade_id = ins_res.data[0]["id"] if ins_res.data and "id" in ins_res.data[0] else str(uuid4())
-        # Note: DB constraint quantity_not_negative prevents negative positions in portfolio_positions.
-        # Short legs are tracked directly via trades table.
-        entered_trades.append(
-            {"ticker": ticker, "side": "SHORT", "shares": shares, "entry_price": entry_p, "trade_id": trade_id}
-        )
-
-    # Deduct cash for long leg purchases
     total_long_spent = sum(t["shares"] * t["entry_price"] for t in entered_trades if t["side"] == "LONG")
     remaining_cash = max(0.0, current_cash - total_long_spent)
     if not dry_run:
@@ -147,24 +163,7 @@ async def execute_system_sector_entry(
                 "last_updated_at": datetime.now(UTC).isoformat(),
             }
         ).eq("id", str(portfolio.id)).execute()
-
-        # Submit Alpaca orders for LONG legs only (Alpaca paper guardrail prevents shorting)
-        try:
-            from execution.alpaca_broker import AlpacaBroker
-
-            broker = AlpacaBroker()
-            for t in entered_trades:
-                if t["side"] == "LONG":
-                    await broker.submit_limit_order(
-                        trade_id=t.get("trade_id") or uuid4(),
-                        ticker=t["ticker"],
-                        quantity=t["shares"],
-                        signal="BUY",
-                        limit_price=round(t["entry_price"], 2),
-                        agent_id=owner_id,
-                    )
-        except Exception as exc:
-            logger.warning(f"Alpaca mirror error during sector entry: {exc}")
+        await _mirror_long_legs_to_alpaca(entered_trades, owner_id)
 
     logger.info(
         f"System Sector L/S entry executed for {owner_id} on {week_start_date} (dry_run={dry_run}): {entered_trades}"

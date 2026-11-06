@@ -62,6 +62,30 @@ def validate_date_coverage(rows: list, days_requested: int) -> tuple[bool, str]:
     return True, f"valid cache with {distinct_count} distinct dates"
 
 
+def _extract_aftermarket_price(aftermarket_quote: dict | None) -> tuple[float | None, int | None]:
+    """Extract positive price and volume from dedicated aftermarket quote dict."""
+    if aftermarket_quote and aftermarket_quote.get("price"):
+        with contextlib.suppress(ValueError, TypeError):
+            cand_price = float(aftermarket_quote["price"])
+            if cand_price > 0:
+                return cand_price, aftermarket_quote.get("volume")
+    return None, None
+
+
+def _extract_history_prev_close(history: list[dict] | None) -> float | None:
+    """Resolve previous close price from historical price bars."""
+    if not history:
+        return None
+    sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
+    if sorted_hist:
+        last_bar = sorted_hist[-1]
+        close_cand = last_bar.get("close") or last_bar.get("price")
+        if close_cand is not None:
+            with contextlib.suppress(ValueError, TypeError):
+                return float(close_cand)
+    return None
+
+
 def compute_premarket_quote(
     quote: TickerData | None,
     aftermarket_quote: dict | None = None,
@@ -77,31 +101,19 @@ def compute_premarket_quote(
     Returns:
         Standardized premarket quote dict with price, previous_close, change, change_pct, and volume.
     """
-    pm_price = None
+    pm_price, volume = _extract_aftermarket_price(aftermarket_quote)
     prev_close = None
     change = None
     change_pct = None
-    volume = None
-
-    # 1. Dedicated aftermarket / pre-market quote from provider if available
-    if aftermarket_quote and aftermarket_quote.get("price"):
-        with contextlib.suppress(ValueError, TypeError):
-            cand_price = float(aftermarket_quote["price"])
-            if cand_price > 0:
-                pm_price = cand_price
-                volume = aftermarket_quote.get("volume")
 
     # 2. Standard quote fallback/augmentation
     if quote:
         if pm_price is not None:
-            # We have a dedicated aftermarket/premarket quote (pm_price).
-            # In pre-market, quote.price represents the prior regular session close.
             if quote.price and quote.price > 0:
                 prev_close = quote.price
             elif quote.previous_close and quote.previous_close > 0:
                 prev_close = quote.previous_close
         else:
-            # No dedicated aftermarket quote available; use standard quote
             if quote.price and quote.price > 0:
                 pm_price = quote.price
                 change = quote.change
@@ -115,14 +127,8 @@ def compute_premarket_quote(
         return None
 
     # 3. If previous close is still missing, fall back to recent history
-    if (prev_close is None or prev_close <= 0) and history:
-        sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
-        if sorted_hist:
-            last_bar = sorted_hist[-1]
-            close_cand = last_bar.get("close") or last_bar.get("price")
-            if close_cand is not None:
-                with contextlib.suppress(ValueError, TypeError):
-                    prev_close = float(close_cand)
+    if prev_close is None or prev_close <= 0:
+        prev_close = _extract_history_prev_close(history)
 
     if not prev_close or prev_close <= 0:
         prev_close = pm_price

@@ -267,46 +267,33 @@ class FMPProvider(FinancialProvider):
         if not self.api_key:
             return []
 
-        # Construction of parameters for FMP API
-        # Mapping our snake_case snake_case to FMP's camelCase
         params = {
-            "limit": min(limit, 15),  # Cap at 15 for context efficiency
+            "limit": min(limit, 15),
             "apikey": self.api_key,
             "isActivelyTrading": str(is_actively_trading).lower(),
         }
 
-        if exchange:
-            params["exchange"] = exchange
-        if sector:
-            params["sector"] = sector
-        if industry:
-            params["industry"] = industry
+        if market_cap_more_than is None and not sector and not industry:
+            market_cap_more_than = 1000000000
 
-        # Numeric filters
-        if market_cap_more_than is not None:
-            params["marketCapMoreThan"] = market_cap_more_than
-        elif not sector and not industry:
-            # Default to 1B+ if no specific sector/industry to ensure baseline liquidity
-            params["marketCapMoreThan"] = 1000000000
-
-        if market_cap_lower_than is not None:
-            params["marketCapLowerThan"] = market_cap_lower_than
-        if price_more_than is not None:
-            params["priceMoreThan"] = price_more_than
-        if price_lower_than is not None:
-            params["priceLowerThan"] = price_lower_than
-        if beta_more_than is not None:
-            params["betaMoreThan"] = beta_more_than
-        if beta_lower_than is not None:
-            params["betaLowerThan"] = beta_lower_than
-        if volume_more_than is not None:
-            params["volumeMoreThan"] = volume_more_than
-        if volume_lower_than is not None:
-            params["volumeLowerThan"] = volume_lower_than
-        if dividend_more_than is not None:
-            params["dividendMoreThan"] = dividend_more_than
-        if dividend_lower_than is not None:
-            params["dividendLowerThan"] = dividend_lower_than
+        optional_filters = {
+            "exchange": exchange or None,
+            "sector": sector or None,
+            "industry": industry or None,
+            "marketCapMoreThan": market_cap_more_than,
+            "marketCapLowerThan": market_cap_lower_than,
+            "priceMoreThan": price_more_than,
+            "priceLowerThan": price_lower_than,
+            "betaMoreThan": beta_more_than,
+            "betaLowerThan": beta_lower_than,
+            "volumeMoreThan": volume_more_than,
+            "volumeLowerThan": volume_lower_than,
+            "dividendMoreThan": dividend_more_than,
+            "dividendLowerThan": dividend_lower_than,
+        }
+        for key, val in optional_filters.items():
+            if val is not None:
+                params[key] = val
 
         try:
             async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
@@ -317,6 +304,69 @@ class FMPProvider(FinancialProvider):
             error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
             logger.error(f"Error screening stocks on FMP: {error_details}")
             return []
+
+    @staticmethod
+    def _merge_metrics_and_ratios(ticker: str, metrics_data, ratios_data, limit: int) -> list[dict]:
+        """Merge FMP key-metrics and ratios arrays by date and compute derived ratios."""
+        merged_by_date = {}
+
+        if isinstance(metrics_data, list):
+            for entry in metrics_data:
+                date = entry.get("date")
+                if not date:
+                    continue
+                merged_by_date[date] = {
+                    "symbol": entry.get("symbol") or ticker,
+                    "date": date,
+                    "calendarYear": entry.get("fiscalYear") or entry.get("calendarYear"),
+                    "period": entry.get("period"),
+                    "enterpriseValueOverEBITDA": entry.get("evToEBITDA"),
+                    "freeCashFlowYield": entry.get("freeCashFlowYield"),
+                    "netDebt": entry.get("netDebt"),
+                    "marketCap": entry.get("marketCap"),
+                    "enterpriseValue": entry.get("enterpriseValue"),
+                }
+
+        if isinstance(ratios_data, list):
+            for entry in ratios_data:
+                date = entry.get("date")
+                if not date:
+                    continue
+                if date not in merged_by_date:
+                    merged_by_date[date] = {
+                        "symbol": entry.get("symbol") or ticker,
+                        "date": date,
+                        "calendarYear": entry.get("fiscalYear") or entry.get("calendarYear"),
+                        "period": entry.get("period"),
+                    }
+                merged_by_date[date].update(
+                    {
+                        "peRatio": entry.get("priceToEarningsRatio"),
+                        "priceToSalesRatio": entry.get("priceToSalesRatio"),
+                        "pbRatio": entry.get("priceToBookRatio"),
+                        "debtToEquity": entry.get("debtToEquityRatio"),
+                        "currentRatio": entry.get("currentRatio"),
+                        "roe": entry.get("returnOnEquity"),
+                        "dividendYield": entry.get("dividendYield"),
+                        "bookValuePerShare": entry.get("bookValuePerShare"),
+                        "revenuePerShare": entry.get("revenuePerShare"),
+                        "netIncomePerShare": entry.get("netIncomePerShare"),
+                        "freeCashFlowPerShare": entry.get("freeCashFlowPerShare"),
+                    }
+                )
+
+        sorted_dates = sorted(merged_by_date.keys(), reverse=True)
+        results = [merged_by_date[d] for d in sorted_dates[:limit]]
+        for entry in results:
+            fcf_yield = entry.get("freeCashFlowYield")
+            if fcf_yield is not None:
+                try:
+                    fcf_yield_val = float(fcf_yield)
+                    if fcf_yield_val != 0:
+                        entry["priceToFreeCashFlowsRatio"] = 1.0 / fcf_yield_val
+                except (ValueError, TypeError):
+                    pass
+        return results
 
     async def get_key_metrics(self, ticker: str, period: str = "annual", limit: int = 1) -> list[dict]:
         """Fetch fundamental financial key metrics for a ticker from FMP."""
@@ -329,7 +379,6 @@ class FMPProvider(FinancialProvider):
 
         try:
             async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
-                # Build params with symbol instead of ticker path for stable API
                 params = {
                     "symbol": ticker,
                     "period": effective_period,
@@ -337,13 +386,11 @@ class FMPProvider(FinancialProvider):
                     "apikey": self.api_key,
                 }
 
-                # Fetch key-metrics and ratios in parallel
-                metrics_task = client.get(f"{self.BASE_URL}/key-metrics", params=params)
-                ratios_task = client.get(f"{self.BASE_URL}/ratios", params=params)
+                metrics_resp, ratios_resp = await asyncio.gather(
+                    client.get(f"{self.BASE_URL}/key-metrics", params=params),
+                    client.get(f"{self.BASE_URL}/ratios", params=params),
+                )
 
-                metrics_resp, ratios_resp = await asyncio.gather(metrics_task, ratios_task)
-
-                # Fallback to annual if quarterly is not supported (e.g. 402/403 or non-200)
                 if effective_period == "quarter" and (
                     metrics_resp.status_code != 200 or ratios_resp.status_code != 200
                 ):
@@ -354,15 +401,15 @@ class FMPProvider(FinancialProvider):
                         "Retrying with period='annual'..."
                     )
                     params["period"] = "annual"
-                    metrics_task = client.get(f"{self.BASE_URL}/key-metrics", params=params)
-                    ratios_task = client.get(f"{self.BASE_URL}/ratios", params=params)
-                    metrics_resp, ratios_resp = await asyncio.gather(metrics_task, ratios_task)
+                    metrics_resp, ratios_resp = await asyncio.gather(
+                        client.get(f"{self.BASE_URL}/key-metrics", params=params),
+                        client.get(f"{self.BASE_URL}/ratios", params=params),
+                    )
                 elif (
                     effective_period == "quarter" and metrics_resp.status_code == 200 and ratios_resp.status_code == 200
                 ):
                     FMPProvider._quarterly_metrics_supported = True
 
-                # If both attempts failed (e.g. 402 on both quarterly and annual), return empty
                 if metrics_resp.status_code != 200 or ratios_resp.status_code != 200:
                     logger.warning(
                         f"FMP key metrics unavailable for {ticker} "
@@ -374,74 +421,7 @@ class FMPProvider(FinancialProvider):
                 metrics_resp.raise_for_status()
                 ratios_resp.raise_for_status()
 
-                metrics_data = metrics_resp.json()
-                ratios_data = ratios_resp.json()
-
-                merged_by_date = {}
-
-                # Process metrics
-                if isinstance(metrics_data, list):
-                    for entry in metrics_data:
-                        date = entry.get("date")
-                        if not date:
-                            continue
-
-                        merged_by_date[date] = {
-                            "symbol": entry.get("symbol") or ticker,
-                            "date": date,
-                            "calendarYear": entry.get("fiscalYear") or entry.get("calendarYear"),
-                            "period": entry.get("period"),
-                            "enterpriseValueOverEBITDA": entry.get("evToEBITDA"),
-                            "freeCashFlowYield": entry.get("freeCashFlowYield"),
-                            "netDebt": entry.get("netDebt"),
-                            "marketCap": entry.get("marketCap"),
-                            "enterpriseValue": entry.get("enterpriseValue"),
-                        }
-
-                # Process ratios
-                if isinstance(ratios_data, list):
-                    for entry in ratios_data:
-                        date = entry.get("date")
-                        if not date:
-                            continue
-
-                        if date not in merged_by_date:
-                            merged_by_date[date] = {
-                                "symbol": entry.get("symbol") or ticker,
-                                "date": date,
-                                "calendarYear": entry.get("fiscalYear") or entry.get("calendarYear"),
-                                "period": entry.get("period"),
-                            }
-
-                        merged_by_date[date].update(
-                            {
-                                "peRatio": entry.get("priceToEarningsRatio"),
-                                "priceToSalesRatio": entry.get("priceToSalesRatio"),
-                                "pbRatio": entry.get("priceToBookRatio"),
-                                "debtToEquity": entry.get("debtToEquityRatio"),
-                                "currentRatio": entry.get("currentRatio"),
-                                "roe": entry.get("returnOnEquity"),
-                                "dividendYield": entry.get("dividendYield"),
-                                "bookValuePerShare": entry.get("bookValuePerShare"),
-                                "revenuePerShare": entry.get("revenuePerShare"),
-                                "netIncomePerShare": entry.get("netIncomePerShare"),
-                                "freeCashFlowPerShare": entry.get("freeCashFlowPerShare"),
-                            }
-                        )
-
-                # Sort by date descending
-                sorted_dates = sorted(merged_by_date.keys(), reverse=True)
-                results = [merged_by_date[d] for d in sorted_dates[:limit]]
-                for entry in results:
-                    fcf_yield = entry.get("freeCashFlowYield")
-                    if fcf_yield is not None:
-                        try:
-                            fcf_yield_val = float(fcf_yield)
-                            if fcf_yield_val != 0:
-                                entry["priceToFreeCashFlowsRatio"] = 1.0 / fcf_yield_val
-                        except (ValueError, TypeError):
-                            pass
-                return results
+                return self._merge_metrics_and_ratios(ticker, metrics_resp.json(), ratios_resp.json(), limit)
 
         except Exception as e:
             error_details = f"{e} ({repr(e)})" if str(e) else repr(e)

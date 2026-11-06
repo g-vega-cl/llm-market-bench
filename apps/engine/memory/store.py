@@ -1,5 +1,6 @@
 """Supabase pgvector store logic."""
 
+import asyncio
 import logging
 import re
 from datetime import UTC, datetime, timedelta
@@ -771,35 +772,105 @@ def get_top_trending_concepts(limit: int = 5) -> str:
         return ""
 
 
+def _find_similar_components(memories: list[dict[str, Any]], similarity_threshold: float) -> list[list[str]]:
+    from analysis.consensus import cosine_similarity
+
+    adj = {m["id"]: [] for m in memories}
+    for i in range(len(memories)):
+        for j in range(i + 1, len(memories)):
+            m1 = memories[i]
+            m2 = memories[j]
+            if cosine_similarity(m1["embedding"], m2["embedding"]) >= similarity_threshold:
+                adj[m1["id"]].append(m2["id"])
+                adj[m2["id"]].append(m1["id"])
+
+    visited = set()
+    components = []
+    for m in memories:
+        m_id = m["id"]
+        if m_id not in visited:
+            comp = []
+            queue = [m_id]
+            visited.add(m_id)
+            while queue:
+                curr = queue.pop(0)
+                comp.append(curr)
+                for neighbor in adj[curr]:
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+            if len(comp) >= 2:
+                components.append(comp)
+    return components
+
+
+async def _synthesize_memory_cluster(comp: list[str], memory_map: dict[str, Any], deepseek: Any) -> None:
+    from typing import Literal
+
+    from pydantic import BaseModel, Field
+
+    from core.config import DEEPSEEK_FLASH_MODEL
+    from core.llm.prompt_factory import PromptFactory
+
+    class ConsolidationResponse(BaseModel):
+        headline: str = Field(..., description="Concise headline for the consolidated memory")
+        summary: str = Field(..., description="Comprehensive summary of the consolidated events")
+        importance_score: int = Field(..., ge=1, le=10, description="Synthesized importance score (1-10)")
+        memory_type: Literal["MARKET_EVENT", "GOVERNMENT_INCENTIVE"] = Field(
+            ..., description="Consolidated memory type"
+        )
+
+    logger.info(f"Consolidating overlapping cluster of {len(comp)} memories: {comp}")
+    cluster_memories = [memory_map[m_id] for m_id in comp]
+    formatted_memories = [
+        f"Memory {idx + 1} [ID: {m['id']}, Type: {m['memory_type']}, Importance: {m['importance_score']}]: {m['content']}"
+        for idx, m in enumerate(cluster_memories)
+    ]
+    overlapping_text = "\n".join(formatted_memories)
+
+    messages = PromptFactory.build_memory_consolidation_messages(
+        provider="deepseek", overlapping_memories=overlapping_text
+    )
+    resp_awaitable = deepseek.chat.completions.create(
+        model=DEEPSEEK_FLASH_MODEL, response_model=ConsolidationResponse, messages=messages
+    )
+
+    if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+        resp = await resp_awaitable
+    else:
+        resp = resp_awaitable
+
+    consolidated_content = f"[CONSOLIDATED] {resp.headline} | {resp.summary}"
+    primary_parent = cluster_memories[0]["id"]
+    metadata = {"consolidated_ids": comp, "consolidation_headline": resp.headline}
+
+    new_id = add_memory(
+        content=consolidated_content,
+        metadata=metadata,
+        parent_id=primary_parent,
+        status="ACTIVE",
+        relationship_type="UPDATE",
+        memory_type=resp.memory_type,
+        importance_score=resp.importance_score,
+        check_similarity=False,
+    )
+
+    if new_id:
+        logger.info(f"Created new consolidated memory {new_id} for cluster.")
+        for m_id in comp:
+            update_memory_status(m_id, "SUPERSEDED")
+    else:
+        logger.error(f"Failed to create consolidated memory for cluster {comp}")
+
+
 async def consolidate_overlapping_memories(similarity_threshold: float = 0.85):
-    """Weekly offline consolidation of active memories into synthesized canonical entries.
-
-    Identifies clusters of active memories with cosine similarity > threshold,
-    synthesizes them using DeepSeek, inserts the consolidated memory, and marks the
-    original pieces as SUPERSEDED.
-    """
+    """Weekly offline consolidation of active memories into synthesized canonical entries."""
     try:
-        import asyncio
         import json
-        from typing import Literal
 
-        from pydantic import BaseModel, Field
-
-        from analysis.consensus import cosine_similarity
-        from core.config import DEEPSEEK_FLASH_MODEL
         from core.llm import get_deepseek_client
-        from core.llm.prompt_factory import PromptFactory
-
-        class ConsolidationResponse(BaseModel):
-            headline: str = Field(..., description="Concise headline for the consolidated memory")
-            summary: str = Field(..., description="Comprehensive summary of the consolidated events")
-            importance_score: int = Field(..., ge=1, le=10, description="Synthesized importance score (1-10)")
-            memory_type: Literal["MARKET_EVENT", "GOVERNMENT_INCENTIVE"] = Field(
-                ..., description="Consolidated memory type"
-            )
 
         client = get_supabase_client()
-        # 1. Fetch all ACTIVE memories (capped at 500 most recent for scaling scale safety)
         response = (
             client.table("memories")
             .select("id", "content", "embedding", "importance_score", "memory_type")
@@ -814,111 +885,23 @@ async def consolidate_overlapping_memories(similarity_threshold: float = 0.85):
             return
 
         memories = response.data
-        # Ensure we parse string embeddings if they are returned as string JSON
         for m in memories:
             emb = m.get("embedding")
             if isinstance(emb, str):
                 m["embedding"] = json.loads(emb)
 
-        # Filter out memories without embeddings
         memories = [m for m in memories if m.get("embedding") is not None]
-
-        # 2. Find connected components of similar memories (adjacency list)
-        adj = {m["id"]: [] for m in memories}
-        for i in range(len(memories)):
-            for j in range(i + 1, len(memories)):
-                m1 = memories[i]
-                m2 = memories[j]
-                if cosine_similarity(m1["embedding"], m2["embedding"]) >= similarity_threshold:
-                    adj[m1["id"]].append(m2["id"])
-                    adj[m2["id"]].append(m1["id"])
-
-        # Find connected components (DFS)
-        visited = set()
-        components = []
-        for m in memories:
-            m_id = m["id"]
-            if m_id not in visited:
-                comp = []
-                queue = [m_id]
-                visited.add(m_id)
-                while queue:
-                    curr = queue.pop(0)
-                    comp.append(curr)
-                    for neighbor in adj[curr]:
-                        if neighbor not in visited:
-                            visited.add(neighbor)
-                            queue.append(neighbor)
-                if len(comp) >= 2:
-                    components.append(comp)
+        components = _find_similar_components(memories, similarity_threshold)
 
         if not components:
             logger.info("No overlapping memory clusters found for consolidation.")
             return
 
-        # Map ID to memory dictionary
         memory_map = {m["id"]: m for m in memories}
         deepseek = get_deepseek_client()
 
         for comp in components:
-            logger.info(f"Consolidating overlapping cluster of {len(comp)} memories: {comp}")
-
-            # Format cluster content for LLM synthesis prompt
-            cluster_memories = [memory_map[m_id] for m_id in comp]
-            formatted_memories = []
-            for idx, m in enumerate(cluster_memories):
-                formatted_memories.append(
-                    f"Memory {idx + 1} [ID: {m['id']}, Type: {m['memory_type']}, Importance: {m['importance_score']}]: {m['content']}"
-                )
-
-            overlapping_text = "\n".join(formatted_memories)
-
-            # Build prompts
-            messages = PromptFactory.build_memory_consolidation_messages(
-                provider="deepseek", overlapping_memories=overlapping_text
-            )
-
-            # Call DeepSeek (via config.DEEPSEEK_FLASH_MODEL) via instructor
-            resp_awaitable = deepseek.chat.completions.create(
-                model=DEEPSEEK_FLASH_MODEL, response_model=ConsolidationResponse, messages=messages
-            )
-
-            if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-                resp = await resp_awaitable
-            else:
-                resp = resp_awaitable
-
-            # 3. Create the consolidated memory content
-            consolidated_content = f"[CONSOLIDATED] {resp.headline} | {resp.summary}"
-
-            # Use the first memory in the cluster as the primary parent_id
-            primary_parent = cluster_memories[0]["id"]
-
-            # Metadata holds all original consolidated memory IDs
-            metadata = {
-                "consolidated_ids": comp,
-                "consolidation_headline": resp.headline,
-            }
-
-            # Add the new synthesized consolidated memory
-            new_id = add_memory(
-                content=consolidated_content,
-                metadata=metadata,
-                parent_id=primary_parent,
-                status="ACTIVE",
-                relationship_type="UPDATE",
-                memory_type=resp.memory_type,
-                importance_score=resp.importance_score,
-                check_similarity=False,  # Skip check since this is a new consolidated memory
-            )
-
-            if new_id:
-                logger.info(f"Created new consolidated memory {new_id} for cluster.")
-                # Mark older memories in the cluster as SUPERSEDED
-                for m_id in comp:
-                    update_memory_status(m_id, "SUPERSEDED")
-            else:
-                logger.error(f"Failed to create consolidated memory for cluster {comp}")
+            await _synthesize_memory_cluster(comp, memory_map, deepseek)
 
     except Exception as e:
         logger.error(f"Error in consolidate_overlapping_memories: {e}")

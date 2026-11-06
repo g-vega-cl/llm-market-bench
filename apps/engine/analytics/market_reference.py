@@ -195,6 +195,30 @@ class MultiHorizonReferenceProfile:
         return " ".join(parts)
 
 
+def _filter_and_validate_reference_bars(history: list[dict[str, Any]], target_date: str | None) -> list[dict[str, Any]]:
+    """Filters history prior to target_date and parses positive numeric prices."""
+    valid_bars: list[dict[str, Any]] = []
+    target_prefix = target_date[:10] if target_date else None
+    for row in history:
+        try:
+            p_val = row.get("price")
+            if p_val is None:
+                continue
+            p = float(p_val)
+            if math.isnan(p) or p <= 0:
+                continue
+
+            fetched_at = str(row.get("fetched_at", ""))
+            bar_date = fetched_at[:10]
+            if target_prefix and bar_date and bar_date >= target_prefix:
+                continue
+
+            valid_bars.append({"price": p, "date": bar_date, "fetched_at": fetched_at})
+        except (ValueError, TypeError):
+            continue
+    return valid_bars
+
+
 def compute_multi_horizon_reference(
     ticker: str,
     history: list[dict[str, Any]] | None,
@@ -210,25 +234,7 @@ def compute_multi_horizon_reference(
     if not history:
         return None
 
-    valid_bars: list[dict[str, Any]] = []
-    for row in history:
-        try:
-            p_val = row.get("price")
-            if p_val is None:
-                continue
-            p = float(p_val)
-            if math.isnan(p) or p <= 0:
-                continue
-
-            fetched_at = str(row.get("fetched_at", ""))
-            bar_date = fetched_at[:10]
-            if target_date and bar_date and bar_date >= target_date[:10]:
-                continue
-
-            valid_bars.append({"price": p, "date": bar_date, "fetched_at": fetched_at})
-        except (ValueError, TypeError):
-            continue
-
+    valid_bars = _filter_and_validate_reference_bars(history, target_date)
     if len(valid_bars) < 3:
         return None
 

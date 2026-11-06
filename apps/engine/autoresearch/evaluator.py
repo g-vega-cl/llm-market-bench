@@ -169,6 +169,141 @@ async def _fetch_dollar_index_return(week_start: date, week_end: date) -> float:
     return 0.0
 
 
+async def _resolve_active_prompt_mutable(track_id: str) -> str:
+    try:
+        if track_id and track_id != "track_default":
+            current_prompt = await get_active_prompt(track_id=track_id)
+        else:
+            current_prompt = await get_active_prompt()
+    except TypeError:
+        current_prompt = await get_active_prompt()
+
+    from core.llm.prompts import split_prompt
+
+    if not current_prompt:
+        from core.llm import prompts
+
+        current_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
+
+    _, current_prompt_mutable, _ = split_prompt(current_prompt)
+    return current_prompt_mutable
+
+
+def _compute_spy_stats(spy_returns: list[float]) -> tuple[float, float]:
+    spy_return_pct = 0.0
+    spy_volatility_pct = 0.0
+    if spy_returns:
+        cumulative = 1.0
+        for r in spy_returns:
+            cumulative *= 1 + r
+        spy_return_pct = (cumulative - 1) * 100
+        if len(spy_returns) > 1:
+            mean_spy = sum(spy_returns) / len(spy_returns)
+            var_spy = sum((r - mean_spy) ** 2 for r in spy_returns) / (len(spy_returns) - 1)
+            spy_volatility_pct = math.sqrt(var_spy) * math.sqrt(252) * 100
+    return spy_return_pct, spy_volatility_pct
+
+
+async def _resolve_variants_and_baseline(track_id: str) -> tuple[list[dict], dict | None, float | None, str]:
+    from core.llm.prompts import split_prompt
+
+    try:
+        if track_id and track_id != "track_default":
+            previous = await get_previous_variants(limit=5, track_id=track_id)
+            baseline_variant = await get_all_time_baseline(track_id=track_id)
+        else:
+            previous = await get_previous_variants(limit=5)
+            baseline_variant = await get_all_time_baseline()
+    except TypeError:
+        previous = await get_previous_variants(limit=5)
+        baseline_variant = await get_all_time_baseline()
+
+    baseline_score = None
+    baseline_prompt_mutable = "No baseline prompt yet."
+    if baseline_variant:
+        baseline_prompt = baseline_variant.get("prompt_content")
+        if baseline_prompt:
+            _, baseline_prompt_mutable, _ = split_prompt(baseline_prompt)
+        m = baseline_variant.get("metrics", {})
+        if isinstance(m, str):
+            import json
+
+            try:
+                m = json.loads(m)
+            except (json.JSONDecodeError, TypeError):
+                m = {}
+        baseline_score = m.get("score")
+
+    return previous, baseline_variant, baseline_score, baseline_prompt_mutable
+
+
+def _fetch_track_memories_safe(track_id: str) -> str:
+    try:
+        from memory.store import retrieve_autoresearch_memories
+
+        return retrieve_autoresearch_memories(track_id=track_id, scope="portfolio_trading", limit=5)
+    except Exception as e:
+        logger.warning("Could not fetch autoresearch memories for %s: %s", track_id, e)
+        return ""
+
+
+def _append_report_sections(
+    report_parts: list[str],
+    cold_start: bool,
+    baseline_prompt_mutable: str,
+    current_prompt_mutable: str,
+    track_id: str,
+    track_memories: str,
+) -> None:
+    if cold_start:
+        report_parts.extend(
+            [
+                "",
+                "# COLD START RESET: Formulate Mutable Strategy From Scratch",
+                "This cycle is a COLD START RESET (1-in-6 stochastic exploration to escape local optima).",
+                "DO NOT anchor on or copy prior prompt strategies. Formulate a completely fresh, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch using the multi-week performance context and empirical execution postmortems provided above.",
+                "All system constraints (header rules, pricing mechanics, and structured JSON output format) remain FROZEN and managed automatically by the engine. You are writing ONLY the mutable strategy section.",
+            ]
+        )
+    else:
+        report_parts.extend(
+            [
+                "",
+                "# Baseline Prompt (All-Time Best)",
+                "This is the mutable strategies and analysis section of the prompt that achieved the highest score so far. Use this as your foundation.",
+                "```",
+                baseline_prompt_mutable,
+                "```",
+                "",
+                "# Latest Experiment Prompt (Just Evaluated)",
+                "This is the mutable strategies and analysis section of the prompt that produced the score at the top of this report.",
+                "```",
+                current_prompt_mutable,
+                "```",
+            ]
+        )
+
+    if track_memories:
+        report_parts.extend(
+            [
+                "",
+                f"# Prior Autoresearch Memories & Insights (Track: {track_id})",
+                track_memories,
+            ]
+        )
+
+    report_parts.extend(
+        [
+            "",
+            "# Instructions",
+            "Propose a new strategy and analysis section to replace the sections shown above. Return ONLY valid JSON with "
+            "new_prompt_text (containing the modified strategy and analysis rules section only), "
+            "change_description, experiment_type, research_reasoning, confidence, and research_insight "
+            "(a 1-2 sentence durable takeaway or hypothesis outcome to store in long-term memory for this track).",
+        ]
+    )
+
+
 async def evaluate_week(
     week_start: date | None = None,
     week_end: date | None = None,
@@ -189,39 +324,12 @@ async def evaluate_week(
 
     logger.info("Evaluating week %s to %s for track %s", week_start, week_end, track_id)
 
-    try:
-        if track_id and track_id != "track_default":
-            current_prompt = await get_active_prompt(track_id=track_id)
-        else:
-            current_prompt = await get_active_prompt()
-    except TypeError:
-        current_prompt = await get_active_prompt()
-
-    from core.llm.prompts import split_prompt
-
-    if not current_prompt:
-        from core.llm import prompts
-
-        current_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
-
-    _, current_prompt_mutable, _ = split_prompt(current_prompt)
+    current_prompt_mutable = await _resolve_active_prompt_mutable(track_id)
 
     # Fetch SPY returns once — benchmark for the score.
     sb_client = await get_async_supabase_client()
     spy_returns = await _spy_returns(sb_client, week_start, week_end)
-
-    # Compute SPY return and annualized volatility from daily returns.
-    spy_return_pct = 0.0
-    spy_volatility_pct = 0.0
-    if spy_returns:
-        cumulative = 1.0
-        for r in spy_returns:
-            cumulative *= 1 + r
-        spy_return_pct = (cumulative - 1) * 100
-        if len(spy_returns) > 1:
-            mean_spy = sum(spy_returns) / len(spy_returns)
-            var_spy = sum((r - mean_spy) ** 2 for r in spy_returns) / (len(spy_returns) - 1)
-            spy_volatility_pct = math.sqrt(var_spy) * math.sqrt(252) * 100
+    spy_return_pct, spy_volatility_pct = _compute_spy_stats(spy_returns)
 
     # Experiment group metrics.
     from core.config import AUTORESEARCH_TRACKS
@@ -262,33 +370,7 @@ async def evaluate_week(
     score_result["portfolio_details"] = exp_metrics.get("portfolio_details", {})
     score_result["evaluated_at"] = datetime.now(UTC).isoformat()
 
-    try:
-        if track_id and track_id != "track_default":
-            previous = await get_previous_variants(limit=5, track_id=track_id)
-            baseline_variant = await get_all_time_baseline(track_id=track_id)
-        else:
-            previous = await get_previous_variants(limit=5)
-            baseline_variant = await get_all_time_baseline()
-    except TypeError:
-        previous = await get_previous_variants(limit=5)
-        baseline_variant = await get_all_time_baseline()
-
-    baseline_score = None
-    baseline_prompt = None
-    baseline_prompt_mutable = "No baseline prompt yet."
-    if baseline_variant:
-        baseline_prompt = baseline_variant.get("prompt_content")
-        if baseline_prompt:
-            _, baseline_prompt_mutable, _ = split_prompt(baseline_prompt)
-        m = baseline_variant.get("metrics", {})
-        if isinstance(m, str):
-            import json
-
-            try:
-                m = json.loads(m)
-            except (json.JSONDecodeError, TypeError):
-                m = {}
-        baseline_score = m.get("score")
+    previous, baseline_variant, baseline_score, baseline_prompt_mutable = await _resolve_variants_and_baseline(track_id)
 
     # Fetch trade rejection metrics and verifier feedback for evaluated week
     rejection_stats = await fetch_trade_rejections(
@@ -323,7 +405,6 @@ async def evaluate_week(
     mw_vol = multi_week_metrics.get("volatility", 0) * 100
 
     # Build minimal report.
-    baseline_line = ""
     if baseline_score is not None:
         delta = score_result["score"] - baseline_score
         baseline_line = f"Baseline: {baseline_score} (best so far)  (Δ: {delta:+.4f} vs baseline)"
@@ -334,14 +415,7 @@ async def evaluate_week(
     max_drawdown = score_result["max_drawdown"]
     opp_penalty = score_result["opportunity_cost_penalty"]
 
-    # Fetch prior autoresearch memories for this track
-    track_memories = ""
-    try:
-        from memory.store import retrieve_autoresearch_memories
-
-        track_memories = retrieve_autoresearch_memories(track_id=track_id, scope="portfolio_trading", limit=5)
-    except Exception as e:
-        logger.warning("Could not fetch autoresearch memories for %s: %s", track_id, e)
+    track_memories = _fetch_track_memories_safe(track_id)
 
     report_parts = [
         "# Weekly Performance",
@@ -373,53 +447,13 @@ async def evaluate_week(
         _format_variants(previous, baseline_score=baseline_score),
     ]
 
-    if cold_start:
-        report_parts.extend(
-            [
-                "",
-                "# COLD START RESET: Formulate Mutable Strategy From Scratch",
-                "This cycle is a COLD START RESET (1-in-6 stochastic exploration to escape local optima).",
-                "DO NOT anchor on or copy prior prompt strategies. Formulate a completely fresh, high-conviction trading strategy and analytical reasoning framework for the mutable section from scratch using the multi-week performance context and empirical execution postmortems provided above.",
-                "All system constraints (header rules, pricing mechanics, and structured JSON output format) remain FROZEN and managed automatically by the engine. You are writing ONLY the mutable strategy section.",
-            ]
-        )
-
-    else:
-        report_parts.extend(
-            [
-                "",
-                "# Baseline Prompt (All-Time Best)",
-                "This is the mutable strategies and analysis section of the prompt that achieved the highest score so far. Use this as your foundation.",
-                "```",
-                baseline_prompt_mutable,
-                "```",
-                "",
-                "# Latest Experiment Prompt (Just Evaluated)",
-                "This is the mutable strategies and analysis section of the prompt that produced the score at the top of this report.",
-                "```",
-                current_prompt_mutable,
-                "```",
-            ]
-        )
-
-    if track_memories:
-        report_parts.extend(
-            [
-                "",
-                f"# Prior Autoresearch Memories & Insights (Track: {track_id})",
-                track_memories,
-            ]
-        )
-
-    report_parts.extend(
-        [
-            "",
-            "# Instructions",
-            "Propose a new strategy and analysis section to replace the sections shown above. Return ONLY valid JSON with "
-            "new_prompt_text (containing the modified strategy and analysis rules section only), "
-            "change_description, experiment_type, research_reasoning, confidence, and research_insight "
-            "(a 1-2 sentence durable takeaway or hypothesis outcome to store in long-term memory for this track).",
-        ]
+    _append_report_sections(
+        report_parts,
+        cold_start=cold_start,
+        baseline_prompt_mutable=baseline_prompt_mutable,
+        current_prompt_mutable=current_prompt_mutable,
+        track_id=track_id,
+        track_memories=track_memories,
     )
 
     return "\n".join(report_parts), score_result, baseline_variant.get("variant_tag") if baseline_variant else None

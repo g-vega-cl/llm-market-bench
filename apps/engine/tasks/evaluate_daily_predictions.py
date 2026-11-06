@@ -166,6 +166,147 @@ async def fetch_intraday_prices(
     return None, None, None, None
 
 
+async def _backfill_daily_prediction_trades(
+    pred: dict,
+    ticker: str,
+    expected_return_pct: float | None,
+    open_p: float,
+    high_p: float,
+    low_p: float,
+    close_p: float,
+    intraday_hit: bool | None,
+) -> None:
+    try:
+        intraday_data = {
+            "open_price": open_p,
+            "high_price": high_p,
+            "low_price": low_p,
+            "close_price": close_p,
+            "intraday_hit": intraday_hit,
+        }
+        if ticker.upper() == "TLT":
+            from execution.daily_bond_trading import execute_system_daily_bond_close_trade
+
+            await execute_system_daily_bond_close_trade(prediction=pred, intraday_data=intraday_data)
+        else:
+            from execution.daily_trading import (
+                execute_system_daily_close_trade,
+                execute_system_daily_trade,
+            )
+
+            trade_coros = []
+            pred_model = str(pred.get("model_name", "")).lower()
+            target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
+            if "jev" not in pred_model and target_pct > 0.0:
+                trade_coros.append(execute_system_daily_trade(prediction=pred, intraday_data=intraday_data))
+            trade_coros.append(execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data))
+            await asyncio.gather(*trade_coros)
+    except Exception as e:
+        logger.exception(f"Failed to execute system daily trade for prediction {pred['id']}: {e}")
+
+
+async def _evaluate_single_daily_prediction(
+    pred: dict,
+    client,
+    price_cache: dict[tuple[str, str], tuple[float | None, float | None, float | None, float | None]],
+    force_recalc: bool,
+    backfill_trades: bool,
+) -> bool:
+    pred_id = pred["id"]
+    ticker = pred["ticker"]
+    target_date_str = pred["target_date"]
+    predicted_dir = pred["predicted_direction"]
+    confidence = pred.get("confidence", 50.0)
+    expected_return_pct = pred.get("expected_return_pct")
+
+    now_et = get_ny_now()
+    today_et_str = now_et.date().isoformat()
+    if (
+        target_date_str == today_et_str
+        and (now_et.hour < 16 or (now_et.hour == 16 and now_et.minute < 5))
+        and not force_recalc
+    ):
+        logger.info(
+            f"Skipping evaluation for prediction {pred_id} ({ticker} on {target_date_str}): "
+            f"Market session is still active (Time: {now_et.strftime('%H:%M')} ET < 16:05 ET)."
+        )
+        return False
+
+    cache_key = (ticker, target_date_str)
+    if cache_key in price_cache:
+        open_p, high_p, low_p, close_p = price_cache[cache_key]
+    else:
+        open_p, high_p, low_p, close_p = await fetch_intraday_prices(
+            ticker, target_date_str, force_refresh=force_recalc
+        )
+        price_cache[cache_key] = (open_p, high_p, low_p, close_p)
+
+    if open_p is None or close_p is None or high_p is None or low_p is None:
+        from execution.market_data import MarketDataManager
+
+        mdm = MarketDataManager()
+        if not await mdm.is_trading_day(target_date_str):
+            logger.warning(
+                f"Target date {target_date_str} for prediction {pred_id} was not a trading day (weekend or holiday). "
+                f"Deleting invalid non-trading day prediction."
+            )
+            client.table("daily_predictions").delete().eq("id", pred_id).execute()
+            return False
+
+        logger.warning(
+            f"Could not retrieve Open/High/Low/Close price for {ticker} on {target_date_str}. Skipping evaluation."
+        )
+        return False
+
+    actual_dir = "UP" if close_p >= open_p else "DOWN"
+    if predicted_dir.upper() == "NO_TRADE":
+        is_correct = None
+        brier_score = None
+        conviction_score = None
+        intraday_hit = None
+        intraday_dir_hit = None
+    else:
+        is_correct = predicted_dir.upper() == actual_dir
+        brier_score = calculate_brier_score(predicted_dir, confidence, actual_dir)
+        conviction_score = round(conviction_points(confidence, is_correct), 4)
+        intraday_hit, intraday_dir_hit = compute_intraday_hit_metrics(
+            predicted_direction=predicted_dir,
+            expected_return_pct=expected_return_pct,
+            open_price=open_p,
+            high_price=high_p,
+            low_price=low_p,
+        )
+
+    client.table("daily_predictions").update(
+        {
+            "open_price": open_p,
+            "high_price": high_p,
+            "low_price": low_p,
+            "close_price": close_p,
+            "actual_direction": actual_dir,
+            "is_correct": is_correct,
+            "intraday_hit": intraday_hit,
+            "intraday_direction_hit": intraday_dir_hit,
+            "brier_score": brier_score,
+            "conviction_score": conviction_score,
+            "status": "evaluated",
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+    ).eq("id", pred_id).execute()
+
+    if backfill_trades:
+        await _backfill_daily_prediction_trades(
+            pred, ticker, expected_return_pct, open_p, high_p, low_p, close_p, intraday_hit
+        )
+
+    logger.info(
+        f"Evaluated daily prediction {pred_id} ({ticker} on {target_date_str}): "
+        f"Predicted {predicted_dir}, Actual {actual_dir} (Open: {open_p:.2f}, High: {high_p:.2f}, Low: {low_p:.2f}, Close: {close_p:.2f}). "
+        f"Correct: {is_correct}, IntradayHit: {intraday_hit}, Brier: {brier_score:.4f}"
+    )
+    return True
+
+
 async def evaluate_daily_predictions(
     target_date: str | None = None, force_recalc: bool = False, backfill_trades: bool = False
 ) -> int:
@@ -180,17 +321,12 @@ async def evaluate_daily_predictions(
     client = get_supabase_client()
 
     query = client.table("daily_predictions").select("*")
-
     if target_date:
         query = query.eq("target_date", target_date)
-        if not force_recalc:
-            query = query.eq("status", "pending")
-    else:
-        if not force_recalc:
-            query = query.eq("status", "pending")
+    if not force_recalc:
+        query = query.eq("status", "pending")
 
     response = query.execute()
-
     pending = response.data
     if not pending:
         logger.info(f"No daily predictions found to evaluate (target_date={target_date}, force={force_recalc}).")
@@ -200,127 +336,8 @@ async def evaluate_daily_predictions(
     price_cache: dict[tuple[str, str], tuple[float | None, float | None, float | None, float | None]] = {}
 
     for pred in pending:
-        pred_id = pred["id"]
-        ticker = pred["ticker"]
-        target_date_str = pred["target_date"]
-        predicted_dir = pred["predicted_direction"]
-        confidence = pred.get("confidence", 50.0)
-        expected_return_pct = pred.get("expected_return_pct")
-
-        # Skip evaluating today's session if market has not closed yet (4:00 PM ET / 16:00 ET)
-        now_et = get_ny_now()
-        today_et_str = now_et.date().isoformat()
-        if (
-            target_date_str == today_et_str
-            and (now_et.hour < 16 or (now_et.hour == 16 and now_et.minute < 5))
-            and not force_recalc
-        ):
-            logger.info(
-                f"Skipping evaluation for prediction {pred_id} ({ticker} on {target_date_str}): "
-                f"Market session is still active (Time: {now_et.strftime('%H:%M')} ET < 16:05 ET)."
-            )
-            continue
-
-        cache_key = (ticker, target_date_str)
-        if cache_key in price_cache:
-            open_p, high_p, low_p, close_p = price_cache[cache_key]
-        else:
-            open_p, high_p, low_p, close_p = await fetch_intraday_prices(
-                ticker, target_date_str, force_refresh=force_recalc
-            )
-            price_cache[cache_key] = (open_p, high_p, low_p, close_p)
-
-        if open_p is None or close_p is None or high_p is None or low_p is None:
-            from execution.market_data import MarketDataManager
-
-            mdm = MarketDataManager()
-            is_trading = await mdm.is_trading_day(target_date_str)
-            if not is_trading:
-                logger.warning(
-                    f"Target date {target_date_str} for prediction {pred_id} was not a trading day (weekend or holiday). "
-                    f"Deleting invalid non-trading day prediction."
-                )
-                client.table("daily_predictions").delete().eq("id", pred_id).execute()
-                continue
-
-            logger.warning(
-                f"Could not retrieve Open/High/Low/Close price for {ticker} on {target_date_str}. Skipping evaluation."
-            )
-            continue
-
-        actual_dir = "UP" if close_p >= open_p else "DOWN"
-        if predicted_dir.upper() == "NO_TRADE":
-            is_correct = None
-            brier_score = None
-            conviction_score = None
-            intraday_hit = None
-            intraday_dir_hit = None
-        else:
-            is_correct = predicted_dir.upper() == actual_dir
-            brier_score = calculate_brier_score(predicted_dir, confidence, actual_dir)
-            conviction_score = round(conviction_points(confidence, is_correct), 4)
-            intraday_hit, intraday_dir_hit = compute_intraday_hit_metrics(
-                predicted_direction=predicted_dir,
-                expected_return_pct=expected_return_pct,
-                open_price=open_p,
-                high_price=high_p,
-                low_price=low_p,
-            )
-
-        client.table("daily_predictions").update(
-            {
-                "open_price": open_p,
-                "high_price": high_p,
-                "low_price": low_p,
-                "close_price": close_p,
-                "actual_direction": actual_dir,
-                "is_correct": is_correct,
-                "intraday_hit": intraday_hit,
-                "intraday_direction_hit": intraday_dir_hit,
-                "brier_score": brier_score,
-                "conviction_score": conviction_score,
-                "status": "evaluated",
-                "updated_at": datetime.now(UTC).isoformat(),
-            }
-        ).eq("id", pred_id).execute()
-
-        # Optional: trigger systematic daily SPY trader portfolio backfill if explicitly enabled
-        if backfill_trades:
-            try:
-                intraday_data = {
-                    "open_price": open_p,
-                    "high_price": high_p,
-                    "low_price": low_p,
-                    "close_price": close_p,
-                    "intraday_hit": intraday_hit,
-                }
-                if ticker.upper() == "TLT":
-                    from execution.daily_bond_trading import execute_system_daily_bond_close_trade
-
-                    await execute_system_daily_bond_close_trade(prediction=pred, intraday_data=intraday_data)
-                else:
-                    from execution.daily_trading import (
-                        execute_system_daily_close_trade,
-                        execute_system_daily_trade,
-                    )
-
-                    # Only execute target-exit trade if the model provides an explicit profit target percentage.
-                    trade_coros = []
-                    pred_model = str(pred.get("model_name", "")).lower()
-                    target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
-                    if "jev" not in pred_model and target_pct > 0.0:
-                        trade_coros.append(execute_system_daily_trade(prediction=pred, intraday_data=intraday_data))
-                    trade_coros.append(execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data))
-                    await asyncio.gather(*trade_coros)
-            except Exception as e:
-                logger.exception(f"Failed to execute system daily trade for prediction {pred_id}: {e}")
-
-        evaluated_count += 1
-        logger.info(
-            f"Evaluated daily prediction {pred_id} ({ticker} on {target_date_str}): "
-            f"Predicted {predicted_dir}, Actual {actual_dir} (Open: {open_p:.2f}, High: {high_p:.2f}, Low: {low_p:.2f}, Close: {close_p:.2f}). "
-            f"Correct: {is_correct}, IntradayHit: {intraday_hit}, Brier: {brier_score:.4f}"
-        )
+        if await _evaluate_single_daily_prediction(pred, client, price_cache, force_recalc, backfill_trades):
+            evaluated_count += 1
 
     if evaluated_count > 0:
         try:

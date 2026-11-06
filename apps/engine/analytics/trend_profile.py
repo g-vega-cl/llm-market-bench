@@ -40,6 +40,38 @@ class TrendProfile:
         }
 
 
+def _filter_and_parse_bars(history: list[dict[str, Any]], target_date: str | None) -> list[dict[str, Any]]:
+    """Filters history prior to target_date and parses price/open/close."""
+    valid_bars: list[dict[str, Any]] = []
+    target_prefix = target_date[:10] if target_date else None
+    for row in history:
+        try:
+            price_val = row.get("price")
+            if price_val is None:
+                continue
+            price = float(price_val)
+            fetched_at = str(row.get("fetched_at", ""))
+            if not fetched_at:
+                continue
+
+            bar_date = fetched_at[:10]
+            if target_prefix and bar_date >= target_prefix:
+                continue
+
+            valid_bars.append(
+                {
+                    "price": price,
+                    "open": float(row.get("open", price)) if row.get("open") is not None else price,
+                    "close": float(row.get("close", price)) if row.get("close") is not None else price,
+                    "date": bar_date,
+                    "fetched_at": fetched_at,
+                }
+            )
+        except (ValueError, TypeError):
+            continue
+    return valid_bars
+
+
 def compute_trend_profile(
     history: list[dict[str, Any]] | None,
     target_date: str | None = None,
@@ -54,34 +86,7 @@ def compute_trend_profile(
     if not history:
         return TrendProfile(is_available=False)
 
-    valid_bars: list[dict[str, Any]] = []
-    for row in history:
-        try:
-            price_val = row.get("price")
-            if price_val is None:
-                continue
-            price = float(price_val)
-            fetched_at = str(row.get("fetched_at", ""))
-            if not fetched_at:
-                continue
-
-            # Zero lookahead filter: strictly prior to target_date
-            bar_date = fetched_at[:10]
-            if target_date and bar_date >= target_date[:10]:
-                continue
-
-            valid_bars.append(
-                {
-                    "price": price,
-                    "open": float(row.get("open", price)) if row.get("open") is not None else price,
-                    "close": float(row.get("close", price)) if row.get("close") is not None else price,
-                    "date": bar_date,
-                    "fetched_at": fetched_at,
-                }
-            )
-        except (ValueError, TypeError):
-            continue
-
+    valid_bars = _filter_and_parse_bars(history, target_date)
     if len(valid_bars) < 2:
         return TrendProfile(is_available=False)
 

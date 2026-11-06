@@ -580,6 +580,176 @@ class MassiveOptionsClient:
 
         return None
 
+    async def _query_reference_contracts(
+        self, client: httpx.AsyncClient, ticker: str, earliest_exp_str: str, min_strike: float, max_strike: float
+    ) -> list[dict[str, Any]]:
+        """Query Polygon reference options contracts for calls and puts near spot."""
+        ref_contracts = []
+        for c_type in ("call", "put"):
+            await self._limiter.acquire()
+            url = f"{self.base_url}/v3/reference/options/contracts"
+            params = {
+                "underlying_ticker": ticker.upper(),
+                "contract_type": c_type,
+                "expiration_date.gte": earliest_exp_str,
+                "limit": 50,
+                "apiKey": self.api_key,
+                "strike_price.gte": min_strike,
+                "strike_price.lte": max_strike,
+            }
+            resp = await client.get(url, params=params)
+            if resp.status_code == 200:
+                ref_contracts.extend(resp.json().get("results", []))
+            elif resp.status_code == 429:
+                logger.warning(f"Rate limit querying {c_type} reference contracts for {ticker}; retrying after wait...")
+                await asyncio.sleep(12.0)
+                await self._limiter.acquire()
+                resp = await client.get(url, params=params)
+                if resp.status_code == 200:
+                    ref_contracts.extend(resp.json().get("results", []))
+        return ref_contracts
+
+    @staticmethod
+    def _select_free_tier_target_contracts(
+        ref_contracts: list[dict[str, Any]], earliest_exp_str: str, ref_px: float, today: datetime.date
+    ) -> list[dict[str, Any]]:
+        """Select 4 representative contracts (ATM call/put + 25d OTM call/put) for nearest active expiration."""
+        exp_dates = sorted(
+            {
+                c["expiration_date"]
+                for c in ref_contracts
+                if "expiration_date" in c and c["expiration_date"] >= earliest_exp_str
+            }
+        )
+        target_exps = exp_dates[:1] if exp_dates else []
+        active_refs = [c for c in ref_contracts if c.get("expiration_date") in target_exps]
+        if not ref_px and active_refs:
+            ref_px = sum(c["strike_price"] for c in active_refs) / len(active_refs)
+
+        calls = sorted(
+            [c for c in active_refs if c.get("contract_type") == "call"],
+            key=lambda c: abs(c.get("strike_price", 0) - ref_px),
+        )
+        puts = sorted(
+            [c for c in active_refs if c.get("contract_type") == "put"],
+            key=lambda c: abs(c.get("strike_price", 0) - ref_px),
+        )
+
+        atm_call = calls[0] if calls else None
+        atm_put = puts[0] if puts else None
+
+        target_exp_str = target_exps[0] if target_exps else today.isoformat()
+        try:
+            dte_est = max(1, (datetime.date.fromisoformat(target_exp_str) - today).days)
+        except Exception:
+            dte_est = 14
+        std_move = 0.6745 * 0.20 * math.sqrt(dte_est / 365.0)
+        target_call_k = ref_px * math.exp(std_move)
+        target_put_k = ref_px * math.exp(-std_move)
+
+        otm_calls = [c for c in calls if c.get("strike_price", 0) > ref_px]
+        call_25d = (
+            min(otm_calls, key=lambda c: abs(c.get("strike_price", 0) - target_call_k))
+            if otm_calls
+            else (calls[1] if len(calls) > 1 else None)
+        )
+
+        otm_puts = [c for c in puts if c.get("strike_price", 0) < ref_px]
+        put_25d = (
+            min(otm_puts, key=lambda c: abs(c.get("strike_price", 0) - target_put_k))
+            if otm_puts
+            else (puts[1] if len(puts) > 1 else None)
+        )
+
+        selected_dict: dict[str, dict[str, Any]] = {}
+        for c in (atm_call, atm_put, call_25d, put_25d):
+            if c and c.get("ticker"):
+                selected_dict[c["ticker"]] = c
+
+        for c in calls + puts:
+            if len(selected_dict) >= 4:
+                break
+            if c.get("ticker") and c["ticker"] not in selected_dict:
+                selected_dict[c["ticker"]] = c
+
+        return list(selected_dict.values())
+
+    async def _fetch_contract_prev_bar(self, client: httpx.AsyncClient, sym: str) -> dict[str, Any]:
+        """Fetch previous EOD bar for an option contract symbol with rate-limit retry."""
+        await self._limiter.acquire()
+        bar_resp = await client.get(
+            f"{self.base_url}/v2/aggs/ticker/{sym}/prev",
+            params={"apiKey": self.api_key},
+        )
+        if bar_resp.status_code == 429:
+            logger.warning(f"Rate limit fetching prev bar for {sym}; retrying after wait...")
+            await asyncio.sleep(12.0)
+            await self._limiter.acquire()
+            bar_resp = await client.get(
+                f"{self.base_url}/v2/aggs/ticker/{sym}/prev",
+                params={"apiKey": self.api_key},
+            )
+        if bar_resp.status_code == 200:
+            bar_data = bar_resp.json().get("results", [])
+            if bar_data:
+                return bar_data[0]
+        return {}
+
+    @staticmethod
+    def _build_free_tier_contract_entry(
+        target: dict[str, Any], bar: dict[str, Any], ref_px: float, today: datetime.date
+    ) -> dict[str, Any]:
+        """Compute local Black-Scholes IV/Greeks and construct standardized contract dict."""
+        sym = target["ticker"]
+        close_px = bar.get("c")
+        vol = bar.get("v", 0)
+        strike = float(target.get("strike_price", 0.0))
+        exp_date_str = target.get("expiration_date", today.isoformat())
+        ctype = target.get("contract_type", "call")
+
+        exp_date = datetime.date.fromisoformat(exp_date_str)
+        bar_t = bar.get("t")
+        if bar_t and isinstance(bar_t, (int, float)):
+            bar_date = datetime.datetime.fromtimestamp(bar_t / 1000, datetime.UTC).date()
+            dte = max(1, (exp_date - bar_date).days)
+        else:
+            dte = max(1, (exp_date - today).days)
+        t_years = dte / 365.0
+
+        iv = None
+        greeks = {"delta": None, "gamma": None, "theta": None, "vega": None}
+        if close_px and ref_px and strike and t_years > 0:
+            iv = black_scholes_implied_volatility(
+                price=close_px, s=ref_px, k=strike, t=t_years, r=0.045, contract_type=ctype
+            )
+            if iv is not None:
+                greeks = black_scholes_greeks(s=ref_px, k=strike, t=t_years, r=0.045, sigma=iv, contract_type=ctype)
+
+        return {
+            "details": {
+                "ticker": sym,
+                "contract_type": ctype,
+                "strike_price": strike,
+                "expiration_date": exp_date_str,
+                "shares_per_contract": target.get("shares_per_contract", 100),
+            },
+            "day": {
+                "close": close_px,
+                "open": bar.get("o"),
+                "high": bar.get("h"),
+                "low": bar.get("l"),
+                "volume": vol,
+                "vwap": bar.get("vw"),
+            },
+            "last_quote": {
+                "bid": close_px,
+                "ask": close_px,
+            },
+            "implied_volatility": iv,
+            "greeks": greeks,
+            "open_interest": vol,
+        }
+
     async def _fetch_free_tier_contracts(
         self,
         ticker: str,
@@ -588,227 +758,31 @@ class MassiveOptionsClient:
     ) -> list[dict[str, Any]]:
         """Fallback for Free Tier accounts: fetches contracts reference for calls and puts near spot + EOD bars, then calculates IV & Greeks locally."""
         today = datetime.datetime.now(datetime.UTC).date()
-        today_str = today.isoformat()
-
-        # Determine if session is post-market or weekend
         now_et = datetime.datetime.now(datetime.UTC).astimezone(datetime.timezone(datetime.timedelta(hours=-4)))
         is_post_market = now_et.hour >= 16 or now_et.weekday() >= 5
 
-        # If min_dte is not explicitly set, ensure post-market never selects today's expired contracts
-        if min_dte is not None:
-            effective_min_dte = min_dte
-        elif is_post_market:
-            effective_min_dte = 1
-        else:
-            effective_min_dte = 0
+        effective_min_dte = min_dte if min_dte is not None else (1 if is_post_market else 0)
+        earliest_exp_str = (today + datetime.timedelta(days=effective_min_dte)).isoformat()
 
-        earliest_exp = today + datetime.timedelta(days=effective_min_dte)
-        earliest_exp_str = earliest_exp.isoformat()
-
-        ref_px = current_price
-        if not ref_px or ref_px <= 0:
-            ref_px = await self.get_spot_price(ticker)
-
+        ref_px = current_price if (current_price and current_price > 0) else await self.get_spot_price(ticker)
         if not ref_px or ref_px <= 0:
             logger.warning(
                 f"Cannot resolve spot price for {ticker}; aborting free tier options retrieval to prevent unconstrained strike selection."
             )
             return []
 
-        # Step 1: Query contracts reference for CALLS and PUTS near spot (±6% bounds to capture 25-delta skew)
-        min_strike = ref_px * 0.94
-        max_strike = ref_px * 1.06
-
-        ref_contracts = []
         async with httpx.AsyncClient(timeout=15.0) as client:
-            for c_type in ("call", "put"):
-                await self._limiter.acquire()
-                url = f"{self.base_url}/v3/reference/options/contracts"
-                params = {
-                    "underlying_ticker": ticker.upper(),
-                    "contract_type": c_type,
-                    "expiration_date.gte": earliest_exp_str,
-                    "limit": 50,
-                    "apiKey": self.api_key,
-                }
-                if min_strike is not None:
-                    params["strike_price.gte"] = min_strike
-                if max_strike is not None:
-                    params["strike_price.lte"] = max_strike
-
-                resp = await client.get(url, params=params)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    contracts_batch = data.get("results", [])
-                    ref_contracts.extend(contracts_batch)
-                elif resp.status_code == 429:
-                    logger.warning(
-                        f"Rate limit querying {c_type} reference contracts for {ticker}; retrying after wait..."
-                    )
-                    await asyncio.sleep(12.0)
-                    await self._limiter.acquire()
-                    resp = await client.get(url, params=params)
-                    if resp.status_code == 200:
-                        ref_contracts.extend(resp.json().get("results", []))
-
+            ref_contracts = await self._query_reference_contracts(
+                client, ticker, earliest_exp_str, ref_px * 0.94, ref_px * 1.06
+            )
             if not ref_contracts:
                 return []
 
-            # Step 2: Target nearest active expiration satisfying earliest_exp_str
-            exp_dates = sorted(
-                {
-                    c["expiration_date"]
-                    for c in ref_contracts
-                    if "expiration_date" in c and c["expiration_date"] >= earliest_exp_str
-                }
-            )
-            target_exps = exp_dates[:1] if exp_dates else []
-
-            active_refs = [c for c in ref_contracts if c.get("expiration_date") in target_exps]
-            if not ref_px and active_refs:
-                ref_px = sum(c["strike_price"] for c in active_refs) / len(active_refs)
-
-            # Separate calls and puts, sort by distance to spot price
-            calls = [c for c in active_refs if c.get("contract_type") == "call"]
-            puts = [c for c in active_refs if c.get("contract_type") == "put"]
-            calls.sort(key=lambda c: abs(c.get("strike_price", 0) - ref_px))
-            puts.sort(key=lambda c: abs(c.get("strike_price", 0) - ref_px))
-
-            # Pick 1 ATM Call + 1 ATM Put, and 1 25-delta OTM Call + 1 25-delta OTM Put (budget: exactly 4 contracts)
-            atm_call = calls[0] if calls else None
-            atm_put = puts[0] if puts else None
-
-            # Estimate target 25-delta strikes via Black-Scholes inversion: K ≈ S * exp(±0.6745 * σ * sqrt(t))
-            target_exp_str = target_exps[0] if target_exps else today_str
-            try:
-                target_exp_date = datetime.date.fromisoformat(target_exp_str)
-                dte_est = max(1, (target_exp_date - today).days)
-            except Exception:
-                dte_est = 14
-            t_est = dte_est / 365.0
-            sigma_baseline = 0.20  # Standard annualized volatility baseline for equity index / ETFs
-            std_move = 0.6745 * sigma_baseline * math.sqrt(t_est)
-            target_call_k = ref_px * math.exp(std_move)
-            target_put_k = ref_px * math.exp(-std_move)
-
-            # Select OTM Call closest to target 25d strike (must be OTM: strike > ref_px)
-            otm_calls = [c for c in calls if c.get("strike_price", 0) > ref_px]
-            call_25d = (
-                min(otm_calls, key=lambda c: abs(c.get("strike_price", 0) - target_call_k))
-                if otm_calls
-                else (calls[1] if len(calls) > 1 else None)
-            )
-
-            # Select OTM Put closest to target 25d strike (must be OTM: strike < ref_px)
-            otm_puts = [c for c in puts if c.get("strike_price", 0) < ref_px]
-            put_25d = (
-                min(otm_puts, key=lambda c: abs(c.get("strike_price", 0) - target_put_k))
-                if otm_puts
-                else (puts[1] if len(puts) > 1 else None)
-            )
-
-            selected_dict: dict[str, dict[str, Any]] = {}
-            for c in (atm_call, atm_put, call_25d, put_25d):
-                if c and c.get("ticker"):
-                    selected_dict[c["ticker"]] = c
-
-            # Backfill up to 4 contracts from closest strikes if any are missing or duplicates
-            for c in calls + puts:
-                if len(selected_dict) >= 4:
-                    break
-                if c.get("ticker") and c["ticker"] not in selected_dict:
-                    selected_dict[c["ticker"]] = c
-
-            target_selection = list(selected_dict.values())
-
-            # Step 3: Fetch previous day bars for selected target contracts
+            target_selection = self._select_free_tier_target_contracts(ref_contracts, earliest_exp_str, ref_px, today)
             results = []
             for target in target_selection:
-                sym = target["ticker"]
-                await self._limiter.acquire()
-                bar_resp = await client.get(
-                    f"{self.base_url}/v2/aggs/ticker/{sym}/prev",
-                    params={"apiKey": self.api_key},
-                )
-                if bar_resp.status_code == 429:
-                    logger.warning(f"Rate limit fetching prev bar for {sym}; retrying after wait...")
-                    await asyncio.sleep(12.0)
-                    await self._limiter.acquire()
-                    bar_resp = await client.get(
-                        f"{self.base_url}/v2/aggs/ticker/{sym}/prev",
-                        params={"apiKey": self.api_key},
-                    )
-
-                bar = {}
-                if bar_resp.status_code == 200:
-                    bar_data = bar_resp.json().get("results", [])
-                    if bar_data:
-                        bar = bar_data[0]
-
-                close_px = bar.get("c")
-                vol = bar.get("v", 0)
-                strike = float(target.get("strike_price", 0.0))
-                exp_date_str = target.get("expiration_date", today_str)
-                ctype = target.get("contract_type", "call")
-
-                # Step 4: Compute local Black-Scholes IV and Greeks
-                exp_date = datetime.date.fromisoformat(exp_date_str)
-                bar_t = bar.get("t")
-                if bar_t and isinstance(bar_t, (int, float)):
-                    bar_date = datetime.datetime.fromtimestamp(bar_t / 1000, datetime.UTC).date()
-                    dte = max(1, (exp_date - bar_date).days)
-                else:
-                    dte = max(1, (exp_date - today).days)
-                t_years = dte / 365.0
-
-                iv = None
-                greeks = {"delta": None, "gamma": None, "theta": None, "vega": None}
-                if close_px and ref_px and strike and t_years > 0:
-                    iv = black_scholes_implied_volatility(
-                        price=close_px,
-                        s=ref_px,
-                        k=strike,
-                        t=t_years,
-                        r=0.045,
-                        contract_type=ctype,
-                    )
-                    if iv is not None:
-                        greeks = black_scholes_greeks(
-                            s=ref_px,
-                            k=strike,
-                            t=t_years,
-                            r=0.045,
-                            sigma=iv,
-                            contract_type=ctype,
-                        )
-
-                results.append(
-                    {
-                        "details": {
-                            "ticker": sym,
-                            "contract_type": ctype,
-                            "strike_price": strike,
-                            "expiration_date": exp_date_str,
-                            "shares_per_contract": target.get("shares_per_contract", 100),
-                        },
-                        "day": {
-                            "close": close_px,
-                            "open": bar.get("o"),
-                            "high": bar.get("h"),
-                            "low": bar.get("l"),
-                            "volume": vol,
-                            "vwap": bar.get("vw"),
-                        },
-                        "last_quote": {
-                            "bid": close_px,
-                            "ask": close_px,
-                        },
-                        "implied_volatility": iv,
-                        "greeks": greeks,
-                        "open_interest": vol,
-                    }
-                )
-
+                bar = await self._fetch_contract_prev_bar(client, target["ticker"])
+                results.append(self._build_free_tier_contract_entry(target, bar, ref_px, today))
             return results
 
     async def _fetch_from_api(
@@ -880,6 +854,46 @@ class MassiveOptionsClient:
             metrics["max_pain"] = None
             metrics["max_pain_source"] = "unavailable_free_tier_sample_too_thin"
 
+    async def _check_db_options_cache(
+        self, sb, ticker: str, current_price: float | None, now_ts: float
+    ) -> dict[str, Any] | None:
+        """Check Supabase options_data_cache for fresh snapshot within TTL."""
+        try:
+            res = sb.table("options_data_cache").select("*").eq("ticker", ticker).execute()
+            if not res.data:
+                return None
+            row = res.data[0]
+            fetched_at_str = row.get("fetched_at")
+            if not fetched_at_str:
+                return None
+            fetched_at = datetime.datetime.fromisoformat(fetched_at_str.replace("Z", "+00:00"))
+            now = datetime.datetime.now(datetime.UTC)
+            if (now - fetched_at).total_seconds() >= self.cache_ttl_seconds:
+                return None
+
+            metrics = row.get("metrics", {})
+            if not metrics.get("underlying_price") or float(metrics.get("underlying_price") or 0) <= 0:
+                resolved_px = current_price or await self.get_spot_price(ticker)
+                if resolved_px:
+                    metrics["underlying_price"] = resolved_px
+            if "as_of_timestamp" not in metrics or "staleness_note" not in metrics:
+                sess, note, as_of_iso = get_options_market_session(fetched_at)
+                metrics["as_of_timestamp"] = metrics.get("as_of_timestamp") or as_of_iso
+                metrics["session_status"] = metrics.get("session_status") or sess
+                metrics["staleness_note"] = metrics.get("staleness_note") or note
+            res_payload = {
+                "status": "OK",
+                "ticker": ticker,
+                "source": "db_cache",
+                "metrics": metrics,
+                "contracts": row.get("contracts", []),
+            }
+            self._memory_cache[ticker] = (now_ts, res_payload)
+            return res_payload
+        except Exception as e:
+            logger.warning(f"Error checking options_data_cache table in Supabase: {e}")
+            return None
+
     async def get_options_snapshot(
         self,
         ticker: str,
@@ -901,37 +915,9 @@ class MassiveOptionsClient:
 
         # 2. Check database cache
         if not force_refresh and sb:
-            try:
-                res = sb.table("options_data_cache").select("*").eq("ticker", ticker).execute()
-                if res.data:
-                    row = res.data[0]
-                    fetched_at_str = row.get("fetched_at")
-                    if fetched_at_str:
-                        fetched_at = datetime.datetime.fromisoformat(fetched_at_str.replace("Z", "+00:00"))
-                        now = datetime.datetime.now(datetime.UTC)
-                        if (now - fetched_at).total_seconds() < self.cache_ttl_seconds:
-                            metrics = row.get("metrics", {})
-                            if not metrics.get("underlying_price") or float(metrics.get("underlying_price") or 0) <= 0:
-                                resolved_px = current_price or await self.get_spot_price(ticker)
-                                if resolved_px:
-                                    metrics["underlying_price"] = resolved_px
-                            if "as_of_timestamp" not in metrics or "staleness_note" not in metrics:
-                                sess, note, as_of_iso = get_options_market_session(fetched_at)
-                                metrics["as_of_timestamp"] = metrics.get("as_of_timestamp") or as_of_iso
-                                metrics["session_status"] = metrics.get("session_status") or sess
-                                metrics["staleness_note"] = metrics.get("staleness_note") or note
-                            contracts = row.get("contracts", [])
-                            res_payload = {
-                                "status": "OK",
-                                "ticker": ticker,
-                                "source": "db_cache",
-                                "metrics": metrics,
-                                "contracts": contracts,
-                            }
-                            self._memory_cache[ticker] = (now_ts, res_payload)
-                            return res_payload
-            except Exception as e:
-                logger.warning(f"Error checking options_data_cache table in Supabase: {e}")
+            db_cached = await self._check_db_options_cache(sb, ticker, current_price, now_ts)
+            if db_cached:
+                return db_cached
 
         # Ensure spot price is resolved if missing
         if not current_price or current_price <= 0:

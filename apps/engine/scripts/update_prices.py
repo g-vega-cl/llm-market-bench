@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import asyncio
 import math
 from datetime import UTC, datetime
+from typing import Any
 
 from core.config import logger
 from core.db import SUPABASE_RETRIES, get_supabase_client, is_transient_supabase_error
@@ -110,36 +111,14 @@ async def run_systematic_strategy_hooks(now_et: datetime, dry_run: bool = False)
         logger.exception("PEAD drift strategy hook in update_prices failed")
 
 
-async def update_prices(dry_run: bool = False):
-    """Main function to update prices and metrics."""
-    logger.info("Starting Price Update Script (No LLM)...")
-
-    sb_client = get_supabase_client()
-    mdm = MarketDataManager()
-
-    # 0. Check if market is open
-    if not await mdm.is_market_open():
-        logger.info("Market is currently CLOSED. Skipping price update to save resources.")
-        return
-
-    # 0b. Systematic Strategy Hooks (Sector exits, Max Pain intraday/MOC, PEAD morning drift)
-    try:
-        from zoneinfo import ZoneInfo
-
-        now_et = datetime.now(ZoneInfo("America/New_York"))
-        await run_systematic_strategy_hooks(now_et, dry_run=dry_run)
-    except Exception:
-        logger.exception("Systematic strategy hooks in update_prices failed")
-
-    # 1. Get all active portfolios
+async def _fetch_portfolio_owners(sb_client: Any) -> list[str]:
     def fetch_portfolios():
         return sb_client.table("portfolios").select("owner_id").execute()
 
     for attempt in range(1, SUPABASE_RETRIES + 1):
         try:
             port_res = fetch_portfolios()
-            owners = [p["owner_id"] for p in port_res.data] if port_res.data else []
-            break
+            return [p["owner_id"] for p in port_res.data] if port_res.data else []
         except Exception as exc:
             if not is_transient_supabase_error(exc):
                 logger.error(f"fetch_portfolios failed with non-transient error: {exc}")
@@ -147,21 +126,19 @@ async def update_prices(dry_run: bool = False):
             if attempt < SUPABASE_RETRIES:
                 wait_time = 2 ** (attempt - 1)
                 logger.warning(
-                    f"fetch_portfolios failed (attempt {attempt}/{SUPABASE_RETRIES}), "
-                    f"retrying in {wait_time}s. Error: {exc}"
+                    f"fetch_portfolios failed (attempt {attempt}/{SUPABASE_RETRIES}), retrying in {wait_time}s. Error: {exc}"
                 )
                 await asyncio.sleep(wait_time)
             else:
                 logger.error(f"Failed to fetch portfolios after {SUPABASE_RETRIES} attempts: {exc}")
-                return
+                return []
+    return []
 
-    if not owners:
-        logger.warning("No portfolios found to update.")
-        return
 
-    logger.info(f"Found {len(owners)} portfolios to update.")
-
-    # 2. Collect all unique tickers across all portfolios
+async def _collect_portfolios_and_tickers(
+    owners: list[str],
+    sb_client: Any,
+) -> tuple[list[Any], set[str], dict[str, list[dict]]]:
     all_tickers = set()
     portfolios_to_update = []
     open_shorts_by_portfolio: dict[str, list[dict]] = {}
@@ -190,33 +167,20 @@ async def update_prices(dry_run: bool = False):
         except Exception as e:
             logger.error(f"Failed to initialize portfolio {owner}: {e}")
             continue
+    return portfolios_to_update, all_tickers, open_shorts_by_portfolio
 
-    logger.info(f"Identified {len(all_tickers)} unique tickers: {all_tickers}")
 
-    # 3. Fetch fresh prices for all tickers in batch
-    logger.info(f"Fetching fresh quotes for {len(all_tickers)} tickers in batch...")
-    # Force refresh to ensure we get the latest prices
-    prices = await mdm.get_quotes(list(all_tickers), force_refresh=True)
-
-    price_map = {t: data.price for t, data in prices.items()}
-
-    for ticker in all_tickers:
-        if ticker in price_map:
-            logger.info(f"Updated price for {ticker}: ${price_map[ticker]:.2f}")
-        else:
-            logger.warning(f"Could not fetch price for {ticker}. Using fallback if available.")
-
-    # 4. Update metrics and record snapshots for each portfolio
+async def _update_portfolio_metrics(
+    portfolios: list[Any],
+    price_map: dict[str, float],
+    open_shorts_by_portfolio: dict[str, list[dict]],
+) -> int:
     updated_count = 0
-    for p in portfolios_to_update:
+    for p in portfolios:
         try:
-            # We need to ensure we have prices for at least the positions held
-            # calculate_reg_t_metrics will handle missing prices by using ACB (see Guardrail E in Overview)
-
             logger.info(f"Recalculating metrics for portfolio: {p.owner_id}")
             p.calculate_reg_t_metrics(price_map)
 
-            # Adjust for open short positions (unrealized PnL) if applicable
             if p.id and str(p.id) in open_shorts_by_portfolio:
                 shorts = open_shorts_by_portfolio[str(p.id)]
                 short_unrealized = sum(
@@ -226,20 +190,56 @@ async def update_prices(dry_run: bool = False):
                 p.metrics.total_equity += short_unrealized
                 p.metrics.excess_liquidity += short_unrealized
 
-            # Persist updated metrics to main portfolios table
             await p.save_metrics()
-
-            # Record daily performance snapshot
             await p.record_performance_snapshot(price_map)
-
             updated_count += 1
             logger.info(f"Successfully updated {p.owner_id}.")
         except Exception as e:
             logger.error(f"Error updating portfolio {p.owner_id}: {e}")
+    return updated_count
 
+
+async def update_prices(dry_run: bool = False):
+    """Main function to update prices and metrics."""
+    logger.info("Starting Price Update Script (No LLM)...")
+
+    sb_client = get_supabase_client()
+    mdm = MarketDataManager()
+
+    if not await mdm.is_market_open():
+        logger.info("Market is currently CLOSED. Skipping price update to save resources.")
+        return
+
+    try:
+        from zoneinfo import ZoneInfo
+
+        now_et = datetime.now(ZoneInfo("America/New_York"))
+        await run_systematic_strategy_hooks(now_et, dry_run=dry_run)
+    except Exception:
+        logger.exception("Systematic strategy hooks in update_prices failed")
+
+    owners = await _fetch_portfolio_owners(sb_client)
+    if not owners:
+        logger.warning("No portfolios found to update.")
+        return
+
+    logger.info(f"Found {len(owners)} portfolios to update.")
+    portfolios_to_update, all_tickers, open_shorts = await _collect_portfolios_and_tickers(owners, sb_client)
+    logger.info(f"Identified {len(all_tickers)} unique tickers: {all_tickers}")
+
+    logger.info(f"Fetching fresh quotes for {len(all_tickers)} tickers in batch...")
+    prices = await mdm.get_quotes(list(all_tickers), force_refresh=True)
+    price_map = {t: data.price for t, data in prices.items()}
+
+    for ticker in all_tickers:
+        if ticker in price_map:
+            logger.info(f"Updated price for {ticker}: ${price_map[ticker]:.2f}")
+        else:
+            logger.warning(f"Could not fetch price for {ticker}. Using fallback if available.")
+
+    updated_count = await _update_portfolio_metrics(portfolios_to_update, price_map, open_shorts)
     logger.info(f"Price update complete. Updated {updated_count} portfolios.")
 
-    # 5. Fetch and store benchmark ticker history
     await fetch_benchmark_history(mdm)
 
 

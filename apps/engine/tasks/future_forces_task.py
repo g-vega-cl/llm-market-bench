@@ -158,6 +158,71 @@ async def run_sentinel_audit(
     return results
 
 
+def _fetch_active_forces_and_quotes(
+    supabase, portfolio: Portfolio
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    active_forces = []
+    try:
+        forces_res = (
+            supabase.table("future_forces")
+            .select("*")
+            .eq("status", "active")
+            .order("conviction_score", desc=True)
+            .execute()
+        )
+        active_forces = forces_res.data or []
+    except Exception as e:
+        logger.debug("Could not fetch active future_forces from database, using vetted defaults: %s", e)
+
+    if not active_forces:
+        active_forces = DEFAULT_FUTURE_FORCES
+
+    quotes: dict[str, dict[str, Any]] = {}
+    with httpx.Client(timeout=10.0) as client:
+        for force in active_forces:
+            for ticker in force.get("tickers") or []:
+                ticker_up = ticker.upper()
+                if ticker_up not in quotes:
+                    quotes[ticker_up] = fetch_ticker_quote(client, ticker_up, FMP_API_KEY)
+            force["quotes"] = quotes
+
+        for pos in portfolio.positions.values():
+            pos_ticker = (getattr(pos, "ticker", None) or (pos.get("ticker") if isinstance(pos, dict) else "")).upper()
+            if pos_ticker and pos_ticker not in quotes:
+                quotes[pos_ticker] = fetch_ticker_quote(client, pos_ticker, FMP_API_KEY)
+
+    return active_forces, quotes
+
+
+def _build_future_forces_holdings(portfolio: Portfolio, quotes: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    current_holdings = []
+    for pos in portfolio.positions.values():
+        pos_ticker = (getattr(pos, "ticker", None) or (pos.get("ticker") if isinstance(pos, dict) else "")).upper()
+        pos_qty = (
+            getattr(pos, "quantity", None)
+            if hasattr(pos, "quantity")
+            else (pos.get("quantity") if isinstance(pos, dict) else 0)
+        )
+        qty_val = int(pos_qty or 0)
+        if qty_val <= 0:
+            continue
+        quote_data = quotes.get(pos_ticker) or {}
+        avg_cost = (
+            getattr(pos, "average_cost_basis", None)
+            if hasattr(pos, "average_cost_basis")
+            else (pos.get("average_cost_basis") if isinstance(pos, dict) else None)
+        )
+        cur_price = quote_data.get("price") or avg_cost or 100.0
+        current_holdings.append(
+            {
+                "ticker": pos_ticker,
+                "shares": qty_val,
+                "current_price": float(cur_price),
+            }
+        )
+    return current_holdings
+
+
 async def run_future_forces_task(
     mode: str = "auto",  # 'auto', 'sentinel', 'rebalance', 'all'
     dry_run: bool = False,
@@ -216,66 +281,8 @@ async def run_future_forces_task(
             task_results["rebalance"] = {"status": "skipped_market_closed"}
             return task_results
 
-        # Fetch active forces
-        active_forces = []
-        try:
-            forces_res = (
-                supabase.table("future_forces")
-                .select("*")
-                .eq("status", "active")
-                .order("conviction_score", desc=True)
-                .execute()
-            )
-            active_forces = forces_res.data or []
-        except Exception as e:
-            logger.debug("Could not fetch active future_forces from database, using vetted defaults: %s", e)
-
-        if not active_forces:
-            active_forces = DEFAULT_FUTURE_FORCES
-
-        # Pull quotes for candidate tickers and existing holdings
-        quotes: dict[str, dict[str, Any]] = {}
-        with httpx.Client(timeout=10.0) as client:
-            for force in active_forces:
-                for ticker in force.get("tickers") or []:
-                    ticker_up = ticker.upper()
-                    if ticker_up not in quotes:
-                        quotes[ticker_up] = fetch_ticker_quote(client, ticker_up, FMP_API_KEY)
-                force["quotes"] = quotes
-
-            for pos in portfolio.positions.values():
-                pos_ticker = (
-                    getattr(pos, "ticker", None) or (pos.get("ticker") if isinstance(pos, dict) else "")
-                ).upper()
-                if pos_ticker and pos_ticker not in quotes:
-                    quotes[pos_ticker] = fetch_ticker_quote(client, pos_ticker, FMP_API_KEY)
-
-        current_holdings = []
-        for pos in portfolio.positions.values():
-            pos_ticker = (getattr(pos, "ticker", None) or (pos.get("ticker") if isinstance(pos, dict) else "")).upper()
-            pos_qty = (
-                getattr(pos, "quantity", None)
-                if hasattr(pos, "quantity")
-                else (pos.get("quantity") if isinstance(pos, dict) else 0)
-            )
-            qty_val = int(pos_qty or 0)
-            if qty_val <= 0:
-                continue
-            quote_data = quotes.get(pos_ticker) or {}
-            avg_cost = (
-                getattr(pos, "average_cost_basis", None)
-                if hasattr(pos, "average_cost_basis")
-                else (pos.get("average_cost_basis") if isinstance(pos, dict) else None)
-            )
-            cur_price = quote_data.get("price") or avg_cost or 100.0
-            current_holdings.append(
-                {
-                    "ticker": pos_ticker,
-                    "shares": qty_val,
-                    "current_price": float(cur_price),
-                }
-            )
-
+        active_forces, quotes = _fetch_active_forces_and_quotes(supabase, portfolio)
+        current_holdings = _build_future_forces_holdings(portfolio, quotes)
         holding_evals = {h["ticker"].upper(): {"should_exit": False} for h in current_holdings}
 
         orders = compute_future_forces_rebalance_orders(

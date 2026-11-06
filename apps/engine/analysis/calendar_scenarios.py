@@ -148,6 +148,83 @@ def clean_event_title(content: str, metadata: dict[str, Any] | None = None) -> s
     return title.strip() or content.strip()
 
 
+def _filter_events_by_ticker(events: list[dict[str, Any]], ticker_filter: str | None) -> list[dict[str, Any]]:
+    """Filters calendar events to those matching ticker_filter if specified."""
+    if not ticker_filter:
+        return list(events)
+    filtered = []
+    for ev in events:
+        meta = ev.get("metadata") or {}
+        scenarios = meta.get("scenarios") or []
+        discovered = meta.get("discovered_assets") or []
+        related = meta.get("tickers") or []
+        content = ev.get("content") or ""
+        matches_ticker = (
+            ticker_filter in str(discovered).upper()
+            or ticker_filter in str(related).upper()
+            or ticker_filter in str(scenarios).upper()
+            or ticker_filter in content.upper()
+        )
+        if matches_ticker:
+            filtered.append(ev)
+    return filtered
+
+
+def _format_scenario_lines(scenarios: list[Any]) -> list[str]:
+    """Formats structured scenarios into markdown bullet lines."""
+    s_lines = ["- **Multi-Scenario Partition & Trading Plans:**"]
+    for sc in scenarios:
+        if not isinstance(sc, dict):
+            continue
+        header = sc.get("header") or "Scenario"
+        prob = sc.get("probability")
+        prob_str = f" ({prob}% probability)" if prob is not None else ""
+        desc = sc.get("description") or ""
+        plan = sc.get("trading_plan") or ""
+        assets = sc.get("assets") or []
+
+        asset_tickers = []
+        for a in assets:
+            if isinstance(a, dict) and a.get("ticker"):
+                asset_tickers.append(a["ticker"])
+            elif isinstance(a, str):
+                asset_tickers.append(a)
+
+        s_lines.append(f"  * **{header}**{prob_str}: {desc}")
+        if plan:
+            s_lines.append(f"    - **Trading Plan / Profit Mechanism**: {plan}")
+        if asset_tickers:
+            s_lines.append(f"    - **Target Assets**: {', '.join(asset_tickers)}")
+    return s_lines
+
+
+def _format_single_event_block(ev: dict[str, Any], tomorrow_date_str: str) -> list[str]:
+    """Formats a single calendar event dictionary into markdown lines."""
+    meta = ev.get("metadata") or {}
+    t_date = ev.get("target_date") or "Unknown"
+    title = clean_event_title(ev.get("content", ""), meta)
+    time_str = meta.get("event_time") or "Time: N/A"
+    impact = meta.get("impact") or "MODERATE"
+    importance = ev.get("importance_score") or 7
+
+    date_badge = "📅 TOMORROW" if t_date == tomorrow_date_str else f"📅 {t_date}"
+    ev_lines = [
+        f"#### {date_badge} | {title} (Impact: {impact}, Score: {importance}/10)",
+        f"- **Scheduled Time**: {time_str}",
+    ]
+
+    scenarios = meta.get("scenarios")
+    if scenarios and isinstance(scenarios, list):
+        ev_lines.extend(_format_scenario_lines(scenarios))
+    elif meta.get("scenario_analysis"):
+        ev_lines.append(f"- **Scenario Analysis & Playbook**: {meta['scenario_analysis']}")
+    else:
+        ev_lines.append(f"- **Event Details**: {ev.get('content')}")
+
+    ev_lines.append("")
+    return ev_lines
+
+
 def format_calendar_scenarios_context(
     events: list[dict[str, Any]],
     historical_memories: list[dict[str, Any]],
@@ -161,27 +238,7 @@ def format_calendar_scenarios_context(
         ref_date = datetime.now(UTC).date()
 
     ticker_filter = ticker.upper().strip() if ticker else None
-
-    # Filter by ticker if requested
-    filtered_events = []
-    for ev in events:
-        meta = ev.get("metadata") or {}
-        scenarios = meta.get("scenarios") or []
-        discovered = meta.get("discovered_assets") or []
-        related = meta.get("tickers") or []
-        content = ev.get("content") or ""
-
-        if ticker_filter:
-            matches_ticker = (
-                ticker_filter in str(discovered).upper()
-                or ticker_filter in str(related).upper()
-                or ticker_filter in str(scenarios).upper()
-                or ticker_filter in content.upper()
-            )
-            if not matches_ticker:
-                continue
-
-        filtered_events.append(ev)
+    filtered_events = _filter_events_by_ticker(events, ticker_filter)
 
     if not filtered_events:
         msg = f"### Upcoming Calendar & Scenario Analysis ({window_label})\n\n"
@@ -200,53 +257,8 @@ def format_calendar_scenarios_context(
     ]
 
     for ev in filtered_events:
-        meta = ev.get("metadata") or {}
-        t_date = ev.get("target_date") or "Unknown"
-        title = clean_event_title(ev.get("content", ""), meta)
-        time_str = meta.get("event_time") or "Time: N/A"
-        impact = meta.get("impact") or "MODERATE"
-        importance = ev.get("importance_score") or 7
+        lines.extend(_format_single_event_block(ev, tomorrow_date_str))
 
-        is_tomorrow = t_date == tomorrow_date_str
-        date_badge = "📅 TOMORROW" if is_tomorrow else f"📅 {t_date}"
-
-        lines.append(f"#### {date_badge} | {title} (Impact: {impact}, Score: {importance}/10)")
-        lines.append(f"- **Scheduled Time**: {time_str}")
-
-        # Structured Scenarios & Actionable Trading Plans
-        scenarios = meta.get("scenarios")
-        if scenarios and isinstance(scenarios, list):
-            lines.append("- **Multi-Scenario Partition & Trading Plans:**")
-            for sc in scenarios:
-                if not isinstance(sc, dict):
-                    continue
-                header = sc.get("header") or "Scenario"
-                prob = sc.get("probability")
-                prob_str = f" ({prob}% probability)" if prob is not None else ""
-                desc = sc.get("description") or ""
-                plan = sc.get("trading_plan") or ""
-                assets = sc.get("assets") or []
-
-                asset_tickers = []
-                for a in assets:
-                    if isinstance(a, dict) and a.get("ticker"):
-                        asset_tickers.append(a["ticker"])
-                    elif isinstance(a, str):
-                        asset_tickers.append(a)
-
-                lines.append(f"  * **{header}**{prob_str}: {desc}")
-                if plan:
-                    lines.append(f"    - **Trading Plan / Profit Mechanism**: {plan}")
-                if asset_tickers:
-                    lines.append(f"    - **Target Assets**: {', '.join(asset_tickers)}")
-        elif meta.get("scenario_analysis"):
-            lines.append(f"- **Scenario Analysis & Playbook**: {meta['scenario_analysis']}")
-        else:
-            lines.append(f"- **Event Details**: {ev.get('content')}")
-
-        lines.append("")
-
-    # Historical Precedents & Lessons Learned
     if historical_memories:
         lines.append("### 🧠 Historical Precedent & Playbook Lessons")
         lines.append("Lessons learned from past market reactions to similar catalysts:")

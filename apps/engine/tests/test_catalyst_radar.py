@@ -178,82 +178,90 @@ def test_format_catalyst_radar_context_lean_vs_detail():
     assert "- **Related Tickers**: CEG, VST" in detail_text
 
 
+class _MockCatalystQuery:
+    def __init__(self, data=None, records_sink=None):
+        self.data = data or []
+        self._records_sink = records_sink
+
+    def select(self, *args, **kwargs):
+        return self
+
+    def gte(self, *args, **kwargs):
+        return self
+
+    def order(self, *args, **kwargs):
+        return self
+
+    def eq(self, *args, **kwargs):
+        return self
+
+    @property
+    def not_(self):
+        class MockNot:
+            def __init__(self, parent):
+                self.parent = parent
+
+            def is_(self, *args, **kwargs):
+                return self.parent
+
+        return MockNot(self)
+
+    def delete(self):
+        return self
+
+    def lt(self, *args, **kwargs):
+        return self
+
+    def limit(self, *args, **kwargs):
+        return self
+
+    def upsert(self, records, on_conflict=None):
+        if self._records_sink is not None:
+            self._records_sink.extend(records)
+        return self
+
+    def execute(self):
+        return self
+
+
+class _MockCatalystSB:
+    def __init__(self, tables):
+        self._tables = tables
+
+    def table(self, name):
+        return self._tables.get(name, _MockCatalystQuery([]))
+
+
 def test_compute_and_store_catalyst_radar(monkeypatch):
     """Verify compute_and_store_catalyst_radar extracts vectors and persists to catalyst_radar."""
     upserted_records = []
-
-    class MockQuery:
-        def __init__(self, data=None):
-            self.data = data or []
-
-        def select(self, *args, **kwargs):
-            return self
-
-        def gte(self, *args, **kwargs):
-            return self
-
-        def order(self, *args, **kwargs):
-            return self
-
-        def eq(self, *args, **kwargs):
-            return self
-
-        @property
-        def not_(self):
-            class MockNot:
-                def __init__(self, parent):
-                    self.parent = parent
-
-                def is_(self, *args, **kwargs):
-                    return self.parent
-
-            return MockNot(self)
-
-        def delete(self):
-            return self
-
-        def lt(self, *args, **kwargs):
-            return self
-
-        def limit(self, *args, **kwargs):
-            return self
-
-        def upsert(self, records, on_conflict=None):
-            upserted_records.extend(records)
-            return self
-
-        def execute(self):
-            return self
-
-    class MockSB:
-        def table(self, name):
-            if name == "concept_metrics":
-                return MockQuery(
-                    [
-                        {
-                            "id": "c1",
-                            "concept_name": "AI Power",
-                            "velocity_score": 3.0,
-                            "concept_vector": [1.0, 0.0],
-                        }
-                    ]
-                )
-            if name == "memories":
-                return MockQuery(
-                    [
-                        {
-                            "id": "m1",
-                            "content": "[CALENDAR EVENT] Grid Capex",
-                            "target_date": "2026-09-12",
-                            "importance_score": 8,
-                            "embedding": [1.0, 0.0],
-                            "metadata": {"impact": "BULLISH"},
-                        }
-                    ]
-                )
-            return MockQuery([])
-
-    mock_sb = MockSB()
+    mock_sb = _MockCatalystSB(
+        {
+            "concept_metrics": _MockCatalystQuery(
+                [
+                    {
+                        "id": "c1",
+                        "concept_name": "AI Power",
+                        "velocity_score": 3.0,
+                        "concept_vector": [1.0, 0.0],
+                    }
+                ]
+            ),
+            "memories": _MockCatalystQuery(
+                [
+                    {
+                        "id": "m1",
+                        "content": "[CALENDAR EVENT] Grid Capex",
+                        "target_date": "2026-09-12",
+                        "importance_score": 8,
+                        "embedding": [1.0, 0.0],
+                        "metadata": {"impact": "BULLISH"},
+                    }
+                ]
+            ),
+            "catalyst_radar": _MockCatalystQuery([], records_sink=upserted_records),
+        }
+    )
     ref_date = date(2026, 9, 9)
     count = compute_and_store_catalyst_radar(sb_client=mock_sb, ref_date=ref_date)
 
@@ -265,48 +273,26 @@ def test_compute_and_store_catalyst_radar(monkeypatch):
 
 def test_fetch_catalyst_radar_from_table():
     """Verify fetch_catalyst_radar reads pre-computed table rows and computes dates on read."""
-
-    class MockQuery:
-        def __init__(self, data=None):
-            self.data = data or []
-
-        def select(self, *args, **kwargs):
-            return self
-
-        def gte(self, *args, **kwargs):
-            return self
-
-        def order(self, *args, **kwargs):
-            return self
-
-        def limit(self, *args, **kwargs):
-            return self
-
-        def execute(self):
-            return self
-
-    class MockSB:
-        def table(self, name):
-            if name == "catalyst_radar":
-                return MockQuery(
-                    [
-                        {
-                            "concept_id": "c1",
-                            "concept_name": "Cloud AI",
-                            "velocity_score": 4.5,
-                            "catalyst_id": "m1",
-                            "catalyst_title": "Nvidia GTC",
-                            "target_date": "2026-09-10",
-                            "impact": "BULLISH",
-                            "similarity": 0.88,
-                            "memory_content": "GTC Keynote",
-                            "related_tickers": ["NVDA"],
-                        }
-                    ]
-                )
-            return MockQuery([])
-
-    mock_sb = MockSB()
+    mock_sb = _MockCatalystSB(
+        {
+            "catalyst_radar": _MockCatalystQuery(
+                [
+                    {
+                        "concept_id": "c1",
+                        "concept_name": "Cloud AI",
+                        "velocity_score": 4.5,
+                        "catalyst_id": "m1",
+                        "catalyst_title": "Nvidia GTC",
+                        "target_date": "2026-09-10",
+                        "impact": "BULLISH",
+                        "similarity": 0.88,
+                        "memory_content": "GTC Keynote",
+                        "related_tickers": ["NVDA"],
+                    }
+                ]
+            )
+        }
+    )
     ref_date = date(2026, 9, 9)
     items = fetch_catalyst_radar(sb_client=mock_sb, ref_date=ref_date)
 

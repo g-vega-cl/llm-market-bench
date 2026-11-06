@@ -54,90 +54,88 @@ def format_predictor_system_prompt(criteria: JevCriteriaConfig) -> str:
     )
 
 
-def extract_predictor_decision(
-    raw_text: str,
-    criteria: JevCriteriaConfig,
-    actual_direction: str | None = None,
-) -> dict[str, Any]:
-    """Extract structured decision from Qwen's completion text, handling <think> tags, markdown, or fallback."""
-    # Strip <think>...</think> if present in the text
-    clean_text = re.sub(r"<think>[\s\S]*?</think>", "", raw_text).strip()
-    if not clean_text:
-        clean_text = raw_text
-
-    data: dict[str, Any] | None = None
-
-    # 1. Search for fenced JSON ```json ... ```
+def _parse_completion_json(clean_text: str) -> dict[str, Any] | None:
     json_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", clean_text)
     if json_match:
         with contextlib.suppress(Exception):
-            data = json.loads(json_match.group(1))
+            return json.loads(json_match.group(1))
 
-    # 2. Search for outermost raw JSON { ... }
-    if not data:
-        bracket_match = re.search(r"(\{[\s\S]*\})", clean_text)
-        if bracket_match:
-            with contextlib.suppress(Exception):
-                data = json.loads(bracket_match.group(1))
+    bracket_match = re.search(r"(\{[\s\S]*\})", clean_text)
+    if bracket_match:
+        with contextlib.suppress(Exception):
+            return json.loads(bracket_match.group(1))
+    return None
 
+
+def _extract_from_dict(data: dict[str, Any]) -> tuple[str, float, dict[str, float], str]:
     direction = "UP"
+    raw_dir = str(data.get("direction", "")).strip().upper()
+    if raw_dir in ("UP", "DOWN"):
+        direction = raw_dir
+
     confidence = 50.0
-    probabilities: dict[str, float] = {"UP": 0.50, "DOWN": 0.50}
-    rationale = "Decided via Qwen Pass 2 arbitration."
+    raw_conf = data.get("confidence")
+    if raw_conf is not None:
+        with contextlib.suppress(ValueError, TypeError):
+            c_val = float(raw_conf)
+            confidence = round(c_val * 100.0, 1) if c_val <= 1.0 else round(c_val, 1)
 
-    if data and isinstance(data, dict):
-        raw_dir = str(data.get("direction", "")).strip().upper()
-        if raw_dir in ("UP", "DOWN"):
-            direction = raw_dir
-
-        raw_conf = data.get("confidence")
-        if raw_conf is not None:
-            try:
-                c_val = float(raw_conf)
-                confidence = round(c_val * 100.0, 1) if c_val <= 1.0 else round(c_val, 1)
-            except (ValueError, TypeError):
-                confidence = 50.0
-
-        raw_probs = data.get("probabilities")
-        if isinstance(raw_probs, dict):
-            p_up = float(raw_probs.get("UP", 0.5))
-            p_down = float(raw_probs.get("DOWN", 0.5))
-            probabilities = {"UP": round(p_up, 4), "DOWN": round(p_down, 4)}
-            if raw_dir not in ("UP", "DOWN"):
-                direction = "UP" if p_up >= p_down else "DOWN"
-        else:
-            p_primary = confidence / 100.0
-            if direction == "UP":
-                probabilities = {"UP": round(p_primary, 4), "DOWN": round(1.0 - p_primary, 4)}
-            else:
-                probabilities = {"UP": round(1.0 - p_primary, 4), "DOWN": round(p_primary, 4)}
-
-        rationale = str(data.get("rationale", "")).strip() or rationale
+    raw_probs = data.get("probabilities")
+    if isinstance(raw_probs, dict):
+        p_up = float(raw_probs.get("UP", 0.5))
+        p_down = float(raw_probs.get("DOWN", 0.5))
+        probabilities = {"UP": round(p_up, 4), "DOWN": round(p_down, 4)}
+        if raw_dir not in ("UP", "DOWN"):
+            direction = "UP" if p_up >= p_down else "DOWN"
     else:
-        # Fallback regex extraction: look for explicit UP or DOWN
-        dir_match = re.search(r'"direction"\s*:\s*"(UP|DOWN)"', clean_text, re.IGNORECASE)
-        if not dir_match:
-            dir_match = re.search(r"\b(UP|DOWN)\b", clean_text)
-        if dir_match:
-            direction = dir_match.group(1).upper()
-
-        conf_match = re.search(
-            r'(?:"confidence"|confidence)\s*(?:[:=]|of|\bis\b)?\s*([0-9.]+)', clean_text, re.IGNORECASE
-        )
-        if conf_match:
-            try:
-                c_val = float(conf_match.group(1))
-                confidence = round(c_val * 100.0, 1) if c_val <= 1.0 else round(c_val, 1)
-            except ValueError:
-                confidence = 50.0
-
         p_primary = confidence / 100.0
         if direction == "UP":
             probabilities = {"UP": round(p_primary, 4), "DOWN": round(1.0 - p_primary, 4)}
         else:
             probabilities = {"UP": round(1.0 - p_primary, 4), "DOWN": round(p_primary, 4)}
 
-    # Force pure binary decision: UP or DOWN (Zero abstention)
+    rationale = str(data.get("rationale", "")).strip() or "Decided via Qwen Pass 2 arbitration."
+    return direction, confidence, probabilities, rationale
+
+
+def _extract_from_regex(clean_text: str) -> tuple[str, float, dict[str, float], str]:
+    direction = "UP"
+    dir_match = re.search(r'"direction"\s*:\s*"(UP|DOWN)"', clean_text, re.IGNORECASE)
+    if not dir_match:
+        dir_match = re.search(r"\b(UP|DOWN)\b", clean_text)
+    if dir_match:
+        direction = dir_match.group(1).upper()
+
+    confidence = 50.0
+    conf_match = re.search(r'(?:"confidence"|confidence)\s*(?:[:=]|of|\bis\b)?\s*([0-9.]+)', clean_text, re.IGNORECASE)
+    if conf_match:
+        with contextlib.suppress(ValueError):
+            c_val = float(conf_match.group(1))
+            confidence = round(c_val * 100.0, 1) if c_val <= 1.0 else round(c_val, 1)
+
+    p_primary = confidence / 100.0
+    if direction == "UP":
+        probabilities = {"UP": round(p_primary, 4), "DOWN": round(1.0 - p_primary, 4)}
+    else:
+        probabilities = {"UP": round(1.0 - p_primary, 4), "DOWN": round(p_primary, 4)}
+
+    return direction, confidence, probabilities, "Decided via Qwen Pass 2 arbitration."
+
+
+def extract_predictor_decision(
+    raw_text: str,
+    criteria: JevCriteriaConfig,
+    actual_direction: str | None = None,
+) -> dict[str, Any]:
+    """Extract structured decision from Qwen's completion text, handling <think> tags, markdown, or fallback."""
+    clean_text = re.sub(r"<think>[\s\S]*?</think>", "", raw_text).strip() or raw_text
+    data = _parse_completion_json(clean_text)
+
+    if data and isinstance(data, dict):
+        direction, confidence, probabilities, rationale = _extract_from_dict(data)
+    else:
+        direction, confidence, probabilities, rationale = _extract_from_regex(clean_text)
+
     if direction not in ("UP", "DOWN"):
         direction = "UP" if probabilities["UP"] >= probabilities["DOWN"] else "DOWN"
 

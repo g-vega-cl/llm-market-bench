@@ -38,6 +38,40 @@ def _get_int(bar: dict, key: str) -> int:
     return int(val) if val is not None else 0
 
 
+def _classify_session_archetype(
+    open_p: float,
+    close_p: float,
+    high_p: float,
+    low_p: float,
+    clv: float,
+    intraday_return_pct: float,
+    ib_broken: str,
+    broke_high: bool,
+    broke_low: bool,
+    first_bar: dict,
+) -> str:
+    """Classify regular trading hours session archetype from quantitative metrics."""
+    morning_low_flush = (open_p - low_p) / open_p > 0.003
+    morning_high_pop = (high_p - open_p) / open_p > 0.003
+
+    if close_p > open_p and clv >= 0.5:
+        if morning_low_flush and (ib_broken in ("BOTH", "HIGH") or low_p == _get_float(first_bar, "low")):
+            return "MORNING_DIP_AND_RIP"
+        return "TREND_DAY_UP"
+
+    if close_p < open_p and clv <= -0.5:
+        if morning_high_pop and (ib_broken in ("BOTH", "LOW") or high_p == _get_float(first_bar, "high")):
+            return "GAP_AND_CRAP"
+        return "TREND_DAY_DOWN"
+
+    if ib_broken == "NONE" or (abs(intraday_return_pct) < 0.25 and abs(clv) < 0.4):
+        return "RANGE_BOUND_CHURN"
+
+    if close_p >= open_p:
+        return "MORNING_DIP_AND_RIP" if morning_low_flush else "RANGE_BOUND_CHURN"
+    return "GAP_AND_CRAP" if morning_high_pop else "RANGE_BOUND_CHURN"
+
+
 def calculate_intraday_metrics(rth_bars: list[dict]) -> dict[str, Any] | None:
     """Calculate quantitative session profile metrics and classify session archetype.
 
@@ -59,11 +93,8 @@ def calculate_intraday_metrics(rth_bars: list[dict]) -> dict[str, Any] | None:
 
     intraday_return_pct = ((close_p - open_p) / open_p) * 100.0 if open_p > 0 else 0.0
     range_pct = (session_range / open_p) * 100.0 if open_p > 0 else 0.0
-
-    # Close Location Value (CLV) in [-1.0, +1.0]
     clv = round(((close_p - low_p) - (high_p - close_p)) / session_range, 3) if session_range > 0 else 0.0
 
-    # Volume-Weighted Average Price (VWAP)
     total_vol = sum(_get_int(b, "volume") for b in rth_bars)
     if total_vol > 0:
         sum_pv = sum(
@@ -78,57 +109,22 @@ def calculate_intraday_metrics(rth_bars: list[dict]) -> dict[str, Any] | None:
             2,
         )
 
-    # Initial Balance (IB: first 60 mins of regular trading hours, 09:30:00 to 10:30:00 ET)
-    ib_bars = []
-    for b in rth_bars:
-        d_str = str(b.get("date", ""))
-        t_part = d_str.split(" ")[1] if " " in d_str else ""
-        if "09:30:00" <= t_part < "10:30:00":
-            ib_bars.append(b)
-
-    if not ib_bars:
-        ib_bars = rth_bars[:1]
+    ib_bars = [
+        b
+        for b in rth_bars
+        if "09:30:00" <= (str(b.get("date", "")).split(" ")[1] if " " in str(b.get("date", "")) else "") < "10:30:00"
+    ] or rth_bars[:1]
 
     ib_high = max(_get_float(b, "high") for b in ib_bars)
     ib_low = min(_get_float(b, "low") for b in ib_bars)
 
     broke_high = high_p > ib_high + 0.01
     broke_low = low_p < ib_low - 0.01
+    ib_broken = "BOTH" if (broke_high and broke_low) else ("HIGH" if broke_high else ("LOW" if broke_low else "NONE"))
 
-    if broke_high and broke_low:
-        ib_broken = "BOTH"
-    elif broke_high:
-        ib_broken = "HIGH"
-    elif broke_low:
-        ib_broken = "LOW"
-    else:
-        ib_broken = "NONE"
-
-    # Identify morning excursion vs afternoon direction
-    morning_low_flush = (open_p - low_p) / open_p > 0.003
-    morning_high_pop = (high_p - open_p) / open_p > 0.003
-
-    # Archetype Classification
-    if close_p > open_p and clv >= 0.5:
-        if morning_low_flush and (ib_broken in ("BOTH", "HIGH") or low_p == _get_float(rth_bars[0], "low")):
-            archetype = "MORNING_DIP_AND_RIP"
-        elif broke_high:
-            archetype = "TREND_DAY_UP"
-        else:
-            archetype = "TREND_DAY_UP"
-    elif close_p < open_p and clv <= -0.5:
-        if morning_high_pop and (ib_broken in ("BOTH", "LOW") or high_p == _get_float(rth_bars[0], "high")):
-            archetype = "GAP_AND_CRAP"
-        elif broke_low:
-            archetype = "TREND_DAY_DOWN"
-        else:
-            archetype = "TREND_DAY_DOWN"
-    elif ib_broken == "NONE" or (abs(intraday_return_pct) < 0.25 and abs(clv) < 0.4):
-        archetype = "RANGE_BOUND_CHURN"
-    elif close_p >= open_p:
-        archetype = "MORNING_DIP_AND_RIP" if morning_low_flush else "RANGE_BOUND_CHURN"
-    else:
-        archetype = "GAP_AND_CRAP" if morning_high_pop else "RANGE_BOUND_CHURN"
+    archetype = _classify_session_archetype(
+        open_p, close_p, high_p, low_p, clv, intraday_return_pct, ib_broken, broke_high, broke_low, rth_bars[0]
+    )
 
     return {
         "open": round(open_p, 2),

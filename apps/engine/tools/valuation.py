@@ -1,6 +1,7 @@
 """Valuation and fundamental analysis tools: key metrics, DCF audit, market barometer, and sector fundamentals."""
 
 import contextlib
+from typing import Any
 
 from core.config import logger
 from tools._compat import MarketDataManager, get_supabase_client
@@ -12,23 +13,103 @@ from tools.earnings import (
 )
 
 
+def _fmt_metric(val: Any, percentage: bool = False) -> str:
+    """Safely format decimal/float metrics."""
+    if val is None:
+        return "N/A"
+    if percentage:
+        return f"{val * 100:.2f}%"
+    return f"{val:.2f}"
+
+
+async def _calc_fwd_pe(manager: MarketDataManager, ticker: str, price: float) -> tuple[float | None, Any]:
+    try:
+        estimates = await manager.get_analyst_estimates(ticker, period="annual", limit=5)
+        if estimates and isinstance(estimates, list):
+            from datetime import datetime
+
+            now_year = datetime.now().year
+            next_eps_est = None
+            for est in estimates:
+                est_date = est.get("date")
+                if est_date:
+                    with contextlib.suppress(ValueError):
+                        if int(est_date.split("-")[0]) >= now_year:
+                            next_eps_est = est.get("epsAvg")
+                            break
+            if next_eps_est is None and estimates:
+                next_eps_est = estimates[0].get("epsAvg")
+            if next_eps_est is not None:
+                with contextlib.suppress(ValueError, TypeError):
+                    next_eps_val = float(next_eps_est)
+                    if next_eps_val > 0:
+                        return price / next_eps_val, next_eps_est
+    except Exception as e:
+        logger.warning(f"Failed to calculate Forward P/E for {ticker}: {e}")
+    return None, None
+
+
+async def _calc_cape(manager: MarketDataManager, ticker: str, price: float) -> tuple[float | None, float | None, int]:
+    try:
+        annual_metrics = await manager.get_key_metrics(ticker, period="annual", limit=10)
+        if annual_metrics:
+            eps_values = []
+            for yr_entry in annual_metrics:
+                val = yr_entry.get("netIncomePerShare")
+                if val is not None:
+                    with contextlib.suppress(ValueError, TypeError):
+                        eps_values.append(float(val))
+            if len(eps_values) >= 3:
+                avg_eps = sum(eps_values) / len(eps_values)
+                if avg_eps > 0:
+                    return price / avg_eps, avg_eps, len(eps_values)
+                return None, avg_eps, len(eps_values)
+    except Exception as e:
+        logger.warning(f"Failed to calculate CAPE for {ticker}: {e}")
+    return None, None, 0
+
+
+def _format_key_metric_period(i: int, entry: dict[str, Any]) -> str:
+    date_str = entry.get("date") or "N/A"
+    period_str = entry.get("period") or "N/A"
+    year_str = entry.get("calendarYear") or "N/A"
+
+    pb = entry.get("pbRatio")
+    book_to_market = (1.0 / pb) if (pb is not None and pb != 0) else None
+
+    lines = [
+        f"\n--- Period {i}: {period_str} {year_str} (Date: {date_str}) ---",
+        f"- P/E Ratio: {_fmt_metric(entry.get('peRatio'))}",
+        f"- Price/Sales Ratio: {_fmt_metric(entry.get('priceToSalesRatio'))}",
+        f"- Price/Book Ratio: {_fmt_metric(pb)}",
+        f"- Book-to-Market Ratio: {_fmt_metric(book_to_market)}",
+        f"- EV/EBITDA: {_fmt_metric(entry.get('enterpriseValueOverEBITDA'))}",
+        f"- Debt/Equity: {_fmt_metric(entry.get('debtToEquity'))}",
+        f"- Current Ratio: {_fmt_metric(entry.get('currentRatio'))}",
+        f"- ROE: {_fmt_metric(entry.get('roe'), percentage=True)}",
+        f"- Dividend Yield: {_fmt_metric(entry.get('dividendYield'), percentage=True)}",
+        f"- Free Cash Flow Yield: {_fmt_metric(entry.get('freeCashFlowYield'), percentage=True)}",
+    ]
+    if "priceToFreeCashFlowsRatio" in entry:
+        lines.append(f"- Price/Free Cash Flow Ratio: {_fmt_metric(entry.get('priceToFreeCashFlowsRatio'))}")
+    lines.append(f"- Book Value Per Share: ${_fmt_metric(entry.get('bookValuePerShare'))}")
+    lines.append(f"- Revenue Per Share: ${_fmt_metric(entry.get('revenuePerShare'))}")
+    if "netIncomePerShare" in entry:
+        lines.append(f"- Net Income Per Share: ${_fmt_metric(entry.get('netIncomePerShare'))}")
+    if "freeCashFlowPerShare" in entry:
+        lines.append(f"- Free Cash Flow Per Share: ${_fmt_metric(entry.get('freeCashFlowPerShare'))}")
+    return "\n".join(lines) + "\n"
+
+
 async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: int = 2) -> str:
     """Fetches fundamental financial key metrics for a ticker to help analyze valuation/health."""
     manager = MarketDataManager()
     try:
         data = await manager.get_key_metrics(ticker, period, limit)
-
         if not data:
             return f"No fundamental key metrics found for {ticker}."
 
-        # Fetch quote, estimates, and annual history to calculate Forward P/E and CAPE
         price = None
-        forward_pe = None
-        cape_val = None
-        avg_eps = None
-        eps_count = 0
-        next_eps_est = None
-
         try:
             quote = await manager.get_quote(ticker)
             if quote and quote.exists:
@@ -36,109 +117,31 @@ async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: i
         except Exception as e:
             logger.warning(f"Failed to fetch quote for new metrics calculation for {ticker}: {e}")
 
-        # Helper to safely format decimal/float metrics
-        def fmt(val, percentage=False):
-            if val is None:
-                return "N/A"
-            if percentage:
-                return f"{val * 100:.2f}%"
-            return f"{val:.2f}"
-
+        forward_pe, next_eps_est = (None, None)
+        cape_val, avg_eps, eps_count = (None, None, 0)
         if price and price > 0:
-            # Calculate Forward P/E
-            try:
-                estimates = await manager.get_analyst_estimates(ticker, period="annual", limit=5)
-                if estimates and isinstance(estimates, list):
-                    from datetime import datetime
-
-                    now_year = datetime.now().year
-                    for est in estimates:
-                        est_date = est.get("date")
-                        if est_date:
-                            try:
-                                est_year = int(est_date.split("-")[0])
-                                if est_year >= now_year:
-                                    next_eps_est = est.get("epsAvg")
-                                    break
-                            except ValueError:
-                                pass
-                    if next_eps_est is None and estimates:
-                        next_eps_est = estimates[0].get("epsAvg")
-                    if next_eps_est is not None:
-                        try:
-                            next_eps_est_val = float(next_eps_est)
-                            if next_eps_est_val > 0:
-                                forward_pe = price / next_eps_est_val
-                        except (ValueError, TypeError):
-                            pass
-            except Exception as e:
-                logger.warning(f"Failed to calculate Forward P/E for {ticker}: {e}")
-
-            # Calculate CAPE (10-Yr Avg EPS)
-            try:
-                # Fetch up to 10 annual records
-                annual_metrics = await manager.get_key_metrics(ticker, period="annual", limit=10)
-                if annual_metrics:
-                    eps_values = []
-                    for yr_entry in annual_metrics:
-                        val = yr_entry.get("netIncomePerShare")
-                        if val is not None:
-                            with contextlib.suppress(ValueError, TypeError):
-                                eps_values.append(float(val))
-                    if len(eps_values) >= 3:
-                        avg_eps = sum(eps_values) / len(eps_values)
-                        eps_count = len(eps_values)
-                        if avg_eps > 0:
-                            cape_val = price / avg_eps
-            except Exception as e:
-                logger.warning(f"Failed to calculate CAPE for {ticker}: {e}")
+            forward_pe, next_eps_est = await _calc_fwd_pe(manager, ticker, price)
+            cape_val, avg_eps, eps_count = await _calc_cape(manager, ticker, price)
 
         output = f"Fundamental Key Metrics for {ticker} ({period.capitalize()} periods, recent first):\n"
         for i, entry in enumerate(data, 1):
-            date_str = entry.get("date") or "N/A"
-            period_str = entry.get("period") or "N/A"
-            year_str = entry.get("calendarYear") or "N/A"
-
-            output += f"\n--- Period {i}: {period_str} {year_str} (Date: {date_str}) ---\n"
-
-            output += f"- P/E Ratio: {fmt(entry.get('peRatio'))}\n"
-            output += f"- Price/Sales Ratio: {fmt(entry.get('priceToSalesRatio'))}\n"
-
-            pb = entry.get("pbRatio")
-            book_to_market = (1.0 / pb) if (pb is not None and pb != 0) else None
-            output += f"- Price/Book Ratio: {fmt(pb)}\n"
-            output += f"- Book-to-Market Ratio: {fmt(book_to_market)}\n"
-
-            output += f"- EV/EBITDA: {fmt(entry.get('enterpriseValueOverEBITDA'))}\n"
-            output += f"- Debt/Equity: {fmt(entry.get('debtToEquity'))}\n"
-            output += f"- Current Ratio: {fmt(entry.get('currentRatio'))}\n"
-            output += f"- ROE: {fmt(entry.get('roe'), percentage=True)}\n"
-            output += f"- Dividend Yield: {fmt(entry.get('dividendYield'), percentage=True)}\n"
-            output += f"- Free Cash Flow Yield: {fmt(entry.get('freeCashFlowYield'), percentage=True)}\n"
-            if "priceToFreeCashFlowsRatio" in entry:
-                output += f"- Price/Free Cash Flow Ratio: {fmt(entry.get('priceToFreeCashFlowsRatio'))}\n"
-            output += f"- Book Value Per Share: ${fmt(entry.get('bookValuePerShare'))}\n"
-            output += f"- Revenue Per Share: ${fmt(entry.get('revenuePerShare'))}\n"
-            if "netIncomePerShare" in entry:
-                output += f"- Net Income Per Share: ${fmt(entry.get('netIncomePerShare'))}\n"
-            if "freeCashFlowPerShare" in entry:
-                output += f"- Free Cash Flow Per Share: ${fmt(entry.get('freeCashFlowPerShare'))}\n"
+            output += _format_key_metric_period(i, entry)
 
         output += "\n--- Current Valuation Metrics (Derived) ---\n"
         if price and price > 0:
             output += f"- Current Stock Price: ${price:.2f}\n"
             if forward_pe is not None:
-                output += f"- Forward P/E: {fmt(forward_pe)} (based on Next FY EPS Est. of ${fmt(next_eps_est)})\n"
+                output += f"- Forward P/E: {_fmt_metric(forward_pe)} (based on Next FY EPS Est. of ${_fmt_metric(next_eps_est)})\n"
             else:
                 output += "- Forward P/E: N/A\n"
             if cape_val is not None:
-                output += f"- CAPE ({eps_count}-Yr Avg EPS): {fmt(cape_val)} (Average EPS: ${fmt(avg_eps)})\n"
+                output += (
+                    f"- CAPE ({eps_count}-Yr Avg EPS): {_fmt_metric(cape_val)} (Average EPS: ${_fmt_metric(avg_eps)})\n"
+                )
             else:
                 output += "- CAPE (10-Yr Avg EPS): N/A\n"
         else:
-            output += "- Current Stock Price: N/A\n"
-            output += "- Forward P/E: N/A\n"
-            output += "- CAPE (10-Yr Avg EPS): N/A\n"
+            output += "- Current Stock Price: N/A\n- Forward P/E: N/A\n- CAPE (10-Yr Avg EPS): N/A\n"
 
         return output
     except Exception as e:
@@ -381,6 +384,59 @@ TICKER_TO_SECTOR_ETF: dict[str, tuple[str, str]] = {
 }
 
 
+def _accumulate_sector_constituent(c: dict[str, Any], sectors: dict[str, dict]) -> None:
+    sym = (c.get("symbol") or "").upper().strip()
+    sec_name_raw = (c.get("sector") or "").strip().lower()
+
+    sector_tuple = None
+    if sec_name_raw and sec_name_raw in GICS_TO_SECTOR_ETF:
+        sector_tuple = GICS_TO_SECTOR_ETF[sec_name_raw]
+    elif sym in TICKER_TO_SECTOR_ETF:
+        sector_tuple = TICKER_TO_SECTOR_ETF[sym]
+
+    if not sector_tuple:
+        return
+
+    etf_sym, etf_name = sector_tuple
+    if etf_sym not in sectors:
+        sectors[etf_sym] = {
+            "name": etf_name,
+            "mcap": 0.0,
+            "sum_mcap_pe": 0.0,
+            "sum_income": 0.0,
+            "sum_mcap_fwd": 0.0,
+            "sum_fwd_income": 0.0,
+            "beats_count": 0,
+            "total_reporting": 0,
+            "constituents_count": 0,
+        }
+
+    sec = sectors[etf_sym]
+    sec["constituents_count"] += 1
+    mcap = float(c.get("market_cap") or 0.0)
+    price = float(c.get("price") or 0.0)
+    sec["mcap"] += mcap
+
+    pe = c.get("pe")
+    if pe is not None and float(pe) > 0 and mcap > 0:
+        sec["sum_mcap_pe"] += mcap
+        sec["sum_income"] += mcap / float(pe)
+
+    next_eps = c.get("next_eps_est")
+    if next_eps is not None and float(next_eps) > 0 and price > 0 and mcap > 0:
+        shares = mcap / price
+        fwd_income = float(next_eps) * shares
+        if fwd_income > 0:
+            sec["sum_mcap_fwd"] += mcap
+            sec["sum_fwd_income"] += fwd_income
+
+    beat = c.get("beat")
+    if beat is not None:
+        sec["total_reporting"] += 1
+        if beat:
+            sec["beats_count"] += 1
+
+
 async def execute_sector_fundamentals_tool(limit: int = 11) -> str:
     """Aggregates S&P 500 constituents by GICS Sector ETF to compute sector P/E, Forward P/E, and beat rates."""
     try:
@@ -403,71 +459,14 @@ async def execute_sector_fundamentals_tool(limit: int = 11) -> str:
         if not constituents:
             return f"No constituent data found in market barometer for {date_str}."
 
-        # Group constituents by sector ETF
         sectors: dict[str, dict] = {}
-
         for c in constituents:
-            sym = (c.get("symbol") or "").upper().strip()
-            sec_name_raw = (c.get("sector") or "").strip().lower()
-
-            sector_tuple = None
-            if sec_name_raw and sec_name_raw in GICS_TO_SECTOR_ETF:
-                sector_tuple = GICS_TO_SECTOR_ETF[sec_name_raw]
-            elif sym in TICKER_TO_SECTOR_ETF:
-                sector_tuple = TICKER_TO_SECTOR_ETF[sym]
-
-            if not sector_tuple:
-                continue
-
-            etf_sym, etf_name = sector_tuple
-            if etf_sym not in sectors:
-                sectors[etf_sym] = {
-                    "name": etf_name,
-                    "mcap": 0.0,
-                    "sum_mcap_pe": 0.0,
-                    "sum_income": 0.0,
-                    "sum_mcap_fwd": 0.0,
-                    "sum_fwd_income": 0.0,
-                    "beats_count": 0,
-                    "total_reporting": 0,
-                    "constituents_count": 0,
-                }
-
-            sec = sectors[etf_sym]
-            sec["constituents_count"] += 1
-            mcap = float(c.get("market_cap") or 0.0)
-            price = float(c.get("price") or 0.0)
-            sec["mcap"] += mcap
-
-            # Trailing P/E
-            pe = c.get("pe")
-            if pe is not None and float(pe) > 0 and mcap > 0:
-                pe_val = float(pe)
-                sec["sum_mcap_pe"] += mcap
-                sec["sum_income"] += mcap / pe_val
-
-            # Forward P/E
-            next_eps = c.get("next_eps_est")
-            if next_eps is not None and float(next_eps) > 0 and price > 0 and mcap > 0:
-                shares = mcap / price
-                fwd_income = float(next_eps) * shares
-                if fwd_income > 0:
-                    sec["sum_mcap_fwd"] += mcap
-                    sec["sum_fwd_income"] += fwd_income
-
-            # Earnings Beat
-            beat = c.get("beat")
-            if beat is not None:
-                sec["total_reporting"] += 1
-                if beat:
-                    sec["beats_count"] += 1
+            _accumulate_sector_constituent(c, sectors)
 
         if not sectors:
             return f"No sector mapping could be determined for constituents on {date_str}."
 
         output = f"S&P 500 Sector Fundamentals & Earnings Breakdown (Date: {date_str}):\n"
-
-        # Sort sectors by market cap descending
         sorted_sectors = sorted(sectors.items(), key=lambda x: x[1]["mcap"], reverse=True)[:limit]
 
         for etf_sym, data in sorted_sectors:
@@ -495,6 +494,139 @@ async def execute_sector_fundamentals_tool(limit: int = 11) -> str:
         return f"Error retrieving sector fundamentals data: {str(e)}"
 
 
+def _determine_forecast_growth(
+    estimates: list[dict[str, Any]] | None,
+    growth_history: list[dict[str, Any]] | None,
+    growth_rate_override: float | None,
+) -> float:
+    forecast_growth = None
+    if estimates and len(estimates) >= 2:
+        with contextlib.suppress(Exception):
+            rev_y1 = float(estimates[0].get("estimatedRevenueAvg") or 0)
+            rev_y2 = float(estimates[1].get("estimatedRevenueAvg") or 0)
+            if rev_y1 > 0 and rev_y2 > 0:
+                forecast_growth = (rev_y2 / rev_y1) - 1.0
+
+    if forecast_growth is None and growth_history and len(growth_history) >= 1:
+        with contextlib.suppress(Exception):
+            forecast_growth = float(growth_history[0].get("revenueGrowth") or 0.08)
+
+    if forecast_growth is None:
+        forecast_growth = 0.08
+
+    growth_rate_used = growth_rate_override if growth_rate_override is not None else forecast_growth
+    return max(-0.25, min(0.40, growth_rate_used))
+
+
+def _calculate_wacc(
+    beta: float,
+    market_cap: float,
+    net_debt: float,
+    discount_rate_override: float | None,
+) -> tuple[float, float]:
+    rf = 0.042
+    erp = 0.055
+    cost_of_equity = rf + beta * erp
+
+    total_value = market_cap + max(0.0, net_debt)
+    if total_value > 0 and net_debt > 0:
+        weight_equity = market_cap / total_value
+        weight_debt = net_debt / total_value
+        cost_of_debt = 0.05
+        tax_rate = 0.21
+        after_tax_debt = cost_of_debt * (1 - tax_rate)
+        calculated_wacc = (cost_of_equity * weight_equity) + (after_tax_debt * weight_debt)
+    else:
+        calculated_wacc = cost_of_equity
+
+    wacc_used = discount_rate_override if discount_rate_override is not None else calculated_wacc
+    return max(0.05, min(0.18, wacc_used)), cost_of_equity
+
+
+def _estimate_base_fcf(latest_metric: dict[str, Any], market_cap: float, shares_outstanding: float) -> float:
+    fcf_yield = latest_metric.get("freeCashFlowYield")
+    fcf_per_share = latest_metric.get("freeCashFlowPerShare")
+    if fcf_yield is not None:
+        return float(fcf_yield) * market_cap
+    if fcf_per_share is not None:
+        return float(fcf_per_share) * shares_outstanding
+    net_income_ps = latest_metric.get("netIncomePerShare")
+    if net_income_ps is not None:
+        return float(net_income_ps) * shares_outstanding * 0.8
+    return market_cap * 0.05
+
+
+def _run_dcf_schedule(base_fcf: float, growth_rate_used: float, wacc_used: float, tg_used: float) -> dict[str, Any]:
+    projected_fcfs = []
+    discount_factors = []
+    pv_fcfs = []
+
+    current_fcf = base_fcf
+    for yr in range(1, 6):
+        current_fcf = current_fcf * (1 + growth_rate_used)
+        projected_fcfs.append(current_fcf)
+        df = 1.0 / ((1 + wacc_used) ** (yr - 0.5))
+        discount_factors.append(df)
+        pv_fcfs.append(current_fcf * df)
+
+    terminal_fcf = projected_fcfs[-1] * (1 + tg_used)
+    terminal_value = terminal_fcf / (wacc_used - tg_used)
+    pv_terminal_value = terminal_value / ((1 + wacc_used) ** 5.0)
+
+    return {
+        "projected_fcfs": projected_fcfs,
+        "discount_factors": discount_factors,
+        "pv_fcfs": pv_fcfs,
+        "sum_pv_fcfs": sum(pv_fcfs),
+        "terminal_value": terminal_value,
+        "pv_terminal_value": pv_terminal_value,
+    }
+
+
+def _evaluate_comps(
+    pe_ratio: float | None,
+    implied_upside: float,
+    barometer_pe: float,
+    pe_str: str,
+) -> tuple[str, list[str]]:
+    status = "FAIR VALUE"
+    reasons = []
+    if implied_upside > 15.0:
+        status = "UNDERVALUED"
+        reasons.append("DCF implied price suggests >15% upside")
+    elif implied_upside < -10.0:
+        status = "OVERVALUED"
+        reasons.append("DCF implied price suggests >10% downside")
+
+    if pe_ratio and pe_ratio > barometer_pe * 1.3:
+        reasons.append(f"PE multiple ({pe_str}) trades at >30% premium to S&P 500 average ({barometer_pe:.1f}x)")
+    elif pe_ratio and pe_ratio < barometer_pe * 0.7:
+        reasons.append(f"PE multiple ({pe_str}) trades at >30% discount to S&P 500 average ({barometer_pe:.1f}x)")
+    return status, reasons
+
+
+def _fetch_barometer_pe_pfcf() -> tuple[float, float]:
+    barometer_pe = 22.5
+    barometer_pfcf = 20.0
+    try:
+        from tools._compat import get_supabase_client
+
+        client_db = get_supabase_client()
+        res = (
+            client_db.table("market_barometer_history")
+            .select("pe_ratio, pfcf_ratio")
+            .order("date", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            barometer_pe = float(res.data[0].get("pe_ratio") or 22.5)
+            barometer_pfcf = float(res.data[0].get("pfcf_ratio") or 20.0)
+    except Exception as e:
+        logger.warning(f"market_barometer_history query failed (using defaults 22.5/20.0): {e}")
+    return barometer_pe, barometer_pfcf
+
+
 async def execute_financial_valuation_tool(
     ticker: str,
     growth_rate: float | None = None,
@@ -506,7 +638,6 @@ async def execute_financial_valuation_tool(
     manager = MarketDataManager()
 
     try:
-        # 1. Fetch market quote data (price, market cap)
         quote = await manager.get_quote(ticker)
         if not quote or not quote.exists:
             return f"Error: Ticker '{ticker}' not found or could not fetch price data."
@@ -516,19 +647,13 @@ async def execute_financial_valuation_tool(
         if price <= 0 or market_cap <= 0:
             return f"Error: Invalid pricing or market cap retrieved for {ticker} (Price: {price}, Market Cap: {market_cap})."
 
-        # Calculate initial shares outstanding estimate
         shares_outstanding = market_cap / price
 
-        # 2. Fetch key metrics history — try quarterly first for earnings-week relevance,
-        # fall back to annual via the FMP provider's 402→annual fallback handler.
         key_metrics = await manager.get_key_metrics(ticker, period="quarter", limit=2)
         if not key_metrics:
             return f"Error: No key metrics data found for {ticker}."
 
         latest_metric = key_metrics[0]
-
-        # Detect if we got annual fallback (FMP plan tier limits) so the report
-        # can flag the degradation for the LLM.
         actual_period = str(latest_metric.get("period") or "")
         metrics_degradation_note = ""
         if "Q" not in actual_period.upper():
@@ -538,145 +663,47 @@ async def execute_financial_valuation_tool(
                 "earnings-week signals should be discounted accordingly.\n"
             )
 
-        # 3. Fetch profile (for Beta)
         profile = await manager.get_company_profile(ticker)
         beta = 1.0
         company_name = ticker
         if profile and isinstance(profile, list) and len(profile) > 0:
             p = profile[0]
             company_name = p.get("companyName") or ticker
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 beta = float(p.get("beta") or 1.0)
-            except (ValueError, TypeError):
-                beta = 1.0
 
-        # 4. Fetch analyst consensus estimates
         estimates = await manager.get_analyst_estimates(ticker, period="annual", limit=5)
-
-        # 5. Fetch financial growth history
         growth_history = await manager.get_financial_growth(ticker, period="annual", limit=5)
 
-        # --- Calculate Forecast Growth Rate ---
-        forecast_growth = None
-        if estimates and len(estimates) >= 2:
-            with contextlib.suppress(Exception):
-                # Estimate growth YoY from estimates
-                rev_y1 = float(estimates[0].get("estimatedRevenueAvg") or 0)
-                rev_y2 = float(estimates[1].get("estimatedRevenueAvg") or 0)
-                if rev_y1 > 0 and rev_y2 > 0:
-                    forecast_growth = (rev_y2 / rev_y1) - 1.0
+        growth_rate_used = _determine_forecast_growth(estimates, growth_history, growth_rate)
 
-        if forecast_growth is None and growth_history and len(growth_history) >= 1:
-            with contextlib.suppress(Exception):
-                # Fallback to historical growth YoY
-                forecast_growth = float(growth_history[0].get("revenueGrowth") or 0.08)
-
-        if forecast_growth is None:
-            forecast_growth = 0.08  # Default baseline 8%
-
-        growth_rate_used = growth_rate if growth_rate is not None else forecast_growth
-        growth_rate_used = max(-0.25, min(0.40, growth_rate_used))  # Clamp to safe boundaries
-
-        # --- Calculate WACC (Discount Rate) ---
-        rf = 0.042  # 10-Yr US Treasury yield baseline (4.2%)
-        erp = 0.055  # Equity Risk Premium baseline (5.5%)
-        cost_of_equity = rf + beta * erp
-
-        # Capital Structure / Net Debt
         net_debt = 0.0
         with contextlib.suppress(ValueError, TypeError):
             val = latest_metric.get("netDebt")
             if val is not None:
                 net_debt = float(val)
 
-        # Calculate WACC weights
-        total_value = market_cap + max(0.0, net_debt)
-        if total_value > 0 and net_debt > 0:
-            weight_equity = market_cap / total_value
-            weight_debt = net_debt / total_value
-            cost_of_debt = 0.05  # Pre-tax debt rate default (5%)
-            tax_rate = 0.21  # Standard US corporate tax (21%)
-            after_tax_debt = cost_of_debt * (1 - tax_rate)
-            calculated_wacc = (cost_of_equity * weight_equity) + (after_tax_debt * weight_debt)
-        else:
-            # Net Cash firm or no debt: WACC equals Cost of Equity
-            calculated_wacc = cost_of_equity
+        wacc_used, cost_of_equity = _calculate_wacc(beta, market_cap, net_debt, discount_rate)
+        base_fcf = _estimate_base_fcf(latest_metric, market_cap, shares_outstanding)
 
-        wacc_used = discount_rate if discount_rate is not None else calculated_wacc
-        wacc_used = max(0.05, min(0.18, wacc_used))  # Clamp WACC to safe range (5% - 18%)
-
-        # --- Cash Flow Discounting ---
-        # Estimate recent Free Cash Flow
-        fcf_yield = latest_metric.get("freeCashFlowYield")
-        fcf_per_share = latest_metric.get("freeCashFlowPerShare")
-        if fcf_yield is not None:
-            base_fcf = float(fcf_yield) * market_cap
-        elif fcf_per_share is not None:
-            base_fcf = float(fcf_per_share) * shares_outstanding
-        else:
-            net_income_ps = latest_metric.get("netIncomePerShare")
-            if net_income_ps is not None:
-                base_fcf = float(net_income_ps) * shares_outstanding * 0.8
-            else:
-                base_fcf = market_cap * 0.05  # Default to 5% FCF Yield
-
-        # Safely clamp terminal growth below WACC
         tg_used = terminal_growth
         if tg_used >= wacc_used:
             tg_used = wacc_used - 0.02
 
-        # 5-Year forecast schedule
-        projected_fcfs = []
-        discount_factors = []
-        pv_fcfs = []
+        dcf = _run_dcf_schedule(base_fcf, growth_rate_used, wacc_used, tg_used)
+        projected_fcfs = dcf["projected_fcfs"]
+        discount_factors = dcf["discount_factors"]
+        pv_fcfs = dcf["pv_fcfs"]
+        sum_pv_fcfs = dcf["sum_pv_fcfs"]
+        terminal_value = dcf["terminal_value"]
+        pv_terminal_value = dcf["pv_terminal_value"]
 
-        current_fcf = base_fcf
-        for yr in range(1, 6):
-            current_fcf = current_fcf * (1 + growth_rate_used)
-            projected_fcfs.append(current_fcf)
-
-            # Mid-year convention discounting: (yr - 0.5)
-            df = 1.0 / ((1 + wacc_used) ** (yr - 0.5))
-            discount_factors.append(df)
-            pv_fcfs.append(current_fcf * df)
-
-        sum_pv_fcfs = sum(pv_fcfs)
-
-        # Terminal Value calculation
-        terminal_fcf = projected_fcfs[-1] * (1 + tg_used)
-        terminal_value = terminal_fcf / (wacc_used - tg_used)
-        # Discount terminal value at year 5
-        pv_terminal_value = terminal_value / ((1 + wacc_used) ** 5.0)
-
-        # Valuation bridge
         implied_ev = sum_pv_fcfs + pv_terminal_value
         implied_equity_val = implied_ev - net_debt
         implied_price = implied_equity_val / shares_outstanding
         implied_upside = (implied_price / price - 1.0) * 100
 
-        # --- Comparable Peer Comps Analysis ---
-        # Fetch S&P 500 barometer aggregates (PE: ~22.5, Forward PE: ~18.5, P/FCF: ~20.0)
-        # We fetch the latest health barometer from DB if available, otherwise fallback to defaults
-        barometer_pe = 22.5
-        barometer_pfcf = 20.0
-        try:
-            from tools._compat import get_supabase_client
-
-            client_db = get_supabase_client()
-            res = (
-                client_db.table("market_barometer_history")
-                .select("pe_ratio, pfcf_ratio")
-                .order("date", desc=True)
-                .limit(1)
-                .execute()
-            )
-            if res.data:
-                barometer_pe = float(res.data[0].get("pe_ratio") or 22.5)
-                barometer_pfcf = float(res.data[0].get("pfcf_ratio") or 20.0)
-        except Exception as e:
-            # Don't silently swallow — log so future schema drift surfaces.
-            logger.warning(f"market_barometer_history query failed (using defaults 22.5/20.0): {e}")
-
+        barometer_pe, barometer_pfcf = _fetch_barometer_pe_pfcf()
         pe_ratio = latest_metric.get("peRatio")
         pfcf_ratio = latest_metric.get("priceToFreeCashFlowsRatio")
         ev_ebitda = latest_metric.get("enterpriseValueOverEBITDA")
@@ -685,22 +712,8 @@ async def execute_financial_valuation_tool(
         pfcf_str = f"{pfcf_ratio:.2f}x" if pfcf_ratio else "N/A"
         ev_ebitda_str = f"{ev_ebitda:.2f}x" if ev_ebitda else "N/A"
 
-        # Determine valuation status
-        status = "FAIR VALUE"
-        reasons = []
-        if implied_upside > 15.0:
-            status = "UNDERVALUED"
-            reasons.append("DCF implied price suggests >15% upside")
-        elif implied_upside < -10.0:
-            status = "OVERVALUED"
-            reasons.append("DCF implied price suggests >10% downside")
+        status, reasons = _evaluate_comps(pe_ratio, implied_upside, barometer_pe, pe_str)
 
-        if pe_ratio and pe_ratio > barometer_pe * 1.3:
-            reasons.append(f"PE multiple ({pe_str}) trades at >30% premium to S&P 500 average ({barometer_pe:.1f}x)")
-        elif pe_ratio and pe_ratio < barometer_pe * 0.7:
-            reasons.append(f"PE multiple ({pe_str}) trades at >30% discount to S&P 500 average ({barometer_pe:.1f}x)")
-
-        # Create the markdown audit report
         pe_premium = f"{((pe_ratio / barometer_pe - 1) * 100):+.1f}%" if pe_ratio else "N/A"
         pfcf_premium = f"{((pfcf_ratio / barometer_pfcf - 1) * 100):+.1f}%" if pfcf_ratio else "N/A"
 
@@ -710,7 +723,7 @@ async def execute_financial_valuation_tool(
             f"**Current Price:** ${price:.2f} | **Implied Intrinsic Price:** ${implied_price:.2f} ({implied_upside:+.1f}% upside/downside)\n"
             f"{metrics_degradation_note}\n"
             f"#### 1. DCF Model Assumptions & Inputs\n"
-            f"- **Forecast Growth Rate:** {growth_rate_used * 100:.1f}% (Base: {'analyst estimates' if forecast_growth == estimates else 'historical growth'})\n"
+            f"- **Forecast Growth Rate:** {growth_rate_used * 100:.1f}%\n"
             f"- **Discount Rate (WACC):** {wacc_used * 100:.1f}% (CAPM Beta: {beta:.2f}, Cost of Equity: {cost_of_equity * 100:.1f}%)\n"
             f"- **Terminal perpetuity Growth (g):** {tg_used * 100:.1f}%\n"
             f"- **Diluted Shares Outstanding:** {shares_outstanding:.1f}M\n"

@@ -307,6 +307,54 @@ class Portfolio:
             is_sell_tool_used=is_sell_tool_used,
         )
 
+    def _apply_trade_to_local_state(
+        self, ticker: str, quantity: int, price: float, signal: str
+    ) -> tuple[int, float, bool]:
+        """Update cash_balance, positions, and sma in-memory for BUY or SELL."""
+        sig = signal.upper()
+        total_cost = price * quantity
+
+        if sig == "BUY":
+            if total_cost > self.cash_balance:
+                logger.error(
+                    f"REJECTED: Cannot buy {quantity} {ticker} for ${total_cost:,.2f}. "
+                    f"Available cash balance is only ${self.cash_balance:,.2f}."
+                )
+                return quantity, total_cost, False
+
+            self.cash_balance -= total_cost
+            if ticker in self.positions:
+                pos = self.positions[ticker]
+                new_cost = (pos.average_cost_basis * pos.quantity) + total_cost
+                pos.quantity += quantity
+                pos.average_cost_basis = new_cost / pos.quantity
+            else:
+                self.positions[ticker] = Position(ticker=ticker, quantity=quantity, average_cost_basis=price)
+            self.sma = max(0.0, self.cash_balance)
+            return quantity, total_cost, True
+
+        if sig == "SELL":
+            if ticker not in self.positions:
+                logger.warning(f"REJECTED: Selling {ticker} but not held in portfolio.")
+                return quantity, total_cost, False
+
+            pos = self.positions[ticker]
+            if quantity > pos.quantity:
+                logger.warning(
+                    f"Attempted to sell {quantity} shares of {ticker} but only held {pos.quantity}. "
+                    "Capping sell to owned quantity."
+                )
+                quantity = pos.quantity
+
+            total_cost = price * quantity
+            self.cash_balance += total_cost
+            pos.quantity -= quantity
+            if pos.quantity == 0:
+                del self.positions[ticker]
+            self.sma = max(0.0, self.cash_balance)
+
+        return quantity, total_cost, True
+
     async def execute_trade(
         self,
         ticker: str,
@@ -338,68 +386,18 @@ class Portfolio:
             return
 
         ticker = ticker.upper()
-        total_cost = price * quantity
         supabase = get_supabase_client()
 
-        # Capture current average cost context for PnL calculation (for SELL signals)
-        # We need the cost basis BEFORE it might be updated/deleted by the sell
-        old_avg_cost = None
-        if signal.upper() == "SELL" and ticker in self.positions:
-            old_avg_cost = self.positions[ticker].average_cost_basis
+        old_avg_cost = (
+            self.positions[ticker].average_cost_basis if signal.upper() == "SELL" and ticker in self.positions else None
+        )
 
-        # Update local state first
-        if signal.upper() == "BUY":
-            if total_cost > self.cash_balance:
-                logger.error(
-                    f"REJECTED: Cannot buy {quantity} {ticker} for ${total_cost:,.2f}. "
-                    f"Available cash balance is only ${self.cash_balance:,.2f}."
-                )
-                return None
-
-            self.cash_balance -= total_cost
-
-            # Update Position
-            if ticker in self.positions:
-                pos = self.positions[ticker]
-                old_cost = pos.average_cost_basis * pos.quantity
-                new_cost = old_cost + total_cost
-                pos.quantity += quantity
-                pos.average_cost_basis = new_cost / pos.quantity
-            else:
-                self.positions[ticker] = Position(ticker=ticker, quantity=quantity, average_cost_basis=price)
-            # Cash-only: SMA is simply available cash
-            self.sma = max(0.0, self.cash_balance)
-
-        elif signal.upper() == "SELL":
-            # Update Position
-            if ticker in self.positions:
-                pos = self.positions[ticker]
-
-                # Guardrail: Cannot sell more than owned
-                if quantity > pos.quantity:
-                    logger.warning(
-                        f"Attempted to sell {quantity} shares of {ticker} but only held {pos.quantity}. "
-                        "Capping sell to owned quantity."
-                    )
-                    quantity = pos.quantity
-
-                # Recalculate total_cost based on potentially capped quantity
-                total_cost = price * quantity
-                self.cash_balance += total_cost
-
-                pos.quantity -= quantity
-                if pos.quantity == 0:
-                    del self.positions[ticker]
-            else:
-                logger.warning(f"REJECTED: Selling {ticker} but not held in portfolio.")
-                return None
-
-            # Cash-only: SMA is simply available cash
-            self.sma = max(0.0, self.cash_balance)
+        quantity, total_cost, ok = self._apply_trade_to_local_state(ticker, quantity, price, signal)
+        if not ok:
+            return None
 
         # Persist changes
         try:
-            # 1. Update/Insert/Delete Position
             current_pos = self.positions.get(ticker)
             if current_pos:
                 supabase.table("portfolio_positions").upsert(
@@ -412,12 +410,10 @@ class Portfolio:
                     on_conflict="portfolio_id,ticker",
                 ).execute()
             else:
-                # It was deleted (position closed)
                 supabase.table("portfolio_positions").delete().match(
                     {"portfolio_id": str(self.id), "ticker": ticker}
                 ).execute()
 
-            # 2. Insert into Trades Ledger
             trade_data = {
                 "portfolio_id": str(self.id),
                 "ticker": ticker,
@@ -432,19 +428,13 @@ class Portfolio:
             if reason:
                 trade_data["reasoning"] = reason
 
-            # Enrich with PnL for SELL trades
             if signal.upper() == "SELL" and old_avg_cost is not None:
-                realized_pnl = (price - old_avg_cost) * quantity
-                realized_pnl_pct = ((price / old_avg_cost) - 1) * 100 if old_avg_cost > 0 else 0
-                trade_data["realized_pnl"] = realized_pnl
-                trade_data["realized_pnl_pct"] = realized_pnl_pct
+                trade_data["realized_pnl"] = (price - old_avg_cost) * quantity
+                trade_data["realized_pnl_pct"] = ((price / old_avg_cost) - 1) * 100 if old_avg_cost > 0 else 0
 
             trade_res = supabase.table("trades").insert(trade_data).execute()
-
             trade_id = trade_res.data[0]["id"] if trade_res.data else None
 
-            # 3. ONLY NOW update Portfolio Cash & SMA (The "Commit" step)
-            # This ensures we don't deduct cash if the ledger or positions failed
             supabase.table("portfolios").update(
                 {"cash_balance": self.cash_balance, "sma": self.sma, "last_updated_at": "now()"}
             ).eq("id", self.id).execute()
@@ -452,22 +442,17 @@ class Portfolio:
             logger.info(f"Executed {signal} {quantity} {ticker} @ ${price:.2f}. New Cash: ${self.cash_balance:,.2f}")
             logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
 
-            # 4. Update and save metrics to ensure table consistency
-            # Use provided prices or fallback to cost basis for other positions
             if current_prices is None:
                 current_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
-
-            current_prices[ticker] = price  # Ensure the execution price is used for the current trade
+            current_prices[ticker] = price
 
             self.calculate_reg_t_metrics(current_prices)
             await self.save_metrics()
 
-            # 5. Mirror to Alpaca for third-party audit (fire-and-forget)
             if not skip_alpaca_mirror:
                 from execution.alpaca_broker import AlpacaBroker
 
                 broker = AlpacaBroker()
-                # Server-side limit price: slightly above market for BUY, below for SELL to ensure fill
                 alpaca_limit = round(price * 1.005, 2) if signal.upper() == "BUY" else round(price * 0.995, 2)
                 asyncio.create_task(
                     broker.submit_limit_order(
@@ -484,7 +469,6 @@ class Portfolio:
 
         except Exception as e:
             logger.error(f"DB Error executing trade for {ticker}: {e}")
-            # In real system: Rollback local state
             return None
 
     async def _check_and_sell_dust_positions(self, current_prices: dict[str, float]):

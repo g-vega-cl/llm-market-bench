@@ -133,6 +133,158 @@ def fetch_ticker_data_for_screening(
     return profile, quote, financials
 
 
+def _screen_frontier_themes_and_candidates() -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, float]]:
+    qualified_themes: list[dict[str, Any]] = []
+    screened_candidates: list[dict[str, Any]] = []
+    current_prices: dict[str, float] = {}
+
+    with httpx.Client(timeout=10.0) as http_client:
+        for theme_def in DEFAULT_FRONTIER_THEMES:
+            passes, score, _satisfied = evaluate_supercycle_rubric(theme_def["rubric"])
+            if not passes:
+                logger.info(f"Theme '{theme_def['theme_name']}' rejected by rubric (score {score}/5).")
+                continue
+
+            theme_tickers = []
+            for ticker in theme_def["candidate_tickers"]:
+                if FMP_API_KEY:
+                    profile, quote, financials = fetch_ticker_data_for_screening(http_client, ticker, FMP_API_KEY)
+                    if not quote or not profile:
+                        continue
+
+                    passed_guardrails, reason = evaluate_stock_guardrails(profile, quote, financials)
+                    if not passed_guardrails:
+                        logger.info(f"Candidate {ticker} rejected by guardrails: {reason}")
+                        continue
+
+                    price = float(quote.get("price") or 0.0)
+                    current_prices[ticker] = price
+                else:
+                    price = 10.0
+                    current_prices[ticker] = price
+
+                theme_tickers.append(ticker)
+                screened_candidates.append(
+                    {
+                        "ticker": ticker,
+                        "price": price,
+                        "theme": theme_def["theme_name"],
+                    }
+                )
+
+            qualified_themes.append(
+                {
+                    "theme_name": theme_def["theme_name"],
+                    "thesis": theme_def["thesis"],
+                    "catalysts": theme_def["catalysts"],
+                    "rubric_score": score,
+                    "tickers": theme_tickers,
+                }
+            )
+    return qualified_themes, screened_candidates, current_prices
+
+
+async def _persist_frontier_rebalance(
+    supabase,
+    portfolio: Portfolio,
+    qualified_themes: list[dict[str, Any]],
+    plan: dict[str, Any],
+    current_prices: dict[str, float],
+    now: datetime,
+) -> None:
+    for qt in qualified_themes:
+        try:
+            supabase.table("frontier_themes").upsert(
+                {
+                    "portfolio_id": str(portfolio.id),
+                    "theme_name": qt["theme_name"],
+                    "thesis": qt["thesis"],
+                    "catalysts": qt["catalysts"],
+                    "rubric_score": qt["rubric_score"],
+                    "status": "active",
+                    "tickers": qt["tickers"],
+                    "updated_at": now.isoformat(),
+                },
+                on_conflict="portfolio_id,theme_name",
+            ).execute()
+        except Exception as e:
+            logger.warning(f"Could not upsert theme {qt['theme_name']}: {e}")
+
+    for sale in plan["sales"]:
+        ticker = sale["ticker"]
+        shares = sale["shares"]
+        exec_p = sale["execution_price"]
+        await portfolio.execute_trade(
+            ticker=ticker,
+            quantity=shares,
+            price=exec_p,
+            signal="SELL",
+            current_prices=current_prices,
+            skip_alpaca_mirror=True,
+        )
+        logger.info(f"Executed SELL {shares} {ticker} @ {exec_p:.2f} (Reason: {sale['reason']})")
+
+    for buy in plan["buys"]:
+        ticker = buy["ticker"]
+        shares = buy["shares"]
+        exec_p = buy["execution_price"]
+        current_prices[ticker] = exec_p
+
+        decision_id = None
+        try:
+            dec_res = (
+                supabase.table("decisions")
+                .insert(
+                    {
+                        "source_id": f"frontier-tech-{now.strftime('%Y%m%d')}-{ticker}",
+                        "ticker": ticker,
+                        "signal": "BUY",
+                        "confidence": 80,
+                        "reasoning": f"[Theme: {buy.get('theme')}] Pre-explosion pure play passed 5-point supercycle rubric and 18-month runway guardrails.",
+                        "model_provider": "system",
+                        "model_name": SYS_FRONTIER_TECH_OWNER_ID,
+                    }
+                )
+                .execute()
+            )
+            if dec_res.data:
+                decision_id = dec_res.data[0]["id"]
+        except Exception as e:
+            logger.warning(f"Failed to record decision for {ticker}: {e}")
+
+        await portfolio.execute_trade(
+            ticker=ticker,
+            quantity=shares,
+            price=exec_p,
+            signal="BUY",
+            decision_id=decision_id,
+            current_prices=current_prices,
+            skip_alpaca_mirror=True,
+        )
+        logger.info(f"Executed BUY {shares} {ticker} @ {exec_p:.2f}")
+
+    today_str = now.strftime("%Y-%m-%d")
+    updated_equity = portfolio.cash_balance + sum(
+        pos.quantity * current_prices.get(t, pos.average_cost_basis) for t, pos in portfolio.positions.items()
+    )
+
+    try:
+        supabase.table("portfolio_performance").upsert(
+            {
+                "portfolio_id": str(portfolio.id),
+                "date": today_str,
+                "total_equity": updated_equity,
+                "cash_balance": portfolio.cash_balance,
+                "buying_power": portfolio.cash_balance,
+                "sma": 0.0,
+                "realized": updated_equity,
+            },
+            on_conflict="portfolio_id,date",
+        ).execute()
+    except Exception as e:
+        logger.warning(f"Failed to update portfolio_performance snapshot: {e}")
+
+
 async def run_frontier_tech_task(
     mode: str = "auto",
     dry_run: bool = False,
@@ -144,7 +296,6 @@ async def run_frontier_tech_task(
     supabase = get_supabase_client()
     now = datetime.now(UTC)
 
-    # 1. Initialize portfolio
     portfolio = Portfolio(SYS_FRONTIER_TECH_OWNER_ID)
     await portfolio.initialize()
 
@@ -167,57 +318,8 @@ async def run_frontier_tech_task(
             portfolio.id = res.data[0]["id"]
             portfolio.cash_balance = 10000.00
 
-    # 2. Evaluate Themes & Screen Candidates
-    qualified_themes: list[dict[str, Any]] = []
-    screened_candidates: list[dict[str, Any]] = []
-    current_prices: dict[str, float] = {}
+    qualified_themes, screened_candidates, current_prices = _screen_frontier_themes_and_candidates()
 
-    with httpx.Client(timeout=10.0) as http_client:
-        for theme_def in DEFAULT_FRONTIER_THEMES:
-            passes, score, satisfied = evaluate_supercycle_rubric(theme_def["rubric"])
-            if not passes:
-                logger.info(f"Theme '{theme_def['theme_name']}' rejected by rubric (score {score}/5).")
-                continue
-
-            theme_tickers = []
-            for ticker in theme_def["candidate_tickers"]:
-                if FMP_API_KEY:
-                    profile, quote, financials = fetch_ticker_data_for_screening(http_client, ticker, FMP_API_KEY)
-                    if not quote or not profile:
-                        continue
-
-                    passed_guardrails, reason = evaluate_stock_guardrails(profile, quote, financials)
-                    if not passed_guardrails:
-                        logger.info(f"Candidate {ticker} rejected by guardrails: {reason}")
-                        continue
-
-                    price = float(quote.get("price") or 0.0)
-                    current_prices[ticker] = price
-                else:
-                    # Deterministic offline mock price for CI/testing without live keys
-                    price = 10.0
-                    current_prices[ticker] = price
-
-                theme_tickers.append(ticker)
-                screened_candidates.append(
-                    {
-                        "ticker": ticker,
-                        "price": price,
-                        "theme": theme_def["theme_name"],
-                    }
-                )
-
-            qualified_themes.append(
-                {
-                    "theme_name": theme_def["theme_name"],
-                    "thesis": theme_def["thesis"],
-                    "catalysts": theme_def["catalysts"],
-                    "rubric_score": score,
-                    "tickers": theme_tickers,
-                }
-            )
-
-    # 3. Format current holdings
     current_holdings: list[dict[str, Any]] = []
     for ticker, pos in portfolio.positions.items():
         price = current_prices.get(ticker, pos.average_cost_basis)
@@ -235,7 +337,6 @@ async def run_frontier_tech_task(
 
     total_equity = portfolio.cash_balance + sum(h["shares"] * h["current_price"] for h in current_holdings)
 
-    # 4. Compute rebalance orders
     plan = compute_frontier_rebalance_orders(
         current_holdings=current_holdings,
         current_cash=portfolio.cash_balance,
@@ -245,104 +346,8 @@ async def run_frontier_tech_task(
         slippage_bps=slippage_bps,
     )
 
-    # 5. Persist to DB if not dry_run
     if not dry_run and portfolio.id:
-        # Save or update themes
-        for qt in qualified_themes:
-            try:
-                supabase.table("frontier_themes").upsert(
-                    {
-                        "portfolio_id": str(portfolio.id),
-                        "theme_name": qt["theme_name"],
-                        "thesis": qt["thesis"],
-                        "catalysts": qt["catalysts"],
-                        "rubric_score": qt["rubric_score"],
-                        "status": "active",
-                        "tickers": qt["tickers"],
-                        "updated_at": now.isoformat(),
-                    },
-                    on_conflict="portfolio_id,theme_name",
-                ).execute()
-            except Exception as e:
-                logger.warning(f"Could not upsert theme {qt['theme_name']}: {e}")
-
-        # Execute Sales
-        for sale in plan["sales"]:
-            ticker = sale["ticker"]
-            shares = sale["shares"]
-            exec_p = sale["execution_price"]
-            await portfolio.execute_trade(
-                ticker=ticker,
-                quantity=shares,
-                price=exec_p,
-                signal="SELL",
-                current_prices=current_prices,
-                skip_alpaca_mirror=True,
-            )
-            logger.info(f"Executed SELL {shares} {ticker} @ {exec_p:.2f} (Reason: {sale['reason']})")
-
-        # Execute Buys
-        for buy in plan["buys"]:
-            ticker = buy["ticker"]
-            shares = buy["shares"]
-            exec_p = buy["execution_price"]
-            current_prices[ticker] = exec_p
-
-            # Record decision
-            decision_id = None
-            try:
-                dec_res = (
-                    supabase.table("decisions")
-                    .insert(
-                        {
-                            "source_id": f"frontier-tech-{now.strftime('%Y%m%d')}-{ticker}",
-                            "ticker": ticker,
-                            "signal": "BUY",
-                            "confidence": 80,
-                            "reasoning": f"[Theme: {buy.get('theme')}] Pre-explosion pure play passed 5-point supercycle rubric and 18-month runway guardrails.",
-                            "model_provider": "system",
-                            "model_name": SYS_FRONTIER_TECH_OWNER_ID,
-                        }
-                    )
-                    .execute()
-                )
-                if dec_res.data:
-                    decision_id = dec_res.data[0]["id"]
-            except Exception as e:
-                logger.warning(f"Failed to record decision for {ticker}: {e}")
-
-            await portfolio.execute_trade(
-                ticker=ticker,
-                quantity=shares,
-                price=exec_p,
-                signal="BUY",
-                decision_id=decision_id,
-                current_prices=current_prices,
-                skip_alpaca_mirror=True,
-            )
-            logger.info(f"Executed BUY {shares} {ticker} @ {exec_p:.2f}")
-
-        # Update performance snapshot
-        today_str = now.strftime("%Y-%m-%d")
-        updated_equity = portfolio.cash_balance + sum(
-            pos.quantity * current_prices.get(t, pos.average_cost_basis) for t, pos in portfolio.positions.items()
-        )
-
-        try:
-            supabase.table("portfolio_performance").upsert(
-                {
-                    "portfolio_id": str(portfolio.id),
-                    "date": today_str,
-                    "total_equity": updated_equity,
-                    "cash_balance": portfolio.cash_balance,
-                    "buying_power": portfolio.cash_balance,
-                    "sma": 0.0,
-                    "realized": updated_equity,
-                },
-                on_conflict="portfolio_id,date",
-            ).execute()
-        except Exception as e:
-            logger.warning(f"Failed to update portfolio_performance snapshot: {e}")
+        await _persist_frontier_rebalance(supabase, portfolio, qualified_themes, plan, current_prices, now)
 
     logger.info("Frontier Tech Supercycle Task completed successfully.")
     return {

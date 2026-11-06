@@ -7,6 +7,7 @@ cycles, midterms, and rate decisions) grounded strictly in historical memories a
 
 from __future__ import annotations
 
+import contextlib
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -168,31 +169,7 @@ def rank_and_filter_memories(
     return [item[1] for item in valid[:limit]]
 
 
-async def retrieve_qa_grounding(
-    sb_client: Any,
-    query: str,
-    ticker: str = "SPY",
-    limit_memories: int = 5,
-) -> dict[str, Any]:
-    """Retrieve desk decisions, positioning, live news, and query-relevant memories for conversational Q&A."""
-    results: dict[str, Any] = {
-        "recent_decisions": [],
-        "recent_trades": [],
-        "memories": [],
-        "cause_and_effect": [],
-        "barometer": None,
-        "catalyst_radar": [],
-        "breaking_news": [],
-        "news_summary": None,
-        "current_timestamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
-    }
-    if not sb_client:
-        return results
-
-    now_utc = datetime.now(UTC)
-    today_str = now_utc.strftime("%Y-%m-%d")
-
-    # 1. Recent Desk Decisions (market_feeling)
+def _fetch_desk_decisions_and_trades(sb_client: Any, results: dict[str, Any]) -> None:
     try:
         mf_res = (
             sb_client.table("market_feeling")
@@ -211,7 +188,6 @@ async def retrieve_qa_grounding(
     if not results["news_summary"]:
         results["news_summary"] = get_latest_news_synthesis()
 
-    # 2. Recent Trades
     try:
         trades_res = (
             sb_client.table("trades")
@@ -224,13 +200,19 @@ async def retrieve_qa_grounding(
     except Exception:
         logger.exception("Failed to retrieve trades for QA grounding")
 
-    # 3. Memories searched by query keywords and augmented with fresh active memories
-    keywords = extract_search_keywords(query)
+
+def _fetch_grounding_memories(
+    sb_client: Any,
+    query: str,
+    keywords: list[str],
+    now_utc: datetime,
+    limit_memories: int,
+) -> list[dict[str, Any]]:
     raw_memories: list[dict[str, Any]] = []
     try:
         if keywords:
             or_filter = ",".join([f"content.ilike.%{kw}%" for kw in keywords])
-            try:
+            with contextlib.suppress(Exception):
                 mem_res = (
                     sb_client.table("memories")
                     .select(
@@ -243,11 +225,9 @@ async def retrieve_qa_grounding(
                     .execute()
                 )
                 raw_memories.extend(mem_res.data or [])
-            except Exception:
-                pass
 
             if not raw_memories:
-                try:
+                with contextlib.suppress(Exception):
                     mem_res = (
                         sb_client.table("memories")
                         .select("id, content, importance_score, metadata")
@@ -257,11 +237,8 @@ async def retrieve_qa_grounding(
                         .execute()
                     )
                     raw_memories.extend(mem_res.data or [])
-                except Exception:
-                    pass
 
-        # Fresh active memories pool
-        try:
+        with contextlib.suppress(Exception):
             fresh_res = (
                 sb_client.table("memories")
                 .select(
@@ -274,19 +251,19 @@ async def retrieve_qa_grounding(
                 .execute()
             )
             raw_memories.extend(fresh_res.data or [])
-        except Exception:
-            pass
 
-        results["memories"] = rank_and_filter_memories(raw_memories, query=query, now_dt=now_utc, limit=limit_memories)
+        return rank_and_filter_memories(raw_memories, query=query, now_dt=now_utc, limit=limit_memories)
     except Exception:
         logger.exception("Failed to retrieve memories for QA grounding")
+        return []
 
-    # 4. Causal Chains
+
+def _fetch_causal_chains(sb_client: Any, keywords: list[str]) -> list[dict[str, Any]]:
     try:
         ce_data: list[dict[str, Any]] = []
         if keywords:
             or_filter = ",".join([f"analysis.ilike.%{kw}%" for kw in keywords])
-            try:
+            with contextlib.suppress(Exception):
                 ce_res = (
                     sb_client.table("cause_and_effect")
                     .select("id, analysis, market_outcome, confidence, tags, created_at")
@@ -296,8 +273,6 @@ async def retrieve_qa_grounding(
                     .execute()
                 )
                 ce_data = ce_res.data or []
-            except Exception:
-                pass
 
         if not ce_data:
             ce_res = (
@@ -308,11 +283,13 @@ async def retrieve_qa_grounding(
                 .execute()
             )
             ce_data = ce_res.data or []
-        results["cause_and_effect"] = ce_data
+        return ce_data
     except Exception:
         logger.exception("Failed to retrieve cause_and_effect for QA grounding")
+        return []
 
-    # 5. Market Barometer
+
+def _fetch_context_signals(sb_client: Any, today_str: str, results: dict[str, Any]) -> None:
     try:
         baro_res = (
             sb_client.table("market_barometer_history")
@@ -326,7 +303,6 @@ async def retrieve_qa_grounding(
     except Exception:
         logger.exception("Failed to retrieve barometer for QA grounding")
 
-    # 6. Catalyst Radar (prioritize upcoming or current catalysts)
     try:
         radar_res = (
             sb_client.table("catalyst_radar")
@@ -350,7 +326,6 @@ async def retrieve_qa_grounding(
     except Exception:
         logger.exception("Failed to retrieve catalyst_radar for QA grounding")
 
-    # 7. Breaking Intraday News Headlines
     try:
         news_res = (
             sb_client.table("intraday_market_news")
@@ -362,6 +337,37 @@ async def retrieve_qa_grounding(
         results["breaking_news"] = news_res.data or []
     except Exception:
         logger.exception("Failed to retrieve breaking news for QA grounding")
+
+
+async def retrieve_qa_grounding(
+    sb_client: Any,
+    query: str,
+    ticker: str = "SPY",
+    limit_memories: int = 5,
+) -> dict[str, Any]:
+    """Retrieve desk decisions, positioning, live news, and query-relevant memories for conversational Q&A."""
+    now_utc = datetime.now(UTC)
+    results: dict[str, Any] = {
+        "recent_decisions": [],
+        "recent_trades": [],
+        "memories": [],
+        "cause_and_effect": [],
+        "barometer": None,
+        "catalyst_radar": [],
+        "breaking_news": [],
+        "news_summary": None,
+        "current_timestamp": now_utc.strftime("%Y-%m-%d %H:%M UTC"),
+    }
+    if not sb_client:
+        return results
+
+    today_str = now_utc.strftime("%Y-%m-%d")
+    _fetch_desk_decisions_and_trades(sb_client, results)
+
+    keywords = extract_search_keywords(query)
+    results["memories"] = _fetch_grounding_memories(sb_client, query, keywords, now_utc, limit_memories)
+    results["cause_and_effect"] = _fetch_causal_chains(sb_client, keywords)
+    _fetch_context_signals(sb_client, today_str, results)
 
     return results
 

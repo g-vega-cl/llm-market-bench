@@ -265,17 +265,9 @@ async def execute_get_market_feeling_tool() -> str:
         return f"Error retrieving market feeling: {str(e)}"
 
 
-async def execute_web_search_tool(query: str, max_results: int = 5) -> str:
-    """Performs a live web search for financial news, market reports, and catalysts."""
-    if not query or not query.strip():
-        return "Error: Empty search query provided."
-
-    query_str = query.strip()
-    logger.info(f"Executing web_search tool for query: '{query_str}'")
-
-    results = []
-
-    # 1. Primary: DuckDuckGo HTML search
+async def _search_duckduckgo_html(query_str: str, max_results: int) -> list[dict[str, str]]:
+    """Primary web search via DuckDuckGo HTML scraping."""
+    results: list[dict[str, str]] = []
     try:
         import httpx
         from bs4 import BeautifulSoup
@@ -316,9 +308,21 @@ async def execute_web_search_tool(query: str, max_results: int = 5) -> str:
                             results.append({"title": title, "snippet": snippet, "url": href})
                             if len(results) >= max_results:
                                 break
-
     except Exception as e:
         logger.warning(f"DuckDuckGo web search encountered error: {e}")
+    return results
+
+
+async def execute_web_search_tool(query: str, max_results: int = 5) -> str:
+    """Performs a live web search for financial news, market reports, and catalysts."""
+    if not query or not query.strip():
+        return "Error: Empty search query provided."
+
+    query_str = query.strip()
+    logger.info(f"Executing web_search tool for query: '{query_str}'")
+
+    # 1. Primary: DuckDuckGo HTML search
+    results = await _search_duckduckgo_html(query_str, max_results)
 
     # 2. Fallback: FMP Stock News Search if ticker is present in query or general search had no hits
     if not results:

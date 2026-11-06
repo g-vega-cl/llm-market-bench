@@ -571,45 +571,65 @@ class MockFinancialProvider(FinancialProvider):
         return [row for row in history if row["fetched_at"] <= t_sim_date_str]
 
 
+def _patch_module_supabase(name: str, module, mock_sync, mock_async, originals: dict) -> None:
+    if hasattr(module, "get_supabase_client"):
+        try:
+            orig = module.get_supabase_client
+            if not hasattr(orig, "_is_mock"):
+                originals[(name, "get_supabase_client")] = orig
+
+                def mock_func(*a, **k):
+                    return mock_sync
+
+                mock_func._is_mock = True
+                module.get_supabase_client = mock_func
+        except Exception:
+            pass
+    if hasattr(module, "get_async_supabase_client"):
+        try:
+            orig = module.get_async_supabase_client
+            if not hasattr(orig, "_is_mock"):
+                originals[(name, "get_async_supabase_client")] = orig
+
+                async def mock_async_func_inner(*a, **k):
+                    return mock_async
+
+                mock_async_func_inner._is_mock = True
+                module.get_async_supabase_client = mock_async_func_inner
+        except Exception:
+            pass
+
+
+def _restore_supabase_originals(originals: dict) -> None:
+    import sys
+
+    import core.db
+
+    for (mod_name, attr_name), orig in originals.items():
+        try:
+            module = sys.modules.get(mod_name)
+            if module:
+                setattr(module, attr_name, orig)
+        except Exception:
+            pass
+
+    if ("core.db", "get_supabase_client") in originals:
+        core.db.get_supabase_client = originals[("core.db", "get_supabase_client")]
+    if ("core.db", "get_async_supabase_client") in originals:
+        core.db.get_async_supabase_client = originals[("core.db", "get_async_supabase_client")]
+
+
 @contextlib.contextmanager
 def global_supabase_patch(mock_sync, mock_async):
     import sys
 
+    import core.db
+
     originals = {}
 
-    # Globally search and patch loaded module namespaces importing get_supabase_client
     for name, module in list(sys.modules.items()):
-        if module is None:
-            continue
-        if hasattr(module, "get_supabase_client"):
-            try:
-                orig = module.get_supabase_client
-                if not hasattr(orig, "_is_mock"):
-                    originals[(name, "get_supabase_client")] = orig
-
-                    def mock_func(*a, **k):
-                        return mock_sync
-
-                    mock_func._is_mock = True
-                    module.get_supabase_client = mock_func
-            except Exception:
-                pass
-        if hasattr(module, "get_async_supabase_client"):
-            try:
-                orig = module.get_async_supabase_client
-                if not hasattr(orig, "_is_mock"):
-                    originals[(name, "get_async_supabase_client")] = orig
-
-                    async def mock_async_func_inner(*a, **k):
-                        return mock_async
-
-                    mock_async_func_inner._is_mock = True
-                    module.get_async_supabase_client = mock_async_func_inner
-            except Exception:
-                pass
-
-    # Patch core.db directly
-    import core.db
+        if module is not None:
+            _patch_module_supabase(name, module, mock_sync, mock_async, originals)
 
     if not hasattr(core.db.get_supabase_client, "_is_mock"):
         originals[("core.db", "get_supabase_client")] = core.db.get_supabase_client
@@ -632,19 +652,101 @@ def global_supabase_patch(mock_sync, mock_async):
     try:
         yield
     finally:
-        for (mod_name, attr_name), orig in originals.items():
-            try:
-                module = sys.modules.get(mod_name)
-                if module:
-                    setattr(module, attr_name, orig)
-            except Exception:
-                pass
-        import core.db
+        _restore_supabase_originals(originals)
 
-        if ("core.db", "get_supabase_client") in originals:
-            core.db.get_supabase_client = originals[("core.db", "get_supabase_client")]
-        if ("core.db", "get_async_supabase_client") in originals:
-            core.db.get_async_supabase_client = originals[("core.db", "get_async_supabase_client")]
+
+def _compute_simulated_trade_qty(d, portfolio, exec_price: float) -> int:
+    qty = 0
+    if d.signal.upper() == "BUY":
+        alloc_pct = getattr(d, "allocation_percentage", None)
+        if alloc_pct is None:
+            alloc_pct = 20
+        bp = portfolio.metrics.buying_power if portfolio.metrics else portfolio.cash_balance
+        usd_to_spend = (alloc_pct / 100.0) * bp
+        qty = int(usd_to_spend / exec_price)
+    elif d.signal.upper() == "SELL":
+        held_qty = portfolio.positions[d.ticker].quantity if d.ticker in portfolio.positions else 0
+        if held_qty > 0:
+            alloc_pct = getattr(d, "allocation_percentage", None)
+            if alloc_pct is None:
+                alloc_pct = 100
+            qty = int((alloc_pct / 100.0) * held_qty)
+    return qty if qty > 0 else 1
+
+
+async def _process_simulated_decision(d, sb, mock_provider, aggregated_context, uncrowded_context) -> None:
+    portfolio = Portfolio(owner_id=d.model_name)
+    await portfolio.initialize()
+
+    if d.signal.upper() not in ["BUY", "SELL"]:
+        return
+
+    is_verified = True
+    verification_msg = "Approved"
+
+    current_prices = {}
+    for held_ticker in portfolio.positions:
+        t_data = await mock_provider.get_ticker_data(held_ticker)
+        if t_data and t_data.exists:
+            current_prices[held_ticker] = t_data.price
+
+    t_data = await mock_provider.get_ticker_data(d.ticker)
+    if t_data and t_data.exists:
+        current_prices[d.ticker] = t_data.price
+    portfolio.calculate_reg_t_metrics(current_prices)
+
+    from core.config import is_verifier_enabled_for_owner
+
+    if is_verifier_enabled_for_owner(d.model_name):
+        summary = await portfolio.get_portfolio_summary(current_prices)
+        verification = await verify_trading_decision(
+            decision=d,
+            portfolio_context=summary,
+            aggregated_context=aggregated_context,
+            uncrowded_context=uncrowded_context,
+        )
+        verification_msg = verification.verification_reasoning
+        if verification.status == "REJECTED_VERIFICATION":
+            is_verified = False
+            logger.info(f"[{d.model_name}][{d.ticker}] REJECTED by verifier: {verification.verification_reasoning}")
+
+    quote = await mock_provider.get_ticker_data(d.ticker)
+    if not quote or not quote.exists:
+        logger.warning(f"[{d.model_name}][{d.ticker}] No quote available, skipping.")
+        return
+
+    exec_price = quote.price
+    qty = _compute_simulated_trade_qty(d, portfolio, exec_price)
+
+    from attribution.service import save_decision
+
+    db_row = save_decision(
+        client=sb,
+        decision=d,
+        status="VALIDATED" if is_verified else "REJECTED_VERIFICATION",
+        metadata={
+            "info": "Backtest run decision",
+            "reason": verification_msg if not is_verified else "Passed verifier",
+        },
+    )
+    decision_id = db_row.get("id") if db_row else str(uuid.uuid4())
+
+    if is_verified:
+        val = portfolio.validate_trade(d.ticker, qty, exec_price, d.signal)
+        if val.passed:
+            logger.info(f"[{d.model_name}] Executing trade {d.signal} {qty} {d.ticker} @ {exec_price}")
+            await portfolio.execute_trade(
+                ticker=d.ticker,
+                quantity=qty,
+                price=exec_price,
+                signal=d.signal,
+                decision_id=decision_id,
+                current_prices=current_prices,
+                skip_alpaca_mirror=True,
+            )
+            await portfolio.save_metrics()
+        else:
+            logger.warning(f"[{d.model_name}][{d.ticker}] Rejected compliance check: {val.reason}")
 
 
 async def run_simulated_tick(t_sim: datetime, active_prompt: str):
@@ -703,102 +805,7 @@ async def run_simulated_tick(t_sim: datetime, active_prompt: str):
             for d in decisions:
                 if d.model_name not in allowed_models:
                     continue
-
-                portfolio = Portfolio(owner_id=d.model_name)
-                await portfolio.initialize()
-
-                if d.signal.upper() in ["BUY", "SELL"]:
-                    is_verified = True
-                    verification_msg = "Approved"
-
-                    # Ensure reg t metrics are computed so metrics are populated
-                    current_prices = {}
-                    for held_ticker in portfolio.positions:
-                        t_data = await mock_provider.get_ticker_data(held_ticker)
-                        if t_data and t_data.exists:
-                            current_prices[held_ticker] = t_data.price
-
-                    t_data = await mock_provider.get_ticker_data(d.ticker)
-                    if t_data and t_data.exists:
-                        current_prices[d.ticker] = t_data.price
-                    portfolio.calculate_reg_t_metrics(current_prices)
-
-                    # Only verify models with verifier enabled (track_claude)
-                    from core.config import is_verifier_enabled_for_owner
-
-                    if is_verifier_enabled_for_owner(d.model_name):
-                        summary = await portfolio.get_portfolio_summary(current_prices)
-
-                        # Skeptical second step LLM verifier
-                        verification = await verify_trading_decision(
-                            decision=d,
-                            portfolio_context=summary,
-                            aggregated_context=aggregated_context,
-                            uncrowded_context=uncrowded_context,
-                        )
-                        verification_msg = verification.verification_reasoning
-                        if verification.status == "REJECTED_VERIFICATION":
-                            is_verified = False
-                            logger.info(
-                                f"[{d.model_name}][{d.ticker}] REJECTED by verifier: {verification.verification_reasoning}"
-                            )
-
-                    # Fetch quote price for trade validation
-                    quote = await mock_provider.get_ticker_data(d.ticker)
-                    if not quote or not quote.exists:
-                        logger.warning(f"[{d.model_name}][{d.ticker}] No quote available, skipping.")
-                        continue
-
-                    exec_price = quote.price
-                    qty = 0
-                    if d.signal.upper() == "BUY":
-                        alloc_pct = getattr(d, "allocation_percentage", None)
-                        if alloc_pct is None:
-                            alloc_pct = 20
-                        bp = portfolio.metrics.buying_power if portfolio.metrics else portfolio.cash_balance
-                        usd_to_spend = (alloc_pct / 100.0) * bp
-                        qty = int(usd_to_spend / exec_price)
-                    elif d.signal.upper() == "SELL":
-                        held_qty = portfolio.positions[d.ticker].quantity if d.ticker in portfolio.positions else 0
-                        if held_qty > 0:
-                            alloc_pct = getattr(d, "allocation_percentage", None)
-                            if alloc_pct is None:
-                                alloc_pct = 100
-                            qty = int((alloc_pct / 100.0) * held_qty)
-
-                    if qty <= 0:
-                        qty = 1
-
-                    # Save decision first to simulate production audit trail and generate ID
-                    from attribution.service import save_decision
-
-                    db_row = save_decision(
-                        client=sb,
-                        decision=d,
-                        status="VALIDATED" if is_verified else "REJECTED_VERIFICATION",
-                        metadata={
-                            "info": "Backtest run decision",
-                            "reason": verification_msg if not is_verified else "Passed verifier",
-                        },
-                    )
-                    decision_id = db_row.get("id") if db_row else str(uuid.uuid4())
-
-                    if is_verified:
-                        val = portfolio.validate_trade(d.ticker, qty, exec_price, d.signal)
-                        if val.passed:
-                            logger.info(f"[{d.model_name}] Executing trade {d.signal} {qty} {d.ticker} @ {exec_price}")
-                            await portfolio.execute_trade(
-                                ticker=d.ticker,
-                                quantity=qty,
-                                price=exec_price,
-                                signal=d.signal,
-                                decision_id=decision_id,
-                                current_prices=current_prices,
-                                skip_alpaca_mirror=True,
-                            )
-                            await portfolio.save_metrics()
-                        else:
-                            logger.warning(f"[{d.model_name}][{d.ticker}] Rejected compliance check: {val.reason}")
+                await _process_simulated_decision(d, sb, mock_provider, aggregated_context, uncrowded_context)
 
 
 async def evaluate_backtest_week(week_start: datetime, week_end: datetime) -> tuple[str, dict]:

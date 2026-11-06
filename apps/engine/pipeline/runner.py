@@ -20,6 +20,79 @@ from pipeline.stages import (
 )
 
 
+def _save_ingestion_log(sb_client, run_id: str, run_date, run_number: int, log_blob: str, log):
+    """Save ingestion log blob to Supabase ingestion_logs table."""
+    try:
+        sb_client.table("ingestion_logs").insert(
+            {
+                "run_id": run_id,
+                "run_date": str(run_date),
+                "run_number": run_number,
+                "log_blob": log_blob[:1000000],
+            }
+        ).execute()
+    except Exception as e:
+        log.error(f"Failed to save ingestion log: {e}")
+
+
+async def _run_scheduled_trading_hooks(dt_cls, dry_run: bool, log):
+    """Execute scheduled systematic sector and daily SPY trading hooks."""
+    try:
+        now_ny = dt_cls.now(ZoneInfo("America/New_York"))
+        if now_ny.weekday() == 0 and now_ny.hour < 11:
+            log.info("Monday morning detected — Checking systematic weekly sector portfolio entry...")
+            from execution.sector_trading import run_sector_trade
+
+            await run_sector_trade(action="entry")
+    except Exception:
+        log.exception("Systematic weekly sector entry hook failed")
+
+    try:
+        now_ny = dt_cls.now(ZoneInfo("America/New_York"))
+        if now_ny.hour == 9 and now_ny.minute >= 30:
+            log.info("Morning open session detected — Submitting daily SPY target limit orders...")
+            from execution.daily_trading import place_daily_target_limit_orders
+
+            await place_daily_target_limit_orders(dry_run=dry_run)
+    except Exception:
+        log.exception("Daily SPY target limit orders hook failed")
+
+    try:
+        now_ny = dt_cls.now(ZoneInfo("America/New_York"))
+        if now_ny.weekday() == 4 and now_ny.hour >= 15:
+            log.info("Friday afternoon detected — Checking systematic weekly sector portfolio exit...")
+            from execution.sector_trading import run_sector_trade
+
+            await run_sector_trade(action="exit")
+    except Exception:
+        log.exception("Systematic weekly sector exit hook failed")
+
+    try:
+        now_ny = dt_cls.now(ZoneInfo("America/New_York"))
+        if now_ny.hour >= 15:
+            log.info("Afternoon session detected — Checking daily systematic SPY close exits...")
+            from execution.daily_trading import execute_daily_close_exits
+
+            await execute_daily_close_exits(dry_run=dry_run)
+    except Exception:
+        log.exception("Daily systematic SPY close exit hook failed")
+
+
+async def _run_lin_renko_hook(log):
+    """Execute isolated LIN Renko trading flow."""
+    try:
+        log.info("Starting Isolated LIN Renko Flow...")
+        from tasks.lin_renko_task import run_lin_renko_flow
+
+        lin_result = await run_lin_renko_flow()
+        log.info(
+            f"Isolated LIN Renko Flow completed (Decision: {lin_result.get('decision', {}).get('decision')}, "
+            f"Trade Executed: {lin_result.get('trade_executed')})."
+        )
+    except Exception:
+        log.exception("Isolated LIN Renko Flow execution failed")
+
+
 async def run_ingest(force: bool = False, dry_run: bool = False):
     """Runs the full ingestion and analysis pipeline."""
     log_capture = io.StringIO()
@@ -63,20 +136,12 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
             if log_blob:
                 try:
                     sb_client = get_client_fn()
-                    sb_client.table("ingestion_logs").insert(
-                        {
-                            "run_id": run_id,
-                            "run_date": str(run_date),
-                            "run_number": run_number,
-                            "log_blob": log_blob[:1000000],
-                        }
-                    ).execute()
+                    _save_ingestion_log(sb_client, run_id, run_date, run_number, log_blob, log)
                 except Exception as e:
                     log.error(f"Failed to save ingestion log: {e}")
             return
 
         sb_client = get_client_fn()
-
         await dust_cleanup_fn(sb_client, dry_run=dry_run)
 
         try:
@@ -89,17 +154,7 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
         if not data:
             log_blob = log_capture.getvalue()
             if log_blob and not dry_run:
-                try:
-                    sb_client.table("ingestion_logs").insert(
-                        {
-                            "run_id": run_id,
-                            "run_date": str(run_date),
-                            "run_number": run_number,
-                            "log_blob": log_blob[:1000000],
-                        }
-                    ).execute()
-                except Exception as e:
-                    log.error(f"Failed to save ingestion log: {e}")
+                _save_ingestion_log(sb_client, run_id, run_date, run_number, log_blob, log)
             return
 
         try:
@@ -119,45 +174,7 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
             )
 
             if not dry_run:
-                try:
-                    now_ny = dt_cls.now(ZoneInfo("America/New_York"))
-                    if now_ny.weekday() == 0 and now_ny.hour < 11:
-                        log.info("Monday morning detected — Checking systematic weekly sector portfolio entry...")
-                        from execution.sector_trading import run_sector_trade
-
-                        await run_sector_trade(action="entry")
-                except Exception:
-                    log.exception("Systematic weekly sector entry hook failed")
-
-                try:
-                    now_ny = dt_cls.now(ZoneInfo("America/New_York"))
-                    if now_ny.hour == 9 and now_ny.minute >= 30:
-                        log.info("Morning open session detected — Submitting daily SPY target limit orders...")
-                        from execution.daily_trading import place_daily_target_limit_orders
-
-                        await place_daily_target_limit_orders(dry_run=dry_run)
-                except Exception:
-                    log.exception("Daily SPY target limit orders hook failed")
-
-                try:
-                    now_ny = dt_cls.now(ZoneInfo("America/New_York"))
-                    if now_ny.weekday() == 4 and now_ny.hour >= 15:
-                        log.info("Friday afternoon detected — Checking systematic weekly sector portfolio exit...")
-                        from execution.sector_trading import run_sector_trade
-
-                        await run_sector_trade(action="exit")
-                except Exception:
-                    log.exception("Systematic weekly sector exit hook failed")
-
-                try:
-                    now_ny = dt_cls.now(ZoneInfo("America/New_York"))
-                    if now_ny.hour >= 15:
-                        log.info("Afternoon session detected — Checking daily systematic SPY close exits...")
-                        from execution.daily_trading import execute_daily_close_exits
-
-                        await execute_daily_close_exits(dry_run=dry_run)
-                except Exception:
-                    log.exception("Daily systematic SPY close exit hook failed")
+                await _run_scheduled_trading_hooks(dt_cls, dry_run, log)
 
             await snapshots_pca_fn(sb_client, dry_run=dry_run)
 
@@ -171,17 +188,7 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
                 log.warning("Market feeling analysis did not produce a result.")
 
             if not dry_run:
-                try:
-                    log.info("Starting Isolated LIN Renko Flow...")
-                    from tasks.lin_renko_task import run_lin_renko_flow
-
-                    lin_result = await run_lin_renko_flow()
-                    log.info(
-                        f"Isolated LIN Renko Flow completed (Decision: {lin_result.get('decision', {}).get('decision')}, "
-                        f"Trade Executed: {lin_result.get('trade_executed')})."
-                    )
-                except Exception:
-                    log.exception("Isolated LIN Renko Flow execution failed")
+                await _run_lin_renko_hook(log)
         finally:
             from execution.providers.factory import get_active_provider_class
 
@@ -189,17 +196,7 @@ async def run_ingest(force: bool = False, dry_run: bool = False):
 
         log_blob = log_capture.getvalue()
         if not dry_run:
-            try:
-                sb_client.table("ingestion_logs").insert(
-                    {
-                        "run_id": run_id,
-                        "run_date": str(run_date),
-                        "run_number": run_number,
-                        "log_blob": log_blob[:1000000],
-                    }
-                ).execute()
-            except Exception as e:
-                log.error(f"Failed to save ingestion log: {e}")
+            _save_ingestion_log(sb_client, run_id, run_date, run_number, log_blob, log)
         else:
             log.info(f"[DRY RUN] Simulation complete for run_id {run_id}. Log capture size: {len(log_blob)} chars.")
     finally:

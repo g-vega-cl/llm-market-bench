@@ -138,16 +138,40 @@ def _group_events_semantically(
     return groups
 
 
-async def _synthesize_and_promote_group(
-    occurrences: list[MacroEvent], discovery_service: DiscoveryService, sim_threshold: float
-):
-    """Synthesize a group of events and promote to memory if consensus is reached."""
-    # sim_threshold is retained for API compatibility (grouping threshold);
-    # dedup uses config.MEMORY_DEDUP_THRESHOLD (0.90) to avoid false collisions.
-    _ = sim_threshold
+_THEMATIC_KEYWORDS = (
+    "rotation",
+    "capital flow",
+    "picks and shovels",
+    "picks-and-shovels",
+    "adjacent trade",
+    "flow shift",
+    "sector shift",
+    "capex rotation",
+    "head fake",
+)
+
+
+def _format_historical_parallel_tag(hp: Any) -> str:
+    """Formats a historical parallel dict or string into a memory tag."""
+    if not hp:
+        return ""
+    if isinstance(hp, dict):
+        title = hp.get("title") or "Historical Precedent"
+        timeframe = hp.get("timeframe")
+        tf_part = f" ({timeframe})" if timeframe and timeframe != "Historical" else ""
+        return f" [Historical Parallel: {title}{tf_part}]"
+    return f" [Historical Parallel: {hp}]"
+
+
+def _aggregate_group_occurrences(occurrences: list[MacroEvent]) -> dict[str, Any]:
+    """Aggregates model weights, votes, reasonings, and metadata across a group of MacroEvents."""
     unique_models = set()
     cumulative_weight = 0.0
     models_seen_for_weight = set()
+
+    impact_weights: dict[str, float] = defaultdict(float)
+    ongoing_votes, catalyst_votes = 0.0, 0.0
+    parallels, scenarios, reasonings, source_ids, importance_scores = [], [], [], set(), []
 
     for occ in occurrences:
         model_key = f"{occ.model_provider}_{occ.model_name}"
@@ -156,14 +180,6 @@ async def _synthesize_and_promote_group(
             cumulative_weight += MODEL_WEIGHTS.get(occ.model_name, 1.0)
             models_seen_for_weight.add(occ.model_name)
 
-    representative_name = occurrences[0].event_name
-
-    # Combine reasoning and votes
-    impact_weights = defaultdict(float)
-    ongoing_votes, catalyst_votes = 0.0, 0.0
-    parallels, scenarios, reasonings, source_ids, importance_scores = [], [], [], set(), []
-
-    for occ in occurrences:
         weight = MODEL_WEIGHTS.get(occ.model_name, 1.0)
         impact_weights[occ.impact] += weight
         reasonings.append(occ.reasoning)
@@ -179,69 +195,40 @@ async def _synthesize_and_promote_group(
         if getattr(occ, "scenario_analysis", None):
             scenarios.append(occ.scenario_analysis)
 
-    majority_impact = _resolve_impact_tie(impact_weights)
+    return {
+        "unique_models": unique_models,
+        "cumulative_weight": cumulative_weight,
+        "majority_impact": _resolve_impact_tie(impact_weights),
+        "ongoing_votes": ongoing_votes,
+        "catalyst_votes": catalyst_votes,
+        "parallels": parallels,
+        "scenarios": scenarios,
+        "reasonings": reasonings,
+        "source_ids": source_ids,
+        "importance_scores": importance_scores,
+    }
 
-    def _format_historical_parallel_tag(hp: Any) -> str:
-        if not hp:
-            return ""
-        if isinstance(hp, dict):
-            title = hp.get("title") or "Historical Precedent"
-            timeframe = hp.get("timeframe")
-            tf_part = f" ({timeframe})" if timeframe and timeframe != "Historical" else ""
-            return f" [Historical Parallel: {title}{tf_part}]"
-        return f" [Historical Parallel: {hp}]"
 
-    # --- LLM Synthesis ---
-    synthesis = await synthesize_event(
-        event_name=representative_name,
-        impact=majority_impact,
-        reasonings=reasonings,
-        scenarios=scenarios,
-        candidate_parallels=parallels,
-    )
+def _build_consensus_memory_content(
+    event_name: str,
+    summary: str,
+    impact: str,
+    is_ongoing: bool,
+    historical_parallel: Any,
+) -> tuple[str, str]:
+    """Builds the formatted memory content string and determines the memory type."""
+    parallel_str = _format_historical_parallel_tag(historical_parallel)
+    ongoing_str = " [ONGOING]" if is_ongoing else ""
+    summary_text = (event_name + " " + summary).lower()
+    is_thematic = any(kw in summary_text for kw in _THEMATIC_KEYWORDS)
+    mem_type = "THEMATIC_FLOW" if is_thematic else "MARKET_EVENT"
+    prefix = "THEMATIC FLOW" if is_thematic else "MARKET EVENT"
+    content = f"{prefix}: {event_name}{ongoing_str} | IMPACT: {impact} | SUMMARY: {summary}{parallel_str}"
+    return content, mem_type
 
-    # Reject vague government events — they lack actionable specificity
-    if _is_vague_government_event(synthesis["name"], synthesis.get("summary", "")):
-        logger.warning(
-            f"Rejecting vague government event from consensus: '{synthesis['name']}'. "
-            "No specific bill, act, or regulation was identified."
-        )
-        return None
 
-    is_ongoing = synthesis.get("is_ongoing", ongoing_votes > (cumulative_weight / 2))
-    is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
-    historical_parallel = synthesis.get("historical_parallel")
-    if not historical_parallel and parallels:
-        historical_parallel = {
-            "title": parallels[0],
-            "timeframe": "Historical",
-            "precedent": parallels[0],
-            "market_reaction": "Historical price movements not detailed.",
-            "takeaway": "Apply disciplined risk management.",
-            "affected_assets": [],
-        }
-
-    # --- Early dedup check to avoid wasted DiscoveryAgent calls & save embedding quota ---
-    # Memory content does not include discovered assets, so we can check duplicate before discovery.
-    prelim_parallel_str = _format_historical_parallel_tag(historical_parallel)
-    prelim_ongoing_str = " [ONGOING]" if is_ongoing else ""
-    prelim_summary_text = (synthesis["name"] + " " + synthesis["summary"]).lower()
-    prelim_is_thematic = any(
-        kw in prelim_summary_text
-        for kw in [
-            "rotation",
-            "capital flow",
-            "picks and shovels",
-            "picks-and-shovels",
-            "adjacent trade",
-            "flow shift",
-            "sector shift",
-            "capex rotation",
-            "head fake",
-        ]
-    )
-    prelim_prefix = "THEMATIC FLOW" if prelim_is_thematic else "MARKET EVENT"
-    prelim_content = f"{prelim_prefix}: {synthesis['name']}{prelim_ongoing_str} | IMPACT: {majority_impact} | SUMMARY: {synthesis['summary']}{prelim_parallel_str}"
+def _check_early_dedup(prelim_content: str, event_name: str) -> tuple[Any, bool]:
+    """Checks whether an event is a recent duplicate in memory before running asset discovery."""
     prelim_embedding = None
     should_skip_discovery = False
     try:
@@ -252,20 +239,24 @@ async def _synthesize_and_promote_group(
             )
             if dup_id:
                 logger.info(
-                    f"Duplicate detected for '{synthesis['name']}' (ID: {dup_id}) – skipping DiscoveryAgent to save quota"
+                    f"Duplicate detected for '{event_name}' (ID: {dup_id}) – skipping DiscoveryAgent to save quota"
                 )
                 should_skip_discovery = True
     except Exception as e:
-        logger.debug(f"Early dedup check failed for '{synthesis['name']}': {e}")
+        logger.debug(f"Early dedup check failed for '{event_name}': {e}")
+    return prelim_embedding, should_skip_discovery
 
-    # Discover real assets specifically per scenario (parallelized)
-    import asyncio
 
-    scenarios_data = []
-    global_discovered_assets = []
-    seen_tickers = set()
+async def _discover_consensus_assets(
+    synthesis: dict[str, Any],
+    discovery_service: DiscoveryService,
+    should_skip_discovery: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Runs per-scenario or global fallback asset discovery via DiscoveryService."""
+    if should_skip_discovery:
+        return [], []
 
-    async def discover_scenario_assets(s):
+    async def _discover_single_scenario(s: dict[str, Any]) -> dict[str, Any]:
         header = s.get("cleanHeader", "")
         outcome = s.get("outcome", "")
         trading_plan = s.get("tradingPlan", "")
@@ -284,17 +275,15 @@ async def _synthesize_and_promote_group(
         }
 
     scenarios = synthesis.get("scenarios", [])
-    if should_skip_discovery:
-        # Duplicate – no need to discover, keep assets empty (metadata will still reinforce)
-        scenarios_data = []
-        global_discovered_assets = []
-    elif scenarios:
-        discovery_tasks = [discover_scenario_assets(s) for s in scenarios]
-        scenarios_results = await asyncio.gather(*discovery_tasks)
+    scenarios_data = []
+    global_discovered_assets = []
+    seen_tickers = set()
+
+    if scenarios:
+        scenarios_results = await asyncio.gather(*[_discover_single_scenario(s) for s in scenarios])
         for s_data in scenarios_results:
             header = s_data["cleanHeader"]
-            scenario_assets = s_data["assets"]
-            for asset in scenario_assets:
+            for asset in s_data["assets"]:
                 asset["scenario"] = header
                 ticker = asset["ticker"].upper()
                 if ticker not in seen_tickers:
@@ -302,13 +291,19 @@ async def _synthesize_and_promote_group(
                     seen_tickers.add(ticker)
             scenarios_data.append(s_data)
 
-    # For backward-compatibility fallback if no scenarios were returned by Gemini
-    if not should_skip_discovery and not scenarios_data:
-        # Fallback to old global discovery theme
+    if not scenarios_data:
         global_discovered_assets = await discovery_service.discover_assets(synthesis["summary"])
 
-    scenario_analysis = synthesis.get("scenario_analysis") or ""
-    # Format a clean string scenario_analysis for backward compatibility if structured scenarios exist
+    return scenarios_data, global_discovered_assets
+
+
+def _format_scenario_analysis_text(
+    raw_scenario_analysis: str | None,
+    scenarios_data: list[dict[str, Any]],
+    global_discovered_assets: list[dict[str, Any]],
+) -> str | None:
+    """Formats scenario analysis text and appends discovered FMP asset links."""
+    scenario_analysis = raw_scenario_analysis or ""
     if scenarios_data and not scenario_analysis:
         parts = []
         for s in scenarios_data:
@@ -325,59 +320,94 @@ async def _synthesize_and_promote_group(
             asset_links += f"- ${asset['ticker']} ({asset['name']}): {asset['reason']}\n"
         scenario_analysis += asset_links
 
+    return scenario_analysis.strip() if scenario_analysis else None
+
+
+async def _synthesize_and_promote_group(
+    occurrences: list[MacroEvent], discovery_service: DiscoveryService, sim_threshold: float
+):
+    """Synthesize a group of events and promote to memory if consensus is reached."""
+    _ = sim_threshold
+    representative_name = occurrences[0].event_name
+    agg = _aggregate_group_occurrences(occurrences)
+    cumulative_weight = agg["cumulative_weight"]
+    majority_impact = agg["majority_impact"]
+
+    synthesis = await synthesize_event(
+        event_name=representative_name,
+        impact=majority_impact,
+        reasonings=agg["reasonings"],
+        scenarios=agg["scenarios"],
+        candidate_parallels=agg["parallels"],
+    )
+
+    if _is_vague_government_event(synthesis["name"], synthesis.get("summary", "")):
+        logger.warning(
+            f"Rejecting vague government event from consensus: '{synthesis['name']}'. "
+            "No specific bill, act, or regulation was identified."
+        )
+        return None
+
+    is_ongoing = synthesis.get("is_ongoing", agg["ongoing_votes"] > (cumulative_weight / 2))
+    is_future_catalyst = synthesis.get("is_future_catalyst", agg["catalyst_votes"] > (cumulative_weight / 2))
+    historical_parallel = synthesis.get("historical_parallel")
+    if not historical_parallel and agg["parallels"]:
+        historical_parallel = {
+            "title": agg["parallels"][0],
+            "timeframe": "Historical",
+            "precedent": agg["parallels"][0],
+            "market_reaction": "Historical price movements not detailed.",
+            "takeaway": "Apply disciplined risk management.",
+            "affected_assets": [],
+        }
+
+    prelim_content, _ = _build_consensus_memory_content(
+        synthesis["name"], synthesis["summary"], majority_impact, is_ongoing, historical_parallel
+    )
+    prelim_embedding, should_skip_discovery = _check_early_dedup(prelim_content, synthesis["name"])
+
+    scenarios_data, global_discovered_assets = await _discover_consensus_assets(
+        synthesis, discovery_service, should_skip_discovery
+    )
+    scenario_analysis = _format_scenario_analysis_text(
+        synthesis.get("scenario_analysis"), scenarios_data, global_discovered_assets
+    )
+
+    importance_scores = agg["importance_scores"]
+    default_importance = int(sum(importance_scores) / len(importance_scores)) if importance_scores else 5
+    unique_models_list = list(agg["unique_models"])
+
     consensus_data = {
         "event_name": synthesis["name"],
         "impact": majority_impact,
         "reasoning": synthesis["summary"],
-        "models_involved": list(unique_models),
+        "models_involved": unique_models_list,
         "cumulative_weight": cumulative_weight,
-        "source_ids": list(source_ids),
+        "source_ids": list(agg["source_ids"]),
         "is_ongoing": is_ongoing,
         "is_future_catalyst": is_future_catalyst,
         "historical_parallel": historical_parallel,
         "future_date": synthesis.get("future_date"),
         "future_date_note": synthesis.get("future_date_note"),
-        "scenario_analysis": scenario_analysis.strip() if scenario_analysis else None,
+        "scenario_analysis": scenario_analysis,
         "scenarios": scenarios_data,
         "discovered_assets": global_discovered_assets,
-        "importance_score": synthesis.get(
-            "importance_score", int(sum(importance_scores) / len(importance_scores)) if importance_scores else 5
-        ),
+        "importance_score": synthesis.get("importance_score", default_importance),
         "debate": synthesis.get("debate"),
     }
 
-    # Analyze Relationship & Link Memory
     potential_parents = find_potential_ancestors(synthesis["summary"], threshold=0.4)
     relationship = await analyze_event_relationship(synthesis["summary"], potential_parents)
-
     parent_id = relationship.get("parent_id")
-    rel_type = relationship.get("relationship_type")
-    should_resolve = relationship.get("should_resolve", False)
 
-    # Promote to long-term memory
-    parallel_str = _format_historical_parallel_tag(historical_parallel)
-    ongoing_str = " [ONGOING]" if is_ongoing else ""
-
-    summary_text = (consensus_data["event_name"] + " " + consensus_data["reasoning"]).lower()
-    is_thematic_flow = any(
-        kw in summary_text
-        for kw in [
-            "rotation",
-            "capital flow",
-            "picks and shovels",
-            "picks-and-shovels",
-            "adjacent trade",
-            "flow shift",
-            "sector shift",
-            "capex rotation",
-            "head fake",
-        ]
+    memory_content, mem_type = _build_consensus_memory_content(
+        consensus_data["event_name"],
+        consensus_data["reasoning"],
+        consensus_data["impact"],
+        is_ongoing,
+        historical_parallel,
     )
-    mem_type = "THEMATIC_FLOW" if is_thematic_flow else "MARKET_EVENT"
-    prefix = "THEMATIC FLOW" if is_thematic_flow else "MARKET EVENT"
-    memory_content = f"{prefix}: {consensus_data['event_name']}{ongoing_str} | IMPACT: {consensus_data['impact']} | SUMMARY: {consensus_data['reasoning']}{parallel_str}"
 
-    # Reuse prelim embedding if content matches to save quota (one fewer API call)
     reuse_embedding = prelim_embedding if prelim_embedding and memory_content == prelim_content else None
     new_memory_id = add_memory(
         content=memory_content,
@@ -397,12 +427,12 @@ async def _synthesize_and_promote_group(
             "scenarios": consensus_data.get("scenarios"),
             "discovered_assets": consensus_data.get("discovered_assets"),
             "importance_score": consensus_data["importance_score"],
-            "participating_agents": list(unique_models),
-            "models_involved": list(unique_models),
+            "participating_agents": unique_models_list,
+            "models_involved": unique_models_list,
             "debate": consensus_data.get("debate"),
         },
         parent_id=parent_id,
-        relationship_type=rel_type,
+        relationship_type=relationship.get("relationship_type"),
         target_date=consensus_data.get("future_date"),
         check_similarity=True,
         similarity_threshold=MEMORY_DEDUP_THRESHOLD,
@@ -412,12 +442,12 @@ async def _synthesize_and_promote_group(
 
     if new_memory_id:
         logger.info(f"Promoted synthesized consensus event: {consensus_data['event_name']} (ID: {new_memory_id})")
-        if should_resolve and parent_id:
+        if relationship.get("should_resolve", False) and parent_id:
             update_memory_status(parent_id, "RESOLVED")
             logger.info(f"Marked ancestor event {parent_id} as RESOLVED.")
         return consensus_data
-    else:
-        logger.warning(f"Failed to promote consensus event: {consensus_data['event_name']}")
+
+    logger.warning(f"Failed to promote consensus event: {consensus_data['event_name']}")
     return None
 
 

@@ -171,99 +171,222 @@ async def _execute_minimax_order(d, portfolio, validation, sb_client, record_fn,
     return status in ("EXECUTED", "EXECUTED_DRY_RUN")
 
 
-async def _execute_standard_order(
-    d, portfolio, validation, aggregated_context, uncrowded_context, sb_client, record_fn, counters, dry_run: bool
-):
-    """Execute trading decision via the standard multi-provider execution path."""
-    log = resolve_dep("logger", logger)
-    verify_fn = resolve_dep("verify_trading_decision", verify_trading_decision)
-    validate_overlap_fn = resolve_dep("validate_semantic_overlap", validate_semantic_overlap)
-
-    if d.signal.upper() == "SELL":
-        if d.ticker not in portfolio.positions:
-            log.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
-            record_fn(sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."})
-            async with counters["lock"]:
-                counters["rejected"] += 1
-            return False
-        if not getattr(d, "sell_tool_called", False):
-            log.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
-            record_fn(
-                sb_client,
-                d,
-                status="REJECTED_TOOL_USAGE",
-                metadata={"reason": "Sell tool must be called."},
-            )
-            async with counters["lock"]:
-                counters["rejected"] += 1
-            return False
-
-    exec_price = validation.market_price
-    if not exec_price or exec_price <= 0:
-        log.error(f"[{d.ticker}] No valid price.")
+async def _check_standard_sell_preconditions(d, portfolio, sb_client, record_fn, counters, log) -> bool:
+    """Validate ownership and sell tool usage for SELL decisions."""
+    if d.signal.upper() != "SELL":
+        return True
+    if d.ticker not in portfolio.positions:
+        log.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
+        record_fn(sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."})
         async with counters["lock"]:
             counters["rejected"] += 1
         return False
+    if not getattr(d, "sell_tool_called", False):
+        log.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
+        record_fn(
+            sb_client,
+            d,
+            status="REJECTED_TOOL_USAGE",
+            metadata={"reason": "Sell tool must be called."},
+        )
+        async with counters["lock"]:
+            counters["rejected"] += 1
+        return False
+    return True
 
-    from execution.market_data import MarketDataManager
 
-    mdm = MarketDataManager()
-    all_pos_tickers = list(portfolio.positions.keys())
-    if d.ticker not in all_pos_tickers:
-        all_pos_tickers.append(d.ticker)
+async def _run_buy_verification(
+    d, portfolio, p_map, aggregated_context, uncrowded_context, verify_fn, sb_client, record_fn, counters, meta, log
+):
+    """Run LLM verification on BUY decisions and update metadata."""
+    if not portfolio.metrics:
+        portfolio.calculate_reg_t_metrics(p_map)
 
-    quotes = await mdm.get_quotes(all_pos_tickers)
-    p_map = {t: data.price for t, data in quotes.items()}
+    from core.config import is_verifier_enabled_for_owner
+    from core.models import VerificationResult
 
-    verification = None
-    meta = {"info": "Validation Passed (No Trade)"}
-    qty = 0
-
-    if d.signal.upper() == "BUY":
-        if not portfolio.metrics:
-            portfolio.calculate_reg_t_metrics(p_map)
-
-        from core.config import is_verifier_enabled_for_owner
-        from core.models import VerificationResult
-
-        if not is_verifier_enabled_for_owner(d.model_name):
-            log.info(
-                f"[{d.ticker}] Skipping verification for model {d.model_name} per verifier portfolio configuration."
-            )
-            verification = VerificationResult(
-                status="APPROVED",
-                verification_reasoning="Skipped per verifier portfolio configuration",
-                confidence_score=100,
-            )
-        else:
-            log.info(f"[{d.ticker}] Verifying...")
-            verification = await verify_fn(
-                decision=d,
-                portfolio_context=await portfolio.get_portfolio_summary(p_map),
-                aggregated_context=aggregated_context,
-                uncrowded_context=uncrowded_context,
-            )
-
-        if verification.status == "REJECTED_VERIFICATION":
-            log.warning(f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}")
-            record_fn(
-                sb_client,
-                d,
-                status="REJECTED_VERIFICATION",
-                metadata={"reason": verification.verification_reasoning},
-            )
-            async with counters["lock"]:
-                counters["rejected"] += 1
-            return False
-
-        meta.update(
-            {
-                "verification_reasoning": verification.verification_reasoning,
-                "verification_confidence": verification.confidence_score,
-                "suggested_alternative": verification.alternative_ticker,
-            }
+    if not is_verifier_enabled_for_owner(d.model_name):
+        log.info(f"[{d.ticker}] Skipping verification for model {d.model_name} per verifier portfolio configuration.")
+        verification = VerificationResult(
+            status="APPROVED",
+            verification_reasoning="Skipped per verifier portfolio configuration",
+            confidence_score=100,
+        )
+    else:
+        log.info(f"[{d.ticker}] Verifying...")
+        verification = await verify_fn(
+            decision=d,
+            portfolio_context=await portfolio.get_portfolio_summary(p_map),
+            aggregated_context=aggregated_context,
+            uncrowded_context=uncrowded_context,
         )
 
+    if verification.status == "REJECTED_VERIFICATION":
+        log.warning(f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}")
+        record_fn(
+            sb_client,
+            d,
+            status="REJECTED_VERIFICATION",
+            metadata={"reason": verification.verification_reasoning},
+        )
+        async with counters["lock"]:
+            counters["rejected"] += 1
+        return None, False
+
+    meta.update(
+        {
+            "verification_reasoning": verification.verification_reasoning,
+            "verification_confidence": verification.confidence_score,
+            "suggested_alternative": verification.alternative_ticker,
+        }
+    )
+    return verification, True
+
+
+async def _refresh_quote_and_check_drift(
+    d, mdm, exec_price: float, sb_client, record_fn, counters, log
+) -> tuple[float, bool]:
+    """Fetch final quote and reject if price drifted > 2% from injected analysis price."""
+    final_quote = await mdm.get_quote(d.ticker)
+    if not final_quote or not final_quote.exists:
+        return exec_price, True
+
+    if final_quote.price != exec_price:
+        log.info(f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}")
+        exec_price = final_quote.price
+
+    injected_price = getattr(d, "injected_market_price", None)
+    if injected_price and injected_price > 0:
+        drift = abs(exec_price - injected_price) / injected_price
+        if drift > 0.02:
+            reason = f"Stale quote: market moved {drift:.1%} since analysis (analysis: ${injected_price:.2f}, current: ${exec_price:.2f})"
+            log.warning(f"[{d.ticker}] REJECTED (Stale Quote): {reason}")
+            record_fn(sb_client, d, status="REJECTED_STALE_QUOTE", metadata={"reason": reason})
+            async with counters["lock"]:
+                counters["rejected"] += 1
+            return exec_price, False
+
+    return exec_price, True
+
+
+def _calculate_standard_buy_quantity(d, portfolio, exec_price: float) -> int:
+    """Compute share quantity for a standard BUY order."""
+    bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+    total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
+    from core.config import MIN_TRADE_VALUE
+
+    alloc_pct = d.allocation_percentage if d.allocation_percentage is not None else 20
+    min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
+    usd_to_spend = (alloc_pct / 100.0) * bp
+
+    if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
+        usd_to_spend = min_buy_threshold
+
+    qty = int(usd_to_spend / exec_price)
+    if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
+        qty += 1
+    return qty
+
+
+async def _apply_adjusted_allocation(
+    d, verification, qty: int, portfolio, exec_price: float, sb_client, record_fn, counters, log
+) -> tuple[int, bool]:
+    """Apply verifier ADJUSTED_ALLOCATION quantity and min buy clamping."""
+    if not verification or verification.status != "ADJUSTED_ALLOCATION":
+        return qty, True
+
+    if not verification.adjusted_quantity or verification.adjusted_quantity <= 0:
+        log.warning(
+            f"[{d.ticker}] REJECTED (Verification): Status is ADJUSTED_ALLOCATION "
+            f"but adjusted_quantity is invalid ({verification.adjusted_quantity})."
+        )
+        record_fn(
+            sb_client,
+            d,
+            status="REJECTED_VERIFICATION",
+            metadata={
+                "reason": (
+                    f"Verifier specified ADJUSTED_ALLOCATION but provided invalid adjusted_quantity: "
+                    f"{verification.adjusted_quantity}"
+                )
+            },
+        )
+        async with counters["lock"]:
+            counters["rejected"] += 1
+        return 0, False
+
+    qty = verification.adjusted_quantity
+    if d.signal.upper() == "BUY":
+        bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+        total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
+        from core.config import MIN_TRADE_VALUE
+
+        min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
+        if qty * exec_price < min_buy_threshold and bp >= min_buy_threshold:
+            min_qty = int(min_buy_threshold / exec_price)
+            if min_qty * exec_price < min_buy_threshold and (min_qty + 1) * exec_price <= bp:
+                min_qty += 1
+            if min_qty > qty and min_qty * exec_price <= bp:
+                log.info(
+                    f"[{d.ticker}] ADJUSTED_ALLOCATION quantity ({qty}) is below min_buy_threshold "
+                    f"(${min_buy_threshold:.2f}). Clamping up to {min_qty} shares."
+                )
+                qty = min_qty
+    return qty, True
+
+
+async def _dispatch_standard_trade(
+    d, portfolio, qty: int, exec_price: float, fresh_p_map: dict, meta: dict, sb_client, record_fn, dry_run: bool, log
+) -> tuple[str | None, str | None, str | None]:
+    """Execute or simulate the trade and return (trade_id, status, decision_id)."""
+    if dry_run:
+        meta.update(
+            {
+                "trade_id": "dry_run",
+                "info": f"[DRY RUN] Executed {d.signal} {qty} @ ${exec_price:.2f}",
+            }
+        )
+        log.info(f"[DRY RUN][{d.ticker}] Would execute: {d.signal} {qty} @ ${exec_price:.2f} for {d.model_name}")
+        return None, "EXECUTED_DRY_RUN", "dry_run_decision_id"
+
+    decision_row = record_fn(sb_client, d, status="VALIDATED", metadata=meta)
+    decision_id = decision_row.get("id")
+    if not decision_id:
+        log.error(f"[{d.ticker}] Pre-save returned no decision ID — aborting trade")
+        return None, None, None
+
+    trade_id = await portfolio.execute_trade(
+        d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map
+    )
+    if trade_id:
+        status = "EXECUTED"
+        meta.update({"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"})
+    else:
+        status = "ERROR_EXECUTION"
+        meta.update({"info": "Execution Failed"})
+    return trade_id, status, decision_id
+
+
+async def _resolve_standard_sell_qty(d, portfolio, sb_client, record_fn, counters) -> tuple[int, bool]:
+    """Resolves SELL order quantity and checks ownership."""
+    if d.ticker not in portfolio.positions:
+        record_fn(
+            sb_client,
+            d,
+            status="REJECTED_OWNERSHIP",
+            metadata={"reason": "Ticker sold by concurrent trade."},
+        )
+        async with counters["lock"]:
+            counters["rejected"] += 1
+        return 0, False
+    qty = getattr(d, "quantity", None) or int(
+        ((d.allocation_percentage or 0) / 100.0) * portfolio.positions.get(d.ticker).quantity
+    )
+    return qty, True
+
+
+async def _check_semantic_overlap(d, validate_overlap_fn, sb_client, record_fn, counters, log) -> bool:
+    """Validates semantic redundancy across models."""
     overlap_reason = await validate_overlap_fn(d.ticker, d.reasoning, model_name=d.model_name)
     if overlap_reason:
         log.warning(f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason}")
@@ -276,25 +399,78 @@ async def _execute_standard_order(
         async with counters["lock"]:
             counters["rejected"] += 1
         return False
+    return True
+
+
+async def _prepare_standard_execution_context(
+    d, portfolio, validation, sb_client, record_fn, counters, log
+) -> tuple[float | None, object, dict[str, float] | None]:
+    """Validates price and fetches initial quotes and price map."""
+    exec_price = validation.market_price
+    if not exec_price or exec_price <= 0:
+        log.error(f"[{d.ticker}] No valid price.")
+        async with counters["lock"]:
+            counters["rejected"] += 1
+        return None, None, None
+
+    from execution.market_data import MarketDataManager
+
+    mdm = MarketDataManager()
+    all_pos_tickers = list(portfolio.positions.keys())
+    if d.ticker not in all_pos_tickers:
+        all_pos_tickers.append(d.ticker)
+
+    quotes = await mdm.get_quotes(all_pos_tickers)
+    p_map = {t: data.price for t, data in quotes.items()}
+    return exec_price, mdm, p_map
+
+
+async def _execute_standard_order(
+    d, portfolio, validation, aggregated_context, uncrowded_context, sb_client, record_fn, counters, dry_run: bool
+):
+    """Execute trading decision via the standard multi-provider execution path."""
+    log = resolve_dep("logger", logger)
+    verify_fn = resolve_dep("verify_trading_decision", verify_trading_decision)
+    validate_overlap_fn = resolve_dep("validate_semantic_overlap", validate_semantic_overlap)
+
+    if not await _check_standard_sell_preconditions(d, portfolio, sb_client, record_fn, counters, log):
+        return False
+
+    exec_price, mdm, p_map = await _prepare_standard_execution_context(
+        d, portfolio, validation, sb_client, record_fn, counters, log
+    )
+    if exec_price is None or p_map is None:
+        return False
+
+    verification = None
+    meta = {"info": "Validation Passed (No Trade)"}
+    qty = 0
+
+    if d.signal.upper() == "BUY":
+        verification, ok = await _run_buy_verification(
+            d,
+            portfolio,
+            p_map,
+            aggregated_context,
+            uncrowded_context,
+            verify_fn,
+            sb_client,
+            record_fn,
+            counters,
+            meta,
+            log,
+        )
+        if not ok:
+            return False
+
+    if not await _check_semantic_overlap(d, validate_overlap_fn, sb_client, record_fn, counters, log):
+        return False
 
     await portfolio.initialize()
 
-    final_quote = await mdm.get_quote(d.ticker)
-    if final_quote and final_quote.exists:
-        if final_quote.price != exec_price:
-            log.info(f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}")
-            exec_price = final_quote.price
-
-        injected_price = getattr(d, "injected_market_price", None)
-        if injected_price and injected_price > 0:
-            drift = abs(exec_price - injected_price) / injected_price
-            if drift > 0.02:
-                reason = f"Stale quote: market moved {drift:.1%} since analysis (analysis: ${injected_price:.2f}, current: ${exec_price:.2f})"
-                log.warning(f"[{d.ticker}] REJECTED (Stale Quote): {reason}")
-                record_fn(sb_client, d, status="REJECTED_STALE_QUOTE", metadata={"reason": reason})
-                async with counters["lock"]:
-                    counters["rejected"] += 1
-                return False
+    exec_price, drift_ok = await _refresh_quote_and_check_drift(d, mdm, exec_price, sb_client, record_fn, counters, log)
+    if not drift_ok:
+        return False
 
     all_pos_tickers = list(portfolio.positions.keys())
     if d.ticker not in all_pos_tickers:
@@ -304,76 +480,20 @@ async def _execute_standard_order(
     portfolio.calculate_reg_t_metrics(fresh_p_map)
 
     if d.signal.upper() == "BUY":
-        bp = portfolio.metrics.buying_power if portfolio.metrics else 0
-        total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
-        from core.config import MIN_TRADE_VALUE
-
-        alloc_pct = d.allocation_percentage if d.allocation_percentage is not None else 20
-        min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
-        usd_to_spend = (alloc_pct / 100.0) * bp
-
-        if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
-            usd_to_spend = min_buy_threshold
-
-        qty = int(usd_to_spend / exec_price)
-        if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
-            qty += 1
+        qty = _calculate_standard_buy_quantity(d, portfolio, exec_price)
     elif d.signal.upper() == "SELL":
-        if d.ticker not in portfolio.positions:
-            record_fn(
-                sb_client,
-                d,
-                status="REJECTED_OWNERSHIP",
-                metadata={"reason": "Ticker sold by concurrent trade."},
-            )
-            async with counters["lock"]:
-                counters["rejected"] += 1
+        qty, sell_ok = await _resolve_standard_sell_qty(d, portfolio, sb_client, record_fn, counters)
+        if not sell_ok:
             return False
-        qty = getattr(d, "quantity", None) or int(
-            ((d.allocation_percentage or 0) / 100.0) * portfolio.positions.get(d.ticker).quantity
-        )
 
     if qty <= 0:
         qty = getattr(d, "quantity", 0) or 1
 
-    if verification and verification.status == "ADJUSTED_ALLOCATION":
-        if verification.adjusted_quantity and verification.adjusted_quantity > 0:
-            qty = verification.adjusted_quantity
-            if d.signal.upper() == "BUY":
-                bp = portfolio.metrics.buying_power if portfolio.metrics else 0
-                total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
-                from core.config import MIN_TRADE_VALUE
-
-                min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
-                if qty * exec_price < min_buy_threshold and bp >= min_buy_threshold:
-                    min_qty = int(min_buy_threshold / exec_price)
-                    if min_qty * exec_price < min_buy_threshold and (min_qty + 1) * exec_price <= bp:
-                        min_qty += 1
-                    if min_qty > qty and min_qty * exec_price <= bp:
-                        log.info(
-                            f"[{d.ticker}] ADJUSTED_ALLOCATION quantity ({qty}) is below min_buy_threshold "
-                            f"(${min_buy_threshold:.2f}). Clamping up to {min_qty} shares."
-                        )
-                        qty = min_qty
-        else:
-            log.warning(
-                f"[{d.ticker}] REJECTED (Verification): Status is ADJUSTED_ALLOCATION "
-                f"but adjusted_quantity is invalid ({verification.adjusted_quantity})."
-            )
-            record_fn(
-                sb_client,
-                d,
-                status="REJECTED_VERIFICATION",
-                metadata={
-                    "reason": (
-                        f"Verifier specified ADJUSTED_ALLOCATION but provided invalid adjusted_quantity: "
-                        f"{verification.adjusted_quantity}"
-                    )
-                },
-            )
-            async with counters["lock"]:
-                counters["rejected"] += 1
-            return False
+    qty, adj_ok = await _apply_adjusted_allocation(
+        d, verification, qty, portfolio, exec_price, sb_client, record_fn, counters, log
+    )
+    if not adj_ok:
+        return False
 
     if qty <= 0:
         async with counters["lock"]:
@@ -390,39 +510,20 @@ async def _execute_standard_order(
             counters["rejected"] += 1
         return False
 
-    if dry_run:
-        trade_id = None
-        status = "EXECUTED_DRY_RUN"
-        decision_id = "dry_run_decision_id"
-        meta.update(
-            {
-                "trade_id": "dry_run",
-                "info": f"[DRY RUN] Executed {d.signal} {qty} @ ${exec_price:.2f}",
-            }
-        )
-        log.info(f"[DRY RUN][{d.ticker}] Would execute: {d.signal} {qty} @ ${exec_price:.2f} for {d.model_name}")
-    else:
-        decision_row = record_fn(sb_client, d, status="VALIDATED", metadata=meta)
-        decision_id = decision_row.get("id")
-        if not decision_id:
-            log.error(f"[{d.ticker}] Pre-save returned no decision ID — aborting trade")
-            return False
+    return await _finalize_standard_trade(
+        d, portfolio, qty, exec_price, fresh_p_map, meta, sb_client, record_fn, dry_run, counters, log
+    )
 
-        trade_id = await portfolio.execute_trade(
-            d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map
-        )
 
-        if trade_id:
-            status = "EXECUTED"
-            meta.update(
-                {
-                    "trade_id": str(trade_id),
-                    "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}",
-                }
-            )
-        else:
-            status = "ERROR_EXECUTION"
-            meta.update({"info": "Execution Failed"})
+async def _finalize_standard_trade(
+    d, portfolio, qty, exec_price, fresh_p_map, meta, sb_client, record_fn, dry_run, counters, log
+) -> bool:
+    """Dispatches trade and logs attribution."""
+    trade_id, status, decision_id = await _dispatch_standard_trade(
+        d, portfolio, qty, exec_price, fresh_p_map, meta, sb_client, record_fn, dry_run, log
+    )
+    if status is None:
+        return False
 
     record_fn(
         sb_client,

@@ -2,6 +2,7 @@ import asyncio
 import os
 import sys
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -148,6 +149,69 @@ async def get_predictor_data() -> str:
         return "Error loading market correlation and returns data."
 
 
+def _build_instructor_kwargs(model: dict[str, Any], prompt_content: str, user_msg: str) -> dict[str, Any]:
+    """Helper to assemble kwargs for instructor-based completion."""
+    create_kwargs: dict[str, Any] = {
+        "model": model["name"],
+        "response_model": SectorPredictionResponse,
+        "messages": [
+            {"role": "system", "content": prompt_content},
+            {"role": "user", "content": user_msg},
+        ],
+    }
+    if model.get("provider") == "openai":
+        create_kwargs["reasoning_effort"] = "none"
+    if model.get("provider") == "deepseek" or "deepseek" in model["name"].lower():
+        create_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+    if model.get("provider") == "gemini":
+        from google.genai import types
+
+        if hasattr(types, "ThinkingConfig"):
+            create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="high")
+    if model.get("provider") == "anthropic":
+        from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
+        create_kwargs["cache_control"] = {"type": "ephemeral"}
+        create_kwargs["system"] = [{"type": "text", "text": prompt_content, "cache_control": {"type": "ephemeral"}}]
+        create_kwargs["messages"] = [{"role": "user", "content": user_msg}]
+        create_kwargs.update(get_anthropic_thinking_kwargs(model.get("model", ""), budget_tokens=2048, effort="medium"))
+        create_kwargs["max_tokens"] = 4000
+    return create_kwargs
+
+
+async def _execute_single_sector_prediction(
+    model: dict[str, Any], prompt_content: str, user_msg: str
+) -> dict[str, Any]:
+    """Executes single sector prediction for given model."""
+    if model["type"] == "instructor":
+        client_inst = model["client"]
+        create_kwargs = _build_instructor_kwargs(model, prompt_content, user_msg)
+        resp_awaitable = client_inst.chat.completions.create(**create_kwargs)
+        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+            resp = await resp_awaitable
+        else:
+            resp = resp_awaitable
+        return {
+            "predicted_sector": resp.predicted_sector,
+            "predicted_worst_sector": resp.predicted_worst_sector,
+            "predicted_pair": resp.predicted_pair,
+            "confidence": resp.confidence,
+            "worst_confidence": resp.worst_confidence,
+            "reasoning": resp.reasoning,
+        }
+    if model["type"] == "minimax":
+        messages = [
+            {"role": "system", "content": prompt_content},
+            {"role": "user", "content": user_msg},
+        ]
+        return await model["client"].chat_with_json_response(
+            messages,
+            model=model["name"],
+            max_completion_tokens=8192,
+        )
+    return {}
+
+
 async def run_sector_predictions(target_model: str | None = None, date_anchor: date | None = None):
     client = get_supabase_client()
     data_block = await get_predictor_data()
@@ -200,64 +264,7 @@ async def run_sector_predictions(target_model: str | None = None, date_anchor: d
                     if model["type"] == "minimax":
                         user_msg += "\nNote: Output only the required JSON response. Keep any internal reasoning concise to avoid token truncation."
 
-                    if model["type"] == "instructor":
-                        client_inst = model["client"]
-                        create_kwargs = {
-                            "model": model["name"],
-                            "response_model": SectorPredictionResponse,
-                            "messages": [
-                                {"role": "system", "content": prompt_content},
-                                {"role": "user", "content": user_msg},
-                            ],
-                        }
-                        if model.get("provider") == "openai":
-                            create_kwargs["reasoning_effort"] = "none"
-                        if model.get("provider") == "deepseek" or "deepseek" in model["name"].lower():
-                            create_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                        if model.get("provider") == "gemini":
-                            from google.genai import types
-
-                            if hasattr(types, "ThinkingConfig"):
-                                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="high")
-                        if model.get("provider") == "anthropic":
-                            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
-
-                            create_kwargs["cache_control"] = {"type": "ephemeral"}
-                            create_kwargs["system"] = [
-                                {"type": "text", "text": prompt_content, "cache_control": {"type": "ephemeral"}}
-                            ]
-                            create_kwargs["messages"] = [{"role": "user", "content": user_msg}]
-                            create_kwargs.update(
-                                get_anthropic_thinking_kwargs(
-                                    model.get("model", ""), budget_tokens=2048, effort="medium"
-                                )
-                            )
-                            create_kwargs["max_tokens"] = 4000
-
-                        resp_awaitable = client_inst.chat.completions.create(**create_kwargs)
-                        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-                            resp = await resp_awaitable
-                        else:
-                            resp = resp_awaitable
-                        result = {
-                            "predicted_sector": resp.predicted_sector,
-                            "predicted_worst_sector": resp.predicted_worst_sector,
-                            "predicted_pair": resp.predicted_pair,
-                            "confidence": resp.confidence,
-                            "worst_confidence": resp.worst_confidence,
-                            "reasoning": resp.reasoning,
-                        }
-                    elif model["type"] == "minimax":
-                        # MiniMax uses its own client
-                        messages = [
-                            {"role": "system", "content": prompt_content},
-                            {"role": "user", "content": user_msg},
-                        ]
-                        result = await model["client"].chat_with_json_response(
-                            messages,
-                            model=model["name"],
-                            max_completion_tokens=8192,
-                        )
+                    result = await _execute_single_sector_prediction(model, prompt_content, user_msg)
 
                     # Upsert prediction to prevent duplicates on the same date/model/timeframe
                     client.table("sector_predictions").upsert(

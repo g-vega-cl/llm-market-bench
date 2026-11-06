@@ -216,6 +216,118 @@ async def evaluate_candidate_with_jev(
     }
 
 
+async def _evaluate_max_pain_holdings(
+    portfolio: Any,
+    client: Any,
+    action: str,
+    is_market_close_window: bool,
+    target_proximity_pct: float,
+    stop_loss_pct: float,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, float], dict[str, Any]]:
+    """Evaluates active max pain positions for exits."""
+    current_holdings: list[dict[str, Any]] = []
+    holding_evaluations: dict[str, dict[str, Any]] = {}
+    current_prices: dict[str, float] = {}
+    snapshots_cache: dict[str, dict[str, Any] | None] = {}
+
+    for ticker, pos in list(portfolio.positions.items()):
+        sym = ticker.upper().strip()
+        quote = fetch_quote_snapshot(client, sym, FMP_API_KEY)
+        price = quote["price"] if quote["price"] > 0 else fetch_current_price(client, sym, FMP_API_KEY)
+        current_p = price if price > 0 else pos.average_cost_basis
+        session_high = max(current_p, float(quote.get("day_high") or 0.0))
+        current_prices[ticker] = current_p
+
+        held_metrics = await fetch_max_pain_snapshot(sym, min_dte=0)
+        snapshots_cache[sym] = held_metrics
+        verified_strike = float(held_metrics.get("max_pain") or 0.0) if held_metrics else 0.0
+        target_strike = verified_strike if verified_strike > 0 else pos.average_cost_basis * 1.008
+
+        holding_info = {
+            "ticker": ticker,
+            "shares": pos.quantity,
+            "current_price": current_p,
+            "cost_basis": pos.average_cost_basis,
+            "entry_price": pos.average_cost_basis,
+            "target_strike": target_strike,
+        }
+        current_holdings.append(holding_info)
+
+        should_exit, reason = evaluate_max_pain_holding_exit(
+            holding_info,
+            current_price=current_p,
+            session_high=session_high,
+            is_market_close_window=is_market_close_window or (action == "exit"),
+            target_proximity_pct=target_proximity_pct,
+            stop_loss_pct=stop_loss_pct,
+        )
+        holding_evaluations[ticker] = {"should_exit": should_exit, "reason": reason}
+
+    return current_holdings, holding_evaluations, current_prices, snapshots_cache
+
+
+async def _screen_single_candidate(
+    sym: str,
+    client: Any,
+    snapshots_cache: dict[str, Any],
+    today_et: str,
+    min_discount_pct: float,
+    max_discount_pct: float,
+    min_confidence: float,
+    current_prices: dict[str, float],
+) -> dict[str, Any] | None:
+    """Evaluates an individual candidate ticker against 0DTE criteria and Jev admission."""
+    spot_px = fetch_current_price(client, sym, FMP_API_KEY)
+    metrics = snapshots_cache[sym] if sym in snapshots_cache else await fetch_max_pain_snapshot(sym, min_dte=0)
+    if not metrics:
+        logger.info(f"Max Pain skip {sym}: no verified options chain available.")
+        return None
+
+    max_pain_strike = metrics.get("max_pain")
+    if not max_pain_strike or float(max_pain_strike) <= 0:
+        logger.info(f"Max Pain skip {sym}: no max pain strike in snapshot.")
+        return None
+
+    expiration = metrics.get("expiration")
+    if expiration and expiration != today_et:
+        logger.info(f"Max Pain skip {sym}: nearest expiration {expiration} is not 0DTE ({today_et}).")
+        return None
+
+    if spot_px <= 0:
+        spot_px = float(metrics.get("underlying_price") or 0.0)
+    if spot_px <= 0:
+        logger.info(f"Max Pain skip {sym}: spot price unavailable.")
+        return None
+
+    current_prices[sym] = spot_px
+    discount_pct = ((float(max_pain_strike) - spot_px) / spot_px) * 100.0
+
+    if not (min_discount_pct <= discount_pct <= max_discount_pct):
+        logger.info(
+            f"Max Pain skip {sym}: spot {spot_px:.2f} vs max pain {float(max_pain_strike):.2f} "
+            f"(discount {discount_pct:.2f}% outside {min_discount_pct}%-{max_discount_pct}%)."
+        )
+        return None
+
+    cand_data = {
+        "ticker": sym,
+        "price": spot_px,
+        "max_pain_strike": float(max_pain_strike),
+        "discount_pct": round(discount_pct, 2),
+        "put_call_oi_ratio": metrics.get("put_call_oi_ratio"),
+        "atm_implied_volatility": metrics.get("atm_implied_volatility"),
+        "total_contracts_analyzed": metrics.get("total_contracts_analyzed"),
+        "staleness_note": metrics.get("staleness_note"),
+    }
+    jev_res = await evaluate_candidate_with_jev(cand_data, min_confidence=min_confidence)
+    if jev_res.get("is_qualified"):
+        cand_data["jev_confidence"] = jev_res.get("confidence", 0.0)
+        return cand_data
+
+    logger.info(f"Max Pain skip {sym}: Jev rejected ({jev_res.get('choice')}, conf {jev_res.get('confidence')}%).")
+    return None
+
+
 async def run_max_pain_task(
     dry_run: bool = False,
     action: str = "evaluate",
@@ -241,46 +353,13 @@ async def run_max_pain_task(
         logger.exception(f"Failed to initialize portfolio for {SYS_MAX_PAIN_OWNER_ID}: {e}")
         return {"status": "error", "error": f"Portfolio initialization failed: {e}"}
 
-    current_holdings: list[dict[str, Any]] = []
-    holding_evaluations: dict[str, dict[str, Any]] = {}
-    current_prices: dict[str, float] = {}
-    snapshots_cache: dict[str, dict[str, Any] | None] = {}
     today_et = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
 
     with httpx.Client(timeout=15.0) as client:
         # 1. Evaluate current positions for exit triggers
-        for ticker, pos in list(portfolio.positions.items()):
-            sym = ticker.upper().strip()
-            quote = fetch_quote_snapshot(client, sym, FMP_API_KEY)
-            price = quote["price"] if quote["price"] > 0 else fetch_current_price(client, sym, FMP_API_KEY)
-            current_p = price if price > 0 else pos.average_cost_basis
-            session_high = max(current_p, float(quote.get("day_high") or 0.0))
-            current_prices[ticker] = current_p
-
-            held_metrics = await fetch_max_pain_snapshot(sym, min_dte=0)
-            snapshots_cache[sym] = held_metrics
-            verified_strike = float(held_metrics.get("max_pain") or 0.0) if held_metrics else 0.0
-            target_strike = verified_strike if verified_strike > 0 else pos.average_cost_basis * 1.008
-
-            holding_info = {
-                "ticker": ticker,
-                "shares": pos.quantity,
-                "current_price": current_p,
-                "cost_basis": pos.average_cost_basis,
-                "entry_price": pos.average_cost_basis,
-                "target_strike": target_strike,
-            }
-            current_holdings.append(holding_info)
-
-            should_exit, reason = evaluate_max_pain_holding_exit(
-                holding_info,
-                current_price=current_p,
-                session_high=session_high,
-                is_market_close_window=is_market_close_window or (action == "exit"),
-                target_proximity_pct=target_proximity_pct,
-                stop_loss_pct=stop_loss_pct,
-            )
-            holding_evaluations[ticker] = {"should_exit": should_exit, "reason": reason}
+        current_holdings, holding_evaluations, current_prices, snapshots_cache = await _evaluate_max_pain_holdings(
+            portfolio, client, action, is_market_close_window, target_proximity_pct, stop_loss_pct
+        )
 
         # 2. Screen incoming daily 0DTE candidates (only if evaluating or entry action)
         qualified_candidates: list[dict[str, Any]] = []
@@ -294,59 +373,18 @@ async def run_max_pain_task(
                     logger.info(f"Max Pain skip {sym}: already entered on {today_et}.")
                     continue
 
-                spot_px = fetch_current_price(client, sym, FMP_API_KEY)
-                metrics = (
-                    snapshots_cache[sym] if sym in snapshots_cache else await fetch_max_pain_snapshot(sym, min_dte=0)
+                cand = await _screen_single_candidate(
+                    sym,
+                    client,
+                    snapshots_cache,
+                    today_et,
+                    min_discount_pct,
+                    max_discount_pct,
+                    min_confidence,
+                    current_prices,
                 )
-                if not metrics:
-                    logger.info(f"Max Pain skip {sym}: no verified options chain available.")
-                    continue
-
-                max_pain_strike = metrics.get("max_pain")
-                if not max_pain_strike or float(max_pain_strike) <= 0:
-                    logger.info(f"Max Pain skip {sym}: no max pain strike in snapshot.")
-                    continue
-
-                expiration = metrics.get("expiration")
-                if expiration and expiration != today_et:
-                    logger.info(f"Max Pain skip {sym}: nearest expiration {expiration} is not 0DTE ({today_et}).")
-                    continue
-
-                if spot_px <= 0:
-                    spot_px = float(metrics.get("underlying_price") or 0.0)
-                if spot_px <= 0:
-                    logger.info(f"Max Pain skip {sym}: spot price unavailable.")
-                    continue
-
-                current_prices[sym] = spot_px
-                # Calculate discount percentage: (max_pain - spot) / spot * 100
-                discount_pct = ((float(max_pain_strike) - spot_px) / spot_px) * 100.0
-
-                if min_discount_pct <= discount_pct <= max_discount_pct:
-                    cand_data = {
-                        "ticker": sym,
-                        "price": spot_px,
-                        "max_pain_strike": float(max_pain_strike),
-                        "discount_pct": round(discount_pct, 2),
-                        "put_call_oi_ratio": metrics.get("put_call_oi_ratio"),
-                        "atm_implied_volatility": metrics.get("atm_implied_volatility"),
-                        "total_contracts_analyzed": metrics.get("total_contracts_analyzed"),
-                        "staleness_note": metrics.get("staleness_note"),
-                    }
-                    jev_res = await evaluate_candidate_with_jev(cand_data, min_confidence=min_confidence)
-                    if jev_res.get("is_qualified"):
-                        cand_data["jev_confidence"] = jev_res.get("confidence", 0.0)
-                        qualified_candidates.append(cand_data)
-                    else:
-                        logger.info(
-                            f"Max Pain skip {sym}: Jev rejected ({jev_res.get('choice')}, "
-                            f"conf {jev_res.get('confidence')}%)."
-                        )
-                else:
-                    logger.info(
-                        f"Max Pain skip {sym}: spot {spot_px:.2f} vs max pain {float(max_pain_strike):.2f} "
-                        f"(discount {discount_pct:.2f}% outside {min_discount_pct}%-{max_discount_pct}%)."
-                    )
+                if cand:
+                    qualified_candidates.append(cand)
 
     # 3. Compute rebalance orders
     plan = compute_max_pain_rebalance_orders(

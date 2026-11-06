@@ -177,17 +177,8 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     return float(calculate_daily_ratchet_metrics(predictions)["score"])
 
 
-def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str, track_id: str | None = None) -> dict:
-    """Fetch recent newsletters, market events, active concept themes, and track-specific autoresearch memories."""
-    context = {
-        "daily_events": {},
-        "active_concepts": [],
-        "track_id": track_id,
-        "track_memories": "",
-    }
-
+def _populate_context_newsletters(client, start_date_str: str, end_date_str: str, daily_events: dict) -> None:
     try:
-        # 1. Fetch newsletter snapshots within the date window
         news_resp = (
             client.table("newsletter_snapshots")
             .select("date, sender, subject, content")
@@ -197,23 +188,21 @@ def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str, t
             .limit(20)
             .execute()
         )
-        if news_resp and news_resp.data:
-            for item in news_resp.data:
-                d_str = str(item.get("date") or "")[:10]
-                if not d_str:
-                    continue
-                sender = item.get("sender", "Unknown")
-                subject = item.get("subject", "No Subject")
-                snippet = (item.get("content") or "").strip().replace("\n", " ")[:150]
-                entry = f"{sender}: {subject}" + (f" ({snippet}...)" if snippet else "")
-                context["daily_events"].setdefault(d_str, {"newsletters": [], "events": []})["newsletters"].append(
-                    entry
-                )
+        for item in (news_resp.data if news_resp else None) or []:
+            d_str = str(item.get("date") or "")[:10]
+            if not d_str:
+                continue
+            sender = item.get("sender", "Unknown")
+            subject = item.get("subject", "No Subject")
+            snippet = (item.get("content") or "").strip().replace("\n", " ")[:150]
+            entry = f"{sender}: {subject}" + (f" ({snippet}...)" if snippet else "")
+            daily_events.setdefault(d_str, {"newsletters": [], "events": []})["newsletters"].append(entry)
     except Exception as e:
         logger.warning(f"Error fetching newsletters for autoresearch context: {e}")
 
+
+def _populate_context_events(client, start_date_str: str, end_date_str: str, daily_events: dict) -> None:
     try:
-        # 2. Fetch market events / resolved memories within the date window
         events_resp = (
             client.table("memories")
             .select("id, content, metadata, memory_type, created_at")
@@ -224,19 +213,19 @@ def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str, t
             .limit(15)
             .execute()
         )
-        if events_resp and events_resp.data:
-            for item in events_resp.data:
-                d_str = str(item.get("created_at") or "")[:10]
-                if not d_str:
-                    continue
-                content = (item.get("content") or "").strip().replace("\n", " ")[:160]
-                entry = f"[{item.get('memory_type', 'EVENT')}] {content}"
-                context["daily_events"].setdefault(d_str, {"newsletters": [], "events": []})["events"].append(entry)
+        for item in (events_resp.data if events_resp else None) or []:
+            d_str = str(item.get("created_at") or "")[:10]
+            if not d_str:
+                continue
+            content = (item.get("content") or "").strip().replace("\n", " ")[:160]
+            entry = f"[{item.get('memory_type', 'EVENT')}] {content}"
+            daily_events.setdefault(d_str, {"newsletters": [], "events": []})["events"].append(entry)
     except Exception as e:
         logger.warning(f"Error fetching events for autoresearch context: {e}")
 
+
+def _populate_context_concepts(client, active_concepts: list[str]) -> None:
     try:
-        # 3. Fetch top active concept metrics
         concepts_resp = (
             client.table("concept_metrics")
             .select("concept_name, velocity_score, mention_count, last_mention_at")
@@ -244,15 +233,22 @@ def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str, t
             .limit(8)
             .execute()
         )
-        if concepts_resp and concepts_resp.data:
-            for c in concepts_resp.data:
-                c_name = c.get("concept_name")
-                if c_name:
-                    vel = float(c.get("velocity_score") or 0.0)
-                    mentions = int(c.get("mention_count") or 0)
-                    context["active_concepts"].append(f"- **{c_name}** (Velocity: {vel:.1f}, Mentions: {mentions})")
+        for c in (concepts_resp.data if concepts_resp else None) or []:
+            c_name = c.get("concept_name")
+            if c_name:
+                vel = float(c.get("velocity_score") or 0.0)
+                mentions = int(c.get("mention_count") or 0)
+                active_concepts.append(f"- **{c_name}** (Velocity: {vel:.1f}, Mentions: {mentions})")
     except Exception as e:
         logger.warning(f"Error fetching active concepts for autoresearch context: {e}")
+
+
+def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str, track_id: str | None = None) -> dict:
+    """Fetch recent newsletters, market events, active concept themes, and track-specific autoresearch memories."""
+    context = {"daily_events": {}, "active_concepts": [], "track_id": track_id, "track_memories": ""}
+    _populate_context_newsletters(client, start_date_str, end_date_str, context["daily_events"])
+    _populate_context_events(client, start_date_str, end_date_str, context["daily_events"])
+    _populate_context_concepts(client, context["active_concepts"])
 
     if track_id:
         try:
@@ -267,6 +263,84 @@ def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str, t
     return context
 
 
+def _compute_peak_and_close_pct(p: dict, direction: str) -> tuple[float, float]:
+    open_p = p.get("open_price") or p.get("actual_open_price")
+    high_p = p.get("high_price") or p.get("actual_high_price")
+    low_p = p.get("low_price") or p.get("actual_low_price")
+    close_p = p.get("close_price") or p.get("actual_close_price")
+    if not (open_p and open_p > 0):
+        return 0.0, 0.0
+    close_pct = ((close_p - open_p) / open_p) * 100.0 if close_p else 0.0
+    if direction == "UP" and high_p:
+        peak_pct = ((high_p - open_p) / open_p) * 100.0
+    elif direction == "DOWN" and low_p:
+        peak_pct = ((low_p - open_p) / open_p) * 100.0
+    else:
+        peak_pct = close_pct
+    return peak_pct, close_pct
+
+
+def _diagnose_prediction_row(
+    p: dict,
+    daily_events: dict,
+    has_catalysts: bool,
+    timid_cases: list[str],
+    overshot_cases: list[str],
+    luna_postmortems: list[str],
+) -> str:
+    date_str = str(p.get("target_date") or p.get("prediction_date") or "N/A")[:10]
+    direction = str(p.get("predicted_direction") or "N/A").upper()
+    exp_pct = float(p.get("expected_return_pct") or 0.0)
+    is_correct = p.get("is_correct") is True
+    intraday_hit = p.get("intraday_hit") is True or (p.get("intraday_hit") is None and is_correct)
+    brier = float(p.get("brier_score") or 0.0)
+    capture = calculate_magnitude_capture(p)
+    peak_pct, close_pct = _compute_peak_and_close_pct(p, direction)
+    actual_move = max(abs(peak_pct), abs(close_pct))
+
+    pm_cat, pm_lesson, pm_flaw = (
+        p.get("postmortem_category"),
+        p.get("postmortem_lesson"),
+        p.get("postmortem_flawed_assumption"),
+    )
+    if pm_lesson and pm_cat:
+        flaw_str = f" (Flawed assumption: {pm_flaw})" if pm_flaw and pm_flaw != "None" else ""
+        luna_postmortems.append(f"- **{date_str} [{pm_cat}]**: {pm_lesson}{flaw_str}")
+
+    day_info = daily_events.get(date_str, {})
+    all_day_catalysts = day_info.get("newsletters", []) + day_info.get("events", [])
+    catalyst_snippet = "; ".join(all_day_catalysts[:2]) if all_day_catalysts else "None recorded"
+
+    if pm_cat:
+        diagnosis = pm_cat
+    elif is_correct and intraday_hit:
+        if actual_move >= 0.60 and capture < 40.0:
+            diagnosis = "Timid / Underestimated"
+            timid_cases.append(
+                f"- **{date_str}**: Predicted {direction} {exp_pct:+.2f}%, but market moved {actual_move:+.2f}% "
+                f"(only {capture:.1f}% captured). Catalyst context: {catalyst_snippet}. Strong momentum was left on the table."
+            )
+        else:
+            diagnosis = "Well-Calibrated"
+    elif not intraday_hit and is_correct:
+        if abs(exp_pct) >= 0.60:
+            diagnosis = "Overshot / Missed Target"
+            overshot_cases.append(
+                f"- **{date_str}**: Target {exp_pct:+.2f}% was too aggressive for actual intraday range "
+                f"(peak {peak_pct:+.2f}%). Catalyst context: {catalyst_snippet}."
+            )
+        else:
+            diagnosis = "Missed Target"
+    else:
+        diagnosis = "Wrong Direction"
+
+    row = (
+        f"| {date_str} | {direction} | {exp_pct:+.2f}% | {peak_pct:+.2f}% | {close_pct:+.2f}% | "
+        f"{'Yes' if is_correct else 'No'} | {'Yes' if intraday_hit else 'No'} | {brier:.3f} | {capture:.1f}% | {diagnosis} |"
+    )
+    return f"{row} {catalyst_snippet} |" if has_catalysts else row
+
+
 def compute_magnitude_postmortem_summary(
     predictions: list[dict],
     macro_context: dict | None = None,
@@ -278,87 +352,20 @@ def compute_magnitude_postmortem_summary(
     daily_events = macro_context.get("daily_events", {}) if macro_context else {}
     has_catalysts = bool(daily_events)
 
-    headers = [
+    lines = [
         "### RECENT PREDICTIONS POSTMORTEM & MAGNITUDE CALIBRATION",
         "| Date | Dir | Pred % | Peak % | Close % | Correct? | Hit? | Brier | Capture % | Diagnosis |"
         + (" Key Catalysts / News |" if has_catalysts else ""),
         "|---|---|---|---|---|---|---|---|---|---|" + ("---|" if has_catalysts else ""),
     ]
-    lines = list(headers)
-
-    timid_cases = []
-    overshot_cases = []
-    luna_postmortems = []
+    timid_cases: list[str] = []
+    overshot_cases: list[str] = []
+    luna_postmortems: list[str] = []
 
     for p in predictions:
-        date_str = str(p.get("target_date") or p.get("prediction_date") or "N/A")[:10]
-        direction = str(p.get("predicted_direction") or "N/A").upper()
-        exp_pct = float(p.get("expected_return_pct") or 0.0)
-        open_p = p.get("open_price") or p.get("actual_open_price")
-        high_p = p.get("high_price") or p.get("actual_high_price")
-        low_p = p.get("low_price") or p.get("actual_low_price")
-        close_p = p.get("close_price") or p.get("actual_close_price")
-        is_correct = p.get("is_correct") is True
-        intraday_hit = p.get("intraday_hit") is True or (p.get("intraday_hit") is None and is_correct)
-        brier = float(p.get("brier_score") or 0.0)
-        capture = calculate_magnitude_capture(p)
-
-        peak_pct = 0.0
-        close_pct = 0.0
-        if open_p and open_p > 0:
-            if close_p:
-                close_pct = ((close_p - open_p) / open_p) * 100.0
-            if direction == "UP" and high_p:
-                peak_pct = ((high_p - open_p) / open_p) * 100.0
-            elif direction == "DOWN" and low_p:
-                peak_pct = ((low_p - open_p) / open_p) * 100.0
-            else:
-                peak_pct = close_pct
-
-        actual_move = max(abs(peak_pct), abs(close_pct))
-
-        # Check for verified GPT-5.6 Luna post-mortem
-        pm_cat = p.get("postmortem_category")
-        pm_lesson = p.get("postmortem_lesson")
-        pm_flaw = p.get("postmortem_flawed_assumption")
-        if pm_lesson and pm_cat:
-            flaw_str = f" (Flawed assumption: {pm_flaw})" if pm_flaw and pm_flaw != "None" else ""
-            luna_postmortems.append(f"- **{date_str} [{pm_cat}]**: {pm_lesson}{flaw_str}")
-
-        # Build day's catalyst summary
-        day_news = daily_events.get(date_str, {}).get("newsletters", [])
-        day_evts = daily_events.get(date_str, {}).get("events", [])
-        all_day_catalysts = day_news + day_evts
-        catalyst_snippet = "; ".join(all_day_catalysts[:2]) if all_day_catalysts else "None recorded"
-
-        if pm_cat:
-            diagnosis = pm_cat
-        elif is_correct and intraday_hit:
-            if actual_move >= 0.60 and capture < 40.0:
-                diagnosis = "Timid / Underestimated"
-                timid_cases.append(
-                    f"- **{date_str}**: Predicted {direction} {exp_pct:+.2f}%, but market moved {actual_move:+.2f}% (only {capture:.1f}% captured). Catalyst context: {catalyst_snippet}. Strong momentum was left on the table."
-                )
-            else:
-                diagnosis = "Well-Calibrated"
-        elif not intraday_hit and is_correct:
-            if abs(exp_pct) >= 0.60:
-                diagnosis = "Overshot / Missed Target"
-                overshot_cases.append(
-                    f"- **{date_str}**: Target {exp_pct:+.2f}% was too aggressive for actual intraday range (peak {peak_pct:+.2f}%). Catalyst context: {catalyst_snippet}."
-                )
-            else:
-                diagnosis = "Missed Target"
-        else:
-            diagnosis = "Wrong Direction"
-
-        row = (
-            f"| {date_str} | {direction} | {exp_pct:+.2f}% | {peak_pct:+.2f}% | {close_pct:+.2f}% | "
-            f"{'Yes' if is_correct else 'No'} | {'Yes' if intraday_hit else 'No'} | {brier:.3f} | {capture:.1f}% | {diagnosis} |"
+        lines.append(
+            _diagnose_prediction_row(p, daily_events, has_catalysts, timid_cases, overshot_cases, luna_postmortems)
         )
-        if has_catalysts:
-            row += f" {catalyst_snippet} |"
-        lines.append(row)
 
     if luna_postmortems:
         lines.append("\n#### VERIFIED DAILY POST-MORTEMS & FAILURE DIAGNOSES (GPT-5.6 LUNA):")
@@ -379,13 +386,11 @@ def compute_magnitude_postmortem_summary(
     else:
         lines.append("- No severe overshooting errors detected.")
 
-    # Append Active Concepts & Narrative Playbooks section if present
     active_concepts = macro_context.get("active_concepts", []) if macro_context else []
     if active_concepts:
         lines.append("\n#### ACTIVE THEMATIC CONCEPTS & MARKET PLAYBOOKS:")
         lines.extend(active_concepts)
 
-    # Append Prior Autoresearch Memories for this track if present
     track_mems = macro_context.get("track_memories") if macro_context else None
     if track_mems:
         track_name = macro_context.get("track_id") or "CURRENT TRACK"
@@ -422,8 +427,7 @@ async def generate_new_daily_prompt(
         )
     else:
         strategy_block = (
-            "CURRENT STRATEGY INSTRUCTIONS (MUTABLE SECTION ONLY):\n"
-            f"```text\n{mutable_strategies}\n```\n\n"
+            f"CURRENT STRATEGY INSTRUCTIONS (MUTABLE SECTION ONLY):\n```text\n{mutable_strategies}\n```\n\n"
             "Output ONLY the raw new strategy instructions text."
         )
 
@@ -461,10 +465,11 @@ async def generate_new_daily_prompt(
             response_model=DailyMetaPromptResponse,
             messages=[{"role": "user", "content": meta_prompt}],
         )
-        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            resp = await resp_awaitable
-        else:
-            resp = resp_awaitable
+        resp = (
+            await resp_awaitable
+            if (hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable))
+            else resp_awaitable
+        )
 
         new_strategies = resp.new_prompt.strip()
         if new_strategies.startswith("```"):
@@ -475,14 +480,10 @@ async def generate_new_daily_prompt(
                 lines = lines[:-1]
             new_strategies = "\n".join(lines).strip()
 
-        # Sanitize new_strategies through split_daily_predictor_prompt to guarantee
-        # no structural headers or footers accidentally included by the LLM pollute assembled_prompt
         _, clean_strategies, _ = split_daily_predictor_prompt(new_strategies)
         assembled_prompt = DAILY_PREDICTOR_CONSTRAINTS_HEADER + clean_strategies + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
         insight = getattr(resp, "research_insight", None)
-        if insight:
-            insight = insight.strip()
-        return assembled_prompt, insight
+        return assembled_prompt, (insight.strip() if insight else None)
     except Exception as e:
         logger.error(f"Error generating new daily predictor prompt: {e}")
         return old_prompt, None
@@ -540,22 +541,84 @@ async def generate_new_jev_criteria(
             messages=[{"role": "user", "content": meta_prompt}],
             reasoning_effort="none",
         )
-        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            resp = await resp_awaitable
-        else:
-            resp = resp_awaitable
+        resp = (
+            await resp_awaitable
+            if (hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable))
+            else resp_awaitable
+        )
 
-        new_crit = {
-            "UP": resp.criteria_up.strip(),
-            "DOWN": resp.criteria_down.strip(),
-        }
+        new_crit = {"UP": resp.criteria_up.strip(), "DOWN": resp.criteria_down.strip()}
         insight = getattr(resp, "research_insight", None)
-        if insight:
-            insight = insight.strip()
-        return format_jev_prompt_content(new_crit), insight
+        return format_jev_prompt_content(new_crit), (insight.strip() if insight else None)
     except Exception as e:
         logger.error(f"Error generating new Jev criteria with OpenAI Luna: {e}")
         return old_prompt_content, None
+
+
+async def _fetch_or_seed_daily_prompt_variant(client, model_name: str) -> tuple[str | None, str | None]:
+    for status in ("active", "baseline"):
+        resp = (
+            client.table("prompt_experiments")
+            .select("*")
+            .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
+            .eq("track_id", model_name)
+            .eq("status", status)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            return resp.data[0]["variant_tag"], resp.data[0]["prompt_content"]
+
+    from tasks.daily_predictor import seed_daily_predictor_prompt
+
+    tag, _ = await seed_daily_predictor_prompt(model_name=model_name)
+    resp = (
+        client.table("prompt_experiments")
+        .select("*")
+        .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
+        .eq("track_id", model_name)
+        .eq("variant_tag", tag)
+        .execute()
+    )
+    if resp.data:
+        return resp.data[0]["variant_tag"], resp.data[0]["prompt_content"]
+    return None, None
+
+
+def _record_daily_autoresearch_memory(
+    model_name: str,
+    research_insight: str,
+    current_score: float,
+    baseline_score: float,
+    is_baseline_beat: bool,
+    new_tag: str,
+    dry_run: bool,
+) -> None:
+    if dry_run:
+        logger.info(f"[DRY RUN] Would record track memory for {model_name}: {research_insight}")
+        return
+    try:
+        from memory.store import add_memory
+
+        add_memory(
+            content=f"[{model_name.upper()} DAILY PREDICTOR INSIGHT] {research_insight}",
+            memory_type="AUTORESEARCH_INSIGHT",
+            importance_score=9 if is_baseline_beat else 6,
+            metadata={
+                "scope": "daily_predictor",
+                "track_id": model_name,
+                "model_name": model_name,
+                "ratchet_score": current_score,
+                "baseline_score": baseline_score if baseline_score != -100.0 else None,
+                "is_baseline_beat": is_baseline_beat,
+                "variant_tag": new_tag,
+            },
+            check_similarity=True,
+        )
+        logger.info(f"Recorded autoresearch memory for {model_name}: {research_insight[:80]}...")
+    except Exception as e:
+        logger.warning(f"Failed to record autoresearch memory for {model_name}: {e}")
 
 
 async def run_daily_autoresearch_for_model(
@@ -580,7 +643,6 @@ async def run_daily_autoresearch_for_model(
     if is_cold_start:
         logger.info(f"COLD START: Stochastic 1-in-6 dice triggered fresh SPY strategy from 0 for {model_name}")
 
-    # 1. Fetch evaluated daily predictions for this model over the past 7 days (all available trading sessions)
     response = (
         client.table("daily_predictions")
         .select("*")
@@ -590,7 +652,6 @@ async def run_daily_autoresearch_for_model(
         .lte("target_date", today.isoformat())
         .execute()
     )
-
     predictions = [
         p
         for p in (response.data or [])
@@ -600,7 +661,6 @@ async def run_daily_autoresearch_for_model(
         logger.info(f"No evaluated daily predictions found for {model_name} in the past week. Skipping autoresearch.")
         return
 
-    # Fetch 4-week (28-day) evaluated predictions for postmortem and prompt context
     multi_week_response = (
         client.table("daily_predictions")
         .select("*")
@@ -619,59 +679,16 @@ async def run_daily_autoresearch_for_model(
     current_metrics = calculate_daily_ratchet_metrics(predictions)
     current_score = current_metrics["score"]
 
-    # 2. Fetch active prompt variant for this model track
-    prompt_response = (
-        client.table("prompt_experiments")
-        .select("*")
-        .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
-        .eq("track_id", model_name)
-        .eq("status", "active")
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-
-    if not prompt_response.data:
-        # Fallback to model track baseline
-        prompt_response = (
-            client.table("prompt_experiments")
-            .select("*")
-            .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
-            .eq("track_id", model_name)
-            .eq("status", "baseline")
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-
-    if not prompt_response.data:
-        # If no variants exist yet for this model, seed the baseline
-        from tasks.daily_predictor import seed_daily_predictor_prompt
-
-        tag, content = await seed_daily_predictor_prompt(model_name=model_name)
-        prompt_response = (
-            client.table("prompt_experiments")
-            .select("*")
-            .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
-            .eq("track_id", model_name)
-            .eq("variant_tag", tag)
-            .execute()
-        )
-
-    if not prompt_response.data:
+    parent_tag, current_prompt = await _fetch_or_seed_daily_prompt_variant(client, model_name)
+    if not parent_tag or current_prompt is None:
         logger.warning(f"No active DAILY_PREDICTOR_PROMPT found for {model_name}. Cannot run daily autoresearch.")
         return
 
-    current_prompt = prompt_response.data[0]["prompt_content"]
-    parent_tag = prompt_response.data[0]["variant_tag"]
-
-    # 3. Update active prompt metrics with full breakdown
     if dry_run:
         logger.info(f"[DRY RUN] Would update metrics for {parent_tag}: {current_metrics}")
     else:
         client.table("prompt_experiments").update({"metrics": current_metrics}).eq("variant_tag", parent_tag).execute()
 
-    # 4. Fetch baseline variants to perform ratchet comparison strictly within this model track
     all_variants_resp = (
         client.table("prompt_experiments")
         .select("*")
@@ -679,19 +696,11 @@ async def run_daily_autoresearch_for_model(
         .eq("track_id", model_name)
         .execute()
     )
-    all_variants = all_variants_resp.data or []
+    best = select_baseline_candidate(all_variants_resp.data or [], parent_tag)
+    baseline_score = best[0] if best else -100.0
+    baseline_tag = best[1]["variant_tag"] if best else parent_tag
+    baseline_content = best[1]["prompt_content"] if best else current_prompt
 
-    baseline_score = -100.0
-    baseline_tag = parent_tag
-    baseline_content = current_prompt
-
-    best = select_baseline_candidate(all_variants, parent_tag)
-    if best is not None:
-        baseline_score, baseline_variant = best
-        baseline_tag = baseline_variant["variant_tag"]
-        baseline_content = baseline_variant["prompt_content"]
-
-    # Compare recent score with baseline
     if baseline_score != -100.0 and current_score < baseline_score:
         logger.info(
             f"DAILY RATCHET ({model_name}): Score {current_score:.2f} failed to beat baseline {baseline_score:.2f}. "
@@ -699,8 +708,7 @@ async def run_daily_autoresearch_for_model(
         )
         if not dry_run:
             client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
-        current_prompt = baseline_content
-        parent_tag = baseline_tag
+        current_prompt, parent_tag = baseline_content, baseline_tag
     else:
         logger.info(
             f"DAILY RATCHET ({model_name}): Score {current_score:.2f} beats/equals baseline {baseline_score:.2f}. "
@@ -709,14 +717,12 @@ async def run_daily_autoresearch_for_model(
         if not dry_run:
             client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
 
-    # 5. Fetch 28-day rich macro, newsletter, and concepts context
     macro_context = fetch_autoresearch_context(
         client, twenty_eight_days_ago.isoformat(), today.isoformat(), track_id=model_name
     )
 
-    # 6. Mutate prompt using DeepSeek Flash or OpenAI Luna for Jev
     is_jev = "jev" in model_name.lower()
-    candidate_predictions = multi_week_predictions if multi_week_predictions else predictions
+    candidate_predictions = multi_week_predictions or predictions
     if is_jev:
         new_prompt, research_insight = await generate_new_jev_criteria(
             old_prompt_content=current_prompt,
@@ -736,37 +742,14 @@ async def run_daily_autoresearch_for_model(
             cold_start=is_cold_start,
         )
 
-    # 7. Deploy new active prompt variant scoped to track_id, demoting prior active variants
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"
     week_end = today + timedelta(days=7)
     is_baseline_beat = (baseline_score == -100.0) or (current_score >= baseline_score)
 
     if research_insight:
-        if dry_run:
-            logger.info(f"[DRY RUN] Would record track memory for {model_name}: {research_insight}")
-        else:
-            try:
-                from memory.store import add_memory
-
-                importance = 9 if is_baseline_beat else 6
-                add_memory(
-                    content=f"[{model_name.upper()} DAILY PREDICTOR INSIGHT] {research_insight}",
-                    memory_type="AUTORESEARCH_INSIGHT",
-                    importance_score=importance,
-                    metadata={
-                        "scope": "daily_predictor",
-                        "track_id": model_name,
-                        "model_name": model_name,
-                        "ratchet_score": current_score,
-                        "baseline_score": baseline_score if baseline_score != -100.0 else None,
-                        "is_baseline_beat": is_baseline_beat,
-                        "variant_tag": new_tag,
-                    },
-                    check_similarity=True,
-                )
-                logger.info(f"Recorded autoresearch memory for {model_name}: {research_insight[:80]}...")
-            except Exception as e:
-                logger.warning(f"Failed to record autoresearch memory for {model_name}: {e}")
+        _record_daily_autoresearch_memory(
+            model_name, research_insight, current_score, baseline_score, is_baseline_beat, new_tag, dry_run
+        )
 
     if dry_run:
         logger.info(
@@ -776,7 +759,6 @@ async def run_daily_autoresearch_for_model(
         )
         return
 
-    # Demote all existing active variants for this model track to saved
     client.table("prompt_experiments").update({"status": "saved"}).eq("prompt_name", "DAILY_PREDICTOR_PROMPT").eq(
         "track_id", model_name
     ).eq("status", "active").execute()
@@ -790,7 +772,6 @@ async def run_daily_autoresearch_for_model(
         "selected_tools": ["openrouter_decisions"] if is_jev else DEFAULT_DAILY_PREDICTOR_TOOLS,
         "is_cold_start": is_cold_start,
     }
-
     exp_type = "radical" if is_cold_start else "incremental"
     desc = (
         f"Weekly daily autoresearch cold start (from 0) for {model_name}"

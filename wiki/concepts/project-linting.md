@@ -15,9 +15,10 @@ The project enforces code quality through two linters, both wired into the pre-c
 
 - **Config**: `apps/engine/ruff.toml`
 - **Target**: Python 3.12
-- **Rules**: E (pycodestyle errors), F (pyflakes), I (isort), UP (pyupgrade), B (flake8-bugbear), SIM (flake8-simplify)
+- **Rules**: E (pycodestyle errors), F (pyflakes), I (isort), UP (pyupgrade), B (flake8-bugbear), SIM (flake8-simplify), C901 (McCabe cyclomatic complexity)
 - **Line length**: 120
 - **Global ignores**: E501 (line length — individual violations suppressed; 120 char limit acts as a soft guide via ruff format)
+- **McCabe complexity ceiling**: `[lint.mccabe] max-complexity = 15` — any function with more than 15 decision points fails `ruff check` across the whole engine, not just changed lines
 - **Per-file ignores**:
   - `scripts/*.py` — E402 (sys.path manipulation for executable scripts)
   - `tests/*.py` — SIM117 (nested `with` often clearer in test setup)
@@ -28,6 +29,9 @@ Commands:
 ```sh
 # Lint
 ./apps/engine/.venv/bin/ruff check apps/engine/
+
+# Complexity-only pass
+./apps/engine/.venv/bin/ruff check apps/engine/ --select C901
 
 # Auto-fix safe issues
 ./apps/engine/.venv/bin/ruff check --fix apps/engine/

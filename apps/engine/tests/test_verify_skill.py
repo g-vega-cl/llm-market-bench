@@ -94,10 +94,27 @@ def test_verify_skill_mandates_tier_8_wiki_docs():
 
 
 def test_verify_script_checks_mccabe_complexity():
-    """Verify that verify.sh executes diff-scoped McCabe cyclomatic complexity check."""
+    """Verify that verify.sh and ruff.toml enforce McCabe cyclomatic complexity (C901 <= 15) across the entire engine."""
+    import subprocess
+    import sys
+
     assert VERIFY_SCRIPT.exists(), "verify.sh must exist"
     content = VERIFY_SCRIPT.read_text()
     assert "C901" in content or "max-complexity" in content
+
+    ruff_toml = REPO_ROOT / "apps" / "engine" / "ruff.toml"
+    assert ruff_toml.exists(), "apps/engine/ruff.toml must exist"
+    ruff_content = ruff_toml.read_text()
+    assert '"C901"' in ruff_content, "ruff.toml must include C901 in lint.select"
+    assert "max-complexity = 15" in ruff_content, "ruff.toml must configure max-complexity = 15"
+
+    res = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", str(REPO_ROOT / "apps" / "engine"), "--select", "C901"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res.returncode == 0, f"Engine has C901 McCabe complexity violations:\n{res.stdout}\n{res.stderr}"
 
 
 def test_verify_script_checks_strict_wiki_lint():

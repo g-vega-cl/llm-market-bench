@@ -216,14 +216,215 @@ async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> t
     return f"fallback-daily-{model_name}", default_content
 
 
+async def _append_calendar_and_newsletters(
+    ticker: str,
+    today_str: str,
+    include_full_prior_close: bool,
+    context_lines: list[str],
+    data_record: dict[str, Any],
+) -> None:
+    from core.llm.handlers.base import execute_tool
+    from core.llm.tools import execute_fetch_daily_newsletter_tool
+
+    try:
+        econ_summary = await execute_tool(
+            "get_today_economic_releases",
+            {"target_date": today_str, "country": "US"},
+            model_name="daily_predictor",
+        )
+        if econ_summary and not econ_summary.startswith(("Error", "No scheduled")):
+            context_lines.append(econ_summary)
+            data_record["economic_calendar"] = econ_summary
+    except Exception as e:
+        logger.warning(f"Error fetching today's economic releases for daily predictor: {e}")
+
+    try:
+        cal_str = await execute_tool(
+            "get_calendar_scenario_analysis",
+            {"timeframe": "tomorrow", "ticker": ticker, "min_importance": 6, "detail": False},
+            model_name="daily_predictor",
+        )
+        if cal_str and not cal_str.startswith("Error"):
+            context_lines.append(f"Upcoming High-Impact Catalysts & Scenarios:\n{cal_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching forward calendar scenarios for daily predictor: {e}")
+
+    try:
+        prior_close_str = await execute_fetch_daily_newsletter_tool(
+            session="close", include_full_content=include_full_prior_close
+        )
+        if prior_close_str and not prior_close_str.startswith(("Error", "No generated")):
+            context_lines.append(f"Previous Session Close Briefing:\n{prior_close_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching previous close newsletter briefing: {e}")
+
+    try:
+        open_newsletter_str = await execute_fetch_daily_newsletter_tool(
+            session="open", target_date=today_str, include_full_content=True
+        )
+        if open_newsletter_str and not open_newsletter_str.startswith(("Error", "No generated")):
+            context_lines.append(f"Morning Newsletter Briefing:\n{open_newsletter_str}")
+            data_record["synthetic_newsletter"] = open_newsletter_str
+    except Exception as e:
+        logger.warning(f"Error fetching morning newsletter briefing: {e}")
+
+
+async def _append_premarket_and_trend_context(
+    ticker: str,
+    today_str: str,
+    context_lines: list[str],
+    data_record: dict[str, Any],
+) -> None:
+    from execution.market_data import MarketDataManager
+
+    try:
+        mdm = MarketDataManager()
+        is_pm = await mdm.is_premarket()
+        context_lines.append(
+            "=== LIVE PRE-MARKET ACTION & GAP ANALYSIS ==="
+            if is_pm
+            else "=== LIVE SESSION / OVERNIGHT GAP ANALYSIS ==="
+        )
+
+        pm_quote = await mdm.get_premarket_quote(ticker)
+        if pm_quote:
+            asset_label = f"Target Asset ({ticker})" if is_pm else "Live Pre-Market / Early Session Quote"
+            context_lines.append(
+                f"{asset_label}: ${pm_quote['price']:.2f} | "
+                f"Overnight Gap: {pm_quote['change']:+.2f} ({pm_quote['change_pct']:+.2f}%) vs Prev Close ${pm_quote['previous_close']:.2f}"
+            )
+        else:
+            logger.warning(f"Could not retrieve live pre-market/session quote for target asset {ticker}")
+
+        macro_proxies = [
+            ("QQQ", "Nasdaq 100"),
+            ("DIA", "Dow Jones"),
+            ("IWM", "Russell 2000"),
+            ("EWJ", "Japan MSCI"),
+            ("VGK", "Europe FTSE"),
+            ("TLT", "20+yr Treasury / Long Yields"),
+            ("IEF", "7-10yr Treasury / Intermediate Yields"),
+            ("GLD", "Gold"),
+            ("USO", "WTI Crude Oil"),
+            ("UUP", "US Dollar Index"),
+        ]
+        active_proxies = [(sym, label) for sym, label in macro_proxies if sym != ticker]
+        proxy_quotes = await asyncio.gather(
+            *[mdm.get_premarket_quote(sym) for sym, _ in active_proxies], return_exceptions=True
+        )
+        proxy_lines: list[str] = []
+        proxies_map: dict[str, dict[str, float]] = {}
+        for (sym, label), q in zip(active_proxies, proxy_quotes, strict=False):
+            if isinstance(q, dict) and q.get("price") is not None and q.get("change_pct") is not None:
+                proxy_lines.append(f"- {sym} ({label}): ${q['price']:.2f} | Overnight Gap: {q['change_pct']:+.2f}%")
+                proxies_map[sym] = {"price": float(q["price"]), "change_pct": float(q["change_pct"])}
+            elif isinstance(q, Exception):
+                logger.debug(f"Failed to fetch pre-market quote for proxy {sym}: {q}")
+        data_record["proxies"] = proxies_map
+        if proxy_lines:
+            context_lines.append(
+                "Pre-Market Benchmark Indices & Key Macro Drivers (Live Overnight Gaps):"
+                if is_pm
+                else "Benchmark Indices & Key Macro Drivers (Live Overnight Gaps):"
+            )
+            context_lines.extend(proxy_lines)
+        context_lines.append("=============================================")
+
+        history = await mdm.get_history(ticker, days=45)
+        from analytics.trend_profile import compute_trend_profile
+
+        trend_prof = compute_trend_profile(history, target_date=today_str)
+        if trend_prof.is_available:
+            context_lines.extend(trend_prof.summary_lines)
+            data_record["trend_vector"] = trend_prof.as_dict()
+
+        await _append_intraday_profile(ticker, context_lines, data_record)
+    except Exception as e:
+        logger.warning(
+            f"Error fetching technical indicators & pre-market quote via MarketDataManager for {ticker}: {e}"
+        )
+
+
+async def _append_intraday_profile(ticker: str, context_lines: list[str], data_record: dict[str, Any]) -> None:
+    try:
+        from analytics.intraday_profile import get_intraday_movement_report
+
+        intra_rep = await get_intraday_movement_report(
+            ticker=ticker, date_str="latest_completed", include_hourly_tape=False
+        )
+        md = intra_rep.get("markdown") if intra_rep else None
+        if md and not md.startswith(("Error", "No intraday")):
+            context_lines.append(md)
+            data_record["intraday_profile"] = md
+    except Exception as e:
+        logger.debug(f"Could not retrieve prior intraday movement profile for {ticker}: {e}")
+
+
+async def _append_macro_and_options_context(ticker: str, context_lines: list[str], data_record: dict[str, Any]) -> None:
+    from core.llm.handlers.base import execute_tool
+
+    try:
+        options_str = await execute_tool(
+            "get_macro_options_sentiment", {"primary_ticker": ticker}, model_name="daily_predictor"
+        )
+        if options_str and not options_str.startswith(("Error", "No options", "No macro options")):
+            context_lines.append(f"Options Derivatives Positioning ({ticker}):\n{options_str}")
+            data_record["options_sentiment"] = options_str
+        elif options_str and options_str.startswith("Error"):
+            logger.warning(f"Options derivatives retrieval returned error for {ticker}: {options_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching options derivatives context for {ticker}: {e}")
+
+    tool_specs = [
+        ("get_global_macro_context", {}, "Prior Session Macro Baseline", None, None),
+        ("get_volatility_index_details", {"lookback_days": 90}, "Volatility Index Details", None, None),
+        ("get_market_health_barometer", {"limit": 5}, "Market Health Barometer", "market_barometer", None),
+        ("get_market_feeling", {}, "Recent Market Feeling", "market_feeling", 500),
+    ]
+    for tool_name, args, header, record_key, max_len in tool_specs:
+        try:
+            res_str = await execute_tool(tool_name, args, model_name="daily_predictor")
+            if res_str and not res_str.startswith("Error"):
+                snippet = res_str[:max_len] if max_len else res_str
+                context_lines.append(f"{header}:\n{snippet}")
+                if record_key:
+                    data_record[record_key] = res_str
+        except Exception as e:
+            logger.warning(f"Error fetching {tool_name}: {e}")
+
+
+def _populate_recent_newsletters_manifest(data_record: dict[str, Any]) -> None:
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+    try:
+        sb = get_supabase_client()
+        cutoff = (datetime.now(UTC) - timedelta(hours=36)).isoformat()
+        ns_resp = (
+            sb.table("newsletter_snapshots")
+            .select("sender, subject, content_clean")
+            .gte("received_at", cutoff)
+            .order("received_at", desc=True)
+            .limit(50)
+            .execute()
+        )
+        if ns_resp and hasattr(ns_resp, "data") and ns_resp.data:
+            data_record["newsletters"] = [
+                {
+                    "sender": item.get("sender", "Unknown"),
+                    "subject": item.get("subject", ""),
+                    "content": item.get("content_clean", ""),
+                }
+                for item in ns_resp.data
+            ]
+    except Exception as e:
+        logger.debug(f"Could not load recent newsletter snapshots for curated data manifest: {e}")
+
+
 async def get_structured_daily_market_context(
     ticker: str = "SPY", include_full_prior_close: bool = False
 ) -> tuple[str, dict[str, Any]]:
     """Fetch recent market data context and structured data record for curated models."""
-    from core.llm.handlers.base import execute_tool
-    from core.llm.tools import execute_fetch_daily_newsletter_tool
     from core.time_utils import get_current_day_info
-    from execution.market_data import MarketDataManager
 
     day_info = get_current_day_info()
     context_lines = [
@@ -245,246 +446,10 @@ async def get_structured_daily_market_context(
         "trend_vector": None,
     }
 
-    # 0. Today's Morning Economic Releases & Macro Indicators (CPI, PPI, Jobs, etc.)
-    try:
-        econ_summary = await execute_tool(
-            "get_today_economic_releases",
-            {"target_date": today_str, "country": "US"},
-            model_name="daily_predictor",
-        )
-        if econ_summary and not econ_summary.startswith("Error") and not econ_summary.startswith("No scheduled"):
-            context_lines.append(econ_summary)
-            data_record["economic_calendar"] = econ_summary
-    except Exception as e:
-        logger.warning(f"Error fetching today's economic releases for daily predictor: {e}")
-
-    # 1. Forward High-Impact Calendar Scenarios (Tomorrow & Next Week)
-    try:
-        cal_str = await execute_tool(
-            "get_calendar_scenario_analysis",
-            {"timeframe": "tomorrow", "ticker": ticker, "min_importance": 6, "detail": False},
-            model_name="daily_predictor",
-        )
-        if cal_str and not cal_str.startswith("Error"):
-            context_lines.append(f"Upcoming High-Impact Catalysts & Scenarios:\n{cal_str}")
-    except Exception as e:
-        logger.warning(f"Error fetching forward calendar scenarios for daily predictor: {e}")
-
-    # 1. AI Wall Street Synthesized Newsletters (Previous Close + Today Open)
-    try:
-        prior_close_str = await execute_fetch_daily_newsletter_tool(
-            session="close", include_full_content=include_full_prior_close
-        )
-        if (
-            prior_close_str
-            and not prior_close_str.startswith("Error")
-            and not prior_close_str.startswith("No generated")
-        ):
-            context_lines.append(f"Previous Session Close Briefing:\n{prior_close_str}")
-    except Exception as e:
-        logger.warning(f"Error fetching previous close newsletter briefing: {e}")
-
-    try:
-        open_newsletter_str = await execute_fetch_daily_newsletter_tool(
-            session="open", target_date=today_str, include_full_content=True
-        )
-        if (
-            open_newsletter_str
-            and not open_newsletter_str.startswith("Error")
-            and not open_newsletter_str.startswith("No generated")
-        ):
-            context_lines.append(f"Morning Newsletter Briefing:\n{open_newsletter_str}")
-            data_record["synthetic_newsletter"] = open_newsletter_str
-    except Exception as e:
-        logger.warning(f"Error fetching morning newsletter briefing: {e}")
-
-    # 1. Price Action, Technicals & Pre-Market Live Quote via MarketDataManager (FMP)
-    try:
-        mdm = MarketDataManager()
-        is_pm = await mdm.is_premarket()
-
-        header_title = (
-            "=== LIVE PRE-MARKET ACTION & GAP ANALYSIS ==="
-            if is_pm
-            else "=== LIVE SESSION / OVERNIGHT GAP ANALYSIS ==="
-        )
-        context_lines.append(header_title)
-
-        # Pre-Market Live Quote for Target
-        pm_quote = await mdm.get_premarket_quote(ticker)
-        if pm_quote:
-            pm_price = pm_quote["price"]
-            pm_change = pm_quote["change"]
-            pm_change_pct = pm_quote["change_pct"]
-            asset_label = f"Target Asset ({ticker})" if is_pm else "Live Pre-Market / Early Session Quote"
-            context_lines.append(
-                f"{asset_label}: ${pm_price:.2f} | "
-                f"Overnight Gap: {pm_change:+.2f} ({pm_change_pct:+.2f}%) vs Prev Close ${pm_quote['previous_close']:.2f}"
-            )
-        else:
-            logger.warning(f"Could not retrieve live pre-market/session quote for target asset {ticker}")
-
-        # Benchmark Equities, International Proxies, Fixed Income / Yields & Commodities/FX
-        macro_proxies = [
-            ("QQQ", "Nasdaq 100"),
-            ("DIA", "Dow Jones"),
-            ("IWM", "Russell 2000"),
-            ("EWJ", "Japan MSCI"),
-            ("VGK", "Europe FTSE"),
-            ("TLT", "20+yr Treasury / Long Yields"),
-            ("IEF", "7-10yr Treasury / Intermediate Yields"),
-            ("GLD", "Gold"),
-            ("USO", "WTI Crude Oil"),
-            ("UUP", "US Dollar Index"),
-        ]
-        active_proxies = [(sym, label) for sym, label in macro_proxies if sym != ticker]
-        proxy_quotes = await asyncio.gather(
-            *[mdm.get_premarket_quote(sym) for sym, _ in active_proxies],
-            return_exceptions=True,
-        )
-        proxy_lines = []
-        proxies_map: dict[str, dict[str, float]] = {}
-        for (sym, label), q in zip(active_proxies, proxy_quotes, strict=False):
-            if isinstance(q, dict) and q.get("price") is not None and q.get("change_pct") is not None:
-                proxy_lines.append(f"- {sym} ({label}): ${q['price']:.2f} | Overnight Gap: {q['change_pct']:+.2f}%")
-                proxies_map[sym] = {"price": float(q["price"]), "change_pct": float(q["change_pct"])}
-            elif isinstance(q, Exception):
-                logger.debug(f"Failed to fetch pre-market quote for proxy {sym}: {q}")
-        data_record["proxies"] = proxies_map
-        if proxy_lines:
-            subhead = (
-                "Pre-Market Benchmark Indices & Key Macro Drivers (Live Overnight Gaps):"
-                if is_pm
-                else "Benchmark Indices & Key Macro Drivers (Live Overnight Gaps):"
-            )
-            context_lines.append(subhead)
-            context_lines.extend(proxy_lines)
-        context_lines.append("=============================================")
-
-        history = await mdm.get_history(ticker, days=45)
-        from analytics.trend_profile import compute_trend_profile
-
-        trend_prof = compute_trend_profile(history, target_date=today_str)
-        if trend_prof.is_available:
-            context_lines.extend(trend_prof.summary_lines)
-            data_record["trend_vector"] = trend_prof.as_dict()
-
-        # Prior Session Intraday Movement Profile (OHLC, True Intraday Return, CLV, Archetype)
-        try:
-            from analytics.intraday_profile import get_intraday_movement_report
-
-            intra_rep = await get_intraday_movement_report(
-                ticker=ticker,
-                date_str="latest_completed",
-                include_hourly_tape=False,
-            )
-            if (
-                intra_rep
-                and intra_rep.get("markdown")
-                and not intra_rep["markdown"].startswith("Error")
-                and not intra_rep["markdown"].startswith("No intraday")
-            ):
-                context_lines.append(intra_rep["markdown"])
-                data_record["intraday_profile"] = intra_rep["markdown"]
-        except Exception as e:
-            logger.debug(f"Could not retrieve prior intraday movement profile for {ticker}: {e}")
-
-    except Exception as e:
-        logger.warning(
-            f"Error fetching technical indicators & pre-market quote via MarketDataManager for {ticker}: {e}"
-        )
-
-    # 2. Options Derivatives Positioning & Cross-Asset Skew
-    try:
-        options_str = await execute_tool(
-            "get_macro_options_sentiment",
-            {"primary_ticker": ticker},
-            model_name="daily_predictor",
-        )
-        if (
-            options_str
-            and not options_str.startswith("Error")
-            and not options_str.startswith("No options")
-            and not options_str.startswith("No macro options")
-        ):
-            context_lines.append(f"Options Derivatives Positioning ({ticker}):\n{options_str}")
-            data_record["options_sentiment"] = options_str
-        elif options_str and options_str.startswith("Error"):
-            logger.warning(f"Options derivatives retrieval returned error for {ticker}: {options_str}")
-    except Exception as e:
-        logger.warning(f"Error fetching options derivatives context for {ticker}: {e}")
-
-    # 3. Macro & Market Feeling Context via Canonical Tools
-    try:
-        macro_str = await execute_tool(
-            "get_global_macro_context",
-            {},
-            model_name="daily_predictor",
-        )
-        if macro_str and not macro_str.startswith("Error"):
-            context_lines.append(f"Prior Session Macro Baseline:\n{macro_str}")
-    except Exception as e:
-        logger.warning(f"Error fetching global macro context: {e}")
-
-    try:
-        vol_str = await execute_tool(
-            "get_volatility_index_details",
-            {"lookback_days": 90},
-            model_name="daily_predictor",
-        )
-        if vol_str and not vol_str.startswith("Error"):
-            context_lines.append(f"Volatility Index Details:\n{vol_str}")
-    except Exception as e:
-        logger.warning(f"Error fetching volatility index details: {e}")
-
-    try:
-        baro_str = await execute_tool(
-            "get_market_health_barometer",
-            {"limit": 5},
-            model_name="daily_predictor",
-        )
-        if baro_str and not baro_str.startswith("Error"):
-            context_lines.append(f"Market Health Barometer:\n{baro_str}")
-            data_record["market_barometer"] = baro_str
-    except Exception as e:
-        logger.warning(f"Error fetching market health barometer: {e}")
-
-    try:
-        feeling_str = await execute_tool(
-            "get_market_feeling",
-            {},
-            model_name="daily_predictor",
-        )
-        if feeling_str and not feeling_str.startswith("Error"):
-            context_lines.append(f"Recent Market Feeling:\n{feeling_str[:500]}")
-            data_record["market_feeling"] = feeling_str
-    except Exception as e:
-        logger.warning(f"Error fetching market feeling: {e}")
-
-    # Fetch recent individual newsletter snapshots from Supabase if available in live runtime
-    if not os.environ.get("PYTEST_CURRENT_TEST"):
-        try:
-            sb = get_supabase_client()
-            cutoff = (datetime.now(UTC) - timedelta(hours=36)).isoformat()
-            ns_resp = (
-                sb.table("newsletter_snapshots")
-                .select("sender, subject, content_clean")
-                .gte("received_at", cutoff)
-                .order("received_at", desc=True)
-                .limit(50)
-                .execute()
-            )
-            if ns_resp and hasattr(ns_resp, "data") and ns_resp.data:
-                data_record["newsletters"] = [
-                    {
-                        "sender": item.get("sender", "Unknown"),
-                        "subject": item.get("subject", ""),
-                        "content": item.get("content_clean", ""),
-                    }
-                    for item in ns_resp.data
-                ]
-        except Exception as e:
-            logger.debug(f"Could not load recent newsletter snapshots for curated data manifest: {e}")
+    await _append_calendar_and_newsletters(ticker, today_str, include_full_prior_close, context_lines, data_record)
+    await _append_premarket_and_trend_context(ticker, today_str, context_lines, data_record)
+    await _append_macro_and_options_context(ticker, context_lines, data_record)
+    _populate_recent_newsletters_manifest(data_record)
 
     context_lines.append(f"Prediction Target Date: {today_str}")
     return "\n".join(context_lines), data_record
@@ -504,54 +469,192 @@ async def get_daily_market_context(
     return full_text
 
 
-async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list[dict]:
-    """Run daily predictions ahead of market open for target ticker across model arena (DeepSeek & MiniMax)."""
+async def _can_run_daily_prediction(now_et: datetime, today, ticker: str) -> bool:
     from execution.market_data import MarketDataManager
 
+    if now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 30):
+        logger.warning(
+            f"Refusing to run daily prediction for {today}: current time ({now_et.strftime('%H:%M')} ET) "
+            f"is after market open (09:30 ET). Daily predictions must run pre-market. Use --force to override."
+        )
+        return False
+    if now_et.hour < 4:
+        logger.warning(
+            f"Refusing to run daily prediction for {today}: current time ({now_et.strftime('%H:%M')} ET) "
+            f"is before pre-market open (04:00 ET). Use --force to override."
+        )
+        return False
+
+    mdm = MarketDataManager()
+    if not await mdm.is_trading_day(today):
+        logger.info(
+            f"Skipping daily prediction for {ticker} on {today}: "
+            f"Market is closed (weekend or holiday). Use --force to override."
+        )
+        return False
+
+    client = get_supabase_client()
+    existing = (
+        client.table("daily_predictions")
+        .select("id")
+        .eq("target_date", today.isoformat())
+        .eq("ticker", ticker.upper())
+        .execute()
+    )
+    if existing and getattr(existing, "data", None) and isinstance(existing.data, list) and len(existing.data) > 0:
+        logger.warning(
+            f"Daily predictions for {ticker} on {today} already exist in database ({len(existing.data)} records). "
+            f"Refusing to overwrite existing morning predictions. Use --force to override."
+        )
+        return False
+    return True
+
+
+async def _call_instructor_daily_model(
+    model_name: str, provider: str, prompt_content: str, user_msg: str
+) -> tuple[str, float, float, str, list[str]]:
+    deepseek_client = get_deepseek_client()
+    try:
+        create_kwargs: dict[str, Any] = {
+            "model": model_name,
+            "response_model": DailyPredictionOutput,
+            "messages": [
+                {"role": "system", "content": prompt_content},
+                {"role": "user", "content": user_msg},
+            ],
+        }
+        if provider == "deepseek" or "deepseek" in model_name.lower():
+            create_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+        elif provider == "anthropic":
+            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
+
+            create_kwargs["cache_control"] = {"type": "ephemeral"}
+            create_kwargs["system"] = [{"type": "text", "text": prompt_content, "cache_control": {"type": "ephemeral"}}]
+            create_kwargs["messages"] = [{"role": "user", "content": user_msg}]
+            create_kwargs.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=2048, effort="medium"))
+            create_kwargs["max_tokens"] = 4000
+        elif provider == "gemini":
+            from google.genai import types
+
+            if hasattr(types, "ThinkingConfig"):
+                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="high")
+        elif provider == "openai":
+            create_kwargs["reasoning_effort"] = "low"
+
+        resp_awaitable = deepseek_client.chat.completions.create(**create_kwargs)
+        resp = (
+            await resp_awaitable
+            if (hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable))
+            else resp_awaitable
+        )
+        return (
+            resp.predicted_direction.upper(),
+            float(resp.confidence),
+            float(resp.expected_return_pct),
+            resp.rationale,
+            resp.catalysts,
+        )
+    finally:
+        await close_client(deepseek_client, provider)
+
+
+async def _execute_model_daily_prediction(
+    model_cfg: dict[str, str],
+    ticker: str,
+    context: str,
+    data_record: dict[str, Any],
+    user_msg: str,
+    raw_prompt_content: str,
+    prompt_content: str,
+) -> tuple[str, float, float, str, list[str], str]:
+    model_name = model_cfg["name"]
+    m_type = model_cfg["type"]
+    provider = model_cfg["provider"]
+
+    if m_type == "instructor":
+        pred_dir, confidence, exp_ret, rationale, catalysts = await _call_instructor_daily_model(
+            model_name, provider, prompt_content, user_msg
+        )
+        return pred_dir, confidence, exp_ret, rationale, catalysts, context
+
+    if m_type == "minimax":
+        minimax_client = MiniMaxClient()
+        try:
+            minimax_user_msg = (
+                f"{user_msg}\n\n"
+                "Note: Output ONLY the required JSON object conforming to the output schema. "
+                "Do not include Markdown headers or YAML. "
+                'Example: {"predicted_direction": "UP", "confidence": 65.0, "expected_return_pct": 0.35, "rationale": "...", "catalysts": ["..."]}'
+            )
+            messages = [
+                {"role": "system", "content": prompt_content},
+                {"role": "user", "content": minimax_user_msg},
+            ]
+            parsed_json = await minimax_client.chat_with_json_response(
+                messages, model=model_name, max_completion_tokens=8192
+            )
+            return (
+                str(parsed_json.get("predicted_direction", "UP")).upper(),
+                float(parsed_json.get("confidence", 50.0)),
+                float(parsed_json.get("expected_return_pct", 0.0)),
+                str(parsed_json.get("rationale", "")),
+                parsed_json.get("catalysts", []),
+                context,
+            )
+        finally:
+            await minimax_client.close()
+
+    if m_type == "jev":
+        crit = parse_jev_prompt_content(raw_prompt_content)
+        jev_res = await predict_daily_with_jev(context=context, criteria=crit, ticker=ticker, model_name=model_name)
+        return (
+            jev_res["predicted_direction"],
+            float(jev_res["confidence"]),
+            float(jev_res["expected_return_pct"]),
+            jev_res["rationale"],
+            jev_res["catalysts"],
+            context,
+        )
+
+    if m_type == "jev_curated":
+        crit, _min_conf, manifest_dict = parse_jev_curated_prompt_content(raw_prompt_content)
+        manifest = DataManifest(**manifest_dict) if manifest_dict else DataManifest()
+        curated_context = pack_daily_context(data_record, manifest)
+        jev_res = await predict_daily_with_jev(
+            context=curated_context, criteria=crit, ticker=ticker, model_name=JEV_MODEL
+        )
+        return (
+            str(jev_res["predicted_direction"]).upper(),
+            float(jev_res["confidence"]),
+            float(jev_res["expected_return_pct"]),
+            jev_res["rationale"],
+            jev_res["catalysts"],
+            curated_context,
+        )
+
+    ingestion_prompt, crit, min_conf = parse_laya_curated_prompt_content(raw_prompt_content)
+    daily_doc = await generate_daily_document(
+        day_record=data_record, ingestion_prompt=ingestion_prompt, allow_fallback=True
+    )
+    criteria_obj = JevCriteriaConfig(criteria_up=crit["UP"], criteria_down=crit["DOWN"], min_confidence=min_conf)
+    laya_res = await evaluate_with_laya(context=daily_doc, criteria=criteria_obj, ticker=ticker, fallback_to_jev=True)
+    raw_dir = str(laya_res["predicted_direction"]).upper()
+    confidence = float(laya_res["confidence"])
+    backend_note = laya_res.get("model_backend", "laya-local")
+    rationale = (
+        f"Laya Decision ({backend_note}): {raw_dir} (Confidence: {confidence:.1f}%, "
+        f"distribution={laya_res.get('probabilities', {})})"
+    )
+    return raw_dir, confidence, 0.0, rationale, [], daily_doc
+
+
+async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list[dict]:
+    """Run daily predictions ahead of market open for target ticker across model arena (DeepSeek & MiniMax)."""
     now_et = get_ny_now()
     today = now_et.date()
 
-    if not force:
-        # 1. Market Hours Guard: Predictions are strictly for today's regular session (09:30 - 16:00 ET).
-        # Running after 09:30 AM ET makes no sense for the current session.
-        if now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 30):
-            logger.warning(
-                f"Refusing to run daily prediction for {today}: current time ({now_et.strftime('%H:%M')} ET) "
-                f"is after market open (09:30 ET). Daily predictions must run pre-market. Use --force to override."
-            )
-            return []
-        if now_et.hour < 4:
-            logger.warning(
-                f"Refusing to run daily prediction for {today}: current time ({now_et.strftime('%H:%M')} ET) "
-                f"is before pre-market open (04:00 ET). Use --force to override."
-            )
-            return []
-
-        # 2. Trading Day Guard
-        mdm = MarketDataManager()
-        is_trading = await mdm.is_trading_day(today)
-        if not is_trading:
-            logger.info(
-                f"Skipping daily prediction for {ticker} on {today}: "
-                f"Market is closed (weekend or holiday). Use --force to override."
-            )
-            return []
-
-        # 3. Idempotency & Overwrite Guard: Do not clobber existing morning predictions
-        client = get_supabase_client()
-        existing = (
-            client.table("daily_predictions")
-            .select("id")
-            .eq("target_date", today.isoformat())
-            .eq("ticker", ticker.upper())
-            .execute()
-        )
-        if existing and getattr(existing, "data", None) and isinstance(existing.data, list) and len(existing.data) > 0:
-            logger.warning(
-                f"Daily predictions for {ticker} on {today} already exist in database ({len(existing.data)} records). "
-                f"Refusing to overwrite existing morning predictions. Use --force to override."
-            )
-            return []
+    if not force and not await _can_run_daily_prediction(now_et, today, ticker):
+        return []
 
     client = get_supabase_client()
     ctx_res = await get_daily_market_context(ticker=ticker, return_data_record=True)
@@ -580,7 +683,6 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
     for model_cfg in models:
         model_name = model_cfg["name"]
         m_type = model_cfg["type"]
-        provider = model_cfg["provider"]
         prompt_tag, raw_prompt_content = await fetch_active_daily_prompt(model_name=model_name)
         if m_type not in ("jev", "jev_curated", "laya_curated"):
             header, mutable, footer = split_daily_predictor_prompt(raw_prompt_content)
@@ -591,140 +693,16 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
         success = False
         for attempt in range(3):
             try:
-                model_context = context
-                if m_type == "instructor":
-                    deepseek_client = get_deepseek_client()
-                    try:
-                        create_kwargs = {
-                            "model": model_name,
-                            "response_model": DailyPredictionOutput,
-                            "messages": [
-                                {"role": "system", "content": prompt_content},
-                                {"role": "user", "content": user_msg},
-                            ],
-                        }
-                        if provider == "deepseek" or "deepseek" in model_name.lower():
-                            create_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                        elif provider == "anthropic":
-                            from core.llm.handlers.anthropic import get_anthropic_thinking_kwargs
-
-                            create_kwargs["cache_control"] = {"type": "ephemeral"}
-                            create_kwargs["system"] = [
-                                {"type": "text", "text": prompt_content, "cache_control": {"type": "ephemeral"}}
-                            ]
-                            create_kwargs["messages"] = [{"role": "user", "content": user_msg}]
-                            create_kwargs.update(
-                                get_anthropic_thinking_kwargs(model_name, budget_tokens=2048, effort="medium")
-                            )
-                            create_kwargs["max_tokens"] = 4000
-                        elif provider == "gemini":
-                            from google.genai import types
-
-                            if hasattr(types, "ThinkingConfig"):
-                                create_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="high")
-                        elif provider == "openai":
-                            create_kwargs["reasoning_effort"] = "low"
-
-                        resp_awaitable = deepseek_client.chat.completions.create(**create_kwargs)
-                        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-                            resp = await resp_awaitable
-                        else:
-                            resp = resp_awaitable
-
-                        pred_dir = resp.predicted_direction.upper()
-                        confidence = float(resp.confidence)
-                        expected_return_pct = float(resp.expected_return_pct)
-                        rationale = resp.rationale
-                        catalysts = resp.catalysts
-                    finally:
-                        await close_client(deepseek_client, provider)
-
-                elif m_type == "minimax":
-                    minimax_client = MiniMaxClient()
-                    try:
-                        minimax_user_msg = (
-                            f"{user_msg}\n\n"
-                            "Note: Output ONLY the required JSON object conforming to the output schema. "
-                            "Do not include Markdown headers or YAML. "
-                            'Example: {"predicted_direction": "UP", "confidence": 65.0, "expected_return_pct": 0.35, "rationale": "...", "catalysts": ["..."]}'
-                        )
-                        messages = [
-                            {"role": "system", "content": prompt_content},
-                            {"role": "user", "content": minimax_user_msg},
-                        ]
-                        parsed_json = await minimax_client.chat_with_json_response(
-                            messages, model=model_name, max_completion_tokens=8192
-                        )
-                        pred_dir = str(parsed_json.get("predicted_direction", "UP")).upper()
-                        confidence = float(parsed_json.get("confidence", 50.0))
-                        expected_return_pct = float(parsed_json.get("expected_return_pct", 0.0))
-                        rationale = str(parsed_json.get("rationale", ""))
-                        catalysts = parsed_json.get("catalysts", [])
-                    finally:
-                        await minimax_client.close()
-
-                elif m_type == "jev":
-                    crit = parse_jev_prompt_content(raw_prompt_content)
-                    jev_res = await predict_daily_with_jev(
-                        context=context,
-                        criteria=crit,
-                        ticker=ticker,
-                        model_name=model_name,
-                    )
-                    pred_dir = jev_res["predicted_direction"]
-                    confidence = float(jev_res["confidence"])
-                    expected_return_pct = float(jev_res["expected_return_pct"])
-                    rationale = jev_res["rationale"]
-                    catalysts = jev_res["catalysts"]
-
-                elif m_type == "jev_curated":
-                    crit, min_conf, manifest_dict = parse_jev_curated_prompt_content(raw_prompt_content)
-                    manifest = DataManifest(**manifest_dict) if manifest_dict else DataManifest()
-                    curated_context = pack_daily_context(data_record, manifest)
-                    jev_res = await predict_daily_with_jev(
-                        context=curated_context,
-                        criteria=crit,
-                        ticker=ticker,
-                        model_name=JEV_MODEL,
-                    )
-                    raw_dir = str(jev_res["predicted_direction"]).upper()
-                    confidence = float(jev_res["confidence"])
-                    expected_return_pct = float(jev_res["expected_return_pct"])
-                    catalysts = jev_res["catalysts"]
-                    pred_dir = raw_dir
-                    rationale = jev_res["rationale"]
-                    model_context = curated_context
-
-                elif m_type == "laya_curated":
-                    ingestion_prompt, crit, min_conf = parse_laya_curated_prompt_content(raw_prompt_content)
-                    daily_doc = await generate_daily_document(
-                        day_record=data_record,
-                        ingestion_prompt=ingestion_prompt,
-                        allow_fallback=True,
-                    )
-                    criteria_obj = JevCriteriaConfig(
-                        criteria_up=crit["UP"],
-                        criteria_down=crit["DOWN"],
-                        min_confidence=min_conf,
-                    )
-                    laya_res = await evaluate_with_laya(
-                        context=daily_doc,
-                        criteria=criteria_obj,
-                        ticker=ticker,
-                        fallback_to_jev=True,
-                    )
-                    raw_dir = str(laya_res["predicted_direction"]).upper()
-                    confidence = float(laya_res["confidence"])
-                    expected_return_pct = 0.0
-                    catalysts = []
-                    pred_dir = raw_dir
-                    backend_note = laya_res.get("model_backend", "laya-local")
-                    rationale = (
-                        f"Laya Decision ({backend_note}): {raw_dir} (Confidence: {confidence:.1f}%, "
-                        f"distribution={laya_res.get('probabilities', {})})"
-                    )
-                    model_context = daily_doc
-
+                (
+                    pred_dir,
+                    confidence,
+                    expected_return_pct,
+                    rationale,
+                    catalysts,
+                    model_context,
+                ) = await _execute_model_daily_prediction(
+                    model_cfg, ticker, context, data_record, user_msg, raw_prompt_content, prompt_content
+                )
                 prediction_row = {
                     "prediction_date": today.isoformat(),
                     "target_date": today.isoformat(),

@@ -18,6 +18,32 @@ async def execute_get_global_macro_context_tool() -> str:
         return f"Error retrieving global macro context: {str(e)}"
 
 
+def _classify_spot_vix_regime_and_trend(
+    curr_vix: float, vix_percentile: float, vix_prices: list[float]
+) -> tuple[str, str]:
+    """Helper to classify spot VIX trend and regime."""
+    sma_10 = sum(vix_prices[-10:]) / min(10, len(vix_prices))
+    sma_30 = sum(vix_prices[-30:]) / min(30, len(vix_prices))
+    if curr_vix > sma_10 > sma_30:
+        trend_state = "STRONG VOLATILITY EXPANSION (VIX > SMA_10 > SMA_30)"
+    elif curr_vix < sma_10 < sma_30:
+        trend_state = "STRONG VOLATILITY CONTRACTION (VIX < SMA_10 < SMA_30)"
+    elif curr_vix > sma_30:
+        trend_state = "MODERATE VOLATILITY EXPANSION (VIX > SMA_30)"
+    else:
+        trend_state = "CONSOLIDATION / MEAN REVERSION"
+
+    if curr_vix >= 30.0 or (curr_vix >= 25.0 and vix_percentile >= 85.0):
+        regime = f"🚨 PANIC ZONE / EXTREME FEAR (Spot VIX: {curr_vix:.2f} >= 28-30 or >85th percentile)"
+    elif curr_vix >= 20.0 or vix_percentile >= 75.0:
+        regime = f"⚠️ ELEVATED VOLATILITY / CAUTION (Spot VIX: {curr_vix:.2f} in 20-30 range)"
+    elif curr_vix < 15.0 or vix_percentile <= 15.0:
+        regime = f"🟢 COMPLACENCY ZONE / LOW VOLATILITY (Spot VIX: {curr_vix:.2f} < 15 or <15th percentile)"
+    else:
+        regime = f"NORMAL VOLATILITY / BASELINE REGIME (Spot VIX: {curr_vix:.2f} in 15-20 range)"
+    return trend_state, regime
+
+
 async def execute_get_volatility_index_details_tool(lookback_days: int = 90) -> str:
     """Retrieves canonical spot Cboe VIX (^VIX) metrics and VIX futures ETF (VIXY/VIXM) term structure."""
     try:
@@ -101,26 +127,7 @@ async def execute_get_volatility_index_details_tool(lookback_days: int = 90) -> 
             smaller_vix = sum(1 for p in vix_prices if p < curr_vix)
             vix_percentile = (smaller_vix / len(vix_prices)) * 100
 
-            sma_10 = sum(vix_prices[-10:]) / min(10, len(vix_prices))
-            sma_30 = sum(vix_prices[-30:]) / min(30, len(vix_prices))
-            if curr_vix > sma_10 > sma_30:
-                trend_state = "STRONG VOLATILITY EXPANSION (VIX > SMA_10 > SMA_30)"
-            elif curr_vix < sma_10 < sma_30:
-                trend_state = "STRONG VOLATILITY CONTRACTION (VIX < SMA_10 < SMA_30)"
-            elif curr_vix > sma_30:
-                trend_state = "MODERATE VOLATILITY EXPANSION (VIX > SMA_30)"
-            else:
-                trend_state = "CONSOLIDATION / MEAN REVERSION"
-
-            # Volatility Regime derived from canonical Spot VIX levels + historical percentile
-            if curr_vix >= 30.0 or (curr_vix >= 25.0 and vix_percentile >= 85.0):
-                regime = f"🚨 PANIC ZONE / EXTREME FEAR (Spot VIX: {curr_vix:.2f} >= 28-30 or >85th percentile)"
-            elif curr_vix >= 20.0 or vix_percentile >= 75.0:
-                regime = f"⚠️ ELEVATED VOLATILITY / CAUTION (Spot VIX: {curr_vix:.2f} in 20-30 range)"
-            elif curr_vix < 15.0 or vix_percentile <= 15.0:
-                regime = f"🟢 COMPLACENCY ZONE / LOW VOLATILITY (Spot VIX: {curr_vix:.2f} < 15 or <15th percentile)"
-            else:
-                regime = f"NORMAL VOLATILITY / BASELINE REGIME (Spot VIX: {curr_vix:.2f} in 15-20 range)"
+            trend_state, regime = _classify_spot_vix_regime_and_trend(curr_vix, vix_percentile, vix_prices)
 
             sub_spy_aligned = [spy_by_date[d] for d in spot_vix_dates]
             sub_returns_spy = [

@@ -779,6 +779,72 @@ async def test_audit_auto_heal_anchors_to_initial_capital_when_no_prior_history(
     assert healed["new_equity"] < 10040.0
 
 
+class _DesyncedEquityPerfMock:
+    def __init__(self, updates_list):
+        self.is_lt = False
+        self._updates = updates_list
+
+    def select(self, *a, **kw):
+        return self
+
+    def eq(self, col, val):
+        return self
+
+    def lt(self, col, val):
+        self.is_lt = True
+        return self
+
+    def order(self, *a, **kw):
+        return self
+
+    def limit(self, *a, **kw):
+        return self
+
+    def update(self, payload):
+        self._updates.append(payload)
+        return self
+
+    def execute(self):
+        if self.is_lt:
+            return MagicMock(data=[{"total_equity": 10025.51}])
+        return MagicMock(data=[{"total_equity": 10025.21}])
+
+
+def _create_desynced_equity_table_router(pred, trades, performance_updates):
+    def table_router(table_name):
+        mock_t = MagicMock()
+        mock_t.select.return_value = mock_t
+        mock_t.update.side_effect = lambda payload: performance_updates.append(payload) or mock_t
+        mock_t.eq.return_value = mock_t
+        mock_t.gte.return_value = mock_t
+        mock_t.lte.return_value = mock_t
+        mock_t.lt.return_value = mock_t
+        mock_t.like.return_value = mock_t
+        mock_t.order.return_value = mock_t
+        mock_t.limit.return_value = mock_t
+
+        table_data_map = {
+            "daily_predictions": [pred],
+            "portfolios": [
+                {
+                    "id": "p-jev",
+                    "owner_id": "sys-daily-spy-close-jev-four-regime-champion",
+                    "cash_balance": 10050.72,
+                    "total_equity": 10050.72,
+                }
+            ],
+            "trades": trades,
+            "portfolio_positions": [],
+        }
+
+        if table_name == "portfolio_performance":
+            return _DesyncedEquityPerfMock(performance_updates)
+        mock_t.execute.return_value = MagicMock(data=table_data_map.get(table_name, []))
+        return mock_t
+
+    return table_router
+
+
 @pytest.mark.asyncio
 async def test_audit_detects_and_heals_desynced_performance_equity(mock_supabase):
     """Verify that when performance equity drifts from prior equity + trade realized PnL, it is detected and healed."""
@@ -817,76 +883,7 @@ async def test_audit_detects_and_heals_desynced_performance_equity(mock_supabase
     ]
 
     performance_updates = []
-
-    def table_router(table_name):
-        mock_t = MagicMock()
-        mock_t.select.return_value = mock_t
-        mock_t.update.side_effect = lambda payload: performance_updates.append(payload) or mock_t
-        mock_t.eq.return_value = mock_t
-        mock_t.gte.return_value = mock_t
-        mock_t.lte.return_value = mock_t
-        mock_t.lt.return_value = mock_t
-        mock_t.like.return_value = mock_t
-        mock_t.order.return_value = mock_t
-        mock_t.limit.return_value = mock_t
-
-        if table_name == "daily_predictions":
-            mock_t.execute.return_value = MagicMock(data=[pred])
-        elif table_name == "portfolios":
-            mock_t.execute.return_value = MagicMock(
-                data=[
-                    {
-                        "id": "p-jev",
-                        "owner_id": "sys-daily-spy-close-jev-four-regime-champion",
-                        "cash_balance": 10050.72,
-                        "total_equity": 10050.72,
-                    },
-                ]
-            )
-        elif table_name == "trades":
-            mock_t.execute.return_value = MagicMock(data=trades)
-        elif table_name == "portfolio_performance":
-            # If lt("date", target_date): returns Day 1 equity: 10025.51
-            # If eq("date", target_date): returns desynced Day 2 equity: 10025.21 (expected is 10025.51 - 3.64 = 10021.87)
-            # We can mock this dynamically by inspecting call args or returning based on call
-            class PerfMock:
-                def __init__(self):
-                    self.is_lt = False
-
-                def select(self, *a, **kw):
-                    return self
-
-                def eq(self, col, val):
-                    return self
-
-                def lt(self, col, val):
-                    self.is_lt = True
-                    return self
-
-                def order(self, *a, **kw):
-                    return self
-
-                def limit(self, *a, **kw):
-                    return self
-
-                def update(self, payload):
-                    performance_updates.append(payload)
-                    return self
-
-                def execute(self):
-                    if self.is_lt:
-                        return MagicMock(data=[{"total_equity": 10025.51}])
-                    else:
-                        return MagicMock(data=[{"total_equity": 10025.21}])
-
-            return PerfMock()
-        elif table_name == "portfolio_positions":
-            mock_t.execute.return_value = MagicMock(data=[])
-        else:
-            mock_t.execute.return_value = MagicMock(data=[])
-        return mock_t
-
-    mock_supabase.table.side_effect = table_router
+    mock_supabase.table.side_effect = _create_desynced_equity_table_router(pred, trades, performance_updates)
 
     report = await audit_system_portfolios(
         target_date=target_date,

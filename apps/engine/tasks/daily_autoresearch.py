@@ -427,10 +427,20 @@ async def generate_new_daily_prompt(
             "Output ONLY the raw new strategy instructions text."
         )
 
+    meta_directives_block = ""
+    try:
+        from autoresearch.meta_autoresearch import get_active_meta_directives_sync
+
+        meta_directives = get_active_meta_directives_sync()
+        if meta_directives:
+            meta_directives_block = f"\n\n### MONTHLY META-AUTORESEARCH DIRECTIVES:\n{meta_directives}"
+    except Exception:
+        logger.exception("Failed to load monthly meta-autoresearch directives in generate_new_daily_prompt.")
+
     meta_prompt = (
         "You are a Meta-Researcher AI optimizing an LLM prompt for predicting intraday S&P 500 (SPY) open-to-close price movement.\n\n"
         f"The current prompt strategy achieved a ratchet score of {baseline_score:.2f}.\n\n"
-        f"{postmortem_context}\n\n"
+        f"{postmortem_context}{meta_directives_block}\n\n"
         "### STRUCTURAL PROMPT SECTIONS & MUTATION RULES:\n"
         "1. STRUCTURAL SECTIONS ARE FROZEN: System constraints (trader identity, available market context injection, and required JSON output format) are FROZEN and managed automatically by the engine.\n"
         "2. Do NOT include system header rules, context definitions, or JSON schemas in your output. You are modifying ONLY the analytical reasoning and strategy section. "

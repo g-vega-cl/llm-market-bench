@@ -11,10 +11,11 @@ Karpathy-style autonomous prompt improvement loop that runs weekly (Sunday 6:00 
 
 The core portfolio auto-research pipeline is located in `apps/engine/autoresearch/`:
 
-- **Runner** (`apps/engine/autoresearch/runner.py`): Top-level orchestrator that checks trade execution safety, invokes evaluation, manages baseline ratchet comparisons, and rolls stochastic cold-start dice.
+- **Runner** (`apps/engine/autoresearch/runner.py`): Top-level orchestrator that checks trade execution safety, invokes evaluation, manages baseline ratchet comparisons, rolls stochastic cold-start dice, and triggers the monthly meta-autoresearch check on the first weekend of each calendar month.
 - **Evaluator** (`apps/engine/autoresearch/evaluator.py`): Gathers weekly trade executions, computes benchmark-relative returns, and formats structured evaluation reports.
 - **Metrics** (`apps/engine/autoresearch/metrics.py`): Implements the canonical evaluation math via `compute_score()`.
 - **Researcher** (`apps/engine/autoresearch/researcher.py`): Meta-researcher LLM interface that synthesizes prompt mutations and manages cognitive tool selection.
+- **Monthly Meta-Autoresearcher** (`apps/engine/autoresearch/meta_autoresearch.py`): Evaluates 30-day cross-track weekly mutations (`CORE_ANALYSIS_SYSTEM_PROMPT` and `DAILY_PREDICTOR_PROMPT`) on **Mutation Yield** (50% Baseline Beat Rate, 35% Clamped Score Delta, 15% Non-Crash Rate), builds an empirical 30-day prompt-block leaderboard, and ratchets `META_AUTORESEARCH_PROGRAM` directives consumed by both `apps/engine/autoresearch/researcher.py` and `apps/engine/tasks/daily_autoresearch.py`.
 
 > [!NOTE]
 > Portfolio Autoresearch optimizes the core trading prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`). It is decoupled from the Daily Market Predictor autoresearch loop (`apps/engine/tasks/daily_autoresearch.py`, see [[entities/daily-market-predictor]]) and the Sector Predictor loop (`apps/engine/tasks/predictor_autoresearch.py`, see [[entities/sector-predictor-arena]]).

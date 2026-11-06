@@ -81,9 +81,9 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Multimodal & Visual Market Prediction
 
-- [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
-- [ ] - visual predictor- Somethuing like https://huggingface.co/foduucom/stockmarket-pattern-detection-yolov8 or even a minute-by-minute/ or short time x short time predictor of the market. Not necessarily visual, but it would be great to compare results of visual/non-visual.
-
+- [p] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
+- [p] - visual predictor- Somethuing like https://huggingface.co/foduucom/stockmarket-pattern-detection-yolov8 or even a minute-by-minute/ or short time x short time predictor of the market. Not necessarily visual, but it would be great to compare results of visual/non-visual.
+ - I thought about this and making it work is probably not worth, it includes rendering sending images to the LLM, etc...  
 ---
 
 ## 🌐 Horizon 4: Product, Platform & Community (Long-Term)

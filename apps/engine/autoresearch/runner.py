@@ -350,6 +350,13 @@ async def run(
 
 async def run_all(dry_run: bool = False, cold_start: bool | None = None):
     """Run the auto-research cycle across all configured tracks sequentially within the same event loop."""
+    try:
+        from autoresearch.meta_autoresearch import run_monthly_meta_autoresearch
+
+        await run_monthly_meta_autoresearch(dry_run=dry_run)
+    except Exception:
+        logger.exception("Monthly meta-autoresearch check failed; continuing with weekly track autoresearch.")
+
     from core.config import AUTORESEARCH_TRACKS
 
     track_ids = list(AUTORESEARCH_TRACKS.keys()) if AUTORESEARCH_TRACKS else ["track_default"]

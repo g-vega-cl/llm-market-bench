@@ -130,6 +130,14 @@ async def run_research(
         logger.warning("Failed to pre-query DB trade postmortems for autoresearcher: %s", e)
 
     system_program = _load_research_program()
+    try:
+        from autoresearch.meta_autoresearch import get_active_meta_directives_sync
+
+        meta_directives = get_active_meta_directives_sync()
+        if meta_directives:
+            system_program += f"\n\n=== MONTHLY META-AUTORESEARCH DIRECTIVES ===\n{meta_directives}"
+    except Exception:
+        logger.exception("Failed to load monthly meta-autoresearch directives in run_research.")
     user_content = report
 
     if cold_start:

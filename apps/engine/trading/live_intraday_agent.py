@@ -16,13 +16,14 @@ from typing import Any
 
 import httpx
 
-from analysis.intraday_news_aggregator import aggregate_intraday_news, generate_source_id_hash
+from analysis.intraday_news_aggregator import aggregate_intraday_news
 from core.config import (
     FMP_API_KEY,
     MASSIVE_API_KEY,
     logger,
 )
 from core.db import get_supabase_client
+from trading.intraday_news_store import persist_intraday_news
 from trading.read_only_retriever import (
     format_read_only_grounding,
     retrieve_read_only_market_data,
@@ -43,49 +44,6 @@ def set_latest_news_synthesis(summary: str | None) -> None:
     """Cache the most recently generated 30-minute AI news synthesis."""
     global _LATEST_NEWS_SYNTHESIS
     _LATEST_NEWS_SYNTHESIS = summary
-
-
-async def persist_intraday_news(news_items: list[dict[str, Any]], sb_client: Any = None) -> int:
-    """Persist deduplicated news items into public.intraday_market_news using upsert."""
-    if not news_items:
-        return 0
-
-    sb = sb_client or get_supabase_client()
-    if not sb:
-        return 0
-
-    to_insert = []
-    for item in news_items:
-        headline = item.get("headline", "").strip()
-        if not headline:
-            continue
-        source = item.get("source", "Unknown")
-        pub_time = item.get("published_at") or datetime.now(UTC).isoformat()
-        h = item.get("source_id_hash") or generate_source_id_hash(headline, source, pub_time)
-        to_insert.append(
-            {
-                "headline": headline,
-                "summary": item.get("summary") or "",
-                "source": source,
-                "url": item.get("url"),
-                "tickers": item.get("tickers") or [],
-                "event_timestamp": pub_time,
-                "jev_choice": "MARKET_MOVING",
-                "jev_confidence": 75.0,
-                "source_id_hash": h,
-            }
-        )
-
-    if not to_insert:
-        return 0
-
-    try:
-        sb.table("intraday_market_news").upsert(to_insert, on_conflict="source_id_hash").execute()
-        logger.info(f"Persisted {len(to_insert)} intraday news items to database.")
-        return len(to_insert)
-    except Exception as e:
-        logger.warning(f"Failed to upsert intraday news to database: {e}")
-        return 0
 
 
 def _get_free_proxy_master_key() -> str:

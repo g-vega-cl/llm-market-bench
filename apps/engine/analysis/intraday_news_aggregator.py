@@ -28,6 +28,25 @@ def generate_source_id_hash(headline: str, source: str, event_timestamp: str) ->
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+_NOISE_HEADLINE_RE = re.compile(
+    r"class action"
+    r"|lead plaintiff"
+    r"|securities (?:fraud|litigation)"
+    r"|investors? (?:who|that) (?:lost|suffered)"
+    r"|on behalf of (?:\w+ ){0,3}(?:investors|shareholders)"
+    r"|reminds? .{0,80}investors"
+    r"|market size,? share"
+    r"|market (?:report|analysis)\b.*\b20\d\d"
+    r"|global (?:industry )?forecast",
+    re.IGNORECASE,
+)
+
+
+def is_noise_headline(headline: str) -> bool:
+    """Return True for law-firm solicitations and market-research press releases."""
+    return bool(_NOISE_HEADLINE_RE.search(headline or ""))
+
+
 def normalize_headline(headline: str) -> set[str]:
     """Tokenize and normalize headline words for Jaccard overlap."""
     clean = re.sub(r"[^\w\s]", "", headline.lower())
@@ -266,7 +285,7 @@ async def aggregate_intraday_news(
         combined: list[dict[str, Any]] = []
         for res in results:
             if isinstance(res, list):
-                combined.extend(res)
+                combined.extend(r for r in res if not is_noise_headline(r.get("headline", "")))
 
         deduped = deduplicate_news(combined, similarity_threshold=similarity_threshold)
         for item in deduped:

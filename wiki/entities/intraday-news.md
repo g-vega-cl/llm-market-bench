@@ -37,6 +37,13 @@ Each new candidate is evaluated by `evaluate_news_with_jev()` against the OpenRo
 
 Evaluation runs concurrently under an `asyncio.Semaphore(3)` and only the first 10 new candidates per sync are screened. Items classified `MARKET_MOVING` with confidence ≥ 70 are persisted to the `intraday_market_news` table (see [[entities/database]]).
 
+## Edge Persistence, Noise Filter & Jev Cost
+
+- **Noise filter**: `is_noise_headline()` in `apps/engine/analysis/intraday_news_aggregator.py` drops law-firm class-action solicitations and "Market Size, Share … Forecast" press releases from every provider before deduplication.
+- **Vetted persistence**: `persist_intraday_news()` in `apps/engine/trading/intraday_news_store.py` (colocated test: `apps/engine/trading/test_intraday_news_store.py`) runs every 5-minute cycle. It skips hashes already stored, drops headlines Jaccard-similar to any stored in the last 24h, then calls Jev once per remaining item (`Semaphore(3)`). Only `MARKET_MOVING` ≥ 70 is stored, with its real confidence (previously a hardcoded 75.0 stamped on everything).
+- **Cost tracking**: each cycle logs `Intraday news Jev calls: N, market-moving kept: M`. Summing `N` over the logs gives the OpenRouter call count for a period.
+- **Kill switch**: `INTRADAY_NEWS_JEV_VETTING=false` stops all Jev calls from this path; items are then stored with `jev_choice="UNVETTED"` and `jev_confidence=0`.
+
 ## Sync & Caching
 
 `sync_intraday_market_news(force=False)` is the entry point. It enforces a 15-minute freshness guard (`DEFAULT_SYNC_COOLDOWN_SECONDS = 900`): if the newest stored record is younger than the cooldown, it returns the cached rows without re-fetching. `force=True` bypasses the guard. If no `OPENROUTER_API_KEY` is configured, evaluation defaults to `NOISE` and nothing is stored.

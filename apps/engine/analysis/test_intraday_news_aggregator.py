@@ -231,3 +231,53 @@ async def test_fetch_fmp_news_includes_url_and_tickers():
     assert results[0]["url"] == "https://seekingalpha.com/article/tsla"
     assert results[0]["tickers"] == ["TSLA"]
     assert "T" in results[0]["published_at"]  # Normalized to ISO
+
+
+@pytest.mark.parametrize(
+    "headline",
+    [
+        "Kaplan Fox Reminds AppLovin Corporation (NASDAQ: APP) Investors of an Approaching Securities Class Action Deadline",
+        "Bronstein, Gewirtz & Grossman LLC Urges AppLovin Corporation Investors to Act: Class Action Filed",
+        "Data Center Fire Suppression Systems Market Size, Share & Trends Analysis - Global Industry Forecast, 2026-2033",
+        "Compute Express Link (CXL) Memory Market Size, Share, Trends and Global Forecast 2026-2036",
+    ],
+)
+def test_is_noise_headline_flags_solicitations_and_market_reports(headline):
+    from analysis.intraday_news_aggregator import is_noise_headline
+
+    assert is_noise_headline(headline) is True
+
+
+@pytest.mark.parametrize(
+    "headline",
+    [
+        "Fed's Daly Says Inflation Is More Stubborn Than Would Like",
+        "U.S. Baker Hughes Oil Rig Count +1 To 463",
+        "Not Oklo. Not X-Energy. This SMR Stock Just Signed a Contract",
+    ],
+)
+def test_is_noise_headline_keeps_real_news(headline):
+    from analysis.intraday_news_aggregator import is_noise_headline
+
+    assert is_noise_headline(headline) is False
+
+
+@pytest.mark.asyncio
+async def test_aggregate_drops_noise_headlines():
+    from analysis.intraday_news_aggregator import aggregate_intraday_news
+
+    alpaca = MagicMock()
+    alpaca.get_news.return_value = MagicMock(data={"news": []})
+    http = AsyncMock()
+    resp = MagicMock(status_code=200)
+    resp.json.return_value = {
+        "results": [
+            {"title": "Securities Class Action Filed Against ACME Investors", "published_utc": "2026-11-06T18:00:00Z"},
+            {"title": "Treasury Secretary Bessent Meets China Vice Premier", "published_utc": "2026-11-06T18:01:00Z"},
+        ]
+    }
+    http.get.return_value = resp
+
+    out = await aggregate_intraday_news(alpaca_client=alpaca, http_client=http, massive_api_key="k")
+
+    assert [i["headline"] for i in out] == ["Treasury Secretary Bessent Meets China Vice Premier"]

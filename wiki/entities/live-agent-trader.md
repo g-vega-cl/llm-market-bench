@@ -31,7 +31,7 @@ Empty input returns a neutral snapshot (`vwap 0.0`, `rsi_14 50.0`, `trend NEUTRA
 - Every normalized article carries `url`, `tickers`, and a deterministic `source_id_hash` (SHA-256 of `headline|source|event_timestamp[:19]`).
 - `normalize_headline` lowercases, strips punctuation, drops stopwords and tokens of length 2 or less; `deduplicate_news` then drops any article whose Jaccard word overlap with an already seen headline is greater than or equal to `similarity_threshold` (default 0.5).
 - `aggregate_intraday_news` fans the three providers out with `asyncio.gather(..., return_exceptions=True)`, keeps only list results, and returns the deduplicated combined feed (backfilling `source_id_hash` on any item missing one). Each provider fails soft on missing keys, non-200 responses, or exceptions.
-- **Persistence**: `persist_intraday_news(news_items, sb_client=None)` upserts deduplicated items into `intraday_market_news` on `on_conflict="source_id_hash"`, stamping `jev_choice="MARKET_MOVING"` and `jev_confidence=75.0`. `execute_intraday_agent_step` calls it after aggregation so the continuous edge feed keeps the table populated (see [[entities/intraday-news]]).
+- **Persistence**: `persist_intraday_news(news_items, sb_client=None, evaluate=...)` (in `apps/engine/trading/intraday_news_store.py`) skips stored hashes and near-duplicate headlines from the last 24h, vets each remaining item with Jev, and upserts only `MARKET_MOVING` items with their real confidence on `on_conflict="source_id_hash"`. `execute_intraday_agent_step` calls it after aggregation (see [[entities/intraday-news]]).
 
 ### 4. Cascading LLM Inference and Network Topology
 `query_multi_tier_llm` implements a two-tier cascade:

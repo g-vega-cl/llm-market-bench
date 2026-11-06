@@ -17,21 +17,6 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
-- [x] - Benchify : format the user question properly
-- [x] - Benchify: Intraday Thought Trace layout. Verbatim feedback:
-  • 7:12 PM ET
-  HOLD DECISION
-
-  Still looks bad. Always make sure there is a consistent gap between elements. If elements can't fit without wrapping. Or if they are smushed. Delete one element. We would rather have less, but excellent looking.
-
-  Or make two rows.
-
-  In this case. Intraday thought trace could be above the other two elements. Like a title There's also no need to add
-
-  VWAP:
-  $735.52
-  RSI:
-  28.6
 
 ### Marketing & Building in Public
 

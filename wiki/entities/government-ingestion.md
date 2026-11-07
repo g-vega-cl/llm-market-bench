@@ -5,16 +5,18 @@ category: entity
 
 # Government Ingestion Pipeline
 
-The government ingestion subsystem (`apps/engine/ingest/government.py`, `apps/engine/ingest/government_fetchers.py`, and `apps/engine/ingest/whale_fetchers.py`) pulls official government balance-sheet operations, fiscal deficits, procurement awards, and institutional blockholder disclosures into PostgreSQL. It runs outside the daily newsletter/consensus loop and feeds both the [[concepts/catalyst-radar]] and downstream analysis agents with hard fiscal and ownership data.
+The government ingestion subsystem (`apps/engine/ingest/government.py`, `apps/engine/ingest/government_fetchers.py`, `apps/engine/ingest/whale_fetchers.py`, `apps/engine/ingest/congress_fetchers.py`, and `apps/engine/ingest/insider_fetchers.py`) pulls official government balance-sheet operations, fiscal deficits, procurement awards, institutional blockholder disclosures, Congress STOCK Act filings, and corporate/Canadian insider trading into PostgreSQL. It runs outside the daily newsletter/consensus loop and feeds both the [[concepts/catalyst-radar]] and downstream analysis agents with hard fiscal, political, and insider ownership data.
 
 ## Pipeline Stages
 
-`GovernmentPipeline.run()` executes four independent stages in order. Each stage is wrapped in its own `try/except` that logs a warning and continues, so a single upstream outage never aborts the run:
+`GovernmentPipeline.run()` executes six independent stages in order. Each stage is wrapped in its own `try/except` that logs a warning and continues, so a single upstream outage never aborts the run:
 
-1. **`ingest_liquidity(days=14)`** — US Treasury General Account cash, national debt, and monthly deficit.
-2. **`ingest_contracts(limit=50)`** — US federal contract awards plus Canadian federal contracts.
-3. **`ingest_whales(symbols=None)`** — SEC Schedule 13D/13G beneficial ownership disclosures.
-4. **`extract_policy_memories()`** — LLM extraction of policy/incentive catalysts into `GOVERNMENT_INCENTIVE` memories.
+1. **`ingest_liquidity(days=14)`** — US Treasury General Account cash, national debt, and monthly deficit (`gov_macro_liquidity`).
+2. **`ingest_contracts(limit=50)`** — US federal contract awards plus Canadian federal contracts (`gov_contracts`).
+3. **`ingest_whales(symbols=None)`** — SEC Schedule 13D/13G beneficial ownership disclosures (`institutional_whale_stakes`).
+4. **`ingest_congress(limit=50)`** — US Senate and House personal transaction disclosures (`congress_trades`).
+5. **`ingest_insiders(limit=50)`** — Market-wide SEC Form 4 filings and active universe corporate & Canadian insider activity (`insider_trades`).
+6. **`extract_policy_memories()`** — LLM extraction of policy/incentive catalysts into `GOVERNMENT_INCENTIVE` memories.
 
 `run()` returns the number of policy memories created. The module-level entry point `run_government_pipeline()` returns a summary dict `{"status": "success", "memories_created": N}` for CLI and scheduled workflow callers.
 
@@ -66,6 +68,21 @@ Tracks activist blockholder entries (Schedule 13D), major institutional position
 
 Prompts Gemini (`GEMINI_MODEL`) with a `DecisionsResponse` schema to identify current and upcoming US and Canadian government budgets, objectives, and incentives that could move markets — renewable energy incentives, infrastructure and pipeline spending, tech/AI subsidies and regulation, critical minerals initiatives, and major budget expiration dates. Each returned macro event is persisted via `add_memory()` as a `GOVERNMENT_INCENTIVE` memory containing the event name, reasoning, impact, and expiry date, feeding the [[concepts/catalyst-radar]].
 
+## Congress Disclosures (`congress_fetchers.py`)
+
+Ingests recent STOCK Act personal stock transactions for the US Senate and House of Representatives.
+
+- **`fetch_latest_congress_trades(limit=50)`** — queries FMP `/stable/senate-latest` and `/stable/house-latest`, normalizing representative names, ticker symbols, transaction types (`purchase`/`sale`/`exchange`), and estimated dollar value midpoints.
+- **`upsert_congress_trades(records)`** — deduplicates on `(chamber, representative_name, symbol, transaction_date, transaction_type, amount_range)` and upserts into `public.congress_trades`.
+
+## Corporate & Canadian Insider Activity (`insider_fetchers.py`)
+
+Ingests corporate executive and director transactions, focusing on high-conviction Form 4 filings and Canadian cross-listed equities.
+
+- **`fetch_latest_insider_trades(limit=100)`** — pulls market-wide filings from FMP `/stable/insider-trading/latest`.
+- **`fetch_universe_insider_trades(symbols=None, limit_per_symbol=25)`** — concurrent asynchronous scanner for core mega-caps and Canadian bellwethers (`SHOP`, `SU`, `ENB`, `RY`, `TD`, `CNR`, `CP`, `BMO`, `BNS`, `MFC`, `BCE`, `WCN`, `OTEX`, `NTR`, `FNV`, `AGI`).
+- **`upsert_insider_trades(records)`** — deduplicates on `(symbol, reporting_name, transaction_date, filing_date, transaction_type, securities_transacted, price)` and upserts into `public.insider_trades`.
+
 ## Database Tables
 
 | Table | Purpose | Unique key |
@@ -73,8 +90,10 @@ Prompts Gemini (`GEMINI_MODEL`) with a `DecisionsResponse` schema to identify cu
 | `gov_macro_liquidity` | Daily TGA cash, total public debt, debt held by the public, intragovernmental holdings, monthly deficit/surplus | `record_date` |
 | `gov_contracts` | US and Canadian federal contract awards with amounts, agencies, and source URLs | `(country, award_id, recipient_name, award_date)` |
 | `institutional_whale_stakes` | Schedule 13D/13G filer stakes, percentages, share counts, and exit flags | `(symbol, filer_name, filing_date, percent_of_class)` |
+| `congress_trades` | US Senate and House personal transaction disclosures | `(chamber, representative_name, symbol, transaction_date, transaction_type, amount_range)` |
+| `insider_trades` | SEC Form 4 insider transactions for corporate officers, directors, and 10%+ owners | `(symbol, reporting_name, transaction_date, filing_date, transaction_type, securities_transacted, price)` |
 
-All three tables enable RLS with public `SELECT` and `service_role` full access, and are created by migrations `20261106180000_create_gov_macro_and_contracts.sql` and `20261106190000_create_institutional_whale_stakes.sql` (mirrored in `docker/archive/init.sql`). See [[entities/database]].
+All five tables enable RLS with public `SELECT` and `service_role` full access. The fiscal/contract/whale trio is created by migrations `20261106180000_create_gov_macro_and_contracts.sql` and `20261106190000_create_institutional_whale_stakes.sql` (mirrored in `docker/archive/init.sql`); `congress_trades` and `insider_trades` are populated by the Congress and insider stages of this pipeline. See [[entities/database]].
 
 ## Resilience & Parsing Helpers
 
@@ -86,8 +105,9 @@ All three tables enable RLS with public `SELECT` and `service_role` full access,
 
 - `apps/engine/tests/test_government_ingest.py` — `_safe_float` coercion, DTS/debt/MTS merge, USAspending parsing, CanadaBuys CSV parsing and network-failure handling, both upsert helpers, and end-to-end `GovernmentPipeline.run()` / `run_government_pipeline()` orchestration.
 - `apps/engine/tests/test_institutional_whales.py` — float parsing, `filter_whale_stakes` accumulation/exit/activist classification, FMP fetch success and missing-key paths, stake upserts, `ingest_institutional_whales` flow, and confirmation that `GovernmentPipeline.run()` invokes whale ingestion.
+- `apps/engine/tests/test_congress_insider_ingest.py` — hermetic coverage of `fetch_latest_congress_trades` (both chambers, normalized fields, positive `amount_est_midpoint`), `upsert_congress_trades`, `fetch_latest_insider_trades`, `fetch_universe_insider_trades`, `upsert_insider_trades`, and a full `GovernmentPipeline.run()` orchestration test asserting all six stages fire.
 
-Both suites are fully hermetic (mocked `httpx.AsyncClient` and Supabase clients) per [[concepts/test-coverage]].
+All suites are fully hermetic (mocked `httpx.AsyncClient` and Supabase clients) per [[concepts/test-coverage]].
 
 ## Related
 
@@ -95,5 +115,6 @@ Both suites are fully hermetic (mocked `httpx.AsyncClient` and Supabase clients)
 - [[concepts/catalyst-radar]] — consumes the policy and contract catalysts
 - [[entities/database]] — table definitions, RLS, and migrations
 - [[entities/congress-trades]] — sibling STOCK Act disclosure ingestion
+- [[entities/insider-trades]] — corporate and Canadian insider transaction ingestion
 - [[entities/engine]] — the Python data engine hosting this pipeline
 - [[entities/pipeline]] — the daily pipeline lifecycle

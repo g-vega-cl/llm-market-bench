@@ -48,6 +48,8 @@ The `GovernmentPipeline` (`apps/engine/ingest/government.py` and `apps/engine/in
   - Materialized into `gov_contracts`.
 - **Catalyst Memories**: Flags major contract pipelines, critical minerals incentives, and budget expirations for [[concepts/catalyst-radar]].
 - **Institutional Whale & Activist Blockholders**: The pipeline (`apps/engine/ingest/whale_fetchers.py`) ingests real-time SEC Schedule 13D and 13G beneficial ownership disclosures (>5% stake acquisitions, activist entries, and complete position liquidations) for active universe tickers into `institutional_whale_stakes`.
+- **Congress STOCK Act Disclosures**: The pipeline (`apps/engine/ingest/congress_fetchers.py`) pulls US Senate and House personal transaction disclosures from FMP (`/stable/senate-latest`, `/stable/house-latest`), normalizes representative names, tickers, transaction types, and disclosed dollar-band midpoints, and upserts them into `congress_trades` (see [[entities/congress-trades]]).
+- **Corporate & Canadian Insider Activity**: The pipeline (`apps/engine/ingest/insider_fetchers.py`) ingests market-wide SEC Form 4 filings plus a concurrent per-symbol scan of core mega-caps and Canadian dual-listed bellwethers into `insider_trades` (see [[entities/insider-trades]]).
 
 ## Dry-Run Mode & After-Hours Simulation
 
@@ -65,3 +67,6 @@ The ingestion pipeline supports an end-to-end dry-run simulation mode via the `-
 - [[entities/engine]]
 - [[entities/tool-audit]]
 - [[entities/fetch-daily-newsletter-tool]]
+- [[entities/government-ingestion]]
+- [[entities/congress-trades]]
+- [[entities/insider-trades]]

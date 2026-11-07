@@ -14,12 +14,21 @@ from core.config import GEMINI_MODEL, logger
 from core.db import get_supabase_client
 from core.llm import get_gemini_client
 from core.models import DecisionsResponse
+from ingest.congress_fetchers import (
+    fetch_latest_congress_trades,
+    upsert_congress_trades,
+)
 from ingest.government_fetchers import (
     fetch_canadabuys_contracts,
     fetch_us_treasury_liquidity,
     fetch_usaspending_contracts,
     upsert_gov_contracts,
     upsert_gov_macro_liquidity,
+)
+from ingest.insider_fetchers import (
+    fetch_latest_insider_trades,
+    fetch_universe_insider_trades,
+    upsert_insider_trades,
 )
 from ingest.whale_fetchers import ingest_institutional_whales
 from memory.store import add_memory
@@ -67,6 +76,23 @@ class GovernmentPipeline:
             res["symbols_processed"],
         )
         return res
+
+    async def ingest_congress(self, limit: int = 50) -> int:
+        """Fetch and persist recent Congress STOCK Act disclosures."""
+        trades = await fetch_latest_congress_trades(limit=limit)
+        upserted = await upsert_congress_trades(trades) if trades else 0
+        logger.info("Upserted %d congress trades.", upserted)
+        return upserted
+
+    async def ingest_insiders(self, limit: int = 50) -> int:
+        """Fetch and persist latest Form 4 and active universe corporate/Canadian insider trades."""
+        latest_trades = await fetch_latest_insider_trades(limit=limit)
+        universe_trades = await fetch_universe_insider_trades(limit_per_symbol=10)
+
+        all_trades = latest_trades + universe_trades
+        upserted = await upsert_insider_trades(all_trades) if all_trades else 0
+        logger.info("Upserted %d insider trades.", upserted)
+        return upserted
 
     async def extract_policy_memories(self) -> int:
         """Analyze upcoming federal policies and incentives for the Catalyst Radar."""
@@ -145,7 +171,19 @@ class GovernmentPipeline:
         except Exception as e:
             logger.warning("Whale ingestion error: %s", e)
 
-        # 4. Extract policy & incentive memories for catalyst radar
+        # 4. Ingest Congress STOCK Act disclosures
+        try:
+            await self.ingest_congress()
+        except Exception as e:
+            logger.warning("Congress trades ingestion error: %s", e)
+
+        # 5. Ingest corporate and Canadian insider trades (SEC Form 4s)
+        try:
+            await self.ingest_insiders()
+        except Exception as e:
+            logger.warning("Insider trades ingestion error: %s", e)
+
+        # 6. Extract policy & incentive memories for catalyst radar
         memories_count = await self.extract_policy_memories()
 
         logger.info("Government pipeline completed.")

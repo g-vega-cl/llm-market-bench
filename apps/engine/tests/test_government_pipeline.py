@@ -36,6 +36,11 @@ async def test_government_pipeline_await_crash():
         patch("ingest.government.get_gemini_client", return_value=mock_client),
         patch("ingest.government.get_supabase_client", return_value=mock_supabase),
         patch("ingest.government.add_memory", return_value="some-uuid") as mock_add_memory,
+        patch("ingest.government.GovernmentPipeline.ingest_liquidity", return_value=0),
+        patch("ingest.government.GovernmentPipeline.ingest_contracts", return_value={}),
+        patch("ingest.government.GovernmentPipeline.ingest_whales", return_value={}),
+        patch("ingest.government.GovernmentPipeline.ingest_congress", return_value=0),
+        patch("ingest.government.GovernmentPipeline.ingest_insiders", return_value=0),
     ):
         pipeline = GovernmentPipeline()
         count = await pipeline.run()

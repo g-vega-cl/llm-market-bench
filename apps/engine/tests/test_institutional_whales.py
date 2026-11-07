@@ -200,6 +200,16 @@ async def test_government_pipeline_includes_whales():
             return_value={"symbols_processed": 5, "stakes_upserted": 10},
         ) as mock_whales,
         patch(
+            "ingest.government.GovernmentPipeline.ingest_congress",
+            new_callable=AsyncMock,
+            return_value=0,
+        ),
+        patch(
+            "ingest.government.GovernmentPipeline.ingest_insiders",
+            new_callable=AsyncMock,
+            return_value=0,
+        ),
+        patch(
             "ingest.government.GovernmentPipeline.extract_policy_memories",
             new_callable=AsyncMock,
             return_value=0,

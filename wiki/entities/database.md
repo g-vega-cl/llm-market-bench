@@ -21,11 +21,13 @@ The database is organized into several functional areas:
 - `analysis_sessions` — Top-level grouping for each analysis cycle
 - `catalyst_radar` — Pre-computed collisions between narrative concepts and calendar events for the Keep an Eye radar (see [[concepts/catalyst-radar]])
 - `chat_memories` — User-curated private research theses with full RLS isolation (see [[concepts/private-memory-vault]]). `user_id UUID NOT NULL` stores the Supabase Cloud user UUID directly; the foreign key to the local `auth.users` stub was dropped in migration `20261030150000_decouple_chat_memories_auth_fk.sql` because Auth lives in Supabase Cloud while data lives in this archive DB.
+- `congress_trades` — US Senate and House STOCK Act personal transaction disclosures (see [[entities/congress-trades]])
 - `decisions` — Agent buy/sell decisions (1 row per agent per ticker per session)
 - `economic_calendar_events` — Parsed economic indicator data
 - `frontier_themes` — Qualified frontier technology supercycle themes and constituent pure-play tickers (see [[entities/frontier-tech-portfolio]])
 - `generated_newsletters` — Daily AI market briefings
 - `government_incentives` — High-impact policy tracking
+- `insider_trades` — SEC Form 4 corporate insider transactions and Canadian cross-listed insider activity (see [[entities/insider-trades]])
 - `market_feeling` — Daily and weekly market sentiment assessments (also receives each live intraday agent turn)
 - `memory_hooks` — Contrarian analysis and causal chain entries
 - `memory_tags` — Tagged memory cards
@@ -57,13 +59,15 @@ These two tables form the market data persistence layer used by `MarketDataManag
 
 ### Government & Institutional Ownership Tables
 
-These three tables back the [[entities/government-ingestion]] pipeline (`apps/engine/ingest/government_fetchers.py` and `apps/engine/ingest/whale_fetchers.py`):
+These five tables back the [[entities/government-ingestion]] pipeline (`apps/engine/ingest/government_fetchers.py`, `apps/engine/ingest/whale_fetchers.py`, `apps/engine/ingest/congress_fetchers.py`, and `apps/engine/ingest/insider_fetchers.py`):
 
 - **`gov_macro_liquidity`** — Daily US Treasury General Account cash, national debt, and monthly deficit. Columns: `record_date DATE NOT NULL UNIQUE`, `tga_balance`, `tot_pub_debt`, `debt_held_public`, `intragov_holdings`, `monthly_deficit_surplus` (all `NUMERIC(18, 2)`), `raw_metadata JSONB DEFAULT '{}'`, `created_at TIMESTAMPTZ`. Indexed on `record_date DESC`. Upserted on conflict `record_date` by `upsert_gov_macro_liquidity`.
 - **`gov_contracts`** — US (USAspending) and Canadian (CanadaBuys) federal contract awards. Columns: `country TEXT NOT NULL CHECK (country IN ('US', 'CA', 'OTHER'))`, `award_id TEXT NOT NULL`, `recipient_name TEXT NOT NULL`, `award_amount NUMERIC(16, 2) NOT NULL DEFAULT 0.00`, `currency TEXT NOT NULL DEFAULT 'USD'`, `description`, `agency_name`, `award_date DATE NOT NULL`, `contract_number`, `source_url`, `raw_metadata JSONB`, `created_at`. Unique constraint `uq_gov_contracts (country, award_id, recipient_name, award_date)`; indexes on `(country, award_date DESC)`, `recipient_name`, and `award_amount DESC`. Upserted by `upsert_gov_contracts`.
 - **`institutional_whale_stakes`** — SEC Schedule 13D/13G beneficial ownership disclosures. Columns: `symbol TEXT NOT NULL`, `filer_name TEXT NOT NULL`, `filer_cik`, `filing_date DATE NOT NULL`, `accepted_date DATE`, `percent_of_class NUMERIC(6, 2) NOT NULL DEFAULT 0.00`, `shares_beneficially_owned NUMERIC(16, 2) NOT NULL DEFAULT 0.00`, `reporting_type`, `filing_type TEXT NOT NULL DEFAULT '13G' CHECK (filing_type IN ('13D', '13G', '13F', 'OTHER'))`, `is_exit BOOLEAN NOT NULL DEFAULT false`, `source_url`, `raw_metadata JSONB`, `created_at`. Unique constraint `uq_institutional_whale_stake (symbol, filer_name, filing_date, percent_of_class)`; indexes on `(symbol, filing_date DESC)`, `filer_name`, and `filing_date DESC`. Upserted by `upsert_institutional_whale_stakes`.
+- **`congress_trades`** — US Senate and House STOCK Act personal transaction disclosures ingested from FMP (`/stable/senate-latest`, `/stable/house-latest`). Columns: `chamber` (`senate`/`house`), `representative_name`, `symbol`, `transaction_date`, `disclosure_date`, `district`, `owner`, `transaction_type` (`purchase`/`sale`/`exchange`), `amount_range`, `amount_est_midpoint` (numeric midpoint of the disclosed dollar band), `asset_description`, `source_url`. Dedup/upsert key: `(chamber, representative_name, symbol, transaction_date, transaction_type, amount_range)`. Upserted by `upsert_congress_trades`.
+- **`insider_trades`** — SEC Form 4 corporate insider transactions plus Canadian cross-listed insider activity ingested from FMP (`/stable/insider-trading/latest`, `/stable/insider-trading/search`). Columns: `symbol`, `reporting_name`, `type_of_owner`, `transaction_date`, `filing_date`, `transaction_type` (`purchase`/`sale`), `securities_transacted`, `price`, `total_value`, `securities_owned`, `source_url`. Dedup/upsert key: `(symbol, reporting_name, transaction_date, filing_date, transaction_type, securities_transacted, price)`. Upserted by `upsert_insider_trades`.
 
-All three enable RLS with public `SELECT` and `service_role` full access, and are created by migrations `20261106180000_create_gov_macro_and_contracts.sql` and `20261106190000_create_institutional_whale_stakes.sql` (mirrored in `docker/archive/init.sql`).
+All five enable RLS with public `SELECT` and `service_role` full access. The fiscal/contract/whale trio is created by migrations `20261106180000_create_gov_macro_and_contracts.sql` and `20261106190000_create_institutional_whale_stakes.sql` (mirrored in `docker/archive/init.sql`); `congress_trades` and `insider_trades` are populated by the Congress and insider ingestion stages of the same pipeline.
 
 ### Additional Tables
 - `sector_predictions_calibration` — Calibration data for sector prediction scores
@@ -110,6 +114,8 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 ## Related
 
 - [[entities/government-ingestion]]
+- [[entities/congress-trades]]
+- [[entities/insider-trades]]
 - [[entities/secondary-minipc-edge]]
 - [[concepts/hybrid-database-archival]]
 - [[concepts/auth-db-client-separation]]

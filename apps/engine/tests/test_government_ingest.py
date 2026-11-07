@@ -222,6 +222,21 @@ async def test_government_pipeline_orchestration():
             return_value=1,
         ),
         patch(
+            "ingest.government.GovernmentPipeline.ingest_whales",
+            new_callable=AsyncMock,
+            return_value={"stakes_upserted": 0, "symbols_processed": 0},
+        ),
+        patch(
+            "ingest.government.GovernmentPipeline.ingest_congress",
+            new_callable=AsyncMock,
+            return_value=0,
+        ),
+        patch(
+            "ingest.government.GovernmentPipeline.ingest_insiders",
+            new_callable=AsyncMock,
+            return_value=0,
+        ),
+        patch(
             "ingest.government.GovernmentPipeline.extract_policy_memories",
             new_callable=AsyncMock,
             return_value=2,

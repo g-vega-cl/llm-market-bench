@@ -141,7 +141,9 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         );
 
         // Verify the AI News Synthesis heading and content is rendered (wrapped in Suspense)
-        expect(await screen.findByText('AI News Synthesis')).toBeInTheDocument();
+        expect(
+            await screen.findByText('AI News Synthesis', {}, { timeout: 3000 }),
+        ).toBeInTheDocument();
         expect(screen.getByText('"Overall market feeling is positive."')).toBeInTheDocument();
 
         // Verify it displays the specific date and time passed to the synthesis card

@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **232**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **233**).
 
 ## Top Hotspots
 
@@ -25,9 +25,9 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 9 | 4 | 44.4% | 226 | 36 | **HIGH** |
 | `apps/engine/tests/test_workflow_schedule.py` | 9 | 4 | 44.4% | 243 | 36 | **HIGH** |
 | `apps/engine/main.py` | 17 | 2 | 11.8% | 73 | 34 | **HIGH** |
+| `apps/web/src/features/today/api/fetch-today-data.ts` | 8 | 4 | 50.0% | 460 | 32 | **HIGH** |
 | `apps/web/src/routes/-__root.test.tsx` | 8 | 4 | 50.0% | 372 | 32 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.test.ts` | 8 | 4 | 50.0% | 540 | 32 | **HIGH** |
-| `apps/engine/tests/test_verify_skill.py` | 10 | 3 | 30.0% | 119 | 30 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 

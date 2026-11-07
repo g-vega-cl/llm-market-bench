@@ -55,6 +55,16 @@ These two tables form the market data persistence layer used by `MarketDataManag
 > [!IMPORTANT]
 > `price_history.volume` must be populated on every provider fetch. If it is absent, `compute_volume_context` in `core/llm/tools.py` silently returns `"insufficient volume data"` for all warm-cache reads, breaking RVOL and percentile-rank signals for volatility metrics and the stock screener tool.
 
+### Government & Institutional Ownership Tables
+
+These three tables back the [[entities/government-ingestion]] pipeline (`apps/engine/ingest/government_fetchers.py` and `apps/engine/ingest/whale_fetchers.py`):
+
+- **`gov_macro_liquidity`** — Daily US Treasury General Account cash, national debt, and monthly deficit. Columns: `record_date DATE NOT NULL UNIQUE`, `tga_balance`, `tot_pub_debt`, `debt_held_public`, `intragov_holdings`, `monthly_deficit_surplus` (all `NUMERIC(18, 2)`), `raw_metadata JSONB DEFAULT '{}'`, `created_at TIMESTAMPTZ`. Indexed on `record_date DESC`. Upserted on conflict `record_date` by `upsert_gov_macro_liquidity`.
+- **`gov_contracts`** — US (USAspending) and Canadian (CanadaBuys) federal contract awards. Columns: `country TEXT NOT NULL CHECK (country IN ('US', 'CA', 'OTHER'))`, `award_id TEXT NOT NULL`, `recipient_name TEXT NOT NULL`, `award_amount NUMERIC(16, 2) NOT NULL DEFAULT 0.00`, `currency TEXT NOT NULL DEFAULT 'USD'`, `description`, `agency_name`, `award_date DATE NOT NULL`, `contract_number`, `source_url`, `raw_metadata JSONB`, `created_at`. Unique constraint `uq_gov_contracts (country, award_id, recipient_name, award_date)`; indexes on `(country, award_date DESC)`, `recipient_name`, and `award_amount DESC`. Upserted by `upsert_gov_contracts`.
+- **`institutional_whale_stakes`** — SEC Schedule 13D/13G beneficial ownership disclosures. Columns: `symbol TEXT NOT NULL`, `filer_name TEXT NOT NULL`, `filer_cik`, `filing_date DATE NOT NULL`, `accepted_date DATE`, `percent_of_class NUMERIC(6, 2) NOT NULL DEFAULT 0.00`, `shares_beneficially_owned NUMERIC(16, 2) NOT NULL DEFAULT 0.00`, `reporting_type`, `filing_type TEXT NOT NULL DEFAULT '13G' CHECK (filing_type IN ('13D', '13G', '13F', 'OTHER'))`, `is_exit BOOLEAN NOT NULL DEFAULT false`, `source_url`, `raw_metadata JSONB`, `created_at`. Unique constraint `uq_institutional_whale_stake (symbol, filer_name, filing_date, percent_of_class)`; indexes on `(symbol, filing_date DESC)`, `filer_name`, and `filing_date DESC`. Upserted by `upsert_institutional_whale_stakes`.
+
+All three enable RLS with public `SELECT` and `service_role` full access, and are created by migrations `20261106180000_create_gov_macro_and_contracts.sql` and `20261106190000_create_institutional_whale_stakes.sql` (mirrored in `docker/archive/init.sql`).
+
 ### Additional Tables
 - `sector_predictions_calibration` — Calibration data for sector prediction scores
 - `snp500_stocks` — S&P 500 constituent list and metadata
@@ -99,6 +109,7 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 
 ## Related
 
+- [[entities/government-ingestion]]
 - [[entities/secondary-minipc-edge]]
 - [[concepts/hybrid-database-archival]]
 - [[concepts/auth-db-client-separation]]

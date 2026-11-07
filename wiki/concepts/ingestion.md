@@ -37,6 +37,18 @@ The prompt focuses strictly on events that move US equity markets (S&P 500, sect
 
 Events with Importance Score >= 8 or matching a CALENDAR STRATEGY (`Pre-ECB/Fed Drift`, etc.) are persisted as memories flagged `is_future_catalyst: true`, feeding [[concepts/catalyst-radar]]. Titles are normalized later by the radar's title cleaner (see [[concepts/catalyst-radar]]).
 
+## Government Spending, Liquidity & Contract Ingestion
+
+The `GovernmentPipeline` (`apps/engine/ingest/government.py` and `apps/engine/ingest/government_fetchers.py`) ingests official government balance sheet operations, fiscal deficits, and procurement contracts outside the daily newsletter and market consensus loop:
+
+- **US Treasury General Account (TGA) & Debt**: Connects to `fiscaldata.treasury.gov` (Daily Treasury Statement `/v1/accounting/dts/operating_cash_balance` and Debt to the Penny `/v2/accounting/od/debt_to_penny`) to persist daily operating cash balances, debt held by the public, intragovernmental holdings, and monthly budget deficits into `gov_macro_liquidity`.
+- **Federal Contract Procurement (US & Canada)**:
+  - **USAspending**: Ingests US federal contract awards from `api.usaspending.gov` with award amounts, recipient corporations, agency affiliations, and contract IDs.
+  - **CanadaBuys**: Ingests Canadian federal contract awards from `canadabuys.canada.ca` via Open Government CKAN datasets to capture resource, infrastructure, and defense contract pipelines.
+  - Materialized into `gov_contracts`.
+- **Catalyst Memories**: Flags major contract pipelines, critical minerals incentives, and budget expirations for [[concepts/catalyst-radar]].
+- **Institutional Whale & Activist Blockholders**: The pipeline (`apps/engine/ingest/whale_fetchers.py`) ingests real-time SEC Schedule 13D and 13G beneficial ownership disclosures (>5% stake acquisitions, activist entries, and complete position liquidations) for active universe tickers into `institutional_whale_stakes`.
+
 ## Dry-Run Mode & After-Hours Simulation
 
 The ingestion pipeline supports an end-to-end dry-run simulation mode via the `--dry-run` CLI flag (or workflow dispatch input in `.github/workflows/ingest.yml`). This enables developers and automated health checks to verify the full multi-model extraction, consensus, and decision pipeline outside regular US market hours:

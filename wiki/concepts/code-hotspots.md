@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **235**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **234**).
 
 ## Top Hotspots
 
@@ -13,21 +13,21 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/engine/tasks/daily_predictor.py` | 21 | 5 | 23.8% | 661 | 105 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 17 | 5 | 29.4% | 245 | 85 | **HIGH** |
+| `apps/engine/tasks/daily_predictor.py` | 20 | 4 | 20.0% | 661 | 80 | **HIGH** |
 | `apps/web/src/routes/__root.tsx` | 11 | 6 | 54.5% | 239 | 66 | **HIGH** |
-| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 16 | 3 | 18.8% | 379 | 48 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 12 | 4 | 33.3% | 434 | 48 | **HIGH** |
+| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 15 | 3 | 20.0% | 379 | 45 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 11 | 4 | 36.4% | 356 | 44 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 20 | 2 | 10.0% | 1758 | 40 | **HIGH** |
-| `apps/engine/tests/test_daily_predictor.py` | 10 | 4 | 40.0% | 763 | 40 | **HIGH** |
+| `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 10 | 4 | 40.0% | 219 | 40 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 13 | 3 | 23.1% | 295 | 39 | **HIGH** |
-| `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 9 | 4 | 44.4% | 226 | 36 | **HIGH** |
-| `apps/engine/tests/test_workflow_schedule.py` | 9 | 4 | 44.4% | 243 | 36 | **HIGH** |
-| `apps/engine/main.py` | 17 | 2 | 11.8% | 73 | 34 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.ts` | 8 | 4 | 50.0% | 460 | 32 | **HIGH** |
 | `apps/web/src/routes/-__root.test.tsx` | 8 | 4 | 50.0% | 372 | 32 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.test.ts` | 8 | 4 | 50.0% | 540 | 32 | **HIGH** |
+| `apps/engine/tests/test_verify_skill.py` | 10 | 3 | 30.0% | 119 | 30 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 10 | 3 | 30.0% | 868 | 30 | **HIGH** |
+| `apps/engine/tasks/daily_autoresearch.py` | 14 | 2 | 14.3% | 730 | 28 | **MEDIUM** |
 
 ## Temporal Coupling (Co-churn)
 

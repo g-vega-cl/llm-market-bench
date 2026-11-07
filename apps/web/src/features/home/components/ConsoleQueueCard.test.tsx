@@ -94,10 +94,10 @@ describe('ConsoleQueueCard', () => {
             />,
         );
 
-        expect(screen.getByText(/Latest Answered Turn:/i)).toBeInTheDocument();
-        expect(screen.getByText(/10:45 AM ET/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Latest Answered Turn:/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/^Question$/i)).toBeInTheDocument();
         expect(screen.getByText(/@MacroTrader/i)).toBeInTheDocument();
-        expect(screen.getByText(/10:42 AM ET/i)).toBeInTheDocument();
+        expect(screen.getByText(/Nov 3 • 10:42 AM ET/i)).toBeInTheDocument();
         expect(
             screen.getByText(/Is inflation driving the 10Y yield higher\?/i),
         ).toBeInTheDocument();
@@ -172,15 +172,15 @@ describe('ConsoleQueueCard', () => {
             />,
         );
 
-        expect(screen.getByText(/Latest Answered Turn:/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Latest Answered Turn:/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/^Question$/i)).toBeInTheDocument();
         expect(screen.getByText(/@g.vega.cl/i)).toBeInTheDocument();
 
         // Mobile meta-row rules: row wraps, fragments are atomic
-        const metaRow = screen.getByText(/Latest Answered Turn:/i).parentElement
-            ?.parentElement as HTMLElement;
+        const metaRow = screen.getByText(/^Question$/i).parentElement as HTMLElement;
         expect(metaRow.className).toContain('flex-wrap');
         expect(metaRow.className).not.toContain('items-center');
-        expect(screen.getByText(/Latest Answered Turn:/i).className).toContain('whitespace-nowrap');
+        expect(screen.getByText(/^Question$/i).className).toContain('whitespace-nowrap');
         expect(screen.getByText(/@g.vega.cl/i).className).toContain('truncate');
         expect(screen.getByText(/Will the market keep crashing\?/i)).toBeInTheDocument();
 

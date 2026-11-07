@@ -1,7 +1,7 @@
 import { usePostHog } from '@posthog/react';
 import * as React from 'react';
 import { InlineMarkdown, MarkdownContent } from '~/components/ui/MarkdownContent';
-import { formatEasternTime } from '~/utils/date';
+import { formatEasternDateTime } from '~/utils/date';
 import {
     type AgentQueueItem,
     MAX_QUEUE_MESSAGE_LENGTH,
@@ -11,7 +11,7 @@ import {
 function formatTimestamp(ts: string | null | undefined): string | null {
     if (!ts) return null;
     if (ts.endsWith('ET') || ts.endsWith('EST') || ts.endsWith('EDT')) return ts;
-    const formatted = formatEasternTime(ts);
+    const formatted = formatEasternDateTime(ts);
     return formatted === 'Unknown' ? ts : formatted;
 }
 
@@ -38,31 +38,24 @@ function AnsweredTurnView({
     latestAnswered: AgentQueueItem;
     isOutage: boolean;
 }) {
-    const injectedTime = formatTimestamp(latestAnswered.injected_turn_at);
-    const createdTime = formatTimestamp(latestAnswered.created_at);
+    const askedTime = formatTimestamp(latestAnswered.created_at);
 
     return (
-        <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-1.5 text-xs">
+        <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-2 text-xs">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-boxel-muted font-mono text-xs font-normal">
-                <div className="flex flex-wrap items-baseline gap-x-2 min-w-0">
-                    <span className="whitespace-nowrap">Latest Answered Turn:</span>
-                    {injectedTime && <span className="whitespace-nowrap">{injectedTime}</span>}
-                </div>
-                <div className="flex flex-wrap items-baseline gap-x-2 min-w-0">
-                    <span className="min-w-0 truncate">@{latestAnswered.display_name}</span>
-                    {createdTime && <span className="whitespace-nowrap">• {createdTime}</span>}
-                </div>
-            </div>
-            <div className="flex flex-col gap-2 min-w-0">
-                <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted">
+                <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted whitespace-nowrap">
                     Question
                 </span>
-                <div
-                    data-testid="answered-question"
-                    className="min-w-0 border-l-2 border-accent/40 pl-2.5 text-xs font-normal leading-relaxed text-boxel-ink whitespace-pre-wrap break-words"
-                >
-                    <InlineMarkdown text={latestAnswered.message} />
+                <div className="flex flex-wrap items-baseline gap-x-2 min-w-0">
+                    <span className="min-w-0 truncate">@{latestAnswered.display_name}</span>
+                    {askedTime && <span className="whitespace-nowrap">• {askedTime}</span>}
                 </div>
+            </div>
+            <div
+                data-testid="answered-question"
+                className="min-w-0 border-l-2 border-accent/40 pl-2.5 text-xs font-normal leading-relaxed text-boxel-ink whitespace-pre-wrap break-words"
+            >
+                <InlineMarkdown text={latestAnswered.message} />
             </div>
             {latestAnswered.agent_response &&
                 (isOutage ? (

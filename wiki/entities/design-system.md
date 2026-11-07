@@ -137,7 +137,7 @@ Beyond the primitives, the feature pages render through the same boxel tokens an
    - `DailyMetricsOverview` renders an `items-stretch` grid with no `text-2xl` values.
    - `HeroPredictionCard` contains no `text-4xl`, `font-black`, `rounded-2xl`, or `mb-*` classes.
    - `ScoreCalculation` contains no `text-3xl`/`text-2xl`/`rounded-2xl`, and its formula block is `text-lg font-bold`.
-   - `ConsoleQueueCard.test.tsx` asserts the answered-turn meta row carries `flex-wrap` and no `items-center`, the `Latest Answered Turn:` label is `whitespace-nowrap`, and the author handle is `truncate` (mobile text-row rule).
+   - `ConsoleQueueCard.test.tsx` asserts the answered-turn meta row carries `flex-wrap` and no `items-center`, the `Question` label is `whitespace-nowrap`, and the author handle is `truncate` (mobile text-row rule).
 
 ## Related
 

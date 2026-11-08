@@ -24,6 +24,11 @@ from core.config import (
 )
 from core.db import get_supabase_client
 from trading.intraday_news_store import persist_intraday_news
+from trading.intraday_portfolio import (
+    execute_intraday_portfolio_turn,
+    get_live_trader_position,
+    get_or_create_live_trader_portfolio,
+)
 from trading.read_only_retriever import (
     format_read_only_grounding,
     retrieve_read_only_market_data,
@@ -342,6 +347,7 @@ async def execute_intraday_agent_step(
     strata_url: str = DEFAULT_STRATA_URL,
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
     news_summary: str | None = None,
+    is_market_open: bool = True,
 ) -> dict[str, Any]:
     """Execute one 5-minute autonomous trading and reasoning turn."""
     sb = sb_client or get_supabase_client()
@@ -371,7 +377,28 @@ async def execute_intraday_agent_step(
     )
     grounding_summary = format_read_only_grounding(grounding_data, max_items_per_section=3)
 
-    # 4. Formulate lean prompt with quantitative tape, news, and read-only context
+    # 4. Fetch live portfolio positioning for model prompt context
+    try:
+        portfolio_rec = get_or_create_live_trader_portfolio(sb)
+        portfolio_id = str(portfolio_rec.get("id", ""))
+        pos_rec = get_live_trader_position(sb, portfolio_id=portfolio_id, ticker=ticker)
+        current_shares = int(pos_rec.get("quantity") or 0)
+        cost_basis = float(pos_rec.get("average_cost_basis") or 0.0)
+        cash_balance = float(portfolio_rec.get("cash_balance") or 10000.0)
+        pos_val = current_shares * (technicals["last_close"] or cost_basis)
+        total_eq = cash_balance + pos_val
+        alloc_pct = (pos_val / total_eq * 100.0) if total_eq > 0 else 0.0
+        portfolio_context = (
+            f"### CURRENT LIVE PORTFOLIO STATE ({ticker}):\n"
+            f"- Total Equity: ${total_eq:,.2f} | Cash: ${cash_balance:,.2f}\n"
+            f"- Current Position: {current_shares} shares @ ${cost_basis:.2f} (${pos_val:,.2f}, {alloc_pct:.1f}% exposure)\n"
+            "- Target Strategy: BUY targets 20% equity cap; SELL liquidates 100%; HOLD maintains."
+        )
+    except Exception:
+        logger.exception("Failed to query live portfolio for prompt grounding")
+        portfolio_context = "- Target Strategy: BUY targets 20% equity cap; SELL liquidates 100%; HOLD maintains."
+
+    # 5. Formulate lean prompt with quantitative tape, news, and read-only context
     news_bullets = "\n".join([f"- [{n['source']}] {n['headline']}" for n in news_items[:5]]) or "- No breaking news"
 
     system_prompt = (
@@ -391,6 +418,7 @@ async def execute_intraday_agent_step(
         f"### {ticker} 120-MINUTE TAPE SNAPSHOT:\n"
         f"- Last Price: ${technicals['last_close']:.2f} | VWAP: ${technicals['vwap']:.2f}\n"
         f"- RSI(14): {technicals['rsi_14']} | Trend: {technicals['trend']}\n\n"
+        f"{portfolio_context}\n\n"
         f"### BREAKING HEADLINES:\n{news_bullets}\n\n"
         f"{grounding_summary}\n\n"
         "Decide your action, conviction, and reasoning."
@@ -404,34 +432,19 @@ async def execute_intraday_agent_step(
     )
     decision = _extract_json_decision(raw_output)
 
-    # 5. Execute paper order if action is BUY or SELL
-    order_id = None
-    if decision.get("action") in ("BUY", "SELL") and alpaca_trading_client:
-        try:
-            account = alpaca_trading_client.get_account()
-            cash = float(getattr(account, "cash", 10000.0) or 10000.0)
-            alloc_pct = min(25, max(1, int(decision.get("allocation_pct", 5))))
-            allocated_dollars = cash * (alloc_pct / 100.0)
-            price = technicals["last_close"] or 580.0
-            shares = max(1, int(allocated_dollars / price))
+    # 6. Execute portfolio turn (20% cap on BUY, 100% liquidation on SELL, no-op on HOLD)
+    portfolio_summary = await execute_intraday_portfolio_turn(
+        sb_client=sb,
+        action=decision.get("action", "HOLD"),
+        current_price=technicals.get("last_close") or 0.0,
+        is_market_open=is_market_open,
+        thought=decision.get("thought", ""),
+        alpaca_trading_client=alpaca_trading_client,
+        ticker=ticker,
+    )
+    order_id = portfolio_summary.get("order_id")
 
-            from alpaca.trading.enums import OrderSide, TimeInForce
-            from alpaca.trading.requests import MarketOrderRequest
-
-            side = OrderSide.BUY if decision["action"] == "BUY" else OrderSide.SELL
-            order_req = MarketOrderRequest(
-                symbol=ticker,
-                qty=shares,
-                side=side,
-                time_in_force=TimeInForce.DAY,
-            )
-            order_res = alpaca_trading_client.submit_order(order_req)
-            order_id = getattr(order_res, "id", None)
-            logger.info(f"Submitted Alpaca paper {decision['action']} order for {shares} {ticker} (ID: {order_id})")
-        except Exception:
-            logger.exception("Failed to submit Alpaca paper order")
-
-    # 6. Persist step into market_feeling table
+    # 7. Persist step into market_feeling table
     sentiment_label = (
         "Accumulating Dips"
         if decision.get("action") == "BUY"
@@ -454,6 +467,7 @@ async def execute_intraday_agent_step(
         "bars": bars,
         "queue_item_id": None,
         "audience_question": None,
+        "portfolio": portfolio_summary,
     }
 
     try:
@@ -483,4 +497,5 @@ async def execute_intraday_agent_step(
         "order_id": str(order_id) if order_id else None,
         "technicals": technicals,
         "queue_item_id": None,
+        "portfolio": portfolio_summary,
     }

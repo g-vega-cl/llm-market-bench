@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/intraday-portfolio]] - Intraday portfolio management system with 20% equity cap and dual-layer execution
 - [[entities/government-ingestion]] — Auto-indexed page
 - [[entities/performance-chart]] — single-portfolio D3 performance chart with clipped, date-bounded benchmark overlay
 - [[entities/conversational-explainer]] — decoupled audience Q&A worker that answers community questions in Markdown prose, isolated from the live trader's decision loop

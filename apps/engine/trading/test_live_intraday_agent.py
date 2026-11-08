@@ -262,6 +262,9 @@ async def test_execute_intraday_agent_step_end_to_end_hermetic():
     assert result["action"] == "BUY"
     assert result["conviction"] == 80
     assert result["order_id"] == "alpaca-ord-123"
+    assert "portfolio" in result
+    assert result["portfolio"]["signal"] == "BUY"
+    assert result["portfolio"]["shares"] > 0
     assert mock_alpaca_trade.submit_order.called
     assert mock_sb.table.called
 

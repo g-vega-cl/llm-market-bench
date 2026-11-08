@@ -203,4 +203,29 @@ describe('LiveAgentConsole', () => {
         );
         expect(screen.getByRole('link', { name: /Lab/i })).toHaveAttribute('href', '/lab');
     });
+
+    it('renders the live desk portfolio strip when portfolio telemetry is present', () => {
+        const stateWithPortfolio = {
+            ...mockAgentState,
+            portfolio: {
+                total_equity: 10200,
+                cash_balance: 8160,
+                position_shares: 4,
+                position_cost_basis: 510,
+                position_market_value: 2040,
+                unrealized_pnl: 40,
+                realized_pnl: 0,
+            },
+        };
+        render(
+            <LiveAgentConsole
+                bars={mockBars}
+                agentState={stateWithPortfolio}
+                isMarketOpen={true}
+            />,
+        );
+        expect(screen.getByTestId('console-portfolio-strip')).toBeInTheDocument();
+        expect(screen.getByText('Live Desk Portfolio')).toBeInTheDocument();
+        expect(screen.getByText('$10,200.00')).toBeInTheDocument();
+    });
 });

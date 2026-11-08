@@ -420,7 +420,22 @@ export async function fetchAllActivePortfolioPerformance(maxDays: number = 90): 
             return d >= effectiveStartDate;
         });
 
-        if (filtered.length === 0) continue;
+        if (filtered.length === 0) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const currentEquity = Number(portfolio.total_equity ?? portfolio.cash_balance ?? 10000);
+            filteredPortfolios.push({
+                portfolioId: portfolio.id,
+                ownerId: portfolio.owner_id,
+                performance: [
+                    {
+                        date: todayStr,
+                        value: 0,
+                        totalEquity: currentEquity,
+                    },
+                ],
+            });
+            continue;
+        }
 
         const firstEquity = filtered[0].totalEquity;
 

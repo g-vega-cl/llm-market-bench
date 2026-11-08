@@ -5,6 +5,7 @@ import { fetchLatestMarketBarometer } from '~/features/home/api/fetch-barometer'
 import {
     buildAgentState,
     fetchLatestIntradayBars,
+    fetchTodayLiveTraderTrades,
     type IntradayPayload,
     isRegularMarketHours,
     type MarketFeelingRecord,
@@ -110,12 +111,16 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
 
         const benchmark = calculateBenchmarkMoves(benchmarkData);
         const tradesPayload = (marketFeeling?.trades_summary as IntradayPayload | null) ?? null;
-        const bars = await fetchLatestIntradayBars(marketFeeling);
+        const [bars, trades] = await Promise.all([
+            fetchLatestIntradayBars(marketFeeling),
+            fetchTodayLiveTraderTrades('live-spy-trader'),
+        ]);
 
         return {
             portfolios: portfoliosList,
             benchmark,
             bars,
+            trades,
             agentState: buildAgentState(marketFeeling, tradesPayload),
             isMarketOpen: isRegularMarketHours(),
             feeling: buildFeelingSummary(marketFeeling, tradesPayload),

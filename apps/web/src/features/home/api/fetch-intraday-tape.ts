@@ -1,7 +1,22 @@
 import { createServerFn } from '@tanstack/react-start';
 import { formatEasternTime } from '~/utils/date';
 import type { LiveAgentState } from '../components/LiveAgentConsole';
-import type { CandlestickBar } from '../components/SPYCandlestickChart';
+import type { CandlestickBar, ChartTradeMarker } from '../components/SPYCandlestickChart';
+
+export interface LiveTraderPortfolioSummary {
+    owner_id?: string;
+    portfolio_id?: string;
+    total_equity: number;
+    cash_balance: number;
+    position_shares: number;
+    position_cost_basis: number;
+    position_market_value: number;
+    unrealized_pnl: number;
+    realized_pnl: number;
+    signal?: string;
+    shares?: number;
+    status?: string;
+}
 
 export interface MarketFeelingRecord {
     market_direction?: string | null;
@@ -23,6 +38,7 @@ export interface IntradayPayload {
     technicals?: { vwap: number; rsi_14: number; trend: string };
     memories_consulted?: string[];
     bars?: CandlestickBar[];
+    portfolio?: LiveTraderPortfolioSummary;
 }
 
 export function filterLastBars(
@@ -99,6 +115,7 @@ export function buildAgentState(
         memoriesConsulted:
             payload?.memories_consulted ||
             (feeling?.primary_concern ? [feeling.primary_concern] : []),
+        portfolio: payload?.portfolio,
     };
 }
 
@@ -163,3 +180,40 @@ export const fetchLiveIntradayTape = createServerFn({ method: 'GET' }).handler(
         }
     },
 );
+
+export async function fetchTodayLiveTraderTrades(
+    ownerId = 'live-spy-trader',
+): Promise<ChartTradeMarker[]> {
+    try {
+        const { getDbServerClient } = await import('~/lib/db');
+        const supabase = getDbServerClient();
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        const { data: portData } = await supabase
+            .from('portfolios')
+            .select('id')
+            .eq('owner_id', ownerId)
+            .limit(1);
+
+        const portfolioId = portData?.[0]?.id;
+        if (!portfolioId) return [];
+
+        const { data: tradesData, error } = await supabase
+            .from('trades')
+            .select('*')
+            .eq('portfolio_id', portfolioId)
+            .gte('executed_at', `${todayStr}T00:00:00Z`)
+            .order('executed_at', { ascending: true });
+
+        if (error || !tradesData) return [];
+
+        return tradesData.map((t) => ({
+            time: t.executed_at,
+            action: (t.signal?.toUpperCase() === 'BUY' ? 'BUY' : 'SELL') as 'BUY' | 'SELL',
+            price: Number(t.price),
+            shares: Number(t.quantity),
+        }));
+    } catch {
+        return [];
+    }
+}

@@ -95,6 +95,7 @@ async def run_daemon_turn(
     ticker: str = "SPY",
     strata_url: str = DEFAULT_STRATA_URL,
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    is_market_open: bool = True,
 ) -> dict[str, Any]:
     """Execute a single intraday agent cycle: active candle poll + trading step."""
     active_candle = await fetch_active_candle(alpaca_data_client, ticker=ticker)
@@ -107,6 +108,7 @@ async def run_daemon_turn(
         ticker=ticker,
         strata_url=strata_url,
         cheap_proxy_url=cheap_proxy_url,
+        is_market_open=is_market_open,
     )
 
     return {
@@ -199,6 +201,7 @@ async def _run_agent_loop(
                     ticker=ticker,
                     strata_url=strata_url,
                     cheap_proxy_url=cheap_proxy_url,
+                    is_market_open=is_open,
                 )
                 logger.info(
                     f"Turn complete: Action={turn_result.get('action')} Conviction={turn_result.get('conviction')}%"
@@ -222,6 +225,7 @@ async def _run_agent_loop(
                         else "Reducing Risk",
                         "lastUpdated": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M ET"),
                         "technicals": turn_result.get("technicals"),
+                        "portfolio": turn_result.get("portfolio"),
                     }
                     broadcaster.publish_agent_turn(agent_turn_payload)
             except Exception:

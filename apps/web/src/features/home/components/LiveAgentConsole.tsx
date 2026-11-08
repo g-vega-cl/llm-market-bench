@@ -2,7 +2,9 @@ import { Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design
 import * as React from 'react';
 import { formatEasternTime } from '~/utils/date';
 import { type AgentQueueItem, fetchAgentQueueStatus } from '../api/fetch-agent-queue';
+import type { LiveTraderPortfolioSummary } from '../api/fetch-intraday-tape';
 import { useLiveTapeStream } from '../hooks/useLiveTapeStream';
+import { ConsolePortfolioStrip } from './ConsolePortfolioStrip';
 import { ConsoleQueueCard } from './ConsoleQueueCard';
 import {
     type CandlestickBar,
@@ -25,6 +27,7 @@ export interface LiveAgentState {
         trend: string;
     };
     memoriesConsulted?: string[];
+    portfolio?: LiveTraderPortfolioSummary;
 }
 
 export interface LiveAgentConsoleProps {
@@ -254,6 +257,8 @@ export function LiveAgentConsole({
                 textStyle="hero"
                 className="w-full"
             />
+
+            <ConsolePortfolioStrip portfolio={currentAgentState.portfolio} />
 
             <SPYCandlestickChart bars={currentBars} trades={trades} height={320} />
 

@@ -73,6 +73,24 @@ describe('fetch-intraday-tape utilities', () => {
         expect(state.technicals).toBeUndefined();
     });
 
+    it('passes through portfolio telemetry in buildAgentState', () => {
+        const payload = {
+            action: 'BUY' as const,
+            portfolio: {
+                total_equity: 10000,
+                cash_balance: 8000,
+                position_shares: 4,
+                position_cost_basis: 500,
+                position_market_value: 2000,
+                unrealized_pnl: 0,
+                realized_pnl: 0,
+            },
+        };
+        const state = buildAgentState(null, payload);
+        expect(state.portfolio?.total_equity).toBe(10000);
+        expect(state.portfolio?.position_shares).toBe(4);
+    });
+
     describe('mergeIncomingBar', () => {
         const baseBar: CandlestickBar = {
             time: '2026-10-30T16:00:00Z',

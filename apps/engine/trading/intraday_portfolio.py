@@ -119,7 +119,6 @@ def get_or_create_live_trader_portfolio(
         logger.exception("Error checking portfolios table for live trader")
 
     init_row = {
-        "id": "live-trader-portfolio-id",
         "owner_id": owner_id,
         "cash_balance": INITIAL_PORTFOLIO_CASH,
         "total_equity": INITIAL_PORTFOLIO_CASH,

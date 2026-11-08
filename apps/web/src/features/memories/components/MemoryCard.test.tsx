@@ -435,4 +435,17 @@ describe('MemoryCard scenario rendering', () => {
             expect(screen.getByText(/Like 1970s stagflation/i)).toBeInTheDocument();
         });
     });
+
+    it('does not render model_name badge if model_name is Unknown or unknown', () => {
+        const memory = makeMemory({
+            model_name: 'Unknown',
+            ticker: 'SPY',
+        });
+        memory.importance_score = 8;
+        memory.memory_type = 'POST_MORTEM';
+
+        renderWithClient(<MemoryCard memory={memory} />);
+        expect(screen.getByText('Score: 8/10')).toBeInTheDocument();
+        expect(screen.queryByText('Unknown')).not.toBeInTheDocument();
+    });
 });

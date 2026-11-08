@@ -338,11 +338,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                         </Badge>
                     )}
 
-                    {memory.metadata.model_name && (
-                        <Badge variant="soft" colorScheme="neutral" size="sm" radius="none">
-                            {memory.metadata.model_name}
-                        </Badge>
-                    )}
+                    {memory.metadata.model_name &&
+                        memory.metadata.model_name.trim().toLowerCase() !== 'unknown' && (
+                            <Badge variant="soft" colorScheme="neutral" size="sm" radius="none">
+                                {memory.metadata.model_name}
+                            </Badge>
+                        )}
 
                     {memory.metadata.is_regret !== undefined && (
                         <Badge

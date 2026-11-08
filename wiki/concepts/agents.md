@@ -40,10 +40,11 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] and [[concept
 - **Pipeline Phase**: Phase 4: Consensus (see [[entities/pipeline]]).
 
 ### 5. Manager Agent
-- **Role**: Executes multi-horizon post-mortems (short, medium, and long term) of executed trades. It compares the original thesis with actual market outcomes to generate persistent `LESSON_LEARNED` memories.
+- **Role**: Executes multi-horizon post-mortems (short, medium, and long term) of executed trades. It compares the original thesis with actual market outcomes to generate persistent `POST_MORTEM` memories.
 - **Prompt Pair**: `MANAGER_SYSTEM_PROMPT` / `MANAGER_USER_PROMPT_TEMPLATE`
 - **Evolvable**: No.
 - **Pipeline Phase**: Phase 6: Feedback.
+- **Output Contract**: Returns `lesson`, `is_regret`, `sentiment_shift`, and an `importance_score` (1–10) rating lesson significance/blunder severity. The score is bounded server-side and persisted on the memory; model attribution resolves from the decision row, then the owning portfolio's `owner_id`, then `"system"`. See [[concepts/memory-feedback]].
 
 ### 6. Relationship Agent
 - **Role**: Tracks how market events evolve over time. It analyzes promoted events against the existing database to determine chronological and semantic relationships, classifying links as `UPDATE`, `REVERSAL`, or `RESOLUTION`.

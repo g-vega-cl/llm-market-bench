@@ -15,6 +15,48 @@ At configured intervals after trade execution (short, medium, long horizons):
 3. Generate `LESSON_LEARNED` memories in pgvector
 4. Future RAG retrievals include these lessons, preventing repeated mistakes
 
+### Post-Mortem Importance Scoring & Model Attribution
+
+Each post-mortem is persisted as a `POST_MORTEM` memory whose `importance_score` and `model_name` are now derived rather than hardcoded, so the memories feed ranks critical blunders above routine outcomes and attributes every lesson to the model that actually made the call.
+
+**Structured diagnosis (`apps/engine/analysis/post_analysis.py`)** — `PostAnalysisResult` carries a fourth field alongside `lesson`, `is_regret`, and `sentiment_shift`:
+
+```python
+importance_score: int = Field(default=5, ge=1, le=10)
+```
+
+The Manager prompt pair (`MANAGER_SYSTEM_PROMPT` / `MANAGER_USER_PROMPT_TEMPLATE` in `apps/engine/core/llm/prompts.py`) instructs the model to rate lesson significance on a 1–10 scale (1 = minor noise, 5 = normal outcome, 8–10 = severe blunder or critical systemic breakthrough) and to return it in the JSON object.
+
+**Model attribution (`_resolve_trade_context`)** — the trade query now selects `reasoning`, `portfolio_id`, and the joined `portfolios(owner_id)` alongside `decisions(reasoning, model_name, metadata)`. Resolution order:
+
+1. `decisions[0].model_name` when present and not `"unknown"`.
+2. Otherwise the owning portfolio's `owner_id` (covers system/mechanical portfolios whose trades carry no decision row).
+3. Otherwise the literal `"system"`.
+
+Reasoning falls back from the decision row to `trades.reasoning` to `"No reasoning found."`, and `strategy_reasoning` comes from `decisions[0].metadata.strategy_reasoning` with the same trade-level fallback.
+
+**Score bounding (`_extract_importance_score`)** — the LLM-returned score is coerced with `max(1, min(10, int(raw)))`, defaulting to `5` on `None`, `ValueError`, or `TypeError`, so a malformed diagnosis can never write an out-of-range score.
+
+**Memory payload** — `add_memory(..., importance_score=importance_score, metadata={...})` now writes the dynamic score and additionally records `is_regret` in the memory metadata (alongside `price_change_pct`, `trade_id`, `analysis_window`, and `model_name`).
+
+**Backfill (`apps/engine/scripts/backfill_postmortem_attribution.py`)** — a one-shot repair utility for historical rows. It scans `memories` where `memory_type = 'POST_MORTEM'`, resolves true attribution through `trades -> portfolios(owner_id)` (chunked `.in_()` lookups of 50 trade ids), and recalibrates defaulted scores. Dry-run by default; `--apply` writes the updates.
+
+`calibrate_importance_score(price_change_pct, is_regret, current_score)` preserves any already-set non-default score and otherwise maps outcome severity:
+
+| Condition | Score |
+| :--- | :---: |
+| Regret, `|move| >= 5.0%` | 9 |
+| Regret, `|move| >= 2.0%` | 8 |
+| Regret, smaller move | 7 |
+| Non-regret, `|move| >= 7.0%` | 8 |
+| Non-regret, `|move| >= 3.0%` | 7 |
+| Non-regret, `|move| >= 1.0%` | 6 |
+| Baseline chop | 5 |
+
+`resolve_model_name_for_trade(trade, portfolios_by_id)` mirrors the runtime resolution (portfolio `owner_id` first, then embedded `decisions[0].model_name`, else `None`), and `run_backfill(client=None, apply=False)` returns `{scanned, updated, skipped}`.
+
+**Frontend** — `MemoryCard.tsx` suppresses the model attribution badge when `metadata.model_name` is empty or equals `unknown` (case-insensitive), so legacy unattributed rows render cleanly while still showing their `Score: N/10` importance badge.
+
 ## Cause & Effect Analysis
 
 Periodic retrospective audit that:

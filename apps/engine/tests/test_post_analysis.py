@@ -62,11 +62,17 @@ def test_post_analysis_result_model():
     """Verify PostAnalysisResult model structure."""
     from apps.engine.analysis.post_analysis import PostAnalysisResult
 
-    result = PostAnalysisResult(lesson="Test lesson", is_regret=False, sentiment_shift="Maintain bullish")
+    result = PostAnalysisResult(
+        lesson="Test lesson",
+        is_regret=False,
+        sentiment_shift="Maintain bullish",
+        importance_score=8,
+    )
 
     assert result.lesson == "Test lesson"
     assert result.is_regret is False
     assert result.sentiment_shift == "Maintain bullish"
+    assert result.importance_score == 8
 
     print("\nTest Passed: PostAnalysisResult model validates correctly.")
 
@@ -177,6 +183,67 @@ async def test_post_analysis_metadata_includes_model_name():
         assert call_kwargs["metadata"]["analysis_window"] == "5"
 
         print("\nTest Passed: model_name and memory_type included in post-analysis memory metadata.")
+
+
+@pytest.mark.asyncio
+async def test_post_analysis_resolves_model_from_portfolio_and_passes_importance_score():
+    """Verify that when decisions join is empty, model_name is resolved from portfolios
+
+    and importance_score from the LLM diagnosis is passed to add_memory.
+    """
+    from apps.engine.analysis.post_analysis import PostAnalysisResult, perform_post_analysis
+
+    mock_sb = MagicMock()
+    mock_gemini_client = MagicMock()
+    mock_mdm = MagicMock()
+    mock_quote = MagicMock()
+    mock_quote.price = 190.0
+
+    # Trade with NO decisions, but linked to portfolio and containing reasoning
+    trade = {
+        "id": "trade-uuid-system-999",
+        "ticker": "SPY",
+        "quantity": 5,
+        "price": 500.0,
+        "signal": "BUY",
+        "executed_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
+        "reasoning": "Breakout above 20-day high with strong volume",
+        "portfolio_id": "port-uuid-1",
+        "portfolios": {"owner_id": "claude-3-5-sonnet"},
+        "decisions": [],
+    }
+
+    mock_sb.table.return_value.select.return_value.filter.return_value.filter.return_value.execute.return_value.data = [
+        trade
+    ]
+    mock_sb.table.return_value.select.return_value.filter.return_value.filter.return_value.filter.return_value.execute.return_value.data = []
+
+    mock_response = PostAnalysisResult(
+        lesson="Trend continuation confirmed after morning consolidation",
+        is_regret=False,
+        sentiment_shift="Remain long SPY while above 500",
+        importance_score=8,
+    )
+    mock_gemini_client.chat.completions.create.return_value = mock_response
+    mock_mdm.get_quote = AsyncMock(return_value=mock_quote)
+
+    with (
+        patch("apps.engine.analysis.post_analysis.get_supabase_client", return_value=mock_sb),
+        patch("apps.engine.analysis.post_analysis.get_gemini_client", return_value=mock_gemini_client),
+        patch("apps.engine.analysis.post_analysis.MarketDataManager", return_value=mock_mdm),
+        patch("apps.engine.analysis.post_analysis.add_memory") as mock_add_memory,
+    ):
+        mock_add_memory.return_value = True
+
+        await perform_post_analysis(windows=[5])
+
+        assert mock_add_memory.called
+        call_kwargs = mock_add_memory.call_args[1]
+
+        # 1. Model name must not be "Unknown"; it must resolve to portfolio owner
+        assert call_kwargs["metadata"]["model_name"] == "claude-3-5-sonnet"
+        # 2. Importance score must be passed dynamically from LLM diagnosis
+        assert call_kwargs["importance_score"] == 8
 
 
 if __name__ == "__main__":

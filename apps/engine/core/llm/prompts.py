@@ -417,7 +417,8 @@ MANAGER_SYSTEM_PROMPT = (
     "Return a JSON object with:\n"
     "- 'lesson': A concise (1-sentence) lesson learned.\n"
     "- 'is_regret': true if the trade was a clear mistake or the logic was flawed.\n"
-    "- 'sentiment_shift': How the model should adjust its view on this ticker/sector."
+    "- 'sentiment_shift': How the model should adjust its view on this ticker/sector.\n"
+    "- 'importance_score': An integer rating from 1 to 10 indicating the importance and severity of this lesson (1 = minor noise, 5 = normal outcome, 8-10 = severe blunder or critical systemic breakthrough)."
 )
 
 MANAGER_USER_PROMPT_TEMPLATE = """TICKER: {ticker}
@@ -432,7 +433,7 @@ ORIGINAL REASONING:
 STRATEGIC INTENT:
 "{strategy_reasoning}"
 
-Return ONLY the JSON object with 'lesson', 'is_regret', and 'sentiment_shift'.
+Return ONLY the JSON object with 'lesson', 'is_regret', 'sentiment_shift', and 'importance_score'.
 """
 
 

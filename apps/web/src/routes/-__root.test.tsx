@@ -455,4 +455,29 @@ describe('RootDocument PostHog identity synchronization', () => {
         const content = await screen.findByText('Error Fallback Content');
         expect(content).toBeInTheDocument();
     });
+
+    it('should wrap application children in a semantic <main> landmark element', async () => {
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div data-testid="page-outlet">Main Page Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        const main = await screen.findByRole('main');
+        expect(main).toBeInTheDocument();
+        expect(main).toHaveAttribute('id', 'main-content');
+        expect(screen.getByTestId('page-outlet')).toBeInTheDocument();
+    });
 });

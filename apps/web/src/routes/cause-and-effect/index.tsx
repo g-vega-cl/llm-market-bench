@@ -10,7 +10,7 @@ const getCauseAndEffect = createServerFn({ method: 'GET' })
     });
 
 export const Route = createFileRoute('/cause-and-effect/')({
-    loader: async () => await getCauseAndEffect({ data: { limit: 5 } }),
+    loader: async () => await getCauseAndEffect({ data: { limit: 20 } }),
     component: RouteComponent,
 });
 
@@ -21,7 +21,7 @@ function RouteComponent() {
     return (
         <CauseAndEffectPage
             initialData={initialData}
-            fetchFn={() => getCauseAndEffectFn({ data: { limit: undefined } })}
+            fetchFn={() => getCauseAndEffectFn({ data: { limit: 20 } })}
         />
     );
 }

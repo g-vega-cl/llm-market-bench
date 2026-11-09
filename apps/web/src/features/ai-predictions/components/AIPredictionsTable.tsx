@@ -532,6 +532,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
 
                     {/* Model Filter */}
                     <select
+                        aria-label="Filter predictions by model"
                         value={modelFilter}
                         onChange={(e) =>
                             setModelFilter(
@@ -554,6 +555,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
 
                     {/* Status Filter */}
                     <select
+                        aria-label="Filter predictions by status"
                         value={statusFilter}
                         onChange={(e) =>
                             setStatusFilter(e.target.value as 'all' | 'active' | 'past')
@@ -567,6 +569,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
 
                     {/* Timeframe Filter */}
                     <select
+                        aria-label="Filter predictions by timeframe"
                         value={timeframeFilter}
                         onChange={(e) =>
                             setTimeframeFilter(

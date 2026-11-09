@@ -76,7 +76,9 @@ describe('ReasoningPage Model Filter', () => {
         expect(screen.getByText('AAPL')).toBeInTheDocument();
 
         // Check dropdown options
-        const select = screen.getByRole('combobox');
+        const select = screen.getByRole('combobox', {
+            name: /filter reasoning traces by model/i,
+        });
         expect(select).toBeInTheDocument();
 
         // Change select value to gpt-4o

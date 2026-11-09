@@ -175,6 +175,7 @@ function LeaderboardTableRow({
             <TableCell className="text-center">
                 <input
                     type="checkbox"
+                    aria-label={`Select ${info.name} for comparison`}
                     checked={isSelected}
                     disabled={isSelectionMaxed}
                     onChange={() => onToggleSelectModel(model.model_name)}

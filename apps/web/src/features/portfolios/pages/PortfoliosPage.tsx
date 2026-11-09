@@ -310,56 +310,60 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                 </header>
 
                 {/* Block 1: Performance Comparison Chart */}
-                {hasComparison && (
-                    <section data-testid="portfolios-block-chart" className="flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center justify-between gap-4 w-full">
-                            <div className="flex flex-col gap-1">
-                                <SectionHeading gradient="success">
-                                    Performance Comparison
-                                </SectionHeading>
-                                <p className="text-xs text-boxel-muted">
-                                    Normalized percentage returns over{' '}
-                                    {timeframe === 'all'
-                                        ? 'all available days'
-                                        : `the last ${timeframe}`}
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="voxel-trough flex gap-1 p-1">
-                                    {(['7d', '30d', '90d', 'all'] as const).map((tf) => (
-                                        <Button
-                                            key={tf}
-                                            variant={timeframe === tf ? 'solid' : 'ghost'}
-                                            colorScheme={timeframe === tf ? 'accent' : 'neutral'}
-                                            onClick={() => {
-                                                startTransition(() => {
-                                                    setTimeframe(tf);
-                                                });
-                                            }}
-                                            className="px-3 py-1 text-xs font-bold"
-                                        >
-                                            {tf.toUpperCase()}
-                                        </Button>
-                                    ))}
-                                </div>
-                                <BenchmarkSelector
-                                    selected={selectedBenchmark}
-                                    onChange={(ticker) => {
-                                        startTransition(() => {
-                                            setSelectedBenchmark(ticker);
-                                        });
-                                    }}
-                                />
-                            </div>
+                <section data-testid="portfolios-block-chart" className="flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+                        <div className="flex flex-col gap-1">
+                            <SectionHeading gradient="success">
+                                Performance Comparison
+                            </SectionHeading>
+                            <p className="text-xs text-boxel-muted">
+                                Normalized percentage returns over{' '}
+                                {timeframe === 'all'
+                                    ? 'all available days'
+                                    : `the last ${timeframe}`}
+                            </p>
                         </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="voxel-trough flex gap-1 p-1">
+                                {(['7d', '30d', '90d', 'all'] as const).map((tf) => (
+                                    <Button
+                                        key={tf}
+                                        variant={timeframe === tf ? 'solid' : 'ghost'}
+                                        colorScheme={timeframe === tf ? 'accent' : 'neutral'}
+                                        onClick={() => {
+                                            startTransition(() => {
+                                                setTimeframe(tf);
+                                            });
+                                        }}
+                                        className="px-3 py-1 text-xs font-bold"
+                                    >
+                                        {tf.toUpperCase()}
+                                    </Button>
+                                ))}
+                            </div>
+                            <BenchmarkSelector
+                                selected={selectedBenchmark}
+                                onChange={(ticker) => {
+                                    startTransition(() => {
+                                        setSelectedBenchmark(ticker);
+                                    });
+                                }}
+                            />
+                        </div>
+                    </div>
+                    {hasComparison ? (
                         <PortfolioComparisonChart
                             data={processedComparisonData.portfolios}
                             benchmarkData={processedComparisonData.benchmarkData}
                             selectedBenchmark={selectedBenchmark}
                             timeframe={timeframe}
                         />
-                    </section>
-                )}
+                    ) : (
+                        <div className="voxel-trough py-48 flex items-center justify-center text-xs text-boxel-muted border border-boxel-bevel-hi/40">
+                            Loading performance comparison...
+                        </div>
+                    )}
+                </section>
 
                 {/* Block 2: Active LLM Agents */}
                 <section data-testid="portfolios-block-llm" className="flex flex-col gap-4">

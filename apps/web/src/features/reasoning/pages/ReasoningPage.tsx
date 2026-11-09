@@ -115,6 +115,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                     {/* Model Filter */}
                     <div className="w-full md:w-64">
                         <Select
+                            aria-label="Filter reasoning traces by model"
                             value={selectedModel}
                             options={availableModels}
                             onChange={(e) => {

@@ -184,9 +184,21 @@ To check performance, Core Web Vitals, accessibility, and SEO across the entire 
 
 ```bash
 # Run a quick, zero-install audit against a production or preview URL
-npx unlighthouse --site https://benchify.dev/
+npx -y @unlighthouse/cli --site https://www.benchify.dev \
+  --urls /,/how-it-works,/portfolios,/audits,/autoresearch,/autoresearch-backtest,/cause-and-effect,/concepts,/market-overview,/memories,/reasoning,/leaderboard,/daily-predictions,/daily-predictions-backtest,/generated-newsletters,/renko,/barometer-audit,/earnings-audit,/retired-agents,/lab,/today,/ai-predictions,/login,/signup \
+  --reporter json
 ```
-Unlighthouse will automatically crawl the sitemap, run Lighthouse in parallel across discovered routes, and launch a local visual dashboard at `http://localhost:5678/` detailing specific opportunities.
+Passing explicit `--urls` scopes the audit to the 23 core application routes and prevents the link crawler from expanding dynamic query permutations (such as `/chat?q=...`).
+
+### Core Web Vitals & Accessibility Guardrails
+- **Semantic Main Landmark**: `apps/web/src/routes/__root.tsx` wraps page outlets in `<main id="main-content">` so every route satisfies `[landmark-one-main]`.
+- **High-Contrast Accent Ink**: `apps/web/src/styles/app.css` defines `--color-accent-ink: #101713;` under `@theme inline` so `bg-accent text-accent-ink` buttons achieve an 11.2:1 AAA contrast ratio.
+- **Zero Layout Shift (CLS)**:
+  - `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` renders a static comparison chart container with intrinsic padding (`py-48`) while client comparison queries resolve, preventing layout shifts on the portfolio cards below.
+  - `apps/web/src/routes/memories/chain/$memoryId.tsx` loads the full event chain directly inside the SSR route loader, avoiding client-side timeline expansion shifts.
+- **Bundle Splitting & Main-Thread Budgeting**:
+  - `apps/web/vite.config.ts` isolates D3 modules into an asynchronous `vendor-d3` chunk via `build.rollupOptions.output.manualChunks`, keeping visualization weight out of the root entry bundle.
+  - `apps/web/src/routes/cause-and-effect/index.tsx` caps initial loader queries to 20 entries without unconditional mount refetches, eliminating main-thread blocking time.
 
 ### Mitigating Failures & Regression Debugging
 If a deploy check fails because of a score drop:

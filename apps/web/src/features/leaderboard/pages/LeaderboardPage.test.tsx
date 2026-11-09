@@ -107,6 +107,12 @@ describe('LeaderboardPage', () => {
 
         // Should render em-dash (—) for MiniMax verifier rate
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+
+        // Should render accessible selection checkboxes for model comparison
+        const checkbox = screen.getByRole('checkbox', {
+            name: /select deepseek \(v4-flash\) for comparison/i,
+        });
+        expect(checkbox).toBeInTheDocument();
     });
 
     it('enables comparing two selected models side-by-side', () => {

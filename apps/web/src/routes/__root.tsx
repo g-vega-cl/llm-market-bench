@@ -247,7 +247,7 @@ export function RootDocument({ children }: { children: ReactNode }) {
                         </div>
                     </nav>
                     <GlobalBackground />
-                    {children}
+                    <main id="main-content">{children}</main>
                     <TanStackRouterDevtools position="bottom-right" />
                     <Scripts />
                 </PostHogProvider>

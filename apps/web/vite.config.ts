@@ -65,6 +65,15 @@ export default defineConfig(({ mode }) => {
         },
         build: {
             sourcemap: 'hidden' as const,
+            rollupOptions: {
+                output: {
+                    manualChunks(id) {
+                        if (id.includes('node_modules/d3') || id.includes('node_modules/d3-')) {
+                            return 'vendor-d3';
+                        }
+                    },
+                },
+            },
         },
         plugins: [
             posthog({

@@ -80,7 +80,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
     const { data, isFetching } = useSuspenseQuery({
         ...eventChainQueries.detail({ id: memoryId, fetchFn }),
         initialData,
-        initialDataUpdatedAt: 0,
+        initialDataUpdatedAt: initialData.chain.length > 1 ? undefined : 0,
     });
 
     const { chain, targetMemory } = data;

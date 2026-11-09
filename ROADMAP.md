@@ -16,7 +16,7 @@ A living document of features and improvements in progress or planned for the pl
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
-- [ ] - Benchify: use unlightouse to audit our whole site and fix.
+- [x] - Benchify: use unlightouse to audit our whole site and fix.
 
 ### Marketing & Building in Public
 
@@ -39,7 +39,6 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
  - This is kindof part of the pivot I'm looking to do, maybe a different category?
-- [ ] - Benchify: make sure that the daily homepage trader actually makes trades and has a portfolio. We should make it simple I think. Something like always trade 20 (or what percentage is best?) % of your portfolio..if your position is hold, don't do anything. If it's buy, buy up to that % . If it's sell, sell everything
 
 ### Database & Performance Polish
 

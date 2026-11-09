@@ -98,7 +98,49 @@ When capturing errors inside reactive React components or lifecycle hooks, alway
 
 TanStack Router's internal catch boundary isolates page, loader, and rendering errors without bubbling them to `window.onerror`. To prevent caught exceptions from becoming invisible in production, `apps/web/src/components/ui/DefaultCatchBoundary.tsx` hooks directly into PostHog via `usePostHog()`. When rendered, it records `posthog.captureException(err, { source: 'DefaultCatchBoundary', is_root, pathname, route_id })` guarded by a deduplication ref.
 
----
+## Server-Side Exception Autocapture & Request Middleware
+
+Server-side failures (server functions, SSR loaders, unhandled promise rejections in the Node runtime) are captured by the `posthog-node` client rather than the browser SDK.
+
+### `enableExceptionAutocapture`
+
+`apps/web/src/utils/posthog-server.ts` initializes the singleton `posthog-node` client with `enableExceptionAutocapture: true` alongside `flushAt: 1` and `flushInterval: 0`, so uncaught server exceptions and unhandled rejections are reported immediately without batching delay. The client targets `VITE_PUBLIC_POSTHOG_HOST` directly (no `/p` proxy — server-to-server traffic is not subject to ad blockers).
+
+### `src/start.ts` Request Middleware
+
+`apps/web/src/start.ts` exports `startInstance = createStart(() => ({ requestMiddleware: [...] }))` with two middlewares:
+
+1. **`createCsrfMiddleware({ filter: ({ handlerType }) => handlerType === 'serverFn' })`** — CSRF protection applied to server-function requests.
+2. **`posthogExceptionAutocapture`** — a `createMiddleware().server(...)` handler that calls `getPostHogClient()` before `await next()`, guaranteeing the server-side PostHog client is initialized for every request so exception autocapture is active.
+
+`routeTree.gen.ts` registers the start instance's config type (`config: Awaited<ReturnType<typeof startInstance.getOptions>>`) in the `@tanstack/react-start` module augmentation, so the middleware chain is type-checked against the router.
+
+No duplicate global error listeners are added — browser-caught render errors continue to flow through `DefaultCatchBoundary` and the root error boundary.
+
+## Source Map Uploads (Error Tracking Symbolication)
+
+Production stack traces are minified without source maps. `apps/web/vite.config.ts` wires the `@posthog/rollup-plugin` (devDependency `@posthog/rollup-plugin`) to upload hidden source maps to PostHog Error Tracking during the production build.
+
+### Build Configuration
+
+- **`build.sourcemap: 'hidden'`** — emits `.map` files without a `//# sourceMappingURL` comment, so maps are never served to browsers.
+- **Plugin options** — `personalApiKey: process.env.POSTHOG_API_KEY`, `projectId: process.env.POSTHOG_PROJECT_ID`, `host: process.env.POSTHOG_HOST`, and `sourcemaps: { enabled: posthogUploadEnabled, deleteAfterUpload: true }`.
+- **Upload gating** — `posthogUploadEnabled = Boolean(posthogApiKey?.startsWith('phx_') && posthogProjectId)`. Upload only runs when a valid personal API key (`phx_` prefix) and project ID are present; otherwise the build proceeds normally with no upload. A non-`phx_` key logs `PostHog source map upload skipped: POSTHOG_API_KEY must be a personal API key.`
+- **`deleteAfterUpload: true`** — local `.map` artifacts are removed after a successful upload so they are never published to the CDN.
+
+### Environment Variables
+
+| Variable | Scope | Purpose |
+| :--- | :--- | :--- |
+| `POSTHOG_API_KEY` | Build only (Netlify env) | Personal API key (`phx_`) with Error Tracking / source-map upload write access |
+| `POSTHOG_PROJECT_ID` | Build only (Netlify env) | PostHog project ID receiving the symbol sets |
+| `POSTHOG_HOST` | Build only (Netlify env) | PostHog app host for the uploader |
+| `VITE_PUBLIC_POSTHOG_PROJECT_TOKEN` | Build + runtime | Public project token used by the browser and server SDKs |
+| `VITE_PUBLIC_POSTHOG_HOST` | Build + runtime | Public ingestion host used by the browser and server SDKs |
+
+`apps/web/.env.example` documents the three build-only keys (`POSTHOG_API_KEY`, `POSTHOG_PROJECT_ID`, `POSTHOG_HOST`) with placeholder values. `apps/web/netlify.toml` carries a comment documenting that these must be configured in Netlify environment variables for production source-map uploads, and that the deployed app also reads `VITE_PUBLIC_POSTHOG_PROJECT_TOKEN` / `VITE_PUBLIC_POSTHOG_HOST` at build and run time. Netlify supplies the repository and commit metadata used for release identity.
+
+Uploaded symbol sets are visible at `https://us.posthog.com/project/<project_id>/error_tracking/configuration`; captured stack traces resolve against them after the next production deploy.
 
 ## Identity resolution and session lifecycle
 
@@ -122,4 +164,5 @@ To accurately track conversion funnels without splitting user profiles or leakin
 - [[entities/web-app]] — Dashboard where analytics are collected
 - [[concepts/observability-standard]] — Traceback hardening and LLM audit tracking
 - [[concepts/performance-auditing-strategy]] — Deferred third-party SDK initialization and bundle budget rules
+- [[concepts/release-and-canary-deployments]] — PostHog SDK boundaries and feature-flag release flow
 - [[sources/web-deployment-source]] — Netlify deployment configuration

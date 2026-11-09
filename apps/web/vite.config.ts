@@ -1,4 +1,5 @@
 import netlify from '@netlify/vite-plugin-tanstack-start';
+import posthog from '@posthog/rollup-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
@@ -13,6 +14,16 @@ export default defineConfig(({ mode }) => {
         if (process.env[key] === undefined) {
             process.env[key] = val;
         }
+    }
+
+    const posthogApiKey = process.env.POSTHOG_API_KEY;
+    const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
+    const posthogUploadEnabled = Boolean(posthogApiKey?.startsWith('phx_') && posthogProjectId);
+
+    if (posthogApiKey && !posthogApiKey.startsWith('phx_')) {
+        console.warn(
+            'PostHog source map upload skipped: POSTHOG_API_KEY must be a personal API key.',
+        );
     }
 
     return {
@@ -52,7 +63,19 @@ export default defineConfig(({ mode }) => {
                 'react-dom/client': 'react-dom/profiling',
             },
         },
+        build: {
+            sourcemap: 'hidden' as const,
+        },
         plugins: [
+            posthog({
+                personalApiKey: posthogApiKey ?? '',
+                projectId: posthogProjectId,
+                host: process.env.POSTHOG_HOST,
+                sourcemaps: {
+                    enabled: posthogUploadEnabled,
+                    deleteAfterUpload: true,
+                },
+            }),
             tailwindcss(),
             tsConfigPaths({
                 projects: ['./tsconfig.json'],

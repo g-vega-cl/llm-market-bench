@@ -73,11 +73,6 @@ A living document of features and improvements in progress or planned for the pl
 ### Government, Fiscal & Alternative Data
 
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
-- [ ] - Try to track government stuff again, but make it explicit, make it maybe outside ingestion and consensus.
-- [ ] - Benchify: track specific governments with liquid enough stock markets like Canada and trade based on government deals and pipelines and government money
-- [ ] - Erica said that in Canada you could have clear insider trading because there is a gradual buying leading to news, so we could tap into this.
-- [ ] - An LLM that focuses only on government opportunities. - Like deals in pipeline, new reforms, under the radar things
-- [ ] - Benchify: add institutional buying and Congress buying?
 - [ ] - Benchify: Toronto stock market
 
 ### Multimodal & Visual Market Prediction
@@ -117,7 +112,6 @@ A living document of features and improvements in progress or planned for the pl
 ## 🎨 Horizon 5: Creative Labs & Experiments (Moonshots)
 
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
-- [ ] - Strata + upwork
 - [ ] - Other: build my own job applier/aggregator.
 - [ ] - General: Make a "my style" coder that is AI-detection proof.
   - same with text

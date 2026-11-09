@@ -169,6 +169,9 @@ describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
         expect(getSystemPortfolioSubtitle('sys-max-pain')).toBe(
             'Daily Options Max Pain 0DTE Pinning (Ni et al. + Jev)',
         );
+        expect(getSystemPortfolioSubtitle('sys-sentiment-fader')).toBe(
+            'Contrarian Options Sentiment & Put/Call Ratio Fader',
+        );
         expect(getSystemPortfolioSubtitle('custom-model')).toBeUndefined();
     });
 

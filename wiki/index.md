@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/sentiment-fader]] — Auto-indexed page
 - [[entities/intraday-portfolio]] - Intraday portfolio management system with 20% equity cap and dual-layer execution
 - [[entities/government-ingestion]] — Auto-indexed page
 - [[entities/performance-chart]] — single-portfolio D3 performance chart with clipped, date-bounded benchmark overlay
@@ -101,6 +102,7 @@
 
 ## Concepts
 
+- [[concepts/options-sentiment-fading]] — Auto-indexed page
 - [[concepts/staff-engineer-verification]] — Auto-indexed page
 - [[concepts/window-focus-refresh]] — Auto-indexed page
 - [[concepts/zero-dependency-markdown-renderer]] — dependency-free Markdown parser/renderer with URL safety and nested-list support

@@ -57,14 +57,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] - Look for statistical analysis for markets
-- [ ] - Benchify: follow the crowd strategy? Like using options and volume data?
+- [x] - Benchify: follow the crowd strategy? Like using options and volume data?
 - [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
 - [ ] - Benchify: an option targeter? A predictor that says "in X amount of time, this stock will move Y"
 - [ ] - Benchify; a daily stock picker, which stocks will go up today? And pick 3 up and 3 down.
 - [ ] - Benchify: train small model?
-- [ ] - Benchify: add this paper to sources.
-
-  https://www.open-access.bcu.ac.uk/16180/1/The%20Alchemy%20of%20Multibagger%20Stocks%20-%20Anna%20Yartseva%20-%20CAFE%20Working%20Paper%2033%20%282025%29.pdf
 
 ### Focused Assets (Single Ticker / ETF)
 

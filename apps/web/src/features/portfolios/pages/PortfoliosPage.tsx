@@ -38,6 +38,7 @@ const SYSTEM_PORTFOLIO_SUBTITLES: Record<string, string> = {
     'sys-smid-quality-compounder': 'Quality & Momentum Small-to-Large Compounder (Zero-Ceiling)',
     'sys-pead-drift': 'Post-Earnings Drift Systematic Momentum (SUE + Jev)',
     'sys-max-pain': 'Daily Options Max Pain 0DTE Pinning (Ni et al. + Jev)',
+    'sys-sentiment-fader': 'Contrarian Options Sentiment & Put/Call Ratio Fader',
     'sys-sector-ls-consensus': 'Consensus Sector Long/Short Dispersion',
     'sys-sector-ls-30d': '30-Day Consensus Sector Long/Short Dispersion',
     'sys-sector-ls-90d': '90-Day Consensus Sector Long/Short Dispersion',

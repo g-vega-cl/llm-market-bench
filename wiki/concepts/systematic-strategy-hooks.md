@@ -22,6 +22,7 @@ The daily price update (`apps/engine/scripts/update_prices.py`) is invoked repea
 | ≥ 15:25 | any day | `run_max_pain_task(action="exit")` — market-close Max Pain liquidation |
 | 09:00–15:24 | any day | `run_max_pain_task(action="entry")` — intraday Max Pain evaluation/entry |
 | 09:35–10:35 | any day | `run_pead_drift_task(...)` — morning PEAD drift evaluation and rebalance |
+| 09:35–15:45 | any day | `run_sentiment_fader_task(...)` — contrarian options sentiment fader evaluation |
 
 ### Sector exits (Friday / horizon)
 

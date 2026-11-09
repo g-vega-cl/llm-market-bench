@@ -21,6 +21,7 @@ Used in portfolio detail pages to explain the rationale behind each system portf
 - `sys-frontier-tech-supercycle` — Frontier Tech Supercycle (small-cap guardrails)
 - `sys-daily-spy-close-target` — Daily SPY Close Price Target
 - `sys-daily-spy-target` — Daily SPY Open-to-Close Target
+- `sys-sentiment-fader` — Contrarian Options Sentiment Fader Strategy (🌊, `Put/Call Ratio Exhaustion` badge, 4 pillars: academic principle, panic entry trigger P/C ≥ 1.30, euphoria exit P/C ≤ 0.60, and risk controls with 1.5% stop loss / 3-day horizon / 1 bps friction)
 
 See `StrategyExplainerConfig` definitions in the component source for the full list.
 
@@ -36,5 +37,6 @@ Each explainer renders:
 - [[entities/smid-compounder]] — System portfolio using this explainer
 - [[entities/frontier-tech-portfolio]] — System portfolio using this explainer
 - [[entities/sector-trading]] — Sector L/S system portfolio
+- [[entities/sentiment-fader]] — Contrarian options sentiment fader system portfolio
 - [[concepts/system-portfolios]] — Mechanical and rule-based systematic trading strategies
 - [[concepts/zero-frontend-compute]] — All heavy computation pre-materialized; this component is pure presentational

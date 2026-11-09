@@ -115,6 +115,12 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Execution & Auditability**: Liquidations and entries execute strictly between 09:30 and 16:00 ET via `apps/engine/execution/future_forces.py` and mirror in real time to the Alpaca paper broker API with zero retroactive backfilling.
 - **Trigger**: Monthly rebalance and daily sentinel audit via `apps/engine/tasks/future_forces_task.py`. Detailed documentation in [[entities/future-forces-portfolio]] and [[concepts/future-forces]].
 
+### 12. Contrarian Options Sentiment Fader Strategy (`sys-sentiment-fader`)
+- **Signal**: Put/Call volume ratio extremes calculated by `calculate_options_sentiment` across liquid index ETFs (`SPY`, `QQQ`).
+- **Selection Rule**: Equal-weighted long allocation when Put/Call volume ratio $\ge 1.30$ (fading retail crowd panic exhaustion).
+- **Holding Horizon & Exits**: Up to 3 trading sessions. Exits on Put/Call volume ratio $\le 0.60$ (call complacency take-profit) or 1.5% adverse stop loss.
+- **Trigger**: Intraday evaluation during regular market hours via `apps/engine/scripts/update_prices.py` and `apps/engine/tasks/sentiment_fader_task.py`. Detailed documentation in [[entities/sentiment-fader]] and [[concepts/options-sentiment-fading]].
+
 ## LLM & Autoresearch Inspection Tool (`get_system_portfolios`)
 
 Mechanical system portfolios serve as objective control baselines for autonomous trading agents and prompt autoresearchers. The `get_system_portfolios` tool exposes current holdings, entry prices, unrealized PnL, trailing returns, and underlying quantitative regime signals:

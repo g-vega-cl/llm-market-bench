@@ -309,7 +309,9 @@ class TestSystematicStrategyHooks:
         with (
             patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain,
             patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock) as mock_pead,
+            patch("tasks.sentiment_fader_task.run_sentiment_fader_task", new_callable=AsyncMock) as mock_fader,
         ):
             await run_systematic_strategy_hooks(morning_time)
             mock_max_pain.assert_awaited_with(action="entry", dry_run=False)
             mock_pead.assert_awaited_once_with(dry_run=False)
+            mock_fader.assert_awaited_once_with(dry_run=False)

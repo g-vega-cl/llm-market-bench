@@ -198,6 +198,39 @@ const STRATEGY_CONFIGS: Record<string, ExplainerConfig> = {
             },
         ],
     },
+    'sys-sentiment-fader': {
+        emoji: '🌊',
+        title: 'Contrarian Options Sentiment Fader Strategy',
+        badgeText: 'Put/Call Ratio Exhaustion',
+        badgeColorScheme: 'warning',
+        subtitle:
+            'Fading retail crowd options volume panics on SPY and QQQ to capture oversold mean-reversion bounces.',
+        borderColor: 'border-amber-500/20',
+        bgColor: 'bg-amber-950/10',
+        gridColsClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+        pillars: [
+            {
+                title: '📚 Academic Principle',
+                description:
+                    'Retail options flow exhibits negative expected value due to aggressive buying at the ask and IV inflation (Barber & Odean). Extreme Put/Call volume spikes serve as reliable contrarian exhaustion signals.',
+            },
+            {
+                title: '🎯 Panic Entry Trigger (P/C ≥ 1.30)',
+                description:
+                    'When intraday Put/Call volume ratio on SPY or QQQ spikes into the 95th percentile (≥ 1.30), panic hedging is exhausted, triggering an equal-weighted oversold bounce buy.',
+            },
+            {
+                title: '🛑 Euphoria Exit (P/C ≤ 0.60)',
+                description:
+                    'When options sentiment flips into extreme call complacency (Put/Call ≤ 0.60), long positions are systematically closed to lock in mean-reversion profits.',
+            },
+            {
+                title: '⏱️ Risk Controls & 1.5% Stop Loss',
+                description:
+                    'Strict 1.5% adverse stop loss from entry protects against macro trend breakdowns. Positions are liquidated after a maximum 3-day holding horizon with 1 bps execution friction.',
+            },
+        ],
+    },
     'sys-sector-ls-consensus': {
         emoji: '⚖️',
         title: 'Weekly Sector Long/Short Consensus Strategy',

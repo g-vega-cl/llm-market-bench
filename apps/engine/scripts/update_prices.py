@@ -110,6 +110,17 @@ async def run_systematic_strategy_hooks(now_et: datetime, dry_run: bool = False)
     except Exception:
         logger.exception("PEAD drift strategy hook in update_prices failed")
 
+    # 4. Contrarian Options Sentiment Fader (sys-sentiment-fader)
+    try:
+        from tasks.sentiment_fader_task import run_sentiment_fader_task
+
+        # Run intraday during market hours (9:35 AM - 15:45 ET)
+        if (now_et.hour == 9 and now_et.minute >= 35) or (10 <= now_et.hour < 16):
+            logger.info("Market hours — Running sentiment fader evaluation and rebalance...")
+            await run_sentiment_fader_task(dry_run=dry_run)
+    except Exception:
+        logger.exception("Sentiment fader strategy hook in update_prices failed")
+
 
 async def _fetch_portfolio_owners(sb_client: Any) -> list[str]:
     def fetch_portfolios():

@@ -122,6 +122,14 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/0.01% Friction & 3:50 PM MOC/i)).toBeInTheDocument();
     });
 
+    it('renders Contrarian Options Sentiment Fader explainer for sys-sentiment-fader', () => {
+        render(<StrategyExplainer ownerId="sys-sentiment-fader" />);
+        expect(screen.getByText('Contrarian Options Sentiment Fader Strategy')).toBeInTheDocument();
+        expect(screen.getByText('Put/Call Ratio Exhaustion')).toBeInTheDocument();
+        expect(screen.getByText(/Panic Entry Trigger/i)).toBeInTheDocument();
+        expect(screen.getByText(/Euphoria Exit/i)).toBeInTheDocument();
+    });
+
     it('returns null for non-system portfolio', () => {
         const { container } = render(<StrategyExplainer ownerId="deepseek-v3" />);
         expect(container.firstChild).toBeNull();

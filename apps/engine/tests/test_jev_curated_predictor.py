@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from core.llm.daily_predictor_prompts import (
+    HOLD_CONFIDENCE_THRESHOLD,
     JEV_DEFAULT_CRITERIA,
     parse_jev_curated_prompt_content,
 )
@@ -24,18 +25,22 @@ def mock_unconfigured_arena_models():
 
 def test_parse_jev_curated_prompt_content():
     """Verify parsing of prompt_content storing criteria, min_confidence, and manifest."""
-    # 1. Fallback / None
+    # 1. Fallback / None defaults to HOLD_CONFIDENCE_THRESHOLD (56.0)
     crit, min_conf, manifest = parse_jev_curated_prompt_content(None)
     assert crit["UP"] == JEV_DEFAULT_CRITERIA["UP"]
-    assert min_conf == 50.0
+    assert min_conf == HOLD_CONFIDENCE_THRESHOLD
     assert manifest == {}
+
+    # Custom default_conf override
+    crit_custom, min_conf_custom, _ = parse_jev_curated_prompt_content(None, default_conf=52.0)
+    assert min_conf_custom == 52.0
 
     # 2. Legacy criteria only
     legacy_json = json.dumps({"UP": "Legacy Up", "DOWN": "Legacy Down"})
     crit, min_conf, manifest = parse_jev_curated_prompt_content(legacy_json)
     assert crit["UP"] == "Legacy Up"
     assert crit["DOWN"] == "Legacy Down"
-    assert min_conf == 50.0
+    assert min_conf == HOLD_CONFIDENCE_THRESHOLD
     assert manifest == {}
 
     # 3. Rich curated format

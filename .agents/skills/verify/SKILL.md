@@ -154,26 +154,40 @@ Audit all changed files through these eight tiers. Do not skip any tier.
 
 Apply a rigorous staff/principal engineering audit to all changed code. Think counterfactually: **"Could this have been done better?"**, **"Is there a simpler, more robust way?"**, and **"How will this fail?"** See `[[concepts/staff-engineer-verification]]`.
 
-1. **Anti-sycophancy and counterfactual critique**:
+1. **Mandatory Adversarial Subagent Audit**:
+   - To eliminate author bias and conversational sycophancy, the main agent MUST invoke an isolated `research` subagent via `invoke_subagent` (`TypeName: "research"`, `Role: "Staff Engineer Reviewer"`).
+   - **Cold Context Mandate**: The prompt to the subagent must contain ONLY the 1-sentence task goal and the git diff (`git diff HEAD~1` or staged/working diff). The main agent is **strictly prohibited from providing justifications or rationalizations** to the reviewer.
+   - **Adversarial Posture**: The subagent assumes the code contains flaws, anti-patterns, or fragility under load, auditing against `GEMINI.md` mandates, SOLID principles, trade idempotency, and scaling limits.
+   - **Triage Protocol**:
+     - *Tactical defects* (e.g., swallowed exceptions, missing idempotency guards, prompt leaks, improper imports): Main agent must fix them immediately and re-verify.
+     - *Structural pushback* (e.g., shotgun surgery, primitive obsession, missing domain abstraction): Main agent must document the debt transparently as `WARN` or `FAIL` in the report for the user's decision.
+2. **Anti-sycophancy and counterfactual critique**:
    - Never accept code just because tests pass.
    - *The delete check*: Could this problem be solved by deleting code, using an existing PostgREST query, or configuring an existing module rather than adding new code?
    - *The second design comparison*: Articulate at least one alternative design and state the concrete tradeoff (latency, memory footprint, coupling, maintainability) justifying the chosen implementation.
    - *Tidy First*: Ensure hard changes were made easy before making the change. Do not tack boolean parameters or special cases onto already complex functions.
-2. **SOLID principles & functional core / imperative shell**:
+3. **SOLID principles & functional core / imperative shell**:
    - *Single Responsibility (SRP)*: Keep math, modeling, and domain decisions pure; separate them from I/O, database queries, and network clients.
    - *Open/Closed (OCP)*: Replace growing `if/elif` ladders with declarative dispatch tables or configuration mappings.
    - *Interface Segregation & Dependency Inversion (ISP/DIP)*: Pass narrow, typed inputs rather than god-objects. Inject external dependencies to keep units hermetically testable.
-3. **Code smells and complexity ceilings**:
+4. **Code smells and complexity ceilings**:
    - *McCabe Cyclomatic Complexity (`C901`)*: Target $\le 10$ decision branches per function; hard ceiling at $15$. Decompose functions exceeding 15 branches into pure helpers or data-driven tables.
-   - *Smell check*: Look for shotgun surgery (touching >4 unrelated modules for one change), primitive obsession (raw untyped dicts passed around), feature envy, boolean blindness, deep nesting (>3 levels), and hidden side effects in getters/calculators.
-4. **Distributed systems invariants and CAP/PACELC tradeoffs**:
+   - *Smell check*: Look for shotgun surgery (touching >10 production files for one change), primitive obsession (raw untyped dicts passed around), feature envy, boolean blindness, deep nesting (>3 levels), and hidden side effects in getters/calculators.
+5. **Distributed systems invariants and CAP/PACELC tradeoffs**:
    - *Explicit CAP stance*: Financial ledger mutations and Reg T margin checks must be strictly **CP** (fail closed on partition/staleness). Read paths and non-critical commentary are **AP/EL** (degrade gracefully with cached state).
    - *Idempotency*: Workflows and DB mutations must be safe to re-run mid-flight (`ON CONFLICT DO UPDATE` or deterministic deduplication keys).
    - *Bulkheads & timeouts*: Every external network call must define explicit timeouts and concurrency limits (`asyncio.Semaphore`).
-5. **Performance intuition (orders of magnitude)**:
+6. **Performance intuition (orders of magnitude)**:
    - Zero N+1 query loops: Never execute database queries, HTTP calls, or file reads inside loops over records. Batch into `.in_()` queries or bulk inserts.
    - Avoid $O(N^2)$ scans where $O(1)$ dictionary/set lookups apply.
    - Strip heavy columns (e.g. pgvector `embedding` arrays) from read queries via explicit column projections (`[[concepts/vector-egress-stripping]]`).
+7. **System design interview rubric**:
+   Audit the change through the 5-step System Design Interview lens (Neo Kim & Abdirahman Jama framework in `[[concepts/staff-engineer-verification]]`):
+   - *Core Data Mutability & Invariants*: Is data append-only or mutable? What can never be lost? Critical financial state (trades, ledger transactions) must be strictly append-only with compensating records, avoiding destructive `DELETE` operations that sever audit trails.
+   - *Query Shape & Index Alignment*: Are new `.eq()`, `.gte()`, or `.order()` queries backed by indexes in `supabase/migrations/`? Ensure queries on growing tables enforce explicit date bounds (`gte`/`lte`), pagination, or `.limit()` to prevent unbounded sequential full-table scans.
+   - *End-to-End Data Flow & Caching*: Trace write-to-read lifecycle (background pipeline write -> PostgREST -> TanStack Query cache / query keys -> UI presentation). Verify cache invalidation, staleness bounds (`staleTime`/TTL), and prevent partial-write visibility to concurrent readers.
+   - *SPOFs, Bottlenecks & Graceful Degradation*: Identify single points of failure (SPOFs) when external services (local GPU servers, FMP, OpenRouter, Alpaca, PostgREST) stall or return 429/500 errors. Ensure pipelines fail fast or degrade gracefully with fallback without corrupting state.
+   - *Tradeoffs & 10x Scale Limits*: Articulate what breaks first under 10x volume, extreme volatility regimes, or concurrent execution.
 
 ### Tier 8. Wiki and documentation synchronization (MANDATORY)
 
@@ -210,10 +224,11 @@ Conclude every verification run with an eight-tier status report and a mandatory
 | **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, database schema parity |
 | **Tier 5** | Architecture & UI/UX | PASS / FAIL | Zero frontend compute, design system, layout |
 | **Tier 6** | Observability | PASS / FAIL | logger.exception used, zero swallowed exceptions |
-| **Tier 7** | Staff/Principal critical review | PASS / FAIL | SOLID, code smells, CAP/idempotency, N+1 check, counterfactual critique |
+| **Tier 7** | Staff/Principal critical review | PASS / WARN / FAIL | Subagent verdict, debt incurred, and action items |
 | **Tier 8** | Wiki & docs synchronization | PASS / FAIL | Concepts/entities synced, wiki_lint clean, QMD embeddings updated |
 
 ### Staff/Principal Engineer Critique
-- **Chosen approach vs alternative**: <1-2 sentences stating why the chosen design beats the primary alternative>
-- **Tradeoffs & failure modes**: <CP vs AP stance, idempotency guarantee, complexity/scaling behavior under partial failure>
-- **Refactoring / smells addressed**: <Any smells simplified or why no further abstraction is warranted (YAGNI)>
+- **Subagent Verdict & Link**: PASS / WARN (Debt Incurred) / FAIL — [<label>](conversation://<conversation-id>)
+- **Tactical Defects Caught & Fixed**: <Concrete bugs, bad practices, or principle violations caught by the subagent and resolved during verification>
+- **Unresolved Structural Pushback & Fragilities**: <Where the implementation is still flimsy, leaky, or couples too many modules, plus the counterfactual design that would eliminate it>
+- **What Breaks First at 10x / Edge Cases**: <Concrete failure modes under re-runs, partial crashes, regime shifts, or 10x scale>

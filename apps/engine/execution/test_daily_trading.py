@@ -13,6 +13,7 @@ from execution.daily_trading import (
     SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
     SYS_DAILY_SPY_OWNER_PREFIX,
     compute_daily_trade_execution,
+    execute_daily_spy_trade,
     execute_system_daily_close_trade,
     execute_system_daily_trade,
 )
@@ -243,11 +244,14 @@ async def test_execute_system_daily_close_trade_idempotency():
     def mock_table(table_name):
         if table_name == "trades":
             chain.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = (
-                MagicMock(data=[{"id": "prev-trade-1", "realized_pnl": 50.0}])
+                MagicMock(data=[{"id": "prev-trade-1", "signal": "SELL", "realized_pnl": 50.0}])
             )
             mock_delete = MagicMock()
-            mock_delete.return_value.eq.return_value.execute.side_effect = lambda: deleted_trade_ids.append(
-                "prev-trade-1"
+            mock_delete.return_value.in_.side_effect = lambda col, vals: MagicMock(
+                execute=lambda: deleted_trade_ids.extend(vals)
+            )
+            mock_delete.return_value.eq.side_effect = lambda col, val: MagicMock(
+                execute=lambda: deleted_trade_ids.append(val)
             )
             chain.delete = mock_delete
         elif table_name in ("portfolios", "portfolio_performance"):
@@ -370,3 +374,89 @@ async def test_execute_system_daily_trade_skips_jev_and_zero_target():
     )
     assert res_zero["status"] == "skipped"
     mock_port_getter.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_daily_spy_trade_hold_cleans_up_existing_same_day_trades():
+    """Verify that when a re-run prediction is gated to HOLD, existing same-day trades are cleaned up and cash reverted.
+
+    Specifically verifies that SHORT trades (which populate realized_pnl on both entry and exit rows)
+    do NOT double-count PnL during reversion.
+    """
+    hold_pred = {
+        "id": str(uuid4()),
+        "model_name": "MiniMax-M3",
+        "target_date": "2026-09-18",
+        "ticker": "SPY",
+        "predicted_direction": "HOLD",
+        "confidence": 54.0,
+        "expected_return_pct": 0.0,
+    }
+    intraday = {
+        "open_price": 760.00,
+        "high_price": 762.00,
+        "low_price": 759.00,
+        "close_price": 760.50,
+    }
+
+    portfolio_id = str(uuid4())
+    mock_port = MagicMock()
+    mock_port.id = portfolio_id
+    mock_port.cash_balance = 10150.0  # Had 10,000 initially, earlier run made +$150
+
+    mock_client = MagicMock()
+    deleted_trade_ids: list[str] = []
+    updated_portfolios: list[dict] = []
+    upserted_performance: list[dict] = []
+
+    def mock_table(table_name: str):
+        chain = MagicMock()
+        if table_name == "trades":
+            # Return both SHORT entry and COVER exit rows from earlier run (both have realized_pnl set in DB)
+            chain.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = (
+                MagicMock(
+                    data=[
+                        {"id": "entry-1", "signal": "SHORT", "realized_pnl": 150.0},
+                        {"id": "exit-1", "signal": "COVER", "realized_pnl": 150.0},
+                    ]
+                )
+            )
+            chain.delete.return_value.in_.side_effect = lambda col, vals: MagicMock(
+                execute=lambda: deleted_trade_ids.extend(vals)
+            )
+        elif table_name == "portfolios":
+            chain.update.side_effect = lambda data: MagicMock(
+                eq=lambda col, val: MagicMock(execute=lambda: updated_portfolios.append({**data, col: val}))
+            )
+        elif table_name == "portfolio_performance":
+            chain.upsert.side_effect = lambda data, on_conflict: MagicMock(
+                execute=lambda: upserted_performance.append(data)
+            )
+        return chain
+
+    mock_client.table.side_effect = mock_table
+
+    res = await execute_daily_spy_trade(
+        prediction=hold_pred,
+        intraday_data=intraday,
+        owner_prefix=SYS_DAILY_SPY_OWNER_PREFIX,
+        exit_on_target=True,
+        slippage_bps=2.0,
+        get_supabase_client_fn=lambda: mock_client,
+        get_or_create_system_portfolio_fn=AsyncMock(return_value=mock_port),
+    )
+
+    assert res["status"] == "skipped"
+    assert "HOLD" in res["reason"]
+    # Verify both trades were batch deleted via .in_()
+    assert "entry-1" in deleted_trade_ids
+    assert "exit-1" in deleted_trade_ids
+    # Verify portfolio cash balance reverted exactly to $10,000 (10150 - 150), NOT double-counted to $9850!
+    assert res["new_equity"] == pytest.approx(10000.0)
+    assert any(
+        p.get("cash_balance") == 10000.0 and p.get("total_equity") == 10000.0 and p.get("buying_power") == 10000.0
+        for p in updated_portfolios
+    ), "Portfolios table cash and equity must be reverted"
+    assert any(perf.get("total_equity") == 10000.0 for perf in upserted_performance), (
+        "Performance record must reflect reverted cash"
+    )

@@ -1,50 +1,27 @@
 ---
-tags: [execution, trading, validation, settlement]
+tags: [execution, trading, idempotency, settlement, portfolios]
 category: concept
 ---
 
-# Execution
+# Execution Phase
 
-The execution phase handles pre-market validation, cash-only capacity checks, trade settlement, and attribution. It ensures that all trades are valid, fully funded, and properly recorded.
+The execution phase converts validated trade decisions into settled portfolio mutations. It runs after consensus and before feedback in the daily pipeline (see [[entities/pipeline]]).
 
-## Pre-Market Validation
+## Idempotency Cleanup
 
-Before any trade is executed, the system validates market conditions and fetches live pre-market quotes. This is handled by `MarketDataManager.get_premarket_quote()`.
+Daily SPY and TLT close-trade executors (`apps/engine/execution/daily_trading.py`, `apps/engine/execution/daily_bond_trading.py`) are safe to re-run mid-flight. Before evaluating the new prediction, each executor:
 
-### Aftermarket Quote Provider
+1. Queries all `trades` rows for the portfolio within the target session (`executed_at` between `T00:00:00Z` and `T23:59:59Z`).
+2. Sums `realized_pnl` **only from exit trades** (`signal` in `SELL` / `COVER`) to avoid double-counting SHORT re-runs where both entry and exit rows carry `realized_pnl`.
+3. Reverts the portfolio's `cash_balance`, `total_equity`, `realized`, `buying_power`, and `excess_liquidity` to the pre-trade cash (`max(0.0, current_cash - prev_pnl)`).
+4. Batch-deletes the prior session trades via `.in_("id", trade_ids)`.
+5. Updates the `portfolios` row with the reverted balances and `last_updated_at`.
 
-`get_premarket_quote()` now uses a two-tier approach:
-1. **Primary**: If the data provider exposes a `get_aftermarket_quote(ticker)` method, it is called first. This returns a dedicated aftermarket quote with `price`, `bid`, `ask`, and `volume`.
-2. **Fallback**: If the provider method is unavailable, returns `None`, or raises an exception, the standard quote from `get_quote()` is used.
-
-The pre-market price is then compared to the previous close to compute the overnight gap percentage. When a dedicated aftermarket quote is available, the prior session's regular close is taken from `quote.price` (since `/quote` has not yet rolled over to today during pre-market); in fallback scenarios without aftermarket data, `quote.previous_close` or historical bar data is used.
-
-### Concurrent Proxy Fetching
-
-For the daily predictor's market context, pre-market quotes for macro proxies (QQQ, DIA, IWM, IEF, GLD, USO, UUP) are fetched concurrently using `asyncio.gather`. Partial failures are handled gracefully — failed proxies are skipped without breaking the entire context. This ensures robustness against transient API failures.
-
-## Cash-Only Trade Capacity & Guardrails
-
-The execution engine operates under a simplified **Cash-Only model** (zero margin borrowing or leverage):
-1. **Cash Bounded Buying Power**: A portfolio's purchase capacity is strictly limited by its liquid cash balance (`buying_power = max(0.0, cash_balance)`). Negative cash balances and margin loans are prohibited.
-2. **Trade Validation**: Proposed `BUY` orders must not exceed available cash balance.
-3. **Dynamic Position Floor**: Every `BUY` trade must be $\ge \max(\$1,000, 10\% \text{ Total Equity})$ to guarantee meaningful position sizing.
-4. **Zero Margin Requirements**: Initial margin, maintenance margin, and SMA ratchet deductions are retired; SMA tracks available cash. Historical Reg T calculations are preserved in [[sources/reg-t-calculations-source]].
-
-## Trade Settlement
-
-Trades are settled using the "Commit at the End" pattern to prevent phantom deductions. Orders are placed via Alpaca's API, and order status is synced asynchronously via [[concepts/alpaca-order-sync]].
-
-## Trade Attribution and Execution Tracing
-
-Rather than constraining attribution to a single nominal newsletter ID, the engine captures a factual execution trace in the decision's JSONB metadata:
-1. **Batch Ingest Context**: Captures all active newsletter chunk IDs, senders, and subjects present in the prompt context batch.
-2. **Tool Invocations**: Records every tool executed during analysis (`get_stock_quote`, `get_price_history`, `calculate_buy_quantity`, etc.) along with input arguments and target tickers.
-3. **Audit Trail**: Stored under `decisions.metadata->'execution_trace'`, preserved during `save_decision`, and surfaced in the web UI via `ExecutionTraceView` in both Today execution activity and Portfolio trades tables.
+The cleanup runs **before** the HOLD gate, so a re-run whose prediction is gated to HOLD still removes stale same-day trades and reverts cash. When the recomputed execution yields `shares <= 0` (insufficient capital), the executor upserts a `portfolio_performance` row reflecting the reverted cash so the daily equity curve stays consistent.
 
 ## Related
 
-- [[entities/engine]]
-- [[entities/daily-market-predictor]]
-- [[concepts/alpaca-order-sync]]
-- [[sources/reg-t-calculations-source]]
+- [[concepts/pending-settlement-state]] — settlement state tracking
+- [[concepts/daily-spy-live-trading]] — SPY daily close executor
+- [[concepts/daily-tlt-live-trading]] — TLT daily close executor
+- [[entities/pipeline]] — daily pipeline phases

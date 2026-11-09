@@ -109,11 +109,27 @@ if [ "$ENGINE" = true ] || [ "$FAST" = true ]; then
   ./apps/engine/.venv/bin/ruff format --check apps/engine/
 
   # Check McCabe cyclomatic complexity on modified Python files (Diff-scoped check)
-  MODIFIED_PY=$(git diff --name-only HEAD -- 'apps/engine/*.py' 2>/dev/null || true)
+  MODIFIED_PY=$(git diff --name-only HEAD -- 'apps/engine/**/*.py' 'apps/engine/*.py' 2>/dev/null || true)
   if [ -n "$MODIFIED_PY" ]; then
     echo "--> Auditing McCabe Cyclomatic Complexity (C901 <= 15) on modified Python files..."
     ./apps/engine/.venv/bin/ruff check $MODIFIED_PY --select C901 --config "lint.mccabe.max-complexity = 15" || \
       echo "WARNING: High cyclomatic complexity (>15) detected in modified files. Review in Tier 7 (extract pure helpers or guard clauses)."
+
+    echo "--> Checking for silent exception swallowing (suppress(Exception) or unlogged pass)..."
+    PROD_PY=$(echo "$MODIFIED_PY" | grep -vE 'test_|_test\.py|/tests/' || true)
+    if [ -n "$PROD_PY" ]; then
+      if grep -nE "contextlib\.suppress\(Exception\)|suppress\(Exception\)" $PROD_PY 2>/dev/null; then
+        echo "ERROR: contextlib.suppress(Exception) is forbidden in production engine code! Catch specific exceptions or log with logger.exception." >&2
+        exit 1
+      fi
+    fi
+  fi
+
+  echo "--> Checking for shotgun surgery (production files blast radius)..."
+  TOUCHED_PROD=$(git diff --name-only HEAD -- 'apps/' 'packages/' 2>/dev/null | grep -vE 'test|/tests/|__tests__|\.test\.|\.spec\.' || true)
+  TOUCHED_COUNT=$(echo "$TOUCHED_PROD" | grep -c . || true)
+  if [ "$TOUCHED_COUNT" -gt 10 ]; then
+    echo "WARNING [SHOTGUN SURGERY]: Diff modifies $TOUCHED_COUNT production files (>10). Tier 7 review MUST audit for leaky abstractions or coupling debt."
   fi
 
   echo "--> Checking Engine import root hygiene (zero forbidden 'apps.engine' in production code)..."

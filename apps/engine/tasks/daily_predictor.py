@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import json
 import os
 import sys
 from datetime import UTC, datetime, timedelta
@@ -570,7 +568,7 @@ async def _execute_model_daily_prediction(
     user_msg: str,
     raw_prompt_content: str,
     prompt_content: str,
-) -> tuple[str, float, float, str, list[str], str]:
+) -> tuple[str, float, float, str, list[str], str, float]:
     model_name = model_cfg["name"]
     m_type = model_cfg["type"]
     provider = model_cfg["provider"]
@@ -579,7 +577,7 @@ async def _execute_model_daily_prediction(
         pred_dir, confidence, exp_ret, rationale, catalysts = await _call_instructor_daily_model(
             model_name, provider, prompt_content, user_msg
         )
-        return pred_dir, confidence, exp_ret, rationale, catalysts, context
+        return pred_dir, confidence, exp_ret, rationale, catalysts, context, HOLD_CONFIDENCE_THRESHOLD
 
     if m_type == "minimax":
         minimax_client = MiniMaxClient()
@@ -604,6 +602,7 @@ async def _execute_model_daily_prediction(
                 str(parsed_json.get("rationale", "")),
                 parsed_json.get("catalysts", []),
                 context,
+                HOLD_CONFIDENCE_THRESHOLD,
             )
         finally:
             await minimax_client.close()
@@ -618,10 +617,11 @@ async def _execute_model_daily_prediction(
             jev_res["rationale"],
             jev_res["catalysts"],
             context,
+            HOLD_CONFIDENCE_THRESHOLD,
         )
 
     if m_type == "jev_curated":
-        crit, _min_conf, manifest_dict = parse_jev_curated_prompt_content(raw_prompt_content)
+        crit, min_conf, manifest_dict = parse_jev_curated_prompt_content(raw_prompt_content)
         manifest = DataManifest(**manifest_dict) if manifest_dict else DataManifest()
         curated_context = pack_daily_context(data_record, manifest)
         jev_res = await predict_daily_with_jev(
@@ -634,6 +634,7 @@ async def _execute_model_daily_prediction(
             jev_res["rationale"],
             jev_res["catalysts"],
             curated_context,
+            min_conf,
         )
 
     ingestion_prompt, crit, min_conf = parse_laya_curated_prompt_content(raw_prompt_content)
@@ -649,7 +650,7 @@ async def _execute_model_daily_prediction(
         f"Laya Decision ({backend_note}): {raw_dir} (Confidence: {confidence:.1f}%, "
         f"distribution={laya_res.get('probabilities', {})})"
     )
-    return raw_dir, confidence, 0.0, rationale, [], daily_doc
+    return raw_dir, confidence, 0.0, rationale, [], daily_doc, min_conf
 
 
 async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list[dict]:
@@ -704,16 +705,10 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                     rationale,
                     catalysts,
                     model_context,
+                    model_min_conf,
                 ) = await _execute_model_daily_prediction(
                     model_cfg, ticker, context, data_record, user_msg, raw_prompt_content, prompt_content
                 )
-                model_min_conf = HOLD_CONFIDENCE_THRESHOLD
-                if raw_prompt_content:
-                    with contextlib.suppress(Exception):
-                        parsed_raw = json.loads(raw_prompt_content)
-                        if isinstance(parsed_raw, dict) and "min_confidence" in parsed_raw:
-                            model_min_conf = float(parsed_raw["min_confidence"])
-
                 pred_dir, expected_return_pct, rationale = apply_confidence_hold_gate(
                     direction=pred_dir,
                     confidence=confidence,

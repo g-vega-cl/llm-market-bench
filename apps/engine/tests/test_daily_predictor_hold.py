@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
+
+import pytest
 
 from core.conviction_scoring import conviction_points
 from core.llm.daily_predictor_prompts import (
@@ -212,3 +215,100 @@ def test_postmortem_summary_includes_conf_and_conviction_columns():
     assert "Conf %" in summary
     assert "Conv CP" in summary
     assert "HOLD" in summary
+
+
+@pytest.mark.asyncio
+async def test_execute_model_daily_prediction_propagates_custom_min_confidence():
+    """Verify _execute_model_daily_prediction functionally propagates custom min_conf and gates correctly."""
+    import json
+    from unittest.mock import AsyncMock, patch
+
+    from tasks.daily_predictor import _execute_model_daily_prediction
+
+    # 1. Curated model with custom min_confidence = 62.0%
+    curated_cfg = {"name": "jev-custom", "type": "jev_curated", "provider": "typesafe"}
+    raw_prompt = json.dumps(
+        {
+            "criteria": {"UP": "Bullish signals", "DOWN": "Bearish signals"},
+            "min_confidence": 62.0,
+            "manifest": {},
+        }
+    )
+    mock_jev = AsyncMock(
+        return_value={
+            "predicted_direction": "UP",
+            "confidence": 60.0,
+            "expected_return_pct": 0.45,
+            "rationale": "Moderate lean up",
+            "catalysts": ["Earnings"],
+        }
+    )
+
+    with patch("tasks.daily_predictor.predict_daily_with_jev", mock_jev):
+        pred_dir, conf, exp_ret, rationale, catalysts, ctx, min_conf = await _execute_model_daily_prediction(
+            model_cfg=curated_cfg,
+            ticker="SPY",
+            context="Pre-market context",
+            data_record={},
+            user_msg="Predict SPY",
+            raw_prompt_content=raw_prompt,
+            prompt_content=raw_prompt,
+        )
+
+    assert min_conf == 62.0, "Must extract and propagate custom min_confidence: 62.0"
+    assert conf == 60.0
+    gated_dir, _, gated_rationale = apply_confidence_hold_gate(
+        direction=pred_dir,
+        confidence=conf,
+        expected_return_pct=exp_ret,
+        rationale=rationale,
+        min_confidence=min_conf,
+    )
+    # 60.0% is below the custom 62.0% threshold -> must gate to HOLD
+    assert gated_dir == "HOLD"
+    assert "[HOLD - Gated from UP (60.0%)]" in gated_rationale
+
+    # 2. Standard instructor model defaults to HOLD_CONFIDENCE_THRESHOLD (56.0%)
+    instructor_cfg = {"name": "deepseek-v4-flash", "type": "instructor", "provider": "openrouter"}
+    mock_instructor = AsyncMock(return_value=("UP", 55.0, 0.30, "Weak lean", []))
+    with patch("tasks.daily_predictor._call_instructor_daily_model", mock_instructor):
+        pred_dir, conf, exp_ret, rationale, catalysts, ctx, min_conf = await _execute_model_daily_prediction(
+            model_cfg=instructor_cfg,
+            ticker="SPY",
+            context="Pre-market context",
+            data_record={},
+            user_msg="Predict SPY",
+            raw_prompt_content="markdown prompt",
+            prompt_content="markdown prompt",
+        )
+
+    assert min_conf == HOLD_CONFIDENCE_THRESHOLD == 56.0
+    gated_dir, _, _ = apply_confidence_hold_gate(
+        direction=pred_dir,
+        confidence=conf,
+        expected_return_pct=exp_ret,
+        rationale=rationale,
+        min_confidence=min_conf,
+    )
+    assert gated_dir == "HOLD"
+
+
+def test_daily_predictor_extracts_min_conf_without_suppress_exception():
+    """Verify daily_predictor.py does not contain silent exception swallowing on prompt parsing."""
+    predictor_path = Path(__file__).resolve().parents[1] / "tasks" / "daily_predictor.py"
+    content = predictor_path.read_text()
+    assert "contextlib.suppress(Exception)" not in content, (
+        "daily_predictor.py must not suppress Exception on raw prompt JSON parsing"
+    )
+
+
+@pytest.mark.asyncio
+async def test_daily_autoresearch_prompt_omits_prescriptive_confidence_advice():
+    """Verify generate_new_daily_prompt complies with Principle 8 (zero prescriptive confidence heuristics)."""
+    research_path = Path(__file__).resolve().parents[1] / "tasks" / "daily_autoresearch.py"
+    content = research_path.read_text()
+    # Prescriptive advice must NOT be present in autoresearcher meta-prompt
+    assert "When pre-market signals converge cleanly, express higher conviction" not in content
+    assert "When signals conflict or tape is flat, assign 50%-55%" not in content
+    assert "When high-impact catalysts or strong trend conditions align" not in content
+    assert "On rangebound, ambiguous, or high-VIX days" not in content

@@ -76,7 +76,15 @@ async def test_execute_system_daily_trade_idempotent_replacement():
                     res.execute.return_value = MagicMock()
                     return res
 
+                def mock_del_in(col, vals):
+                    if col == "id":
+                        deleted_trade_ids.extend(vals)
+                    res = MagicMock()
+                    res.execute.return_value = MagicMock()
+                    return res
+
                 del_chain.eq.side_effect = mock_del_eq
+                del_chain.in_.side_effect = mock_del_in
                 return del_chain
 
             chain.delete.side_effect = mock_delete
@@ -157,7 +165,15 @@ async def test_execute_system_sector_rebalance_idempotent_replacement():
                     res.execute.return_value = MagicMock()
                     return res
 
+                def mock_del_in(col, vals):
+                    if col == "id":
+                        deleted_trade_ids.extend(vals)
+                    res = MagicMock()
+                    res.execute.return_value = MagicMock()
+                    return res
+
                 del_chain.eq.side_effect = mock_del_eq
+                del_chain.in_.side_effect = mock_del_in
                 return del_chain
 
             chain.delete.side_effect = mock_delete
@@ -231,7 +247,15 @@ async def test_execute_mechanical_sector_rebalance_idempotent_replacement():
                     res.execute.return_value = MagicMock()
                     return res
 
+                def mock_del_in(col, vals):
+                    if col == "id":
+                        deleted_trade_ids.extend(vals)
+                    res = MagicMock()
+                    res.execute.return_value = MagicMock()
+                    return res
+
                 del_chain.eq.side_effect = mock_del_eq
+                del_chain.in_.side_effect = mock_del_in
                 return del_chain
 
             chain.delete.side_effect = mock_delete

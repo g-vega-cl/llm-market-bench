@@ -554,11 +554,8 @@ async def generate_new_daily_prompt(
         "   - 65.0% (moderate lean): +26.24 CP if correct, -35.67 CP if wrong.\n"
         "   - 75.0% (strong setup): +40.55 CP if correct, -69.31 CP if wrong.\n"
         "   - 85.0% (high conviction): +53.06 CP if correct, -120.40 CP if wrong.\n"
-        "   - When pre-market signals converge cleanly, express higher conviction (65%-80%) to earn generous conviction points. When signals conflict or tape is flat, assign 50%-55% to hold safely.\n"
-        "5. Optimize Magnitude Calibration (10% weight): When high-impact catalysts or strong trend conditions align, "
-        "instruct the predictor to be more confident and aggressive in expected_return_pct magnitude (e.g. +0.50% to +1.20% instead of timid +0.20%).\n"
-        "6. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
-        "7. Provide a concise `research_insight` (1-2 sentences) summarizing the core lesson or causal rule learned from this week's results to persist in this track's institutional memory.\n\n"
+        "5. Magnitude Calibration (10% weight of accuracy block): Measures how accurately expected_return_pct captures realized price movement.\n"
+        "6. Provide a concise `research_insight` (1-2 sentences) summarizing the core lesson or causal rule learned from this week's results to persist in this track's institutional memory.\n\n"
         f"{strategy_block}"
     )
 

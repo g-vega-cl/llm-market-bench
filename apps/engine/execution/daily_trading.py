@@ -158,6 +158,41 @@ async def execute_daily_spy_trade(
 
     client = client_getter()
 
+    # Idempotency guard: clean up any existing trades for this portfolio and session
+    existing_trades_res = (
+        client.table("trades")
+        .select("id, signal, realized_pnl")
+        .eq("portfolio_id", str(portfolio.id))
+        .gte("executed_at", f"{target_date_str}T00:00:00Z")
+        .lte("executed_at", f"{target_date_str}T23:59:59Z")
+        .execute()
+    )
+    existing_trades = existing_trades_res.data or []
+    if existing_trades:
+        # Only sum realized_pnl from exit trades (SELL / COVER) to avoid double-counting on SHORT re-runs
+        prev_pnl = sum(
+            float(t["realized_pnl"])
+            for t in existing_trades
+            if t.get("signal") in ("SELL", "COVER") and t.get("realized_pnl") is not None
+        )
+        current_cash = max(0.0, current_cash - prev_pnl)
+        trade_ids = [t["id"] for t in existing_trades if "id" in t]
+        if trade_ids:
+            client.table("trades").delete().in_("id", trade_ids).execute()
+        client.table("portfolios").update(
+            {
+                "cash_balance": current_cash,
+                "total_equity": current_cash,
+                "realized": current_cash,
+                "buying_power": current_cash,
+                "excess_liquidity": current_cash,
+                "last_updated_at": datetime.now(UTC).isoformat(),
+            }
+        ).eq("id", str(portfolio.id)).execute()
+        logger.info(
+            f"Idempotency cleanup: Removed {len(existing_trades)} existing trades for {owner_id} on {target_date_str}, reverted PnL: ${prev_pnl:,.2f}"
+        )
+
     direction = str(prediction.get("predicted_direction", "UP")).strip().upper()
     if direction == "HOLD":
         logger.info(f"Skipping daily SPY trade for {owner_id} on {target_date_str}: Prediction is HOLD.")
@@ -180,25 +215,6 @@ async def execute_daily_spy_trade(
             "new_equity": current_cash,
         }
 
-    # Idempotency guard: clean up any existing trades for this portfolio and session
-    existing_trades_res = (
-        client.table("trades")
-        .select("id, realized_pnl")
-        .eq("portfolio_id", str(portfolio.id))
-        .gte("executed_at", f"{target_date_str}T00:00:00Z")
-        .lte("executed_at", f"{target_date_str}T23:59:59Z")
-        .execute()
-    )
-    existing_trades = existing_trades_res.data or []
-    if existing_trades:
-        prev_pnl = sum(float(t["realized_pnl"]) for t in existing_trades if t.get("realized_pnl") is not None)
-        current_cash = max(0.0, current_cash - prev_pnl)
-        for t in existing_trades:
-            client.table("trades").delete().eq("id", t["id"]).execute()
-        logger.info(
-            f"Idempotency cleanup: Removed {len(existing_trades)} existing trades for {owner_id} on {target_date_str}, reverted PnL: ${prev_pnl:,.2f}"
-        )
-
     execution = compute_daily_trade_execution(
         prediction=prediction,
         intraday=intraday_data,
@@ -209,6 +225,19 @@ async def execute_daily_spy_trade(
 
     shares = execution["shares"]
     if shares <= 0:
+        if existing_trades:
+            client.table("portfolio_performance").upsert(
+                {
+                    "portfolio_id": str(portfolio.id),
+                    "date": target_date_str,
+                    "total_equity": current_cash,
+                    "cash_balance": current_cash,
+                    "buying_power": current_cash,
+                    "sma": 0.0,
+                    "realized": current_cash,
+                },
+                on_conflict="portfolio_id,date",
+            ).execute()
         return {"status": "skipped", "reason": "Insufficient capital"}
     direction = execution["direction"]
     entry_signal = "BUY" if direction == "UP" else "SHORT"

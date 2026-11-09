@@ -13,6 +13,13 @@ While automated test suites and linters detect **bad code** (unhandled exception
 
 AI models naturally suffer from conversational sycophancy (`knowledge-db/2026-10-06-why-llms-agree-with-you-even-when-you-re-wrong-1a111ddedc318414.md`): accepting the premise of a prompt and declaring a solution optimal simply because tests pass ("Agreement masked as verification"). 
 
+### 1.1 The Isolated Subagent Red-Team Pattern
+
+When the agent that writes code also performs the staff review in the same conversation turn, cognitive dissonance and self-justification degrade the review into rubber-stamping. To break this feedback loop:
+- **Cold Review Boundary**: The main agent spawns an isolated `research` subagent passing *only* the git diff and objective requirements. The main agent is prohibited from priming or defending the implementation.
+- **Adversarial Mandate**: The subagent explicitly hunts for leaky abstractions, race conditions, edge-case failures, and architectural drift.
+- **Triage Loop**: Tactical bugs caught by the subagent are fixed immediately; structural critiques are recorded as debt rather than being rationalized away.
+
 Staff-level review forces counterfactual examination before committing any change:
 
 1. **The "Do Nothing / Delete" Check**:
@@ -74,6 +81,26 @@ Staff engineers think in physical orders of magnitude:
 - **Zero N+1 Query Loops**: Never execute database queries, HTTP calls, or file reads inside loops over records. Batch into `.in_()` queries or bulk inserts.
 - **Algorithmic Complexity**: Prefer $O(1)$ set/dictionary lookups over $O(N)$ repeated list scans.
 - **Memory & Egress Hygiene**: Strip unused heavy columns (e.g. pgvector `embedding` arrays) from read queries via explicit column projections (`[[concepts/vector-egress-stripping]]`).
+
+## 6. The 5-Step System Design Interview Framework
+
+When auditing features, treat the pull request as an L5/L6 System Design Interview (based on the framework by Neo Kim & Abdirahman Jama in `knowledge-db/2026-03-07-i-struggled-with-system-design-interview-until-i-learned-thi-19cc890c76fbffe2.md`):
+
+1. **Functional & Non-Functional Boundaries**:
+   - What are the core user flows? What is explicitly out of scope?
+   - What are the execution frequency and latency constraints (sub-100ms UI response vs background cron batch)?
+2. **Core Data, Mutability & Index Alignment**:
+   - *Append-only vs mutable*: What can never be lost? Financial state (trades, account mutations) must be strictly append-only with compensating cancellation/reversal records. Never use destructive `DELETE` operations that wipe out audit trails.
+   - *Index alignment*: Every `.eq()`, `.gte()`, or `.order()` query must be backed by a composite index in `supabase/migrations/` to prevent sequential table scans as tables grow.
+   - *Unbounded scan prevention*: Queries on growing historical tables must enforce explicit date windows (`gte`/`lte`), pagination, or `.limit()`.
+3. **End-to-End Data Flow & Caching**:
+   - Trace the write-to-read lifecycle: Background pipeline write -> PostgREST -> TanStack Query cache / query keys -> UI presentation.
+   - Verify cache invalidation, staleness bounds (`staleTime`/TTL), and prevent partial-write visibility to concurrent readers.
+4. **Bottlenecks, Single Points of Failure (SPOFs) & Graceful Degradation**:
+   - Identify SPOFs: What happens if an external dependency (local Strata/Laya server, FMP, OpenRouter, Alpaca, Supabase) is down, times out, or returns a 429/500? Ensure pipelines fail fast or degrade gracefully with fallback without corrupting state.
+   - Bulkheads & timeouts: Explicit timeouts on all network calls and concurrency limits (`asyncio.Semaphore`).
+5. **Tradeoffs & 10x Scale Limits**:
+   - What compromises were made for simplicity, what architectural debt was incurred, and what will break first under 10x volume, extreme volatility regimes, or concurrent execution?
 
 ## Related
 

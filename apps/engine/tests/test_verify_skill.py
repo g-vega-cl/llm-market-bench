@@ -153,3 +153,58 @@ def test_verify_script_supports_sequential():
 
     entity_content = VERIFY_ENTITY_MD.read_text()
     assert "--sequential" in entity_content
+
+
+def test_verify_skill_mandates_adversarial_subagent_and_critique_format():
+    """Verify that SKILL.md and wiki entity mandate an isolated subagent and 4-part critique format."""
+    assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
+    skill_content = VERIFY_SKILL_MD.read_text()
+
+    # Must mandate spawning an isolated research subagent for cold Tier 7 review
+    assert "invoke_subagent" in skill_content or "subagent" in skill_content.lower()
+    assert "adversarial" in skill_content.lower()
+
+    # Must enforce the 4-part critique format
+    assert "Subagent Verdict & Link" in skill_content
+    assert "Tactical Defects Caught & Fixed" in skill_content
+    assert "Unresolved Structural Pushback & Fragilities" in skill_content
+    assert "What Breaks First at 10x / Edge Cases" in skill_content
+
+    assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
+    entity_content = VERIFY_ENTITY_MD.read_text()
+    assert "subagent" in entity_content.lower()
+    assert "adversarial" in entity_content.lower()
+
+
+def test_verify_script_checks_exception_swallowing_and_shotgun_surgery():
+    """Verify that verify.sh includes deterministic checks for exception swallowing and shotgun surgery."""
+    assert VERIFY_SCRIPT.exists(), "verify.sh must exist"
+    content = VERIFY_SCRIPT.read_text()
+
+    # Must check for silent exception swallowing in modified files
+    assert "suppress(Exception)" in content or "contextlib.suppress" in content
+    # Must check for shotgun surgery on modified production files
+    assert "shotgun" in content.lower()
+
+
+def test_verify_skill_mandates_system_design_interview_framework():
+    """Verify that SKILL.md, wiki entity, and staff-engineer concept mandate the System Design Interview rubric."""
+    assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
+    skill_content = VERIFY_SKILL_MD.read_text().lower()
+
+    # Must explicitly bake the system design interview rubric into Tier 7
+    assert "system design" in skill_content
+    assert "append-only" in skill_content or "mutability" in skill_content
+    assert "index" in skill_content
+    assert "spof" in skill_content or "single points of failure" in skill_content
+    assert "degradation" in skill_content or "graceful degradation" in skill_content
+
+    assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
+    entity_content = VERIFY_ENTITY_MD.read_text().lower()
+    assert "system design" in entity_content
+
+    concept_path = REPO_ROOT / "wiki" / "concepts" / "staff-engineer-verification.md"
+    assert concept_path.exists(), "wiki/concepts/staff-engineer-verification.md must exist"
+    concept_content = concept_path.read_text().lower()
+    assert "system design interview" in concept_content
+    assert "spof" in concept_content or "single points of failure" in concept_content

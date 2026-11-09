@@ -253,12 +253,12 @@ def parse_jev_prompt_content(prompt_content: str | None) -> dict[str, str]:
 
 def parse_jev_curated_prompt_content(
     prompt_content: str | None,
+    default_conf: float = HOLD_CONFIDENCE_THRESHOLD,
 ) -> tuple[dict[str, str], float, dict[str, Any]]:
     """Parse criteria dictionary, min_confidence threshold, and manifest dictionary."""
     import json
 
     default_crit = dict(JEV_DEFAULT_CRITERIA)
-    default_conf = 50.0
     default_manifest: dict[str, Any] = {}
 
     if not prompt_content:

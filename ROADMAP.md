@@ -31,7 +31,6 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Autoresearch Scaling & Local Models
 
-- [x] - benchify: autoresearch the autoresearcher rather than the model (implemented via monthly meta-autoresearcher with Mutation Yield ratchet)
 - [x] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
  - So allow hold? improve the confidence number?
 

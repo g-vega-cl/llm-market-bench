@@ -158,6 +158,28 @@ async def execute_daily_spy_trade(
 
     client = client_getter()
 
+    direction = str(prediction.get("predicted_direction", "UP")).strip().upper()
+    if direction == "HOLD":
+        logger.info(f"Skipping daily SPY trade for {owner_id} on {target_date_str}: Prediction is HOLD.")
+        client.table("portfolio_performance").upsert(
+            {
+                "portfolio_id": str(portfolio.id),
+                "date": target_date_str,
+                "total_equity": current_cash,
+                "cash_balance": current_cash,
+                "buying_power": current_cash,
+                "sma": 0.0,
+                "realized": current_cash,
+            },
+            on_conflict="portfolio_id,date",
+        ).execute()
+        return {
+            "status": "skipped",
+            "reason": "HOLD prediction (capital preserved in 100% cash)",
+            "owner_id": owner_id,
+            "new_equity": current_cash,
+        }
+
     # Idempotency guard: clean up any existing trades for this portfolio and session
     existing_trades_res = (
         client.table("trades")

@@ -20,7 +20,10 @@ from core.config import (
 )
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_deepseek_client, get_openai_client
-from core.llm.daily_predictor_prompts import DailyPredictionOutput
+from core.llm.daily_predictor_prompts import (
+    DailyPredictionOutput,
+    apply_confidence_hold_gate,
+)
 from core.llm.handlers import deepseek, openai
 from core.llm.tools import (
     CANONICAL_TOOLS_REGISTRY,
@@ -268,16 +271,22 @@ async def run_daily_bond_prediction(ticker: str = "TLT", force: bool = False) ->
                 )
                 pred = await predict_daily_with_jev(context=jev_context, ticker=ticker, model_name=model_name)
 
+            pred_dir, exp_ret, rationale = apply_confidence_hold_gate(
+                direction=pred["predicted_direction"],
+                confidence=pred["confidence"],
+                expected_return_pct=pred.get("expected_return_pct", 0.0),
+                rationale=pred.get("rationale", ""),
+            )
             db_payload = {
                 "prediction_date": today_str,
                 "target_date": today_str,
                 "ticker": ticker.upper(),
                 "model_name": model_name,
                 "prompt_variant_tag": f"pull-bond-{model_name}",
-                "predicted_direction": pred["predicted_direction"],
+                "predicted_direction": pred_dir,
                 "confidence": pred["confidence"],
-                "expected_return_pct": pred.get("expected_return_pct", 0.0),
-                "rationale": pred.get("rationale", ""),
+                "expected_return_pct": exp_ret,
+                "rationale": rationale,
                 "catalysts": pred.get("catalysts", []),
                 "market_context": lean_prompt if m_type == "tool_loop" else jev_context,
                 "status": "pending",

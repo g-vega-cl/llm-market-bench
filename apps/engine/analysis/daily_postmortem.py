@@ -22,7 +22,8 @@ from memory.store import add_memory
 
 class PostMortemCategory(StrEnum):
     ACCURATE_CAPTURE = "ACCURATE_CAPTURE"  # Direction and magnitude hit cleanly
-    TIMID_MAGNITUDE = "TIMID_MAGNITUDE"  # Correct direction, but capped target too low on trend day
+    PRUDENT_HOLD = "PRUDENT_HOLD"  # Abstention on flat/choppy or conflicting market session
+    TIMID_MAGNITUDE = "TIMID_MAGNITUDE"  # Correct direction but low target, or HOLD through trend day
     OVERSHOT_TARGET = "OVERSHOT_TARGET"  # Correct direction, but target exceeded session volatility
     CATALYST_INVERSION = "CATALYST_INVERSION"  # Morning catalyst occurred, but market reacted opposite
     INTRADAY_REVERSAL = "INTRADAY_REVERSAL"  # Thesis worked initially, but faded/reversed in afternoon
@@ -198,7 +199,11 @@ async def diagnose_daily_prediction(
         "6. RANGEBOUND CHOP: If the entire session stayed within a 0.20% band around open with no trend, classify as RANGEBOUND_CHOP.\n"
         "7. UNFORESEEN SHOCK: If a breaking headline after 9:30 AM caused an unpredictable move, classify as UNFORESEEN_SHOCK "
         "and set was_predictable=False.\n"
-        "8. ACTIONABLE LESSON: Synthesize exactly 1-2 sentences stating a concrete conditional rule to prevent repeating this error."
+        "8. ACTIONABLE LESSON: Synthesize exactly 1-2 sentences stating a concrete conditional rule to prevent repeating this error.\n"
+        "9. HOLD PREDICTIONS: If the prediction was HOLD, classify as PRUDENT_HOLD if the market was "
+        "flat, choppy, or conflicting (|open-to-close move| < 0.35%) and set flawed_assumption='None', "
+        "was_predictable=True. If the market experienced an unambiguous strong directional expansion "
+        "(|move| > 0.75%), classify as TIMID_MAGNITUDE for missing the trend expansion due to excessive caution."
     )
 
     user_prompt = (
@@ -303,7 +308,10 @@ async def run_daily_postmortem(
             sb.table("daily_predictions").update(update_payload).eq("id", pred_id).execute()
 
             # Record memory if actionable and predictable
-            if diagnosis.was_predictable and diagnosis.category != PostMortemCategory.ACCURATE_CAPTURE:
+            if diagnosis.was_predictable and diagnosis.category not in (
+                PostMortemCategory.ACCURATE_CAPTURE,
+                PostMortemCategory.PRUDENT_HOLD,
+            ):
                 try:
                     add_memory(
                         content=(

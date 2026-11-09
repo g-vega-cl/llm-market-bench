@@ -8,7 +8,7 @@ export interface DailyPrediction {
     ticker: string;
     model_name: string;
     prompt_variant_tag: string | null;
-    predicted_direction: 'UP' | 'DOWN';
+    predicted_direction: 'UP' | 'DOWN' | 'HOLD';
     confidence: number;
     expected_return_pct: number | null;
     rationale: string | null;

@@ -40,10 +40,9 @@ TAIL_CONFIDENCE_THRESHOLD = 90.0
 SHRINKAGE_K = 10.0
 
 # A variant must have at least this many evaluated predictions before it may set
-# the ratchet baseline. Without it, a single lucky call (e.g. one correct 99%
-# prediction scores ~98/100) becomes an unreachable ceiling and the autoresearcher
-# reverts every week instead of evolving.
+# the ratchet baseline.
 MIN_BASELINE_SAMPLE = 5
+MIN_TRADED_SAMPLE = 3
 
 # CP magnitude that maps to ~76 on the 0-100 normalised scale.
 NORM_SCALE = 50.0
@@ -73,30 +72,33 @@ def clamp_confidence(confidence: float | None) -> float:
     return min(max(value, CONFIDENCE_FLOOR), CONFIDENCE_CEILING)
 
 
-def conviction_points(confidence: float | None, correct: bool) -> float:
+def conviction_points(confidence: float | None, correct: bool | None) -> float:
     """Score a single prediction on the conviction scale.
 
-    Positive when correct, negative when wrong, exactly zero at a coin flip.
+    Positive when correct, negative when wrong, exactly zero at a coin flip or on HOLD.
     The penalty at any given confidence always exceeds the reward, and the
     ratio grows with confidence (1.1x at 55%, 3.6x at 95%).
     """
+    if correct is None:
+        return 0.0
     p = clamp_confidence(confidence) / 100.0
     if correct:
         return 100.0 * math.log(2.0 * p)
     return 100.0 * math.log(2.0 - 2.0 * p)
 
 
-def _evaluated_records(records: list[dict[str, Any]] | None) -> list[tuple[float, bool]]:
+def _evaluated_records(records: list[dict[str, Any]] | None) -> list[tuple[float, bool | None]]:
     """Extract (confidence, correct) pairs, skipping unevaluated rows."""
-    pairs: list[tuple[float, bool]] = []
+    pairs: list[tuple[float, bool | None]] = []
     for record in records or []:
+        is_hold = str(record.get("predicted_direction", "")).upper() == "HOLD"
         outcome = record.get("is_correct")
-        if outcome is None:
+        if outcome is None and not is_hold:
             continue
         confidence = record.get("confidence")
         if confidence is None:
             continue
-        pairs.append((confidence, bool(outcome)))
+        pairs.append((float(confidence), bool(outcome) if outcome is not None else None))
     return pairs
 
 
@@ -140,14 +142,13 @@ def select_baseline_candidate(
     variants: list[dict[str, Any]],
     exclude_tag: str | None,
     min_sample: int = MIN_BASELINE_SAMPLE,
+    min_traded: int = MIN_TRADED_SAMPLE,
 ) -> tuple[float, dict[str, Any]] | None:
     """Pick the variant that should set the ratchet baseline.
 
     Returns ``(ceiling, variant)`` where the ceiling is the variant's score shrunk
     toward neutral by its sample size. Variants with fewer than ``min_sample``
-    evaluated predictions are ignored: a single lucky call scores near 100 and
-    would otherwise become an unreachable ceiling, forcing the ratchet to revert
-    every week instead of evolving.
+    evaluated predictions (or fewer than ``min_traded`` traded predictions) are ignored.
     """
     best: tuple[float, dict[str, Any]] | None = None
     for variant in variants:
@@ -159,6 +160,9 @@ def select_baseline_candidate(
             continue
         n = metrics.get("predictions_evaluated")
         if isinstance(n, (int, float)) and n < min_sample:
+            continue
+        n_traded = metrics.get("traded_count")
+        if isinstance(n_traded, (int, float)) and n_traded < min_traded:
             continue
         sample = int(n) if isinstance(n, (int, float)) else 0
         ceiling = shrunk_baseline_score(float(score), sample)
@@ -173,12 +177,16 @@ def tail_gap(records: list[dict[str, Any]] | None) -> float | None:
     Zero means calibrated. Positive means overconfident. ``None`` when no
     prediction cleared ``TAIL_CONFIDENCE_THRESHOLD``.
     """
-    tail = [(c, ok) for c, ok in _evaluated_records(records) if clamp_confidence(c) >= TAIL_CONFIDENCE_THRESHOLD]
+    tail = [
+        (c, ok)
+        for c, ok in _evaluated_records(records)
+        if clamp_confidence(c) >= TAIL_CONFIDENCE_THRESHOLD and ok is not None
+    ]
     if not tail:
         return None
 
     claimed = sum(clamp_confidence(c) for c, _ in tail) / len(tail) / 100.0
-    realised = sum(1 for _, ok in tail if ok) / len(tail)
+    realised = sum(1 for _, ok in tail if ok is True) / len(tail)
     return round(claimed - realised, 6)
 
 
@@ -189,7 +197,7 @@ def conviction_bundle(records: list[dict[str, Any]] | None) -> dict[str, Any]:
         return dict(_NEUTRAL_BUNDLE)
 
     points = [conviction_points(c, ok) for c, ok in pairs]
-    tail = [(c, ok) for c, ok in pairs if clamp_confidence(c) >= TAIL_CONFIDENCE_THRESHOLD]
+    tail = [(c, ok) for c, ok in pairs if clamp_confidence(c) >= TAIL_CONFIDENCE_THRESHOLD and ok is not None]
     mean_cp = sum(points) / len(points)
 
     return {
@@ -199,6 +207,6 @@ def conviction_bundle(records: list[dict[str, Any]] | None) -> dict[str, Any]:
         "tail_gap": tail_gap(records),
         "n": len(points),
         "n_tail": len(tail),
-        "confident_wrong_count": sum(1 for _, ok in tail if not ok),
+        "confident_wrong_count": sum(1 for _, ok in tail if ok is False),
         "max_single_loss": round(min(points), 4),
     }

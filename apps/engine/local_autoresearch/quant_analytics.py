@@ -34,6 +34,10 @@ def calculate_sized_trading_pnl(records: list[dict[str, Any]]) -> dict[str, floa
 
         raw_ret = (close_p - open_p) / open_p
         pred_dir = str(r.get("predicted_direction", "UP")).upper()
+        if pred_dir == "HOLD":
+            sized_returns.append(0.0)
+            unweighted_returns.append(0.0)
+            continue
         sign = 1.0 if pred_dir == "UP" else -1.0
 
         # Position size scales with confidence: 50% -> 0.0 (no edge), 100% -> 1.0 (full Kelly size)

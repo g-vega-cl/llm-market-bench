@@ -23,6 +23,8 @@ $$
 
 with $p$ clamped to $[0.50, 0.99]$ and $CP = 0$ for $p \le 0.50$.
 
+**HOLD and unscored calls.** `conviction_points(confidence, correct)` accepts `correct: bool | None`. When `correct is None` (a `HOLD` prediction, or any row with no directional outcome) it returns `0.0` — a neutral coin-flip score. `_evaluated_records` includes `HOLD` rows (with a `None` outcome) so they contribute neutral `0.0` CP to `conviction_norm` rather than being dropped; HOLD rows are also excluded from tail-gap and `confident_wrong_count` accounting.
+
 | Stated confidence | Correct | Wrong |
 |---|---|---|
 | 55% | +9.53 | −10.54 |
@@ -56,18 +58,19 @@ An empty or unscored record set resolves to neutral 50, never zero.
 
 ## Ratchet Baseline Guard
 
-The weekly ratchet compares the active prompt's live score against the highest stored variant score, so a single lucky week can pin the baseline above anything the model can reproduce and force a revert every cycle. Two guards prevent that:
+The weekly ratchet compares the active prompt's live score against the highest stored variant score, so a single lucky week can pin the baseline above anything the model can reproduce and force a revert every cycle. Guards prevent that:
 
 - `MIN_BASELINE_SAMPLE = 5` — a variant must carry at least five evaluated predictions before it may set the baseline.
+- `MIN_TRADED_SAMPLE = 3` — a variant must also carry at least three *traded* (UP/DOWN) predictions, read from `metrics.traded_count`, so a prompt that largely `HOLD`s cannot pin the baseline on a couple of directional calls.
 - `shrunk_baseline_score(score, n)` — the candidate ceiling is shrunk toward a neutral 50 prior by $n/(n+10)$. Five calls keep only a third of their apparent edge; twenty keep two thirds.
 
-Both live in `core/conviction_scoring.py` and are applied by `select_baseline_candidate()`, which both autoresearch loops call. The historical realignment utility (`apps/engine/tasks/realign_predictor_baseline.py`) uses the same selector per model track, and the one-shot backfill (`apps/engine/scripts/backfill_conviction_scores.py`) shares its recomputation logic through `core/conviction_backfill.py`.
+All live in `core/conviction_scoring.py` and are applied by `select_baseline_candidate()`, which both autoresearch loops call. The historical realignment utility (`apps/engine/tasks/realign_predictor_baseline.py`) uses the same selector per model track, and the one-shot backfill (`apps/engine/scripts/backfill_conviction_scores.py`) shares its recomputation logic through `core/conviction_backfill.py` (which now writes `0.0` for `HOLD` rows).
 
 ## Where It Applies
 
 | Surface | Persisted field | Composite weight |
 |---|---|---|
-| `daily_predictions` | `conviction_score` | 10% of the daily ratchet score |
+| `daily_predictions` | `conviction_score` | 10% of the daily ratchet score (before participation scaling) |
 | `earnings_predictions` | `conviction_score` | diagnostic / leaderboard |
 | `sector_predictions` | `conviction_score` | 10% of the sector ratchet score |
 | `get_llm_leaderboard_metrics` | `conviction_score` column | 30% of reasoning quality |
@@ -78,36 +81,4 @@ $$
 \text{Score} = 0.90 \cdot \text{accuracy\_block} + 0.10 \cdot \text{conviction\_norm}
 $$
 
-Sector legs are priced separately: the best pick uses `confidence`, the worst pick uses the new `worst_confidence` column. Legacy rows without `worst_confidence` skip the worst leg entirely rather than borrowing the best-pick probability.
-
-## Relationship to Brier
-
-Brier remains stored on every prediction row as a calibration diagnostic and is still imported directly by `apps/engine/local_autoresearch/single_prompt_ratchet.py`. It is no longer a scoring input anywhere else. See [[concepts/brier-score]].
-
-## Frontend Presentation
-
-The engine persists the raw per-prediction log-score in `conviction_score`; the web layer never recomputes it from confidence. `apps/web/src/shared/conviction.ts` exposes `normalizeConvictionPoints(meanCp)` (`50 + 50·tanh(cp/50)`), `meanConvictionPoints(predictions)` (averages only rows with a finite stored value, `null` when none), and `resolveConvictionScore(predictions)` (neutral 50 for unscored sets). Every surface that shows a conviction figure — `DailyScoreBreakdown`, `DailyMetricsOverview`, `PredictionsTable`, `DailyPredictionsBacktestPage`, `SectorScoreBreakdown`, and `EarningsArenaTab` — routes through these helpers, and `ModelComparison` treats conviction as a ranked metric while average stated confidence stays informational.
-
-## Consequences
-
-Scores drop broadly when this ships. A model that was paid for stated confidence regardless of accuracy — or that was only lightly docked by a `mean_brier × 50` term — loses that subsidy. That is the metric working, not a regression.
-
-Stored scores must be rewritten once, because the ratchet compares against them. `apps/engine/scripts/backfill_conviction_scores.py` recomputes `conviction_score` on every evaluated row and rewrites the daily and sector `prompt_experiments.metrics` under the new formula. It was run against the archive database on 2026-11-05; rerun it with `--apply` after any future scoring change that invalidates stored history.
-
-## Source
-
-- `apps/engine/core/conviction_scoring.py` — scoring primitive and bundle
-- `apps/engine/core/test_conviction_scoring.py` — properness sweep and anti-degeneracy test
-- `apps/engine/scripts/backfill_conviction_scores.py` — one-shot row and experiment-metric rewrite
-- `apps/web/src/shared/conviction.ts` — presentation aggregation helpers
-- `supabase/migrations/20261105000000_add_conviction_scoring.sql` — columns and leaderboard RPC
-
-## Related
-
-- [[concepts/brier-score]]
-- [[concepts/auto-research-prompt-improver]]
-- [[concepts/intraday-hit-metrics]]
-- [[concepts/magnitude-calibration]]
-- [[entities/sector-predictor-arena]]
-- [[entities/daily-score-breakdown]]
-- [[entities/llm-leaderboard]]
+The daily predictor additionally multiplies the result by its 75% participation factor, and prices `HOLD` sessions with move-aware credits (see [[concepts/confidence-gating]]). The leaderboard RPC writes `0.0` CP for `HOLD` rows and treats 

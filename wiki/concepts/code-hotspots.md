@@ -13,10 +13,10 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 17 | 5 | 29.4% | 245 | 85 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 17 | 5 | 29.4% | 254 | 85 | **HIGH** |
 | `apps/web/src/routes/__root.tsx` | 12 | 7 | 58.3% | 239 | 84 | **HIGH** |
-| `apps/engine/tasks/daily_predictor.py` | 19 | 4 | 21.1% | 661 | 76 | **HIGH** |
-| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 16 | 4 | 25.0% | 384 | 64 | **HIGH** |
+| `apps/engine/tasks/daily_predictor.py` | 19 | 4 | 21.1% | 678 | 76 | **HIGH** |
+| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 17 | 4 | 23.5% | 384 | 68 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 13 | 4 | 30.8% | 450 | 52 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 12 | 4 | 33.3% | 359 | 48 | **HIGH** |
 | `apps/web/src/routes/-__root.test.tsx` | 9 | 5 | 55.6% | 393 | 45 | **HIGH** |
@@ -27,7 +27,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/today/api/fetch-today-data.test.ts` | 8 | 4 | 50.0% | 540 | 32 | **HIGH** |
 | `apps/engine/tests/test_verify_skill.py` | 10 | 3 | 30.0% | 119 | 30 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 10 | 3 | 30.0% | 868 | 30 | **HIGH** |
-| `apps/engine/tasks/daily_autoresearch.py` | 14 | 2 | 14.3% | 730 | 28 | **MEDIUM** |
+| `apps/engine/tasks/daily_autoresearch.py` | 14 | 2 | 14.3% | 825 | 28 | **MEDIUM** |
 
 ## Temporal Coupling (Co-churn)
 

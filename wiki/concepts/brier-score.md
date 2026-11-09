@@ -8,7 +8,7 @@ category: concept
 The Brier score measures the accuracy of probabilistic predictions. In LLM Market Bench, sector predictions include a self-assessed confidence percentage. The Brier score quantifies calibration — how well confidence matches actual outcomes — and is retained as a stored diagnostic.
 
 > [!IMPORTANT]
-> Brier is no longer a scoring input. The `mean_brier × 50` accuracy penalty was replaced by [[concepts/conviction-points]] in November 2026. Brier remains stored on every prediction row for auditing, and `apps/engine/local_autoresearch/single_prompt_ratchet.py` still imports `calculate_brier_score` directly.
+> Brier is no longer a scoring input. The `mean_brier × 50` accuracy penalty was replaced by [[concepts/conviction-points]] in November 2026. Brier remains stored on every prediction row for auditing, and `apps/engine/local_autoresearch/single_prompt_ratchet.py` still imports `calculate_brier_score` directly. `HOLD` predictions store a `NULL` Brier (no directional outcome exists), and aggregation skips `NULL` rows rather than treating them as zero.
 
 ## Formula
 
@@ -41,6 +41,12 @@ Lower is better; 0.0 is perfect calibration.
 - During evaluation, `calculate_sector_brier_score()` computes the Brier score and stores it in `sector_predictions.brier_score`.
 - The web UI displays Confidence and Brier Score columns as diagnostics; conviction drives the composite score.
 
+## Daily Predictor & HOLD
+
+- `daily_predictions` rows evaluated normally get a Brier score written to `brier_score`.
+- Rows gated to `HOLD` (see [[concepts/confidence-gating]]) have `is_correct = NULL` and therefore `brier_score = NULL`. The daily autoresearch postmortem table lists `Conv CP` (0.0 for HOLD) instead of a Brier figure for those rows.
+- `evaluate_prediction_record` in `single_prompt_ratchet.py` returns `brier_score=None` for HOLD.
+
 ## Autoresearch Scoring (Superseded)
 
 The predictor autoresearch weekly score previously read:
@@ -55,13 +61,14 @@ That term has been removed. It bounded confidence to roughly ±12 points on a 0�
 Score_weekly = 0.90 × accuracy_block + 0.10 × conviction_norm
 ```
 
-where `accuracy_block` is the existing percentile/alpha composite and `conviction_norm` is the normalised [[concepts/conviction-points]] term. Brier is still written to `sector_predictions.brier_score` and shown as a diagnostic only.
+where `accuracy_block` is the existing percentile/alpha composite and `conviction_norm` is the normalised [[concepts/conviction-points]] term. The daily predictor variant additionally multiplies the total by its 75% participation factor (see [[concepts/confidence-gating]]). Brier is still written to `sector_predictions.brier_score` and shown as a diagnostic only.
 
 Worst-sector legs are priced with the separate `worst_confidence` column. Legacy rows that never stated a worst-pick probability skip that leg rather than reusing the best-pick confidence.
 
 ## Related
 
 - [[concepts/conviction-points]]
+- [[concepts/confidence-gating]]
 - [[entities/sector-predictor-arena]]
 - [[concepts/auto-research-prompt-improver]]
 - [[concepts/intraday-hit-metrics]]

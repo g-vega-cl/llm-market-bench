@@ -6,17 +6,15 @@ export interface HeroPredictionCardProps {
 }
 
 export function HeroPredictionCard({ prediction }: HeroPredictionCardProps) {
-    const isNoTrade =
-        (prediction.predicted_direction as string) === 'NO_TRADE' || prediction.confidence === 0;
+    const isHold =
+        prediction.predicted_direction === 'HOLD' ||
+        (prediction.predicted_direction as string) === 'NO_TRADE' ||
+        prediction.confidence === 0;
     const isUp = prediction.predicted_direction === 'UP';
 
-    const directionColor = isNoTrade
-        ? 'text-amber-400'
-        : isUp
-          ? 'text-emerald-400'
-          : 'text-rose-400';
+    const directionColor = isHold ? 'text-amber-400' : isUp ? 'text-emerald-400' : 'text-rose-400';
 
-    const directionText = isNoTrade ? '⚡ NO TRADE' : isUp ? '▲ UP' : '▼ DOWN';
+    const directionText = isHold ? '◆ HOLD' : isUp ? '▲ UP' : '▼ DOWN';
 
     return (
         <Card className="p-6 bg-boxel-surface text-boxel-ink rounded-none border border-boxel-bevel-hi flex flex-col gap-4 shadow-xl">

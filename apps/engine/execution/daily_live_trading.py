@@ -67,6 +67,9 @@ async def execute_daily_moo_entries(target_date: str | None = None, dry_run: boo
             continue
         model_name = str(pred.get("model_name", "unknown"))
         direction = str(pred.get("predicted_direction", "UP")).strip().upper()
+        if direction == "HOLD":
+            logger.info(f"Skipping MOO entry for {model_name} on {target_date_str}: Prediction is HOLD.")
+            continue
         expected_ret_raw = pred.get("expected_return_pct")
         expected_return_pct = abs(float(expected_ret_raw)) if expected_ret_raw is not None else 0.0
 

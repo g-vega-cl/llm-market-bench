@@ -82,7 +82,7 @@ def test_extract_daily_prediction_fallback_on_corrupt():
     """Verify fallback defaults gracefully when LLM emits corrupt text."""
     raw = "I think the market will go up, but I am not outputting valid json at all."
     pred = extract_daily_prediction(raw)
-    assert pred["predicted_direction"] in ("UP", "DOWN")
+    assert pred["predicted_direction"] in ("UP", "DOWN", "HOLD")
     assert pred["confidence"] == 50.0
     assert pred["expected_return_pct"] == 0.0
 

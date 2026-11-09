@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import json
 import os
 import sys
 from datetime import UTC, datetime, timedelta
@@ -21,11 +23,13 @@ from core.db import get_supabase_client
 from core.llm.clients import close_client, get_deepseek_client
 from core.llm.daily_predictor_prompts import (
     DAILY_PREDICTOR_PROMPT,
+    HOLD_CONFIDENCE_THRESHOLD,
     JEV_DEFAULT_CRITERIA,
     JEV_PREDICTOR_INSTRUCTIONS,
     JEV_PREDICTOR_QUESTION_KEY,
     JEV_PREDICTOR_QUESTION_TYPE,
     DailyPredictionOutput,
+    apply_confidence_hold_gate,
     format_jev_curated_prompt_content,
     format_jev_prompt_content,
     format_laya_curated_prompt_content,
@@ -702,6 +706,20 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
                     model_context,
                 ) = await _execute_model_daily_prediction(
                     model_cfg, ticker, context, data_record, user_msg, raw_prompt_content, prompt_content
+                )
+                model_min_conf = HOLD_CONFIDENCE_THRESHOLD
+                if raw_prompt_content:
+                    with contextlib.suppress(Exception):
+                        parsed_raw = json.loads(raw_prompt_content)
+                        if isinstance(parsed_raw, dict) and "min_confidence" in parsed_raw:
+                            model_min_conf = float(parsed_raw["min_confidence"])
+
+                pred_dir, expected_return_pct, rationale = apply_confidence_hold_gate(
+                    direction=pred_dir,
+                    confidence=confidence,
+                    expected_return_pct=expected_return_pct,
+                    rationale=rationale,
+                    min_confidence=model_min_conf,
                 )
                 prediction_row = {
                     "prediction_date": today.isoformat(),

@@ -29,21 +29,22 @@ Do NOT default to UP due to long-term drift: morning rallies frequently fade int
 - Bearish reaction: Negative surprise OR good news already fully priced, triggering "sell the news" profit-taking.
 Classify catalysts symmetrically as a bullish catalyst, bearish catalyst, or neutral catalyst.
 
-2. TECHNICAL & PRICE ACTION SIGNALS (WHEN PROVIDED): When technical levels (previous day high/low, VWAP, moving averages) are present in the context:
-- Evaluate bullish hold scenarios: price establishing above prior close/VWAP with constructive momentum.
-- Evaluate bearish rejection scenarios: price capped below prior close/VWAP with deteriorating momentum.
-If specific technical indicators are not provided in the context, rely on cross-asset signals (bonds, dollar, commodities) and catalyst severity.
+2. TECHNICAL & PRICE ACTION SIGNALS: Base your analysis on pre-market quotes, overnight gaps, multi-day momentum, and prior-day verified levels:
+- Evaluate bullish hold scenarios: pre-market gap holds above prior close with constructive cross-asset momentum.
+- Evaluate bearish rejection scenarios: pre-market gap capped below prior close or key levels with deteriorating momentum.
+Rely on cross-asset signals (bonds, dollar, commodities, index proxies) and catalyst severity to confirm setups.
 
 3. MOMENTUM VS GAP-FILL & REVERSAL SYMMETRY: Quantify overnight gaps:
 - For positive overnight gaps: symmetrically evaluate continuation (breakout drive) vs exhaustion / mean-reversion fade DOWN.
 - For negative overnight gaps: symmetrically evaluate continuation (panic dump) vs dip-buying / short-squeeze reversal UP.
 - For small/flat gaps (<0.2%): evaluate technical breakout vs breakdown triggers with equal probability.
 
-4. SYMMETRIC CONFIDENCE CALIBRATION:
-Confidence must scale symmetrically from 50% to 100% based on independent signal convergence:
-- High UP confidence (>=65%) requires: clear bullish catalyst / relief trigger + cross-asset confirmation (e.g. yields easing, dollar soft, or strong sector breadth) + technical hold.
-- High DOWN confidence (>=65%) requires: clear bearish catalyst / shock trigger + cross-asset confirmation (e.g. yields surging, dollar spike, or broad sector liquidation) + technical rejection.
-Assign low-to-moderate confidence (52-58%) when signals conflict, when pre-market moves are unconfirmed by volume, or ahead of major midday events. Never exceed 80% confidence without multi-variable confirmation across both macro and market breadth."""
+4. SYMMETRIC PRE-MARKET SIGNAL ALIGNMENT & CONFIDENCE CALIBRATION:
+Confidence represents Pre-Market Signal Alignment at 9:15 AM ET on a scale from 50.0% to 100.0%:
+- Low Conviction / Conflict (50.0% to 55.9%): Conflicting macro news, contradictory cross-asset proxies, or flat unconfirmed gap. This range automatically gates the execution to HOLD.
+- Moderate Lean (56.0% to 65.0%): Directional edge present, but minor cross-asset divergence exists or a pending 10:00 AM release warrants caution.
+- Strong Multi-Signal Alignment (66.0% to 79.0%): Clear catalyst + confirming overnight gap structure + supporting cross-asset proxies (yields, USD, QQQ/IWM).
+- High-Conviction Regime Expansion (80.0% to 95.0%): Unambiguous high-impact catalyst + full cross-asset alignment + clear multi-day trend continuation."""
 
 DAILY_PREDICTOR_CONSTRAINTS_FOOTER = """\n\n=== REQUIRED OUTPUT FORMAT ===
 You MUST return a valid JSON object (enclosed in { and }) containing:
@@ -54,27 +55,67 @@ You MUST return a valid JSON object (enclosed in { and }) containing:
   "rationale": "<detailed analytical reasoning>",
   "catalysts": ["<catalyst 1>", "<catalyst 2>"]
 }
+Confidence Calibration Rules:
+- Confidence represents Pre-Market Signal Alignment (50.0-100.0) at 9:15 AM ET.
+- Confidence strictly below 56.0% gates the execution to HOLD (no trade entered).
+- Use 50.0-55.9% when signals conflict, tape is choppy, or unconfirmed.
+- Use 56.0-65.0% for moderate directional leans with minor cross-asset divergence.
+- Use 66.0-79.0% for strong multi-signal setups (catalyst, gap, and proxies align).
+- Use 80.0-95.0% for high-conviction regime expansion.
 Do not output raw Markdown headers, bullet lists, or YAML."""
 
 DAILY_PREDICTOR_PROMPT = (
     DAILY_PREDICTOR_CONSTRAINTS_HEADER + DAILY_PREDICTOR_MUTABLE_STRATEGIES + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
 )
 
+HOLD_CONFIDENCE_THRESHOLD = 56.0
+
+
+def apply_confidence_hold_gate(
+    direction: str,
+    confidence: float,
+    expected_return_pct: float | None = None,
+    rationale: str | None = None,
+    min_confidence: float = HOLD_CONFIDENCE_THRESHOLD,
+) -> tuple[str, float, str]:
+    """Applies confidence gating: converts calls with confidence < min_confidence into 'HOLD'.
+
+    When gated to HOLD:
+    - predicted_direction becomes 'HOLD'
+    - expected_return_pct becomes 0.0
+    - rationale is prepended with '[HOLD - Gated from {DIR} ({CONF:.1f}%)]: '
+    """
+    clean_dir = str(direction).strip().upper()
+    try:
+        conf_val = float(confidence)
+    except (TypeError, ValueError):
+        conf_val = 50.0
+
+    ret_pct = float(expected_return_pct) if expected_return_pct is not None else 0.0
+    rat_text = str(rationale or "").strip()
+
+    if clean_dir == "HOLD" or conf_val < min_confidence:
+        raw_source = clean_dir if clean_dir in ("UP", "DOWN") else "NEUTRAL"
+        annotated_rationale = f"[HOLD - Gated from {raw_source} ({conf_val:.1f}%)]: {rat_text}".strip()
+        return "HOLD", 0.0, annotated_rationale
+
+    return clean_dir, ret_pct, rat_text
+
 
 class DailyPredictionOutput(BaseModel):
     predicted_direction: str = Field(
         ...,
-        description="Predicted intraday direction: 'UP' if 4:00 PM Close > 9:30 AM Open, else 'DOWN'",
+        description="Predicted intraday direction: 'UP', 'DOWN', or 'HOLD'",
     )
     confidence: float = Field(
         ...,
         ge=50.0,
         le=100.0,
-        description="Confidence level in prediction (50-100%)",
+        description="Pre-market signal alignment confidence (50-100%). Scores < 56.0% gate to HOLD.",
     )
     expected_return_pct: float = Field(
         ...,
-        description="Estimated intraday return percentage from Open to Close (e.g. +0.45 or -0.30)",
+        description="Estimated intraday return percentage from Open to Close (e.g. +0.45 or -0.30, 0.0 for HOLD)",
     )
     rationale: str = Field(
         ...,

@@ -140,8 +140,15 @@ export function DailyPredictionsPage({
     );
 
     const latestPrediction = modelPredictions.length > 0 ? modelPredictions[0] : null;
-    const { correctCount, totalEvaluated, accuracyPct, intradayHitPct, convictionScore } =
-        computeDailyPredictionStats(modelPredictions);
+    const {
+        correctCount,
+        totalEvaluated,
+        tradedEvaluated,
+        holdCount,
+        accuracyPct,
+        intradayHitPct,
+        convictionScore,
+    } = computeDailyPredictionStats(modelPredictions);
 
     const { activePrompt } = resolveActiveDailyPrompt(modelExperiments);
     const curatedManifest = parseCuratedManifest(activePrompt?.prompt_content);
@@ -235,6 +242,8 @@ export function DailyPredictionsPage({
                         intradayHitPct={intradayHitPct}
                         correctCount={correctCount}
                         totalEvaluated={totalEvaluated}
+                        tradedEvaluated={tradedEvaluated}
+                        holdCount={holdCount}
                         convictionScore={convictionScore}
                         totalPredictions={modelPredictions.length}
                         activePromptTag={activePrompt?.variant_tag || 'daily-pred-baseline'}

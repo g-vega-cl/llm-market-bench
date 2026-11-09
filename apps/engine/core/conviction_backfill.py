@@ -43,14 +43,16 @@ def as_date(value: object) -> date | None:
 
 
 def recompute_daily_conviction(rows: list[dict]) -> list[tuple[str, float | None]]:
-    """Return (id, conviction_score) for each directional row that can be scored."""
+    """Return (id, conviction_score) for each directional or hold row that can be scored."""
     updates: list[tuple[str, float | None]] = []
     for row in rows:
+        is_hold = str(row.get("predicted_direction", "")).upper() == "HOLD"
         confidence = row.get("confidence")
         correct = row.get("is_correct")
-        if confidence is None or correct is None:
-            continue
-        updates.append((row["id"], round(conviction_points(confidence, bool(correct)), 4)))
+        if is_hold:
+            updates.append((row["id"], 0.0))
+        elif confidence is not None and correct is not None:
+            updates.append((row["id"], round(conviction_points(confidence, bool(correct)), 4)))
     return updates
 
 

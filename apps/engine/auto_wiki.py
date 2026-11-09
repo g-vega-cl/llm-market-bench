@@ -429,7 +429,7 @@ def _parse_llm_response(raw: str) -> dict:
 # write_log_entry deprecated
 
 
-def apply_page_deletions(paths: list[str]) -> None:
+def apply_page_deletions(paths: list) -> None:
     """Delete wiki pages whose scope has been removed from the codebase.
 
     For each path in *paths*:
@@ -440,7 +440,15 @@ def apply_page_deletions(paths: list[str]) -> None:
     """
     index_path = WIKI_DIR / "index.md"
 
-    for rel_path in paths:
+    for item in paths:
+        if isinstance(item, dict):
+            rel_path = item.get("path", "")
+        elif isinstance(item, str):
+            rel_path = item
+        else:
+            continue
+        if not rel_path:
+            continue
         rel_path = rel_path.removeprefix("wiki/").removeprefix("/")
         target = (WIKI_DIR / rel_path).resolve()
         if not str(target).startswith(str(WIKI_DIR.resolve())):
@@ -480,12 +488,14 @@ def write_new_page(rel_path: str, content: str) -> None:
     print(f"  [auto-wiki] created wiki/{rel_path}", file=sys.stderr)
 
 
-def add_index_entries(entries: list[dict]) -> None:
+def add_index_entries(entries: list) -> None:
     index_path = WIKI_DIR / "index.md"
     content = index_path.read_text()
     lines = content.split("\n")
 
     for entry in entries:
+        if not isinstance(entry, dict):
+            continue
         section = entry.get("section", "")
         line = entry.get("entry", "")
         if not line:
@@ -537,10 +547,17 @@ def apply_changes(result: dict) -> None:
     """
 
     for page in result.get("new_pages", []):
+        if not isinstance(page, dict):
+            continue
         path = page.get("path", "")
         content = page.get("content", "")
         if path and content:
             write_new_page(path, content)
+        # Handle cases where LLMs nest deleted_pages or index_additions inside new_pages array
+        if "deleted_pages" in page and isinstance(page["deleted_pages"], list):
+            apply_page_deletions(page["deleted_pages"])
+        if "index_additions" in page and isinstance(page["index_additions"], list):
+            add_index_entries(page["index_additions"])
 
     deleted = result.get("deleted_pages", [])
     if deleted:

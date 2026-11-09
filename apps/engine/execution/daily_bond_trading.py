@@ -61,6 +61,9 @@ async def execute_daily_bond_moo_entries(
     for pred in predictions:
         model_name = str(pred.get("model_name", "unknown"))
         direction = str(pred.get("predicted_direction", "UP")).strip().upper()
+        if direction == "HOLD":
+            logger.info(f"Skipping MOO bond trade for {model_name} on {target_date_str}: Prediction is HOLD.")
+            continue
         owner_id = f"{SYS_DAILY_TLT_CLOSE_OWNER_PREFIX}{model_name}"
 
         portfolio = await get_or_create_system_portfolio(owner_id)
@@ -126,6 +129,28 @@ async def execute_system_daily_bond_close_trade(
     portfolio = await get_or_create_system_portfolio(owner_id)
     current_cash = portfolio.cash_balance
     client = get_supabase_client()
+
+    direction = str(prediction.get("predicted_direction", "UP")).strip().upper()
+    if direction == "HOLD":
+        logger.info(f"Skipping daily TLT trade for {owner_id} on {target_date_str}: Prediction is HOLD.")
+        client.table("portfolio_performance").upsert(
+            {
+                "portfolio_id": str(portfolio.id),
+                "date": target_date_str,
+                "total_equity": current_cash,
+                "cash_balance": current_cash,
+                "buying_power": current_cash,
+                "sma": 0.0,
+                "realized": current_cash,
+            },
+            on_conflict="portfolio_id,date",
+        ).execute()
+        return {
+            "status": "skipped",
+            "reason": "HOLD prediction (capital preserved in 100% cash)",
+            "owner_id": owner_id,
+            "new_equity": current_cash,
+        }
 
     # Idempotency cleanup for target_date session
     existing_trades_res = (

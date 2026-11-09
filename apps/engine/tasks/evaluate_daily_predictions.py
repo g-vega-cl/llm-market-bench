@@ -259,10 +259,10 @@ async def _evaluate_single_daily_prediction(
         return False
 
     actual_dir = "UP" if close_p >= open_p else "DOWN"
-    if predicted_dir.upper() == "NO_TRADE":
+    if predicted_dir.upper() in ("HOLD", "NO_TRADE"):
         is_correct = None
         brier_score = None
-        conviction_score = None
+        conviction_score = 0.0
         intraday_hit = None
         intraday_dir_hit = None
     else:
@@ -294,7 +294,7 @@ async def _evaluate_single_daily_prediction(
         }
     ).eq("id", pred_id).execute()
 
-    if backfill_trades:
+    if backfill_trades and predicted_dir.upper() not in ("HOLD", "NO_TRADE"):
         await _backfill_daily_prediction_trades(
             pred, ticker, expected_return_pct, open_p, high_p, low_p, close_p, intraday_hit
         )

@@ -29,9 +29,15 @@ For standard models, the full narrative context is passed. For `jev-four-regime-
 - **Included**: Multi-day momentum & trend vector (`include_trend_vector=True`), prior session intraday technical profile (VWAP, Close Location Value), high-signal proxies (`QQQ`, `IWM`), options positioning, economic releases, and curated newsletters (`Sherwood News`, `Chartr`).
 - **Pruned / Excluded**: FX noise (`UUP`), market health barometer, qualitative market feeling.
 
-## Zero Abstention & Binary Direction Enforcement
+## Confidence Gating, HOLD Execution, & Zero Abstention
 
-Per the Zero Abstention invariant (see [[concepts/confidence-gating]]), all models in the arena are strictly required to predict either `UP` or `DOWN`. Confidence gating to `NO_TRADE` is deprecated and prohibited across the live pipeline. Low-conviction regimes are reflected through lower confidence percentages (e.g. $51\%–54\%$), while database integrity is preserved against the canonical schema constraint `CHECK (predicted_direction IN ('UP', 'DOWN'))`.
+Daily predictions are gated mechanically through `apply_confidence_hold_gate`:
+- Standard models predict direction (`UP` or `DOWN`) with confidence $50.0\%–100.0\%$.
+- Calls with confidence strictly below `HOLD_CONFIDENCE_THRESHOLD = 56.0%` are automatically gated to `HOLD`.
+- Gated `HOLD` predictions enter zero market exposure (100% cash) with `expected_return_pct = 0.0`.
+- To prevent cowardice and selective abstention, weekly autoresearch enforces a 75% trade participation hurdle ($\text{participation\_factor} = \min(1.0, \text{trade\_rate} / 0.75)$) and awards move-aware credits ($+52.0$ pts on flat chop, $+45.0$ pts on normal moves, $+35.0$ pts on missed trends).
+- Dedicated high-frequency decision classifiers (e.g. `jev-four-regime-champion`) can configure explicit zero abstention (`min_confidence = 0.0%`).
+- Database integrity is maintained via `CHECK (predicted_direction IN ('UP', 'DOWN', 'HOLD'))`. See [[concepts/confidence-gating]].
 
 
 ## Daily Bond Predictor (`TLT`)

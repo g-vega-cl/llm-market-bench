@@ -19,6 +19,9 @@ export interface DailyRatchetMetrics {
     convictionMeanCp: number;
     hasConviction: boolean;
     predictionsEvaluated: number;
+    tradedCount: number;
+    holdCount: number;
+    participationFactor: number;
     correctCount: number;
     intradayHitCount: number;
     closeAccPoints: number;
@@ -66,6 +69,16 @@ export function calculateMagnitudeCapture(p: DailyPrediction): number {
     return Math.min(1.0, expPct / actualMove) * 100.0;
 }
 
+export function calculateHoldSessionCredit(p: DailyPrediction): number {
+    const openP = p.open_price;
+    const closeP = p.close_price;
+    if (!openP || !closeP || openP <= 0) return 45.0;
+    const actualMove = Math.abs((closeP - openP) / openP) * 100.0;
+    if (actualMove < 0.25) return 52.0;
+    if (actualMove > 0.75) return 35.0;
+    return 45.0;
+}
+
 const ACCURACY_WEIGHT = 0.9;
 const CONVICTION_WEIGHT = 0.1;
 
@@ -81,13 +94,22 @@ function buildMetrics(
     convictionMeanCp: number,
     hasConviction: boolean,
     overrideScore?: number | null,
+    tradedCount?: number,
+    holdCount?: number,
+    participationFactor?: number,
+    accuracyBlockOverride?: number | null,
 ): DailyRatchetMetrics {
+    const actualTraded = tradedCount ?? predictionsEvaluated;
+    const actualHold = holdCount ?? 0;
+    const actualPart = participationFactor ?? 1.0;
     const closeAccPoints = (closeAccuracyPct / 100.0) * 55.0;
     const intradayHitPoints = (intradayHitPct / 100.0) * 35.0;
     const magnitudeCapturePoints = (magnitudeCapturePct / 100.0) * 10.0;
-    const accuracyBlockPoints = closeAccPoints + intradayHitPoints + magnitudeCapturePoints;
+    const accuracyBlockPoints =
+        accuracyBlockOverride ?? closeAccPoints + intradayHitPoints + magnitudeCapturePoints;
     const convictionContribution = convictionNorm * CONVICTION_WEIGHT;
-    const score = overrideScore ?? accuracyBlockPoints * ACCURACY_WEIGHT + convictionContribution;
+    const baseScore = accuracyBlockPoints * ACCURACY_WEIGHT + convictionContribution;
+    const score = overrideScore ?? baseScore * actualPart;
 
     return {
         score,
@@ -99,6 +121,9 @@ function buildMetrics(
         convictionMeanCp,
         hasConviction,
         predictionsEvaluated,
+        tradedCount: actualTraded,
+        holdCount: actualHold,
+        participationFactor: actualPart,
         correctCount,
         intradayHitCount,
         closeAccPoints,
@@ -138,16 +163,21 @@ function computeMetricsFromSample(
     sample: DailyPrediction[],
     rawScore?: unknown,
 ): DailyRatchetMetrics {
-    const correctCount = sample.filter((p) => p.is_correct === true).length;
-    const closeAccuracyPct = (correctCount / sample.length) * 100.0;
+    const holdSample = sample.filter((p) => (p.predicted_direction as string) === 'HOLD');
+    const tradedSample = sample.filter((p) => (p.predicted_direction as string) !== 'HOLD');
+    const correctCount = tradedSample.filter((p) => p.is_correct === true).length;
+    const closeAccuracyPct =
+        tradedSample.length > 0 ? (correctCount / tradedSample.length) * 100.0 : 50.0;
 
-    const intradayHitCount = sample.filter(
+    const intradayHitCount = tradedSample.filter(
         (p) => p.intraday_hit === true || (p.intraday_hit == null && p.is_correct === true),
     ).length;
-    const intradayHitPct = (intradayHitCount / sample.length) * 100.0;
+    const intradayHitPct =
+        tradedSample.length > 0 ? (intradayHitCount / tradedSample.length) * 100.0 : 50.0;
 
-    const captures = sample.map(calculateMagnitudeCapture);
-    const magnitudeCapturePct = captures.reduce((a, b) => a + b, 0) / captures.length;
+    const captures = tradedSample.map(calculateMagnitudeCapture);
+    const magnitudeCapturePct =
+        captures.length > 0 ? captures.reduce((a, b) => a + b, 0) / captures.length : 0.0;
 
     const brierList = sample
         .map((p) => (typeof p.brier_score === 'number' ? p.brier_score : null))
@@ -161,6 +191,22 @@ function computeMetricsFromSample(
     const meanCp = meanConvictionPoints(sample);
     const convictionNorm = meanCp === null ? 50.0 : normalizeConvictionPoints(meanCp);
 
+    const totalEvaluated = sample.length;
+    const tradedCount = tradedSample.length;
+    const holdCount = holdSample.length;
+
+    let accuracyBlockOverride: number | null = null;
+    if (holdCount > 0 && totalEvaluated > 0) {
+        const tradedBlock =
+            closeAccuracyPct * 0.55 + intradayHitPct * 0.35 + magnitudeCapturePct * 0.1;
+        const holdCredits = holdSample.map(calculateHoldSessionCredit);
+        const holdAvg = holdCredits.reduce((a, b) => a + b, 0) / holdCount;
+        accuracyBlockOverride = (tradedCount * tradedBlock + holdCount * holdAvg) / totalEvaluated;
+    }
+
+    const tradeRate = totalEvaluated > 0 ? tradedCount / totalEvaluated : 1.0;
+    const participationFactor = tradeRate < 0.75 ? Math.min(1.0, tradeRate / 0.75) : 1.0;
+
     return buildMetrics(
         closeAccuracyPct,
         intradayHitPct,
@@ -173,6 +219,10 @@ function computeMetricsFromSample(
         meanCp ?? 0.0,
         meanCp !== null,
         typeof rawScore === 'number' ? Number(rawScore) : null,
+        tradedCount,
+        holdCount,
+        participationFactor,
+        accuracyBlockOverride,
     );
 }
 
@@ -193,6 +243,15 @@ function extractEnrichedMetrics(rawMetrics?: Record<string, unknown>): DailyRatc
         typeof rawMetrics.conviction_mean_cp === 'number'
             ? Number(rawMetrics.conviction_mean_cp)
             : 0.0;
+    const tradedCount =
+        typeof rawMetrics.traded_count === 'number'
+            ? Number(rawMetrics.traded_count)
+            : Number(rawMetrics.predictions_evaluated || 0);
+    const holdCount = typeof rawMetrics.hold_count === 'number' ? Number(rawMetrics.hold_count) : 0;
+    const participationFactor =
+        typeof rawMetrics.participation_factor === 'number'
+            ? Number(rawMetrics.participation_factor)
+            : 1.0;
 
     return buildMetrics(
         Number(rawMetrics.close_accuracy_pct),
@@ -206,6 +265,9 @@ function extractEnrichedMetrics(rawMetrics?: Record<string, unknown>): DailyRatc
         convictionMeanCp,
         typeof rawMetrics.conviction_norm === 'number',
         Number(rawMetrics.score),
+        tradedCount,
+        holdCount,
+        participationFactor,
     );
 }
 
@@ -269,6 +331,143 @@ function ActiveDailyExperimentPlaceholder({ variantTag }: { variantTag: string }
     );
 }
 
+function FormulaSubstitutionBar({
+    metrics,
+    scoreColorClass,
+}: {
+    metrics: DailyRatchetMetrics;
+    scoreColorClass: string;
+}) {
+    return (
+        <div className="voxel-trough rounded-none p-3 text-xs font-mono text-boxel-ink leading-relaxed min-w-0 overflow-x-auto flex flex-col gap-1">
+            <div className="text-xs font-bold text-boxel-muted uppercase tracking-wider">
+                FORMULA SUBSTITUTION:
+            </div>
+            <div className="break-words overflow-wrap-anywhere">
+                <span className="text-accent">(0.55 × {metrics.closeAccuracyPct.toFixed(1)}%)</span>
+                {' + '}
+                <span className="text-info">(0.35 × {metrics.intradayHitPct.toFixed(1)}%)</span>
+                {' + '}
+                <span className="text-boxel-ink">
+                    (0.10 × {metrics.magnitudeCapturePct.toFixed(1)}%)
+                </span>
+                {' = '}
+                <span className="text-boxel-ink">
+                    {metrics.accuracyBlockPoints.toFixed(2)} accuracy
+                </span>
+                <br />
+                {'0.90 × '}
+                {metrics.accuracyBlockPoints.toFixed(2)}
+                {' + 0.10 × '}
+                <span className="text-accent">{metrics.convictionNorm.toFixed(1)}</span>
+                {metrics.participationFactor < 1.0 ? (
+                    <>
+                        {' = '}
+                        <span>
+                            {(
+                                metrics.accuracyBlockPoints * ACCURACY_WEIGHT +
+                                metrics.convictionContribution
+                            ).toFixed(2)}
+                        </span>
+                        {' × '}
+                        <span className="text-amber-400">
+                            {metrics.participationFactor.toFixed(2)} participation factor
+                        </span>
+                        {' = '}
+                        <strong className={scoreColorClass}>{metrics.score.toFixed(2)}</strong>
+                    </>
+                ) : (
+                    <>
+                        {' = '}
+                        <strong className={scoreColorClass}>
+                            {(metrics.accuracyBlockPoints * ACCURACY_WEIGHT).toFixed(2)} +{' '}
+                            {metrics.convictionContribution.toFixed(2)} = {metrics.score.toFixed(2)}
+                        </strong>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function ScoringGuideCollapsible({
+    showGuide,
+    onToggle,
+    meanBrier,
+}: {
+    showGuide: boolean;
+    onToggle: () => void;
+    meanBrier: number;
+}) {
+    return (
+        <div className="border-t border-boxel-bevel-hi pt-3">
+            <button
+                type="button"
+                onClick={onToggle}
+                className="voxel-btn bg-boxel-surface text-boxel-ink hover:text-accent px-3 py-1 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+            >
+                <span>{showGuide ? '▲ Hide' : '▼ View'} Scoring Formula & Weights Guide</span>
+            </button>
+
+            {showGuide && (
+                <div className="voxel-trough rounded-none p-3 mt-3 flex flex-col gap-2 text-xs font-normal text-boxel-muted leading-relaxed">
+                    <div className="text-xs font-bold text-boxel-ink uppercase tracking-wider">
+                        How the Daily Ratchet Score is Computed:
+                    </div>
+                    <ul className="m-0 pl-4 flex flex-col gap-1">
+                        <li>
+                            <strong className="text-boxel-ink">
+                                Close Directional Accuracy (55%):
+                            </strong>{' '}
+                            Evaluates whether the 4:00 PM ET close price matched the predicted
+                            direction (`UP` if Close &ge; Open else `DOWN`).
+                        </li>
+                        <li>
+                            <strong className="text-boxel-ink">
+                                Intraday Target Hit Rate (35%):
+                            </strong>{' '}
+                            Evaluates whether SPY reached the expected return percentage
+                            (`expected_return_pct`) at any point between Open and Close.
+                        </li>
+                        <li>
+                            <strong className="text-boxel-ink">
+                                Magnitude Capture Ratio (10%):
+                            </strong>{' '}
+                            Rewards predicting aggressive percentage targets on large breakout days
+                            rather than overly timid targets on clear trends (min(1.0, |pred| /
+                            actual) × 100).
+                        </li>
+                        <li>
+                            <strong className="text-boxel-ink">Conviction (10%):</strong> Scores the
+                            stated confidence against the outcome using the logarithmic rule,
+                            recentred so a coin flip is worth zero: +100·ln(2p) when correct,
+                            +100·ln(2−2p) when wrong.
+                        </li>
+                        <li>
+                            <strong className="text-boxel-ink">HOLD Gating & Credits:</strong>{' '}
+                            Confidence &lt; 56.0% automatically gates execution to `HOLD`. On choppy
+                            sessions (|move| &lt; 0.25%), HOLD earns +52.0 pts credit. On normal
+                            sessions (0.25% &ndash; 0.75%), HOLD earns +45.0 pts credit. On missed
+                            trends (|move| &gt; 0.75%), HOLD earns +35.0 pts credit.
+                        </li>
+                        <li>
+                            <strong className="text-boxel-ink">Participation Hurdle:</strong> Models
+                            must maintain a &ge;75% trade rate (at most 1 HOLD per 4&ndash;5
+                            sessions). If trade rate drops below 75%, the final score is scaled by
+                            (trade_rate / 0.75).
+                        </li>
+                        <li>
+                            <strong className="text-boxel-ink">Brier (diagnostic only):</strong>{' '}
+                            Still stored per prediction ({meanBrier.toFixed(4)} here) for
+                            calibration auditing.
+                        </li>
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreakdownProps) {
     const [showGuide, setShowGuide] = useState(false);
     const metrics = resolveRatchetMetrics(experiment, predictions);
@@ -301,6 +500,9 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                     <div className="text-xs font-normal text-boxel-muted break-words">
                         Evaluated across {metrics.predictionsEvaluated} prediction
                         {metrics.predictionsEvaluated === 1 ? '' : 's'}
+                        {metrics.holdCount > 0
+                            ? ` (${metrics.tradedCount} traded, ${metrics.holdCount} HOLD)`
+                            : ''}
                         {experiment.week_start
                             ? ` (${experiment.week_start}${
                                   experiment.week_end ? ` → ${experiment.week_end}` : ''
@@ -320,36 +522,7 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
             </div>
 
             {/* Arithmetic Formula Bar */}
-            <div className="voxel-trough rounded-none p-3 text-xs font-mono text-boxel-ink leading-relaxed min-w-0 overflow-x-auto flex flex-col gap-1">
-                <div className="text-xs font-bold text-boxel-muted uppercase tracking-wider">
-                    FORMULA SUBSTITUTION:
-                </div>
-                <div className="break-words overflow-wrap-anywhere">
-                    <span className="text-accent">
-                        (0.55 × {metrics.closeAccuracyPct.toFixed(1)}%)
-                    </span>
-                    {' + '}
-                    <span className="text-info">(0.35 × {metrics.intradayHitPct.toFixed(1)}%)</span>
-                    {' + '}
-                    <span className="text-boxel-ink">
-                        (0.10 × {metrics.magnitudeCapturePct.toFixed(1)}%)
-                    </span>
-                    {' = '}
-                    <span className="text-boxel-ink">
-                        {metrics.accuracyBlockPoints.toFixed(2)} accuracy
-                    </span>
-                    <br />
-                    {'0.90 × '}
-                    {metrics.accuracyBlockPoints.toFixed(2)}
-                    {' + 0.10 × '}
-                    <span className="text-accent">{metrics.convictionNorm.toFixed(1)}</span>
-                    {' = '}
-                    <strong className={scoreColorClass}>
-                        {(metrics.accuracyBlockPoints * ACCURACY_WEIGHT).toFixed(2)} +{' '}
-                        {metrics.convictionContribution.toFixed(2)} = {metrics.score.toFixed(2)}
-                    </strong>
-                </div>
-            </div>
+            <FormulaSubstitutionBar metrics={metrics} scoreColorClass={scoreColorClass} />
 
             {/* 4 Factor Pillar Cards */}
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3 items-stretch min-w-0">
@@ -365,7 +538,9 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                         +{metrics.closeAccPoints.toFixed(2)} pts
                     </div>
                     <div className="text-xs font-normal text-boxel-muted">
-                        {metrics.correctCount} / {metrics.predictionsEvaluated} correct
+                        {metrics.holdCount > 0
+                            ? `${metrics.correctCount} / ${metrics.tradedCount} correct (${metrics.holdCount} HOLD)`
+                            : `${metrics.correctCount} / ${metrics.predictionsEvaluated} correct`}
                     </div>
                 </div>
 
@@ -381,7 +556,9 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                         +{metrics.intradayHitPoints.toFixed(2)} pts
                     </div>
                     <div className="text-xs font-normal text-boxel-muted">
-                        {metrics.intradayHitCount} / {metrics.predictionsEvaluated} targets hit
+                        {metrics.holdCount > 0
+                            ? `${metrics.intradayHitCount} / ${metrics.tradedCount} targets hit`
+                            : `${metrics.intradayHitCount} / ${metrics.predictionsEvaluated} targets hit`}
                     </div>
                 </div>
 
@@ -405,6 +582,20 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                 <ConvictionPillar metrics={metrics} />
             </div>
 
+            {/* Participation Factor Hurdle Penalty Notice */}
+            {metrics.participationFactor < 1.0 && (
+                <div className="voxel-trough rounded-none p-3 text-xs font-normal text-amber-400 flex items-start gap-2 border-l-2 border-l-amber-400">
+                    <span className="w-2 h-2 bg-amber-400 mt-1 shrink-0 inline-block" />
+                    <div>
+                        <strong className="text-boxel-ink">Participation Hurdle Penalty:</strong>{' '}
+                        Track traded only {metrics.tradedCount} of {metrics.predictionsEvaluated}{' '}
+                        sessions (
+                        {((metrics.tradedCount / metrics.predictionsEvaluated) * 100).toFixed(0)}%,
+                        target &ge;75%). Score scaled by {metrics.participationFactor.toFixed(2)}x.
+                    </div>
+                </div>
+            )}
+
             {/* Low Sample Size Notice */}
             {isLowSample && (
                 <div className="voxel-trough rounded-none p-3 text-xs font-normal text-accent flex items-start gap-2 border-l-2 border-l-accent">
@@ -422,61 +613,11 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
             )}
 
             {/* Collapsible Guide Toggle */}
-            <div className="border-t border-boxel-bevel-hi pt-3">
-                <button
-                    type="button"
-                    onClick={() => setShowGuide((prev) => !prev)}
-                    className="voxel-btn bg-boxel-surface text-boxel-ink hover:text-accent px-3 py-1 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
-                >
-                    <span>{showGuide ? '▲ Hide' : '▼ View'} Scoring Formula & Weights Guide</span>
-                </button>
-
-                {showGuide && (
-                    <div className="voxel-trough rounded-none p-3 mt-3 flex flex-col gap-2 text-xs font-normal text-boxel-muted leading-relaxed">
-                        <div className="text-xs font-bold text-boxel-ink uppercase tracking-wider">
-                            How the Daily Ratchet Score is Computed:
-                        </div>
-                        <ul className="m-0 pl-4 flex flex-col gap-1">
-                            <li>
-                                <strong className="text-boxel-ink">
-                                    Close Directional Accuracy (55%):
-                                </strong>{' '}
-                                Evaluates whether the 4:00 PM ET close price matched the predicted
-                                direction (`UP` if Close &ge; Open else `DOWN`).
-                            </li>
-                            <li>
-                                <strong className="text-boxel-ink">
-                                    Intraday Target Hit Rate (35%):
-                                </strong>{' '}
-                                Evaluates whether SPY reached the expected return percentage
-                                (`expected_return_pct`) at any point between Open and Close.
-                            </li>
-                            <li>
-                                <strong className="text-boxel-ink">
-                                    Magnitude Capture Ratio (10%):
-                                </strong>{' '}
-                                Rewards predicting aggressive percentage targets on large breakout
-                                days rather than overly timid targets on clear trends (min(1.0,
-                                |pred| / actual) × 100).
-                            </li>
-                            <li>
-                                <strong className="text-boxel-ink">Conviction (10%):</strong> Scores
-                                the stated confidence against the outcome using the logarithmic
-                                rule, recentred so a coin flip is worth zero: +100·ln(2p) when
-                                correct, +100·ln(2−2p) when wrong. Because the penalty at any
-                                confidence exceeds the reward, a confident miss costs more than a
-                                confident hit earns, and hedging buys nothing. A model with no
-                                scored confidence is held at neutral 50.
-                            </li>
-                            <li>
-                                <strong className="text-boxel-ink">Brier (diagnostic only):</strong>{' '}
-                                Still stored per prediction ({metrics.meanBrier.toFixed(4)} here)
-                                for calibration auditing. It is no longer a scoring input.
-                            </li>
-                        </ul>
-                    </div>
-                )}
-            </div>
+            <ScoringGuideCollapsible
+                showGuide={showGuide}
+                onToggle={() => setShowGuide((prev) => !prev)}
+                meanBrier={metrics.meanBrier}
+            />
         </Card>
     );
 }

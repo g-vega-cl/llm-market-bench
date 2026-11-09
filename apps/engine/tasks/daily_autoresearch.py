@@ -106,6 +106,32 @@ def calculate_magnitude_capture(p: dict) -> float:
     return 100.0
 
 
+HOLD_CHOP_CREDIT = 52.0
+HOLD_NORMAL_CREDIT = 45.0
+HOLD_MISSED_TREND_CREDIT = 35.0
+TARGET_MIN_TRADE_RATE = 0.75
+
+
+def calculate_hold_session_credit(p: dict) -> float:
+    """Calculate move-aware credit (points out of 100) for a HOLD session.
+
+    - Flat / chop session (|move| < 0.25%): 52.0 pts (holding saved spread/slippage)
+    - Normal session (0.25% <= move <= 0.75%): 45.0 pts (sub-coin flip)
+    - Missed trend session (|move| > 0.75%): 35.0 pts (penalized for sitting out trend)
+    """
+    open_p = p.get("open_price") or p.get("actual_open_price")
+    close_p = p.get("close_price") or p.get("actual_close_price")
+    if not (open_p and open_p > 0 and close_p and close_p > 0):
+        return HOLD_NORMAL_CREDIT
+
+    abs_move_pct = abs((close_p - open_p) / open_p) * 100.0
+    if abs_move_pct < 0.25:
+        return HOLD_CHOP_CREDIT
+    if abs_move_pct <= 0.75:
+        return HOLD_NORMAL_CREDIT
+    return HOLD_MISSED_TREND_CREDIT
+
+
 def calculate_daily_ratchet_metrics(predictions: list[dict]) -> dict:
     """Calculate the full ratchet performance metrics breakdown for daily predictions.
 
@@ -114,20 +140,18 @@ def calculate_daily_ratchet_metrics(predictions: list[dict]) -> dict:
     - Intraday Target Hit Rate % (weight: 0.35 of the accuracy block)
     - Magnitude Capture Ratio % (weight: 0.10 of the accuracy block)
     - Conviction (weight: 0.10 of the total, centred at 50 for a coin flip)
+    - Participation Hurdle: min(1.0, trade_rate / 0.75)
 
-    Combined Score = 0.90 * accuracy_block + 0.10 * conviction_norm
-
-    The accuracy block is scaled to 0.90 so the 0-100 range is preserved, and the
-    previous ``- mean_brier * 50`` penalty is gone. Brier is still stored on each
-    prediction row as a diagnostic; stale rows without a confidence value score
-    a neutral 50.0 conviction.
+    Combined Score = ((0.90 * accuracy_block) + (0.10 * conviction_norm)) * participation_factor
     """
     if not predictions:
         return {
             "score": 0.0,
+            "base_score": 0.0,
             "close_accuracy_pct": 0.0,
             "intraday_hit_pct": 0.0,
             "magnitude_capture_pct": 0.0,
+            "traded_close_accuracy_pct": 0.0,
             "mean_brier": 0.25,
             "conviction_norm": 50.0,
             "conviction_mean_cp": 0.0,
@@ -135,40 +159,78 @@ def calculate_daily_ratchet_metrics(predictions: list[dict]) -> dict:
             "predictions_evaluated": 0,
             "correct_count": 0,
             "intraday_hit_count": 0,
+            "traded_count": 0,
+            "hold_count": 0,
+            "trade_rate_pct": 0.0,
+            "participation_factor": 1.0,
         }
 
-    correct_count = sum(1 for p in predictions if p.get("is_correct") is True)
-    close_accuracy_pct = (correct_count / len(predictions)) * 100.0
+    close_acc_list: list[float] = []
+    intraday_hit_list: list[float] = []
+    magnitude_capture_list: list[float] = []
+    correct_count = 0
+    intraday_hit_count = 0
+    traded_count = 0
+    hold_count = 0
 
-    intraday_hit_count = sum(
-        1
-        for p in predictions
-        if p.get("intraday_hit") is True or (p.get("intraday_hit") is None and p.get("is_correct") is True)
-    )
-    intraday_hit_pct = (intraday_hit_count / len(predictions)) * 100.0
+    for p in predictions:
+        is_hold = str(p.get("predicted_direction", "")).upper() == "HOLD"
+        if is_hold:
+            hold_count += 1
+            credit = calculate_hold_session_credit(p)
+            close_acc_list.append(credit)
+            intraday_hit_list.append(credit)
+            magnitude_capture_list.append(credit)
+        else:
+            traded_count += 1
+            is_correct = p.get("is_correct") is True
+            if is_correct:
+                correct_count += 1
+            close_acc_list.append(100.0 if is_correct else 0.0)
 
-    magnitude_captures = [calculate_magnitude_capture(p) for p in predictions]
-    mean_mag_capture = sum(magnitude_captures) / len(magnitude_captures)
+            hit = p.get("intraday_hit") is True or (p.get("intraday_hit") is None and is_correct)
+            if hit:
+                intraday_hit_count += 1
+            intraday_hit_list.append(100.0 if hit else 0.0)
+
+            magnitude_capture_list.append(calculate_magnitude_capture(p))
+
+    total = len(predictions)
+    close_accuracy_pct = sum(close_acc_list) / total
+    intraday_hit_pct = sum(intraday_hit_list) / total
+    mean_mag_capture = sum(magnitude_capture_list) / total
+    traded_close_accuracy_pct = (correct_count / traded_count * 100.0) if traded_count > 0 else 0.0
 
     brier_scores = [p.get("brier_score") for p in predictions if p.get("brier_score") is not None]
     mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.25
 
     conviction = conviction_bundle(predictions)
     accuracy_block = (0.55 * close_accuracy_pct) + (0.35 * intraday_hit_pct) + (0.10 * mean_mag_capture)
-    final_score = (0.90 * accuracy_block) + (0.10 * conviction["conviction_norm"])
+    base_score = (0.90 * accuracy_block) + (0.10 * conviction["conviction_norm"])
+
+    trade_rate = traded_count / total if total > 0 else 0.0
+    trade_rate_pct = round(trade_rate * 100.0, 2)
+    participation_factor = min(1.0, trade_rate / TARGET_MIN_TRADE_RATE) if total > 0 else 1.0
+    final_score = base_score * participation_factor
 
     return {
         "score": round(float(final_score), 4),
+        "base_score": round(float(base_score), 4),
         "close_accuracy_pct": round(float(close_accuracy_pct), 2),
         "intraday_hit_pct": round(float(intraday_hit_pct), 2),
         "magnitude_capture_pct": round(float(mean_mag_capture), 2),
+        "traded_close_accuracy_pct": round(float(traded_close_accuracy_pct), 2),
         "mean_brier": round(float(mean_brier), 4),
         "conviction_norm": conviction["conviction_norm"],
         "conviction_mean_cp": conviction["mean_cp"],
         "tail_gap": conviction["tail_gap"],
-        "predictions_evaluated": len(predictions),
+        "predictions_evaluated": total,
         "correct_count": correct_count,
         "intraday_hit_count": intraday_hit_count,
+        "traded_count": traded_count,
+        "hold_count": hold_count,
+        "trade_rate_pct": trade_rate_pct,
+        "participation_factor": round(float(participation_factor), 4),
     }
 
 
@@ -290,10 +352,12 @@ def _diagnose_prediction_row(
 ) -> str:
     date_str = str(p.get("target_date") or p.get("prediction_date") or "N/A")[:10]
     direction = str(p.get("predicted_direction") or "N/A").upper()
+    confidence = float(p.get("confidence") or 50.0)
     exp_pct = float(p.get("expected_return_pct") or 0.0)
-    is_correct = p.get("is_correct") is True
-    intraday_hit = p.get("intraday_hit") is True or (p.get("intraday_hit") is None and is_correct)
-    brier = float(p.get("brier_score") or 0.0)
+    is_correct = p.get("is_correct")
+    intraday_hit = p.get("intraday_hit")
+    cp = p.get("conviction_score")
+    cp_val = float(cp) if cp is not None else 0.0
     capture = calculate_magnitude_capture(p)
     peak_pct, close_pct = _compute_peak_and_close_pct(p, direction)
     actual_move = max(abs(peak_pct), abs(close_pct))
@@ -311,9 +375,30 @@ def _diagnose_prediction_row(
     all_day_catalysts = day_info.get("newsletters", []) + day_info.get("events", [])
     catalyst_snippet = "; ".join(all_day_catalysts[:2]) if all_day_catalysts else "None recorded"
 
-    if pm_cat:
+    if direction == "HOLD":
+        if pm_cat:
+            diagnosis = pm_cat
+        elif actual_move < 0.25:
+            diagnosis = "Prudent Hold (Chop Saved)"
+        elif actual_move > 0.75:
+            diagnosis = "Missed Trend (Excessive Caution)"
+            timid_cases.append(
+                f"- **{date_str}**: Held session, but market trended {actual_move:+.2f}%. Catalyst: {catalyst_snippet}."
+            )
+        else:
+            diagnosis = "Normal Hold"
+        correct_str = "-"
+        hit_str = "-"
+        capture_str = "-"
+    elif pm_cat:
         diagnosis = pm_cat
-    elif is_correct and intraday_hit:
+        correct_str = "Yes" if is_correct is True else "No"
+        hit_str = "Yes" if (intraday_hit is True or (intraday_hit is None and is_correct is True)) else "No"
+        capture_str = f"{capture:.1f}%"
+    elif is_correct is True and (intraday_hit is True or intraday_hit is None):
+        correct_str = "Yes"
+        hit_str = "Yes"
+        capture_str = f"{capture:.1f}%"
         if actual_move >= 0.60 and capture < 40.0:
             diagnosis = "Timid / Underestimated"
             timid_cases.append(
@@ -322,7 +407,10 @@ def _diagnose_prediction_row(
             )
         else:
             diagnosis = "Well-Calibrated"
-    elif not intraday_hit and is_correct:
+    elif is_correct is True and intraday_hit is False:
+        correct_str = "Yes"
+        hit_str = "No"
+        capture_str = f"{capture:.1f}%"
         if abs(exp_pct) >= 0.60:
             diagnosis = "Overshot / Missed Target"
             overshot_cases.append(
@@ -332,11 +420,14 @@ def _diagnose_prediction_row(
         else:
             diagnosis = "Missed Target"
     else:
+        correct_str = "No"
+        hit_str = "No"
+        capture_str = f"{capture:.1f}%"
         diagnosis = "Wrong Direction"
 
     row = (
-        f"| {date_str} | {direction} | {exp_pct:+.2f}% | {peak_pct:+.2f}% | {close_pct:+.2f}% | "
-        f"{'Yes' if is_correct else 'No'} | {'Yes' if intraday_hit else 'No'} | {brier:.3f} | {capture:.1f}% | {diagnosis} |"
+        f"| {date_str} | {direction} | {confidence:.1f}% | {exp_pct:+.2f}% | {peak_pct:+.2f}% | {close_pct:+.2f}% | "
+        f"{correct_str} | {hit_str} | {cp_val:+.2f} | {capture_str} | {diagnosis} |"
     )
     return f"{row} {catalyst_snippet} |" if has_catalysts else row
 
@@ -353,10 +444,10 @@ def compute_magnitude_postmortem_summary(
     has_catalysts = bool(daily_events)
 
     lines = [
-        "### RECENT PREDICTIONS POSTMORTEM & MAGNITUDE CALIBRATION",
-        "| Date | Dir | Pred % | Peak % | Close % | Correct? | Hit? | Brier | Capture % | Diagnosis |"
+        "### RECENT PREDICTIONS POSTMORTEM & CONFIDENCE CALIBRATION",
+        "| Date | Dir | Conf % | Pred % | Peak % | Close % | Correct? | Hit? | Conv CP | Capture % | Diagnosis |"
         + (" Key Catalysts / News |" if has_catalysts else ""),
-        "|---|---|---|---|---|---|---|---|---|---|" + ("---|" if has_catalysts else ""),
+        "|---|---|---|---|---|---|---|---|---|---|---|" + ("---|" if has_catalysts else ""),
     ]
     timid_cases: list[str] = []
     overshot_cases: list[str] = []
@@ -445,13 +536,25 @@ async def generate_new_daily_prompt(
         "You are a Meta-Researcher AI optimizing an LLM prompt for predicting intraday S&P 500 (SPY) open-to-close price movement.\n\n"
         f"The current prompt strategy achieved a ratchet score of {baseline_score:.2f}.\n\n"
         f"{postmortem_context}{meta_directives_block}\n\n"
-        "### STRUCTURAL PROMPT SECTIONS & MUTATION RULES:\n"
+        "### STRUCTURAL PROMPT SECTIONS & MUTATION BOUNDARIES:\n"
         "1. STRUCTURAL SECTIONS ARE FROZEN: System constraints (trader identity, available market context injection, and required JSON output format) are FROZEN and managed automatically by the engine.\n"
         "2. Do NOT include system header rules, context definitions, or JSON schemas in your output. You are modifying ONLY the analytical reasoning and strategy section. "
-        "Base-rate, directional-bias, and symmetry guidance are part of that strategy: you may keep, rewrite, or remove them as the evidence supports.\n"
-        "3. Prioritize Directional Accuracy (55% weight) and Intraday Hit Rate (35% weight) first and foremost.\n"
-        "4. Learn from Cause & Effect: Analyze the correlation between recent market catalysts, newsletters, and prediction failures/successes. "
-        "Incorporate concrete cause-and-effect reasoning heuristics (e.g., how SPY reacts to yield shifts, tech capex surges, or pre-market gap-downs).\n"
+        "Base-rate, directional-bias, and symmetry guidance are part of that strategy: you may keep, rewrite, or remove them as the evidence supports.\n\n"
+        "### SCORING FORMULA & MATHEMATICAL RATCHET RULES:\n"
+        "Combined Score = ((0.90 * accuracy_block) + (0.10 * conviction_norm)) * participation_factor\n"
+        "1. Accuracy Block = 0.55 * Close Directional Accuracy + 0.35 * Intraday Target Hit + 0.10 * Magnitude Capture.\n"
+        "2. Confidence < 56.0% automatically gates execution to HOLD (no trade entered):\n"
+        "   - On flat/choppy sessions (|move| < 0.25%), HOLD earns +52.0 pts credit (holding saves spread/slippage).\n"
+        "   - On normal sessions (0.25% <= move <= 0.75%), HOLD earns +45.0 pts credit (sub-coin-flip).\n"
+        "   - On missed trend sessions (|move| > 0.75%), HOLD earns only +35.0 pts credit (penalized for excessive caution).\n"
+        "3. Participation Hurdle: Models must trade at least 75% of sessions (at most 1 HOLD per 4-5 sessions). If trade_rate < 0.75, score is scaled by (trade_rate / 0.75).\n"
+        "4. Conviction Norm (10% weight): Logarithmic scoring with neutral 50 norm at coin-flip (50%) or HOLD:\n"
+        "   - 50.0-55.9%: Gated to HOLD, worth 0.0 CP.\n"
+        "   - 56.0% (min trade): +11.33 CP if correct, -12.78 CP if wrong.\n"
+        "   - 65.0% (moderate lean): +26.24 CP if correct, -35.67 CP if wrong.\n"
+        "   - 75.0% (strong setup): +40.55 CP if correct, -69.31 CP if wrong.\n"
+        "   - 85.0% (high conviction): +53.06 CP if correct, -120.40 CP if wrong.\n"
+        "   - When pre-market signals converge cleanly, express higher conviction (65%-80%) to earn generous conviction points. When signals conflict or tape is flat, assign 50%-55% to hold safely.\n"
         "5. Optimize Magnitude Calibration (10% weight): When high-impact catalysts or strong trend conditions align, "
         "instruct the predictor to be more confident and aggressive in expected_return_pct magnitude (e.g. +0.50% to +1.20% instead of timid +0.20%).\n"
         "6. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"

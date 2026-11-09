@@ -129,12 +129,66 @@ function ConvictionCell({ value }: { value: number | null | undefined }) {
     );
 }
 
+function PredictionIntradayHitBadge({ p }: { p: DailyPrediction }) {
+    if (p.intraday_hit === true) {
+        return (
+            <Badge colorScheme="info" variant="soft" size="xs" radius="none">
+                HIT
+            </Badge>
+        );
+    }
+    if (p.intraday_hit === false) {
+        return (
+            <Badge colorScheme="warning" variant="soft" size="xs" radius="none">
+                MISSED
+            </Badge>
+        );
+    }
+    return <span className="text-zinc-400 text-xs">-</span>;
+}
+
+function PredictionOutcomeBadge({ p }: { p: DailyPrediction }) {
+    if (p.predicted_direction === 'HOLD' && p.status === 'evaluated') {
+        return (
+            <Badge colorScheme="warning" variant="soft" size="xs" radius="none">
+                HOLD
+            </Badge>
+        );
+    }
+    if (p.is_correct === true) {
+        return (
+            <Badge colorScheme="success" variant="soft" size="xs" radius="none">
+                PASS
+            </Badge>
+        );
+    }
+    if (p.is_correct === false) {
+        return (
+            <Badge colorScheme="danger" variant="soft" size="xs" radius="none">
+                FAIL
+            </Badge>
+        );
+    }
+    return (
+        <Badge colorScheme="neutral" variant="soft" size="xs" radius="none">
+            PENDING
+        </Badge>
+    );
+}
+
 function PredictionTableRowItem({
     p,
     isExpanded,
     onToggleExpand,
     matchingExp,
 }: PredictionRowProps) {
+    const dirClass =
+        p.predicted_direction === 'UP'
+            ? 'text-emerald-600'
+            : p.predicted_direction === 'HOLD'
+              ? 'text-amber-500'
+              : 'text-rose-600';
+
     return (
         <>
             <TableRow className="border-b border-zinc-100 dark:border-zinc-800/60">
@@ -142,13 +196,7 @@ function PredictionTableRowItem({
                     {p.target_date}
                 </TableCell>
                 <TableCell>{p.ticker}</TableCell>
-                <TableCell
-                    className={`font-bold ${
-                        p.predicted_direction === 'UP' ? 'text-emerald-600' : 'text-rose-600'
-                    }`}
-                >
-                    {p.predicted_direction}
-                </TableCell>
+                <TableCell className={`font-bold ${dirClass}`}>{p.predicted_direction}</TableCell>
                 <TableCell>{p.confidence}%</TableCell>
                 <TableCell>{p.open_price != null ? `$${p.open_price.toFixed(2)}` : '-'}</TableCell>
                 <TableCell>
@@ -156,34 +204,10 @@ function PredictionTableRowItem({
                 </TableCell>
                 <TableCell className="font-bold text-sm">{p.actual_direction || '-'}</TableCell>
                 <TableCell>
-                    {p.intraday_hit === true && (
-                        <Badge colorScheme="info" variant="soft" size="xs" radius="none">
-                            HIT
-                        </Badge>
-                    )}
-                    {p.intraday_hit === false && (
-                        <Badge colorScheme="warning" variant="soft" size="xs" radius="none">
-                            MISSED
-                        </Badge>
-                    )}
-                    {p.intraday_hit === null && <span className="text-zinc-400 text-xs">-</span>}
+                    <PredictionIntradayHitBadge p={p} />
                 </TableCell>
                 <TableCell>
-                    {p.is_correct === true && (
-                        <Badge colorScheme="success" variant="soft" size="xs" radius="none">
-                            PASS
-                        </Badge>
-                    )}
-                    {p.is_correct === false && (
-                        <Badge colorScheme="danger" variant="soft" size="xs" radius="none">
-                            FAIL
-                        </Badge>
-                    )}
-                    {p.is_correct === null && (
-                        <Badge colorScheme="neutral" variant="soft" size="xs" radius="none">
-                            PENDING
-                        </Badge>
-                    )}
+                    <PredictionOutcomeBadge p={p} />
                 </TableCell>
                 <TableCell>
                     <ConvictionCell value={p.conviction_score} />

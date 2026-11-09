@@ -5,6 +5,8 @@ export interface DailyMetricsOverviewProps {
     intradayHitPct: string;
     correctCount: number;
     totalEvaluated: number;
+    tradedEvaluated?: number;
+    holdCount?: number;
     convictionScore: string;
     totalPredictions: number;
     activePromptTag: string;
@@ -15,6 +17,8 @@ export function DailyMetricsOverview({
     intradayHitPct,
     correctCount,
     totalEvaluated,
+    tradedEvaluated,
+    holdCount,
     convictionScore,
     totalPredictions,
     activePromptTag,
@@ -29,7 +33,8 @@ export function DailyMetricsOverview({
                     {accuracyPct}%
                 </div>
                 <div className="text-xs font-normal text-boxel-muted mt-0.5">
-                    {correctCount} / {totalEvaluated} correct
+                    {correctCount} / {tradedEvaluated ?? totalEvaluated} correct
+                    {holdCount && holdCount > 0 ? ` (${holdCount} HOLD)` : ''}
                 </div>
             </Card>
 

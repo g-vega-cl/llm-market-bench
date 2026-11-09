@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import logger
 from core.llm.daily_predictor_prompts import (
     DAILY_PREDICTOR_PROMPT,
+    apply_confidence_hold_gate,
     split_daily_predictor_prompt,
 )
 from local_autoresearch.live_session_store import DEFAULT_LIVE_SESSIONS_DB, load_live_sessions
@@ -88,11 +89,18 @@ def extract_daily_prediction(raw_text: str) -> dict[str, Any]:
         if isinstance(data.get("catalysts"), list):
             catalysts = [str(c) for c in data["catalysts"]]
 
+    pred_dir, exp_ret, rat_text = apply_confidence_hold_gate(
+        direction=direction,
+        confidence=confidence,
+        expected_return_pct=expected_return_pct,
+        rationale=rationale,
+    )
+
     return {
-        "predicted_direction": direction,
+        "predicted_direction": pred_dir,
         "confidence": confidence,
-        "expected_return_pct": expected_return_pct,
-        "rationale": rationale,
+        "expected_return_pct": exp_ret,
+        "rationale": rat_text,
         "catalysts": catalysts,
     }
 
@@ -101,29 +109,34 @@ def evaluate_prediction_record(session: dict[str, Any], prediction: dict[str, An
     """Score a single session prediction against ground-truth market results."""
     pred_dir = str(prediction.get("predicted_direction", "UP")).upper()
     actual_dir = str(session.get("actual_direction", "")).upper()
-    is_correct = pred_dir == actual_dir
-
-    confidence = float(prediction.get("confidence", 50.0))
-    expected_return_pct = prediction.get("expected_return_pct")
-
-    brier = calculate_brier_score(
-        predicted_direction=pred_dir,
-        confidence=confidence,
-        actual_direction=actual_dir,
-    )
 
     open_p = float(session.get("open_price") or 0.0)
     high_p = float(session.get("high_price") or open_p)
     low_p = float(session.get("low_price") or open_p)
     close_p = float(session.get("close_price") or open_p)
 
-    intraday_hit, intraday_direction_hit = compute_intraday_hit_metrics(
-        predicted_direction=pred_dir,
-        expected_return_pct=expected_return_pct,
-        open_price=open_p,
-        high_price=high_p,
-        low_price=low_p,
-    )
+    confidence = float(prediction.get("confidence", 50.0))
+    expected_return_pct = prediction.get("expected_return_pct")
+
+    if pred_dir == "HOLD":
+        is_correct = None
+        brier = None
+        intraday_hit = None
+        intraday_direction_hit = None
+    else:
+        is_correct = pred_dir == actual_dir
+        brier = calculate_brier_score(
+            predicted_direction=pred_dir,
+            confidence=confidence,
+            actual_direction=actual_dir,
+        )
+        intraday_hit, intraday_direction_hit = compute_intraday_hit_metrics(
+            predicted_direction=pred_dir,
+            expected_return_pct=expected_return_pct,
+            open_price=open_p,
+            high_price=high_p,
+            low_price=low_p,
+        )
 
     return {
         "target_date": session.get("target_date"),
@@ -139,7 +152,7 @@ def evaluate_prediction_record(session: dict[str, Any], prediction: dict[str, An
         "rationale": prediction.get("rationale", ""),
         "catalysts": prediction.get("catalysts", []),
         "is_correct": is_correct,
-        "brier_score": round(brier, 4),
+        "brier_score": round(brier, 4) if brier is not None else None,
         "intraday_hit": intraday_hit,
         "intraday_direction_hit": intraday_direction_hit,
     }
@@ -154,11 +167,12 @@ def should_prune_stage1(
     min_sharpe: float = -0.5,
     min_balanced_acc: float = 48.0,
     min_single_class_recall: float = 25.0,
+    min_trade_rate: float = 0.70,
 ) -> bool:
     """Determine whether to prune candidate at Stage 1 screening sieve.
 
-    Evaluates directional win rate, confidence-sized Sharpe return, and class balance
-    to prune reckless drawdowns and one-sided asymmetric collapses early.
+    Evaluates directional win rate, confidence-sized Sharpe return, trade participation,
+    and class balance to prune reckless drawdowns and one-sided asymmetric collapses early.
     """
     if evaluated < sieve_size:
         return False
@@ -167,6 +181,12 @@ def should_prune_stage1(
         return True
 
     if records and len(records) >= sieve_size:
+        # Trade rate check: prune candidates that hold excessively in Stage 1
+        traded_count = sum(1 for r in records[:sieve_size] if r.get("predicted_direction") != "HOLD")
+        trade_rate = traded_count / sieve_size
+        if trade_rate < min_trade_rate:
+            return True
+
         sized_pnl = calculate_sized_trading_pnl(records[:sieve_size])
         ann_sharpe = float(sized_pnl.get("annualized_sharpe", 0.0))
         if ann_sharpe < min_sharpe:
@@ -185,8 +205,9 @@ def should_prune_stage1(
 
 
 def calculate_balanced_accuracy(records: list[dict[str, Any]]) -> dict[str, float]:
-    """Calculate class-balanced accuracy and Matthews Correlation Coefficient."""
-    if not records:
+    """Calculate class-balanced accuracy and Matthews Correlation Coefficient across traded records."""
+    traded_records = [r for r in (records or []) if r.get("predicted_direction") in ("UP", "DOWN")]
+    if not traded_records:
         return {
             "balanced_accuracy_pct": 0.0,
             "win_rate_pct": 0.0,
@@ -197,29 +218,29 @@ def calculate_balanced_accuracy(records: list[dict[str, Any]]) -> dict[str, floa
 
     tp = sum(
         1
-        for r in records
+        for r in traded_records
         if str(r.get("predicted_direction", "")).upper() == "UP" and str(r.get("actual_direction", "")).upper() == "UP"
     )
     tn = sum(
         1
-        for r in records
+        for r in traded_records
         if str(r.get("predicted_direction", "")).upper() == "DOWN"
         and str(r.get("actual_direction", "")).upper() == "DOWN"
     )
     fp = sum(
         1
-        for r in records
+        for r in traded_records
         if str(r.get("predicted_direction", "")).upper() == "UP"
         and str(r.get("actual_direction", "")).upper() == "DOWN"
     )
     fn = sum(
         1
-        for r in records
+        for r in traded_records
         if str(r.get("predicted_direction", "")).upper() == "DOWN"
         and str(r.get("actual_direction", "")).upper() == "UP"
     )
 
-    total = len(records)
+    total = len(traded_records)
     recall_up = tp / (tp + fn) if (tp + fn) > 0 else 0.0
     recall_down = tn / (tn + fp) if (tn + fp) > 0 else 0.0
     balanced_acc = 0.5 * (recall_up + recall_down) * 100.0

@@ -10,6 +10,18 @@ from core.llm.daily_predictor_prompts import (
 from local_autoresearch.manifest import DataManifest, pack_daily_context
 
 
+@pytest.fixture(autouse=True)
+def mock_unconfigured_arena_models():
+    """Hermetic test fixture: isolate daily predictor tests from unconfigured Laya models and external calls."""
+    with (
+        patch(
+            "tasks.daily_predictor.generate_daily_document", side_effect=RuntimeError("Strata disabled for unit test")
+        ),
+        patch("tasks.daily_predictor.evaluate_with_laya", side_effect=RuntimeError("Laya disabled for unit test")),
+    ):
+        yield
+
+
 def test_parse_jev_curated_prompt_content():
     """Verify parsing of prompt_content storing criteria, min_confidence, and manifest."""
     # 1. Fallback / None

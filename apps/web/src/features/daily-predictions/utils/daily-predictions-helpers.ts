@@ -113,15 +113,24 @@ export function computeDailyPredictionStats(predictions: DailyPrediction[]) {
         (p) => p.status === 'evaluated' && (p.predicted_direction as string) !== 'NO_TRADE',
     );
     const totalEvaluated = evaluatedPredictions.length;
-    const correctCount = evaluatedPredictions.filter((p) => p.is_correct === true).length;
-    const accuracyPct =
-        totalEvaluated > 0 ? ((correctCount / totalEvaluated) * 100).toFixed(1) : 'N/A';
+    const holdPredictions = evaluatedPredictions.filter(
+        (p) => (p.predicted_direction as string) === 'HOLD',
+    );
+    const tradedPredictions = evaluatedPredictions.filter(
+        (p) => (p.predicted_direction as string) !== 'HOLD',
+    );
+    const holdCount = holdPredictions.length;
+    const tradedEvaluated = tradedPredictions.length;
 
-    const intradayHitCount = evaluatedPredictions.filter(
+    const correctCount = tradedPredictions.filter((p) => p.is_correct === true).length;
+    const accuracyPct =
+        tradedEvaluated > 0 ? ((correctCount / tradedEvaluated) * 100).toFixed(1) : 'N/A';
+
+    const intradayHitCount = tradedPredictions.filter(
         (p) => p.intraday_hit === true || (p.intraday_hit === null && p.is_correct === true),
     ).length;
     const intradayHitPct =
-        totalEvaluated > 0 ? ((intradayHitCount / totalEvaluated) * 100).toFixed(1) : 'N/A';
+        tradedEvaluated > 0 ? ((intradayHitCount / tradedEvaluated) * 100).toFixed(1) : 'N/A';
 
     const brierScores = evaluatedPredictions
         .map((p) => p.brier_score)
@@ -140,6 +149,8 @@ export function computeDailyPredictionStats(predictions: DailyPrediction[]) {
     return {
         correctCount,
         totalEvaluated,
+        tradedEvaluated,
+        holdCount,
         accuracyPct,
         intradayHitPct,
         avgBrier,

@@ -25,6 +25,15 @@ DEFAULT_META_MUTATION_DIRECTIVES = (
     "- **Causal Postmortem Grounding**: Target systemic failure modes confirmed across multiple sessions.\n"
 )
 
+# 24-hour in-memory cache for active directives and empirical leaderboard
+_META_DIRECTIVES_CACHE: dict[str, Any] = {"timestamp": 0.0, "value": None, "ttl_seconds": 86400.0}
+
+
+def clear_meta_directives_cache() -> None:
+    """Clear in-memory cached active meta directives and empirical leaderboard."""
+    global _META_DIRECTIVES_CACHE
+    _META_DIRECTIVES_CACHE = {"timestamp": 0.0, "value": None, "ttl_seconds": 86400.0}
+
 
 class MetaAutoresearchResponse(BaseModel):
     """Structured output returned by the monthly meta-autoresearcher LLM."""
@@ -132,18 +141,28 @@ def compute_monthly_mutation_yield(experiments: list[dict[str, Any]]) -> dict[st
     }
 
 
-def _summarize_bucket(stats_map: dict[str, dict[str, Any]], key_name: str) -> list[dict[str, Any]]:
-    rows = [
-        {
-            key_name: k,
-            "uses": st["uses"],
-            "beats": st["beats"],
-            "beat_rate_pct": round((st["beats"] / st["uses"]) * 100.0, 1) if st["uses"] > 0 else 0.0,
-            "mean_score_delta": round(sum(st["deltas"]) / st["uses"], 2) if st["uses"] > 0 else 0.0,
-        }
-        for k, st in stats_map.items()
-    ]
-    rows.sort(key=lambda x: (x["beat_rate_pct"], x["mean_score_delta"], x["uses"]), reverse=True)
+def _summarize_bucket(
+    stats_map: dict[str, dict[str, Any]], key_name: str, shrink_k: float = 4.0
+) -> list[dict[str, Any]]:
+    rows = []
+    for k, st in stats_map.items():
+        uses = st["uses"]
+        beats = st["beats"]
+        raw_rate = round((beats / uses) * 100.0, 1) if uses > 0 else 0.0
+        # Bayesian shrinkage toward 50.0% prior: shrunk = 50.0 + (raw - 50.0) * (uses / (uses + k))
+        shrunk_rate = round(50.0 + (raw_rate - 50.0) * (uses / (uses + shrink_k)), 1) if uses > 0 else 50.0
+        mean_delta = round(sum(st["deltas"]) / uses, 2) if uses > 0 else 0.0
+        rows.append(
+            {
+                key_name: k,
+                "uses": uses,
+                "beats": beats,
+                "beat_rate_pct": raw_rate,
+                "shrunk_beat_rate_pct": shrunk_rate,
+                "mean_score_delta": mean_delta,
+            }
+        )
+    rows.sort(key=lambda x: (x["shrunk_beat_rate_pct"], x["mean_score_delta"], x["uses"]), reverse=True)
     return rows
 
 
@@ -197,11 +216,11 @@ def format_empirical_meta_leaderboard(leaderboard: dict[str, Any]) -> str:
         ]
         lines.append("- **Mutation Mode Yield**: " + " | ".join(parts))
     if blocks:
-        lines.append("\n| Prompt Block ID | Uses | Baseline Beats | Beat Rate % | Mean Score Δ |")
-        lines.append("|---|---:|---:|---:|---:|")
+        lines.append("\n| Prompt Block ID | Uses | Baseline Beats | Beat Rate % | Shrunk Rate % | Mean Score Δ |")
+        lines.append("|---|---:|---:|---:|---:|---:|")
         for b in blocks:
             lines.append(
-                f"| `{b['block_id']}` | {b['uses']} | {b['beats']} | {b['beat_rate_pct']:.1f}% | {b['mean_score_delta']:+.2f} |"
+                f"| `{b['block_id']}` | {b['uses']} | {b['beats']} | {b['beat_rate_pct']:.1f}% | {b.get('shrunk_beat_rate_pct', b['beat_rate_pct']):.1f}% | {b['mean_score_delta']:+.2f} |"
             )
     return "\n".join(lines)
 
@@ -214,6 +233,15 @@ def split_research_program(program_text: str) -> tuple[str, str, str]:
         mutable_body, after_end = rest.split(end_marker, 1)
         return before_start, f"{start_marker}{mutable_body}".strip(), f"{end_marker}{after_end}"
     return program_text, DEFAULT_META_MUTATION_DIRECTIVES, ""
+
+
+def splice_research_program(program_text: str, meta_directives: str) -> str:
+    """Replace the mutable heuristics section in program.md with active meta-directives."""
+    before_start, _, after_end = split_research_program(program_text)
+    clean_directives = meta_directives.strip()
+    if after_end:
+        return f"{before_start}{clean_directives}\n\n{after_end}"
+    return f"{program_text}\n\n{clean_directives}"
 
 
 def should_run_monthly_meta_autoresearch(
@@ -231,7 +259,16 @@ def should_run_monthly_meta_autoresearch(
 
 
 def get_active_meta_directives_sync(client: Any = None, lookback_days: int = 30) -> str:
-    """Synchronously fetch active monthly meta-directives and 30-day empirical block leaderboard."""
+    """Synchronously fetch active monthly meta-directives and 30-day empirical block leaderboard (cached)."""
+    import time
+
+    now = time.time()
+    if (
+        _META_DIRECTIVES_CACHE["value"] is not None
+        and (now - _META_DIRECTIVES_CACHE["timestamp"]) < _META_DIRECTIVES_CACHE["ttl_seconds"]
+    ):
+        return str(_META_DIRECTIVES_CACHE["value"])
+
     if client is None:
         try:
             from core.db import get_supabase_client
@@ -260,7 +297,10 @@ def get_active_meta_directives_sync(client: Any = None, lookback_days: int = 30)
     except Exception:
         logger.exception("Error computing 30-day empirical meta leaderboard; continuing with directives only.")
 
-    return f"{directives}\n\n{leaderboard_md}" if leaderboard_md else directives
+    result = f"{directives}\n\n{leaderboard_md}" if leaderboard_md else directives
+    _META_DIRECTIVES_CACHE["timestamp"] = now
+    _META_DIRECTIVES_CACHE["value"] = result
+    return result
 
 
 async def run_monthly_meta_autoresearch(
@@ -384,6 +424,7 @@ async def run_monthly_meta_autoresearch(
             },
         }
         pe_tbl.insert(row_payload).execute()
+        clear_meta_directives_cache()
 
     return {
         "variant_tag": new_tag,

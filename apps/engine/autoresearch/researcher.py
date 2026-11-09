@@ -105,11 +105,11 @@ async def _build_research_context(report: str, cold_start: bool, track_id: str) 
 
     system_program = _load_research_program()
     try:
-        from autoresearch.meta_autoresearch import get_active_meta_directives_sync
+        from autoresearch.meta_autoresearch import get_active_meta_directives_sync, splice_research_program
 
         meta_directives = get_active_meta_directives_sync()
         if meta_directives:
-            system_program += f"\n\n=== MONTHLY META-AUTORESEARCH DIRECTIVES ===\n{meta_directives}"
+            system_program = splice_research_program(system_program, meta_directives)
     except Exception:
         logger.exception("Failed to load monthly meta-autoresearch directives in run_research.")
 

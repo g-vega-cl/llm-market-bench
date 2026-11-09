@@ -16,6 +16,7 @@ from autoresearch.meta_autoresearch import (
     get_active_meta_directives_sync,
     run_monthly_meta_autoresearch,
     should_run_monthly_meta_autoresearch,
+    splice_research_program,
     split_research_program,
 )
 
@@ -372,3 +373,114 @@ async def test_portfolio_researcher_and_daily_autoresearch_inject_meta_directive
 
     await researcher.run_research("Weekly report", track_id="track_default")
     assert any(custom_directive in m["content"] for m in captured_port_msgs if m["role"] == "system")
+
+
+def test_compute_block_and_type_leaderboard_bayesian_shrinkage():
+    """Verify high-sample proven blocks outrank low-sample lucky flukes via Bayesian shrinkage."""
+    experiments = [
+        # Baseline seed
+        {
+            "variant_tag": "seed",
+            "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT",
+            "track_id": "track_default",
+            "parent_tag": None,
+            "status": "saved",
+            "experiment_type": "incremental",
+            "metrics": {"score": 10.0},
+            "research_output": {},
+        },
+        # Block Rare: 1 use, 1 beat (100% raw)
+        {
+            "variant_tag": "rare-1",
+            "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT",
+            "track_id": "track_default",
+            "parent_tag": "seed",
+            "status": "baseline",
+            "experiment_type": "incremental",
+            "metrics": {"score": 15.0},
+            "research_output": {"selected_prompt_blocks": ["block_rare"]},
+        },
+    ]
+    # Block Proven: 10 uses, 8 beats (80% raw)
+    for i in range(10):
+        is_beat = i < 8
+        experiments.append(
+            {
+                "variant_tag": f"proven-{i}",
+                "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT",
+                "track_id": "track_default",
+                "parent_tag": "seed",
+                "status": "baseline" if is_beat else "discarded",
+                "experiment_type": "incremental",
+                "metrics": {"score": 15.0 if is_beat else 8.0},
+                "research_output": {"selected_prompt_blocks": ["block_proven"]},
+            }
+        )
+
+    board = compute_block_and_type_leaderboard(experiments)
+    blocks = board["blocks"]
+
+    # Assert block_proven ranks FIRST over block_rare
+    assert len(blocks) == 2
+    assert blocks[0]["block_id"] == "block_proven"
+    assert blocks[0]["uses"] == 10
+    assert blocks[0]["beat_rate_pct"] == 80.0
+    # Shrunk rate: 50.0 + (80.0 - 50.0) * (10 / 14) = 71.4%
+    assert pytest.approx(blocks[0]["shrunk_beat_rate_pct"], 0.1) == 71.4
+
+    assert blocks[1]["block_id"] == "block_rare"
+    assert blocks[1]["uses"] == 1
+    assert blocks[1]["beat_rate_pct"] == 100.0
+    # Shrunk rate: 50.0 + (100.0 - 50.0) * (1 / 5) = 60.0%
+    assert pytest.approx(blocks[1]["shrunk_beat_rate_pct"], 0.1) == 60.0
+
+
+def test_splice_research_program():
+    """Verify splice_research_program replaces ## How to Improve the Prompt cleanly."""
+    from autoresearch.researcher import _load_research_program
+
+    raw_program = _load_research_program()
+    custom_directives = "## How to Improve the Prompt\n- **Rule 1**: Test strictly.\n- **Rule 2**: No whiplash."
+    spliced = splice_research_program(raw_program, custom_directives)
+
+    # Must contain custom directives
+    assert "- **Rule 1**: Test strictly." in spliced
+    assert "- **Rule 2**: No whiplash." in spliced
+    # Must preserve header and toolbox footer
+    assert "# Auto-Research Prompt Improver" in spliced
+    assert "## Toolbox: Available Trading Agent Tools" in spliced
+    # Must NOT have duplicate "## How to Improve the Prompt"
+    assert spliced.count("## How to Improve the Prompt") == 1
+
+
+def test_get_active_meta_directives_sync_ttl_cache():
+    """Verify get_active_meta_directives_sync caches result and avoids repeated DB hits."""
+    from autoresearch.meta_autoresearch import clear_meta_directives_cache
+
+    clear_meta_directives_cache()
+    mock_client = MagicMock()
+    mock_table = MagicMock()
+    mock_client.table.return_value = mock_table
+    mock_table.select.return_value = mock_table
+    mock_table.eq.return_value = mock_table
+    mock_table.order.return_value = mock_table
+    mock_table.limit.return_value = mock_table
+    mock_table.in_.return_value = mock_table
+    mock_table.gte.return_value = mock_table
+    mock_table.execute.return_value = MagicMock(data=[{"prompt_content": "## Cached Directives\n- Point 1"}])
+
+    first = get_active_meta_directives_sync(client=mock_client)
+    assert "## Cached Directives" in first
+    initial_call_count = mock_client.table.call_count
+    assert initial_call_count > 0
+
+    # Second call should use cache, not hit DB
+    second = get_active_meta_directives_sync(client=mock_client)
+    assert second == first
+    assert mock_client.table.call_count == initial_call_count
+
+    # Clear cache and verify DB is hit again
+    clear_meta_directives_cache()
+    third = get_active_meta_directives_sync(client=mock_client)
+    assert third == first
+    assert mock_client.table.call_count > initial_call_count

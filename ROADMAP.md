@@ -31,7 +31,7 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Autoresearch Scaling & Local Models
 
-- [ ] - benchify: fine tune the autoresearcher rather than the model?
+- [x] - benchify: autoresearch the autoresearcher rather than the model (implemented via monthly meta-autoresearcher with Mutation Yield ratchet)
 - [x] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
  - So allow hold? improve the confidence number?
 
@@ -72,7 +72,8 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Government, Fiscal & Alternative Data
 
-- [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
+- [x] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
+- [ ] - audit all government information you have and how you are using it.
 - [ ] - Benchify: Toronto stock market
 
 ### Multimodal & Visual Market Prediction

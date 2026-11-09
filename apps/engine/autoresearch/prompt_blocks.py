@@ -190,6 +190,20 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "5. Ignore Growth Headlines: EPS, revenue and EBITDA growth, leverage, buybacks and dividend headlines do not predict multibagger returns once valuation is controlled; require cash-backed FCF yield before endorsing a growth thesis."
         ),
     },
+    "sovereign_fiscal_and_capex_alignment": {
+        "title": "SOVEREIGN FISCAL & CORPORATE CAPEX ALIGNMENT (Follow the Money & Government Priorities)",
+        "content": (
+            "=== FRAMEWORK: SOVEREIGN FISCAL & CORPORATE CAPEX ALIGNMENT ===\n"
+            "1. Be on the Same Side as Government Spending: Sovereign budgets, fiscal deficits, and procurement awards create price-insensitive demand tailwinds. "
+            "Invoke `get_government_fiscal_and_spending` to inspect US federal budget outlays (MTS Table 9), agency budget authority (DoD, DoE, HHS), "
+            "Canadian ministry budget growth (National Defence +41% YoY, Procurement +25% YoY), G7/G20 global defense & infrastructure surges (Germany +32% YoY, Canada +22% YoY), "
+            "and direct federal contract winners (USAspending & CanadaBuys).\n"
+            "2. Treasury General Account (TGA) Liquidity Impulse: Monitor the 14-day TGA cash change and debt issuance. "
+            "A TGA drawdown injects reserves into the banking system (risk-on liquidity tailwind), whereas a rapid TGA refill via heavy bill/bond issuance drains liquidity.\n"
+            "3. Corporate CapEx & Reinvestment Verification: Invoke `get_corporate_spending` to audit whether hyperscaler and industrial CapEx, R&D intensity (R&D/Revenue), "
+            "buybacks, and M&A are accelerating, and whether operating cash flow and ROIC cover the capital cycle."
+        ),
+    },
 }
 
 

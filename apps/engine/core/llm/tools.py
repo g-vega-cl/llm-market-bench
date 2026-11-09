@@ -76,6 +76,9 @@ from tools.macro import (
     execute_get_global_macro_context_tool as execute_get_global_macro_context_tool,
 )
 from tools.macro import (
+    execute_get_government_fiscal_and_spending_tool as execute_get_government_fiscal_and_spending_tool,
+)
+from tools.macro import (
     execute_get_today_economic_releases_tool as execute_get_today_economic_releases_tool,
 )
 from tools.macro import (
@@ -191,6 +194,9 @@ from tools.valuation import (
 )
 from tools.valuation import (
     execute_financial_valuation_tool as execute_financial_valuation_tool,
+)
+from tools.valuation import (
+    execute_get_corporate_spending_tool as execute_get_corporate_spending_tool,
 )
 from tools.valuation import (
     execute_key_metrics_tool as execute_key_metrics_tool,
@@ -1779,6 +1785,80 @@ GET_SYSTEM_PORTFOLIOS_TOOL = {
     },
 }
 
+GET_GOVERNMENT_FISCAL_AND_SPENDING_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_government_fiscal_and_spending",
+        "description": (
+            "Retrieve sovereign money creation, US Treasury General Account (TGA) cash balance & liquidity impulse, "
+            "national debt issuance, monthly & FYTD fiscal deficits, US federal budget outlays by category (Defense, "
+            "Net Interest, Medicare, Social Security, Science/Tech, Energy) and agency budget authority, Canadian "
+            "federal ministry budgets & YoY spending growth, G7/G20 global defense & infrastructure spending surges "
+            "(World Bank & Eurostat), and recent federal contract deals (USAspending & CanadaBuys) to align trades "
+            "with government spending priorities."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "type": "string",
+                    "description": "Country or region filter: 'ALL' (default), 'US', 'CA', or 'EU' / 'INTL'.",
+                },
+                "ticker": {
+                    "type": "string",
+                    "description": "Optional stock ticker (e.g., 'PLTR', 'LMT', 'MSFT', 'CAE') to search federal contract awards for that company.",
+                },
+                "recipient": {
+                    "type": "string",
+                    "description": "Optional company or contractor name substring (e.g., 'PALANTIR', 'LOCKHEED') to filter federal contract deals.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of contract deals to return (default 10).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+GET_CORPORATE_SPENDING_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_corporate_spending",
+        "description": (
+            "Retrieve corporate capital allocation and spending intensity: Capital Expenditure (CapEx $ and YoY growth %), "
+            "CapEx-to-Revenue %, CapEx-to-Operating-Cash-Flow %, R&D Expense ($ and % of Revenue), SG&A, Share Buybacks, "
+            "Dividends, M&A cash acquisitions & recent M&A filings, Free Cash Flow, ROIC, and matched federal government "
+            "contract receipts. Omit 'ticker' to compare the hyperscaler & AI CapEx bellwether basket (MSFT, AMZN, GOOGL, META, NVDA)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "Optional single stock ticker symbol (e.g. 'MSFT', 'NVDA', 'META', 'LMT'). Omit to compare the multi-ticker CapEx basket.",
+                },
+                "tickers": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional custom list of tickers to compare side-by-side when 'ticker' is omitted.",
+                },
+                "period": {
+                    "type": "string",
+                    "enum": ["quarter", "annual"],
+                    "description": "Reporting period granularity: 'quarter' (default) or 'annual'.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of historical periods to display for single-ticker mode (default 4).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1835,6 +1915,8 @@ CANONICAL_TOOLS_REGISTRY = {
     "research_future_force": RESEARCH_FUTURE_FORCE_TOOL,
     "get_system_portfolios": GET_SYSTEM_PORTFOLIOS_TOOL,
     "get_market_moving_news": GET_MARKET_MOVING_NEWS_TOOL,
+    "get_government_fiscal_and_spending": GET_GOVERNMENT_FISCAL_AND_SPENDING_TOOL,
+    "get_corporate_spending": GET_CORPORATE_SPENDING_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }

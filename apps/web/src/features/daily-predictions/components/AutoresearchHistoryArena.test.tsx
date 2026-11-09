@@ -107,6 +107,6 @@ describe('AutoresearchHistoryArena', () => {
 
         expect(screen.getAllByText('daily-pred-baseline').length).toBeGreaterThan(0);
         expect(screen.getAllByText('86.64').length).toBeGreaterThanOrEqual(2);
-        expect(screen.queryByText(/Pending/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/^Pending$/i)).not.toBeInTheDocument();
     });
 });

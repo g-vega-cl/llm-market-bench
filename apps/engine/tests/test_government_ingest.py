@@ -28,15 +28,26 @@ def test_safe_float():
 
 @pytest.mark.asyncio
 async def test_fetch_us_treasury_liquidity_success():
-    """Verify fetching and merging DTS cash, debt to penny, and MTS deficit."""
+    """Verify fetching and merging DTS cash (scaled from millions), debt to penny, and MTS deficit."""
     mock_dts_resp = MagicMock(status_code=200)
     mock_dts_resp.json.return_value = {
         "data": [
             {
                 "record_date": "2026-11-05",
-                "account_type": "Treasury General Account (TGA) Opening Balance",
+                "account_type": "Treasury General Account (TGA) Closing Balance",
                 "open_today_bal": "936248",
-            }
+                "close_today_bal": "null",
+            },
+            {
+                "record_date": "2026-11-05",
+                "account_type": "Total TGA Deposits (Table II)",
+                "open_today_bal": "195747",
+            },
+            {
+                "record_date": "2026-11-05",
+                "account_type": "Total TGA Withdrawals (Table II) (-)",
+                "open_today_bal": "188907",
+            },
         ]
     }
 
@@ -57,8 +68,26 @@ async def test_fetch_us_treasury_liquidity_success():
         "data": [
             {
                 "record_date": "2026-11-05",
+                "classification_desc": "Year-to-Date",
+                "record_type_cd": "SL",
+                "current_month_rcpt_amt": "5200000000000.00",
+                "current_month_outly_amt": "7000000000000.00",
+                "current_month_dfct_sur_amt": "1800000000000.00",
+            },
+            {
+                "record_date": "2026-11-05",
+                "classification_desc": "October",
+                "record_type_cd": "MTH",
+                "current_month_rcpt_amt": "400000000000.00",
+                "current_month_outly_amt": "657000000000.00",
                 "current_month_dfct_sur_amt": "-257000000.00",
-            }
+            },
+            {
+                "record_date": "2026-11-05",
+                "classification_desc": "May",
+                "record_type_cd": "MTH",
+                "current_month_dfct_sur_amt": "999999999.00",
+            },
         ]
     }
 
@@ -72,11 +101,14 @@ async def test_fetch_us_treasury_liquidity_success():
     assert len(records) == 1
     rec = records[0]
     assert rec["record_date"] == "2026-11-05"
-    assert rec["tga_balance"] == 936248.0
+    assert rec["tga_balance"] == 936248.0 * 1_000_000.0
     assert rec["tot_pub_debt"] == 40556120784983.65
     assert rec["debt_held_public"] == 32766722473715.61
     assert rec["intragov_holdings"] == 7789398311268.04
     assert rec["monthly_deficit_surplus"] == -257000000.0
+    assert rec["raw_metadata"]["tga_deposits"] == 195747.0 * 1_000_000.0
+    assert rec["raw_metadata"]["tga_withdrawals"] == 188907.0 * 1_000_000.0
+    assert rec["raw_metadata"]["fytd_deficit_surplus"] == 1800000000000.0
 
 
 @pytest.mark.asyncio
@@ -134,7 +166,7 @@ async def test_fetch_usaspending_contracts():
 
 
 def test_parse_canadabuys_csv():
-    """Verify CanadaBuys CSV parsing for Canadian contracts."""
+    """Verify CanadaBuys CSV parsing for both legacy and real -eng bilingual headers."""
     csv_sample = (
         '"contractNumber-numeroContrat","supplierStandardizedName-nomNormaliseFournisseur",'
         '"contractValue-valeurContrat","contractAwardDate-dateAttributionContrat",'
@@ -151,6 +183,22 @@ def test_parse_canadabuys_csv():
     assert ca["award_amount"] == 1250000.0
     assert ca["currency"] == "CAD"
     assert ca["agency_name"] == "Department of National Defence"
+
+    real_csv_sample = (
+        '"referenceNumber-numeroReference","contractNumber-numeroContrat",'
+        '"supplierStandardizedName-nomNormaliseFournisseur-eng","contractAmount-montantContrat",'
+        '"totalContractValue-valeurTotaleContrat","contractAwardDate-dateAttributionContrat",'
+        '"title-titre-eng","contractingEntityName-nomEntitContractante-eng"\n'
+        '"C-2026-001","7200054719","MDA SPACE LTD.","8500000.00","12000000.00",'
+        '"2026-10-20","Satellite Radar Payload","Canadian Space Agency"\n'
+    )
+    real_results = parse_canadabuys_csv(real_csv_sample, limit=10)
+    assert len(real_results) == 1
+    real_ca = real_results[0]
+    assert real_ca["award_id"] == "7200054719"
+    assert real_ca["recipient_name"] == "MDA SPACE LTD."
+    assert real_ca["award_amount"] == 8500000.0
+    assert real_ca["agency_name"] == "Canadian Space Agency"
 
 
 @pytest.mark.asyncio

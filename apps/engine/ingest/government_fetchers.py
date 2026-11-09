@@ -36,15 +36,37 @@ def _safe_float(val: Any, default: float = 0.0) -> float:
         return default
 
 
+def _scale_millions(val: float) -> float:
+    """Scale DTS values reported in millions of dollars to exact dollars."""
+    if 0 < abs(val) < 1e9:
+        return val * 1_000_000.0
+    return val
+
+
 def _parse_dts_cash(rows: list[dict[str, Any]], records: dict[str, dict[str, Any]]) -> None:
     for row in rows:
         r_date = row.get("record_date")
         acc_type = row.get("account_type", "")
         if not r_date:
             continue
-        if "Treasury General Account" in acc_type or "Opening Balance" in acc_type:
-            bal = _safe_float(row.get("open_today_bal") or row.get("close_today_bal"))
-            records.setdefault(r_date, {"record_date": r_date, "raw_metadata": {}})["tga_balance"] = bal
+        rec = records.setdefault(r_date, {"record_date": r_date, "raw_metadata": {}})
+        meta = rec.setdefault("raw_metadata", {})
+
+        raw_val = row.get("open_today_bal")
+        if raw_val is None or str(raw_val).lower() == "null":
+            raw_val = row.get("close_today_bal")
+        val = _scale_millions(_safe_float(raw_val))
+
+        is_closing_tga = "Closing Balance" in acc_type and "Treasury General Account" in acc_type
+        is_fallback_tga = ("Treasury General Account" in acc_type or "Opening Balance" in acc_type) and not rec.get(
+            "tga_balance"
+        )
+        if is_closing_tga or is_fallback_tga:
+            rec["tga_balance"] = val
+        elif "Total TGA Deposits" in acc_type:
+            meta["tga_deposits"] = val
+        elif "Total TGA Withdrawals" in acc_type:
+            meta["tga_withdrawals"] = val
 
 
 def _parse_debt_to_penny(rows: list[dict[str, Any]], records: dict[str, dict[str, Any]]) -> None:
@@ -59,13 +81,50 @@ def _parse_debt_to_penny(rows: list[dict[str, Any]], records: dict[str, dict[str
 
 
 def _parse_mts_deficit(rows: list[dict[str, Any]], records: dict[str, dict[str, Any]]) -> None:
+    latest_month_dfct: float | None = None
+    latest_month_name: str | None = None
+    fytd_meta: dict[str, Any] = {}
+
     for row in rows:
         r_date = row.get("record_date")
         dfct = row.get("current_month_dfct_sur_amt")
-        if r_date and dfct is not None and str(dfct).lower() != "null":
-            records.setdefault(r_date, {"record_date": r_date, "raw_metadata": {}})["monthly_deficit_surplus"] = (
-                _safe_float(dfct)
-            )
+        if not r_date or dfct is None or str(dfct).lower() == "null":
+            continue
+
+        rec = records.setdefault(r_date, {"record_date": r_date, "raw_metadata": {}})
+        meta = rec.setdefault("raw_metadata", {})
+        rec_type = str(row.get("record_type_cd") or "")
+        desc = str(row.get("classification_desc") or "")
+        dfct_val = _safe_float(dfct)
+
+        if rec_type == "SL" or "Year-to-Date" in desc:
+            meta["fytd_deficit_surplus"] = dfct_val
+            if row.get("current_month_rcpt_amt") is not None:
+                meta["fytd_receipts"] = _safe_float(row.get("current_month_rcpt_amt"))
+            if row.get("current_month_outly_amt") is not None:
+                meta["fytd_outlays"] = _safe_float(row.get("current_month_outly_amt"))
+            if not fytd_meta:
+                fytd_meta = dict(meta)
+        else:
+            if rec.get("monthly_deficit_surplus") is None:
+                rec["monthly_deficit_surplus"] = dfct_val
+                if desc:
+                    meta["mts_month"] = desc
+            if latest_month_dfct is None:
+                latest_month_dfct = dfct_val
+                latest_month_name = desc
+
+    # Attach latest monthly deficit and FYTD summary to the most recent daily record if not already set
+    if records and (latest_month_dfct is not None or fytd_meta):
+        latest_date = max(records.keys())
+        latest_rec = records[latest_date]
+        if latest_rec.get("monthly_deficit_surplus") is None and latest_month_dfct is not None:
+            latest_rec["monthly_deficit_surplus"] = latest_month_dfct
+        latest_meta = latest_rec.setdefault("raw_metadata", {})
+        if latest_month_name and "mts_month" not in latest_meta:
+            latest_meta["mts_month"] = latest_month_name
+        for k, v in fytd_meta.items():
+            latest_meta.setdefault(k, v)
 
 
 async def fetch_us_treasury_liquidity(days: int = 14) -> list[dict[str, Any]]:
@@ -97,7 +156,7 @@ async def fetch_us_treasury_liquidity(days: int = 14) -> list[dict[str, Any]]:
 
         # 3. Monthly Treasury Statement (Deficit / Surplus)
         try:
-            url_mts = f"{FISCAL_DATA_BASE_URL}/v1/accounting/mts/mts_table_1?page[size]=5&sort=-record_date"
+            url_mts = f"{FISCAL_DATA_BASE_URL}/v1/accounting/mts/mts_table_1?page[size]=15&sort=-record_date"
             resp = await client.get(url_mts)
             if resp.status_code == 200:
                 _parse_mts_deficit(resp.json().get("data", []), records_by_date)
@@ -132,21 +191,29 @@ async def upsert_gov_macro_liquidity(records: list[dict[str, Any]]) -> int:
         return 0
 
 
-async def fetch_usaspending_contracts(days: int = 14, limit: int = 50) -> list[dict[str, Any]]:
-    """Fetch recent US federal contract awards from USAspending."""
+async def fetch_usaspending_contracts(
+    days: int = 14,
+    limit: int = 50,
+    recipient_query: str | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch recent US federal contract awards from USAspending, sorted by largest Award Amount."""
     end_dt = datetime.now(UTC)
     start_dt = end_dt - timedelta(days=days)
 
+    filters: dict[str, Any] = {
+        "time_period": [
+            {
+                "start_date": start_dt.strftime("%Y-%m-%d"),
+                "end_date": end_dt.strftime("%Y-%m-%d"),
+            }
+        ],
+        "award_type_codes": ["A", "B", "C", "D"],
+    }
+    if recipient_query:
+        filters["recipient_search_text"] = [recipient_query.strip()]
+
     payload = {
-        "filters": {
-            "time_period": [
-                {
-                    "start_date": start_dt.strftime("%Y-%m-%d"),
-                    "end_date": end_dt.strftime("%Y-%m-%d"),
-                }
-            ],
-            "award_type_codes": ["A", "B", "C", "D"],
-        },
+        "filters": filters,
         "fields": [
             "Award ID",
             "Recipient Name",
@@ -156,6 +223,8 @@ async def fetch_usaspending_contracts(days: int = 14, limit: int = 50) -> list[d
             "Awarding Agency",
             "Contract Number",
         ],
+        "sort": "Award Amount",
+        "order": "desc",
         "limit": limit,
         "page": 1,
     }
@@ -216,21 +285,37 @@ def parse_canadabuys_csv(content: str, limit: int = 50) -> list[dict[str, Any]]:
             row.get("contractNumber-numeroContrat") or row.get("referenceNumber-numeroReference") or ""
         ).strip()
         recip = (
-            row.get("supplierStandardizedName-nomNormaliseFournisseur")
+            row.get("supplierStandardizedName-nomNormaliseFournisseur-eng")
+            or row.get("supplierStandardizedName-nomNormaliseFournisseur")
+            or row.get("supplierLegalName-nomLegalFournisseur-eng")
             or row.get("supplierLegalName-nomLegalFournisseur")
+            or row.get("supplierOperatingName-nomCommercialFournisseur-eng")
             or row.get("supplierOperatingName-nomCommercialFournisseur")
             or ""
         ).strip()
-        val = _safe_float(row.get("contractValue-valeurContrat"))
+        val = _safe_float(
+            row.get("contractAmount-montantContrat")
+            or row.get("totalContractValue-valeurTotaleContrat")
+            or row.get("contractValue-valeurContrat")
+        )
         award_date = (
             row.get("contractAwardDate-dateAttributionContrat")
             or row.get("publicationDate-datePublication")
             or today_str
         )[:10]
         desc = (
-            row.get("title-titre-eng") or row.get("description-description-eng") or row.get("title-titre-fra") or ""
+            row.get("title-titre-eng")
+            or row.get("gsinDescription-nibsDescription-eng")
+            or row.get("description-description-eng")
+            or row.get("title-titre-fra")
+            or ""
         ).strip()
-        buyer = row.get("buyerOrganizationName-nomOrganisationAcheteur-eng") or "Government of Canada"
+        buyer = (
+            row.get("contractingEntityName-nomEntitContractante-eng")
+            or row.get("endUserEntitiesName-nomEntitesUtilisateurFinal-eng")
+            or row.get("buyerOrganizationName-nomOrganisationAcheteur-eng")
+            or "Government of Canada"
+        ).strip()
 
         if not contract_no or not recip:
             continue
@@ -254,11 +339,29 @@ def parse_canadabuys_csv(content: str, limit: int = 50) -> list[dict[str, Any]]:
     return contracts
 
 
-async def fetch_canadabuys_contracts(limit: int = 50) -> list[dict[str, Any]]:
-    """Fetch recent Canadian federal contract awards from CanadaBuys."""
+async def fetch_canadabuys_contracts(limit: int = 50, max_bytes: int = 131072) -> list[dict[str, Any]]:
+    """Fetch recent Canadian federal contract awards from CanadaBuys using chunked streaming."""
     headers = {"User-Agent": BROWSER_USER_AGENT, "Accept": "text/csv,text/plain,*/*"}
     try:
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT, headers=headers, follow_redirects=True) as client:
+            if isinstance(client, httpx.AsyncClient):
+                chunks: list[bytes] = []
+                total = 0
+                async with client.stream("GET", CANADABUYS_CSV_URL) as resp:
+                    if resp.status_code != 200:
+                        logger.warning("CanadaBuys returned non-200 status: %s", resp.status_code)
+                        return []
+                    async for chunk in resp.aiter_bytes():
+                        chunks.append(chunk)
+                        total += len(chunk)
+                        if total >= max_bytes:
+                            break
+                raw_text = b"".join(chunks).decode("utf-8", errors="ignore")
+                # Trim incomplete trailing line
+                if "\n" in raw_text:
+                    raw_text = raw_text.rsplit("\n", 1)[0]
+                return parse_canadabuys_csv(raw_text, limit=limit)
+
             resp = await client.get(CANADABUYS_CSV_URL)
             if resp.status_code == 200:
                 return parse_canadabuys_csv(resp.text, limit=limit)

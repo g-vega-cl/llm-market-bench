@@ -5,6 +5,9 @@ from typing import Any
 
 from core.config import logger
 from tools._compat import MarketDataManager, get_supabase_client
+from tools.corporate_spending_tools import (
+    execute_get_corporate_spending_tool as execute_get_corporate_spending_tool,
+)
 from tools.earnings import (
     execute_search_related_tickers_tool as execute_search_related_tickers_tool,
 )
@@ -98,6 +101,16 @@ def _format_key_metric_period(i: int, entry: dict[str, Any]) -> str:
         lines.append(f"- Net Income Per Share: ${_fmt_metric(entry.get('netIncomePerShare'))}")
     if "freeCashFlowPerShare" in entry:
         lines.append(f"- Free Cash Flow Per Share: ${_fmt_metric(entry.get('freeCashFlowPerShare'))}")
+    if entry.get("returnOnInvestedCapital") is not None:
+        lines.append(f"- ROIC: {_fmt_metric(entry.get('returnOnInvestedCapital'), percentage=True)}")
+    if entry.get("capexToOperatingCashFlow") is not None:
+        lines.append(
+            f"- CapEx/Operating Cash Flow: {_fmt_metric(entry.get('capexToOperatingCashFlow'), percentage=True)}"
+        )
+    if entry.get("capexToRevenue") is not None:
+        lines.append(f"- CapEx/Revenue: {_fmt_metric(entry.get('capexToRevenue'), percentage=True)}")
+    if entry.get("researchAndDevelopementToRevenue") is not None:
+        lines.append(f"- R&D/Revenue: {_fmt_metric(entry.get('researchAndDevelopementToRevenue'), percentage=True)}")
     return "\n".join(lines) + "\n"
 
 

@@ -305,6 +305,20 @@ TOOL_DISPATCH_TABLE = {
         limit=args.get("limit", 8),
         force_refresh=args.get("force_refresh", False),
     ),
+    "get_government_fiscal_and_spending": lambda ticker, args, mn, kw: (
+        tools.execute_get_government_fiscal_and_spending_tool(
+            country=args.get("country", "ALL"),
+            ticker=ticker or args.get("ticker"),
+            recipient=args.get("recipient"),
+            limit=args.get("limit", 10),
+        )
+    ),
+    "get_corporate_spending": lambda ticker, args, mn, kw: tools.execute_get_corporate_spending_tool(
+        ticker=ticker or args.get("ticker"),
+        tickers=args.get("tickers"),
+        period=args.get("period", "quarter"),
+        limit=args.get("limit", 4),
+    ),
     "web_search": lambda ticker, args, mn, kw: tools.execute_web_search_tool(args.get("query", "")),
 }
 

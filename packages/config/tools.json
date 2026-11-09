@@ -206,6 +206,14 @@
   {
     "name": "get_market_moving_news",
     "desc": "Retrieve real-time intraday market-moving events, macro prints, and breaking catalysts vetted by TypeSafe Jev"
+  },
+  {
+    "name": "get_government_fiscal_and_spending",
+    "desc": "Retrieve sovereign money creation, TGA cash, fiscal deficits, US/Canadian/EU/Global government budgets & defense/infrastructure priorities, and federal contract awards"
+  },
+  {
+    "name": "get_corporate_spending",
+    "desc": "Retrieve corporate CapEx, R&D, SG&A, buybacks, dividends, M&A cash spend, ROIC, and matched government contract awards for a ticker or hyperscaler basket"
   }
 ]
 

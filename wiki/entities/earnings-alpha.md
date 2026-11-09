@@ -19,7 +19,7 @@ The Earnings Alpha subsystem in the engine computes Post-Earnings Announcement D
 
 - `apps/engine/scripts/update_earnings_alpha.py` — daily batch fetch from FMP `/stable/earnings`, key metrics, analyst consensus, price targets, and quotes; computes snapshot fields; upserts into `earnings_alpha_snapshots` on `(snapshot_date, ticker)`.
 - `sector_bellwether_signals` table stores per-constituent classification, report status, and active signal state.
-- `.github/workflows/update-earnings-alpha.yml` runs the script at 10:30 and 21:30 UTC on weekdays.
+- `.github/workflows/update-earnings-alpha.yml` runs the script at 10:30 and 21:30 UTC on weekdays. The same workflow step runs `python main.py government` immediately following `update_earnings_alpha.py`, piggybacking the [[entities/government-ingestion]] pipeline (Treasury liquidity, federal contracts, whale stakes, Congress STOCK Act, insider Form 4) onto the earnings-alpha cadence per [[concepts/workflow-consolidation]]. The workflow injects `GEMINI_API_KEY` and `FRED_API_KEY` alongside the existing Supabase, FMP, OpenRouter, and Alpaca secrets.
 
 ## LLM Tools
 

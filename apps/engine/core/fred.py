@@ -106,6 +106,42 @@ FRED_SERIES_ALIASES: dict[str, dict[str, Any]] = {
         "default_units": "lin",
         "category": "Liquidity",
     },
+    "tga_weekly": {
+        "series_id": "WTREGEN",
+        "title": "Liabilities and Capital: U.S. Treasury, General Account: Week Average",
+        "default_units": "lin",
+        "category": "Liquidity",
+    },
+    "federal_deficit_monthly": {
+        "series_id": "MTSDS133FMS",
+        "title": "Federal Surplus or Deficit [-] as of Monthly Treasury Statement",
+        "default_units": "lin",
+        "category": "Fiscal Policy & Debt",
+    },
+    "federal_deficit_annual": {
+        "series_id": "FYFSD",
+        "title": "Federal Surplus or Deficit [-] (Annual)",
+        "default_units": "lin",
+        "category": "Fiscal Policy & Debt",
+    },
+    "federal_debt_to_gdp": {
+        "series_id": "GFDEGDQ188S",
+        "title": "Federal Debt: Total Public Debt as Percent of Gross Domestic Product",
+        "default_units": "lin",
+        "category": "Fiscal Policy & Debt",
+    },
+    "federal_interest_outlays": {
+        "series_id": "A091RC1Q027SBEA",
+        "title": "Federal Government Current Expenditures: Interest Payments",
+        "default_units": "lin",
+        "category": "Fiscal Policy & Debt",
+    },
+    "federal_expenditures": {
+        "series_id": "FGEXPND",
+        "title": "Federal Government: Current Expenditures",
+        "default_units": "lin",
+        "category": "Fiscal Policy & Debt",
+    },
     # Growth & Labor Pulse
     "nonfarm_payrolls": {
         "series_id": "PAYEMS",
@@ -472,6 +508,8 @@ async def get_curated_macro_dashboard(indicators: list[str] | None = None) -> st
             "unemployment",
             "high_yield_spread",
             "m2",
+            "fed_balance_sheet",
+            "federal_deficit_monthly",
             "pce",
             "dollar_index",
         ]

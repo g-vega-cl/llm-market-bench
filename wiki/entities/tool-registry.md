@@ -27,6 +27,8 @@ The table covers market data, options, macro, valuation, screening, research, an
 - `analyze_thematic_beneficiaries` — screens second-order winners and thematic beneficiaries via correlation and co-ownership
 - `call_warren_buffett` — value investing analysis, margin of safety, moat quality, debt sanity, and the Munger Inversion test
 - `get_treasury_yield_curve` — US Treasury yields across key tenors (3M, 2Y, 5Y, 10Y, 30Y) and 1-day basis point changes from FRED
+- `get_government_fiscal_and_spending` — sovereign money creation, US Treasury General Account (TGA) cash & liquidity impulse, national debt issuance, monthly & FYTD fiscal deficits, US federal budget outlays by category & agency, Canadian federal ministry budgets & YoY growth, G7/G20 global defense & infrastructure spending surges (World Bank & Eurostat), and recent federal contract deals (USAspending & CanadaBuys). Parameters: `country` (`ALL`/`US`/`CA`/`EU`/`INTL`), `ticker`, `recipient`, `limit`. Implemented in `apps/engine/tools/government_tools.py` and re-exported through `tools/macro.py` (see [[entities/government-ingestion]]).
+- `get_corporate_spending` — corporate CapEx ($ and YoY %), CapEx/Revenue %, CapEx/OCF %, R&D ($ and % of Revenue), SG&A, share buybacks, dividends, M&A cash spend & filings, Free Cash Flow, ROIC, and matched federal government contract awards for a single ticker or the hyperscaler basket (`MSFT`, `AMZN`, `GOOGL`, `META`, `NVDA`). Parameters: `ticker`, `tickers`, `period` (`quarter`/`annual`), `limit`. Implemented in `apps/engine/tools/corporate_spending_tools.py` and re-exported through `tools/valuation.py`.
 
 ## Related
 
@@ -34,3 +36,4 @@ The table covers market data, options, macro, valuation, screening, research, an
 - [[concepts/tool-enforcement]]
 - [[entities/daily-market-predictor]]
 - [[concepts/system-portfolios]]
+- [[entities/government-ingestion]]

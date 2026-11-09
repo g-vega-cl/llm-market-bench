@@ -28,11 +28,24 @@ Queries `api.fiscaldata.treasury.gov` with a browser user agent and a 15s timeou
 
 | Source endpoint | Fields captured |
 | :--- | :--- |
-| `/v1/accounting/dts/operating_cash_balance` | `tga_balance` (Treasury General Account opening/close balance) |
+| `/v1/accounting/dts/operating_cash_balance` | `tga_balance` (scaled from millions to exact dollars), plus `tga_deposits` and `tga_withdrawals` in `raw_metadata` |
 | `/v2/accounting/od/debt_to_penny` | `tot_pub_debt`, `debt_held_public`, `intragov_holdings` |
-| `/v1/accounting/mts/mts_table_1` | `monthly_deficit_surplus` |
+| `/v1/accounting/mts/mts_table_1` | `monthly_deficit_surplus` (latest reported monthly deficit/surplus) and `fytd_deficit_surplus`, `fytd_receipts`, `fytd_outlays` in `raw_metadata` |
 
 Records are keyed by `record_date`, defaulted to `None` for any metric the upstream did not return, sorted newest-first, and upserted into `gov_macro_liquidity` on `record_date`.
+
+## Agent Tools for Sovereign & Corporate Spending
+
+Trading agents access government fiscal data, international sovereign budgets, contract deals, and corporate capital allocation through two pull-based tools:
+
+1. **`get_government_fiscal_and_spending` (`apps/engine/tools/government_tools.py`)**:
+   - **US Money Creation, TGA Liquidity & Debt**: Queries `gov_macro_liquidity`, FRED (`M2SL`, `WALCL`, `RRPONTSYD`), and Treasury Average Interest Rates (`/v2/accounting/od/avg_interest_rates`). Computes the 14-day TGA drawdown/refill liquidity impulse and 14-day net debt issuance delta.
+   - **US Federal Budget Priorities**: Fetches Monthly Treasury Statement Table 9 (`/v1/accounting/mts/mts_table_9`) for FYTD and monthly outlays across Social Security, Medicare, Net Interest, Health, National Defense, Income Security, Veterans, Science/Space/Tech, Energy, and Transportation, alongside USAspending top-tier agency budget authorities (`/api/v2/references/toptier_agencies/`).
+   - **Canadian Federal Budget by Ministry**: Fetches Public Accounts of Canada budgetary authorities (`budgetaires-budgetary.csv`) to rank ministry expenditures and YoY growth in CAD (such as National Defence and Public Services and Procurement).
+   - **Global Sovereign Defense & Infrastructure Surges**: Queries World Bank indicators (`MS.MIL.XPND.CD` and `NE.GDI.TOTL.CD`) across `USA`, `CAN`, `GBR`, `DEU`, `FRA`, `JPN`, `CHN`, and `IND` for YoY defense and gross capital formation growth, paired with Eurostat (`gov_10dd_edpt1`) sovereign fiscal deficits (`B9`) and gross debt (`GD`) as a percentage of GDP for the Euro Area (`EA20`), Germany (`DE`), France (`FR`), and Italy (`IT`).
+   - **Federal Contract Deals**: Queries `gov_contracts` and live `fetch_usaspending_contracts` / `fetch_canadabuys_contracts`, supporting company-level contract lookups via `ticker` or `recipient`.
+2. **`get_corporate_spending` (`apps/engine/tools/corporate_spending_tools.py`)**:
+   - Combines FMP `/stable/cash-flow-statement`, `/stable/income-statement`, `/stable/key-metrics`, and `/stable/mergers-acquisitions-latest` with federal contract awards to audit single-ticker or hyperscaler basket (`MSFT`, `AMZN`, `GOOGL`, `META`, `NVDA`) CapEx, CapEx YoY growth, CapEx/Revenue, CapEx/OCF, R&D intensity, SG&A, share buybacks, dividends, M&A cash spend, Free Cash Flow, and ROIC.
 
 ## Federal Contracts (US & Canada)
 
@@ -104,6 +117,7 @@ All five tables enable RLS with public `SELECT` and `service_role` full access. 
 ## Tests
 
 - `apps/engine/tests/test_government_ingest.py` — `_safe_float` coercion, DTS/debt/MTS merge, USAspending parsing, CanadaBuys CSV parsing and network-failure handling, both upsert helpers, and end-to-end `GovernmentPipeline.run()` / `run_government_pipeline()` orchestration.
+- `apps/engine/tests/test_government_and_corporate_spending_tools.py` — hermetic unit tests for `execute_get_government_fiscal_and_spending_tool`, `execute_get_corporate_spending_tool` (single-ticker and hyperscaler basket), inner sovereign budget fetchers, and `get_key_metrics` reinvestment ratios.
 - `apps/engine/tests/test_institutional_whales.py` — float parsing, `filter_whale_stakes` accumulation/exit/activist classification, FMP fetch success and missing-key paths, stake upserts, `ingest_institutional_whales` flow, and confirmation that `GovernmentPipeline.run()` invokes whale ingestion.
 - `apps/engine/tests/test_congress_insider_ingest.py` — hermetic coverage of `fetch_latest_congress_trades` (both chambers, normalized fields, positive `amount_est_midpoint`), `upsert_congress_trades`, `fetch_latest_insider_trades`, `fetch_universe_insider_trades`, `upsert_insider_trades`, and a full `GovernmentPipeline.run()` orchestration test asserting all six stages fire.
 

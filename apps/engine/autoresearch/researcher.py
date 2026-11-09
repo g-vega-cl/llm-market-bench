@@ -66,7 +66,7 @@ class PromptResearchResult(BaseModel):
             "'get_pead_candidates', 'get_earnings_revisions', 'get_sector_bellwethers', "
             "'get_yield_curve_regime', 'get_options_vol_surface', 'track_thesis_pillars', 'get_catalyst_radar', "
             "'get_calendar_scenario_analysis', 'get_barrier_touch_probabilities', 'get_ticker_news', "
-            "'get_congress_trades', 'get_insider_trades', 'get_whale_holdings', 'analyze_thematic_beneficiaries', 'get_today_economic_releases', 'call_warren_buffett', 'get_intraday_movement_profile', 'research_historical_market_analog', 'get_future_forces', 'research_future_force', 'get_system_portfolios', 'get_market_moving_news', 'web_search', 'get_treasury_yield_curve'. "
+            "'get_congress_trades', 'get_insider_trades', 'get_whale_holdings', 'analyze_thematic_beneficiaries', 'get_today_economic_releases', 'call_warren_buffett', 'get_intraday_movement_profile', 'research_historical_market_analog', 'get_future_forces', 'research_future_force', 'get_system_portfolios', 'get_market_moving_news', 'get_government_fiscal_and_spending', 'get_corporate_spending', 'web_search', 'get_treasury_yield_curve'. "
             "Do NOT include execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') "
             "as they are automatically force-injected by the system."
         ),
@@ -77,7 +77,7 @@ class PromptResearchResult(BaseModel):
             "List of modular prompt block IDs to enable for the trading agent, chosen from: "
             "'let_winners_run', 'cut_losers_fast', 'catalyst_expiry_timer', 'five_whys_causal', 'mece_risk_partition', "
             "'options_vol_discipline', 'macro_regime_routing', 'disconfirming_evidence_gate', 'catalyst_radar_discipline', "
-            "'ticker_news_verification'."
+            "'ticker_news_verification', 'sovereign_fiscal_and_capex_alignment'."
         ),
     )
     change_description: str = Field(..., description="One sentence explaining what was changed and why")

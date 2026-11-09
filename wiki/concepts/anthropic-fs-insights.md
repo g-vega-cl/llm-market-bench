@@ -19,13 +19,13 @@ A foundational pillar of `llm-market-bench` is **Information Auditability and Ag
 
 ## 2. Tool Packaging Plan: Translating FSI Insights into Discoverable Tools
 
-Rather than hardcoding calculations into prompt text, we package Anthropic's best financial analytical patterns as 4 specialized tools:
+Rather than hardcoding calculations into prompt text, we package Anthropic's best financial analytical patterns as specialized tools:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             CANONICAL TOOL REGISTRY                         │
 │                           (packages/config/tools.json)                      │
-└──────────────────────────────────────┬──────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────────────────────┘
                                        │
          ┌─────────────────────────────┼─────────────────────────────┐
          │                             │                             │
@@ -36,6 +36,20 @@ Rather than hardcoding calculations into prompt text, we package Anthropic's bes
 │ • Daily Move Cone      │   │ • Historical Beta Map │  │ • Conviction Transitions   │
 │ • 25d Skew & Smile     │   │                       │  │                            │
 └───────────────────────┘   └──────────────────────┘   └────────────────────────────┘
+        ┌──────────────────────────────────────────────────────────────────────┐
+        │                    NEW: GOVERNMENT & CORPORATE TOOLS                 │
+        ├──────────────────────────────────────────────────────────────────────┤
+        │  ┌─────────────────────────────────────┐  ┌───────────────────────┐  │
+        │  │ get_government_fiscal_and_spending  │  │ get_corporate_spending │  │
+        │  │ • TGA Cash & Liquidity Impulse      │  │ • CapEx, CapEx/Rev,    │  │
+        │  │ • Federal Deficits (Monthly/FYTD)   │  │   CapEx/OCF, R&D/Rev   │  │
+        │  │ • US Budget Outlays (MTS Table 9)   │  │ • Buybacks, Dividends  │  │
+        │  │ • Canadian Ministry Budgets (YoY)   │  │ • M&A Cash Spend       │  │
+        │  │ • G7/G20 Defense & Infra Surges     │  │ • Free Cash Flow, ROIC │  │
+        │  │ • Eurostat Fiscal Deficits & Debt   │  │ • Gov Contract Awards  │  │
+        │  │ • Federal Contract Awards (US/CA)   │  │ • Hyperscaler Basket   │  │
+        │  └─────────────────────────────────────┘  └───────────────────────┘  │
+        └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### A. `get_options_vol_surface(ticker: str)`
@@ -70,6 +84,23 @@ Rather than hardcoding calculations into prompt text, we package Anthropic's bes
   - Computes conditional Bull / Base / Bear scenarios using implied move, VWAP standard deviation bands, and trailing ATR.
   - Returns asymmetric risk-reward bounds.
 
+### E. `get_government_fiscal_and_spending(country: str, ticker: str, recipient: str, limit: int)`
+* **Inspiration**: Government ingestion pipeline (`apps/engine/ingest/government_fetchers.py`) and sovereign spending analysis
+* **Functionality**:
+  - **US Treasury Liquidity**: TGA cash balance (scaled from millions), 14-day TGA drawdown/refill impulse, 14-day net debt issuance delta, Treasury funding rates.
+  - **US Federal Budget**: MTS Table 9 outlays by category (Social Security, Medicare, Net Interest, National Defense, etc.) with FYTD, current month, and YoY changes. USAspending top agency budget authorities.
+  - **Canadian Federal Budget**: Ministry-level expenditures and YoY growth from Public Accounts of Canada.
+  - **Global Sovereign Spending**: World Bank defense (`MS.MIL.XPND.CD`) and gross capital formation (`NE.GDI.TOTL.CD`) YoY surges across G7/G20. Eurostat fiscal deficits (`B9`) and debt (`GD`) as % of GDP for Euro Area, Germany, France, Italy.
+  - **Federal Contracts**: USAspending (sorted by award amount) and CanadaBuys contract awards with recipient/ticker filtering.
+* **Agent Usage**: Agents call this tool to align trades with government spending priorities, detect fiscal liquidity impulses, and identify contract-driven catalysts.
+
+### F. `get_corporate_spending(ticker: str, tickers: list[str], period: str, limit: int)`
+* **Inspiration**: Corporate capital allocation analysis and FSI equity research skills
+* **Functionality**:
+  - **Single-Ticker Mode**: Cash-flow statement (CapEx, OCF, FCF, buybacks, dividends, M&A), income statement (Revenue, R&D, SG&A), key metrics (ROIC, CapEx/OCF, CapEx/Rev, R&D/Rev), YoY comparators, recent M&A filings, matched federal contract awards.
+  - **Basket Mode** (default: hyperscaler basket `MSFT`, `AMZN`, `GOOGL`, `META`, `NVDA`): Side-by-side CapEx, R&D, buybacks, FCF, ROIC comparison with YoY growth rates.
+* **Agent Usage**: Agents call this tool to verify corporate reinvestment cycles, assess CapEx discipline, and confirm government contract tailwinds for specific tickers or the AI infrastructure basket.
+
 ---
 
 ## 3. Autoresearch Integration: Modular Prompt Blocks
@@ -79,6 +110,7 @@ To allow the Karpathy autoresearch loop to discover and adopt these tools organi
 1. `BLOCK_OPTIONS_VOL_DISCIPLINE`: Instructs the agent to call `get_options_vol_surface` before issuing price targets to enforce bounds checking against market-implied standard deviation cones.
 2. `BLOCK_MACRO_REGIME_ROUTING`: Teaches the agent to query `get_yield_curve_regime` when macro/Fed catalysts are active.
 3. `BLOCK_DISCONFIRMING_EVIDENCE_GATE`: Requires the agent to query `track_thesis_pillars` and state at least one disconfirming factor before increasing exposure.
+4. `BLOCK_SOVEREIGN_FISCAL_AND_CAPEX_ALIGNMENT`: Requires the agent to query `get_government_fiscal_and_spending` and `get_corporate_spending` to align trades with sovereign budget priorities and corporate CapEx reinvestment cycles.
 
 The auto-researcher tests prompt variations with and without these blocks, measuring their empirical impact on the multi-factor ratchet score:
 $$\text{Ratchet Score} = (0.55 \times \text{close\_acc}) + (0.35 \times \text{target\_hit}) + (0.10 \times \text{magnitude\_cap}) - (\text{mean\_brier} \times 50.0)$$
@@ -90,7 +122,7 @@ $$\text{Ratchet Score} = (0.55 \times \text{close\_acc}) + (0.35 \times \text{ta
 1. **High-Density Ticker Tear Sheets (`/tickers/$ticker`)**: Visualizes fundamental multiples, PEAD/SUE signals, Sloan accruals, volatility cones, and model consensus in an institutional 4-quadrant layout.
 2. **Scenario Matrix & Volatility Cones**: Renders interactive Bull / Base / Bear target cones on prediction cards.
 3. **Attribution Waterfall Cards**: Root-cause post-mortems classifying prediction misses into Macro Shock, Gap Exhaustion, or Magnitude Overshoot.
-4. **Chat Gateway Slash Commands**: Interactive slash commands in `/chat` (`/vol SPY`, `/regime`, `/thesis AAPL`, `/pead`) executing the exact same backend tools.
+4. **Chat Gateway Slash Commands**: Interactive slash commands in `/chat` (`/vol SPY`, `/regime`, `/thesis AAPL`, `/pead`, `/gov SPY`, `/capex MSFT`) executing the exact same backend tools.
 
 ---
 
@@ -108,3 +140,7 @@ $$\text{Ratchet Score} = (0.55 \times \text{close\_acc}) + (0.35 \times \text{ta
 - [[entities/sector-predictor-arena]] — Sector predictor arena
 - [[entities/autoresearch]] — Autonomous prompt mutation engine
 - [[entities/investment-chat-gateway]] — Gated conversational terminal
+- [[entities/government-ingestion]] — Government data ingestion pipeline
+- [[concepts/tool-first-agency]] — Tool-first architecture principle
+- [[concepts/modular-prompt-blocks]] — Modular prompt blocks catalog
+- [[concepts/ingestion]] — Ingestion pipeline with government data

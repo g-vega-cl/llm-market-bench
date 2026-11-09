@@ -4,6 +4,9 @@ import statistics
 
 from core.config import logger
 from tools._compat import MarketDataManager
+from tools.government_tools import (
+    execute_get_government_fiscal_and_spending_tool as execute_get_government_fiscal_and_spending_tool,
+)
 
 
 async def execute_get_global_macro_context_tool() -> str:

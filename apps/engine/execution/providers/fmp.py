@@ -325,6 +325,10 @@ class FMPProvider(FinancialProvider):
                     "netDebt": entry.get("netDebt"),
                     "marketCap": entry.get("marketCap"),
                     "enterpriseValue": entry.get("enterpriseValue"),
+                    "returnOnInvestedCapital": entry.get("returnOnInvestedCapital"),
+                    "capexToOperatingCashFlow": entry.get("capexToOperatingCashFlow"),
+                    "capexToRevenue": entry.get("capexToRevenue"),
+                    "researchAndDevelopementToRevenue": entry.get("researchAndDevelopementToRevenue"),
                 }
 
         if isinstance(ratios_data, list):

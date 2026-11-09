@@ -53,6 +53,7 @@ def test_domain_modules_exist_and_export_handlers():
     assert hasattr(macro, "execute_macro_economic_series_tool")
     assert hasattr(macro, "execute_yield_curve_regime_tool")
     assert hasattr(macro, "execute_get_today_economic_releases_tool")
+    assert hasattr(macro, "execute_get_government_fiscal_and_spending_tool")
 
     # 6. Valuation
     assert hasattr(valuation, "execute_key_metrics_tool")
@@ -61,6 +62,7 @@ def test_domain_modules_exist_and_export_handlers():
     assert hasattr(valuation, "execute_financial_valuation_tool")
     assert hasattr(valuation, "execute_sector_alternatives_tool")
     assert hasattr(valuation, "execute_search_related_tickers_tool")
+    assert hasattr(valuation, "execute_get_corporate_spending_tool")
 
     # 7. News & memories
     assert hasattr(news_memories, "execute_get_todays_news_menu_tool")
@@ -150,6 +152,8 @@ def test_core_llm_tools_barrel_parity():
         "execute_get_future_forces_tool",
         "execute_research_future_force_tool",
         "execute_get_system_portfolios_tool",
+        "execute_get_government_fiscal_and_spending_tool",
+        "execute_get_corporate_spending_tool",
     ]
 
     for handler_name in expected_handlers:

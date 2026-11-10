@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **240**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **241**).
 
 ## Top Hotspots
 
@@ -22,12 +22,12 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/trading/test_live_intraday_agent.py` | 12 | 4 | 33.3% | 359 | 48 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 14 | 3 | 21.4% | 299 | 42 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 10 | 4 | 40.0% | 219 | 40 | **HIGH** |
-| `apps/engine/core/llm/tools.py` | 19 | 2 | 10.5% | 1838 | 38 | **HIGH** |
+| `apps/engine/core/llm/tools.py` | 19 | 2 | 10.5% | 1907 | 38 | **HIGH** |
+| `apps/engine/tasks/newsletter_generator.py` | 9 | 4 | 44.4% | 379 | 36 | **HIGH** |
 | `apps/engine/tests/test_verify_skill.py` | 11 | 3 | 27.3% | 161 | 33 | **HIGH** |
 | `apps/engine/tasks/daily_autoresearch.py` | 16 | 2 | 12.5% | 822 | 32 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.ts` | 8 | 4 | 50.0% | 460 | 32 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.test.ts` | 8 | 4 | 50.0% | 540 | 32 | **HIGH** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 10 | 3 | 30.0% | 868 | 30 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 

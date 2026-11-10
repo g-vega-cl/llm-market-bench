@@ -330,3 +330,25 @@ async def execute_barrier_touch_probabilities_tool(
     except Exception as e:
         logger.exception("Error executing get_barrier_touch_probabilities tool for %s: %s", ticker, e)
         return f"Error calculating barrier touch probabilities: {str(e)}"
+
+
+async def execute_high_iv_ratio_watchlist_tool(
+    universe: str = "mega_mid",
+    custom_tickers: str | None = None,
+    min_ratio: float = 1.0,
+    limit: int = 10,
+) -> str:
+    """Executes the get_high_iv_ratio_watchlist tool to screen highest IV/HistIV ratios."""
+    try:
+        from analytics.volatility_ratio import get_high_iv_ratio_watchlist_report
+
+        report = await get_high_iv_ratio_watchlist_report(
+            universe=universe,
+            custom_tickers=custom_tickers,
+            min_ratio=min_ratio,
+            limit=limit,
+        )
+        return report.get("markdown", "High IV/HistIV watchlist generated.")
+    except Exception as e:
+        logger.exception("Error executing get_high_iv_ratio_watchlist tool: %s", e)
+        return f"Error executing get_high_iv_ratio_watchlist: {str(e)}"

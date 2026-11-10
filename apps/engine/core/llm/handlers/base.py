@@ -89,6 +89,7 @@ TICKER_REQUIRED_TOOLS = {
     "get_barrier_touch_probabilities",
     "get_ticker_news",
     "get_insider_trades",
+    "audit_price_overreaction",
 }
 
 TOOL_DISPATCH_TABLE = {
@@ -318,6 +319,16 @@ TOOL_DISPATCH_TABLE = {
         tickers=args.get("tickers"),
         period=args.get("period", "quarter"),
         limit=args.get("limit", 4),
+    ),
+    "audit_price_overreaction": lambda ticker, args, mn, kw: tools.execute_audit_price_overreaction_tool(
+        ticker=ticker,
+        lookback_days=args.get("lookback_days", 20),
+    ),
+    "get_high_iv_ratio_watchlist": lambda ticker, args, mn, kw: tools.execute_high_iv_ratio_watchlist_tool(
+        universe=args.get("universe", "mega_mid"),
+        custom_tickers=args.get("custom_tickers"),
+        min_ratio=args.get("min_ratio", 1.0),
+        limit=args.get("limit", 10),
     ),
     "web_search": lambda ticker, args, mn, kw: tools.execute_web_search_tool(args.get("query", "")),
 }

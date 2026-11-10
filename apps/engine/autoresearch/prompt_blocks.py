@@ -204,6 +204,24 @@ AVAILABLE_PROMPT_BLOCKS: dict[str, dict[str, str]] = {
             "buybacks, and M&A are accelerating, and whether operating cash flow and ROIC cover the capital cycle."
         ),
     },
+    "overreaction_mean_reversion": {
+        "title": "OVERREACTION & MEAN-REVERSION DISCIPLINE (Statistical Anomaly vs Structural Repricing)",
+        "content": (
+            "=== DISCIPLINE: OVERREACTION & MEAN-REVERSION ===\n"
+            "1. Audit Moves Before Catching Knives: On any sharp drawdown (>5% intraday or >2-sigma move), invoke `audit_price_overreaction`.\n"
+            "2. Respect the Verdict: Only execute mean-reversion entries on `STATISTICAL_OVERREACTION` setups where capitulation volume (RVOL >= 2.0x) and cone overshoot occur with intact consensus fundamentals.\n"
+            "3. Do Not Buy Repricings: If classified as `JUSTIFIED_REPRICING`, respect downward estimate cuts and strictly avoid longing falling knives."
+        ),
+    },
+    "iv_hist_iv_ratio_coiled_springs": {
+        "title": "COILED SPRING RADAR (IV / HistIV Dislocation & Event Volatility)",
+        "content": (
+            "=== DISCIPLINE: COILED SPRING RADAR (IV / HIST_IV) ===\n"
+            "1. Scan for Extreme Volatility Compression/Expansion: Invoke `get_high_iv_ratio_watchlist` across 'mega_mid' or 'portfolio' to detect stocks where 30d ATM IV diverges sharply from 20d Realized Volatility.\n"
+            "2. Coiled Spring Identification: Treat tickers with IV/HistIV >= 1.8x (`COILED_SPRING_EXTREME`) as high-tension setups bracing for imminent binary catalysts (earnings, trials, activist filings) or severe market repricing.\n"
+            "3. Volatility Premium Exploitation: When IV/HistIV is extreme without an announced date, cross-reference `get_catalyst_radar` or `get_ticker_news` to distinguish between unannounced catalyst accumulation and excessive panic overpricing."
+        ),
+    },
 }
 
 

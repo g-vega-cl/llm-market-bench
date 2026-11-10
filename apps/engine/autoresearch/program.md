@@ -106,6 +106,8 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 52. **get_treasury_yield_curve**: Retrieves US Treasury yields across key tenors (3M, 2Y, 5Y, 10Y, 30Y) and 1-day basis point changes from FRED.
 53. **get_government_fiscal_and_spending**: Retrieves sovereign money creation, US Treasury General Account (TGA) cash & liquidity impulse, national debt issuance, monthly & FYTD fiscal deficits, US federal budget outlays by category & agency, Canadian federal ministry budgets & YoY growth, G7/G20 global defense & infrastructure spending surges (World Bank & Eurostat), and recent federal contract deals (USAspending & CanadaBuys).
 54. **get_corporate_spending**: Retrieves corporate CapEx, CapEx YoY %, CapEx/Revenue %, CapEx/OCF %, R&D ($ and % of Revenue), SG&A, buybacks, dividends, M&A cash spend & filings, Free Cash Flow, ROIC, and matched government contract awards for a ticker or hyperscaler basket.
+55. **audit_price_overreaction**: Audits sharp stock price declines or surges against normalized return distributions (Z-scores), capitulation volume (RVOL), options-implied daily move cones, and analyst consensus revisions to classify moves as STATISTICAL_OVERREACTION (reversion setup), JUSTIFIED_REPRICING (falling knife warning), or NORMAL_VOLATILITY.
+56. **get_high_iv_ratio_watchlist**: Screens stocks with the highest ratio of 30-day ATM Implied Volatility to 20-day Historical Realized Volatility (IV/HistIV), identifying 'COILED_SPRING_EXTREME' setups (Ratio >= 1.8x) bracing for impending binary catalysts or extreme pricing dislocations across mega/mid caps, portfolio holdings, or custom universe.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 
@@ -124,6 +126,8 @@ You can dynamically toggle structured trading discipline and reasoning blocks in
 10. `forward_calendar_scenario_anticipation`: Forward-looking positioning for tomorrow and next week's scheduled catalysts, pulling probability-weighted scenario trading plans and historical memories.
 11. `ticker_news_verification`: On-demand ticker news verification for candidate assets before committing capital, filtering noise from concrete material catalysts.
 12. `sovereign_fiscal_and_capex_alignment`: Aligning trades with US, Canadian, European, and global government budget priorities, TGA liquidity impulses, federal contract deals (`get_government_fiscal_and_spending`), and corporate CapEx/R&D cycles (`get_corporate_spending`).
+13. `overreaction_mean_reversion`: Auditing sharp price drops with `audit_price_overreaction` before catching knives, ensuring mean-reversion entries only on `STATISTICAL_OVERREACTION` setups with intact fundamentals while avoiding `JUSTIFIED_REPRICING` traps.
+14. `iv_hist_iv_ratio_coiled_springs`: Scanning `get_high_iv_ratio_watchlist` to detect coiled springs (IV/HistIV >= 1.8x) and identifying whether extreme IV pricing indicates an upcoming catalyst or options overpricing.
 
 ## Self-Auditing & Multi-Step Deliberation Workflow
 Before outputting your final strategy, perform a rigorous self-audit of recent performance:

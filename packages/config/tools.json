@@ -214,6 +214,14 @@
   {
     "name": "get_corporate_spending",
     "desc": "Retrieve corporate CapEx, R&D, SG&A, buybacks, dividends, M&A cash spend, ROIC, and matched government contract awards for a ticker or hyperscaler basket"
+  },
+  {
+    "name": "audit_price_overreaction",
+    "desc": "Audit sharp price drops or spikes to classify statistical overreaction (mean-reversion setup) vs justified structural repricing"
+  },
+  {
+    "name": "get_high_iv_ratio_watchlist",
+    "desc": "Screen highest IV to Historical Realized Volatility (IV/HistIV) coiled springs across mega/mid caps, portfolio holdings, or custom universe"
   }
 ]
 

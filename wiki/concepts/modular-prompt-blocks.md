@@ -30,6 +30,8 @@ Reusable trading discipline and reasoning blocks dynamically toggled by the Auto
 | `shadow_banking_liquidity_plumbing` | Wholesale liquidity & Pozsar Money View framework — detect institutional cash-pool run risk via `reverse_repo` (`RRPONTSYD`), `fed_balance_sheet` (`WALCL`), and credit spreads, and anticipate forced deleveraging from repo/margin collateral squeezes |
 | `multibagger_entry_and_affordable_growth` | Yartseva (2025) multibagger framework — twin-engine valuation (EPS growth + multiple change), affordable asset growth covered by EBITDA, entry cost measured by the 12-month price range rather than recent momentum, an 8-12pp rate-hike haircut on multiple expansion, and rejection of growth/leverage/buyback headlines as standalone theses |
 | `sovereign_fiscal_and_capex_alignment` | Sovereign fiscal priorities & corporate CapEx alignment — be on the same side as government spending by evaluating US, Canadian, EU, and global budget priorities, 14-day TGA liquidity impulses, federal contract awards (`get_government_fiscal_and_spending`), and hyperscaler/industrial CapEx reinvestment cycles (`get_corporate_spending`) |
+| `overreaction_mean_reversion` | Overreaction & mean-reversion discipline — audits sharp price drops with `audit_price_overreaction` before catching knives, ensuring entries only on `STATISTICAL_OVERREACTION` setups with intact fundamentals while avoiding `JUSTIFIED_REPRICING` falling knife traps |
+| `iv_hist_iv_ratio_coiled_springs` | Coiled spring radar — scans `get_high_iv_ratio_watchlist` to detect stocks where 30d ATM IV diverges sharply from 20d Realized Volatility (IV/HistIV >= 1.8x), anticipating impending binary catalysts or extreme pricing dislocations |
 
 ## Implementation
 

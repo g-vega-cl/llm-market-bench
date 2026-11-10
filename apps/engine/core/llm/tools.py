@@ -141,6 +141,9 @@ from tools.news_memories import (
 from tools.news_memories import (
     execute_web_search_tool as execute_web_search_tool,
 )
+from tools.overreaction import (
+    execute_audit_price_overreaction_tool as execute_audit_price_overreaction_tool,
+)
 from tools.portfolio import (
     execute_buy_quantity_tool as execute_buy_quantity_tool,
 )
@@ -176,6 +179,9 @@ from tools.technicals_options import (
 )
 from tools.technicals_options import (
     execute_get_options_sentiment_tool as execute_get_options_sentiment_tool,
+)
+from tools.technicals_options import (
+    execute_high_iv_ratio_watchlist_tool as execute_high_iv_ratio_watchlist_tool,
 )
 from tools.technicals_options import (
     execute_options_vol_surface_tool as execute_options_vol_surface_tool,
@@ -1859,6 +1865,69 @@ GET_CORPORATE_SPENDING_TOOL = {
     },
 }
 
+AUDIT_PRICE_OVERREACTION_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "audit_price_overreaction",
+        "description": (
+            "Audits sharp stock price drops or surges against statistical return distributions, capitulation "
+            "volume (RVOL), options-implied daily move cones, and analyst consensus target revisions. "
+            "Classifies the move as STATISTICAL_OVERREACTION (mean-reversion opportunity), "
+            "JUSTIFIED_REPRICING (falling knife warning with structural target cuts), or NORMAL_VOLATILITY."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "Stock ticker symbol (e.g. 'AAPL', 'NVDA', 'TSLA').",
+                },
+                "lookback_days": {
+                    "type": "integer",
+                    "description": "Lookback window for historical return distribution (default 20 days).",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+GET_HIGH_IV_RATIO_WATCHLIST_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_high_iv_ratio_watchlist",
+        "description": (
+            "Screens stocks with the highest ratio of 30-day ATM Implied Volatility (IV) to 20-day "
+            "Historical Realized Volatility (HistIV / RV). Identifies 'COILED_SPRING_EXTREME' setups (Ratio >= 1.8x) "
+            "bracing for imminent binary catalysts or severe market dislocation, 'VOL_RICH' options (1.3-1.8x), "
+            "and 'VOL_CHEAP' complacency (<0.8x)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "universe": {
+                    "type": "string",
+                    "enum": ["mega_mid", "portfolio", "custom", "all"],
+                    "description": "Universe scope to scan: 'mega_mid' (default liquid basket), 'portfolio' (active holdings), 'custom', or 'all'.",
+                },
+                "custom_tickers": {
+                    "type": "string",
+                    "description": "Optional comma-separated list of tickers if universe is 'custom' or supplementing (e.g. 'PLTR,COIN,MARA').",
+                },
+                "min_ratio": {
+                    "type": "number",
+                    "description": "Minimum IV / HistIV ratio threshold (default 1.0).",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of ranked results to return (default 10).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -1917,6 +1986,8 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_market_moving_news": GET_MARKET_MOVING_NEWS_TOOL,
     "get_government_fiscal_and_spending": GET_GOVERNMENT_FISCAL_AND_SPENDING_TOOL,
     "get_corporate_spending": GET_CORPORATE_SPENDING_TOOL,
+    "audit_price_overreaction": AUDIT_PRICE_OVERREACTION_TOOL,
+    "get_high_iv_ratio_watchlist": GET_HIGH_IV_RATIO_WATCHLIST_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }

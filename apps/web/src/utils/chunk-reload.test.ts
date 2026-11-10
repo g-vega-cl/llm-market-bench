@@ -176,7 +176,8 @@ describe('chunk-reload utilities', () => {
             window.dispatchEvent(event);
 
             expect(reloadFn).toHaveBeenCalledTimes(1);
-            expect(event.defaultPrevented).toBe(true);
+            // Must NOT prevent default, allowing Vite/Router to handle error without resolving undefined
+            expect(event.defaultPrevented).toBe(false);
 
             cleanup();
 

@@ -3,79 +3,131 @@ tags: [web, deployment, resilience, chunks, vite, error-handling]
 category: concept
 ---
 
-# Dynamic Chunk Failure & Deployment Recovery
+# Dynamic Chunk Failure & Idle Route Warmup
 
-The web app is a code-split TanStack Start SPA/SSR hybrid: every route and heavy visualization library is emitted as a content-hashed chunk (`index-[hash].js`, `vendor-d3-[hash].js`). When a new deployment is published while a user still has a tab open, the old hashed chunks are purged from the CDN. The next client-side navigation or lazy import then requests a chunk that no longer exists and the browser throws a dynamic-import failure. This concept documents the two-layer self-healing path that turns that hard failure into a silent, single reload.
+The web app is a code-split TanStack Start SPA/SSR hybrid: every route and heavy visualization library is emitted as a content-hashed chunk (`index-[hash].js`, `vendor-d3-[hash].js`). When a new deployment is published while a user still has a tab open, Netlify atomic deploys publish new chunk hashes. Stale browser tabs attempting to navigate to previously unvisited routes can encounter dynamic-import failures (`Failed to fetch dynamically imported module`).
 
-## The Failure Mode
+This concept documents the proactive architecture that prevents dynamic import 404s, why legacy auto-reload hacks were deprecated, and how clean error telemetry is preserved.
 
-A stale tab holds a router manifest pointing at build N assets. After build N+1 deploys, clicking a route that lazy-loads a chunk produces a `TypeError` from the module loader. Without handling, the user sees a generic "Something went wrong" error boundary and must reload manually — and the error is indistinguishable from a real application bug in telemetry.
+---
 
-## Layer 1 — Vite `vite:preloadError` Listener
+## The Flaw of Auto-Reload & `preventDefault`
 
-`apps/web/src/utils/chunk-reload.ts` exports `setupVitePreloadErrorHandler(options?)`, which attaches a `window` listener for Vite's `vite:preloadError` event (dispatched automatically by Vite when a dynamically imported chunk fails to fetch). The handler calls `event.preventDefault()` — suppressing Vite's default rethrow — and then invokes `triggerChunkReload(options)`. It returns a cleanup function that removes the listener.
-
-The handler is installed once at module scope in `apps/web/src/routes/__root.tsx`, inside the existing `if (typeof window !== 'undefined')` block, alongside the CefSharp `unhandledrejection` listener (see [[concepts/posthog-stealth-proxy]]):
+In previous iterations, the application attempted to intercept dynamic import failures via Vite's `vite:preloadError` event by calling `event.preventDefault()` and triggering an automated `window.location.reload()`:
 
 ```ts
-if (typeof window !== 'undefined') {
-    setupVitePreloadErrorHandler();
-    window.addEventListener('unhandledrejection', (event) => { /* ... */ });
+// DEPRECATED ANTI-PATTERN - DO NOT RESTORE
+window.addEventListener('vite:preloadError', (event) => {
+    event.preventDefault(); // CAUSES UNCAUGHT CRASH
+    triggerChunkReload();
+});
+```
+
+### The `Cannot read properties of undefined (reading 'component')` Trap
+
+1. Vite's runtime client wraps dynamic imports in `baseModule().catch(handlePreloadError)`.
+2. When a chunk fetch fails (e.g. 404 or network drop), Vite dispatches `vite:preloadError`. If `event.defaultPrevented` is true, Vite skips rethrowing the error.
+3. In JavaScript, a `.catch()` block that does not throw or return a value automatically resolves the promise with `undefined`.
+4. TanStack Router's `lazyRouteComponent` awaited the dynamic import and attempted to access `comp = res['component']`.
+5. Because `res` resolved to `undefined` instead of rejecting, the router threw a fatal `TypeError: Cannot read properties of undefined (reading 'component')`.
+
+Furthermore, automated reloads resulted in broken user experiences (jarring page flashes, disruptive "Updating application..." banners, race conditions with background mutations, and circuit-breaker lockouts).
+
+---
+
+## Proactive Prevention: Idle-Time Route Warmup
+
+Rather than reacting to failed chunk fetches after the user clicks a link, the application eliminates chunk 404s proactively using **Idle-Time Route Warmup** (`useIdleRouteWarmup` in `apps/web/src/routes/__root.tsx`).
+
+### Implementation
+
+When the root route mounts in the browser, it schedules background prefetching of all core application routes using `requestIdleCallback` (with a `setTimeout` fallback):
+
+```tsx
+// apps/web/src/routes/__root.tsx
+export function useIdleRouteWarmup() {
+    const router = useRouter();
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const win = window as Window & {
+            requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
+            cancelIdleCallback?: (id: number) => void;
+        };
+
+        const schedule =
+            typeof win.requestIdleCallback === 'function'
+                ? (cb: () => void) => win.requestIdleCallback?.(cb, { timeout: 2000 }) ?? 0
+                : (cb: () => void) => window.setTimeout(cb, 50);
+
+        const cancel =
+            typeof win.cancelIdleCallback === 'function'
+                ? (id: number) => win.cancelIdleCallback?.(id)
+                : (id: number) => window.clearTimeout(id);
+
+        const handle = schedule(async () => {
+            for (const path of PRELOAD_WARMUP_ROUTES) {
+                try {
+                    await router.preloadRoute({ to: path as never });
+                } catch {
+                    // Non-blocking background warmup
+                }
+            }
+        });
+
+        return () => cancel(handle);
+    }, [router]);
 }
 ```
 
-## Layer 2 — `DefaultCatchBoundary` Chunk-Aware Fallback
+### Why Idle Warmup Eliminates 404s
 
-Errors that reach the router's catch boundary (rather than the preload event) are handled by `apps/web/src/components/ui/DefaultCatchBoundary.tsx`. It computes `isChunkErr = isDynamicChunkError(error)` and, when true:
+1. **Pre-Populated Browser Module Cache**: During browser idle time, `router.preloadRoute()` downloads and compiles all route chunks (`/portfolios`, `/lab`, `/companies`, `/today`, `/audits`, `/autoresearch`, `/chat`, etc.).
+2. **Atomic Deploy Invariance**: If a new deployment publishes 5 minutes later, the user's active session already holds the compiled route modules in memory. Subsequent navigation executes instantly from memory with zero outbound HTTP requests for JS chunks.
+3. **Zero Main-Thread Congestion**: Running under `requestIdleCallback` ensures initial page rendering, data hydration, and interactive metrics (FCP, LCP, INP) are completely uninhibited.
 
-1. Calls `triggerChunkReload({ targetHref: router.state?.location?.href })` inside the deduplicated `useEffect`, preserving the intended navigation destination, and records the boolean result in the `autoReloadTriggered` React state (via `useState`).
-2. Captures the exception to PostHog with `chunk_error: isChunkErr` and `auto_reloaded: autoReloaded` in addition to `source`, `is_root`, `pathname`, and `route_id`.
-3. Renders a self-healing state instead of the generic `ErrorComponent`: a recessed `voxel-trough` strip plus a `Reload Page` ghost button that calls `window.location.reload()`.
+---
 
-### Honest Fallback Messaging
+## Immutable CDN Asset Caching
 
-The status text is conditional on whether the automatic reload actually fired (i.e. was not suppressed by the circuit breaker):
+All hashed build assets under `/assets/*` are configured with 1-year immutable caching in `apps/web/netlify.toml` and `apps/web/public/_headers`:
 
-| `autoReloadTriggered` | Rendered message |
-| :--- | :--- |
-| `true` | `Updating application to latest version…` |
-| `false` | `Unable to load the latest application update. Please reload the page.` |
+```toml
+[ [headers] ]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+```
 
-When the breaker trips (an asset is persistently unavailable — adblocker or CDN failure), the UI stops pretending it is updating and instead asks the user to reload manually. The `Reload Page` button remains available in both states. Non-chunk errors keep the original `ErrorComponent` rendering path unchanged.
+This guarantees that once an asset is fetched, proxy caches and browser disk caches serve it indefinitely without revalidation 404s.
 
-## Detection Signatures (`isDynamicChunkError`)
+---
 
-`isDynamicChunkError(error)` normalizes the input (an `Error`, a raw string, or anything else via `String(error)`) to lowercase and matches any of the browser-specific signatures. It inspects both the top-level `error.message` **and** any nested `error.cause` (an `Error` or string), so wrapped route-transition errors that bury the real dynamic-import failure in `cause` are still detected:
+## Clean Error Boundary & Transparent Telemetry
 
-| Signature | Browser / Bundler |
-| :--- | :--- |
-| `failed to fetch dynamically imported module` | Chromium (Chrome, Brave, Edge) |
-| `error loading dynamically imported module` | Firefox |
-| `importing a module script failed` | WebKit / Safari |
-| `loading chunk` **AND** `failed` | Webpack / Rollup chunk load failure |
+In `apps/web/src/components/ui/DefaultCatchBoundary.tsx`:
 
-Falsy input (`null`, `undefined`) and unrelated errors (`Network timeout`, `Cannot read property of undefined`) return `false`. The Webpack/Rollup `loading chunk` signature is deliberately conjunctive (requires `failed` too) so innocuous strings such as `Finished loading chunk into memory` do not over-match.
+1. **Zero Muting or Masking**: All exceptions are transparently captured to PostHog error tracking via `captureException(error, { tags: { ... } })`. Telemetry is never dropped, muted, or hidden.
+2. **Standard Error Presentation**: If an unhandled error occurs, `DefaultCatchBoundary` renders the design system `ErrorComponent` with a descriptive message and clear user actions:
+   - **Try Again**: Re-executes the route loader or boundary reset.
+   - **Back / Home**: Safe fallback navigation links.
+3. **No Disruptive Banner**: No synthetic reload spinners, reload counts, or auto-reload countdowns.
 
-## Reload Guard (`triggerChunkReload`)
+---
 
-`triggerChunkReload({ targetHref?, cooldownMs?, maxRetries?, storage?, reloadFn? })` performs at most one hard reload/redirect per cooldown window and returns `true` when a reload was triggered, `false` when suppressed by the circuit breaker.
+## Testing & Verification
 
-- **SSR guard** — returns `false` immediately when `typeof window === 'undefined'`.
-- **Bounded Circuit Breaker** — `MAX_AUTO_RELOADS = 1` attempt per cooldown window (`DEFAULT_COOLDOWN_WINDOW_MS = 60000`). The reload attempt count is persisted in `sessionStorage` under `benchify:chunk_reload_count` and the timestamp under `benchify:last_chunk_reload_ts`. If an asset is persistently missing (adblocker, CDN failure), the breaker trips after 1 attempt, failing closed to the honest manual-reload UI to eliminate infinite reload loops. The count resets to 0 when the previous attempt falls outside the cooldown window, re-arming the auto-reload path.
-- **Navigation Destination Preservation** — accepts `targetHref` (e.g. from `router.state?.location?.href`). If the target route differs from the current `window.location.href`, it redirects to `targetHref` rather than resetting the user back to the origin page.
-- **Storage failure tolerance** — `getItem`/`setItem` are wrapped in `try/catch` so privacy sandboxes or quota errors fall through to a single reload attempt.
-- **Idempotency** — `setupVitePreloadErrorHandler` guards against duplicate window listeners using `window.__benchify_vite_preload_bound__`; a second call returns a no-op cleanup and does not double-register. Cleanup clears the flag so the handler can be re-armed.
-- **Injectable dependencies** — `storage` and `reloadFn` are overridable for tests; production defaults are `sessionStorage` and redirecting/reloading. `reloadFn` accepts an optional `url` argument (`(url?: string) => void`) and navigates to it when supplied.
+- `apps/web/src/routes/-__root.test.tsx`: Verifies that `useIdleRouteWarmup` registers an idle callback and calls `router.preloadRoute` across all warmup routes. Also verifies that `vite:preloadError` does **not** call `preventDefault()`.
+- `apps/web/src/utils/chunk-reload.test.ts`: Verifies `setupVitePreloadErrorHandler` attaches cleanly and preserves `defaultPrevented === false`.
+- `apps/web/src/components/ui/DefaultCatchBoundary.test.tsx`: Verifies that `DefaultCatchBoundary` captures chunk errors to PostHog without rendering auto-reload banners or triggering loops.
+- `apps/web/src/test/netlify-config.test.ts`: Verifies that immutable caching headers are declared in `netlify.toml`.
 
-## Testing
-
-- `apps/web/src/utils/chunk-reload.test.ts` covers all detection signatures, nested error causes, string input, negative cases (including the `loading chunk`-without-`failed` non-match), first-reload success with timestamp and count persistence, circuit-breaker suppression on repeated failures, destination target preservation, re-arming after the cooldown expires, and idempotent listener registration/cleanup.
-- `apps/web/src/components/ui/DefaultCatchBoundary.test.tsx` asserts a chunk `TypeError` renders the "Updating application to latest version" UI when auto-reloading, displays the honest manual reload message when the circuit breaker suppresses the reload, and captures the exception with `chunk_error: true`.
-- `apps/web/src/routes/-__root.test.tsx` dispatches a synthetic `vite:preloadError` on `window` and asserts `event.defaultPrevented` is `true`.
+---
 
 ## Related
 
-- [[concepts/rendering-strategies]] — rendering decision matrix and the self-healing recovery rule
-- [[concepts/posthog-stealth-proxy]] — `DefaultCatchBoundary` exception capture and the root-route client listeners
-- [[entities/web-app]] — the TanStack Start dashboard that ships the hashed chunks
-- [[concepts/release-and-canary-deployments]] — deployment/release decoupling and SPA chunk-mismatch risk
+- [[concepts/rendering-strategies]] — SSR, Hybrid SSR, and CSR architecture
+- [[concepts/posthog-stealth-proxy]] — Client exception capture and PostHog ingestion
+- [[entities/web-app]] — The TanStack Start client dashboard

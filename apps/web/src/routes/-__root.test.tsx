@@ -481,12 +481,39 @@ describe('RootDocument PostHog identity synchronization', () => {
         expect(screen.getByTestId('page-outlet')).toBeInTheDocument();
     });
 
-    it('should catch vite:preloadError event and prevent default to handle chunk reloads', () => {
+    it('should not prevent default on vite:preloadError so dynamic import errors are not masked as undefined', () => {
         const event = new CustomEvent('vite:preloadError', {
             cancelable: true,
             detail: new Error('Failed to fetch dynamically imported module'),
         });
         window.dispatchEvent(event);
-        expect(event.defaultPrevented).toBe(true);
+        expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('useIdleRouteWarmup preloads routes during idle callback', async () => {
+        const preloadSpy = vi.fn().mockResolvedValue(undefined);
+        const { useIdleRouteWarmup } = await import('./__root');
+
+        const testRoute = createRootRoute({
+            component: () => {
+                useIdleRouteWarmup();
+                return <div>Warmup Active</div>;
+            },
+        });
+
+        const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+        router.preloadRoute = preloadSpy;
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        // Wait for next tick / idle callback
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        expect(preloadSpy).toHaveBeenCalled();
     });
 });

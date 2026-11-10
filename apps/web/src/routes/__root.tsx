@@ -2,7 +2,14 @@
 
 import { cn, GlobalBackground } from '@llm-market-bench/ui-design-system';
 import { PostHogProvider, usePostHog } from '@posthog/react';
-import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
+import {
+    createRootRoute,
+    HeadContent,
+    Link,
+    Outlet,
+    Scripts,
+    useRouter,
+} from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { createServerFn } from '@tanstack/react-start';
 import { type ReactNode, useEffect, useRef } from 'react';
@@ -11,12 +18,10 @@ import { NotFound } from '~/components/ui/NotFound';
 import { getAuthServerClient } from '~/lib/auth';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
 import { seo } from '~/lib/seo';
-import { setupVitePreloadErrorHandler } from '~/utils/chunk-reload';
 import { posthogBeforeSend } from '~/utils/posthog-filter';
 import appCss from '../styles/app.css?url';
 
 if (typeof window !== 'undefined') {
-    setupVitePreloadErrorHandler();
     window.addEventListener('unhandledrejection', (event) => {
         const reason = event?.reason;
         const text =
@@ -99,7 +104,61 @@ export const Route = createRootRoute({
     component: RootComponent,
 });
 
+export const PRELOAD_WARMUP_ROUTES = [
+    '/',
+    '/portfolios',
+    '/lab',
+    '/leaderboard',
+    '/companies',
+    '/how-it-works',
+    '/today',
+    '/audits',
+    '/autoresearch',
+    '/daily-predictions',
+    '/market-overview',
+    '/reasoning',
+    '/memories',
+    '/retired-agents',
+    '/chat',
+] as const;
+
+export function useIdleRouteWarmup() {
+    const router = useRouter();
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const win = window as Window & {
+            requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
+            cancelIdleCallback?: (id: number) => void;
+        };
+
+        const schedule =
+            typeof win.requestIdleCallback === 'function'
+                ? (cb: () => void) => win.requestIdleCallback?.(cb, { timeout: 2000 }) ?? 0
+                : (cb: () => void) => window.setTimeout(cb, 50);
+
+        const cancel =
+            typeof win.cancelIdleCallback === 'function'
+                ? (id: number) => win.cancelIdleCallback?.(id)
+                : (id: number) => window.clearTimeout(id);
+
+        const handle = schedule(async () => {
+            for (const path of PRELOAD_WARMUP_ROUTES) {
+                try {
+                    await router.preloadRoute({ to: path as never });
+                } catch {
+                    // Non-blocking background warmup
+                }
+            }
+        });
+
+        return () => cancel(handle);
+    }, [router]);
+}
+
 function RootComponent() {
+    useIdleRouteWarmup();
     return (
         <RootDocument>
             <QueryClientProviderWrapper>

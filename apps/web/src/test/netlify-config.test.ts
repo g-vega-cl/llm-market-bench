@@ -16,4 +16,8 @@ test('netlify.toml is configured correctly for TanStack Start SSR without incomp
     // Assert stealth PostHog proxy redirects remain intact
     expect(content).toContain('from = "/p/*"');
     expect(content).toContain('to = "https://us.i.posthog.com/:splat"');
+
+    // Assert immutable caching header for hashed JS/CSS assets
+    expect(content).toContain('for = "/assets/*"');
+    expect(content).toContain('Cache-Control = "public, max-age=31536000, immutable"');
 });

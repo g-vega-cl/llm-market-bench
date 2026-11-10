@@ -85,9 +85,10 @@ To completely eliminate database overhead during the initial request phase for n
 1. **Avoid Parallel Loader Queries**: Do not run multiple large queries inside a server loader. Consolidated fetches or moving secondary queries to client-side fetching keeps TTFB under `10ms`.
 2. **Normalize Date Formatting**: Ensure dates rendered during both server-side generation and client-side hydration are symmetric. Always format timestamps on the server inside loaders or use locked-timezone utility helpers (such as `formatEasternDateTimeWithYear`) to avoid timezone/whitespace mismatch warnings (React Error #418).
 3. **TDD Hydration Verification**: When adding or refactoring layouts, write tests utilizing `assertHydrationSymmetry` to verify that components render symmetrically under both SSR and client hydration modes.
-4. **Dynamic Chunk Failure & Deployment Recovery**: When a new deployment is published while a user has a tab open, route chunks from previous builds are purged or return HTTP 404. The app self-heals via two layers:
-   - `setupVitePreloadErrorHandler()` in `apps/web/src/utils/chunk-reload.ts` listens for Vite's `vite:preloadError` window event and initiates a single guarded reload/redirect, preserving the intended navigation destination via `targetHref`.
-   - `DefaultCatchBoundary` in `apps/web/src/components/ui/DefaultCatchBoundary.tsx` detects `isDynamicChunkError`, logs telemetry with `auto_reloaded: true` to PostHog, and renders a self-healing "Updating application..." state. Reload loops are prevented by a bounded circuit breaker (`MAX_AUTO_RELOADS = 1` per 60-second `sessionStorage` window); when the breaker trips, the UI instead shows an honest "Unable to load the latest application update. Please reload the page." message. See [[concepts/chunk-reload-recovery]].
+4. **Dynamic Chunk Failure Prevention & Idle Route Warmup**: To eliminate dynamic import failures across Netlify atomic deploys, the app utilizes proactive idle-time route warmup:
+   - `useIdleRouteWarmup()` in `apps/web/src/routes/__root.tsx` prefetches application routes into browser memory during idle periods (`requestIdleCallback`), ensuring cross-route transitions never 404 after background deploys.
+   - Hashed JS assets (`/assets/*`) are cached with 1-year immutable headers in `netlify.toml` and `_headers`.
+   - `DefaultCatchBoundary` transparently captures any unexpected errors directly to PostHog without muting, auto-reload loops, or disruptive banners. See [[concepts/chunk-reload-recovery]].
 
 ---
 

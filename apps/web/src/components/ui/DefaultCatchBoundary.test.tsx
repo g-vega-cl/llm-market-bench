@@ -55,8 +55,6 @@ describe('DefaultCatchBoundary', () => {
             is_root: false,
             pathname: '/',
             route_id: '/portfolios',
-            chunk_error: false,
-            auto_reloaded: false,
         });
         consoleSpy.mockRestore();
     });
@@ -92,7 +90,7 @@ describe('DefaultCatchBoundary', () => {
         consoleSpy.mockRestore();
     });
 
-    it('detects dynamic import chunk failures and triggers auto-reload with updating UI', () => {
+    it('renders ErrorComponent and captures exception directly when chunk failure occurs', () => {
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         const chunkErr = new TypeError(
             'Failed to fetch dynamically imported module: https://www.benchify.dev/assets/index-CZJZmMUs.js',
@@ -100,39 +98,23 @@ describe('DefaultCatchBoundary', () => {
 
         render(<DefaultCatchBoundary error={chunkErr} reset={vi.fn()} />);
 
-        // Should render smooth updating UI instead of generic error
-        expect(screen.getByText(/updating application to latest version/i)).toBeInTheDocument();
-        expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
+        // Should render ErrorComponent and Try Again button cleanly without disruptive reload banners
+        expect(
+            screen.getByText(/Failed to fetch dynamically imported module/i),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
 
-        // Should capture exception with auto_reloaded flag
+        // Should capture exception with full context directly to PostHog
         expect(mockCaptureException).toHaveBeenCalledTimes(1);
         expect(mockCaptureException).toHaveBeenCalledWith(
             chunkErr,
             expect.objectContaining({
                 source: 'DefaultCatchBoundary',
-                chunk_error: true,
+                is_root: false,
+                pathname: '/',
+                route_id: '/portfolios',
             }),
         );
-        consoleSpy.mockRestore();
-    });
-
-    it('displays honest manual reload message when auto-reload is suppressed by circuit breaker', async () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-        const chunkUtils = await import('~/utils/chunk-reload');
-        const triggerSpy = vi.spyOn(chunkUtils, 'triggerChunkReload').mockReturnValue(false);
-
-        const chunkErr = new TypeError(
-            'Failed to fetch dynamically imported module: https://www.benchify.dev/assets/index-CZJZmMUs.js',
-        );
-
-        render(<DefaultCatchBoundary error={chunkErr} reset={vi.fn()} />);
-
-        expect(
-            screen.getByText(/unable to load the latest application update/i),
-        ).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /reload page/i })).toBeInTheDocument();
-
-        triggerSpy.mockRestore();
         consoleSpy.mockRestore();
     });
 });

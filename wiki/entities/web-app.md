@@ -42,6 +42,9 @@ This ensures the homepage benchmark reflects intraday SPY movement during market
 - Built with TanStack Start and React Router v7 SSR.
 - Uses TanStack Query for data fetching with SSR-safe QueryClient.
 - Homepage (`/`) utilizes `useWindowFocusRefresh` (`apps/web/src/features/home/hooks/useWindowFocusRefresh.ts`) to invalidate TanStack Router loaders via `router.invalidate()` on window focus and document visibility restoration (throttled to 5s), keeping market feeling, active portfolios, barometer, and tape synchronized without background CPU polling drain, while reloading PostHog flags and capturing telemetry.
+- Root route (`apps/web/src/routes/__root.tsx`) installs `useIdleRouteWarmup()`, which iterates `PRELOAD_WARMUP_ROUTES` (`/`, `/portfolios`, `/lab`, `/leaderboard`, `/companies`, `/how-it-works`, `/today`, `/audits`, `/autoresearch`, `/daily-predictions`, `/market-overview`, `/reasoning`, `/memories`, `/retired-agents`, `/chat`) inside a `requestIdleCallback` (with a `setTimeout` fallback) and calls `router.preloadRoute()` for each, so route chunks are compiled into the browser module cache before a background deploy can invalidate them. The effect returns the matching `cancelIdleCallback`/`clearTimeout` cleanup.
+- Route-level errors are handled by `DefaultCatchBoundary` (`apps/web/src/components/ui/DefaultCatchBoundary.tsx`), which renders the design system `ErrorComponent` with `Try Again` / `Back` / `Home` actions and captures every exception to PostHog (`captureException` with `source`, `is_root`, `pathname`, `route_id`) with no chunk-specific auto-reload path or muting. See [[concepts/chunk-reload-recovery]].
+- Hashed build assets under `/assets/*` are served with `Cache-Control: public, max-age=31536000, immutable` and `X-Content-Type-Options: nosniff` in both `apps/web/netlify.toml` (`headers` table) and `apps/web/public/_headers`, so previously fetched chunks are revalidated never and served from proxy/browser caches.
 - Styled with Tailwind CSS v4 and `@llm-market-bench/ui-design-system`.
 
 ## Auth / DB client separation
@@ -67,6 +70,7 @@ All feature data fetchers import `getDbServerClient` / `getDbBrowserClient` from
 - [[entities/live-agent-trader]]
 - [[entities/design-system]]
 - [[concepts/auth-db-client-separation]]
+- [[concepts/chunk-reload-recovery]]
 - [[concepts/vertical-slice-islands]]
 - [[concepts/zero-frontend-compute]]
 - [[concepts/tanstack-query]]

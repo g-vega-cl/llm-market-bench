@@ -134,8 +134,11 @@ export function setupVitePreloadErrorHandler(options?: SetupVitePreloadErrorOpti
     }
     window.__benchify_vite_preload_bound__ = true;
 
-    const handler = (event: Event) => {
-        event.preventDefault();
+    const handler = (_event: Event) => {
+        // Do NOT call event.preventDefault()!
+        // Calling event.preventDefault() suppresses Vite's error throwing and resolves the dynamic import
+        // promise to undefined, causing TanStack Router's lazyRouteComponent to crash with
+        // TypeError: Cannot read properties of undefined (reading 'component').
         triggerChunkReload(options);
     };
 

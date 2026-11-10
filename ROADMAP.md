@@ -61,6 +61,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: an option targeter? A predictor that says "in X amount of time, this stock will move Y"
 - [ ] - Benchify; a daily stock picker, which stocks will go up today? And pick 3 up and 3 down.
 - [ ] - Benchify: train small model?
+- [ ] - Benchify : is this an overreaction tool
+- [ ] - Benchify: highest iv/histIV is worth watching and ingesting
 
 ### Focused Assets (Single Ticker / ETF)
 

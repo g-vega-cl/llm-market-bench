@@ -11,9 +11,17 @@ The newsletter generator (`apps/engine/tasks/newsletter_generator.py`) synthesiz
 
 1. **Ingestion** — pulls fresh newsletters from Gmail (`ingest_newsletters`) and upserts them into `newsletter_snapshots`. Skipped for historical/backfill runs.
 2. **Snapshot query** — selects snapshots published within the past 12 hours (`date >= since_iso`). For historical runs an upper bound (`date <= now_et + 15min`) is also applied so only snapshots available at the target time are used.
-3. **Context assembly** — gathers macro dashboard, economic releases, options sentiment/volatility surface, FX context, and multi-horizon reference matrices (`apps/engine/analytics/market_reference.py`). Multi-horizon anchors provide tactical (20d), intermediate (60d), and structural (52w) percentiles, moving averages (20/50/200-DMA), realized volatility regimes, and Z-scores for macro core assets (`UUP`, `EURUSD`, `USDJPY`, `SPY`, `QQQ`, `TLT`, `GLD`, `USO`) and mentioned single stocks. Context helpers tolerate `Error` / `No options` / `No macro options` / unavailable prefixes by omitting those sections.
+3. **Context assembly** — gathers macro dashboard, economic releases, options sentiment/volatility surface, FX context, and multi-horizon reference matrices (`apps/engine/analytics/market_reference.py`). Multi-horizon anchors provide tactical (20d), intermediate (60d), and structural (52w) percentiles, moving averages (20/50/200-DMA), realized volatility regimes, and Z-scores for macro core assets (`SPY`, `QQQ`, `DIA`, `IWM`, `UUP`, `EURUSD`, `USDJPY`, `TLT`, `GLD`, `USO`) and mentioned single stocks. Context helpers tolerate `Error` / `No options` / `No macro options` / unavailable prefixes by omitting those sections.
 4. **Synthesis** — `_call_deepseek_flash` produces a `GeneratedNewsletterOutput` (title, summary, bullet points, content, read time). The date string shown to the model is derived from the run's effective timestamp.
 5. **Persistence** — inserts the record into `generated_newsletters`.
+
+## Session-Aware Reference Quotes
+
+The generator passes its `session` (`"open"` or `"close"`) into `get_newsletter_reference_context(..., session=session)`, which resolves quotes through `MarketDataManager.get_reference_quote(ticker, session=session)`. For the evening close briefing this anchors every index level and 1D move to the official regular-session close versus the prior trading day's close, rather than an after-hours tick.
+
+`get_newsletter_fx_context` uses the same resolution: it prefers `manager.get_reference_quote` and falls back to `manager.get_premarket_quote` when the method is absent (including bare `unittest.mock.NonCallableMock` managers that have not configured `get_reference_quote`).
+
+The DeepSeek Flash system prompt carries a matching instruction: for the Evening Market Close Briefing, all equity index closing commentary (`SPY`, `QQQ`, `DIA`, `IWM`) must strictly reflect the official closing prices and 1D percentage moves from the Official Multi-Horizon Reference Matrix, never outdated pre-market or prior-session index figures found in morning newsletter text.
 
 ## Deterministic / Backfill Generation
 
@@ -33,6 +41,8 @@ If the database insert fails, the generator logs the exception and raises `Runti
 
 - [[entities/pipeline]]
 - [[entities/engine]]
+- [[entities/market-data]]
+- [[concepts/multi-horizon-reference]]
 - [[concepts/ingestion]]
 - [[concepts/backfilled-trades]]
 - [[entities/fetch-daily-newsletter-tool]]

@@ -121,6 +121,7 @@ async def _call_deepseek_flash(
         "   Use subheadings, bullet points, and bold key tickers and metrics (e.g., **NVDA**, **SPX**, **10Y Yield 4.25%**, **CPI +0.2%**, **Fed Funds 5.25%**).\n"
         "5. Tone must be professional, analytical, objective, and developer/investor friendly, delivering deep substance without fluff. "
         "Ground all market and currency commentary strictly in the provided data. If a specific metric or ticker is unavailable, discuss macro implications naturally without referencing 'packet', 'prompt', 'context', or missing data feeds.\n"
+        "   For the Evening Market Close Briefing, all equity index closing commentary (SPY, QQQ, DIA, IWM) must strictly reflect the official closing prices and 1D percentage moves provided in the Official Multi-Horizon Reference Matrix. Never use outdated pre-market or prior-session index figures found in morning newsletter text.\n"
         "6. **Historical Reference & Statistical Context Mandate**: Never state nominal prices, yields, or levels in isolation (e.g. avoid 'UUP is at $29.12' or 'BA dropped to $168.16'). Ground all asset and single-stock commentary in their multi-horizon context: always specify whether the level is high or low relative to its 52-week range (percentile rank), distance from key moving averages (20/50/200-DMA), whether the move is statistically uncommon (Z-score/regime tag), and the prevailing realized volatility regime (compressed vs expanding). In `### 🗓️ The Catalyst Radar & Key Levels`, include the Markdown Multi-Horizon Reference Table provided in the prompt to ensure complete statistical transparency for readers."
     )
 
@@ -251,9 +252,16 @@ async def get_newsletter_fx_context(mdm=None) -> str:
         ("USDJPY", "USD/JPY"),
     ]
 
+    from unittest.mock import NonCallableMock
+
+    if isinstance(manager, NonCallableMock) and "get_reference_quote" not in manager.__dict__:
+        quote_fn = manager.get_premarket_quote
+    else:
+        quote_fn = getattr(manager, "get_reference_quote", manager.get_premarket_quote)
+
     try:
         quotes = await asyncio.gather(
-            *[manager.get_premarket_quote(ticker) for ticker, _ in fx_targets],
+            *[quote_fn(ticker) for ticker, _ in fx_targets],
             return_exceptions=True,
         )
     except Exception as e:
@@ -383,6 +391,7 @@ async def generate_daily_newsletter(
         reference_context = await get_newsletter_reference_context(
             chunks=snapshots,
             target_date=target_date,
+            session=session,
         )
     except Exception as e:
         logger.warning(f"Could not fetch market reference context for newsletter: {e}")

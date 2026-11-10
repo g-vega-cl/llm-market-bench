@@ -99,8 +99,8 @@ class FMPProvider(FinancialProvider):
 
                     return TickerData(
                         ticker=ticker,
-                        price=float(q.get("price", 0)),
-                        market_cap=float(q.get("marketCap", 0)),
+                        price=float(q["price"]) if q.get("price") is not None else 0.0,
+                        market_cap=float(q["marketCap"]) if q.get("marketCap") is not None else 0.0,
                         exists=True,
                         currency=q.get("currency", "USD"),
                         exchange=q.get("exchange"),

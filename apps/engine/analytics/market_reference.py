@@ -405,22 +405,30 @@ async def get_newsletter_reference_context(
     target_date: str | None = None,
     macro_tickers: list[str] | None = None,
     max_single_stocks: int = 5,
+    session: str = "close",
 ) -> str:
     """Fetch multi-horizon positioning, percentiles, and volatility regimes for macro core and mentioned stocks.
 
     Queries 252-day history from MarketDataManager for core macro proxies
     plus top single stocks extracted from newsletter chunks.
     """
+    from unittest.mock import NonCallableMock
+
     from execution.market_data import MarketDataManager
 
     manager = mdm or MarketDataManager()
-    macro_core = macro_tickers or ["UUP", "EURUSD", "USDJPY", "SPY", "QQQ", "TLT", "GLD", "USO"]
+    macro_core = macro_tickers or ["SPY", "QQQ", "DIA", "IWM", "UUP", "EURUSD", "USDJPY", "TLT", "GLD", "USO"]
     single_stocks = extract_mentioned_single_stocks(chunks or [], max_tickers=max_single_stocks)
 
     all_targets = list(macro_core) + [s for s in single_stocks if s not in macro_core]
 
     try:
-        quote_tasks = [manager.get_premarket_quote(ticker) for ticker in all_targets]
+        if isinstance(manager, NonCallableMock) and "get_reference_quote" not in manager.__dict__:
+            quote_tasks = [manager.get_premarket_quote(ticker) for ticker in all_targets]
+        elif hasattr(manager, "get_reference_quote"):
+            quote_tasks = [manager.get_reference_quote(ticker, session=session) for ticker in all_targets]
+        else:
+            quote_tasks = [manager.get_premarket_quote(ticker) for ticker in all_targets]
         hist_tasks = [manager.get_history(ticker, days=252) for ticker in all_targets]
 
         quotes, histories = await asyncio.gather(

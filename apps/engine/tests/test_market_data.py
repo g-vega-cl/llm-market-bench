@@ -478,3 +478,64 @@ def test_market_data_manager_setters():
 
     manager.provider = "custom_provider"
     assert manager.provider == "custom_provider"
+
+
+@pytest.mark.asyncio
+async def test_get_reference_quote_close_session_uses_daily_change():
+    """Verify get_reference_quote for 'close' session returns regular session daily change, not aftermarket tick."""
+    manager = MarketDataManager()
+    manager.provider = MagicMock()
+    # Provider has an aftermarket quote representing post-market drift (+0.08%)
+    manager.provider.get_aftermarket_quote = AsyncMock(return_value={"symbol": "SPY", "price": 753.23, "volume": 1000})
+    # Regular quote shows the actual day's rally: +2.37% from 735.29 to 752.69
+    manager.get_quote = AsyncMock(
+        return_value=TickerData(
+            ticker="SPY",
+            price=752.69,
+            market_cap=800e9,
+            previous_close=735.29,
+            change=17.40,
+            change_pct=2.36641,
+            volume=50000000,
+            exists=True,
+        )
+    )
+
+    result = await manager.get_reference_quote("SPY", session="close")
+    assert result is not None
+    assert result["price"] == 752.69
+    assert result["previous_close"] == 735.29
+    assert abs(result["change"] - 17.40) < 0.01
+    assert abs(result["change_pct"] - 2.36641) < 0.01
+
+
+@pytest.mark.asyncio
+async def test_fmp_provider_handles_null_market_cap():
+    """Verify FMPProvider.get_ticker_data handles marketCap: None gracefully without TypeError."""
+    from execution.providers.fmp import FMPProvider
+
+    provider = FMPProvider()
+    provider.api_key = "test_key"
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = [
+        {
+            "symbol": "EURUSD",
+            "price": 1.1221,
+            "marketCap": None,
+            "previousClose": 1.1218,
+            "change": 0.0003,
+            "changePercentage": 0.024,
+            "volume": 100000,
+            "currency": "USD",
+            "exchange": "FOREX",
+        }
+    ]
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        data = await provider.get_ticker_data("EURUSD")
+        assert data is not None
+        assert data.ticker == "EURUSD"
+        assert data.price == 1.1221
+        assert data.market_cap == 0.0

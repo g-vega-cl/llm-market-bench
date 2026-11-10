@@ -64,9 +64,15 @@ Bars with missing, non-numeric, `NaN`, or non-positive prices are dropped. Fewer
 
 `get_newsletter_reference_context()` is the async entry point used by [[entities/generated-newsletters]]. It:
 
-1. Builds the target list from a macro core set (`UUP`, `EURUSD`, `USDJPY`, `SPY`, `QQQ`, `TLT`, `GLD`, `USO`) plus the extracted single stocks, deduplicated.
-2. Fetches pre-market quotes and 252-day histories concurrently via `asyncio.gather` with `return_exceptions=True`, so a single failing ticker cannot abort the batch.
+1. Builds the target list from a macro core set (`SPY`, `QQQ`, `DIA`, `IWM`, `UUP`, `EURUSD`, `USDJPY`, `TLT`, `GLD`, `USO`) plus the extracted single stocks, deduplicated. The four major US equity indices are included so the reference matrix always carries official index closing levels and 1D moves.
+2. Fetches reference quotes and 252-day histories concurrently via `asyncio.gather` with `return_exceptions=True`, so a single failing ticker cannot abort the batch.
 3. Computes a profile per ticker and formats a Markdown table plus a bulleted highlight list.
+
+### Session-Aware Quote Resolution
+
+`get_newsletter_reference_context(..., session="close")` accepts a `session` argument forwarded from the newsletter generator (`"open"` for the Morning Market Open Briefing, `"close"` for the Evening Market Close Briefing). Quotes are resolved through `MarketDataManager.get_reference_quote(ticker, session=session)` when available, which anchors the 1D move to the prior trading day's close instead of an after-hours tick. This prevents post-market drift from corrupting the reported daily performance in the evening briefing.
+
+For backward compatibility the helper falls back to `get_premarket_quote` when the manager lacks `get_reference_quote` — including the case where the manager is a `unittest.mock.NonCallableMock` that has not had `get_reference_quote` explicitly configured. This keeps hermetic tests that patch the manager with a bare mock working without requiring the new method.
 
 The output is injected into the DeepSeek Flash prompt as `reference_context` under the heading `### 📊 Multi-Horizon Reference & Statistical Regime Matrix`. The newsletter system prompt carries a matching **Historical Reference & Statistical Context Mandate** instructing the model to never state a level in isolation, to always cite 52-week percentile, moving-average distance, Z-score/regime tag, and volatility regime, and to reproduce the reference table inside the Catalyst Radar section.
 
@@ -82,6 +88,7 @@ Two formatters exist:
 ## Related
 
 - [[entities/generated-newsletters]] — the consumer that injects this matrix into the briefing prompt
+- [[entities/market-data]] — supplies `get_reference_quote` and 252-day histories
 - [[entities/engine]] — the Python data engine hosting the analytics package
 - [[concepts/ingestion]] — upstream newsletter ingestion feeding the chunk scanner
 - [[concepts/fundamental-analysis]] — sibling context-enrichment layer for valuation metrics

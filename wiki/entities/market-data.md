@@ -19,6 +19,7 @@ The public entry point used by the pipeline. It wires together the cache, sessio
 - `get_quotes(tickers, force_refresh=False)` — batch retrieval: cache batch → provider batch → individual pass for anything still missing.
 - `get_history(ticker, days=14, force_refresh=False)` — historical bars, local DB first, then provider.
 - `get_premarket_quote(ticker)` — synthesizes a pre-market quote from aftermarket data, standard quotes, and history fallback.
+- `get_reference_quote(ticker, force_refresh=False, session="close")` — fetches regular session closing quote or pre-market reference quote with verified 1D price and percentage change vs prior trading day's close, preventing after-hours drift from corrupting daily performance metrics in evening synthesis pipelines.
 - `is_market_open()`, `is_premarket()`, `is_trading_day(target_date)`, `get_market_holidays()` — session checks delegated to the session manager.
 - `screen_stocks(...)` — provider screening with an in-memory screener cache keyed on the sorted parameter set.
 - Provider passthroughs: `get_key_metrics`, `get_earnings_history`, `get_analyst_estimates`, `get_financial_growth`, `get_company_profile`.
@@ -26,6 +27,19 @@ The public entry point used by the pipeline. It wires together the cache, sessio
 The manager exposes `client`, `cache_ttl_seconds`, and `provider` as properties with setters, so overrides propagate into the underlying `MarketDataCache`. `_validate_date_coverage` remains as a backward-compatibility alias for `market_transforms.validate_date_coverage`.
 
 `is_market_open()` and `get_market_holidays()` are thin delegations to `self.session` — the facade no longer copies caches or locks back and forth around the call. Shared state lives on `MarketSessionManager` and is reached through the lock proxy described below.
+
+#### `get_reference_quote` — Session-Anchored Reference Pricing
+
+`get_reference_quote(ticker, force_refresh=False, session="close")` returns a normalized quote dict (`price`, `previous_close`, `change`, `change_pct`, `volume`) whose 1D move is always measured against the prior trading day's close rather than an after-hours tick. It is the canonical quote accessor for evening synthesis pipelines (newsletter close briefing, FX context, multi-horizon reference matrix) where post-market drift would otherwise corrupt the reported daily performance.
+
+Resolution order:
+
+1. **`session="open"` pre-market short-circuit** — when `is_premarket()` is true, a `get_premarket_quote(ticker)` result with a non-null price is returned directly. Any exception during the pre-market check is logged at debug level and ignored.
+2. **Regular quote** — `get_quote(ticker, force_refresh=force_refresh)` supplies `price`, `previous_close`, `change`, and `change_pct`.
+3. **History fallback when no live price** — if the quote is missing or has a non-positive price, the last two bars of `get_history(ticker, days=5)` are used to derive `price`, `previous_close`, `change`, and `change_pct` from their `close` (or `price`) fields. Fewer than two valid bars returns `None`.
+4. **Previous-close backfill** — when the live quote lacks `previous_close` or `change_pct`, `_extract_history_prev_close(history)` (from `market_transforms`) supplies the prior close and the change/percentage are recomputed from it.
+
+Invalid input (empty or non-string ticker) returns `None`.
 
 ### `market_cache.py` — `MarketDataCache`
 
@@ -62,6 +76,7 @@ Stateless helpers with no I/O:
 
 - `validate_date_coverage(rows, days_requested)` — decides whether cached history is trustworthy: rejects all-today data, requires at least `ceil(days/2)` distinct dates, and rejects caches whose newest entry is more than 4 calendar days old.
 - `compute_premarket_quote(quote, aftermarket_quote, history)` — synthesizes a standardized pre-market quote dict (`price`, `previous_close`, `change`, `change_pct`, optional `volume`), preferring a dedicated aftermarket quote, falling back to the standard quote, and using recent history for a missing previous close.
+- `_extract_history_prev_close(history)` — resolves the prior trading day's close from a history list, used by `get_reference_quote` to backfill `previous_close` / `change_pct` when the live quote omits them.
 
 ## Retrieval Flow
 
@@ -76,3 +91,4 @@ Stateless helpers with no I/O:
 - [[concepts/execution]]
 - [[concepts/vertical-slice-islands]]
 - [[concepts/ingestion]]
+- [[concepts/multi-horizon-reference]]

@@ -103,6 +103,7 @@
 
 ## Concepts
 
+- [[concepts/in-flow-inspection]] — Zero floating tooltips/popovers; secondary telemetry renders in-flow in recessed `.voxel-trough` slots with keyboard-operable triggers
 - [[concepts/overreaction-mean-reversion]] — Auto-indexed page
 - [[concepts/iv-hist-iv-ratio]] — Auto-indexed page
 - [[concepts/chunk-reload-recovery]] — self-healing recovery from stale hashed chunks after a deploy (`vite:preloadError` listener + chunk-aware catch boundary with a 15s reload cooldown)

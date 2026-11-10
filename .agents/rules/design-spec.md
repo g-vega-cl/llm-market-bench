@@ -145,3 +145,19 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Boxel** aesthetic inspired b
 2. **Atomic fragments**: Every label, timestamp, and separator (`•`) is its own span with `whitespace-nowrap`. A line may break between fragments, never inside one. Keep the separator in the same span as the value that follows it so it cannot be stranded at a line end.
 3. **Long identifiers**: Handles, emails, and display names must declare `min-w-0 truncate` (or `break-words` where the full text matters).
 4. **Mobile verification**: Every UI change touching text rows must be checked at 360px width, and its component test must assert the `flex-wrap` / `whitespace-nowrap` classes.
+
+---
+
+## 10. Zero Floating Tooltips & Popovers (In-Flow Voxel Trough Inspection)
+
+1. **Absolute ban on floating tooltips & hover overlays**:
+   - Never implement, propose, or introduce floating tooltips, poppers, popovers, HTML `title` attributes, or SVG `<title>` hovers.
+   - *Rationale*: Floating elements obscure adjacent time-series or market data, cause visual jitter and layout flicker, fail completely on touch/mobile devices, and violate WCAG keyboard accessibility standards.
+2. **Mandatory in-flow `.voxel-trough` inspection pattern**:
+   - Secondary telemetry, details, and point inspections must always render in-flow inside a dedicated recessed `.voxel-trough` slot, contextual inspector bar, or bottom drawer.
+   - Interactive elements (e.g. chart markers, data points) must support keyboard navigation (`tabindex="0"`, `role="button"`, `aria-label`, `Enter`/`Space` handlers) and click selection to toggle or view details in the designated trough slot.
+3. **Design system precedence during planning & ideation**:
+   - Agents and developers must verify UI proposals against this design specification before suggesting interaction models in `/plan` or `/grill-me`.
+   - Never propose banned UI patterns (tooltips, modals, accordions) during feature design or user interviews.
+   - Never treat legacy code snippets or external library conventions as design canon without cross-checking `.agents/rules/design-spec.md`.
+

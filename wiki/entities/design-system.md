@@ -26,6 +26,7 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 12. **Zero hardcoded widths and heights ("Intrinsic Fluid Sizing")**: Avoid rigid fixed dimensions (`w-[...]`, `h-[...]`, `min-w-72`). Multi-column card panels size horizontally via fluid CSS Grid tracks (`repeat(auto-fit, minmax(min(100%, 18rem), 1fr))`) and flex wrappers (`flex-1 basis-96 min-w-0`). Vertical dimensions flow intrinsically from content + padding + container gap.
 13. **High-contrast indicator and badge semantics**: Contrast between badge text and background must meet or exceed WCAG AAA ($\ge 7:1$). Cheddar Gold (`bg-accent`) solid tags must use dark trough text (`text-boxel-trough`), never white. Status badges with indicators must use flex gap (`gap-1.5`) rather than child element margins (`mr-1.5`), ensuring zero phantom whitespace if an indicator is rendered invisible.
 14. **Mobile text rows wrap atomically**: Any row holding label/value, author/timestamp, or badge text uses `flex flex-wrap items-baseline gap-x-* gap-y-1` with `min-w-0` on each child group. Never combine `justify-between` with `items-center` on a text row without `flex-wrap`. Every label, timestamp, and `•` separator is its own `whitespace-nowrap` span (the separator stays in the same span as the value that follows it so it cannot be stranded at a line end), and handles, emails, and display names declare `min-w-0 truncate` (or `break-words` where the full text matters). Every UI change touching text rows must be verified at 360px width, and its component test must assert the `flex-wrap` / `whitespace-nowrap` classes. See section 9 of `.agents/rules/design-spec.md` and [[concepts/fluent-responsive-design]].
+15. **Zero floating tooltips & popovers (in-flow inspection)**: Never implement, propose, or introduce floating tooltips, poppers, popovers, HTML `title` attributes, or SVG `<title>` hovers. Secondary telemetry, details, and point inspections render in-flow inside a dedicated recessed `.voxel-trough` slot, contextual inspector bar, or bottom drawer. Interactive markers must be keyboard-operable (`tabindex="0"`, `role="button"`, `aria-label`, `Enter`/`Space` handlers) and drive the trough slot by click selection. See section 10 of `.agents/rules/design-spec.md` and [[concepts/in-flow-inspection]].
 
 ## Matcha & Cedar / Cheddar palette tokens
 
@@ -101,6 +102,18 @@ Composite views follow a strict parent-owns-spacing pattern:
 
 Neutral states use the `neutral` color scheme rather than `accent`. The `LiveAgentConsole` header ribbon renders its market bias and action telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) as compact `text-xs font-mono` text — a square pixel dot plus `BIAS:`/`ACT:` labels — rather than `Badge` elements, so the header never inherits the Cheddar Gold action fill. Direction and action colors are resolved from `DIRECTION_COLOR_MAP` (`BULLISH` → `text-success`/`bg-success`, `BEARISH` → `text-danger`/`bg-danger`, `NEUTRAL` → `text-boxel-ink`/`bg-boxel-muted`) and `ACTION_COLOR_MAP` (`BUY` → `text-success`, `SELL` → `text-danger`, `HOLD` → `text-boxel-muted`).
 
+## In-flow inspection (no floating overlays)
+
+Section 10 of `.agents/rules/design-spec.md` bans floating tooltips, poppers, popovers, HTML `title` attributes, and SVG `<title>` hovers outright. The rationale is concrete: floating elements obscure adjacent time-series or market data, cause visual jitter and layout flicker, fail completely on touch/mobile devices, and violate WCAG keyboard accessibility standards.
+
+Secondary telemetry, details, and point inspections therefore always render **in-flow**:
+
+- inside a dedicated recessed `.voxel-trough` slot (the same carved-slot surface used by `MetricTile`, `ConfidenceBar`, and formula blocks),
+- inside a contextual inspector bar adjacent to the visualization, or
+- inside a bottom drawer for larger payloads.
+
+Interactive elements that drive the inspector — chart markers, data points, table cells — must be keyboard-operable: `tabindex="0"`, `role="button"`, an `aria-label`, and `Enter`/`Space` handlers, with click selection toggling or updating the trough slot. Nothing floats above the canvas. See [[concepts/in-flow-inspection]].
+
 ## Page-level boxel migration
 
 Beyond the primitives, the feature pages render through the same boxel tokens and equal-height grids. Representative surfaces:
@@ -129,7 +142,8 @@ Beyond the primitives, the feature pages render through the same boxel tokens an
 3. **Closed variant props**: Components must accept only design-system-defined variants and color schemes.
 4. **Fluent responsive layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72` and `basis-96`). See [[concepts/fluent-responsive-design]].
 5. **Cumulative layout shift prevention**: Enforce silent Suspense fallbacks (`fallback={null}`) and `keepPreviousData` on timeframe queries. See [[concepts/cumulative-layout-shift]].
-6. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` boxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` rendering NEUTRAL/HOLD telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) with zero `.voxel-badge` elements, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
+6. **No floating overlays**: Tooltips, popovers, poppers, `title` attributes, and SVG `<title>` hovers are prohibited; detail renders in-flow in a `.voxel-trough` slot with keyboard-operable triggers. See [[concepts/in-flow-inspection]].
+7. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` boxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` rendering NEUTRAL/HOLD telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) with zero `.voxel-badge` elements, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
    - `ErrorCard` uses `rounded-none` (no `rounded-xl`), a `text-sm font-bold` title, a `text-xs font-normal` message, and a `text-sm font-bold` Retry button (no `rounded-lg`).
    - `EmptyState` uses a Tier 1 `text-lg font-bold` title (no `text-2xl`/`text-3xl`/`font-black`), a Tier 3 `text-xs font-normal` subtitle, no `text-6xl`/`text-7xl` emoji, and no `mb-*` margins.
    - `Input`/`Select` wrappers use `rounded-none` (no `rounded-xl`) and `Label` uses `text-sm font-bold` (no `font-semibold`).
@@ -143,5 +157,6 @@ Beyond the primitives, the feature pages render through the same boxel tokens an
 
 - [[entities/web-app]]
 - [[concepts/fluent-responsive-design]]
+- [[concepts/in-flow-inspection]]
 - [[concepts/cumulative-layout-shift]]
 - [[concepts/type-safety]]

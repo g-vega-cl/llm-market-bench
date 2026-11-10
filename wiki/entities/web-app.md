@@ -17,6 +17,16 @@ The global navigation bar in `apps/web/src/routes/__root.tsx` exposes strictly 3
 
 The topbar is a single non-wrapping row (`flex items-center`, no `flex-wrap`). The left cluster holds the `B` logo and the three nav items; the right cluster (`ml-auto shrink-0`) holds only the login/logout control. The authenticated user's email is **not** rendered in the navbar — the email badge that previously linked to `/profile` has been removed, so the logout link stays on the same row regardless of email length.
 
+## Homepage Benchmark Moves (Live Quote Merging)
+
+The homepage's inline S&P 500 benchmark trough computes `todayPct` and `weekPct` from the SPY benchmark history via `calculateBenchmarkMoves` in `apps/web/src/routes/index.tsx`. To keep the benchmark accurate during the trading session — before the EOD bar is persisted — the calculation merges a live intraday quote into the historical series.
+
+- **Live quote resolution** — the route loader prefers the latest live tape bar (`fetchLatestIntradayBars`) whose Eastern date matches today, falling back to `fetchLatestBenchmarkQuote('SPY')` (reads `market_data_cache`). Both are gated to today's Eastern date via `getEasternDate` (`apps/web/src/utils/date.ts`), which converts a timestamp to a `YYYY-MM-DD` string in `America/New_York` and avoids UTC day-rollover errors.
+- **Merge rules** (`mergeLatestBenchmarkQuote`) — a live quote is appended when its date is newer than the latest history point; it replaces the same-day bar only when the market is open (`isRegularMarketHours()`); a stale quote dated earlier than the latest history point is ignored. When the market is closed, the official EOD close is preserved and never overwritten by a stale tick.
+- **Safe history query** — `fetchBenchmarkHistory` now appends `T23:59:59.999Z` to a date-only `endDate` and skips the `.lte()` filter entirely when `endDate` is empty, avoiding invalid range queries.
+
+This ensures the homepage benchmark reflects intraday SPY movement during market hours while showing the official close after hours.
+
 ## Specialized lab routes
 
 - **Autoresearch Arena** (`/autoresearch`): Renders the Unified Risk-Adjusted Z-Score with $\sigma$ unit suffix, baseline comparisons, and step-by-step arithmetic drawers (`ScoreBreakdown.tsx`, `ScoreCalculation.tsx`, see [[concepts/risk-adjusted-z-score]]).

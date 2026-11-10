@@ -8,6 +8,7 @@ import {
     formatEasternShortDateWithYear,
     formatEasternShortTime,
     formatEasternTime,
+    getEasternDate,
     normalizeWhitespace,
 } from './date';
 
@@ -127,5 +128,23 @@ describe('Centralized Eastern Time date formatters', () => {
         expect(formatEasternDateTimeWithYear(null)).toBe('Pending');
         expect(formatEasternDateTimeWithYear(undefined)).toBe('Pending');
         expect(formatEasternDateTimeWithYear('')).toBe('Pending');
+    });
+
+    describe('getEasternDate', () => {
+        it('extracts YYYY-MM-DD in America/New_York avoiding UTC rollover', () => {
+            // At 19:30 EST (Nov 10), UTC is 00:30 UTC next day (Nov 11)
+            const utcMidnightNextDay = '2026-11-11T00:30:00Z';
+            expect(getEasternDate(utcMidnightNextDay)).toBe('2026-11-10');
+
+            // At 15:00 UTC (10:00 AM EST)
+            const dayTime = '2026-11-10T15:00:00Z';
+            expect(getEasternDate(dayTime)).toBe('2026-11-10');
+        });
+
+        it('handles null, undefined, or invalid dates gracefully', () => {
+            expect(getEasternDate('invalid-date')).toBe('');
+            expect(getEasternDate(null)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+            expect(getEasternDate(undefined)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        });
     });
 });

@@ -5,6 +5,20 @@
  */
 
 /**
+ * Converts a timestamp or Date object into a YYYY-MM-DD date string in America/New_York (Eastern Time).
+ * e.g. "2026-11-10"
+ */
+export function getEasternDate(dateStrOrObj?: string | Date | null): string {
+    const date = dateStrOrObj
+        ? typeof dateStrOrObj === 'string'
+            ? new Date(dateStrOrObj)
+            : dateStrOrObj
+        : new Date();
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
+/**
  * Replaces any form of whitespace (including U+202F narrow no-break space
  * and U+00A0 non-breaking space) with a standard U+0020 space.
  */

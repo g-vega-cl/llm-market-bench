@@ -5,6 +5,7 @@ import type {
     TradeWithReasoning,
 } from '@llm-market-bench/database';
 import { getDbServerClient } from '~/lib/db';
+import { getEasternDate } from '~/utils/date';
 import {
     getActiveOwnerIds,
     isAutoresearchPortfolio,
@@ -469,6 +470,35 @@ export async function fetchAllActivePortfolioPerformance(maxDays: number = 90): 
     };
 }
 
+export interface LiveBenchmarkQuote {
+    price: number;
+    date: string;
+}
+
+export async function fetchLatestBenchmarkQuote(
+    ticker = 'SPY',
+): Promise<LiveBenchmarkQuote | null> {
+    try {
+        const supabase = getDbServerClient();
+        const { data: cacheRow } = await supabase
+            .from('market_data_cache')
+            .select('price, fetched_at')
+            .eq('ticker', ticker)
+            .maybeSingle();
+
+        if (cacheRow?.price && cacheRow.fetched_at) {
+            const price = Number(cacheRow.price);
+            const date = getEasternDate(cacheRow.fetched_at);
+            if (price > 0 && date) {
+                return { price, date };
+            }
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 export async function fetchBenchmarkHistory(
     tickers: string[],
     startDate: string,
@@ -481,13 +511,23 @@ export async function fetchBenchmarkHistory(
     const limit = 1000;
     let from = 0;
 
+    const effectiveEndDate =
+        endDate && !endDate.includes('T') ? `${endDate}T23:59:59.999Z` : endDate;
+
     while (true) {
-        const { data, error } = await supabase
+        let query = supabase
             .from('price_history')
             .select('ticker, price, fetched_at')
-            .in('ticker', tickers)
-            .gte('fetched_at', startDate)
-            .lte('fetched_at', endDate)
+            .in('ticker', tickers);
+
+        if (startDate) {
+            query = query.gte('fetched_at', startDate);
+        }
+        if (effectiveEndDate) {
+            query = query.lte('fetched_at', effectiveEndDate);
+        }
+
+        const { data, error } = await query
             .order('fetched_at', { ascending: true })
             .range(from, from + limit - 1);
 

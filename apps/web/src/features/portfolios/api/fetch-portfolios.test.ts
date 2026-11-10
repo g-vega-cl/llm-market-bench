@@ -19,6 +19,7 @@ vi.mock('~/lib/db', () => ({
 import {
     fetchAllActivePortfolioPerformance,
     fetchBenchmarkHistory,
+    fetchLatestBenchmarkQuote,
     fetchPortfolios,
     fetchPositions,
 } from './fetch-portfolios';
@@ -480,4 +481,36 @@ test('fetchPositions ignores historical SHORT trades that have matching COVER tr
 
     const positions = await fetchPositions('pid-2');
     expect(positions).toHaveLength(0);
+});
+
+test('fetchLatestBenchmarkQuote extracts price and converts UTC timestamp to Eastern Date', async () => {
+    mockSupabaseClient = {
+        from: vi.fn(() => ({
+            select: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                    maybeSingle: vi.fn(() =>
+                        Promise.resolve({
+                            data: { price: 747.08, fetched_at: '2026-11-10T18:41:00Z' },
+                            error: null,
+                        }),
+                    ),
+                })),
+            })),
+        })),
+    } as unknown as MockSupabaseChain;
+
+    const quote = await fetchLatestBenchmarkQuote('SPY');
+    expect(quote).toEqual({
+        price: 747.08,
+        date: '2026-11-10',
+    });
+});
+
+test('fetchBenchmarkHistory handles empty endDate string safely without invalid lte query', async () => {
+    const mockClient = createMockSupabaseClient([]);
+    mockSupabaseClient = mockClient;
+
+    const result = await fetchBenchmarkHistory(['SPY'], '2024-01-01', '');
+    expect(result.SPY).toEqual([]);
+    expect(mockClient.lte).not.toHaveBeenCalled();
 });

@@ -1,61 +1,114 @@
-const CHUNK_RELOAD_STORAGE_KEY = 'benchify:last_chunk_reload';
-const DEFAULT_COOLDOWN_MS = 15000;
+const CHUNK_RELOAD_COUNT_KEY = 'benchify:chunk_reload_count';
+const CHUNK_RELOAD_TS_KEY = 'benchify:last_chunk_reload_ts';
+const DEFAULT_COOLDOWN_WINDOW_MS = 60000;
+const MAX_AUTO_RELOADS = 1;
+
+declare global {
+    interface Window {
+        __benchify_vite_preload_bound__?: boolean;
+    }
+}
 
 /**
  * Checks whether an incoming error corresponds to a dynamic import / chunk load failure.
- * Captures browser-specific signatures from Chromium, WebKit/Safari, Firefox, and Webpack/Rollup.
+ * Inspects both error message and nested error cause across Chromium, Safari, Firefox, and Webpack/Rollup.
  */
 export function isDynamicChunkError(error: unknown): boolean {
     if (!error) return false;
-    const message = (
-        error instanceof Error ? error.message : typeof error === 'string' ? error : String(error)
-    ).toLowerCase();
+
+    const extract = (err: unknown): string => {
+        if (!err) return '';
+        if (err instanceof Error) {
+            const causeMsg =
+                err.cause instanceof Error
+                    ? err.cause.message
+                    : typeof err.cause === 'string'
+                      ? err.cause
+                      : '';
+            return `${err.message} ${causeMsg}`;
+        }
+        return typeof err === 'string' ? err : String(err);
+    };
+
+    const message = extract(error).toLowerCase();
 
     return (
         message.includes('failed to fetch dynamically imported module') ||
         message.includes('error loading dynamically imported module') ||
         message.includes('importing a module script failed') ||
-        message.includes('loading chunk')
+        (message.includes('loading chunk') && message.includes('failed'))
     );
 }
 
 interface TriggerChunkReloadOptions {
+    targetHref?: string;
     cooldownMs?: number;
+    maxRetries?: number;
     storage?: Storage;
-    reloadFn?: () => void;
+    reloadFn?: (url?: string) => void;
+}
+
+function shouldAllowReloadAttempt(
+    storage: Storage | null,
+    cooldownMs: number,
+    maxRetries: number,
+    now: number,
+): boolean {
+    if (!storage) return true;
+
+    try {
+        const lastTs = Number(storage.getItem(CHUNK_RELOAD_TS_KEY) || '0');
+        let count = Number(storage.getItem(CHUNK_RELOAD_COUNT_KEY) || '0');
+
+        // Reset counter if previous attempt happened outside the cooldown window
+        if (now - lastTs > cooldownMs) {
+            count = 0;
+        }
+
+        // Hard circuit-breaker: fail closed if max retries exceeded
+        if (count >= maxRetries) {
+            return false;
+        }
+
+        storage.setItem(CHUNK_RELOAD_COUNT_KEY, String(count + 1));
+        storage.setItem(CHUNK_RELOAD_TS_KEY, String(now));
+        return true;
+    } catch {
+        // Storage quota or privacy sandbox errors; fall through to allow reload once
+        return true;
+    }
 }
 
 /**
- * Performs a single hard page reload to refresh runtime assets after a deployment.
- * Guarded by a timestamp in sessionStorage to prevent infinite reload loops if an asset
- * is persistently unavailable.
+ * Performs a single hard page reload or redirect to refresh runtime assets after a deployment.
+ * Guarded by an attempt counter circuit-breaker in sessionStorage to eliminate infinite reload loops.
  *
- * @returns true if reload was triggered, false if suppressed by cooldown or SSR.
+ * @returns true if reload was triggered, false if suppressed by circuit-breaker or SSR.
  */
 export function triggerChunkReload(options?: TriggerChunkReloadOptions): boolean {
     if (typeof window === 'undefined') return false;
 
-    const cooldownMs = options?.cooldownMs ?? DEFAULT_COOLDOWN_MS;
+    const cooldownMs = options?.cooldownMs ?? DEFAULT_COOLDOWN_WINDOW_MS;
+    const maxRetries = options?.maxRetries ?? MAX_AUTO_RELOADS;
     const storage =
         options?.storage ?? (typeof sessionStorage !== 'undefined' ? sessionStorage : null);
-    const reloadFn = options?.reloadFn ?? (() => window.location.reload());
+    const reloadFn =
+        options?.reloadFn ??
+        ((url?: string) => {
+            if (url && typeof window !== 'undefined' && url !== window.location.href) {
+                window.location.href = url;
+            } else if (typeof window !== 'undefined') {
+                window.location.reload();
+            }
+        });
 
     const now = Date.now();
-
-    if (storage) {
-        try {
-            const lastReload = Number(storage.getItem(CHUNK_RELOAD_STORAGE_KEY) || '0');
-            if (now - lastReload < cooldownMs) {
-                return false;
-            }
-            storage.setItem(CHUNK_RELOAD_STORAGE_KEY, String(now));
-        } catch {
-            // Storage quota or privacy sandbox errors; fall through to execute reload once
-        }
+    if (!shouldAllowReloadAttempt(storage, cooldownMs, maxRetries, now)) {
+        return false;
     }
 
     try {
-        reloadFn();
+        reloadFn(options?.targetHref);
         return true;
     } catch {
         return false;
@@ -63,19 +116,23 @@ export function triggerChunkReload(options?: TriggerChunkReloadOptions): boolean
 }
 
 interface SetupVitePreloadErrorOptions {
-    cooldownMs?: number;
     storage?: Storage;
-    reloadFn?: () => void;
+    reloadFn?: (url?: string) => void;
 }
 
 /**
- * Attaches a global listener for Vite's `vite:preloadError` event.
+ * Attaches an idempotent global listener for Vite's `vite:preloadError` event.
  * Dispatched automatically by Vite when a dynamically imported chunk fails to fetch.
  */
 export function setupVitePreloadErrorHandler(options?: SetupVitePreloadErrorOptions): () => void {
     if (typeof window === 'undefined') {
         return () => {};
     }
+
+    if (window.__benchify_vite_preload_bound__) {
+        return () => {};
+    }
+    window.__benchify_vite_preload_bound__ = true;
 
     const handler = (event: Event) => {
         event.preventDefault();
@@ -85,6 +142,7 @@ export function setupVitePreloadErrorHandler(options?: SetupVitePreloadErrorOpti
     window.addEventListener('vite:preloadError', handler);
 
     return () => {
+        window.__benchify_vite_preload_bound__ = false;
         window.removeEventListener('vite:preloadError', handler);
     };
 }

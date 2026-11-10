@@ -115,4 +115,24 @@ describe('DefaultCatchBoundary', () => {
         );
         consoleSpy.mockRestore();
     });
+
+    it('displays honest manual reload message when auto-reload is suppressed by circuit breaker', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const chunkUtils = await import('~/utils/chunk-reload');
+        const triggerSpy = vi.spyOn(chunkUtils, 'triggerChunkReload').mockReturnValue(false);
+
+        const chunkErr = new TypeError(
+            'Failed to fetch dynamically imported module: https://www.benchify.dev/assets/index-CZJZmMUs.js',
+        );
+
+        render(<DefaultCatchBoundary error={chunkErr} reset={vi.fn()} />);
+
+        expect(
+            screen.getByText(/unable to load the latest application update/i),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /reload page/i })).toBeInTheDocument();
+
+        triggerSpy.mockRestore();
+        consoleSpy.mockRestore();
+    });
 });

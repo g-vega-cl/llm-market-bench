@@ -2,7 +2,7 @@ import { Button } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { ErrorComponent, Link, rootRouteId, useMatch, useRouter } from '@tanstack/react-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isDynamicChunkError, triggerChunkReload } from '~/utils/chunk-reload';
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
@@ -14,6 +14,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
     const posthog = usePostHog();
     const trackedErrorRef = useRef<unknown>(null);
     const isChunkErr = isDynamicChunkError(error);
+    const [autoReloadTriggered, setAutoReloadTriggered] = useState(false);
 
     useEffect(() => {
         if (!error || trackedErrorRef.current === error) return;
@@ -21,7 +22,10 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
 
         let autoReloaded = false;
         if (isChunkErr) {
-            autoReloaded = triggerChunkReload();
+            autoReloaded = triggerChunkReload({
+                targetHref: router.state?.location?.href,
+            });
+            setAutoReloadTriggered(autoReloaded);
         }
 
         const err = error instanceof Error ? error : new Error(String(error));
@@ -35,7 +39,14 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
                 auto_reloaded: autoReloaded,
             });
         }
-    }, [error, isChunkErr, isRoot, posthog, router.state?.location?.pathname]);
+    }, [
+        error,
+        isChunkErr,
+        isRoot,
+        posthog,
+        router.state?.location?.href,
+        router.state?.location?.pathname,
+    ]);
 
     console.error(error);
 
@@ -43,14 +54,18 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
         return (
             <div className="min-w-0 flex-1 p-8 flex flex-col items-center justify-center gap-4">
                 <div className="voxel-trough px-4 py-3 text-xs text-boxel-muted border border-boxel-bevel-hi flex items-center gap-2">
-                    <span className="font-mono">Updating application to latest version…</span>
+                    <span className="font-mono">
+                        {autoReloadTriggered
+                            ? 'Updating application to latest version…'
+                            : 'Unable to load the latest application update. Please reload the page.'}
+                    </span>
                 </div>
                 <Button
                     type="button"
                     variant="ghost"
                     colorScheme="neutral"
                     size="sm"
-                    className="uppercase font-bold text-xs"
+                    className="uppercase font-bold text-sm"
                     onClick={() => {
                         window.location.reload();
                     }}

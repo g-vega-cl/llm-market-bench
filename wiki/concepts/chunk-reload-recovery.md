@@ -28,38 +28,49 @@ if (typeof window !== 'undefined') {
 
 Errors that reach the router's catch boundary (rather than the preload event) are handled by `apps/web/src/components/ui/DefaultCatchBoundary.tsx`. It computes `isChunkErr = isDynamicChunkError(error)` and, when true:
 
-1. Calls `triggerChunkReload()` inside the deduplicated `useEffect` and records the boolean result as `autoReloaded`.
+1. Calls `triggerChunkReload({ targetHref: router.state?.location?.href })` inside the deduplicated `useEffect`, preserving the intended navigation destination, and records the boolean result in the `autoReloadTriggered` React state (via `useState`).
 2. Captures the exception to PostHog with `chunk_error: isChunkErr` and `auto_reloaded: autoReloaded` in addition to `source`, `is_root`, `pathname`, and `route_id`.
-3. Renders a self-healing state instead of the generic `ErrorComponent`: a recessed `voxel-trough` strip reading `Updating application to latest version…` plus a `Reload Page` ghost button that calls `window.location.reload()`.
+3. Renders a self-healing state instead of the generic `ErrorComponent`: a recessed `voxel-trough` strip plus a `Reload Page` ghost button that calls `window.location.reload()`.
 
-Non-chunk errors keep the original `ErrorComponent` rendering path unchanged.
+### Honest Fallback Messaging
+
+The status text is conditional on whether the automatic reload actually fired (i.e. was not suppressed by the circuit breaker):
+
+| `autoReloadTriggered` | Rendered message |
+| :--- | :--- |
+| `true` | `Updating application to latest version…` |
+| `false` | `Unable to load the latest application update. Please reload the page.` |
+
+When the breaker trips (an asset is persistently unavailable — adblocker or CDN failure), the UI stops pretending it is updating and instead asks the user to reload manually. The `Reload Page` button remains available in both states. Non-chunk errors keep the original `ErrorComponent` rendering path unchanged.
 
 ## Detection Signatures (`isDynamicChunkError`)
 
-`isDynamicChunkError(error)` normalizes the input (an `Error`, a raw string, or anything else via `String(error)`) to lowercase and matches any of the browser-specific signatures:
+`isDynamicChunkError(error)` normalizes the input (an `Error`, a raw string, or anything else via `String(error)`) to lowercase and matches any of the browser-specific signatures. It inspects both the top-level `error.message` **and** any nested `error.cause` (an `Error` or string), so wrapped route-transition errors that bury the real dynamic-import failure in `cause` are still detected:
 
 | Signature | Browser / Bundler |
 | :--- | :--- |
 | `failed to fetch dynamically imported module` | Chromium (Chrome, Brave, Edge) |
 | `error loading dynamically imported module` | Firefox |
 | `importing a module script failed` | WebKit / Safari |
-| `loading chunk` | Webpack / Rollup chunk load failure |
+| `loading chunk` **AND** `failed` | Webpack / Rollup chunk load failure |
 
-Falsy input (`null`, `undefined`) and unrelated errors (`Network timeout`, `Cannot read property of undefined`) return `false`.
+Falsy input (`null`, `undefined`) and unrelated errors (`Network timeout`, `Cannot read property of undefined`) return `false`. The Webpack/Rollup `loading chunk` signature is deliberately conjunctive (requires `failed` too) so innocuous strings such as `Finished loading chunk into memory` do not over-match.
 
 ## Reload Guard (`triggerChunkReload`)
 
-`triggerChunkReload({ cooldownMs?, storage?, reloadFn? })` performs at most one hard reload per cooldown window and returns `true` when a reload was triggered, `false` when suppressed.
+`triggerChunkReload({ targetHref?, cooldownMs?, maxRetries?, storage?, reloadFn? })` performs at most one hard reload/redirect per cooldown window and returns `true` when a reload was triggered, `false` when suppressed by the circuit breaker.
 
 - **SSR guard** — returns `false` immediately when `typeof window === 'undefined'`.
-- **Cooldown** — `DEFAULT_COOLDOWN_MS = 15000` (15 seconds). The last reload timestamp is persisted in `sessionStorage` under `benchify:last_chunk_reload`; a call within the window returns `false` without reloading, preventing infinite reload loops when an asset is persistently unavailable.
+- **Bounded Circuit Breaker** — `MAX_AUTO_RELOADS = 1` attempt per cooldown window (`DEFAULT_COOLDOWN_WINDOW_MS = 60000`). The reload attempt count is persisted in `sessionStorage` under `benchify:chunk_reload_count` and the timestamp under `benchify:last_chunk_reload_ts`. If an asset is persistently missing (adblocker, CDN failure), the breaker trips after 1 attempt, failing closed to the honest manual-reload UI to eliminate infinite reload loops. The count resets to 0 when the previous attempt falls outside the cooldown window, re-arming the auto-reload path.
+- **Navigation Destination Preservation** — accepts `targetHref` (e.g. from `router.state?.location?.href`). If the target route differs from the current `window.location.href`, it redirects to `targetHref` rather than resetting the user back to the origin page.
 - **Storage failure tolerance** — `getItem`/`setItem` are wrapped in `try/catch` so privacy sandboxes or quota errors fall through to a single reload attempt.
-- **Injectable dependencies** — `storage` and `reloadFn` are overridable for tests; production defaults are `sessionStorage` and `() => window.location.reload()`.
+- **Idempotency** — `setupVitePreloadErrorHandler` guards against duplicate window listeners using `window.__benchify_vite_preload_bound__`; a second call returns a no-op cleanup and does not double-register. Cleanup clears the flag so the handler can be re-armed.
+- **Injectable dependencies** — `storage` and `reloadFn` are overridable for tests; production defaults are `sessionStorage` and redirecting/reloading. `reloadFn` accepts an optional `url` argument (`(url?: string) => void`) and navigates to it when supplied.
 
 ## Testing
 
-- `apps/web/src/utils/chunk-reload.test.ts` covers all four detection signatures, string input, negative cases, first-reload success with timestamp persistence, suppression inside the 15-second cooldown, re-arming after the cooldown expires, and `setupVitePreloadErrorHandler` dispatching `vite:preloadError` (asserting `defaultPrevented === true`) plus listener cleanup.
-- `apps/web/src/components/ui/DefaultCatchBoundary.test.tsx` asserts a chunk `TypeError` renders the "Updating application to latest version" UI (and not "Something went wrong") and captures the exception with `chunk_error: true`.
+- `apps/web/src/utils/chunk-reload.test.ts` covers all detection signatures, nested error causes, string input, negative cases (including the `loading chunk`-without-`failed` non-match), first-reload success with timestamp and count persistence, circuit-breaker suppression on repeated failures, destination target preservation, re-arming after the cooldown expires, and idempotent listener registration/cleanup.
+- `apps/web/src/components/ui/DefaultCatchBoundary.test.tsx` asserts a chunk `TypeError` renders the "Updating application to latest version" UI when auto-reloading, displays the honest manual reload message when the circuit breaker suppresses the reload, and captures the exception with `chunk_error: true`.
 - `apps/web/src/routes/-__root.test.tsx` dispatches a synthetic `vite:preloadError` on `window` and asserts `event.defaultPrevented` is `true`.
 
 ## Related

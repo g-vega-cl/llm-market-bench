@@ -23,6 +23,8 @@ describe('chunk-reload utilities', () => {
     beforeEach(() => {
         mockStorage = {};
         vi.clearAllMocks();
+        delete (window as unknown as { __benchify_vite_preload_bound__?: boolean })
+            .__benchify_vite_preload_bound__;
     });
 
     afterEach(() => {
@@ -52,6 +54,18 @@ describe('chunk-reload utilities', () => {
             expect(isDynamicChunkError(err)).toBe(true);
         });
 
+        it('inspects nested error cause for chunk failures', () => {
+            const rootErr = new Error('Route transition failed', {
+                cause: new TypeError('Failed to fetch dynamically imported module'),
+            });
+            expect(isDynamicChunkError(rootErr)).toBe(true);
+        });
+
+        it('does not over-match unrelated strings containing loading chunk without failed', () => {
+            const err = new Error('Finished loading chunk into memory');
+            expect(isDynamicChunkError(err)).toBe(false);
+        });
+
         it('handles string errors directly', () => {
             expect(
                 isDynamicChunkError(
@@ -71,7 +85,7 @@ describe('chunk-reload utilities', () => {
     });
 
     describe('triggerChunkReload', () => {
-        it('triggers reload on first invocation and records timestamp', () => {
+        it('triggers reload on first invocation and records attempt count and timestamp', () => {
             const reloadFn = vi.fn();
             const now = 1000000;
             vi.spyOn(Date, 'now').mockReturnValue(now);
@@ -84,12 +98,16 @@ describe('chunk-reload utilities', () => {
             expect(result).toBe(true);
             expect(reloadFn).toHaveBeenCalledTimes(1);
             expect(fakeSessionStorage.setItem).toHaveBeenCalledWith(
-                'benchify:last_chunk_reload',
+                'benchify:chunk_reload_count',
+                '1',
+            );
+            expect(fakeSessionStorage.setItem).toHaveBeenCalledWith(
+                'benchify:last_chunk_reload_ts',
                 String(now),
             );
         });
 
-        it('suppresses reload within cooldown window to prevent reload loops', () => {
+        it('suppresses reload on second invocation within cooldown to prevent loops (circuit-breaker)', () => {
             const reloadFn = vi.fn();
             const now = 1000000;
             vi.spyOn(Date, 'now').mockReturnValue(now);
@@ -98,8 +116,8 @@ describe('chunk-reload utilities', () => {
             triggerChunkReload({ storage: fakeSessionStorage, reloadFn });
             expect(reloadFn).toHaveBeenCalledTimes(1);
 
-            // Second reload 5 seconds later (within 15s cooldown)
-            vi.spyOn(Date, 'now').mockReturnValue(now + 5000);
+            // Second reload 10 seconds later (within 60s cooldown window)
+            vi.spyOn(Date, 'now').mockReturnValue(now + 10000);
             const secondResult = triggerChunkReload({
                 storage: fakeSessionStorage,
                 reloadFn,
@@ -109,7 +127,7 @@ describe('chunk-reload utilities', () => {
             expect(reloadFn).toHaveBeenCalledTimes(1); // Still 1, not called again
         });
 
-        it('allows reload after cooldown window expires', () => {
+        it('resets retry count and allows reload after cooldown window expires', () => {
             const reloadFn = vi.fn();
             const now = 1000000;
             vi.spyOn(Date, 'now').mockReturnValue(now);
@@ -118,8 +136,8 @@ describe('chunk-reload utilities', () => {
             triggerChunkReload({ storage: fakeSessionStorage, reloadFn });
             expect(reloadFn).toHaveBeenCalledTimes(1);
 
-            // Advance 16 seconds (past 15s cooldown)
-            vi.spyOn(Date, 'now').mockReturnValue(now + 16000);
+            // Advance 61 seconds (past 60s cooldown)
+            vi.spyOn(Date, 'now').mockReturnValue(now + 61000);
             const thirdResult = triggerChunkReload({
                 storage: fakeSessionStorage,
                 reloadFn,
@@ -127,6 +145,19 @@ describe('chunk-reload utilities', () => {
 
             expect(thirdResult).toBe(true);
             expect(reloadFn).toHaveBeenCalledTimes(2);
+        });
+
+        it('passes targetHref to reloadFn so navigation destination is preserved', () => {
+            const reloadFn = vi.fn();
+            const target = 'https://www.benchify.dev/portfolios/sys-sentiment-fader';
+
+            triggerChunkReload({
+                targetHref: target,
+                storage: fakeSessionStorage,
+                reloadFn,
+            });
+
+            expect(reloadFn).toHaveBeenCalledWith(target);
         });
     });
 
@@ -138,7 +169,6 @@ describe('chunk-reload utilities', () => {
                 reloadFn,
             });
 
-            // Dispatch synthetic vite:preloadError event
             const event = new CustomEvent('vite:preloadError', {
                 detail: new Error('Failed to fetch dynamically imported module'),
                 cancelable: true,
@@ -150,10 +180,32 @@ describe('chunk-reload utilities', () => {
 
             cleanup();
 
-            // Dispatching after cleanup should not invoke reloadFn again
             const event2 = new CustomEvent('vite:preloadError', { cancelable: true });
             window.dispatchEvent(event2);
             expect(reloadFn).toHaveBeenCalledTimes(1);
+        });
+
+        it('is idempotent and prevents duplicate event listeners', () => {
+            const reloadFn1 = vi.fn();
+            const reloadFn2 = vi.fn();
+
+            const cleanup1 = setupVitePreloadErrorHandler({
+                storage: fakeSessionStorage,
+                reloadFn: reloadFn1,
+            });
+            const cleanup2 = setupVitePreloadErrorHandler({
+                storage: fakeSessionStorage,
+                reloadFn: reloadFn2,
+            });
+
+            const event = new CustomEvent('vite:preloadError', { cancelable: true });
+            window.dispatchEvent(event);
+
+            expect(reloadFn1).toHaveBeenCalledTimes(1);
+            expect(reloadFn2).not.toHaveBeenCalled();
+
+            cleanup1();
+            cleanup2();
         });
     });
 });

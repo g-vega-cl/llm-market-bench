@@ -237,7 +237,7 @@ async def get_newsletter_options_context(ticker: str = "SPY") -> str:
     return "\n\n".join(sections)
 
 
-async def get_newsletter_fx_context(mdm=None) -> str:
+async def get_newsletter_fx_context(mdm=None, session: str = "close") -> str:
     """Fetch live Foreign Exchange (FX) and US Dollar Index metrics for newsletter context.
 
     Queries UUP (US Dollar Index proxy) along with major currency pairs (EURUSD, USDJPY)
@@ -252,16 +252,14 @@ async def get_newsletter_fx_context(mdm=None) -> str:
         ("USDJPY", "USD/JPY"),
     ]
 
-    from unittest.mock import NonCallableMock
-
-    if isinstance(manager, NonCallableMock) and "get_reference_quote" not in manager.__dict__:
-        quote_fn = manager.get_premarket_quote
-    else:
-        quote_fn = getattr(manager, "get_reference_quote", manager.get_premarket_quote)
-
     try:
+        if hasattr(manager, "get_reference_quote"):
+            quote_tasks = [manager.get_reference_quote(ticker, session=session) for ticker, _ in fx_targets]
+        else:
+            quote_tasks = [manager.get_premarket_quote(ticker) for ticker, _ in fx_targets]
+
         quotes = await asyncio.gather(
-            *[quote_fn(ticker) for ticker, _ in fx_targets],
+            *quote_tasks,
             return_exceptions=True,
         )
     except Exception as e:
@@ -381,7 +379,7 @@ async def generate_daily_newsletter(
     # Step 4.5: Fetch FX & Dollar Index context
     fx_context = ""
     try:
-        fx_context = await get_newsletter_fx_context()
+        fx_context = await get_newsletter_fx_context(session=session)
     except Exception as e:
         logger.warning(f"Could not fetch FX context for newsletter: {e}")
 

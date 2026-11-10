@@ -510,6 +510,41 @@ async def test_get_reference_quote_close_session_uses_daily_change():
 
 
 @pytest.mark.asyncio
+async def test_get_reference_quote_open_session_premarket():
+    """Verify get_reference_quote for 'open' session during premarket hours returns premarket quote."""
+    manager = MarketDataManager()
+    manager.is_premarket = AsyncMock(return_value=True)
+    manager.get_premarket_quote = AsyncMock(
+        return_value={"price": 755.0, "previous_close": 752.69, "change": 2.31, "change_pct": 0.31}
+    )
+
+    result = await manager.get_reference_quote("SPY", session="open")
+    assert result is not None
+    assert result["price"] == 755.0
+    manager.get_premarket_quote.assert_awaited_once_with("SPY")
+
+
+@pytest.mark.asyncio
+async def test_get_reference_quote_reuses_passed_history():
+    """Verify get_reference_quote reuses passed history and does not trigger extra get_history calls."""
+    manager = MarketDataManager()
+    manager.get_quote = AsyncMock(return_value=None)
+    manager.get_history = AsyncMock()
+
+    custom_history = [
+        {"close": 1.0800, "date": "2026-11-06"},
+        {"close": 1.0850, "date": "2026-11-09"},
+    ]
+    result = await manager.get_reference_quote(
+        "EURUSD", session="close", history=custom_history, target_date="2026-11-09"
+    )
+    assert result is not None
+    assert result["price"] == 1.0850
+    assert result["previous_close"] == 1.0800
+    manager.get_history.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_fmp_provider_handles_null_market_cap():
     """Verify FMPProvider.get_ticker_data handles marketCap: None gracefully without TypeError."""
     from execution.providers.fmp import FMPProvider

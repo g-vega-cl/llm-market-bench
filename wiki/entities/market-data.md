@@ -19,7 +19,7 @@ The public entry point used by the pipeline. It wires together the cache, sessio
 - `get_quotes(tickers, force_refresh=False)` — batch retrieval: cache batch → provider batch → individual pass for anything still missing.
 - `get_history(ticker, days=14, force_refresh=False)` — historical bars, local DB first, then provider.
 - `get_premarket_quote(ticker)` — synthesizes a pre-market quote from aftermarket data, standard quotes, and history fallback.
-- `get_reference_quote(ticker, force_refresh=False, session="close")` — fetches regular session closing quote or pre-market reference quote with verified 1D price and percentage change vs prior trading day's close, preventing after-hours drift from corrupting daily performance metrics in evening synthesis pipelines.
+- `get_reference_quote(ticker, force_refresh=False, session="close", history=None, target_date=None)` — fetches regular session closing quote or pre-market reference quote with verified 1D price and percentage change vs prior trading day's close, preventing after-hours drift from corrupting daily performance metrics in evening synthesis pipelines.
 - `is_market_open()`, `is_premarket()`, `is_trading_day(target_date)`, `get_market_holidays()` — session checks delegated to the session manager.
 - `screen_stocks(...)` — provider screening with an in-memory screener cache keyed on the sorted parameter set.
 - Provider passthroughs: `get_key_metrics`, `get_earnings_history`, `get_analyst_estimates`, `get_financial_growth`, `get_company_profile`.
@@ -30,14 +30,16 @@ The manager exposes `client`, `cache_ttl_seconds`, and `provider` as properties 
 
 #### `get_reference_quote` — Session-Anchored Reference Pricing
 
-`get_reference_quote(ticker, force_refresh=False, session="close")` returns a normalized quote dict (`price`, `previous_close`, `change`, `change_pct`, `volume`) whose 1D move is always measured against the prior trading day's close rather than an after-hours tick. It is the canonical quote accessor for evening synthesis pipelines (newsletter close briefing, FX context, multi-horizon reference matrix) where post-market drift would otherwise corrupt the reported daily performance.
+`get_reference_quote(ticker, force_refresh=False, session="close", history=None, target_date=None)` returns a normalized quote dict (`price`, `previous_close`, `change`, `change_pct`, optional `volume`) whose 1D move is always measured against the prior trading day's close rather than an after-hours tick. It is the canonical quote accessor for evening synthesis pipelines (newsletter close briefing, FX context, multi-horizon reference matrix) where post-market drift would otherwise corrupt the reported daily performance.
+
+The facade is a thin wrapper: it resolves the pre-market short-circuit and the live quote, then delegates all synthesis to the pure `compute_reference_quote` transform in `market_transforms.py`.
 
 Resolution order:
 
 1. **`session="open"` pre-market short-circuit** — when `is_premarket()` is true, a `get_premarket_quote(ticker)` result with a non-null price is returned directly. Any exception during the pre-market check is logged at debug level and ignored.
 2. **Regular quote** — `get_quote(ticker, force_refresh=force_refresh)` supplies `price`, `previous_close`, `change`, and `change_pct`.
-3. **History fallback when no live price** — if the quote is missing or has a non-positive price, the last two bars of `get_history(ticker, days=5)` are used to derive `price`, `previous_close`, `change`, and `change_pct` from their `close` (or `price`) fields. Fewer than two valid bars returns `None`.
-4. **Previous-close backfill** — when the live quote lacks `previous_close` or `change_pct`, `_extract_history_prev_close(history)` (from `market_transforms`) supplies the prior close and the change/percentage are recomputed from it.
+3. **History resolution** — when the caller supplies `history`, it is used as-is and no extra `get_history` call is made. Otherwise, history is fetched (`get_history(ticker, days=5)`) only when the quote is missing, has a non-positive price, or lacks `previous_close` / `change_pct`. A history fetch failure is logged at debug level and treated as no history.
+4. **Synthesis** — `compute_reference_quote(quote=quote, history=hist, target_date=target_date)` derives the price, prior close, change, and percentage from the quote and/or bars, returning `None` when no valid positive price can be resolved.
 
 Invalid input (empty or non-string ticker) returns `None`.
 
@@ -76,7 +78,14 @@ Stateless helpers with no I/O:
 
 - `validate_date_coverage(rows, days_requested)` — decides whether cached history is trustworthy: rejects all-today data, requires at least `ceil(days/2)` distinct dates, and rejects caches whose newest entry is more than 4 calendar days old.
 - `compute_premarket_quote(quote, aftermarket_quote, history)` — synthesizes a standardized pre-market quote dict (`price`, `previous_close`, `change`, `change_pct`, optional `volume`), preferring a dedicated aftermarket quote, falling back to the standard quote, and using recent history for a missing previous close.
-- `_extract_history_prev_close(history)` — resolves the prior trading day's close from a history list, used by `get_reference_quote` to backfill `previous_close` / `change_pct` when the live quote omits them.
+- `compute_reference_quote(quote, history=None, target_date=None)` — the session-anchored reference quote synthesizer behind `MarketDataManager.get_reference_quote`. It:
+  - Normalizes history via `_sort_and_filter_history`, which drops bars with missing, non-numeric, `NaN`, or non-positive prices and sorts the remainder ascending by `date` / `fetched_at` / `timestamp` (so descending DB rows are handled correctly).
+  - Pins the session prefix to `target_date[:10]` when supplied, otherwise today's UTC date. A `target_date` earlier than today marks the run as historical.
+  - For live (non-historical) runs, prefers the real-time quote's `price`, `previous_close`, `change`, `change_pct`, and `volume` when the price is valid.
+  - Falls back to `_derive_from_history`, which takes the last bar at or before the target prefix as the session price and volume.
+  - Resolves the prior close via `_resolve_prior_close`, which selects the most recent bar strictly before the target prefix; when no such bar exists it uses the penultimate bar (or the full list when the last bar's close differs from the current price by more than `1e-4`).
+  - Recomputes `change` / `change_pct` from `price - previous_close` when the percentage is missing, nulls out non-positive or `NaN` prior closes, and returns `None` when no valid positive price exists.
+- `_extract_history_prev_close(history)` — resolves the prior trading day's close from a history list (retained as a standalone helper; `get_reference_quote` now resolves prior closes through `compute_reference_quote`).
 
 ## Retrieval Flow
 

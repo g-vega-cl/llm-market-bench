@@ -17,9 +17,9 @@ The newsletter generator (`apps/engine/tasks/newsletter_generator.py`) synthesiz
 
 ## Session-Aware Reference Quotes
 
-The generator passes its `session` (`"open"` or `"close"`) into `get_newsletter_reference_context(..., session=session)`, which resolves quotes through `MarketDataManager.get_reference_quote(ticker, session=session)`. For the evening close briefing this anchors every index level and 1D move to the official regular-session close versus the prior trading day's close, rather than an after-hours tick.
+The generator passes its `session` (`"open"` or `"close"`) into `get_newsletter_reference_context(..., session=session)`, which resolves quotes through `MarketDataManager.get_reference_quote(ticker, session=session, history=..., target_date=...)`. For the evening close briefing this anchors every index level and 1D move to the official regular-session close versus the prior trading day's close, rather than an after-hours tick.
 
-`get_newsletter_fx_context` uses the same resolution: it prefers `manager.get_reference_quote` and falls back to `manager.get_premarket_quote` when the method is absent (including bare `unittest.mock.NonCallableMock` managers that have not configured `get_reference_quote`).
+`get_newsletter_fx_context(mdm=None, session="close")` uses the same resolution: it prefers `manager.get_reference_quote(ticker, session=session)` and falls back to `manager.get_premarket_quote(ticker)` when the method is absent. `generate_daily_newsletter` forwards its own `session` into the FX context call, so the UUP / EURUSD / USDJPY levels in the evening briefing are anchored to the regular-session close rather than a post-market tick.
 
 The DeepSeek Flash system prompt carries a matching instruction: for the Evening Market Close Briefing, all equity index closing commentary (`SPY`, `QQQ`, `DIA`, `IWM`) must strictly reflect the official closing prices and 1D percentage moves from the Official Multi-Horizon Reference Matrix, never outdated pre-market or prior-session index figures found in morning newsletter text.
 
@@ -30,6 +30,7 @@ The DeepSeek Flash system prompt carries a matching instruction: for the Evening
 - The effective timestamp is pinned to the target date at the session's scheduled time (09:12 ET for `open`, 17:01 ET for `close`), so `created_at` and the prompt date string are deterministic.
 - Gmail ingestion is skipped when the target date is in the past (`is_historical`).
 - The snapshot query is bounded above so future-dated snapshots are excluded.
+- The reference-quote layer receives the same `target_date`, so session prices and prior closes are derived from bars at or before that date and the live quote is ignored.
 
 This enables reproducible backfills and CI-friendly generation without depending on wall-clock time. The CLI exposes it via `handle_generate_newsletter` (`--target-date`).
 

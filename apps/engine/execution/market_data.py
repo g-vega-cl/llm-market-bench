@@ -14,7 +14,11 @@ from core.db import get_supabase_client
 
 from .market_cache import MarketDataCache
 from .market_session import MarketSessionManager
-from .market_transforms import _extract_history_prev_close, compute_premarket_quote, validate_date_coverage
+from .market_transforms import (
+    compute_premarket_quote,
+    compute_reference_quote,
+    validate_date_coverage,
+)
 from .providers.base import FinancialProvider, TickerData
 from .providers.factory import get_financial_provider
 
@@ -180,7 +184,12 @@ class MarketDataManager:
         )
 
     async def get_reference_quote(
-        self, ticker: str, force_refresh: bool = False, session: str = "close"
+        self,
+        ticker: str,
+        force_refresh: bool = False,
+        session: str = "close",
+        history: list[dict] | None = None,
+        target_date: str | None = None,
     ) -> dict | None:
         """Fetch regular session or pre-market reference quote with accurate 1D price and change percentage.
 
@@ -203,50 +212,20 @@ class MarketDataManager:
                 logger.debug(f"Premarket check failed for {ticker}: {e}")
 
         quote = await self.get_quote(ticker, force_refresh=force_refresh)
-        if not quote or not quote.price or quote.price <= 0:
-            history = await self.get_history(ticker, days=5)
-            if history and len(history) >= 2:
-                latest = history[-1]
-                prev = history[-2]
-                p = float(latest.get("close") or latest.get("price", 0))
-                prev_p = float(prev.get("close") or prev.get("price", 0))
-                if p > 0 and prev_p > 0:
-                    chg = p - prev_p
-                    chg_pct = (chg / prev_p) * 100.0
-                    return {
-                        "price": p,
-                        "previous_close": prev_p,
-                        "change": chg,
-                        "change_pct": chg_pct,
-                        "volume": latest.get("volume"),
-                    }
-            return None
+        hist = history
+        if hist is None and (
+            not quote or not quote.price or quote.price <= 0 or quote.previous_close is None or quote.change_pct is None
+        ):
+            try:
+                hist = await self.get_history(ticker, days=5)
+            except Exception as e:
+                logger.debug(f"History fetch failed in get_reference_quote for {ticker}: {e}")
 
-        price = quote.price
-        prev_close = quote.previous_close
-        change = quote.change
-        change_pct = quote.change_pct
-
-        if prev_close is None or change_pct is None:
-            history = await self.get_history(ticker, days=5)
-            if history:
-                prev_p = _extract_history_prev_close(history)
-                if prev_p and prev_p > 0:
-                    prev_close = prev_p
-                    change = price - prev_close
-                    change_pct = (change / prev_close) * 100.0
-
-        if change_pct is None and prev_close and prev_close > 0:
-            change = price - prev_close
-            change_pct = (change / prev_close) * 100.0
-
-        return {
-            "price": price,
-            "previous_close": prev_close,
-            "change": change,
-            "change_pct": change_pct,
-            "volume": quote.volume,
-        }
+        return compute_reference_quote(
+            quote=quote,
+            history=hist,
+            target_date=target_date,
+        )
 
     async def get_quotes(self, tickers: list[str], force_refresh: bool = False) -> dict[str, TickerData]:
         """Fetch multiple stock quotes, checking cache first where possible."""

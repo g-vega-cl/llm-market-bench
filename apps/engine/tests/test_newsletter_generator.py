@@ -449,12 +449,13 @@ async def test_get_newsletter_fx_context_success():
         "USDJPY": {"price": 154.20, "previous_close": 153.59, "change": 0.61, "change_pct": 0.40},
     }
 
-    async def mock_get_quote(ticker: str):
+    async def mock_get_quote(ticker: str, session: str = "close", **kwargs):
         return quotes_map.get(ticker)
 
+    mock_mdm.get_reference_quote = AsyncMock(side_effect=mock_get_quote)
     mock_mdm.get_premarket_quote = AsyncMock(side_effect=mock_get_quote)
 
-    ctx = await get_newsletter_fx_context(mdm=mock_mdm)
+    ctx = await get_newsletter_fx_context(mdm=mock_mdm, session="close")
     assert "Foreign Exchange & US Dollar (FX)" in ctx
     assert "**UUP (US Dollar Index / DXY Proxy)**: $28.52" in ctx
     assert "+0.35%" in ctx
@@ -462,6 +463,7 @@ async def test_get_newsletter_fx_context_success():
     assert "-0.25%" in ctx
     assert "**USD/JPY**: 154.20" in ctx
     assert "+0.40%" in ctx
+    mock_mdm.get_reference_quote.assert_any_call("UUP", session="close")
 
 
 @pytest.mark.asyncio
@@ -470,6 +472,7 @@ async def test_get_newsletter_fx_context_graceful_on_errors(caplog):
     from tasks.newsletter_generator import get_newsletter_fx_context
 
     mock_mdm = MagicMock()
+    mock_mdm.get_reference_quote = AsyncMock(side_effect=Exception("Data provider connection timeout"))
     mock_mdm.get_premarket_quote = AsyncMock(side_effect=Exception("Data provider connection timeout"))
 
     with caplog.at_level("WARNING", logger="engine"):

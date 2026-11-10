@@ -159,6 +159,7 @@ class TestNewsletterReferenceContextAsync:
 
         history = _generate_synthetic_history(n_bars=60, base_price=50.0, step=0.2)
         mock_mdm = AsyncMock()
+        mock_mdm.get_reference_quote.return_value = {"price": 62.0, "change_pct": 0.5}
         mock_mdm.get_premarket_quote.return_value = {"price": 62.0, "change_pct": 0.5}
         mock_mdm.get_history.return_value = history
 

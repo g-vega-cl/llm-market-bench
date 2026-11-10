@@ -412,8 +412,6 @@ async def get_newsletter_reference_context(
     Queries 252-day history from MarketDataManager for core macro proxies
     plus top single stocks extracted from newsletter chunks.
     """
-    from unittest.mock import NonCallableMock
-
     from execution.market_data import MarketDataManager
 
     manager = mdm or MarketDataManager()
@@ -423,18 +421,25 @@ async def get_newsletter_reference_context(
     all_targets = list(macro_core) + [s for s in single_stocks if s not in macro_core]
 
     try:
-        if isinstance(manager, NonCallableMock) and "get_reference_quote" not in manager.__dict__:
-            quote_tasks = [manager.get_premarket_quote(ticker) for ticker in all_targets]
-        elif hasattr(manager, "get_reference_quote"):
-            quote_tasks = [manager.get_reference_quote(ticker, session=session) for ticker in all_targets]
-        else:
-            quote_tasks = [manager.get_premarket_quote(ticker) for ticker in all_targets]
         hist_tasks = [manager.get_history(ticker, days=252) for ticker in all_targets]
+        histories = await asyncio.gather(*hist_tasks, return_exceptions=True)
 
-        quotes, histories = await asyncio.gather(
-            asyncio.gather(*quote_tasks, return_exceptions=True),
-            asyncio.gather(*hist_tasks, return_exceptions=True),
-        )
+        quote_tasks = []
+        for ticker, h in zip(all_targets, histories, strict=False):
+            valid_h = h if not isinstance(h, Exception) else None
+            if hasattr(manager, "get_reference_quote"):
+                quote_tasks.append(
+                    manager.get_reference_quote(
+                        ticker,
+                        session=session,
+                        history=valid_h,
+                        target_date=target_date,
+                    )
+                )
+            else:
+                quote_tasks.append(manager.get_premarket_quote(ticker))
+
+        quotes = await asyncio.gather(*quote_tasks, return_exceptions=True)
     except Exception as e:
         logger.warning(f"Error gathering market reference data for newsletter: {e}")
         return ""

@@ -17,6 +17,7 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [x] - Benchify: use unlightouse to audit our whole site and fix.
+ - Do consistently, last time Done 2026/11/06
 
 ### Marketing & Building in Public
 
@@ -32,7 +33,7 @@ A living document of features and improvements in progress or planned for the pl
 ### Autoresearch Scaling & Local Models
 
 - [x] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
- - So allow hold? improve the confidence number?
+- [x] - So allow hold? improve the confidence number?
 
 ### Portfolio & Market Execution
 
@@ -87,7 +88,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
 - [ ] - Benchify: market data free APIs?
-- [ ] - Benchify: build your AI trading strategy online (agobuilder.com, switchmarkets.com?)
+- [ ] - Benchify: build your AI trading strategy online (algobuilder.com, switchmarkets.com?)
   - [ ] - Kind of like a visual Unsloth dashboard?
 - [ ] - Benchify: So many posts like this. https://www.reddit.com/r/ai_trading/s/P9KnfLpbAV There must be a better way
 
@@ -99,7 +100,7 @@ A living document of features and improvements in progress or planned for the pl
 ### Autonomous Agents & Meta-Intelligence
 
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
-- [ ] - Strata: 24/7 business fit researcher
+- [x] - Strata: 24/7 business fit researcher
 - [ ] **A programming/business buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 

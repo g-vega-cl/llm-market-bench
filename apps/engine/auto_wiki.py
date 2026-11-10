@@ -492,6 +492,7 @@ def add_index_entries(entries: list) -> None:
     index_path = WIKI_DIR / "index.md"
     content = index_path.read_text()
     lines = content.split("\n")
+    modified = False
 
     for entry in entries:
         if not isinstance(entry, dict):
@@ -499,6 +500,15 @@ def add_index_entries(entries: list) -> None:
         section = entry.get("section", "")
         line = entry.get("entry", "")
         if not line:
+            continue
+
+        # Prevent duplicate [[link]] targets in index.md
+        link_match = re.search(r"\[\[([^\]]+)\]\]", line)
+        if link_match and f"[[{link_match.group(1)}]]" in "\n".join(lines):
+            print(
+                f"  [auto-wiki] index.md: link [[{link_match.group(1)}]] already exists in index.md",
+                file=sys.stderr,
+            )
             continue
 
         # Find the section header and insert after it
@@ -527,14 +537,15 @@ def add_index_entries(entries: list) -> None:
 
         if inserted:
             lines = new_lines
+            modified = True
             print(f"  [auto-wiki] index.md: added to {section}", file=sys.stderr)
         else:
             print(
                 f"  [auto-wiki] index.md: could not find section '{section}' or entry already exists", file=sys.stderr
             )
 
-    if new_lines:
-        index_path.write_text("\n".join(new_lines))
+    if modified:
+        index_path.write_text("\n".join(lines))
 
 
 def apply_changes(result: dict) -> None:

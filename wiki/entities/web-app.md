@@ -13,7 +13,7 @@ The global navigation bar in `apps/web/src/routes/__root.tsx` exposes strictly 3
 
 - **B** (`/` and `/today` redirect): The home destination is rendered as a compact `B` logo button (`font-mono`, `px-2.5`) carrying `aria-label="Home"` for accessibility. The former standalone `BENCHIFY` wordmark and separate `Home` text button have been removed — the `B` button is the sole home affordance. It leads to the unified 2-block live overview (`apps/web/src/features/home/pages/HomePage.tsx`). Block 1 renders the **Live Agent Trader console** (`LiveAgentConsole.tsx`) — a 24/7 autonomous SPY trader with a 1-minute D3 candlestick tape, agent conviction bar, intraday thought trace, VWAP/RSI/trend technicals, and an audience chat-queue teaser (see [[entities/live-agent-trader]]). Block 2 renders **Active Agent Portfolios** alongside the inline S&P 500 benchmark trough, excluding mechanical `sys-*` strategies so only autonomous LLM agents appear on the Home leaderboard.
 - **Portfolios** (`/portfolios`): 3-block capital allocation arena (`apps/web/src/features/portfolios/pages/PortfoliosPage.tsx`). Block 1 renders the interactive `PortfolioComparisonChart` with timeframe and benchmark controls. Block 2 renders **Active LLM Agents** using single-level boxel cards. Block 3 renders **Systematic Strategies** (`sys-*`) in a dedicated section.
-- **Lab** (`/lab`): 3-block experimental directory (`apps/web/src/routes/lab.tsx`) indexing all 18 specialized research, telemetry, and audit routes with descriptions, linking to **Retired Agents** (`/retired-agents`, `apps/web/src/routes/retired-agents.tsx`), a dedicated page for frozen historical portfolios.
+- **Lab** (`/lab`): 3-block experimental directory (`apps/web/src/routes/lab.tsx`) indexing all specialized research, telemetry, and audit routes with descriptions, linking to **Retired Agents** (`/retired-agents`, `apps/web/src/routes/retired-agents.tsx`), a dedicated page for frozen historical portfolios.
 
 The topbar is a single non-wrapping row (`flex items-center`, no `flex-wrap`). The left cluster holds the `B` logo and the three nav items; the right cluster (`ml-auto shrink-0`) holds only the login/logout control. The authenticated user's email is **not** rendered in the navbar — the email badge that previously linked to `/profile` has been removed, so the logout link stays on the same row regardless of email length.
 
@@ -23,6 +23,7 @@ The topbar is a single non-wrapping row (`flex items-center`, no `flex-wrap`). T
 - **Daily Predictions** (`/daily-predictions`): Independent model tabs with strict track isolation and 4-pillar composite ratchet scores. See [[entities/daily-market-predictor]].
 - **Portfolio Detail Pages** (`/portfolios/:id` and `/renko`): Real-time portfolio analysis, performance charts, current positions, and recent trades audit trail in Eastern Time (`ET`).
 - **Retired Agents** (`/retired-agents`): Dedicated archive page (`apps/web/src/routes/retired-agents.tsx`) listing every frozen, inactive portfolio (`!p.is_active`) with its owner name and total equity, each linking to its `/portfolios/$portfolioId` detail page. It replaces the former inline **Retired Agent Archive** table that lived inside the `/lab` Audits block. The route loader calls `fetchPortfolios()` via a `createServerFn` and filters to inactive portfolios; the `RetiredAgentsView` component renders an empty state ("No retired agents.") when none exist. The `/lab` directory links to it from the "Audits, Benchmarks & Retired Archives" category.
+- **Companies** (`/companies`, `/companies/$ticker`): Institutional company & sector research dossier explorer (`apps/web/src/features/companies/`). The directory (`CompaniesPage.tsx`, `fetch-companies.ts`) supports search by ticker/name/sector, verdict filter pills, and equal-height summary cards (verdict + conviction, spot price, mention count). The dossier page (`CompanyDossierPage.tsx`, `fetch-company-dossier.ts`) renders a verdict banner, economic moat / valuation / options cards, a thesis falsification panel, full Markdown analysis via `MarkdownContent`, and a historical research timeline. It is reachable from `/lab` and from `/generated-newsletters` ("Explore Company Dossiers →"). See [[entities/company-research-reports]].
 - **Investment Chat Gateway** (`/chat`): Conversational research interface with live database query tools and memory search. See [[entities/investment-chat-gateway]].
 - **AI Memories Page** (`/memories`): Searchable archive of market consensus events, economic calendar catalysts, lessons, and resolved trades. See [[concepts/memory-feedback]].
 
@@ -52,6 +53,7 @@ All feature data fetchers import `getDbServerClient` / `getDbBrowserClient` from
 - [[concepts/risk-adjusted-z-score]]
 - [[entities/daily-market-predictor]]
 - [[entities/investment-chat-gateway]]
+- [[entities/company-research-reports]]
 - [[entities/live-agent-trader]]
 - [[entities/design-system]]
 - [[concepts/auth-db-client-separation]]

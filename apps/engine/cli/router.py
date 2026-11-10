@@ -29,6 +29,7 @@ from cli.predictions import (
     handle_gainers_postmortem,
     handle_generate_newsletter,
     handle_historical_analog,
+    handle_research_company,
     handle_seed_daily_predictor,
 )
 from cli.trading import (
@@ -63,6 +64,7 @@ from core.config import (
     COMMAND_INGEST,
     COMMAND_LIN_RENKO,
     COMMAND_POST_ANALYSIS,
+    COMMAND_RESEARCH_COMPANY,
     COMMAND_SECTOR_TRADE,
     COMMAND_SEED_DAILY_PREDICTOR,
     COMMAND_WEEKEND_INGEST,
@@ -88,6 +90,7 @@ DISPATCH_MAP: dict[str, Callable[[argparse.Namespace], None]] = {
     COMMAND_BACKTEST_DAILY_AUTORESEARCH: handle_backtest_daily_autoresearch,
     COMMAND_SEED_DAILY_PREDICTOR: handle_seed_daily_predictor,
     COMMAND_GENERATE_NEWSLETTER: handle_generate_newsletter,
+    COMMAND_RESEARCH_COMPANY: handle_research_company,
     COMMAND_LIN_RENKO: handle_lin_renko,
     COMMAND_AUDIT_ALPACA: handle_audit_alpaca,
     COMMAND_FRONTIER_TECH: handle_frontier_tech,

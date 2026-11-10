@@ -29,6 +29,7 @@ from cli.predictions import (
     handle_gainers_postmortem,
     handle_generate_newsletter,
     handle_historical_analog,
+    handle_research_company,
     handle_seed_daily_predictor,
 )
 from cli.router import dispatch, run_cli
@@ -212,6 +213,15 @@ def test_handle_generate_newsletter_dispatches():
         args = argparse.Namespace(session="close")
         handle_generate_newsletter(args)
         mock_run.assert_awaited_once_with(session="close", target_date=None)
+
+
+def test_handle_research_company_dispatches():
+    """Verify handle_research_company invokes research_single_target."""
+    with patch("tasks.research_newsletter_tickers.research_single_target", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {"verdict": "bullish", "conviction_score": 90}
+        args = argparse.Namespace(ticker="NVDA", name="NVIDIA Corp", sector="Semiconductors", force=True)
+        handle_research_company(args)
+        mock_run.assert_awaited_once()
 
 
 def test_handle_sector_trade_dispatches():

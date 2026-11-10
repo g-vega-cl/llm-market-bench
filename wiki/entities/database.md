@@ -39,6 +39,15 @@ The database is organized into several functional areas:
 - `sector_predictions` — Weekly sector ranking predictions
 - `trades` — Executed trade records with attribution
 
+### Company Research Tables
+
+These two tables back the [[entities/company-research-reports]] pipeline (migration `20261110120000_create_company_research_reports.sql`):
+
+- **`company_research_reports`** — Historical ledger of institutional research dossiers on stocks and sector ETFs spotlighted in daily briefings. Columns: `ticker TEXT NOT NULL`, `company_name TEXT NOT NULL`, `sector TEXT`, `is_sector_etf BOOLEAN DEFAULT FALSE`, `entity_type TEXT DEFAULT 'stock' CHECK (entity_type IN ('stock','etf'))`, `session TEXT NOT NULL CHECK (session IN ('open','close','on_demand'))`, `date DATE NOT NULL`, `verdict TEXT NOT NULL CHECK (verdict IN ('bullish','bearish','neutral'))`, `conviction_score INTEGER NOT NULL CHECK (conviction_score BETWEEN 1 AND 100)`, `risk_reward_score NUMERIC(3,1)`, `target_horizon TEXT NOT NULL`, `spot_price_at_report NUMERIC(12,4)`, `forward_5d_return NUMERIC(6,4)`, `forward_20d_return NUMERIC(6,4)`, `valuation_summary TEXT`, `buffett_moat_analysis JSONB DEFAULT '{}'::jsonb`, `options_sentiment_summary TEXT`, `catalyst_context TEXT`, `falsification_triggers JSONB DEFAULT '[]'::jsonb`, `full_report_markdown TEXT NOT NULL`, `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`. Unique constraint `uq_company_report_session (ticker, date, session)` for idempotent upserts; indexes on `ticker`, `date DESC`, and `verdict`.
+- **`newsletter_company_mentions`** — Junction table linking `generated_newsletters` to research reports. Columns: `newsletter_id UUID NOT NULL REFERENCES generated_newsletters(id) ON DELETE CASCADE`, `ticker TEXT NOT NULL`, `research_report_id UUID REFERENCES company_research_reports(id) ON DELETE SET NULL`, `created_at TIMESTAMPTZ`. Unique constraint `uq_newsletter_ticker (newsletter_id, ticker)`; indexes on `newsletter_id` and `ticker`.
+
+Both tables enable RLS with public `SELECT`, `service_role` full access, and explicit `GRANT SELECT` to `anon`/`authenticated` per [[concepts/supabase-grant-convention]].
+
 ### Market Data Cache Tables
 
 These two tables form the market data persistence layer used by `MarketDataManager` (`execution/market_data.py`):
@@ -113,6 +122,7 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 
 ## Related
 
+- [[entities/company-research-reports]]
 - [[entities/government-ingestion]]
 - [[entities/congress-trades]]
 - [[entities/insider-trades]]

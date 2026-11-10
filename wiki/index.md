@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/company-research-reports]] — Institutional stock & sector research dossiers extracted from daily briefings, with `/companies` explorer, CLI command, and TTL deduplication
 - [[entities/sentiment-fader]] — Auto-indexed page
 - [[entities/intraday-portfolio]] - Intraday portfolio management system with 20% equity cap and dual-layer execution
 - [[entities/government-ingestion]] — Auto-indexed page

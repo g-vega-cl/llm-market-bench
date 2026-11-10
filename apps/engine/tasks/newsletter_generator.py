@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
@@ -31,6 +32,10 @@ class GeneratedNewsletterOutput(BaseModel):
         )
     )
     read_time_minutes: int = Field(default=6, description="Estimated read time in minutes (typically 6).")
+    mentioned_companies: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of key single stocks or sectors spotlighted in the briefing (e.g. [{'ticker': 'NVDA', 'company_name': 'NVIDIA', 'sector': 'Semiconductors'}]).",
+    )
 
 
 async def _call_deepseek_flash(
@@ -295,10 +300,40 @@ async def get_newsletter_fx_context(mdm=None, session: str = "close") -> str:
     return header + "\n".join(lines)
 
 
+async def _dispatch_newsletter_research(
+    output: GeneratedNewsletterOutput,
+    session: str,
+    newsletter_id: str | None,
+    sb: Any,
+    target_date: str | None,
+    await_research: bool = True,
+) -> None:
+    """Dispatches background deep dive research on companies and sectors mentioned in the briefing."""
+    try:
+        from tasks.research_newsletter_tickers import research_newsletter_targets
+
+        coro = research_newsletter_targets(
+            raw_mentions=getattr(output, "mentioned_companies", []),
+            session=session,
+            newsletter_id=newsletter_id,
+            text_fallback=output.content,
+            sb_client=sb,
+            target_date=target_date,
+        )
+        if await_research:
+            await coro
+        else:
+            asyncio.create_task(coro)
+    except Exception as e:
+        logger.warning(f"Could not dispatch company research for newsletter: {e}")
+
+
 async def generate_daily_newsletter(
     session: str = "open",
     sb_client=None,
     target_date: str | None = None,
+    dispatch_research: bool = True,
+    await_research: bool = True,
 ) -> dict | None:
     """Main pipeline task to generate and store a daily newsletter.
 
@@ -425,6 +460,17 @@ async def generate_daily_newsletter(
         inserted_data = res_insert.data[0] if res_insert.data else {}
         saved = {**record, **inserted_data}
         logger.info(f"Successfully generated and stored newsletter: '{output.title}' ({formatted_time})")
+
+        if dispatch_research:
+            await _dispatch_newsletter_research(
+                output,
+                session=session,
+                newsletter_id=saved.get("id"),
+                sb=sb,
+                target_date=target_date,
+                await_research=await_research,
+            )
+
         return saved
     except Exception as e:
         logger.exception("Failed to insert generated newsletter into Supabase.")

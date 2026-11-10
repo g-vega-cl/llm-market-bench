@@ -85,6 +85,29 @@ def handle_generate_newsletter(args: argparse.Namespace) -> None:
     asyncio.run(generate_daily_newsletter(session=args.session, target_date=target_date))
 
 
+def handle_research_company(args: argparse.Namespace) -> None:
+    """Run on-demand deep dive research for an individual ticker or sector."""
+    from tasks.research_newsletter_tickers import research_single_target
+    from tasks.ticker_extractor import CompanyMention
+
+    ticker = getattr(args, "ticker", None) or "NVDA"
+    mention = CompanyMention(
+        ticker=ticker,
+        company_name=getattr(args, "name", None) or ticker,
+        sector=getattr(args, "sector", None),
+    )
+    result = asyncio.run(
+        research_single_target(
+            mention=mention,
+            session="on_demand",
+            force_refresh=getattr(args, "force", False),
+        )
+    )
+    print(
+        f"Research completed for {ticker}: Verdict={result.get('verdict')} (Conviction: {result.get('conviction_score')}%)"
+    )
+
+
 def handle_earnings_predictor(args: argparse.Namespace) -> None:
     """Run earnings day-1 prediction pipeline across Luna, DeepSeek, and Jev."""
     from tasks.earnings_predictor import run_earnings_prediction

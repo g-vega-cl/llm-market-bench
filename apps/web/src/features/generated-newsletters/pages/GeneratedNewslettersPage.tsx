@@ -44,12 +44,19 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
             {/* Header section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                         <Link
                             to="/today"
-                            className="text-xs font-bold text-electric-blue-500 hover:underline inline-flex items-center gap-1"
+                            className="text-sm font-bold text-electric-blue-500 hover:underline inline-flex items-center gap-1"
                         >
                             ← Back to Today's Dashboard
+                        </Link>
+                        <span className="text-zinc-600">•</span>
+                        <Link
+                            to="/companies"
+                            className="text-sm font-bold text-electric-blue-500 hover:underline inline-flex items-center gap-1"
+                        >
+                            Explore Company Dossiers →
                         </Link>
                     </div>
                     <SectionHeading gradient="electric">

@@ -11,10 +11,10 @@ The `apps/engine/cli/` package is the command-line interface layer for the engin
 
 | Module | Responsibility |
 | :--- | :--- |
-| `cli/parser.py` | `build_parser()` — the single argparse schema. Declares the `command` positional (all 26 `COMMAND_*` choices) and every shared flag (`--dry-run`, `--force`, `--track-id`, `--model`, `--action`, `--timeframe`, `--situation`, etc.). |
+| `cli/parser.py` | `build_parser()` — the single argparse schema. Declares the `command` positional (all `COMMAND_*` choices, including `COMMAND_RESEARCH_COMPANY`) and every shared flag (`--dry-run`, `--force`, `--track-id`, `--model`, `--action`, `--timeframe`, `--situation`, `--ticker`, etc.). |
 | `cli/router.py` | `DISPATCH_MAP` maps each command constant to its handler; `dispatch(args)` looks up and invokes the handler; `run_cli(args_list)` is the top-level entry point that parses then dispatches. |
 | `cli/ingest.py` | Ingestion, calendar, government, cause-and-effect, post-analysis, and LIN Renko handlers. |
-| `cli/predictions.py` | Daily predictor, prediction evaluation, daily/gainers postmortems, newsletter generation, and historical analog research. |
+| `cli/predictions.py` | Daily predictor, prediction evaluation, daily/gainers postmortems, newsletter generation, on-demand company research, and historical analog research. |
 | `cli/trading.py` | Sector rotation, daily SPY MOO/target/close trades, Frontier Tech, and Future Forces thematic portfolios. |
 | `cli/autoresearch.py` | Continuous autoresearch loops, bootstrap, daily autoresearch, and multi-week backtests. |
 | `cli/audit.py` | Pipeline integrity audit, Alpaca reconciliation, system health auditor and audit-portfolios --fix auto-healer, and database cleanup. |
@@ -26,6 +26,14 @@ The `apps/engine/cli/` package is the command-line interface layer for the engin
 3. The matched handler lazily imports its domain module and runs it via `asyncio.run(...)`. Unknown commands raise `ValueError`.
 
 Handlers import their heavy dependencies lazily (inside the function body) so that unrelated commands do not pay the import cost and so tests can patch the domain modules directly.
+
+## Company Research Command
+
+`handle_research_company` (in `cli/predictions.py`) routes `COMMAND_RESEARCH_COMPANY` (`research-company`). It builds a `CompanyMention` from `--ticker` (default `NVDA`), optional `--name` / `--sector`, and calls `tasks.research_newsletter_tickers.research_single_target` with `session="on_demand"` and `force_refresh=args.force`, then prints the verdict and conviction score. See [[entities/company-research-reports]].
+
+```bash
+./apps/engine/.venv/bin/python3 apps/engine/main.py research-company --ticker NVDA [--force]
+```
 
 ## Audit and Reconciliation Commands
 
@@ -45,6 +53,7 @@ Handlers import their heavy dependencies lazily (inside the function body) so th
 
 - [[entities/engine]] — the engine as a whole
 - [[entities/pipeline]] — the orchestration layer the CLI dispatches into
+- [[entities/company-research-reports]] — the `research-company` command target
 - [[entities/portfolio-auditor]] — system health auditor and auto-healer
 - [[concepts/backfilled-trades]] — backfilled trade reconciliation and UI badges
 - [[concepts/vertical-slice-islands]] — the decomposition principle behind this package

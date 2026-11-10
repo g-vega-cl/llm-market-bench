@@ -14,6 +14,7 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
 import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as CompaniesRouteImport } from './routes/companies'
 import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
 import { Route as EarningsAuditRouteImport } from './routes/earnings-audit'
 import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
@@ -31,6 +32,7 @@ import { Route as AuditsIndexRouteImport } from './routes/audits/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/index'
 import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
+import { Route as CompaniesTickerRouteImport } from './routes/companies.$ticker'
 import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
 import { Route as DailyPredictionsIndexRouteImport } from './routes/daily-predictions/index'
 import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard/index'
@@ -63,6 +65,11 @@ const BarometerAuditRoute = BarometerAuditRouteImport.update({
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompaniesRoute = CompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DailyPredictionsBacktestRoute =
@@ -151,6 +158,11 @@ const CauseAndEffectIndexRoute = CauseAndEffectIndexRouteImport.update({
   path: '/cause-and-effect/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompaniesTickerRoute = CompaniesTickerRouteImport.update({
+  id: '/$ticker',
+  path: '/$ticker',
+  getParentRoute: () => CompaniesRoute,
+} as any)
 const ConceptsIndexRoute = ConceptsIndexRouteImport.update({
   id: '/concepts/',
   path: '/concepts/',
@@ -202,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
+  '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
@@ -215,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/companies/$ticker': typeof CompaniesTickerRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions/': typeof AiPredictionsIndexRoute
   '/audits/': typeof AuditsIndexRoute
@@ -234,6 +248,7 @@ export interface FileRoutesByTo {
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
+  '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
@@ -247,6 +262,7 @@ export interface FileRoutesByTo {
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/companies/$ticker': typeof CompaniesTickerRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions': typeof AiPredictionsIndexRoute
   '/audits': typeof AuditsIndexRoute
@@ -268,6 +284,7 @@ export interface FileRoutesById {
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
+  '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
@@ -281,6 +298,7 @@ export interface FileRoutesById {
   '/today': typeof TodayRoute
   '/_authed/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/companies/$ticker': typeof CompaniesTickerRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions/': typeof AiPredictionsIndexRoute
   '/audits/': typeof AuditsIndexRoute
@@ -302,6 +320,7 @@ export interface FileRouteTypes {
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/chat'
+    | '/companies'
     | '/daily-predictions-backtest'
     | '/earnings-audit'
     | '/generated-newsletters'
@@ -315,6 +334,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/profile'
     | '/auth/callback'
+    | '/companies/$ticker'
     | '/portfolios/$portfolioId'
     | '/ai-predictions/'
     | '/audits/'
@@ -334,6 +354,7 @@ export interface FileRouteTypes {
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/chat'
+    | '/companies'
     | '/daily-predictions-backtest'
     | '/earnings-audit'
     | '/generated-newsletters'
@@ -347,6 +368,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/profile'
     | '/auth/callback'
+    | '/companies/$ticker'
     | '/portfolios/$portfolioId'
     | '/ai-predictions'
     | '/audits'
@@ -367,6 +389,7 @@ export interface FileRouteTypes {
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/chat'
+    | '/companies'
     | '/daily-predictions-backtest'
     | '/earnings-audit'
     | '/generated-newsletters'
@@ -380,6 +403,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/_authed/profile'
     | '/auth/callback'
+    | '/companies/$ticker'
     | '/portfolios/$portfolioId'
     | '/ai-predictions/'
     | '/audits/'
@@ -401,6 +425,7 @@ export interface RootRouteChildren {
   AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   BarometerAuditRoute: typeof BarometerAuditRoute
   ChatRoute: typeof ChatRoute
+  CompaniesRoute: typeof CompaniesRouteWithChildren
   DailyPredictionsBacktestRoute: typeof DailyPredictionsBacktestRoute
   EarningsAuditRoute: typeof EarningsAuditRoute
   GeneratedNewslettersRoute: typeof GeneratedNewslettersRoute
@@ -463,6 +488,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/companies': {
+      id: '/companies'
+      path: '/companies'
+      fullPath: '/companies'
+      preLoaderRoute: typeof CompaniesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daily-predictions-backtest': {
@@ -584,6 +616,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CauseAndEffectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/companies/$ticker': {
+      id: '/companies/$ticker'
+      path: '/$ticker'
+      fullPath: '/companies/$ticker'
+      preLoaderRoute: typeof CompaniesTickerRouteImport
+      parentRoute: typeof CompaniesRoute
+    }
     '/concepts/': {
       id: '/concepts/'
       path: '/concepts'
@@ -661,12 +700,25 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
+interface CompaniesRouteChildren {
+  CompaniesTickerRoute: typeof CompaniesTickerRoute
+}
+
+const CompaniesRouteChildren: CompaniesRouteChildren = {
+  CompaniesTickerRoute: CompaniesTickerRoute,
+}
+
+const CompaniesRouteWithChildren = CompaniesRoute._addFileChildren(
+  CompaniesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
   AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   BarometerAuditRoute: BarometerAuditRoute,
   ChatRoute: ChatRoute,
+  CompaniesRoute: CompaniesRouteWithChildren,
   DailyPredictionsBacktestRoute: DailyPredictionsBacktestRoute,
   EarningsAuditRoute: EarningsAuditRoute,
   GeneratedNewslettersRoute: GeneratedNewslettersRoute,

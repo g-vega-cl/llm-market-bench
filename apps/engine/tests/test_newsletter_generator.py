@@ -67,6 +67,7 @@ Markets opened on a bullish footing today, propelled by massive momentum in the 
         patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
+        patch("tasks.newsletter_generator._dispatch_newsletter_research", new_callable=AsyncMock) as mock_dispatch,
     ):
         result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
 
@@ -77,6 +78,7 @@ Markets opened on a bullish footing today, propelled by massive momentum in the 
         assert "formatted_time" in result
         assert "ET" in result["formatted_time"]
         assert mock_llm_call.called
+        assert mock_dispatch.called
 
         # Verify insertion into generated_newsletters
         mock_sb.table.assert_called_with("generated_newsletters")
@@ -617,3 +619,32 @@ async def test_generate_daily_newsletter_with_target_date():
         assert result["session"] == "close"
         assert result["created_at"].startswith("2026-10-16T17:01:00")
         assert mock_llm_call.call_args.kwargs["date_str"] == "October 16, 2026"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_newsletter_research():
+    """Verify _dispatch_newsletter_research invokes research_newsletter_targets."""
+    from tasks.newsletter_generator import _dispatch_newsletter_research
+
+    output = GeneratedNewsletterOutput(
+        title="Test Title",
+        summary="Test Summary",
+        bullet_points=["Point"],
+        content="Testing NVDA mentions",
+        read_time_minutes=2,
+        mentioned_companies=[{"ticker": "NVDA", "company_name": "NVIDIA"}],
+    )
+
+    with patch("tasks.research_newsletter_tickers.research_newsletter_targets", new_callable=AsyncMock) as mock_targets:
+        await _dispatch_newsletter_research(
+            output=output,
+            session="open",
+            newsletter_id="test-news-id",
+            sb=MagicMock(),
+            target_date="2026-11-10",
+            await_research=True,
+        )
+        assert mock_targets.called
+        assert mock_targets.call_args.kwargs["raw_mentions"] == [{"ticker": "NVDA", "company_name": "NVIDIA"}]
+        assert mock_targets.call_args.kwargs["session"] == "open"
+        assert mock_targets.call_args.kwargs["newsletter_id"] == "test-news-id"

@@ -92,6 +92,12 @@ export const LAB_CATEGORIES: LabCategory[] = [
                     'Synthesized daily market dispatches and morning intelligence briefings.',
             },
             {
+                to: '/companies',
+                label: 'Companies',
+                description:
+                    'Institutional deep-dive research dossiers and verdicts on stocks and sectors.',
+            },
+            {
                 to: '/chat',
                 label: 'AI Chat Gateway',
                 description:

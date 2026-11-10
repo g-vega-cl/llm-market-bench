@@ -102,6 +102,7 @@
 
 ## Concepts
 
+- [[concepts/chunk-reload-recovery]] — self-healing recovery from stale hashed chunks after a deploy (`vite:preloadError` listener + chunk-aware catch boundary with a 15s reload cooldown)
 - [[concepts/options-sentiment-fading]] — Auto-indexed page
 - [[concepts/staff-engineer-verification]] — Auto-indexed page
 - [[concepts/window-focus-refresh]] — Auto-indexed page

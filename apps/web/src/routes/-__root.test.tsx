@@ -480,4 +480,13 @@ describe('RootDocument PostHog identity synchronization', () => {
         expect(main).toHaveAttribute('id', 'main-content');
         expect(screen.getByTestId('page-outlet')).toBeInTheDocument();
     });
+
+    it('should catch vite:preloadError event and prevent default to handle chunk reloads', () => {
+        const event = new CustomEvent('vite:preloadError', {
+            cancelable: true,
+            detail: new Error('Failed to fetch dynamically imported module'),
+        });
+        window.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+    });
 });

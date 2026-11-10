@@ -203,4 +203,26 @@ describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
             expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
         });
     });
+
+    it('renders graceful voxel placeholder when active LLM agents list is empty', async () => {
+        const fetchFn = vi.fn().mockResolvedValue([]);
+        const comparisonFetchFn = vi.fn().mockResolvedValue({
+            portfolios: [],
+            startDate: '',
+            endDate: '',
+            benchmarkData: {},
+        });
+
+        render(
+            <PortfoliosPage
+                initialData={[]}
+                fetchFn={fetchFn}
+                comparisonFetchFn={comparisonFetchFn}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText(/no active models currently available/i)).toBeInTheDocument();
+        });
+    });
 });

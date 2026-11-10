@@ -85,6 +85,9 @@ To completely eliminate database overhead during the initial request phase for n
 1. **Avoid Parallel Loader Queries**: Do not run multiple large queries inside a server loader. Consolidated fetches or moving secondary queries to client-side fetching keeps TTFB under `10ms`.
 2. **Normalize Date Formatting**: Ensure dates rendered during both server-side generation and client-side hydration are symmetric. Always format timestamps on the server inside loaders or use locked-timezone utility helpers (such as `formatEasternDateTimeWithYear`) to avoid timezone/whitespace mismatch warnings (React Error #418).
 3. **TDD Hydration Verification**: When adding or refactoring layouts, write tests utilizing `assertHydrationSymmetry` to verify that components render symmetrically under both SSR and client hydration modes.
+4. **Dynamic Chunk Failure & Deployment Recovery**: When a new deployment is published while a user has a tab open, route chunks from previous builds are purged or return HTTP 404. The app self-heals via two layers:
+   - `setupVitePreloadErrorHandler()` in `apps/web/src/utils/chunk-reload.ts` listens for Vite's `vite:preloadError` window event and initiates a single guarded reload.
+   - `DefaultCatchBoundary` in `apps/web/src/components/ui/DefaultCatchBoundary.tsx` detects `isDynamicChunkError`, logs telemetry with `auto_reloaded: true` to PostHog, and renders a self-healing "Updating application..." state with a 15-second `sessionStorage` cooldown to prevent reload loops.
 
 ---
 

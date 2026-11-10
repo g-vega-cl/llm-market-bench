@@ -374,15 +374,21 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                             {activeLlm.length} Models
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
-                        {activeLlm.map((portfolio) => (
-                            <PortfolioCard
-                                key={portfolio.id}
-                                portfolio={portfolio}
-                                todayPct={todayPctMap.get(portfolio.id)}
-                            />
-                        ))}
-                    </div>
+                    {activeLlm.length > 0 ? (
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
+                            {activeLlm.map((portfolio) => (
+                                <PortfolioCard
+                                    key={portfolio.id}
+                                    portfolio={portfolio}
+                                    todayPct={todayPctMap.get(portfolio.id)}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="voxel-trough py-12 flex items-center justify-center text-xs text-boxel-muted border border-boxel-bevel-hi/40">
+                            No active models currently available.
+                        </div>
+                    )}
                 </section>
 
                 {/* Block 3: Systematic Strategies */}

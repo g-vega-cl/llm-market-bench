@@ -11,10 +11,12 @@ import { NotFound } from '~/components/ui/NotFound';
 import { getAuthServerClient } from '~/lib/auth';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
 import { seo } from '~/lib/seo';
+import { setupVitePreloadErrorHandler } from '~/utils/chunk-reload';
 import { posthogBeforeSend } from '~/utils/posthog-filter';
 import appCss from '../styles/app.css?url';
 
 if (typeof window !== 'undefined') {
+    setupVitePreloadErrorHandler();
     window.addEventListener('unhandledrejection', (event) => {
         const reason = event?.reason;
         const text =

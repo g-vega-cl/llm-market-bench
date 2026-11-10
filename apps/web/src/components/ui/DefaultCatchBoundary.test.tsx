@@ -55,6 +55,8 @@ describe('DefaultCatchBoundary', () => {
             is_root: false,
             pathname: '/',
             route_id: '/portfolios',
+            chunk_error: false,
+            auto_reloaded: false,
         });
         consoleSpy.mockRestore();
     });
@@ -87,6 +89,30 @@ describe('DefaultCatchBoundary', () => {
         const capturedErr = mockCaptureException.mock.calls[0][0];
         expect(capturedErr).toBeInstanceOf(Error);
         expect(capturedErr.message).toBe('Network timeout');
+        consoleSpy.mockRestore();
+    });
+
+    it('detects dynamic import chunk failures and triggers auto-reload with updating UI', () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const chunkErr = new TypeError(
+            'Failed to fetch dynamically imported module: https://www.benchify.dev/assets/index-CZJZmMUs.js',
+        );
+
+        render(<DefaultCatchBoundary error={chunkErr} reset={vi.fn()} />);
+
+        // Should render smooth updating UI instead of generic error
+        expect(screen.getByText(/updating application to latest version/i)).toBeInTheDocument();
+        expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
+
+        // Should capture exception with auto_reloaded flag
+        expect(mockCaptureException).toHaveBeenCalledTimes(1);
+        expect(mockCaptureException).toHaveBeenCalledWith(
+            chunkErr,
+            expect.objectContaining({
+                source: 'DefaultCatchBoundary',
+                chunk_error: true,
+            }),
+        );
         consoleSpy.mockRestore();
     });
 });

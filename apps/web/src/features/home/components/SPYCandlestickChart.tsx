@@ -1,5 +1,13 @@
 import * as d3 from 'd3';
 import * as React from 'react';
+import { formatEasternExactTime } from '~/utils/date';
+import {
+    drawCandlesticks,
+    drawGridAndAxes,
+    drawTradeMarkers,
+    drawVolumeBars,
+    updateMarkerSelection,
+} from './spy-candlestick-d3';
 
 export interface CandlestickBar {
     time: string;
@@ -11,6 +19,7 @@ export interface CandlestickBar {
 }
 
 export interface ChartTradeMarker {
+    id?: string;
     time: string;
     action: 'BUY' | 'SELL';
     price: number;
@@ -22,132 +31,6 @@ export interface SPYCandlestickChartProps {
     trades?: ChartTradeMarker[];
     height?: number;
     className?: string;
-}
-
-function drawGridAndAxes(
-    g: d3.Selection<SVGGElement, unknown, null, undefined>,
-    yScale: d3.ScaleLinear<number, number>,
-    width: number,
-) {
-    const yTicks = yScale.ticks(5);
-    g.append('g')
-        .selectAll('line.grid-line')
-        .data(yTicks)
-        .enter()
-        .append('line')
-        .attr('class', 'grid-line')
-        .attr('x1', 0)
-        .attr('x2', width)
-        .attr('y1', (d) => yScale(d))
-        .attr('y2', (d) => yScale(d))
-        .attr('stroke', '#23322a')
-        .attr('stroke-dasharray', '2,2')
-        .attr('stroke-width', 1);
-
-    const yAxis = d3
-        .axisRight(yScale)
-        .tickValues(yTicks)
-        .tickFormat((d) => Number(d).toFixed(2));
-
-    g.append('g')
-        .attr('transform', `translate(${width}, 0)`)
-        .call(yAxis)
-        .call((sel) => sel.select('.domain').remove())
-        .selectAll('text')
-        .attr('fill', '#93a79d')
-        .attr('font-size', '10px')
-        .attr('font-family', 'ui-monospace, monospace');
-}
-
-function drawVolumeBars(
-    g: d3.Selection<SVGGElement, unknown, null, undefined>,
-    bars: CandlestickBar[],
-    xScale: d3.ScaleBand<string>,
-    yVolScale: d3.ScaleLinear<number, number>,
-    plotHeight: number,
-) {
-    g.selectAll('rect.volume-bar')
-        .data(bars)
-        .enter()
-        .append('rect')
-        .attr('class', 'volume-bar')
-        .attr('x', (d) => xScale(d.time) ?? 0)
-        .attr('y', (d) => yVolScale(d.volume))
-        .attr('width', xScale.bandwidth())
-        .attr('height', (d) => plotHeight - yVolScale(d.volume))
-        .attr('fill', (d) => (d.close >= d.open ? '#244837' : '#4a2825'))
-        .attr('opacity', 0.6);
-}
-
-function drawCandlesticks(
-    g: d3.Selection<SVGGElement, unknown, null, undefined>,
-    bars: CandlestickBar[],
-    xScale: d3.ScaleBand<string>,
-    yScale: d3.ScaleLinear<number, number>,
-    onHover: (b: CandlestickBar | null) => void,
-) {
-    g.selectAll('line.candlestick-wick')
-        .data(bars)
-        .enter()
-        .append('line')
-        .attr('class', 'candlestick-wick')
-        .attr('x1', (d) => (xScale(d.time) ?? 0) + xScale.bandwidth() / 2)
-        .attr('x2', (d) => (xScale(d.time) ?? 0) + xScale.bandwidth() / 2)
-        .attr('y1', (d) => yScale(d.high))
-        .attr('y2', (d) => yScale(d.low))
-        .attr('stroke', (d) => (d.close >= d.open ? '#68d391' : '#e56b55'))
-        .attr('stroke-width', 1.5);
-
-    g.selectAll('rect.candlestick-body')
-        .data(bars)
-        .enter()
-        .append('rect')
-        .attr('class', 'candlestick-body')
-        .attr('x', (d) => xScale(d.time) ?? 0)
-        .attr('y', (d) => yScale(Math.max(d.open, d.close)))
-        .attr('width', xScale.bandwidth())
-        .attr('height', (d) => Math.max(3, Math.abs(yScale(d.open) - yScale(d.close))))
-        .attr('fill', (d) => (d.close >= d.open ? '#68d391' : '#e56b55'))
-        .attr('stroke', (d) => (d.close >= d.open ? '#48bb78' : '#c53030'))
-        .attr('stroke-width', 1)
-        .style('cursor', 'crosshair')
-        .on('mouseenter', (_, d) => onHover(d))
-        .on('mouseleave', () => onHover(null));
-}
-
-function drawTradeMarkers(
-    g: d3.Selection<SVGGElement, unknown, null, undefined>,
-    trades: ChartTradeMarker[],
-    xScale: d3.ScaleBand<string>,
-    yScale: d3.ScaleLinear<number, number>,
-) {
-    for (const trade of trades) {
-        const xPos = xScale(trade.time);
-        if (xPos === undefined) continue;
-        const candleX = xPos + xScale.bandwidth() / 2;
-        const candleY = yScale(trade.price);
-        const isBuy = trade.action === 'BUY';
-
-        const markerGroup = g
-            .append('g')
-            .attr('class', 'trade-marker')
-            .attr('transform', `translate(${candleX}, ${candleY})`);
-
-        const trianglePath = isBuy ? 'M -5,8 L 5,8 L 0,-1 Z' : 'M -5,-8 L 5,-8 L 0,1 Z';
-
-        markerGroup
-            .append('path')
-            .attr('d', trianglePath)
-            .attr('fill', isBuy ? '#68d391' : '#e56b55')
-            .attr('stroke', '#101713')
-            .attr('stroke-width', 1.5);
-
-        markerGroup
-            .append('title')
-            .text(
-                `${trade.action} @ $${trade.price.toFixed(2)}${trade.shares ? ` (${trade.shares} sh)` : ''}`,
-            );
-    }
 }
 
 interface ChartHeaderHUDProps {
@@ -174,7 +57,7 @@ function ChartHeaderHUD({ activeDisplay, priceChange, pctChange }: ChartHeaderHU
 
     return (
         <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-mono">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
                 <span className="text-boxel-muted uppercase font-bold tracking-wider bg-boxel-surface border border-boxel-border px-1.5 py-0.5">
                     SPY 1M
                 </span>
@@ -196,7 +79,7 @@ function ChartHeaderHUD({ activeDisplay, priceChange, pctChange }: ChartHeaderHU
                 )}
             </div>
             {activeDisplay && (
-                <div className="flex flex-wrap items-center gap-2.5 text-boxel-muted">
+                <div className="flex flex-wrap items-center gap-2 text-boxel-muted">
                     <span>
                         <strong className="text-boxel-ink font-bold">O:</strong> $
                         {activeDisplay.open.toFixed(2)}
@@ -239,6 +122,20 @@ export function SPYCandlestickChart({
     const containerRef = React.useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = React.useState(600);
     const [hoveredBar, setHoveredBar] = React.useState<CandlestickBar | null>(null);
+    const [selectedTrade, setSelectedTrade] = React.useState<ChartTradeMarker | null>(null);
+
+    const handleToggleTrade = React.useCallback((trade: ChartTradeMarker) => {
+        setSelectedTrade((prev) => {
+            const isMatch =
+                prev !== null &&
+                (prev.id && trade.id
+                    ? prev.id === trade.id
+                    : prev.time === trade.time &&
+                      prev.action === trade.action &&
+                      prev.price === trade.price);
+            return isMatch ? null : trade;
+        });
+    }, []);
 
     React.useEffect(() => {
         if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
@@ -262,6 +159,7 @@ export function SPYCandlestickChart({
             ? Number(((priceChange / firstBar.open) * 100).toFixed(2))
             : 0;
 
+    // Primary chart rendering effect (isolated from selection state to prevent canvas teardown)
     React.useEffect(() => {
         if (!svgRef.current) return;
 
@@ -273,6 +171,7 @@ export function SPYCandlestickChart({
 
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
+        svg.on('click', () => setSelectedTrade(null));
 
         const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
@@ -299,7 +198,7 @@ export function SPYCandlestickChart({
 
         const minLow = d3.min(bars, (b) => b.low) ?? 760;
         const maxHigh = d3.max(bars, (b) => b.high) ?? 770;
-        const pricePadding = (maxHigh - minLow) * 0.08 || 0.5;
+        const pricePadding = (maxHigh - minLow) * 0.12 || 0.8;
 
         const yScale = d3
             .scaleLinear()
@@ -315,13 +214,39 @@ export function SPYCandlestickChart({
         drawGridAndAxes(g, yScale, width);
         drawVolumeBars(g, bars, xScale, yVolScale, plotHeight);
         drawCandlesticks(g, bars, xScale, yScale, setHoveredBar);
-        drawTradeMarkers(g, trades, xScale, yScale);
-    }, [bars, trades, containerWidth, height]);
+        drawTradeMarkers(
+            g,
+            trades,
+            bars,
+            xScale,
+            yScale,
+            plotHeight,
+            volumeHeight,
+            handleToggleTrade,
+        );
+    }, [bars, trades, containerWidth, height, handleToggleTrade]);
+
+    // Fast selection-state toggle effect (preserves SVG DOM without redrawing grid/axes/candles)
+    React.useEffect(() => {
+        if (!svgRef.current) return;
+        const svg = d3.select(svgRef.current);
+        svg.selectAll<SVGGElement, unknown>('.trade-marker').each(function () {
+            const el = d3.select(this);
+            const markerTrade = el.datum() as ChartTradeMarker | undefined;
+            if (markerTrade) {
+                updateMarkerSelection(el, markerTrade, selectedTrade);
+            }
+        });
+    }, [selectedTrade]);
 
     const activeDisplay = hoveredBar || lastBar;
+    const selectedTradeTimeET = React.useMemo(
+        () => (selectedTrade?.time ? formatEasternExactTime(selectedTrade.time) : null),
+        [selectedTrade?.time],
+    );
 
     return (
-        <div ref={containerRef} className={`flex flex-col gap-2.5 w-full ${className}`}>
+        <div ref={containerRef} className={`flex flex-col gap-2 w-full ${className}`}>
             <ChartHeaderHUD
                 activeDisplay={activeDisplay}
                 priceChange={priceChange}
@@ -330,6 +255,59 @@ export function SPYCandlestickChart({
             <div className="voxel-trough overflow-hidden w-full relative">
                 <svg ref={svgRef} width={containerWidth} height={height} className="block w-full" />
             </div>
+            {selectedTrade && (
+                <div
+                    data-testid="selected-trade-slot"
+                    className="voxel-trough p-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono border border-boxel-border"
+                >
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                        <span
+                            className={`font-bold px-1.5 py-0.5 text-xs ${
+                                selectedTrade.action === 'BUY'
+                                    ? 'text-success bg-boxel-surface border border-success/40'
+                                    : 'text-danger bg-boxel-surface border border-danger/40'
+                            }`}
+                        >
+                            {selectedTrade.action}
+                        </span>
+                        {selectedTrade.shares !== undefined && (
+                            <span className="text-boxel-ink whitespace-nowrap">
+                                <strong className="text-boxel-muted font-bold">QTY:</strong>{' '}
+                                {selectedTrade.shares} sh
+                            </span>
+                        )}
+                        <span className="text-boxel-ink whitespace-nowrap">
+                            <strong className="text-boxel-muted font-bold">PRICE:</strong> $
+                            {selectedTrade.price.toFixed(2)}
+                        </span>
+                        {selectedTrade.shares !== undefined && (
+                            <span className="text-boxel-ink whitespace-nowrap">
+                                <strong className="text-boxel-muted font-bold">TOTAL:</strong> $
+                                {(selectedTrade.shares * selectedTrade.price).toLocaleString(
+                                    'en-US',
+                                    {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    },
+                                )}
+                            </span>
+                        )}
+                        {selectedTradeTimeET && (
+                            <span className="border-l border-boxel-border pl-2 text-boxel-muted whitespace-nowrap">
+                                {selectedTradeTimeET}
+                            </span>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        aria-label="Close trade details"
+                        onClick={() => setSelectedTrade(null)}
+                        className="voxel-btn text-xs px-2 py-0.5 text-boxel-muted hover:text-boxel-ink cursor-pointer"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

@@ -1,10 +1,11 @@
 import * as React from 'react';
 import { fetchLiveIntradayTape, mergeIncomingBar } from '../api/fetch-intraday-tape';
 import type { LiveAgentState } from '../components/LiveAgentConsole';
-import type { CandlestickBar } from '../components/SPYCandlestickChart';
+import type { CandlestickBar, ChartTradeMarker } from '../components/SPYCandlestickChart';
 
 export interface UseLiveTapeStreamOptions {
     initialBars?: CandlestickBar[];
+    initialTrades?: ChartTradeMarker[];
     initialAgentState?: LiveAgentState;
     isMarketOpen?: boolean;
     streamUrl?: string;
@@ -68,12 +69,14 @@ function getDefaultStreamUrl(): string {
 
 export function useLiveTapeStream({
     initialBars = [],
+    initialTrades = [],
     initialAgentState,
     isMarketOpen = true,
     streamUrl = getDefaultStreamUrl(),
     onRefreshTape,
 }: UseLiveTapeStreamOptions) {
     const [bars, setBars] = React.useState<CandlestickBar[]>(initialBars);
+    const [trades, setTrades] = React.useState<ChartTradeMarker[]>(initialTrades);
     const [agentState, setAgentState] = React.useState<LiveAgentState | undefined>(
         initialAgentState,
     );
@@ -93,6 +96,9 @@ export function useLiveTapeStream({
                     if (snapshot.bars && snapshot.bars.length > 0) {
                         setBars(snapshot.bars);
                     }
+                    if (snapshot.trades) {
+                        setTrades(snapshot.trades);
+                    }
                     if (snapshot.agentState) {
                         setAgentState(snapshot.agentState);
                     }
@@ -100,6 +106,12 @@ export function useLiveTapeStream({
                 .catch(() => {});
         }
     }, [initialBars]);
+
+    React.useEffect(() => {
+        if (initialTrades.length > 0) {
+            setTrades(initialTrades);
+        }
+    }, [initialTrades]);
 
     React.useEffect(() => {
         if (initialAgentState) {
@@ -115,6 +127,9 @@ export function useLiveTapeStream({
             const snapshot = await fetchLiveIntradayTape();
             if (snapshot.bars && snapshot.bars.length > 0) {
                 setBars(snapshot.bars);
+            }
+            if (snapshot.trades) {
+                setTrades(snapshot.trades);
             }
             if (snapshot.agentState) {
                 setAgentState(snapshot.agentState);
@@ -210,6 +225,7 @@ export function useLiveTapeStream({
 
     return {
         bars,
+        trades,
         agentState,
         isStreaming,
         isRefreshing,

@@ -157,12 +157,14 @@ export function LiveAgentConsole({
 }: LiveAgentConsoleProps) {
     const {
         bars: currentBars,
+        trades: currentTrades,
         agentState: streamedAgentState,
         isStreaming,
         isRefreshing,
         refreshTape,
     } = useLiveTapeStream({
         initialBars: bars,
+        initialTrades: trades,
         initialAgentState: agentState,
         isMarketOpen,
         onRefreshTape,
@@ -260,7 +262,7 @@ export function LiveAgentConsole({
 
             <ConsolePortfolioStrip portfolio={currentAgentState.portfolio} />
 
-            <SPYCandlestickChart bars={currentBars} trades={trades} height={320} />
+            <SPYCandlestickChart bars={currentBars} trades={currentTrades ?? trades} height={320} />
 
             <div className="voxel-trough p-3.5 flex flex-col gap-2">
                 <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">

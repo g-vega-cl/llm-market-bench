@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { formatEasternTime } from '~/utils/date';
+import { formatEasternTime, getEasternDate } from '~/utils/date';
 import type { LiveAgentState } from '../components/LiveAgentConsole';
 import type { CandlestickBar, ChartTradeMarker } from '../components/SPYCandlestickChart';
 
@@ -147,7 +147,10 @@ export interface LiveTapeSnapshot {
     bars: CandlestickBar[];
     agentState: LiveAgentState | null;
     isMarketOpen: boolean;
+    trades?: ChartTradeMarker[];
 }
+
+let cachedLiveSpyTraderPortfolioId: string | null = null;
 
 export const fetchLiveIntradayTape = createServerFn({ method: 'GET' }).handler(
     async (): Promise<LiveTapeSnapshot> => {
@@ -156,7 +159,9 @@ export const fetchLiveIntradayTape = createServerFn({ method: 'GET' }).handler(
             const supabase = getDbServerClient();
             const { data } = await supabase
                 .from('market_feeling')
-                .select('*')
+                .select(
+                    'market_direction, why_explanation, sentiment_label, sentiment_emoji, confidence_score, primary_concern, secondary_concern, model_used, created_at, trades_summary',
+                )
                 .not('trades_summary->bars', 'is', null)
                 .order('created_at', { ascending: false })
                 .limit(1);
@@ -166,16 +171,22 @@ export const fetchLiveIntradayTape = createServerFn({ method: 'GET' }).handler(
             const bars = filterLastBars(payload?.bars, 60);
             const agentState = feeling ? buildAgentState(feeling, payload) : null;
 
+            const sessionDate =
+                bars.length > 0 ? getEasternDate(bars[bars.length - 1].time) : getEasternDate();
+            const trades = await fetchTodayLiveTraderTrades('live-spy-trader', sessionDate);
+
             return {
                 bars,
                 agentState,
                 isMarketOpen: isRegularMarketHours(),
+                trades,
             };
         } catch {
             return {
                 bars: [],
                 agentState: null,
                 isMarketOpen: isRegularMarketHours(),
+                trades: [],
             };
         }
     },
@@ -183,31 +194,39 @@ export const fetchLiveIntradayTape = createServerFn({ method: 'GET' }).handler(
 
 export async function fetchTodayLiveTraderTrades(
     ownerId = 'live-spy-trader',
+    sessionDate?: string,
 ): Promise<ChartTradeMarker[]> {
     try {
         const { getDbServerClient } = await import('~/lib/db');
         const supabase = getDbServerClient();
-        const todayStr = new Date().toISOString().split('T')[0];
+        const targetDate = sessionDate || getEasternDate();
 
-        const { data: portData } = await supabase
-            .from('portfolios')
-            .select('id')
-            .eq('owner_id', ownerId)
-            .limit(1);
+        let portfolioId = cachedLiveSpyTraderPortfolioId;
+        if (!portfolioId || ownerId !== 'live-spy-trader') {
+            const { data: portData } = await supabase
+                .from('portfolios')
+                .select('id')
+                .eq('owner_id', ownerId)
+                .limit(1);
+            portfolioId = portData?.[0]?.id ?? null;
+            if (ownerId === 'live-spy-trader' && portfolioId) {
+                cachedLiveSpyTraderPortfolioId = portfolioId;
+            }
+        }
 
-        const portfolioId = portData?.[0]?.id;
         if (!portfolioId) return [];
 
         const { data: tradesData, error } = await supabase
             .from('trades')
-            .select('*')
+            .select('id, executed_at, signal, price, quantity')
             .eq('portfolio_id', portfolioId)
-            .gte('executed_at', `${todayStr}T00:00:00Z`)
+            .gte('executed_at', `${targetDate}T00:00:00-05:00`)
             .order('executed_at', { ascending: true });
 
         if (error || !tradesData) return [];
 
         return tradesData.map((t) => ({
+            id: t.id,
             time: t.executed_at,
             action: (t.signal?.toUpperCase() === 'BUY' ? 'BUY' : 'SELL') as 'BUY' | 'SELL',
             price: Number(t.price),

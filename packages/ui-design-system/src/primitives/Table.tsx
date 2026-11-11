@@ -59,58 +59,72 @@ export const TableBody = React.forwardRef<
 ));
 TableBody.displayName = 'TableBody';
 
-export const TableRow = React.forwardRef<
-    HTMLTableRowElement,
-    React.HTMLAttributes<HTMLTableRowElement> & { isHoverable?: boolean }
->(({ className, isHoverable = true, ...props }, ref) => (
-    <tr
-        ref={ref}
-        className={cn(
-            'transition-colors duration-200',
-            isHoverable && 'hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30',
-            className,
-        )}
-        {...props}
-    />
-));
-TableRow.displayName = 'TableRow';
-
-export interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
-    align?: 'left' | 'center' | 'right';
+export interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+    isHoverable?: boolean;
+    isInactive?: boolean;
 }
 
-export const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
-    ({ className, align = 'left', ...props }, ref) => (
-        <th
+export const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
+    ({ className, isHoverable = true, isInactive = false, ...props }, ref) => (
+        <tr
             ref={ref}
+            data-inactive={isInactive ? 'true' : undefined}
             className={cn(
-                'px-4 py-3 text-sm font-bold uppercase tracking-wider text-boxel-muted',
-                align === 'center' && 'text-center',
-                align === 'right' && 'text-right',
+                'transition-colors duration-200',
+                isHoverable && !isInactive && 'hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30',
+                isInactive && 'opacity-60 text-boxel-muted bg-boxel-trough/30',
                 className,
             )}
             {...props}
         />
     ),
 );
+TableRow.displayName = 'TableRow';
+
+export interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+    align?: 'left' | 'center' | 'right';
+    numeric?: boolean;
+}
+
+export const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
+    ({ className, align = 'left', numeric = false, ...props }, ref) => {
+        const effectiveAlign = numeric ? 'right' : align;
+        return (
+            <th
+                ref={ref}
+                className={cn(
+                    'px-4 py-3 text-sm font-bold uppercase tracking-wider text-boxel-muted',
+                    effectiveAlign === 'center' && 'text-center',
+                    effectiveAlign === 'right' && 'text-right',
+                    className,
+                )}
+                {...props}
+            />
+        );
+    },
+);
 TableHead.displayName = 'TableHead';
 
 export interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
     align?: 'left' | 'center' | 'right';
+    numeric?: boolean;
 }
 
 export const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
-    ({ className, align = 'left', ...props }, ref) => (
-        <td
-            ref={ref}
-            className={cn(
-                'px-4 py-3 text-xs font-normal text-boxel-ink transition-colors',
-                align === 'center' && 'text-center',
-                align === 'right' && 'text-right',
-                className,
-            )}
-            {...props}
-        />
-    ),
+    ({ className, align = 'left', numeric = false, ...props }, ref) => {
+        const effectiveAlign = numeric ? 'right' : align;
+        return (
+            <td
+                ref={ref}
+                className={cn(
+                    'px-4 py-3 text-xs font-normal text-boxel-ink transition-colors',
+                    effectiveAlign === 'center' && 'text-center',
+                    effectiveAlign === 'right' && 'text-right font-mono tabular-nums',
+                    className,
+                )}
+                {...props}
+            />
+        );
+    },
 );
 TableCell.displayName = 'TableCell';

@@ -9,6 +9,12 @@ import {
     SectionHeading,
     Select,
     SubHeading,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@llm-market-bench/ui-design-system';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -216,6 +222,58 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             const selectWrapper = container.querySelector('select')?.parentElement;
             expect(selectWrapper?.className).toContain('rounded-none');
             expect(selectWrapper?.className).not.toContain('rounded-xl');
+        });
+
+        it('Table primitives enforce data-driven numeric right-alignment and muted inactive row states', () => {
+            render(
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Ticker</TableHead>
+                            <TableHead numeric>Return</TableHead>
+                            <TableHead align="right">Drawdown</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell>SPY</TableCell>
+                            <TableCell numeric>+12.4%</TableCell>
+                            <TableCell align="right">-3.1%</TableCell>
+                        </TableRow>
+                        <TableRow isInactive data-testid="inactive-row">
+                            <TableCell>DEPRECATED_MODEL</TableCell>
+                            <TableCell numeric>0.0%</TableCell>
+                            <TableCell align="right">0.0%</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>,
+            );
+
+            // Numeric headers right-aligned
+            const returnHead = screen.getByRole('columnheader', { name: 'Return' });
+            expect(returnHead.className).toContain('text-right');
+
+            const drawdownHead = screen.getByRole('columnheader', { name: 'Drawdown' });
+            expect(drawdownHead.className).toContain('text-right');
+
+            // Numeric cells right-aligned and tabular
+            const returnCell = screen.getByRole('cell', { name: '+12.4%' });
+            expect(returnCell.className).toContain('text-right');
+            expect(returnCell.className).toContain('font-mono');
+            expect(returnCell.className).toContain('tabular-nums');
+
+            const drawdownCell = screen.getByRole('cell', { name: '-3.1%' });
+            expect(drawdownCell.className).toContain('text-right');
+            expect(drawdownCell.className).toContain('font-mono');
+            expect(drawdownCell.className).toContain('tabular-nums');
+
+            // Inactive row muted and non-hoverable
+            const inactiveRow = screen.getByTestId('inactive-row');
+            expect(inactiveRow).toHaveAttribute('data-inactive', 'true');
+            expect(inactiveRow.className).toContain('opacity-60');
+            expect(inactiveRow.className).toContain('text-boxel-muted');
+            expect(inactiveRow.className).toContain('bg-boxel-trough/30');
+            expect(inactiveRow.className).not.toContain('hover:bg-zinc-50/50');
         });
     });
 

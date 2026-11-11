@@ -55,6 +55,7 @@ export type {
     TableCellProps,
     TableHeadProps,
     TableProps,
+    TableRowProps,
 } from './primitives/Table';
 export {
     Table,

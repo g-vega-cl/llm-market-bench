@@ -325,3 +325,26 @@ def test_sector_trade_workflow_schedule_and_env():
     assert "SUPABASE_SERVICE_ROLE_KEY" in step_env
     assert "ALPACA_API_KEY" in step_env
     assert "ALPACA_SECRET_KEY" in step_env
+
+
+def test_generate_newsletter_workflow_openai_key():
+    """Verify generate-newsletter.yml includes OPENAI_API_KEY for downstream company research."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    newsletter_yml_path = root / ".github" / "workflows" / "generate-newsletter.yml"
+
+    assert newsletter_yml_path.exists(), f"Could not find workflow file at {newsletter_yml_path}"
+
+    with open(newsletter_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    jobs = config.get("jobs", {})
+    job = jobs.get("generate-newsletter", {})
+    steps = job.get("steps", [])
+
+    run_step = next((s for s in steps if s.get("name") == "Run Newsletter Generator"), None)
+    assert run_step is not None, "Could not find 'Run Newsletter Generator' step"
+
+    step_env = run_step.get("env", {})
+    assert "OPENAI_API_KEY" in step_env, f"Expected OPENAI_API_KEY in step env, found: {list(step_env.keys())}"
+    assert step_env["OPENAI_API_KEY"] == "${{ secrets.OPENAI_API_KEY }}"
+

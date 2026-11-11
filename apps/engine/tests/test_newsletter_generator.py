@@ -648,3 +648,32 @@ async def test_dispatch_newsletter_research():
         assert mock_targets.call_args.kwargs["raw_mentions"] == [{"ticker": "NVDA", "company_name": "NVIDIA"}]
         assert mock_targets.call_args.kwargs["session"] == "open"
         assert mock_targets.call_args.kwargs["newsletter_id"] == "test-news-id"
+
+
+@pytest.mark.asyncio
+async def test_call_deepseek_flash_system_prompt_instructs_mentioned_companies():
+    """Verify _call_deepseek_flash system prompt instructs the model to populate mentioned_companies."""
+    from tasks.newsletter_generator import _call_deepseek_flash
+
+    chunks = [{"sender": "Bloomberg", "subject": "NVDA Earnings", "content": "NVIDIA posted revenue beat..."}]
+
+    mock_resp = GeneratedNewsletterOutput(
+        title="Test",
+        summary="Test",
+        bullet_points=["Point"],
+        content="Test content",
+        mentioned_companies=[{"ticker": "NVDA", "company_name": "NVIDIA", "sector": "Semiconductors"}],
+    )
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+    with patch("core.llm.clients.get_deepseek_client", return_value=mock_client):
+        await _call_deepseek_flash(chunks, session="open", formatted_time="09:12 ET")
+
+        assert mock_client.chat.completions.create.called
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        messages = call_kwargs["messages"]
+        system_msg = next(m["content"] for m in messages if m["role"] == "system")
+        assert "mentioned_companies" in system_msg
+

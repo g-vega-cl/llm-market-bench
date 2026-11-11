@@ -5,7 +5,15 @@ import { GeneratedNewslettersPage } from './GeneratedNewslettersPage';
 
 vi.mock('@tanstack/react-router', () => ({
     // biome-ignore lint/suspicious/noExplicitAny: test mock
-    Link: ({ children, to }: any) => <a href={to}>{children}</a>,
+    Link: ({ children, to, params }: any) => (
+        <a
+            href={
+                typeof to === 'string' && params?.ticker ? to.replace('$ticker', params.ticker) : to
+            }
+        >
+            {children}
+        </a>
+    ),
 }));
 
 const mockNewsletters: FormattedGeneratedNewsletter[] = [
@@ -111,5 +119,39 @@ describe('GeneratedNewslettersPage', () => {
         for (const boldSummary of boldSummaries) {
             expect(boldSummary.tagName).toBe('STRONG');
         }
+    });
+
+    it('renders spotlighted company research dossiers when present', () => {
+        const newsletterWithSpotlight: FormattedGeneratedNewsletter[] = [
+            {
+                ...mockNewsletters[0],
+                spotlight_companies: [
+                    {
+                        id: 'rep-1',
+                        ticker: 'NVDA',
+                        company_name: 'NVIDIA Corporation',
+                        sector: 'Semiconductors',
+                        is_sector_etf: false,
+                        entity_type: 'stock',
+                        verdict: 'bullish',
+                        conviction_score: 88,
+                        risk_reward_score: 3.4,
+                        target_horizon: '3-6 months',
+                        spot_price_at_report: 189.2,
+                        catalyst_context: 'AI data center GPU demand accelerating',
+                        valuation_summary: 'Premium multiple supported by 60%+ net margins',
+                    },
+                ],
+            },
+        ];
+
+        render(<GeneratedNewslettersPage initialNewsletters={newsletterWithSpotlight} />);
+
+        expect(screen.getByText('Spotlighted Company & Sector Research')).toBeInTheDocument();
+        expect(screen.getByText('NVDA')).toBeInTheDocument();
+        expect(screen.getByText(/NVIDIA Corporation/)).toBeInTheDocument();
+        expect(screen.getByText(/88% Conviction/)).toBeInTheDocument();
+        expect(screen.getByText('AI data center GPU demand accelerating')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /View Full Dossier/i })).toBeInTheDocument();
     });
 });

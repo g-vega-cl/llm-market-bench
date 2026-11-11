@@ -52,6 +52,10 @@ This enables reproducible backfills and CI-friendly generation without depending
 
 If the database insert fails, the generator logs the exception and raises `RuntimeError` rather than returning the unsaved record. This ensures CI and callers surface persistence failures (e.g. Cloudflare challenge errors) instead of silently succeeding.
 
+## Web Experience & Research Embedding
+
+The web client (`apps/web/src/features/generated-newsletters/pages/GeneratedNewslettersPage.tsx`) presents both morning and evening briefings. When spotlighted company research dossiers are linked to a newsletter (`newsletter_company_mentions` junction table), `fetchGeneratedNewsletters` fetches the reports and renders an in-flow **Spotlighted Company & Sector Research** island between Key Takeaways and the Narrative Markdown body. Each card presents the ticker, sector, verdict, conviction score, spot price at report, catalyst snippet, and a direct link to the full institutional dossier at `/companies/$ticker`.
+
 ## Related
 
 - [[entities/company-research-reports]]

@@ -39,6 +39,10 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
         return [];
     }, [activeNewsletter]);
 
+    const spotlightCompanies = useMemo(() => {
+        return activeNewsletter?.spotlight_companies || [];
+    }, [activeNewsletter]);
+
     return (
         <PageLayout className="py-8 space-y-8" maxWidth="xl">
             {/* Header section */}
@@ -290,6 +294,120 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                 </li>
                                             ))}
                                         </ul>
+                                    </div>
+                                )}
+
+                                {/* Spotlighted Company & Sector Research */}
+                                {spotlightCompanies.length > 0 && (
+                                    <div className="flex flex-col gap-3 p-4 rounded-none bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800">
+                                        <div className="flex items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                                            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-300 flex items-center gap-2">
+                                                <span>🔬</span>
+                                                <span>Spotlighted Company & Sector Research</span>
+                                                <span className="text-zinc-400 dark:text-zinc-500 font-mono font-normal">
+                                                    ({spotlightCompanies.length})
+                                                </span>
+                                            </h3>
+                                            <Link
+                                                to="/companies"
+                                                className="text-xs font-bold text-electric-blue-500 hover:underline"
+                                            >
+                                                All Dossiers →
+                                            </Link>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            {spotlightCompanies.map((company) => {
+                                                const isBullish = company.verdict === 'bullish';
+                                                const isBearish = company.verdict === 'bearish';
+                                                const verdictColor = isBullish
+                                                    ? 'accent'
+                                                    : isBearish
+                                                      ? 'warning'
+                                                      : 'neutral';
+
+                                                return (
+                                                    <div
+                                                        key={company.id || company.ticker}
+                                                        className="p-3.5 rounded-none bg-white dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2.5 transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">
+                                                                        {company.ticker}
+                                                                    </span>
+                                                                    {company.is_sector_etf && (
+                                                                        <Badge
+                                                                            variant="outline"
+                                                                            size="xs"
+                                                                            radius="none"
+                                                                            colorScheme="neutral"
+                                                                        >
+                                                                            ETF
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-xs font-normal text-zinc-500 dark:text-zinc-400 truncate">
+                                                                    {company.company_name}
+                                                                    {company.sector
+                                                                        ? ` • ${company.sector}`
+                                                                        : ''}
+                                                                </div>
+                                                            </div>
+
+                                                            <Badge
+                                                                variant="solid"
+                                                                size="xs"
+                                                                radius="none"
+                                                                colorScheme={verdictColor}
+                                                                className="uppercase font-bold tracking-wider shrink-0"
+                                                            >
+                                                                {company.verdict}
+                                                            </Badge>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-3 text-xs font-mono text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-900">
+                                                            <span className="font-bold text-zinc-800 dark:text-zinc-200">
+                                                                {company.conviction_score}%
+                                                                Conviction
+                                                            </span>
+                                                            {company.spot_price_at_report !=
+                                                                null && (
+                                                                <span>
+                                                                    Spot: $
+                                                                    {company.spot_price_at_report.toFixed(
+                                                                        2,
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                            {company.risk_reward_score != null && (
+                                                                <span>
+                                                                    R/R: {company.risk_reward_score}
+                                                                    x
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {company.catalyst_context && (
+                                                            <p className="text-xs font-normal text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                                                                {company.catalyst_context}
+                                                            </p>
+                                                        )}
+
+                                                        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900 mt-auto">
+                                                            <Link
+                                                                to="/companies/$ticker"
+                                                                params={{ ticker: company.ticker }}
+                                                                className="text-xs font-bold text-electric-blue-500 hover:underline inline-flex items-center gap-1"
+                                                            >
+                                                                View Full Dossier →
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 )}
 

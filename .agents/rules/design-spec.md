@@ -161,3 +161,22 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Boxel** aesthetic inspired b
    - Never propose banned UI patterns (tooltips, modals, accordions) during feature design or user interviews.
    - Never treat legacy code snippets or external library conventions as design canon without cross-checking `.agents/rules/design-spec.md`.
 
+---
+
+## 11. Data-Driven Tables: Alignment, Semantics & Micro-States
+
+1. **Numeric and metric right-alignment (`tabular-nums font-mono text-right`)**:
+   - Every table column rendering numeric quantities (prices, returns, percentages, PnL, shares, counts, ratios, dates/timestamps) MUST be right-aligned using `align="right"` or `numeric`.
+   - The matching column header (`TableHead`) MUST also be right-aligned (`align="right"` or `numeric`). Never leave a header left-aligned over right-aligned figures.
+   - All numeric values must use `tabular-nums font-mono` so figures vertically align place-by-place across stacked rows.
+2. **Text and identity left-alignment**:
+   - Company names, tickers, model handles, descriptions, and prompt names are left-aligned (`align="left"`).
+   - Long strings must declare `truncate` or `break-words` with `min-w-0` to protect table breathing room and prevent cell blowouts.
+3. **Bounded categorical states as Badges**:
+   - Bounded enum states (trade direction `BUY`/`SELL`, status `ACTIVE`/`HALTED`/`CLOSED`, conviction `HIGH`/`MED`/`LOW`) must render as structured `Badge` primitives, never raw unstyled strings.
+4. **Semantic row states (`isInactive`)**:
+   - Inactive, halted, archived, or disabled rows must carry the `isInactive` prop on `TableRow` (`opacity-60 text-boxel-muted bg-boxel-trough/30`), disabling hover highlights and visually de-emphasizing stale data relative to active trading rows.
+5. **In-flow cell clarification (Zero tooltips)**:
+   - When a table cell contains truncated text, shorthand tickers, or compound formulas, clarification is provided via click-to-inspect in an in-flow recessed `.voxel-trough` bar or drawer below the table—never via floating hover tooltips or HTML `title` attributes.
+
+

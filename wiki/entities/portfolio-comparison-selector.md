@@ -19,6 +19,7 @@ The comparison chart can receive data for many portfolios, but rendering all of 
 - **Counter badge** — shows `selected / maxSelected` (e.g. `3 / 5`), switching to a warning color scheme at the limit.
 - **Empty state** — when zero portfolios are selected, an italic hint prompts the user to choose up to `maxSelected` agents.
 - **Reset** — when the current selection differs from the default top-5, a `Reset to Top 5` button restores the default selection.
+- **Settlement gating & render-phase sync** — to eliminate 1-frame visual flash when switching comparison tabs (7D/30D/90D/All), selection state derives synchronously during render (`customSelectedIds` reset during render when `timeframe` changes), avoiding post-commit `useEffect` state desynchronization. Furthermore, secondary reset affordances (`Reset to Top 5` and `Reset Crosshair`) are gated on `isSettled` (`isQuerySettled([listQuery, comparisonQuery], isTransitionPending)` from `apps/web/src/lib/query-client.tsx`), ensuring they only mount after in-flight queries and transitions have fully settled.
 
 ## Integration with the Chart
 

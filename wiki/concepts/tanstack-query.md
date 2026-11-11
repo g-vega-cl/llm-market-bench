@@ -69,6 +69,54 @@ To support server-side rendering (SSR) without leaking query data across concurr
 
 The client is wrapped around the root component in `apps/web/src/routes/__root.tsx` via the `QueryClientProviderWrapper`.
 
+## Query Settlement Gating (`isQuerySettled`)
+
+`apps/web/src/lib/query-client.tsx` exports `isQuerySettled(queries, isTransitionPending = false)`, the canonical predicate for deciding whether **secondary** UI affordances may render. It answers one question: *have all relevant queries and React transitions fully settled?*
+
+```typescript
+export interface QuerySettlementState {
+    isFetched?: boolean;
+    isFetching: boolean;
+    isPending?: boolean;
+    isSuccess?: boolean;
+    isPlaceholderData?: boolean;
+    data?: unknown;
+}
+
+export function isQuerySettled(
+    queries: (QuerySettlementState | undefined | null)[] | QuerySettlementState | undefined | null,
+    isTransitionPending = false,
+): boolean;
+```
+
+### Semantics
+
+- Accepts a single query result, an array of query results, or `null`/`undefined`.
+- Returns `false` immediately when `isTransitionPending` is `true`.
+- Returns `false` when the argument itself is `null`/`undefined`, or when any element of the list is `null`/`undefined`.
+- Returns `true` for an empty list when no transition is pending.
+- A query counts as settled only when it has valid data (`data !== undefined` and `isSuccess ?? true`) **and** is not `isFetching`, not `isPending`, and not `isPlaceholderData`.
+- A hydrated query seeded from `initialData` (`isSuccess: true`, data present, not fetching) counts as settled even when `isFetched` is `false`.
+- An errored query with no data (`isError: true`, `data: undefined`) is **not** settled.
+
+### Usage pattern
+
+Pages combine the helper with `useTransition` and pass the result down as an `isSettled` prop:
+
+```tsx
+const listQuery = useSuspenseQuery({ ...portfolioQueries.list({ fetchFn }), initialData });
+const comparisonQuery = useQuery({
+    ...portfolioQueries.comparison({ fetchFn: () => comparisonFetchFn() }),
+    placeholderData: keepPreviousData,
+});
+const [isPending, startTransition] = React.useTransition();
+
+const isQueriesSettled = isQuerySettled([listQuery, comparisonQuery]);
+const isChartSettled = isQueriesSettled && !isPending;
+```
+
+Secondary elements gated on this flag include `Reset to Top 5` / `Reset Crosshair` buttons in `PortfolioComparisonChart` and volatile derived badges such as per-portfolio daily percentage moves on `PortfoliosPage`. Primary chart and container chrome stay stably mounted so gating never introduces layout shift — see [[concepts/cumulative-layout-shift]].
+
 ## Gotchas & Common Pitfalls
 
 ### Dynamic `initialData` Cache Pollution
@@ -112,3 +160,5 @@ With updated TanStack Start / Router packages:
 
 - [[entities/web-app]]
 - [[sources/web-query-patterns-source]]
+- [[concepts/cumulative-layout-shift]]
+- [[entities/portfolio-comparison-selector]]

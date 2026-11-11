@@ -33,7 +33,7 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 8. **Tool-First, Agency-Driven Architecture**: Expose callable tools rather than injecting massive context tables (`[[concepts/tool-first-agency]]`).
 9. **Zero Compute on Frontend**: Pre-materialize all heavy calculations in background pipelines (`[[concepts/zero-frontend-compute]]`).
 10. **Vertical Slice Islands & File Size Ceiling**: 400 LOC soft ceiling, 800 LOC hard limit, colocated tests (`[[concepts/vertical-slice-islands]]`).
-11. **Design System & UI Consistency**: Strict primitive consumption from `@llm-market-bench/ui-design-system` with zero arbitrary utility escapes. **CSS-first architecture (avoid JS for design)**: all 1D and 2D layouts use declarative CSS Grid and Flexbox (`grid`, `flex`, `flex-wrap`, `items-stretch`); never use JavaScript (`window.innerWidth`, `matchMedia`, `ResizeObserver`) to compute column counts, dimensions, or responsive stacking modes, and never pass layout, typography, or color values through inline `style={{ ... }}` objects (only continuous dynamic data percentages, such as progress-bar fills, are permitted). **Zero floating tooltips or popovers**: never use floating tooltips, SVG `<title>` hovers, or popovers — secondary telemetry renders in-flow inside recessed `.voxel-trough` slots (`[[concepts/in-flow-inspection]]`). **Data-driven tables (numeric alignment & semantic row states)**: numeric columns (prices, returns, shares, ratios, percentages, counts, PnL, timestamps) and their matching `TableHead` cells must be right-aligned (`align="right"` or `numeric`) using `tabular-nums font-mono`; text and identity columns (company names, tickers, model handles, prompt names) stay left-aligned with `truncate`/`min-w-0`; bounded categorical states (direction, status, conviction) render as `Badge` primitives; inactive/halted/archived rows carry `isInactive` to mute them and disable hover elevation; truncated-cell clarification happens by click-to-inspect in an in-flow `.voxel-trough` bar or drawer, never a floating tooltip. The single high-contrast dark theme is **Matcha & Cedar / Cheddar Boxel** — sharp `rounded-none` voxel geometry, 2px directional bevels, and recessed `.voxel-trough` slots (`[[entities/design-system]]`).
+11. **Design System & UI Consistency**: Strict primitive consumption from `@llm-market-bench/ui-design-system` with zero arbitrary utility escapes. **CSS-first architecture (avoid JS for design)**: all 1D and 2D layouts use declarative CSS Grid and Flexbox (`grid`, `flex`, `flex-wrap`, `items-stretch`); never use JavaScript (`window.innerWidth`, `matchMedia`, `ResizeObserver`) to compute column counts, dimensions, or responsive stacking modes, and never pass layout, typography, or color values through inline `style={{ ... }}` objects (only continuous dynamic data percentages, such as progress-bar fills, are permitted). **Zero floating tooltips or popovers**: never use floating tooltips, SVG `<title>` hovers, or popovers — secondary telemetry renders in-flow inside recessed `.voxel-trough` slots (`[[concepts/in-flow-inspection]]`). **Data-driven tables (numeric alignment & semantic row states)**: numeric columns (prices, returns, shares, ratios, percentages, counts, PnL, timestamps) and their matching `TableHead` cells must be right-aligned (`align="right"` or `numeric`) using `tabular-nums font-mono`; text and identity columns (company names, tickers, model handles, prompt names) stay left-aligned with `truncate`/`min-w-0`; bounded categorical states (direction, status, conviction) render as `Badge` primitives; inactive/halted/archived rows carry `isInactive` to mute them and disable hover elevation; truncated-cell clarification happens by click-to-inspect in an in-flow `.voxel-trough` bar or drawer, never a floating tooltip. **Secondary UI query settlement gating**: secondary action buttons and volatile derived badges must never flash during in-flight fetches, `keepPreviousData` refetches, or React transitions — gate them with `isQuerySettled(queries, isTransitionPending)` (`[[concepts/cumulative-layout-shift]]`). The single high-contrast dark theme is **Matcha & Cedar / Cheddar Boxel** — sharp `rounded-none` voxel geometry, 2px directional bevels, and recessed `.voxel-trough` slots (`[[entities/design-system]]`).
 12. **Dependency Restraint**: Do not add new packages, dev dependencies, test runners, or lockfile changes without explicit user approval; prefer the standard library and tooling already in the repo.
 13. **Targeted Git Staging & Multi-Agent Isolation**: Never blanket-stage; stage only the files touched by the active task (`[[entities/agent-rules]]`).
 14. **Live Edge & Server Deployment Mandate (Build Implies Run)**: Committing or syncing files is not completion — edge services must be deployed, launched, and health-verified (`[[entities/secondary-minipc-edge]]`).
@@ -61,6 +61,22 @@ Section 11 of `.agents/rules/design-spec.md` codifies table semantics for pooled
 3. **Bounded categorical states as `Badge`** — enumerations such as trade direction (`BUY`/`SELL`), status (`ACTIVE`/`HALTED`/`CLOSED`), and conviction (`HIGH`/`MED`/`LOW`) render as structured badge primitives, never raw unstyled strings.
 4. **Semantic row states (`isInactive`)** — halted, archived, or disabled rows carry `isInactive` on `TableRow` (`opacity-60 text-boxel-muted bg-boxel-trough/30`), disabling hover highlight and de-emphasizing stale data relative to active rows.
 5. **In-flow cell clarification** — truncated text, shorthand tickers, and compound formulas are clarified by click-to-inspect in a recessed `.voxel-trough` bar or drawer below the table, never via floating hover tooltips or HTML `title` attributes.
+
+## Secondary UI Query Settlement Gating (MANDATORY)
+
+Section 5 of the CLS rules in `.agents/rules/design-spec.md` (and the matching `GEMINI.md` mandate) requires that secondary UI never flashes while data is in motion:
+
+- **What is gated** — secondary action buttons (e.g. `Reset to Top 5`, `Reset Crosshair`) and volatile derived badges (e.g. per-portfolio daily percentage moves).
+- **When** — during in-flight fetches, `keepPreviousData` background refetches, and React transition states.
+- **How** — call `isQuerySettled(queries, isTransitionPending)` from `apps/web/src/lib/query-client.tsx` and render the secondary element only when it returns `true`.
+- **What must NOT be gated** — primary chart and container chrome stay stably mounted so the gating itself never introduces layout shift.
+
+```tsx
+const isQueriesSettled = isQuerySettled([listQuery, comparisonQuery]);
+const isChartSettled = isQueriesSettled && !isPending;
+```
+
+See [[concepts/cumulative-layout-shift]] for the CLS rationale and [[concepts/tanstack-query]] for the helper's full semantics.
 
 ## Git Staging & Commit Protocol (MANDATORY)
 
@@ -112,6 +128,7 @@ A passing test suite with failing lint or low coverage is not done.
 - [[concepts/fluent-responsive-design]]
 - [[concepts/in-flow-inspection]]
 - [[concepts/cumulative-layout-shift]]
+- [[concepts/tanstack-query]]
 - [[entities/commit-msg-lint]]
 - [[concepts/wiki-synchronization]]
 - [[entities/secondary-minipc-edge]]

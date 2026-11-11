@@ -1,5 +1,74 @@
 import { describe, expect, it } from 'vitest';
-import { makeQueryClient } from './query-client';
+import { isQuerySettled, makeQueryClient } from './query-client';
+
+describe('isQuerySettled helper', () => {
+    it('returns true when all queries are fetched, not fetching, not pending, and not placeholder', () => {
+        const query1 = {
+            data: [{ id: 1 }],
+            isFetched: true,
+            isFetching: false,
+            isPending: false,
+            isPlaceholderData: false,
+        };
+        const query2 = { data: 'ok', isFetched: true, isFetching: false };
+        expect(isQuerySettled([query1, query2])).toBe(true);
+        expect(isQuerySettled(query1)).toBe(true);
+    });
+
+    it('returns false for errored queries without valid data', () => {
+        const erroredQuery = {
+            data: undefined,
+            isFetched: true,
+            isFetching: false,
+            isPending: false,
+            isSuccess: false,
+            isError: true,
+        };
+        expect(isQuerySettled(erroredQuery)).toBe(false);
+    });
+
+    it('returns true for hydrated query with initialData (isSuccess: true, data present, not fetching)', () => {
+        const hydratedQuery = {
+            data: [{ id: 'p1' }],
+            isSuccess: true,
+            isFetched: false,
+            isFetching: false,
+            isPending: false,
+        };
+        expect(isQuerySettled(hydratedQuery)).toBe(true);
+    });
+
+    it('returns false if any query is not yet fetched', () => {
+        const q1 = { isFetched: false, isFetching: true, isPending: true };
+        expect(isQuerySettled(q1)).toBe(false);
+    });
+
+    it('returns false if any query is actively fetching/refetching', () => {
+        const q1 = { isFetched: true, isFetching: true, isPending: false };
+        expect(isQuerySettled(q1)).toBe(false);
+    });
+
+    it('returns false if any query is pending or placeholderData', () => {
+        const q1 = { isFetched: true, isFetching: false, isPlaceholderData: true };
+        const q2 = { isFetched: true, isFetching: false, isPending: true };
+        expect(isQuerySettled(q1)).toBe(false);
+        expect(isQuerySettled(q2)).toBe(false);
+    });
+
+    it('returns false if isTransitionPending is true even if queries are fetched', () => {
+        const q1 = { isFetched: true, isFetching: false, isPending: false };
+        expect(isQuerySettled([q1], true)).toBe(false);
+    });
+
+    it('returns false if a query in the list is null or undefined', () => {
+        expect(isQuerySettled([null])).toBe(false);
+        expect(isQuerySettled([undefined])).toBe(false);
+    });
+
+    it('returns true for an empty query list when transition is not pending', () => {
+        expect(isQuerySettled([])).toBe(true);
+    });
+});
 
 describe('makeQueryClient configuration', () => {
     it('initializes query client with exponential backoff and jitter', () => {

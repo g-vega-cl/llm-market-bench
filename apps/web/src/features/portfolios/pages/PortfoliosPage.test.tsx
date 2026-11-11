@@ -1,10 +1,18 @@
 import type { Portfolio } from '@llm-market-bench/database';
 import { render, screen, waitFor } from '@testing-library/react';
 import type * as React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getSystemPortfolioSubtitle, PortfoliosPage } from './PortfoliosPage';
 
 // Mock Tanstack Query's useSuspenseQuery and useQuery to return the data directly
+let mockComparisonQueryState = {
+    isFetched: true,
+    isFetching: false,
+    isPending: false,
+    isPlaceholderData: false,
+};
+let mockComparisonData: unknown = null;
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
     const original = await importOriginal<typeof import('@tanstack/react-query')>();
     const stubQuery = ({
@@ -14,20 +22,25 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         queryKey?: unknown[];
         initialData?: unknown;
     }) => {
-        if (queryKey && queryKey[0] === 'portfolios' && queryKey[1] === 'list') {
-            return { data: initialData };
-        }
-        if (queryKey && queryKey[0] === 'portfolios' && queryKey[1] === 'comparison') {
+        if (queryKey?.includes('comparison')) {
             return {
-                data: initialData || {
-                    portfolios: [],
-                    startDate: '',
-                    endDate: '',
-                    benchmarkData: {},
-                },
+                data: mockComparisonData ||
+                    initialData || {
+                        portfolios: [],
+                        startDate: '',
+                        endDate: '',
+                        benchmarkData: {},
+                    },
+                ...mockComparisonQueryState,
             };
         }
-        return { data: initialData };
+        return {
+            data: initialData,
+            isFetched: true,
+            isFetching: false,
+            isPending: false,
+            isPlaceholderData: false,
+        };
     };
     return {
         ...original,
@@ -66,8 +79,12 @@ vi.mock('../components/BenchmarkSelector', () => ({
     BenchmarkSelector: () => <div data-testid="benchmark-selector">Mock BenchmarkSelector</div>,
 }));
 
+let lastComparisonChartProps: { isSettled?: boolean } | null = null;
 vi.mock('../components/PortfolioComparisonChart', () => ({
-    PortfolioComparisonChart: () => <div data-testid="portfolio-comparison-chart">Mock Chart</div>,
+    PortfolioComparisonChart: (props: { isSettled?: boolean }) => {
+        lastComparisonChartProps = props;
+        return <div data-testid="portfolio-comparison-chart">Mock Chart</div>;
+    },
 }));
 
 const mockPortfolios = [
@@ -108,6 +125,17 @@ const mockPortfolios = [
 ] as unknown as (Portfolio & { is_active: boolean; is_autoresearch: boolean })[];
 
 describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
+    beforeEach(() => {
+        mockComparisonData = null;
+        mockComparisonQueryState = {
+            isFetched: true,
+            isFetching: false,
+            isPending: false,
+            isPlaceholderData: false,
+        };
+        lastComparisonChartProps = null;
+    });
+
     it('separates Active LLM Agents and Systematic Strategies into distinct blocks and moves Retired to /lab', async () => {
         const fetchFn = vi.fn().mockResolvedValue(mockPortfolios);
         const comparisonFetchFn = vi.fn().mockResolvedValue({
@@ -223,6 +251,69 @@ describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
 
         await waitFor(() => {
             expect(screen.getByText(/no active models currently available/i)).toBeInTheDocument();
+        });
+    });
+
+    it('passes isSettled=true when queries are settled, and isSettled=false when unsettled', async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+        mockComparisonData = {
+            portfolios: [
+                {
+                    portfolioId: 'p1',
+                    ownerId: 'gemini-3-flash-preview',
+                    performance: [
+                        { date: yesterday, totalEquity: 95000, value: 0 },
+                        { date: today, totalEquity: 100000, value: 5.26 },
+                    ],
+                },
+            ],
+            startDate: yesterday,
+            endDate: today,
+            benchmarkData: {},
+        };
+        mockComparisonQueryState = {
+            isFetched: true,
+            isFetching: false,
+            isPending: false,
+            isPlaceholderData: false,
+        };
+        const fetchFn = vi.fn().mockResolvedValue(mockPortfolios);
+        const comparisonFetchFn = vi.fn().mockResolvedValue(mockComparisonData);
+
+        const { rerender } = render(
+            <PortfoliosPage
+                initialData={mockPortfolios}
+                fetchFn={fetchFn}
+                comparisonFetchFn={comparisonFetchFn}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(lastComparisonChartProps?.isSettled).toBe(true);
+            expect(screen.getByText('+5.26%')).toBeInTheDocument();
+        });
+
+        // Set comparison query as fetching / unsettled
+        mockComparisonQueryState = {
+            isFetched: true,
+            isFetching: true,
+            isPending: false,
+            isPlaceholderData: true,
+        };
+
+        rerender(
+            <PortfoliosPage
+                initialData={mockPortfolios}
+                fetchFn={fetchFn}
+                comparisonFetchFn={comparisonFetchFn}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(lastComparisonChartProps?.isSettled).toBe(false);
+            expect(screen.queryByText('+5.26%')).toBeNull();
         });
     });
 });

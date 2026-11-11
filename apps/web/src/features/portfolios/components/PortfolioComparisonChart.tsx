@@ -37,6 +37,7 @@ interface PortfolioComparisonChartProps {
     timeframe?: string;
     onReset?: () => void;
     maxSelected?: number;
+    isSettled?: boolean;
 }
 
 export function PortfolioComparisonChart({
@@ -46,6 +47,7 @@ export function PortfolioComparisonChart({
     timeframe,
     onReset,
     maxSelected = 5,
+    isSettled = true,
 }: PortfolioComparisonChartProps) {
     const data = React.useMemo(() => {
         return rawData.map((portfolio) => {
@@ -118,8 +120,29 @@ export function PortfolioComparisonChart({
     }, [rawBenchmarkData]);
 
     const svgRef = React.useRef<SVGSVGElement>(null);
-    const [clickedData, setClickedData] = React.useState<TooltipData | null>(null);
+    const [userSelection, setUserSelection] = React.useState<{
+        timeframe?: string;
+        ids: string[] | null;
+    }>({ timeframe, ids: null });
+    const [clickedSelection, setClickedSelection] = React.useState<{
+        timeframe?: string;
+        data: TooltipData | null;
+    }>({ timeframe, data: null });
     const [latestData, setLatestData] = React.useState<TooltipData | null>(null);
+
+    const customSelectedIds = userSelection.timeframe === timeframe ? userSelection.ids : null;
+    const clickedData = clickedSelection.timeframe === timeframe ? clickedSelection.data : null;
+
+    const setClickedData = React.useCallback(
+        (action: TooltipData | null | ((prev: TooltipData | null) => TooltipData | null)) => {
+            setClickedSelection((prev) => {
+                const currentData = prev.timeframe === timeframe ? prev.data : null;
+                const nextData = typeof action === 'function' ? action(currentData) : action;
+                return { timeframe, data: nextData };
+            });
+        },
+        [timeframe],
+    );
 
     const defaultSelectedIds = React.useMemo(() => {
         const withData = data.filter((p) => p.performance.length > 0);
@@ -127,58 +150,54 @@ export function PortfolioComparisonChart({
         return source.slice(0, maxSelected).map((p) => p.portfolioId);
     }, [data, maxSelected]);
 
-    const isInitializedRef = React.useRef(defaultSelectedIds.length > 0);
-    const prevTimeframeRef = React.useRef(timeframe);
-    const [selectedPortfolioIds, setSelectedPortfolioIds] = React.useState<string[]>(
-        () => defaultSelectedIds,
-    );
+    const validCustomSelectedIds = React.useMemo(() => {
+        if (!customSelectedIds) return null;
+        return customSelectedIds.filter((id) => data.some((p) => p.portfolioId === id));
+    }, [customSelectedIds, data]);
 
-    React.useEffect(() => {
-        if (!isInitializedRef.current && defaultSelectedIds.length > 0) {
-            setSelectedPortfolioIds(defaultSelectedIds);
-            isInitializedRef.current = true;
-        } else if (prevTimeframeRef.current !== timeframe) {
-            prevTimeframeRef.current = timeframe;
-            setSelectedPortfolioIds(defaultSelectedIds);
-            setClickedData(null);
-        } else if (isInitializedRef.current) {
-            setSelectedPortfolioIds((prev) =>
-                prev.filter((id) => data.some((p) => p.portfolioId === id)),
-            );
-        }
-    }, [defaultSelectedIds, data, timeframe]);
+    const selectedPortfolioIds = validCustomSelectedIds ?? defaultSelectedIds;
 
     const handleAddPortfolio = React.useCallback(
         (portfolioId: string) => {
-            setSelectedPortfolioIds((prev) => {
-                if (prev.includes(portfolioId) || prev.length >= maxSelected) return prev;
-                return [...prev, portfolioId];
+            setUserSelection((prev) => {
+                const current =
+                    prev.timeframe === timeframe && prev.ids !== null
+                        ? prev.ids
+                        : defaultSelectedIds;
+                if (current.includes(portfolioId) || current.length >= maxSelected) return prev;
+                return { timeframe, ids: [...current, portfolioId] };
             });
         },
-        [maxSelected],
+        [timeframe, defaultSelectedIds, maxSelected],
     );
 
-    const handleRemovePortfolio = React.useCallback((portfolioId: string) => {
-        setSelectedPortfolioIds((prev) => prev.filter((id) => id !== portfolioId));
-    }, []);
+    const handleRemovePortfolio = React.useCallback(
+        (portfolioId: string) => {
+            setUserSelection((prev) => {
+                const current =
+                    prev.timeframe === timeframe && prev.ids !== null
+                        ? prev.ids
+                        : defaultSelectedIds;
+                return { timeframe, ids: current.filter((id) => id !== portfolioId) };
+            });
+        },
+        [timeframe, defaultSelectedIds],
+    );
 
     const handleResetSelection = React.useCallback(() => {
-        setSelectedPortfolioIds(defaultSelectedIds);
-    }, [defaultSelectedIds]);
+        setUserSelection({ timeframe, ids: null });
+    }, [timeframe]);
 
     const isCustomSelection = React.useMemo(() => {
-        if (selectedPortfolioIds.length !== defaultSelectedIds.length) return true;
+        if (!validCustomSelectedIds) return false;
+        if (validCustomSelectedIds.length !== defaultSelectedIds.length) return true;
         const defaultSet = new Set(defaultSelectedIds);
-        return selectedPortfolioIds.some((id) => !defaultSet.has(id));
-    }, [selectedPortfolioIds, defaultSelectedIds]);
+        return validCustomSelectedIds.some((id) => !defaultSet.has(id));
+    }, [validCustomSelectedIds, defaultSelectedIds]);
 
     const activeData = React.useMemo(() => {
-        const currentIds =
-            selectedPortfolioIds.length > 0 || isInitializedRef.current
-                ? selectedPortfolioIds
-                : defaultSelectedIds;
-        return data.filter((p) => currentIds.includes(p.portfolioId));
-    }, [data, selectedPortfolioIds, defaultSelectedIds]);
+        return data.filter((p) => selectedPortfolioIds.includes(p.portfolioId));
+    }, [data, selectedPortfolioIds]);
 
     const portfolioColors = React.useMemo(() => {
         const colors: Record<string, string> = {};
@@ -265,7 +284,7 @@ export function PortfolioComparisonChart({
             }
             return { ...prev, portfolioValues: remaining };
         });
-    }, [selectedPortfolioIds, data]);
+    }, [selectedPortfolioIds, data, setClickedData]);
 
     React.useEffect(() => {
         setLatestData(getLatestData());
@@ -274,7 +293,7 @@ export function PortfolioComparisonChart({
     const handleReset = React.useCallback(() => {
         setClickedData(null);
         onReset?.();
-    }, [onReset]);
+    }, [setClickedData, onReset]);
 
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -593,7 +612,7 @@ export function PortfolioComparisonChart({
                 .attr('fill', '#f59e0b')
                 .text(benchmarkLabel);
         }
-    }, [activeData, portfolioColors, benchmarkData, selectedBenchmark, dateRange]);
+    }, [activeData, portfolioColors, benchmarkData, selectedBenchmark, dateRange, setClickedData]);
 
     React.useEffect(() => {
         if (!svgRef.current) return;
@@ -676,7 +695,7 @@ export function PortfolioComparisonChart({
                     <div className="text-xs font-normal text-zinc-400">
                         Normalized to percentage returns
                     </div>
-                    {clickedData && (
+                    {isSettled && clickedData && (
                         <Button
                             variant="ghost"
                             colorScheme="info"
@@ -701,7 +720,7 @@ export function PortfolioComparisonChart({
                     values={chipValues}
                     onAdd={handleAddPortfolio}
                     onRemove={handleRemovePortfolio}
-                    onReset={isCustomSelection ? handleResetSelection : undefined}
+                    onReset={isSettled && isCustomSelection ? handleResetSelection : undefined}
                     maxSelected={maxSelected}
                 />
             )}

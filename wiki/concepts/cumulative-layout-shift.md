@@ -19,7 +19,7 @@ Skeleton loaders (`CardSkeleton`, pulsing gray wireframe rectangles) are a commo
 
 ## Core Architectural Invariants
 
-Benchify mandates five design and querying rules to eliminate layout shifts:
+Benchify mandates the following design and querying rules to eliminate layout shifts:
 
 ### 1. Zero Skeletons & Silent Suspense Fallbacks
 
@@ -89,8 +89,25 @@ When users navigate between model, track, or asset tabs (e.g. switching between 
 - **Auxiliary Card Placement**: Tab-specific supplementary sections (such as `CuratedManifestCard` in `apps/web/src/features/daily-predictions/components/CuratedManifestCard.tsx`, detailing the Champion model's data manifest) must be placed underneath the primary table and hero blocks rather than inserted above them.
 - **Zero Whiplash on Tab Transitions**: Placing auxiliary panels at the bottom ensures the user's primary visual focal points (metrics overview, latest prediction outlook, predictions table) remain rock-solid and visually stable across tab clicks, avoiding disorienting vertical layout shifts.
 
+### 7. Secondary UI Query Settlement Gating
+
+Secondary action buttons (such as `Reset to Top 5` or `Reset Crosshair`) and volatile derived badges (such as per-portfolio daily percentage moves) must never flash or render during in-flight fetches, `keepPreviousData` background refetches, or React transition states. A button that appears for one frame and then disappears — or a percentage that briefly shows a stale value — reads as instability in a financial dashboard.
+
+Gate these elements with `isQuerySettled(queries, isTransitionPending)` from [`apps/web/src/lib/query-client.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/lib/query-client.tsx):
+
+```tsx
+const isQueriesSettled = isQuerySettled([listQuery, comparisonQuery]);
+const isChartSettled = isQueriesSettled && !isPending;
+
+<PortfolioComparisonChart ... isSettled={isChartSettled} />
+<PortfolioCard todayPct={isQueriesSettled ? todayPctMap.get(portfolio.id) : undefined} />
+```
+
+The helper returns `true` only when every supplied query has valid data and is not `isFetching`, `isPending`, or `isPlaceholderData`, and no React transition is pending. Crucially, **primary chart and container chrome stay stably mounted** while secondary affordances are gated — the gating removes transient elements rather than swapping layout, so it never itself introduces a shift. See [[concepts/tanstack-query]] for the full helper semantics.
+
 ## Related
 
 - [[entities/design-system]] — UI primitive library, theme conventions, and layout governance
 - [[concepts/fluent-responsive-design]] — Breakpoint-free intrinsic responsive layouts
 - [[concepts/zero-frontend-compute]] — Keeping the presentation layer clean of heavy client math
+- [[concepts/tanstack-query]] — Query settlement gating and SSR-safe QueryClient setup

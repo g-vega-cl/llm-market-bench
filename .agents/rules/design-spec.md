@@ -128,6 +128,7 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Boxel** aesthetic inspired b
 2. **Stale-while-revalidate**: All query timeframe switches must use `placeholderData: keepPreviousData` so existing views remain rendered during background fetches.
 3. **In-memory cache fallback**: Server fetchers retain last valid in-memory payloads to prevent layout wipeouts on transient disconnects.
 4. **Anchor stability**: Auxiliary tab panels (e.g. curated manifests) must sit below primary decision tables and hero charts, keeping visual focal points vertically invariant across tab clicks.
+5. **Secondary UI query settlement gating**: Secondary action buttons (such as 'Reset to Top 5' or 'Reset Crosshair') and volatile derived badges (such as daily percentage moves) must never flash or render during in-flight fetches, keepPreviousData background refetches, or React transition states. Use `isQuerySettled(queries, isTransitionPending)` from `apps/web/src/lib/query-client.tsx` to ensure secondary elements only appear once all relevant page queries and transitions have fully settled, while keeping primary chart and container chrome stably mounted to prevent CLS.
 
 ---
 

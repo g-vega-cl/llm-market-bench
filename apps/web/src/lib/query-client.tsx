@@ -85,3 +85,32 @@ export function QueryClientProviderWrapper({ children }: { children: React.React
         </QueryClientProvider>
     );
 }
+
+export interface QuerySettlementState {
+    isFetched?: boolean;
+    isFetching: boolean;
+    isPending?: boolean;
+    isSuccess?: boolean;
+    isPlaceholderData?: boolean;
+    data?: unknown;
+}
+
+/**
+ * Returns true only when all provided queries have completed fetching,
+ * are not currently refetching, are not serving placeholderData,
+ * have valid data, and no concurrent React transition is pending.
+ */
+export function isQuerySettled(
+    queries: (QuerySettlementState | undefined | null)[] | QuerySettlementState | undefined | null,
+    isTransitionPending = false,
+): boolean {
+    if (isTransitionPending) return false;
+    if (queries === null || queries === undefined) return false;
+    const queryList = Array.isArray(queries) ? queries : [queries];
+    if (queryList.length === 0) return true;
+    return queryList.every((q) => {
+        if (!q) return false;
+        const hasValidData = q.data !== undefined && (q.isSuccess ?? true);
+        return hasValidData && !q.isFetching && !q.isPending && !q.isPlaceholderData;
+    });
+}

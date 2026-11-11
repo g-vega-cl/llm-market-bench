@@ -9,6 +9,7 @@ import {
 import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
+import { isQuerySettled } from '~/lib/query-client';
 import { formatEasternDateTime } from '~/utils/date';
 import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
@@ -201,21 +202,26 @@ function PortfolioCard({
 }
 
 export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: PortfoliosPageProps) {
-    const { data } = useSuspenseQuery({
+    const listQuery = useSuspenseQuery({
         ...portfolioQueries.list({ fetchFn }),
         initialData,
     });
+    const { data } = listQuery;
 
     const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('SPY');
     const [timeframe, setTimeframe] = React.useState<'7d' | '30d' | '90d' | 'all'>('90d');
-    const [_isPending, startTransition] = React.useTransition();
+    const [isPending, startTransition] = React.useTransition();
 
-    const { data: comparisonData } = useQuery({
+    const comparisonQuery = useQuery({
         ...portfolioQueries.comparison({
             fetchFn: () => comparisonFetchFn(),
         }),
         placeholderData: keepPreviousData,
     });
+    const { data: comparisonData } = comparisonQuery;
+
+    const isQueriesSettled = isQuerySettled([listQuery, comparisonQuery]);
+    const isChartSettled = isQueriesSettled && !isPending;
 
     const processedComparisonData = React.useMemo(() => {
         if (!comparisonData?.portfolios) return { portfolios: [], benchmarkData: {} };
@@ -358,6 +364,7 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                             benchmarkData={processedComparisonData.benchmarkData}
                             selectedBenchmark={selectedBenchmark}
                             timeframe={timeframe}
+                            isSettled={isChartSettled}
                         />
                     ) : (
                         <div className="voxel-trough py-48 flex items-center justify-center text-xs text-boxel-muted border border-boxel-bevel-hi/40">
@@ -380,7 +387,9 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                                 <PortfolioCard
                                     key={portfolio.id}
                                     portfolio={portfolio}
-                                    todayPct={todayPctMap.get(portfolio.id)}
+                                    todayPct={
+                                        isQueriesSettled ? todayPctMap.get(portfolio.id) : undefined
+                                    }
                                 />
                             ))}
                         </div>
@@ -410,7 +419,9 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                                 <PortfolioCard
                                     key={portfolio.id}
                                     portfolio={portfolio}
-                                    todayPct={todayPctMap.get(portfolio.id)}
+                                    todayPct={
+                                        isQueriesSettled ? todayPctMap.get(portfolio.id) : undefined
+                                    }
                                 />
                             ))}
                         </div>

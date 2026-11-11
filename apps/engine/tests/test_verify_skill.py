@@ -208,3 +208,56 @@ def test_verify_skill_mandates_system_design_interview_framework():
     concept_content = concept_path.read_text().lower()
     assert "system design interview" in concept_content
     assert "spof" in concept_content or "single points of failure" in concept_content
+
+
+def test_verify_skill_mandates_state_space_minimization_and_debugging_protocol():
+    """Verify that SKILL.md, staff-engineer-verification concept, and state-machines concept enforce state minimization."""
+    assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
+    skill_content = VERIFY_SKILL_MD.read_text().lower()
+    assert "state-space minimization" in skill_content or "state space" in skill_content
+    assert "make illegal states unrepresentable" in skill_content
+    assert "state-machines" in skill_content
+    assert "10/10" in skill_content
+    assert "locate & reproduce" in skill_content
+    assert "minimal fix" in skill_content
+
+    concept_path = REPO_ROOT / "wiki" / "concepts" / "staff-engineer-verification.md"
+    assert concept_path.exists()
+    concept_content = concept_path.read_text().lower()
+    assert "state-space minimization" in concept_content
+    assert "make illegal states unrepresentable" in concept_content
+    assert "10/10 agentic debugging protocol" in concept_content
+    assert "[[concepts/state-machines]]" in concept_content
+
+    state_machines_path = REPO_ROOT / "wiki" / "concepts" / "state-machines.md"
+    assert state_machines_path.exists(), "wiki/concepts/state-machines.md must exist"
+    sm_raw = state_machines_path.read_text()
+    sm_content = sm_raw.lower()
+    assert "canonical state machine registry" in sm_content
+    assert "implicit state debt" in sm_content
+
+    # Strict file existence check: verify all source files cited in state-machines.md exist
+    import re
+
+    from execution.validation import ValidationStatus
+
+    file_refs = re.findall(r"`((?:apps|packages|scripts|supabase|docker)/[^`]+)`", sm_raw)
+    assert len(file_refs) >= 8, f"state-machines.md must cite at least 8 source files, found: {file_refs}"
+    for ref in file_refs:
+        target = REPO_ROOT / ref
+        assert target.exists(), f"state-machines.md references non-existent file on disk: {ref}"
+
+    # Strict enum parity check: verify ValidationStatus variants are documented
+    for status in ValidationStatus:
+        assert status.value in sm_raw, f"ValidationStatus.{status.name} must be documented in state-machines.md"
+
+    # Strict stage parity check for catalyst radar
+    for stage in ["upcoming", "active", "digesting", "expired"]:
+        assert f"`{stage}`" in sm_raw, f"Catalyst radar stage `{stage}` must be documented in state-machines.md"
+
+    entity_path = REPO_ROOT / "wiki" / "entities" / "verify-skill.md"
+    assert entity_path.exists()
+    entity_content = entity_path.read_text().lower()
+    assert "state-space minimization" in entity_content
+    assert "10/10" in entity_content
+    assert "[[concepts/state-machines]]" in entity_content

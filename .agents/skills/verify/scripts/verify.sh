@@ -90,7 +90,18 @@ fi
 if command -v qmd >/dev/null 2>&1; then
   echo "--> Updating QMD vector index and embeddings..."
   qmd update
-  qmd embed
+  EMBED_OUT="$(mktemp /tmp/verify-qmd-embed.XXXXXX)"
+  if ! qmd embed > "$EMBED_OUT" 2>&1; then
+    if grep -iqE "cuda error|out of memory" "$EMBED_OUT"; then
+      echo "--> Warning: qmd embed skipped due to GPU VRAM constraint; BM25 search remains fully updated."
+    else
+      cat "$EMBED_OUT" >&2
+      rm -f "$EMBED_OUT"
+      echo "ERROR: qmd embed failed with non-CUDA error!" >&2
+      exit 1
+    fi
+  fi
+  rm -f "$EMBED_OUT"
 fi
 
 # Database & Migration Integrity

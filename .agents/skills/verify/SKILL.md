@@ -189,25 +189,78 @@ Apply a rigorous staff/principal engineering audit to all changed code. Think co
    - *SPOFs, Bottlenecks & Graceful Degradation*: Identify single points of failure (SPOFs) when external services (local GPU servers, FMP, OpenRouter, Alpaca, PostgREST) stall or return 429/500 errors. Ensure pipelines fail fast or degrade gracefully with fallback without corrupting state.
    - *Tradeoffs & 10x Scale Limits*: Articulate what breaks first under 10x volume, extreme volatility regimes, or concurrent execution.
 
+8. **State-Space Minimization ("Make Illegal States Unrepresentable")**:
+   Audit all state representations and lifecycle mutations against `[[concepts/state-machines]]`:
+   - *Eliminate Boolean Flag Sprawl*: Never combine multiple boolean flags (`is_loading`, `is_error`, `is_ready`, `has_data`, `is_retrying`) to represent mutually exclusive lifecycle phases ($2^N$ state explosion). Mandate a single discrete enum (`StrEnum`) or TypeScript discriminated union / Python literal union (`State = 'idle' | 'loading' | 'success' | 'error'`).
+   - *Make Illegal States Unrepresentable*: Enforce schema and type boundaries so invalid permutations (e.g. `data != null` combined with `error != null`, or `status == "closed"` holding an active order ID) cannot be expressed or queried.
+   - *Explicit Transition Matrices & Guards*: Every state mutation must flow through defined transition guards. If an unexpected event occurs, fail fast immediately with an invariant error rather than silently corrupting state.
+   - *Derive Rather Than Cache*: Never store duplicate mutable state across components or objects. Derive transient properties from the canonical source of truth on demand.
+   - *Implicit State Debt*: Check if the diff touches any implicit state machine listed in `[[concepts/state-machines]]#3-implicit-state-debt--refactoring-backlog` and collapse it into explicit types where feasible.
+
+9. **The 10/10 Agentic Debugging & Cold Subagent Prompts**:
+
+   #### A. Cold-Context Adversarial Reviewer Prompt (for `invoke_subagent`)
+   When spawning the `research` subagent for Tier 7 staff review, pass strictly the 1-sentence goal and the diff inside this template:
+   ```markdown
+   You are an adversarial Staff Software Engineer performing a cold-context code audit.
+   Assume the author has conversational sycophancy, patched symptoms, or introduced subtle edge-case bugs.
+   
+   ### TASK GOAL
+   <1-sentence objective of the change>
+   
+   ### CODE DIFF
+   <git diff HEAD~1 or staged/working diff>
+   
+   ### AUDIT CRITERIA
+   1. State Space: Did the change add boolean flag sprawl ($2^N$ states) or allow illegal states? Does it adhere to wiki/concepts/state-machines.md?
+   2. Root Cause vs Symptom Patch: Does the diff cure the underlying defect or mask symptoms with loose conditionals?
+   3. Invariants & Idempotency: Will re-running this mid-flight duplicate data or corrupt state? Are financial mutations CP-safe?
+   4. Complexity & Smells: Does it exceed 10 decision branches (C901), introduce shotgun surgery, or leak abstraction boundaries?
+   5. Performance & Leaks: Are there N+1 query loops, unindexed queries, unstripped vector embeddings, or unbounded table scans?
+   
+   Deliver an uncompromising audit with concrete verdicts: PASS, WARN (Debt Incurred with counterfactual design), or FAIL (blocking defect).
+   ```
+
+   #### B. 10/10 Methodical Debugging Protocol (When Tests or Checks Fail)
+   If any unit test, typecheck, or verification tier fails during your workflow, **NEVER perform shotgun debugging** (blindly patching lines or adding boolean flags to satisfy the test). Execute this strict 5-step investigative protocol:
+   ```markdown
+   1. Locate & Reproduce:
+      - Pinpoint the exact file and line where failure occurs.
+      - Write or isolate a hermetic, minimal reproduction test case that reliably reproduces the failure firsthand (TDD).
+   2. Formulate Hypotheses:
+      - List 2 to 3 distinct potential root causes before touching production code. Rank them by architectural probability.
+   3. Gather Evidence:
+      - Trace data flow across boundaries (input validation -> computation -> persistence -> presentation).
+      - Inspect variable states and error tracebacks via scratch scripts (Principle 12). Rule hypotheses in or out with concrete evidence.
+   4. State-Space & Root Cause Isolation:
+      - Identify the exact invalid state, illegal transition, or broken invariant causing the defect.
+      - Explain WHY the failure happens rather than just WHAT failed.
+   5. Minimal Fix & Proof:
+      - Apply the minimal necessary architectural fix. Eliminate the invalid state permanently.
+      - Prove the fix hermetically passes all tests with zero artificial sleep and zero external network calls.
+   ```
+
 ### Tier 8. Wiki and documentation synchronization (MANDATORY)
 
 1. **Synchronize changes everywhere**:
    - When code changes alter formulas, scoring, models, tools, UI components, background tasks, schemas, or architectural patterns, YOU MUST proactively audit and update ALL relevant wiki pages (`wiki/concepts/`, `wiki/entities/`) documenting the new behavior, component interfaces, invariants, and the rationale ("the why"). Never leave new features, model tracks, or schemas undocumented.
 2. **Audit all affected surfaces**:
    - Review `git diff --name-only` across backend, frontend, and config to identify every concept and entity page requiring documentation. If a new capability or pattern is introduced, create a new dedicated wiki page.
-3. **Refresh code hotspots**:
+3. **State machine registry synchronization**:
+   - Whenever introducing, modifying, or refactoring a status enum, lifecycle stage, or state transition, update [`wiki/concepts/state-machines.md`](file:///home/cv/Documents/Code/llm-market-bench/wiki/concepts/state-machines.md) to document the new states, ASCII transition flow, and guards.
+4. **Refresh code hotspots**:
    - Refresh the code hotspots wiki page via `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki`.
-4. **Auto-index catalog**:
+5. **Auto-index catalog**:
    - Run `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix` to auto-index new pages into `wiki/index.md`.
-5. **Re-index search embeddings**:
+6. **Re-index search embeddings**:
    - Update and regenerate QMD vector embeddings via `qmd update && qmd embed` so knowledge remains discoverable via semantic search.
-6. **Root-relative paths in backticks**:
+7. **Root-relative paths in backticks**:
    - Any backtick string starting with project prefixes (`apps/`, `packages/`, `scripts/`, `supabase/`, `wiki/`, `.github/`) must be an exact valid path from the repository root. Never use relative shorthand (e.g. `scripts/verify.sh` when the file is at `.agents/skills/verify/scripts/verify.sh`).
-7. **Internal link resolution**:
+8. **Internal link resolution**:
    - Every `[[page-name]]` cross-reference must resolve to an existing markdown page under `wiki/`.
-8. **Config parity**:
+9. **Config parity**:
    - New models in `packages/config/models.json` and tools in `packages/config/tools.json` must be documented in the wiki. Run strict `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` to ensure zero undocumented tools or models exist.
-9. **Auto-wiki preservation mandate and pre-commit emulation**:
+10. **Auto-wiki preservation mandate and pre-commit emulation**:
    - Staged code changes trigger `.husky/pre-commit` via `scripts/auto-wiki.sh` and `apps/engine/auto_wiki.py`. Ensure existing tools, schemas, and architecture blocks are preserved in related wiki pages. Emulate auto-wiki in dry-run mode (`auto_wiki.py --diff-file <(git diff --cached) --dry-run`) before committing to prevent pre-commit config parity regressions.
 
 ---

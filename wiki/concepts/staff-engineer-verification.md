@@ -1,5 +1,5 @@
 ---
-tags: [verification, architecture, code-quality, staff-engineer, solid, code-smells, distributed-systems]
+tags: [verification, architecture, code-quality, staff-engineer, solid, code-smells, distributed-systems, state-machines, debugging]
 category: concept
 ---
 
@@ -102,8 +102,40 @@ When auditing features, treat the pull request as an L5/L6 System Design Intervi
 5. **Tradeoffs & 10x Scale Limits**:
    - What compromises were made for simplicity, what architectural debt was incurred, and what will break first under 10x volume, extreme volatility regimes, or concurrent execution?
 
+## 7. State-Space Minimization ("Make Illegal States Unrepresentable")
+
+Systems with unbounded or loosely typed state suffer from combinatorial explosion ($2^N$ states for $N$ boolean flags) and implicit edge states that escape unit test coverage. During Staff/Principal review, verify state design against `[[concepts/state-machines]]`:
+
+1. **Eliminate Boolean Flag Sprawl**:
+   - Prohibit compound boolean flags (`is_loading`, `is_error`, `is_ready`, `has_data`, `is_retrying`) to represent mutually exclusive lifecycle phases.
+   - Collapse them into a single discrete enum (`StrEnum`) or TypeScript discriminated union / Python literal union (`State = 'idle' | 'loading' | 'success' | 'error'`).
+2. **Make Illegal States Unrepresentable**:
+   - Design types and schemas such that invalid combinations (e.g. `data != null` combined with `error != null`, or `status == "closed"` holding an active order ID) cannot be expressed or queried.
+3. **Explicit Transition Matrices & Guards**:
+   - Every state mutation must flow through defined transition guards. If an unexpected event occurs, fail fast immediately with an invariant error rather than silently corrupting state.
+4. **Derive Rather Than Cache**:
+   - Never store duplicate mutable state across components or objects. Derive transient properties from the canonical source of truth on demand.
+5. **Implicit State Debt Triage**:
+   - Check if the modified code relies on multi-column nullable combinations (e.g., `evaluated_at IS NULL AND exit_trade_id IS NOT NULL`) and systematically refactor toward explicit lifecycle status types.
+
+## 8. The 10/10 Agentic Debugging Protocol
+
+When tests or verification checks fail during implementation, AI agents frequently fall into **"Shotgun Debugging"**—blindly editing files, tacking on boolean flags, or patching symptoms until tests pass. Staff-level verification enforces a strict 5-step investigative loop:
+
+1. **Locate & Reproduce**:
+   - Pinpoint the exact origin. Write or isolate a minimal, hermetic reproduction test case first (TDD).
+2. **Formulate Hypotheses**:
+   - List 2 to 3 distinct potential root causes before touching production code. Rank them by architectural probability.
+3. **Gather Evidence**:
+   - Trace data flow across boundaries (validation -> computation -> persistence -> presentation). Inspect variable states and error tracebacks via scratch scripts.
+4. **State-Space & Root Cause Isolation**:
+   - Identify the exact invalid state, illegal transition, or broken invariant causing the defect. Explain *why* the failure happens, not just *what* failed.
+5. **Minimal Fix & Proof**:
+   - Apply the minimal necessary architectural fix. Eliminate the invalid state permanently and prove all hermetic tests pass with zero regressions.
+
 ## Related
 
+- [[concepts/state-machines]] — Canonical registry of explicit and implicit finite state machines
 - [[entities/verify-skill]] — The eight-tier verification protocol and runner
 - [[concepts/vertical-slice-islands]] — File size ceilings, cohesion, and test colocation
 - [[concepts/observability-standard]] — Structured logging and traceback preservation

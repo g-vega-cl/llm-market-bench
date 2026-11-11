@@ -103,6 +103,7 @@
 
 ## Concepts
 
+- [[concepts/state-machines]] — Auto-indexed page
 - [[concepts/in-flow-inspection]] — Zero floating tooltips/popovers; secondary telemetry renders in-flow in recessed `.voxel-trough` slots with keyboard-operable triggers
 - [[concepts/overreaction-mean-reversion]] — Auto-indexed page
 - [[concepts/iv-hist-iv-ratio]] — Auto-indexed page

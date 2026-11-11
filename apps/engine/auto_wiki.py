@@ -477,6 +477,9 @@ def apply_page_deletions(paths: list) -> None:
 
 def write_new_page(rel_path: str, content: str) -> None:
     rel_path = rel_path.removeprefix("wiki/").removeprefix("/")
+    if rel_path in ("index.md", "SCHEMA.md"):
+        print(f"  [auto-wiki] SKIP: {rel_path} cannot be created as a new page", file=sys.stderr)
+        return
     target = (WIKI_DIR / rel_path).resolve()
     if not str(target).startswith(str(WIKI_DIR.resolve())):
         print(f"  [auto-wiki] ERROR: path traversal attempt: {rel_path}", file=sys.stderr)

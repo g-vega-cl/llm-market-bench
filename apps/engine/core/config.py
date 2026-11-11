@@ -144,6 +144,9 @@ COMMAND_DAILY_TRADE = "daily-trade"
 COMMAND_AUDIT_PORTFOLIOS = "audit-portfolios"
 COMMAND_EARNINGS_PREDICTOR = "earnings-predictor"
 COMMAND_EVALUATE_EARNINGS_PREDICTIONS = "evaluate-earnings-predictions"
+COMMAND_STOCK_PICKER = "stock-picker"
+COMMAND_EVALUATE_STOCK_PICKS = "evaluate-stock-picks"
+COMMAND_STOCK_PICKER_AUTORESEARCH = "stock-picker-autoresearch"
 
 
 # --- Content Constants ---

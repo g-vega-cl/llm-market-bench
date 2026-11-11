@@ -17,7 +17,7 @@ export const DEFAULT_DAILY_PREDICTOR_TOOLS = [
 import modelsConfig from '@repo/config/models.json';
 import { resolveRatchetMetrics } from '../components/DailyScoreBreakdown';
 
-export type SupportedDailyTicker = 'SPY' | 'TLT';
+export type SupportedDailyTicker = 'SPY' | 'TLT' | 'PICKS';
 
 export interface ModelConfig {
     id: string;

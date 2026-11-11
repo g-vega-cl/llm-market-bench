@@ -39,6 +39,15 @@ The database is organized into several functional areas:
 - `sector_predictions` — Weekly sector ranking predictions
 - `trades` — Executed trade records with attribution
 
+### Daily Stock Picker Tables
+
+These two tables back the [[entities/daily-stock-picker]] arena (migration `20261112000000_create_daily_stock_picks.sql`) and pre-materialize Long/Short spread alpha and hit rates per model track (see [[concepts/zero-frontend-compute]]):
+
+- **`daily_stock_baskets`** — Parent basket per model track (`consensus`, `deepseek-v4-flash`, `MiniMax-M3`, `gpt-5.6-luna`) for each session. Columns: `id UUID PK`, `target_date DATE NOT NULL`, `model_name TEXT NOT NULL`, `status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','evaluated','cancelled'))`, `directional_hit_rate NUMERIC`, `mean_long_return_pct NUMERIC`, `mean_short_return_pct NUMERIC`, `ls_spread_alpha_pct NUMERIC`, `excess_alpha_vs_spy_pct NUMERIC`, `benchmark_spy_return_pct NUMERIC`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`, `evaluated_at TIMESTAMPTZ`. Unique constraint `uq_daily_stock_basket (target_date, model_name)`; indexes on `target_date` and `model_name`.
+- **`daily_stock_picks`** — Granular child picks (3 UP + 3 DOWN) for each basket. Columns: `id UUID PK`, `basket_id UUID REFERENCES daily_stock_baskets(id) ON DELETE CASCADE`, `target_date DATE NOT NULL`, `model_name TEXT NOT NULL`, `ticker TEXT NOT NULL`, `direction TEXT NOT NULL CHECK (direction IN ('UP','DOWN'))`, `rank INT NOT NULL CHECK (rank BETWEEN 1 AND 3)`, `confidence NUMERIC NOT NULL CHECK (confidence BETWEEN 50.0 AND 100.0)`, `expected_return_pct NUMERIC`, `reasoning TEXT`, `status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','evaluated','cancelled'))`, `open_price NUMERIC`, `close_price NUMERIC`, `stock_return_pct NUMERIC`, `position_return_pct NUMERIC`, `is_hit BOOLEAN`, `conviction_points NUMERIC`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`, `evaluated_at TIMESTAMPTZ`. Unique constraints `uq_stock_picks_slot (target_date, model_name, direction, rank)` and `uq_stock_picks_ticker (target_date, model_name, ticker)`, plus `chk_pick_evaluation_invariants` making illegal lifecycles unrepresentable (see [[concepts/state-machines]]). Indexes on `status`, `basket_id`, and `(model_name, target_date)`.
+
+Both tables enable RLS with public `SELECT`, `service_role` full access, and explicit `GRANT SELECT` to `anon`/`authenticated` per [[concepts/supabase-grant-convention]].
+
 ### Company Research Tables
 
 These two tables back the [[entities/company-research-reports]] pipeline (migration `20261110120000_create_company_research_reports.sql`):
@@ -122,6 +131,7 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 
 ## Related
 
+- [[entities/daily-stock-picker]]
 - [[entities/company-research-reports]]
 - [[entities/government-ingestion]]
 - [[entities/congress-trades]]

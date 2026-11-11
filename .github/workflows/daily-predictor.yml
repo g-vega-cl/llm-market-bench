@@ -16,6 +16,9 @@ on:
           - 'evaluate-daily-predictions'
           - 'earnings-predictor'
           - 'evaluate-earnings-predictions'
+          - 'stock-picker'
+          - 'evaluate-stock-picks'
+          - 'stock-picker-autoresearch'
           - 'daily-autoresearch'
           - 'daily-postmortem'
           - 'daily-trade'
@@ -130,6 +133,18 @@ jobs:
           cd apps/engine
           PYTHONPATH=. ./venv/bin/python3 main.py earnings-predictor
 
+      - name: Run Daily Stock Picker Arena (3 Up, 3 Down)
+        if: (steps.cmd.outputs.command == 'daily-predictor' || steps.cmd.outputs.command == 'stock-picker') && steps.cmd.outputs.skip != 'true'
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+        run: |
+          cd apps/engine
+          PYTHONPATH=. ./venv/bin/python3 main.py stock-picker
+
       - name: Evaluate Day-1 Earnings Predictions
         if: (steps.cmd.outputs.command == 'evaluate-daily-predictions' || steps.cmd.outputs.command == 'evaluate-earnings-predictions') && always()
         env:
@@ -140,6 +155,17 @@ jobs:
         run: |
           cd apps/engine
           PYTHONPATH=. ./venv/bin/python3 main.py evaluate-earnings-predictions
+
+      - name: Evaluate Daily Stock Picks
+        if: (steps.cmd.outputs.command == 'evaluate-daily-predictions' || steps.cmd.outputs.command == 'evaluate-stock-picks') && always()
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+        run: |
+          cd apps/engine
+          PYTHONPATH=. ./venv/bin/python3 main.py evaluate-stock-picks
 
       - name: Reconcile & Auto-Heal System Portfolio Health
         if: steps.cmd.outputs.command == 'evaluate-daily-predictions' && always()
@@ -153,5 +179,16 @@ jobs:
         run: |
           cd apps/engine
           PYTHONPATH=. ./venv/bin/python3 main.py audit-portfolios --lookback-days 5 --fix
+
+      - name: Run Weekly Stock Picker Autoresearch
+        if: (steps.cmd.outputs.command == 'daily-autoresearch' || steps.cmd.outputs.command == 'stock-picker-autoresearch') && always()
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          cd apps/engine
+          PYTHONPATH=. ./venv/bin/python3 main.py stock-picker-autoresearch
+
 
 

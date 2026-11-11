@@ -135,3 +135,21 @@ def handle_evaluate_earnings_predictions(args: argparse.Namespace) -> None:
     target_date = getattr(args, "target_date", None)
     force = getattr(args, "force", False)
     asyncio.run(evaluate_earnings_predictions(target_date=target_date, force_recalc=force))
+
+
+def handle_stock_picker(args: argparse.Namespace) -> None:
+    """Run daily stock picker arena (3 Up, 3 Down) across models."""
+    from tasks.stock_picker import run_daily_stock_picker
+
+    target_date = getattr(args, "target_date", None)
+    force = getattr(args, "force", False)
+    asyncio.run(run_daily_stock_picker(target_date=target_date, force=force))
+
+
+def handle_evaluate_stock_picks(args: argparse.Namespace) -> None:
+    """Evaluate daily stock baskets and picks against actual RTH prices."""
+    from tasks.evaluate_stock_picks import evaluate_stock_picks
+
+    target_date = getattr(args, "target_date", None)
+    force = getattr(args, "force", False)
+    asyncio.run(evaluate_stock_picks(target_date=target_date, force_recalc=force))

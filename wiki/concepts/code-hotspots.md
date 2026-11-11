@@ -15,7 +15,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/web/src/routes/__root.tsx` | 14 | 9 | 64.3% | 292 | 126 | **CRITICAL** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 19 | 6 | 31.6% | 400 | 114 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 18 | 5 | 27.8% | 254 | 90 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 18 | 5 | 27.8% | 341 | 90 | **HIGH** |
 | `apps/engine/tasks/daily_predictor.py` | 21 | 4 | 19.0% | 674 | 84 | **HIGH** |
 | `apps/web/src/routes/-__root.test.tsx` | 11 | 7 | 63.6% | 423 | 77 | **HIGH** |
 | `apps/engine/tasks/newsletter_generator.py` | 12 | 5 | 41.7% | 421 | 60 | **HIGH** |
@@ -25,7 +25,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tests/test_newsletter_generator.py` | 11 | 4 | 36.4% | 604 | 44 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 10 | 4 | 40.0% | 219 | 40 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 19 | 2 | 10.5% | 1907 | 38 | **HIGH** |
-| `apps/engine/tests/test_verify_skill.py` | 11 | 3 | 27.3% | 204 | 33 | **HIGH** |
+| `apps/engine/tests/test_verify_skill.py` | 12 | 3 | 25.0% | 204 | 36 | **HIGH** |
 | `apps/engine/tasks/daily_autoresearch.py` | 16 | 2 | 12.5% | 822 | 32 | **HIGH** |
 | `apps/web/src/features/today/api/fetch-today-data.ts` | 8 | 4 | 50.0% | 460 | 32 | **HIGH** |
 

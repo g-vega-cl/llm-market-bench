@@ -9,6 +9,7 @@ from cli.autoresearch import (
     handle_backtest_daily_autoresearch,
     handle_bootstrap_autoresearch,
     handle_daily_autoresearch,
+    handle_stock_picker_autoresearch,
 )
 from cli.ingest import (
     handle_calendar,
@@ -26,11 +27,13 @@ from cli.predictions import (
     handle_earnings_predictor,
     handle_evaluate_daily_predictions,
     handle_evaluate_earnings_predictions,
+    handle_evaluate_stock_picks,
     handle_gainers_postmortem,
     handle_generate_newsletter,
     handle_historical_analog,
     handle_research_company,
     handle_seed_daily_predictor,
+    handle_stock_picker,
 )
 from cli.trading import (
     handle_daily_trade,
@@ -55,6 +58,7 @@ from core.config import (
     COMMAND_EARNINGS_PREDICTOR,
     COMMAND_EVALUATE_DAILY_PREDICTIONS,
     COMMAND_EVALUATE_EARNINGS_PREDICTIONS,
+    COMMAND_EVALUATE_STOCK_PICKS,
     COMMAND_FRONTIER_TECH,
     COMMAND_FUTURE_FORCES,
     COMMAND_GAINERS_POSTMORTEM,
@@ -67,6 +71,8 @@ from core.config import (
     COMMAND_RESEARCH_COMPANY,
     COMMAND_SECTOR_TRADE,
     COMMAND_SEED_DAILY_PREDICTOR,
+    COMMAND_STOCK_PICKER,
+    COMMAND_STOCK_PICKER_AUTORESEARCH,
     COMMAND_WEEKEND_INGEST,
 )
 
@@ -85,6 +91,9 @@ DISPATCH_MAP: dict[str, Callable[[argparse.Namespace], None]] = {
     COMMAND_EVALUATE_DAILY_PREDICTIONS: handle_evaluate_daily_predictions,
     COMMAND_EARNINGS_PREDICTOR: handle_earnings_predictor,
     COMMAND_EVALUATE_EARNINGS_PREDICTIONS: handle_evaluate_earnings_predictions,
+    COMMAND_STOCK_PICKER: handle_stock_picker,
+    COMMAND_EVALUATE_STOCK_PICKS: handle_evaluate_stock_picks,
+    COMMAND_STOCK_PICKER_AUTORESEARCH: handle_stock_picker_autoresearch,
     COMMAND_DAILY_AUTORESEARCH: handle_daily_autoresearch,
     COMMAND_DAILY_POSTMORTEM: handle_daily_postmortem,
     COMMAND_BACKTEST_DAILY_AUTORESEARCH: handle_backtest_daily_autoresearch,

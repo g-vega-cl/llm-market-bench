@@ -35,3 +35,13 @@ def handle_backtest_daily_autoresearch(args: argparse.Namespace) -> None:
     from tasks.backtest_daily_autoresearch import run_backtest_daily_autoresearch
 
     asyncio.run(run_backtest_daily_autoresearch(start_date_str=args.start_date, weeks=args.weeks))
+
+
+def handle_stock_picker_autoresearch(args: argparse.Namespace) -> None:
+    """Run weekly stock picker autoresearch optimization loop."""
+    from tasks.stock_picker_autoresearch import run_stock_picker_autoresearch
+
+    forced_cold = True if getattr(args, "cold_start", False) else None
+    days = getattr(args, "days", 7)
+    dry_run = getattr(args, "dry_run", False)
+    asyncio.run(run_stock_picker_autoresearch(days=days, dry_run=dry_run, cold_start=forced_cold))

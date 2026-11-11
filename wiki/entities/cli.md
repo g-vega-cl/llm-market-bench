@@ -11,12 +11,12 @@ The `apps/engine/cli/` package is the command-line interface layer for the engin
 
 | Module | Responsibility |
 | :--- | :--- |
-| `cli/parser.py` | `build_parser()` — the single argparse schema. Declares the `command` positional (all `COMMAND_*` choices, including `COMMAND_RESEARCH_COMPANY`) and every shared flag (`--dry-run`, `--force`, `--track-id`, `--model`, `--action`, `--timeframe`, `--situation`, `--ticker`, etc.). |
+| `cli/parser.py` | `build_parser()` — the single argparse schema. Declares the `command` positional (all `COMMAND_*` choices, including `COMMAND_RESEARCH_COMPANY`, and the stock-picker trio `COMMAND_STOCK_PICKER` / `COMMAND_EVALUATE_STOCK_PICKS` / `COMMAND_STOCK_PICKER_AUTORESEARCH`) and every shared flag (`--dry-run`, `--force`, `--track-id`, `--model`, `--action`, `--timeframe`, `--situation`, `--ticker`, `--cold-start`, `--days`, etc.). |
 | `cli/router.py` | `DISPATCH_MAP` maps each command constant to its handler; `dispatch(args)` looks up and invokes the handler; `run_cli(args_list)` is the top-level entry point that parses then dispatches. |
 | `cli/ingest.py` | Ingestion, calendar, government, cause-and-effect, post-analysis, and LIN Renko handlers. |
-| `cli/predictions.py` | Daily predictor, prediction evaluation, daily/gainers postmortems, newsletter generation, on-demand company research, and historical analog research. |
+| `cli/predictions.py` | Daily predictor, prediction evaluation, daily/gainers postmortems, newsletter generation, on-demand company research, historical analog research, and the daily stock picker / stock-pick evaluation handlers. |
 | `cli/trading.py` | Sector rotation, daily SPY MOO/target/close trades, Frontier Tech, and Future Forces thematic portfolios. |
-| `cli/autoresearch.py` | Continuous autoresearch loops, bootstrap, daily autoresearch, and multi-week backtests. |
+| `cli/autoresearch.py` | Continuous autoresearch loops, bootstrap, daily autoresearch, multi-week backtests, and weekly stock-picker autoresearch. |
 | `cli/audit.py` | Pipeline integrity audit, Alpaca reconciliation, system health auditor and audit-portfolios --fix auto-healer, and database cleanup. |
 
 ## Dispatch Flow
@@ -33,6 +33,24 @@ Handlers import their heavy dependencies lazily (inside the function body) so th
 
 ```bash
 ./apps/engine/.venv/bin/python3 apps/engine/main.py research-company --ticker NVDA [--force]
+```
+
+## Daily Stock Picker Commands
+
+The Daily Stock Picker Arena (3 Up, 3 Down) exposes three commands. See [[entities/daily-stock-picker]].
+
+| Command | Handler | Target |
+| :--- | :--- | :--- |
+| `stock-picker` (`COMMAND_STOCK_PICKER`) | `handle_stock_picker` → `tasks.stock_picker.run_daily_stock_picker(target_date=..., force=...)` | Morning multi-model arena that persists per-model and consensus baskets |
+| `evaluate-stock-picks` (`COMMAND_EVALUATE_STOCK_PICKS`) | `handle_evaluate_stock_picks` → `tasks.evaluate_stock_picks.evaluate_stock_picks(target_date=..., force_recalc=...)` | Post-close RTH Open/Close evaluation of baskets and picks |
+| `stock-picker-autoresearch` (`COMMAND_STOCK_PICKER_AUTORESEARCH`) | `handle_stock_picker_autoresearch` → `tasks.stock_picker_autoresearch.run_stock_picker_autoresearch(days=..., dry_run=..., cold_start=...)` | Weekly per-track prompt ratchet (Sunday 18:00 ET) |
+
+The autoresearch handler accepts `--cold-start` (forcing a clean-sheet mutation), `--days` (rolling lookback window, default `7`), and the shared `--dry-run` flag.
+
+```bash
+./apps/engine/.venv/bin/python3 apps/engine/main.py stock-picker [--target-date YYYY-MM-DD] [--force]
+./apps/engine/.venv/bin/python3 apps/engine/main.py evaluate-stock-picks [--target-date YYYY-MM-DD] [--force]
+./apps/engine/.venv/bin/python3 apps/engine/main.py stock-picker-autoresearch [--days 7] [--cold-start] [--dry-run]
 ```
 
 ## Audit and Reconciliation Commands
@@ -53,6 +71,7 @@ Handlers import their heavy dependencies lazily (inside the function body) so th
 
 - [[entities/engine]] — the engine as a whole
 - [[entities/pipeline]] — the orchestration layer the CLI dispatches into
+- [[entities/daily-stock-picker]] — daily 3-UP / 3-DOWN equity selection arena
 - [[entities/company-research-reports]] — the `research-company` command target
 - [[entities/portfolio-auditor]] — system health auditor and auto-healer
 - [[concepts/backfilled-trades]] — backfilled trade reconciliation and UI badges

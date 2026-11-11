@@ -57,12 +57,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] - Look for statistical analysis for markets
 - [x] - Benchify: follow the crowd strategy? Like using options and volume data?
-- [ ] - Benchify: instead of daily up/down/ammount predictor. A "will it hit this option strike at any point during the day"? Like, will the option be ON The Money at any time? And which options? Maybe we can start with fixed? - Actually, might be kind of the same thing
 - [ ] - Benchify: an option targeter? A predictor that says "in X amount of time, this stock will move Y"
 - [ ] - Benchify; a daily stock picker, which stocks will go up today? And pick 3 up and 3 down.
 - [ ] - Benchify: train small model?
-- [ ] - Benchify : is this an overreaction tool
-- [ ] - Benchify: highest iv/histIV is worth watching and ingesting
 
 ### Focused Assets (Single Ticker / ETF)
 

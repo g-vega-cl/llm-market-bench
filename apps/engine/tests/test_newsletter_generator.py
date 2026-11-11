@@ -69,7 +69,7 @@ Markets opened on a bullish footing today, propelled by massive momentum in the 
         patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
         patch("tasks.newsletter_generator._dispatch_newsletter_research", new_callable=AsyncMock) as mock_dispatch,
     ):
-        result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
+        result = await generate_daily_newsletter(session="open", sb_client=mock_sb, dispatch_research=True)
 
         assert result is not None
         assert result["title"] == "Morning Market Pulse: Tech Surge & Fed Signals"
@@ -86,6 +86,34 @@ Markets opened on a bullish footing today, propelled by massive momentum in the 
         assert insert_args["session"] == "open"
         assert insert_args["title"] == "Morning Market Pulse: Tech Surge & Fed Signals"
         assert insert_args["source_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_generate_daily_newsletter_default_skips_research():
+    """Verify generate_daily_newsletter defaults to skipping heavy synchronous research."""
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = []
+    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "new-gen-id"}]
+
+    mock_llm_response = GeneratedNewsletterOutput(
+        title="Quick Morning Pulse",
+        summary="Brief summary",
+        bullet_points=["Point 1"],
+        content="Short content",
+        read_time_minutes=3,
+    )
+
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator.get_newsletter_options_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator.get_newsletter_reference_context", new_callable=AsyncMock, return_value=""),
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
+        patch("tasks.newsletter_generator._dispatch_newsletter_research", new_callable=AsyncMock) as mock_dispatch,
+    ):
+        result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
+
+        assert result is not None
+        assert not mock_dispatch.called
 
 
 @pytest.mark.asyncio
@@ -676,4 +704,3 @@ async def test_call_deepseek_flash_system_prompt_instructs_mentioned_companies()
         messages = call_kwargs["messages"]
         system_msg = next(m["content"] for m in messages if m["role"] == "system")
         assert "mentioned_companies" in system_msg
-

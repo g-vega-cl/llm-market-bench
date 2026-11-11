@@ -112,6 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Session window for generated newsletter (open or close)",
     )
     parser.add_argument(
+        "--dispatch-research",
+        action="store_true",
+        default=False,
+        help="Dispatch deep-dive dossier research on companies mentioned in generated newsletter",
+    )
+    parser.add_argument(
         "--action",
         type=str,
         choices=["entry", "open", "exit", "close", "status", "target-orders"],

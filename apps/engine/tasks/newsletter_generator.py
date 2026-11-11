@@ -128,7 +128,7 @@ async def _call_deepseek_flash(
         "Ground all market and currency commentary strictly in the provided data. If a specific metric or ticker is unavailable, discuss macro implications naturally without referencing 'packet', 'prompt', 'context', or missing data feeds.\n"
         "   For the Evening Market Close Briefing, all equity index closing commentary (SPY, QQQ, DIA, IWM) must strictly reflect the official closing prices and 1D percentage moves provided in the Official Multi-Horizon Reference Matrix. Never use outdated pre-market or prior-session index figures found in morning newsletter text.\n"
         "6. **Historical Reference & Statistical Context Mandate**: Never state nominal prices, yields, or levels in isolation (e.g. avoid 'UUP is at $29.12' or 'BA dropped to $168.16'). Ground all asset and single-stock commentary in their multi-horizon context: always specify whether the level is high or low relative to its 52-week range (percentile rank), distance from key moving averages (20/50/200-DMA), whether the move is statistically uncommon (Z-score/regime tag), and the prevailing realized volatility regime (compressed vs expanding). In `### 🗓️ The Catalyst Radar & Key Levels`, include the Markdown Multi-Horizon Reference Table provided in the prompt to ensure complete statistical transparency for readers.\n"
-        "7. **Spotlighted Companies (`mentioned_companies`)**: Identify 2-5 prominent single stocks or thematic sector ETFs spotlighted in today's briefing (e.g. key earnings beats/misses, idiosyncratic catalysts, key-man announcements, or sector rotation). Populate the `mentioned_companies` field with a list of objects: `[{\"ticker\": \"NVDA\", \"company_name\": \"NVIDIA\", \"sector\": \"Semiconductors\"}]`."
+        '7. **Spotlighted Companies (`mentioned_companies`)**: Identify 2-5 prominent single stocks or thematic sector ETFs spotlighted in today\'s briefing (e.g. key earnings beats/misses, idiosyncratic catalysts, key-man announcements, or sector rotation). Populate the `mentioned_companies` field with a list of objects: `[{"ticker": "NVDA", "company_name": "NVIDIA", "sector": "Semiconductors"}]`.'
     )
 
     economic_block = (
@@ -333,8 +333,8 @@ async def generate_daily_newsletter(
     session: str = "open",
     sb_client=None,
     target_date: str | None = None,
-    dispatch_research: bool = True,
-    await_research: bool = True,
+    dispatch_research: bool = False,
+    await_research: bool = False,
 ) -> dict | None:
     """Main pipeline task to generate and store a daily newsletter.
 

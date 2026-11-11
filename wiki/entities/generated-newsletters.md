@@ -14,20 +14,47 @@ The newsletter generator (`apps/engine/tasks/newsletter_generator.py`) synthesiz
 3. **Context assembly** — gathers macro dashboard, economic releases, options sentiment/volatility surface, FX context, and multi-horizon reference matrices (`apps/engine/analytics/market_reference.py`). Multi-horizon anchors provide tactical (20d), intermediate (60d), and structural (52w) percentiles, moving averages (20/50/200-DMA), realized volatility regimes, and Z-scores for macro core assets (`SPY`, `QQQ`, `DIA`, `IWM`, `UUP`, `EURUSD`, `USDJPY`, `TLT`, `GLD`, `USO`) and mentioned single stocks. Context helpers tolerate `Error` / `No options` / `No macro options` / unavailable prefixes by omitting those sections.
 4. **Synthesis** — `_call_deepseek_flash` produces a `GeneratedNewsletterOutput` (title, summary, bullet points, content, read time, and `mentioned_companies`). The date string shown to the model is derived from the run's effective timestamp.
 5. **Persistence** — inserts the record into `generated_newsletters`.
-6. **Downstream research dispatch** — after a successful insert, `_dispatch_newsletter_research` forwards the briefing's `mentioned_companies` (plus the full body as a text fallback) to the company research pipeline (see [[entities/company-research-reports]]).
+6. **Downstream research dispatch (opt-in)** — after a successful insert, `_dispatch_newsletter_research` forwards the briefing's `mentioned_companies` (plus the full body as a text fallback) to the company research pipeline (see [[entities/company-research-reports]]). This step only runs when the caller passes `dispatch_research=True`.
 
 ## Spotlighted Companies (`mentioned_companies`)
 
 `GeneratedNewsletterOutput` carries an optional `mentioned_companies: list[dict]` field (default empty). The model is instructed to list the key single stocks or sectors spotlighted in the briefing, each as `{"ticker": "NVDA", "company_name": "NVIDIA", "sector": "Semiconductors"}`.
 
-After the newsletter row is stored, `_dispatch_newsletter_research(output, session, newsletter_id, sb, target_date, await_research=True)` calls `tasks.research_newsletter_tickers.research_newsletter_targets`, passing:
+After the newsletter row is stored, `_dispatch_newsletter_research(output, session, newsletter_id, sb, target_date, await_research=...)` calls `tasks.research_newsletter_tickers.research_newsletter_targets`, passing:
 - `raw_mentions=output.mentioned_companies`
 - `session`
 - `newsletter_id` (the persisted `generated_newsletters.id`)
 - `text_fallback=output.content` (so cashtags and sector phrases can still be recovered when the structured list is empty)
 - `target_date`
 
-Any exception during dispatch is caught and logged as a warning, so research failures never break newsletter generation. The `generate_daily_newsletter` signature exposes two flags — `dispatch_research` (default `True`) and `await_research` (default `True`); when `await_research=False` the research is scheduled with `asyncio.create_task` and the newsletter returns immediately.
+Any exception during dispatch is caught and logged as a warning, so research failures never break newsletter generation.
+
+## Research Dispatch Is Opt-In
+
+`generate_daily_newsletter` exposes two flags that both default to **`False`**:
+
+| Flag | Default | Effect |
+| :--- | :--- | :--- |
+| `dispatch_research` | `False` | When `False`, the newsletter is generated and persisted with **no** company-dossier research. When `True`, `_dispatch_newsletter_research` runs after the insert. |
+| `await_research` | `False` | When `True` (and `dispatch_research=True`), the research is awaited inline. When `False`, it is scheduled with `asyncio.create_task` and the newsletter returns immediately. |
+
+Because the defaults are off, a plain `generate_daily_newsletter(session=...)` call is a fast, newsletter-only run. Deep-dive dossier generation is a separate, explicitly requested concern — it is expensive (multi-tool context assembly plus an OpenAI Luna reasoning call per spotlighted ticker) and must never silently extend the newsletter job's runtime.
+
+### CLI
+
+`handle_generate_newsletter` (`apps/engine/cli/predictions.py`) forwards the `--dispatch-research` flag into `generate_daily_newsletter(dispatch_research=...)`. The flag is a `store_true` argument defaulting to `False`:
+
+bash
+# Newsletter only (default)
+./apps/engine/.venv/bin/python3 apps/engine/main.py generate-newsletter --session open
+
+# Newsletter + company dossier research
+./apps/engine/.venv/bin/python3 apps/engine/main.py generate-newsletter --session open --dispatch-research
+
+
+### Workflow Wiring
+
+`.github/workflows/generate-newsletter.yml` runs the newsletter generation step, then a separate **"Research Newsletter Mentioned Companies"** step (`if: always() && !cancelled()`) that invokes `main.py generate-newsletter --session <session> --dispatch-research`. The step is non-critical (`|| echo "Newsletter company research failed non-critically."`), so a research failure never fails the workflow. Splitting the two concerns keeps the briefing publish path fast and isolates the heavier research run.
 
 ## Session-Aware Reference Quotes
 

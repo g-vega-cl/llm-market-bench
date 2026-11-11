@@ -212,7 +212,7 @@ def test_handle_generate_newsletter_dispatches():
     with patch("tasks.newsletter_generator.generate_daily_newsletter", new_callable=AsyncMock) as mock_run:
         args = argparse.Namespace(session="close")
         handle_generate_newsletter(args)
-        mock_run.assert_awaited_once_with(session="close", target_date=None)
+        mock_run.assert_awaited_once_with(session="close", target_date=None, dispatch_research=False)
 
 
 def test_handle_research_company_dispatches():

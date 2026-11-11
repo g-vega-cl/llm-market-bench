@@ -82,7 +82,14 @@ def handle_generate_newsletter(args: argparse.Namespace) -> None:
     from tasks.newsletter_generator import generate_daily_newsletter
 
     target_date = getattr(args, "target_date", None)
-    asyncio.run(generate_daily_newsletter(session=args.session, target_date=target_date))
+    dispatch_research = getattr(args, "dispatch_research", False)
+    asyncio.run(
+        generate_daily_newsletter(
+            session=args.session,
+            target_date=target_date,
+            dispatch_research=dispatch_research,
+        )
+    )
 
 
 def handle_research_company(args: argparse.Namespace) -> None:

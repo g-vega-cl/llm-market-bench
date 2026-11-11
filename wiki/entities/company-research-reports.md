@@ -46,22 +46,30 @@ The Company Research system extracts individual stocks and sector benchmark ETFs
    - Both tables enable RLS with public `SELECT` and `service_role` full access, plus explicit `GRANT SELECT` to `anon`/`authenticated` per [[concepts/supabase-grant-convention]].
 
 6. **Dispatch & Concurrency**:
-   - `generate_daily_newsletter` calls `_dispatch_newsletter_research` after the newsletter is persisted. It calls `research_newsletter_targets`, passing `raw_mentions=output.mentioned_companies`, `newsletter_id`, `text_fallback=output.content`, and `target_date`. Errors are caught and logged as warnings so research failures never break newsletter generation.
+   - Research dispatch is **opt-in**. `generate_daily_newsletter` only calls `_dispatch_newsletter_research` when invoked with `dispatch_research=True`; both `dispatch_research` and `await_research` default to `False`, so a plain newsletter run never triggers dossier generation. See [[entities/generated-newsletters]].
+   - When dispatched, `_dispatch_newsletter_research` calls `research_newsletter_targets`, passing `raw_mentions=output.mentioned_companies`, `newsletter_id`, `text_fallback=output.content`, and `target_date`. Errors are caught and logged as warnings so research failures never break newsletter generation.
    - `research_newsletter_targets` runs candidates under an `asyncio.Semaphore(3)` and gathers them with `asyncio.gather`, so multiple targets research concurrently without saturating providers. A single target failure is logged and dropped from the result set rather than aborting the batch.
+   - `.github/workflows/generate-newsletter.yml` runs research as a separate, non-critical step (`main.py generate-newsletter --session <session> --dispatch-research`) after the briefing is published.
 
 ## CLI Usage
 
 Run on-demand company research from the terminal via the `research-company` command (`COMMAND_RESEARCH_COMPANY`, handled by `handle_research_company` in `apps/engine/cli/predictions.py`):
 
-```bash
+bash
 # Research an individual stock or sector
 ./apps/engine/.venv/bin/python3 apps/engine/main.py research-company --ticker NVDA
 
 # Force refresh ignoring the smart TTL cache
 ./apps/engine/.venv/bin/python3 apps/engine/main.py research-company --ticker SMH --force
-```
+
 
 The command builds a `CompanyMention` from `--ticker` (default `NVDA`), optional `--name`/`--sector`, and calls `research_single_target` with `session="on_demand"`, then prints the verdict and conviction score. See [[entities/cli]].
+
+To generate a briefing and dispatch research on its spotlighted companies in one run, pass `--dispatch-research` to `generate-newsletter`:
+
+bash
+./apps/engine/.venv/bin/python3 apps/engine/main.py generate-newsletter --session open --dispatch-research
+
 
 ## Web Experience
 

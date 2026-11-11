@@ -103,3 +103,19 @@ jobs:
           else
             echo "No auth token available, skipping downstream daily-predictor dispatch."
           fi
+
+      - name: Research Newsletter Mentioned Companies
+        if: always() && !cancelled()
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+        run: |
+          cd apps/engine
+          PYTHONPATH=. ./venv/bin/python3 main.py generate-newsletter --session ${{ steps.sess.outputs.session }} --dispatch-research || echo "Newsletter company research failed non-critically."
+

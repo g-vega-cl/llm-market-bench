@@ -347,4 +347,3 @@ def test_generate_newsletter_workflow_openai_key():
     step_env = run_step.get("env", {})
     assert "OPENAI_API_KEY" in step_env, f"Expected OPENAI_API_KEY in step env, found: {list(step_env.keys())}"
     assert step_env["OPENAI_API_KEY"] == "${{ secrets.OPENAI_API_KEY }}"
-

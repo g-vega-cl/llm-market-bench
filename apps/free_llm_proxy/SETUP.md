@@ -59,6 +59,16 @@ You do **not** need to register or configure keys for these; they are active in 
 
 ---
 
+## 4. Paid Optional Provider (Alias-Gated)
+
+### OpenCode Go 💳
+* **Signup URL**: [opencode.ai/auth](https://opencode.ai/auth) → subscribe to Go / Go Plus / Go Teams.
+* **Env Variable**: Set `OPENCODE_GO_API_KEY=oc_sk_...` in `apps/free_llm_proxy/.env`.
+* **Catalog**: Discovered automatically from `GET https://opencode.ai/zen/go/v1/models` (no model list to maintain).
+* **Routing**: Reachable only via `auto-go`, `auto-strata-go`, or explicit `opencode-go/<model>`. It is deliberately excluded from every free alias (`free-auto`, `auto-strata`, `free-fast`, `free-reasoning`) and sits after both healthy and cooling free candidates as a last resort. Its `billing: "paid"` + `auto_aliases` configuration is fail-closed, and dispatch is refused if the live catalog cannot be discovered.
+
+---
+
 ## Dynamic Auto-Discovery
 
 The proxy detects configured keys automatically on startup. Whenever you add a key to `.env`, the provider enters the active candidate pool without code changes.

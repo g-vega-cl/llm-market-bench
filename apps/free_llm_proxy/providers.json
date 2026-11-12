@@ -105,12 +105,35 @@
       "preferred_patterns": [
         "*"
       ]
+    },
+    "opencode-go": {
+      "name": "OpenCode Go",
+      "base_url": "https://opencode.ai/zen/go/v1",
+      "env_key": "OPENCODE_GO_API_KEY",
+      "tier": 3,
+      "billing": "paid",
+      "auto_aliases": ["auto-go", "auto-strata-go"],
+      "requires_auth": true,
+      "models_endpoint": "/models",
+      "extra_headers": {
+        "User-Agent": "free-llm-proxy/1.0 (llm.clvg.uk)"
+      },
+      "preferred_patterns": [
+        "*flash*",
+        "*kimi*k3*",
+        "*deepseek*",
+        "*glm*",
+        "*qwen*",
+        "*"
+      ]
     }
   },
   "virtual_aliases": {
     "free-auto": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
     "strata-auto": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
     "auto-strata": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
+    "auto-go": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
+    "auto-strata-go": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
     "strata": ["*"],
     "free-fast": ["*-20b*", "*:20b*", "*8b*", "*flash-lite*", "*7b*", "*"],
     "free-reasoning": ["*r1*", "*reasoning*", "*flint*", "*beam*", "*"]

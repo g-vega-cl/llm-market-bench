@@ -5,7 +5,7 @@ category: entity
 
 # Free LLM Proxy
 
-A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, cloud output-token clamping, and full token usage logging.
+A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint, with an opt-in paid OpenCode Go fallback tier. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, cloud output-token clamping, and full token usage logging.
 
 ## Architecture & Lifecycle
 
@@ -34,6 +34,9 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
        │           │ 429 / 5xx / Timeout                             │
        │           ▼ (Trip Circuit Breaker)                          │
        │  Tier 2: [OVHcloud] ⇄ [OpenRouter] ⇄ [NVIDIA NIM]          │
+       │           │ all free candidates exhausted                   │
+       │           ▼ (*-go aliases only)                             │
+       │  Tier 3: [OpenCode Go] (paid, last resort)                  │
        └──────────────────────────────┬──────────────────────────────┘
                                       │
                                       ▼
@@ -51,7 +54,7 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ### Circuit Breaker (`apps/free_llm_proxy/circuit_breaker.py`)**: Reacts to HTTP 429 rate limits or repeated 5xx errors by placing the failed provider into cooldown (respecting `Retry-After` if sent). A 429 trips the breaker immediately; two consecutive 5xx errors trip it. `record_success` resets the consecutive-failure counter, and `get_status_overview` exposes per-provider health, cooldown remaining, failure count, and rate-limit hit count.
 
-### Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; cooling providers are used only as a last resort when no healthy candidate remains. An explicit `provider/model` prefix in the request moves that provider to the front of the chain. Providers declaring `enabled_in_auto: false` (such as local Strata) are excluded from the standard auto rotation unless explicitly targeted or opted in via `auto-strata`.
+### Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; for free-only aliases, cooling providers are used only as a last resort when no healthy candidate remains. Routing is split into free and paid cost segments: for `*-go` aliases the order is free healthy ➔ free cooling ➔ paid healthy ➔ paid cooling, so a rate-limit storm can never promote the paid provider ahead of a still-usable free one. An explicit `provider/model` prefix moves that provider to the front of its segment. Providers declaring `enabled_in_auto: false` (such as local Strata) are excluded from the standard auto rotation unless explicitly targeted or opted in via `auto-strata` / `auto-strata-go`. Paid providers declare `billing: "paid"` and an `auto_aliases` allowlist; eligibility is fail-closed, so a missing or edited `enabled_in_auto` flag cannot leak paid spend into a free alias. Tier buckets are created dynamically from each provider's normalized integer `tier` value (malformed values fall back to the default rather than crashing), and the paid OpenCode Go pool sits at Tier 3.
 
 ### Cloud Output-Token Clamping (`apps/free_llm_proxy/server.py`)**: Before dispatch, requests routed to any non-Strata (cloud) provider have `max_tokens` and `max_completion_tokens` clamped down to `CLOUD_MAX_OUTPUT_TOKENS` (default `16384`), because cloud free-tier providers enforce a 16k output ceiling. Strata is exempt and preserves the caller's full budget (e.g. 131,072 tokens). Cloud routes also have the Strata-specific `reasoning_budget_tokens` key stripped from the payload, since cloud gateways (Gemini, OVHCloud) reject it with a 400.
 
@@ -120,6 +123,16 @@ The `kilo` provider (`requires_auth: false`) also operates as a mixed marketplac
 - **Resolution Safety Gate (`router.py`)**: Prioritizes `kilo-auto/free` and coerces unrecognized models to `kilo-auto/free` before dispatch.
 - **In-Provider Cascade (`server.py`)**: If a specific model returns 401/429/503, the proxy falls back through `kilo-auto/free`, `reflection/beam-free`, and `nvidia/nemotron-3.5-super-vl:free` before leaving the provider.
 
+### OpenCode Go Paid-Tier Isolation
+OpenCode Go (`opencode-go`) is a paid `$10/month` subscription, not a free-tier provider, so it is isolated from every zero-cost alias:
+- **Alias gating (`router.py`)**: `billing: "paid"` plus an `auto_aliases` allowlist makes eligibility fail-closed. Go is only added to the candidate chain for `auto-go` and `auto-strata-go` (or when explicitly targeted). `free-auto`, `auto-strata`, `free-fast`, `free-reasoning`, `strata-auto`, `auto`, and `default` never include it, even if an `enabled_in_auto` flag is edited away.
+- **Last-resort placement (`tier: 3`)**: The router builds separate free and paid cost segments and appends Go after both the healthy and cooling free candidates, so the free pool is exhausted before any paid request is made — including during a 429 cooldown storm.
+- **Key-gated activation**: The provider has `requires_auth: true` and `env_key: OPENCODE_GO_API_KEY`. With no key configured, it disappears from `get_active_providers()` and `auto-go` degrades transparently to the free pool.
+- **Fail-closed dispatch**: If Go's live `/models` catalog cannot be read, the proxy refuses to dispatch a paid request rather than sending an ungrounded model name.
+- **Dynamic catalog**: `base_url` is `https://opencode.ai/zen/go/v1`; the live roster is discovered from `GET /models`, so no model names are hardcoded.
+- **Session affinity (`session.py`)**: Go rejects requests without `x-opencode-session`. The proxy forwards a client-supplied header when it matches a short header-safe charset, otherwise derives a stable `fllm-<sha256>` ID from caller identity plus the first user message so multi-turn conversations keep the same routing/caching session.
+- **Explicit targeting**: `opencode-go/<model>` (or bare `opencode-go`) moves the provider to the front of the chain for deliberate per-model use, with normal failover behind it.
+
 ### Resilient In-Provider Demand-Spike Cascades
 When an upstream endpoint returns temporary errors (503 high-demand spike, 404 deprecated function, or 429 rate limit), the proxy automatically cascades through alternative models on the *same* provider before tripping circuit breakers and moving to the next provider:
 - **Google Gemini**: Cascades from `gemini-flash-latest` ➔ `gemini-3.8-flash` ➔ `gemini-3.6-flash` ➔ `gemini-3.5-flash`.
@@ -159,6 +172,8 @@ This is verified by `test_max_tokens_unclamped_for_strata_and_clamped_for_cloud`
 | Alias | Description | Target Family |
 | :--- | :--- | :--- |
 | `auto-strata` (default) | Adds Strata into the standard Tier 1 round-robin auto rotation pool | Local Strata + Tier 1 providers |
+| `auto-go` | Free auto pool with OpenCode Go as a paid last-resort tier; Strata excluded | Tier 1+2 free providers ➔ OpenCode Go |
+| `auto-strata-go` | Same as `auto-go`, but Strata joins the Tier 1 rotation | Local Strata + Tier 1+2 free providers ➔ OpenCode Go |
 | `free-auto` | Best overall model across the healthy cloud pool (Strata excluded) | 120B / 70B / Flash / 27B |
 | `strata-auto` | Prioritizes local Strata (localhost:8080); fails over cleanly to auto pool when offline | Local live model / Strata ➔ Auto fallback |
 | `strata` | Strictly targets local Strata; fails fast with error if offline (zero silent cloud fallback) | Whichever model is live on localhost:8080 |
@@ -193,7 +208,7 @@ Environment variables (loaded strictly from `apps/free_llm_proxy/.env` to isolat
 | `STRATA_BASE_URL` | `http://localhost:8080/v1` | Local Strata OpenAI-compatible endpoint URL |
 | `ENABLE_STRATA` | `true` | Toggle inclusion of local Strata provider in proxy pool |
 | `CLOUD_MAX_OUTPUT_TOKENS` | `16384` | Output-token ceiling enforced on all non-Strata (cloud) routes; Strata is exempt |
-| `GROQ_API_KEY`, `GEMINI_API_KEY_FREE`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool |
+| `GROQ_API_KEY`, `GEMINI_API_KEY_FREE`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`, `OPENCODE_GO_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool. `OPENCODE_GO_API_KEY` activates the paid Tier 3 fallback used only by `auto-go` / `auto-strata-go`. |
 
 `ENABLE_STRATA` is parsed leniently — `0`, `false`, and `no` (case-insensitive) disable the provider. When disabled, `load_providers_config()` removes the `strata` entry from the provider map entirely. When enabled, `STRATA_BASE_URL` overrides the `strata` provider's `base_url` at load time.
 
@@ -226,7 +241,7 @@ docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
 ./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
 ```
 
-The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, graceful `503` handling of `httpx.RequestError` connection failures, cloud output-token clamping (`test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` — including `reasoning_budget_tokens` preservation on Strata and stripping on cloud routes), unauthorized 401 audit logging (`test_unauthorized_call_is_logged_in_audit_db`), Gemini Pro→Flash coercion (`test_gemini_pro_model_is_coerced_to_free_flash`), and the `GEMINI_API_KEY_FREE` provider key (`test_gemini_uses_gemini_api_key_free`). A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
+The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, graceful `503` handling of `httpx.RequestError` connection failures, cloud output-token clamping (`test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` — including `reasoning_budget_tokens` preservation on Strata and stripping on cloud routes), unauthorized 401 audit logging (`test_unauthorized_call_is_logged_in_audit_db`), Gemini Pro→Flash coercion (`test_gemini_pro_model_is_coerced_to_free_flash`), and the `GEMINI_API_KEY_FREE` provider key (`test_gemini_uses_gemini_api_key_free`). OpenCode Go coverage verifies that `auto-go` places `opencode-go` last and excludes Strata, `auto-strata-go` includes both Strata and Go, every free alias stays Go-free even with a key configured, the provider disappears without `OPENCODE_GO_API_KEY`, alias/prefix resolution works against a discovered catalog, and an end-to-end `auto-go` request exhausts free providers before calling Go exactly once (`test_auto_go_end_to_end_falls_back_to_go`), including forwarding the client `x-opencode-session` and preserving the Go `User-Agent`. Additional regressions prove that a full free-pool cooldown still tries cooling free candidates before paid Go, paid routing fails closed if its `auto_aliases` allowlist disappears, malformed `tier` values do not crash the router, and paid dispatch is refused when the live catalog is unavailable. Session affinity derivation (client-header passthrough, sanitization of control characters and oversized IDs, stable multi-turn fallback, multimodal text extraction, caller-identity fallback) is covered by `apps/free_llm_proxy/tests/test_session.py`, and an autouse fixture resets the shared circuit breaker between tests. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
 
 ## Pi Assistant Integration
 Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configuring a custom OpenAI-compatible provider in `~/.pi/agent/models.json`:
@@ -265,6 +280,22 @@ Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configu
           "input": ["text"],
           "contextWindow": 262144,
           "maxTokens": 131072,
+          "type": "chat"
+        },
+        {
+          "id": "auto-go",
+          "name": "Free LLM: Auto + OpenCode Go (Paid Last Resort)",
+          "input": ["text"],
+          "contextWindow": 262144,
+          "maxTokens": 16384,
+          "type": "chat"
+        },
+        {
+          "id": "auto-strata-go",
+          "name": "Free LLM: Auto + Strata + OpenCode Go",
+          "input": ["text"],
+          "contextWindow": 262144,
+          "maxTokens": 16384,
           "type": "chat"
         },
         {

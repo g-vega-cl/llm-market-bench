@@ -1086,3 +1086,232 @@ def test_nvidia_in_provider_cascade_on_404(client, monkeypatch):
     assert resp.status_code == 200
     assert resp.json()["choices"][0]["message"]["content"] == "NVIDIA Cascade OK"
 
+
+def test_auto_go_includes_go_as_last_resort_and_excludes_strata(monkeypatch):
+    """auto-go must include OpenCode Go only as the final fallback tier, never Strata."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    router = Router()
+
+    chain = [p[0] for p in router.get_candidate_chain("auto-go")]
+
+    assert "opencode-go" in chain
+    assert chain[-1] == "opencode-go"
+    assert "strata" not in chain
+
+
+def test_auto_strata_go_includes_strata_and_go_last(monkeypatch):
+    """auto-strata-go must include Strata in Tier 1 and OpenCode Go as the last resort."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    router = Router()
+
+    chain = [p[0] for p in router.get_candidate_chain("auto-strata-go")]
+
+    assert "strata" in chain
+    assert "opencode-go" in chain
+    assert chain[-1] == "opencode-go"
+    assert chain.index("strata") < chain.index("opencode-go")
+
+
+def test_free_aliases_never_include_opencode_go(monkeypatch):
+    """Existing free aliases must remain strictly zero-cost even when a Go key is configured."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    router = Router()
+
+    for alias in (
+        "free-auto",
+        "free-fast",
+        "free-reasoning",
+        "auto-strata",
+        "strata-auto",
+        "auto",
+        "default",
+        "",
+    ):
+        chain = [p[0] for p in router.get_candidate_chain(alias)]
+        assert "opencode-go" not in chain, f"{alias!r} leaked paid OpenCode Go route"
+
+
+def test_opencode_go_absent_without_api_key(monkeypatch):
+    """OpenCode Go must stay inactive when no API key is configured."""
+    monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
+    router = Router()
+
+    assert "opencode-go" not in router.get_active_providers()
+    assert "opencode-go" not in [p[0] for p in router.get_candidate_chain("auto-go")]
+
+
+def test_opencode_go_resolves_alias_against_discovered_catalog(monkeypatch):
+    """Alias and explicit model resolution must use the live OpenCode Go catalog."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    router = Router()
+
+    catalog = [
+        "gemini-4-argon",
+        "deepseek-v4.1-flash",
+        "kimi-k3",
+        "qwen3.8-max",
+    ]
+
+    assert (
+        router.resolve_model_for_provider("opencode-go", "auto-go", catalog)
+        == "deepseek-v4.1-flash"
+    )
+    assert (
+        router.resolve_model_for_provider("opencode-go", "auto-strata-go", catalog)
+        == "deepseek-v4.1-flash"
+    )
+    assert (
+        router.resolve_model_for_provider(
+            "opencode-go", "opencode-go/qwen3.8-max", catalog
+        )
+        == "qwen3.8-max"
+    )
+
+
+def test_auto_go_end_to_end_falls_back_to_go(client, monkeypatch):
+    """auto-go must exhaust free providers and only then call OpenCode Go."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    attempted: list[str] = []
+    captured_go_cfg: dict = {}
+
+    async def mock_fetch(provider_id, base_url, headers):
+        return ["test-model"]
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        name = provider_cfg.get("name")
+        attempted.append(name)
+        if name == "OpenCode Go":
+            captured_go_cfg.update(provider_cfg)
+            return (
+                200,
+                {
+                    "id": "chatcmpl-go",
+                    "object": "chat.completion",
+                    "created": 1700000000,
+                    "model": payload.get("model"),
+                    "choices": [
+                        {
+                            "index": 0,
+                            "message": {
+                                "role": "assistant",
+                                "content": "Served by OpenCode Go",
+                            },
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": 3,
+                        "completion_tokens": 4,
+                        "total_tokens": 7,
+                    },
+                },
+                {},
+            )
+        return 429, {"error": {"message": "rate limited"}}, {"retry-after": "1"}
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={**headers, "x-opencode-session": "ses_client_42"},
+        json={"model": "auto-go", "messages": [{"role": "user", "content": "hi"}]},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["message"]["content"] == "Served by OpenCode Go"
+    assert attempted[-1] == "OpenCode Go"
+    assert attempted.count("OpenCode Go") == 1
+    assert captured_go_cfg["extra_headers"]["x-opencode-session"] == "ses_client_42"
+    assert captured_go_cfg["extra_headers"]["User-Agent"] == (
+        "free-llm-proxy/1.0 (llm.clvg.uk)"
+    )
+
+
+def test_auto_go_exhausts_cooling_free_pool_before_paid_provider(monkeypatch):
+    """A rate-limit storm must never promote the paid provider ahead of cooling free ones."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    router = Router()
+    active = router.get_active_providers()
+    free_ids = [
+        p_id
+        for p_id, cfg in active.items()
+        if cfg.get("billing") != "paid" and p_id != "strata"
+    ]
+    assert free_ids
+
+    for p_id in free_ids:
+        router.circuit_breaker.record_failure(p_id, status_code=429, retry_after=60)
+
+    chain = [p[0] for p in router.get_candidate_chain("auto-go")]
+
+    assert chain[0] != "opencode-go"
+    assert chain[-1] == "opencode-go"
+    assert set(free_ids).issubset(chain)
+
+
+def test_paid_provider_without_alias_allowlist_never_enters_auto(monkeypatch):
+    """Paid routing must fail closed if its alias allowlist is missing or emptied."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    router = Router()
+    router.providers["opencode-go"].pop("auto_aliases", None)
+
+    for alias in (
+        "free-auto",
+        "auto-go",
+        "auto-strata-go",
+        "free-fast",
+        "free-reasoning",
+        "auto-strata",
+        "auto",
+        "default",
+        "",
+    ):
+        chain = [p[0] for p in router.get_candidate_chain(alias)]
+        assert "opencode-go" not in chain, f"{alias!r} leaked paid route"
+
+
+def test_invalid_tier_value_does_not_crash_router(monkeypatch):
+    """Hand-edited provider configs must degrade, not raise, on a malformed tier."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    router = Router()
+    router.providers["nvidia"]["tier"] = None
+
+    chain = [p[0] for p in router.get_candidate_chain("free-auto")]
+
+    assert "nvidia" in chain
+
+
+def test_explicit_paid_model_not_dispatched_when_catalog_unavailable(
+    client, monkeypatch
+):
+    """Fail closed on money: never send a paid request when its live catalog cannot be read."""
+    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
+    attempted: list[str] = []
+
+    async def mock_fetch(provider_id, base_url, headers):
+        return []
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        attempted.append(provider_cfg.get("name"))
+        return 429, {"error": {"message": "rate limited"}}, {"retry-after": "1"}
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={
+            "model": "opencode-go/deepseek-v4.1-flash",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
+    )
+
+    assert resp.status_code == 502
+    assert "OpenCode Go" not in attempted

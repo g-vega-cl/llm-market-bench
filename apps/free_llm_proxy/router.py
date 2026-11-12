@@ -5,6 +5,68 @@ from apps.free_llm_proxy import config
 from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
 from apps.free_llm_proxy.discovery import ModelDiscovery
 
+PAID_BILLING = "paid"
+
+
+def _normalize_tier(raw: object, default: int = 2) -> int:
+    """Coerces a hand-edited tier value into a safe, sortable integer."""
+    try:
+        tier = int(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    return tier if tier >= 1 else default
+
+
+def _is_strict_strata_target(model_lower: str) -> bool:
+    return model_lower == "strata" or model_lower.startswith("strata/")
+
+
+def _resolve_explicit_provider(
+    requested_model: str,
+    model_lower: str,
+    active: dict[str, dict],
+    is_strata_primary: bool,
+) -> str | None:
+    if "/" in requested_model:
+        prefix = requested_model.split("/", 1)[0].lower()
+        return prefix if prefix in active else None
+    if model_lower in active:
+        return model_lower
+    if is_strata_primary and "strata" in active:
+        return "strata"
+    return None
+
+
+def _tier_for_provider(
+    p_id: str,
+    p_cfg: dict,
+    model_lower: str,
+    explicit_provider: str | None,
+    include_strata_in_auto: bool,
+) -> int | None:
+    """Returns the provider's tier for this request, or None when ineligible.
+
+    Paid providers are fail-closed: they are only eligible when explicitly
+    targeted or when the requested alias is listed in their ``auto_aliases``
+    allowlist. The allowlist is authoritative, so a missing or edited
+    ``enabled_in_auto`` flag cannot silently leak paid spend into free aliases.
+    """
+    is_paid = p_cfg.get("billing") == PAID_BILLING
+    if is_paid:
+        if p_id == explicit_provider:
+            return 1
+        if model_lower in p_cfg.get("auto_aliases", []):
+            return _normalize_tier(p_cfg.get("tier"), default=3)
+        return None
+
+    if p_cfg.get("enabled_in_auto", True):
+        return _normalize_tier(p_cfg.get("tier"), default=2)
+    if p_id == "strata" and include_strata_in_auto:
+        return 1
+    if p_id == explicit_provider:
+        return 1
+    return None
+
 
 class Router:
     def __init__(
@@ -20,11 +82,8 @@ class Router:
         self.providers = self.config_data.get("providers", {})
         self.virtual_aliases = self.config_data.get("virtual_aliases", {})
 
-        # Round-robin iterators for load balancing within tiers
-        self._tier_counters: dict[int, itertools.count] = {
-            1: itertools.count(),
-            2: itertools.count(),
-        }
+        # Round-robin iterators for load balancing within tiers (created lazily)
+        self._tier_counters: dict[int, itertools.count] = {}
 
     def get_active_providers(self) -> dict[str, dict]:
         """Filters providers to only those with valid credentials or no auth required."""
@@ -250,16 +309,14 @@ class Router:
         model_lower = requested_model.lower().strip()
 
         # Strict local Strata targeting (never falls back to free pool)
-        is_strict_strata = model_lower == "strata" or (
-            "/" in model_lower and model_lower.startswith("strata/")
-        )
-        if is_strict_strata:
+        if _is_strict_strata_target(model_lower):
             if "strata" in active:
                 return [("strata", active["strata"])]
             return []
 
         include_strata_in_auto = model_lower in {
             "auto-strata",
+            "auto-strata-go",
             "free-auto-strata",
             "default",
             "auto",
@@ -268,35 +325,23 @@ class Router:
         is_strata_primary = model_lower == "strata-auto"
 
         # If client explicitly specified a provider (e.g. 'groq/qwen...' or 'openrouter')
-        explicit_provider = None
-        if "/" in requested_model:
-            prefix = requested_model.split("/", 1)[0].lower()
-            if prefix in active:
-                explicit_provider = prefix
-        elif model_lower in active:
-            explicit_provider = model_lower
-        elif is_strata_primary and "strata" in active:
-            explicit_provider = "strata"
+        explicit_provider = _resolve_explicit_provider(
+            requested_model, model_lower, active, is_strata_primary
+        )
 
-        tier1 = []
-        tier2 = []
+        free_buckets: dict[int, list[tuple[str, dict]]] = {}
+        paid_buckets: dict[int, list[tuple[str, dict]]] = {}
 
         for p_id, p_cfg in active.items():
-            enabled_in_auto = p_cfg.get("enabled_in_auto", True)
-            if not enabled_in_auto:
-                if p_id == "strata" and include_strata_in_auto:
-                    # Include strata in tier 1 rotation
-                    tier1.append((p_id, p_cfg))
-                elif p_id == explicit_provider:
-                    # Explicitly targeted: include in tier 1 so it can be prioritized
-                    tier1.append((p_id, p_cfg))
+            tier = _tier_for_provider(
+                p_id, p_cfg, model_lower, explicit_provider, include_strata_in_auto
+            )
+            if tier is None:
                 continue
-
-            tier = p_cfg.get("tier", 2)
-            if tier == 1:
-                tier1.append((p_id, p_cfg))
-            else:
-                tier2.append((p_id, p_cfg))
+            buckets = (
+                paid_buckets if p_cfg.get("billing") == PAID_BILLING else free_buckets
+            )
+            buckets.setdefault(tier, []).append((p_id, p_cfg))
 
         # Rotate healthy candidates within each tier using round-robin offset
         def balance_tier(
@@ -304,26 +349,45 @@ class Router:
         ) -> list[tuple[str, dict]]:
             if not candidates:
                 return []
-            idx = next(self._tier_counters[tier_num]) % len(candidates)
+            counter = self._tier_counters.setdefault(tier_num, itertools.count())
+            idx = next(counter) % len(candidates)
             return candidates[idx:] + candidates[:idx]
 
-        balanced_t1 = balance_tier(tier1, 1)
-        balanced_t2 = balance_tier(tier2, 2)
+        def build_segments(
+            buckets: dict[int, list[tuple[str, dict]]],
+        ) -> tuple[list[tuple[str, dict]], list[tuple[str, dict]]]:
+            balanced = []
+            for tier_num in sorted(buckets):
+                balanced.extend(balance_tier(buckets[tier_num], tier_num))
 
-        # Separate healthy vs cooling-down candidates
-        healthy_chain = []
-        cooling_chain = []
+            healthy: list[tuple[str, dict]] = []
+            cooling: list[tuple[str, dict]] = []
+            for candidate in balanced:
+                if self.circuit_breaker.is_healthy(candidate[0]):
+                    healthy.append(candidate)
+                else:
+                    cooling.append(candidate)
+            return healthy, cooling
 
-        for p_id, p_cfg in balanced_t1 + balanced_t2:
-            if self.circuit_breaker.is_healthy(p_id):
-                healthy_chain.append((p_id, p_cfg))
-            else:
-                cooling_chain.append((p_id, p_cfg))
+        free_healthy, free_cooling = build_segments(free_buckets)
+        paid_healthy, paid_cooling = build_segments(paid_buckets)
 
-        # If explicit provider was requested, move it to the front
+        # If explicit provider was requested, move it to the front within its segment
         if explicit_provider:
-            healthy_chain.sort(key=lambda x: 0 if x[0] == explicit_provider else 1)
-            cooling_chain.sort(key=lambda x: 0 if x[0] == explicit_provider else 1)
+            for segment in (free_healthy, free_cooling, paid_healthy, paid_cooling):
+                segment.sort(key=lambda x: 0 if x[0] == explicit_provider else 1)
 
-        # Fall back to cooling providers only if no healthy candidates remain
-        return healthy_chain if healthy_chain else cooling_chain
+        explicit_is_paid = (
+            explicit_provider is not None
+            and active[explicit_provider].get("billing") == PAID_BILLING
+        )
+        if explicit_is_paid:
+            return paid_healthy + paid_cooling + free_healthy + free_cooling
+
+        if paid_healthy or paid_cooling:
+            # Free cooling candidates stay ahead of paid ones: a rate-limit storm
+            # must never turn the *-go aliases into paid-only routing.
+            return free_healthy + free_cooling + paid_healthy + paid_cooling
+
+        # Free-only aliases keep the existing behavior: cooling is a last resort.
+        return free_healthy if free_healthy else free_cooling

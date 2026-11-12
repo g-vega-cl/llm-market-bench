@@ -135,6 +135,8 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 - **Current Runtime Nature**:
   - `CircuitBreaker` in `apps/free_llm_proxy/circuit_breaker.py` tracks provider cooldown timestamps via `_cooldowns: dict[str, float]` and consecutive failure counts via `_failures: dict[str, int]`.
   - A provider is deemed healthy when `now >= cooldown_until`. On HTTP 429 or 2 consecutive 5xx errors, cooldown is set to `now + default_cooldown_seconds` (or parsed `retry-after`).
+  - Routing is cost-segmented: paid providers (`billing: "paid"`) are never placed ahead of a cooling free candidate for the `auto-go` / `auto-strata-go` aliases. Paid eligibility is fail-closed through an `auto_aliases` allowlist, and a paid provider is skipped entirely when its live model catalog is unavailable.
+  - The breaker is per provider, not per cost class: `opencode-go` participates in the same cooldown FSM as free providers, but its healthy state never pre-empts the free cooling segment.
 
 ```text
        [Provider Healthy: now >= cooldown_until]

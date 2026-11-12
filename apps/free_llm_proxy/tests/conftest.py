@@ -13,6 +13,23 @@ os.environ["OPENROUTER_API_KEY"] = "or_test_key"
 
 
 @pytest.fixture(autouse=True)
+def reset_shared_circuit_breaker():
+    """Keep provider cooldowns isolated between tests, including on assertion failure."""
+    from apps.free_llm_proxy.server import circuit_breaker
+
+    stores = (
+        circuit_breaker._cooldowns,
+        circuit_breaker._failures,
+        circuit_breaker._rate_limit_hits,
+    )
+    for store in stores:
+        store.clear()
+    yield
+    for store in stores:
+        store.clear()
+
+
+@pytest.fixture(autouse=True)
 def guard_no_external_network(monkeypatch):
     """Enforce hermetic testing: throw RuntimeError if real socket connect is attempted."""
     import socket

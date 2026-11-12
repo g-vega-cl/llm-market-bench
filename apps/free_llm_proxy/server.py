@@ -13,6 +13,7 @@ from apps.free_llm_proxy.db import AuditDB
 from apps.free_llm_proxy.discovery import ModelDiscovery
 from apps.free_llm_proxy.models import ChatCompletionRequest
 from apps.free_llm_proxy.router import Router
+from apps.free_llm_proxy.session import SESSION_HEADER, derive_session_id
 
 app = FastAPI(title="Free LLM Proxy", version="1.0.0")
 
@@ -234,6 +235,34 @@ async def chat_completions(
             else {}
         )
         available_models = await discovery.fetch_live_models(p_id, base_url, headers)
+
+        # Fail closed on money: never dispatch a paid request against an unknown catalog.
+        if p_cfg.get("billing") == "paid" and not available_models:
+            failover_log.append(f"{p_id} (catalog unavailable; paid dispatch refused)")
+            last_error = {
+                "error": {
+                    "message": f"{p_id} catalog discovery failed; refusing paid dispatch",
+                    "type": "provider_unavailable",
+                }
+            }
+            continue
+
+        # OpenCode Go requires a stable session header for routing and prompt caching
+        dispatch_cfg = p_cfg
+        if p_id == "opencode-go":
+            session_id = derive_session_id(
+                raw_body.get("messages") or [],
+                client_ip=client_ip,
+                user_agent=user_agent,
+                provided=request.headers.get(SESSION_HEADER),
+            )
+            dispatch_cfg = {
+                **p_cfg,
+                "extra_headers": {
+                    **p_cfg.get("extra_headers", {}),
+                    SESSION_HEADER: session_id,
+                },
+            }
         target_model = router.resolve_model_for_provider(
             p_id, req.model, available_models
         )
@@ -261,7 +290,7 @@ async def chat_completions(
                     payload["max_completion_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS
 
         status_code, body_or_gen, resp_headers = await execute_completion(
-            provider_cfg=p_cfg,
+            provider_cfg=dispatch_cfg,
             payload=payload,
             stream=req.stream,
         )
@@ -281,7 +310,7 @@ async def chat_completions(
             for fallback_model in gemini_fallbacks:
                 payload["model"] = fallback_model
                 status_code, body_or_gen, resp_headers = await execute_completion(
-                    provider_cfg=p_cfg,
+                    provider_cfg=dispatch_cfg,
                     payload=payload,
                     stream=req.stream,
                 )
@@ -304,7 +333,7 @@ async def chat_completions(
             for fallback_model in or_fallbacks:
                 payload["model"] = fallback_model
                 status_code, body_or_gen, resp_headers = await execute_completion(
-                    provider_cfg=p_cfg,
+                    provider_cfg=dispatch_cfg,
                     payload=payload,
                     stream=req.stream,
                 )
@@ -327,7 +356,7 @@ async def chat_completions(
             for fallback_model in nvidia_fallbacks:
                 payload["model"] = fallback_model
                 status_code, body_or_gen, resp_headers = await execute_completion(
-                    provider_cfg=p_cfg,
+                    provider_cfg=dispatch_cfg,
                     payload=payload,
                     stream=req.stream,
                 )
@@ -349,7 +378,7 @@ async def chat_completions(
             for fallback_model in kilo_fallbacks:
                 payload["model"] = fallback_model
                 status_code, body_or_gen, resp_headers = await execute_completion(
-                    provider_cfg=p_cfg,
+                    provider_cfg=dispatch_cfg,
                     payload=payload,
                     stream=req.stream,
                 )
@@ -436,7 +465,7 @@ async def chat_completions(
         status_code=502,
         content={
             "error": {
-                "message": "All free providers failed or rate-limited.",
+                "message": "All provider candidates failed or rate-limited.",
                 "failover_chain": failover_log,
                 "last_error": last_error,
             }

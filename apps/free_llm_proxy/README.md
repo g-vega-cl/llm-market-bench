@@ -32,9 +32,10 @@ FREE_PROXY_MASTER_KEY=sk-free-proxy-secret-key-12345
 GROQ_API_KEY=gsk_...
 GEMINI_API_KEY_FREE=...
 OPENROUTER_API_KEY=...
+OPENCODE_GO_API_KEY=oc_sk_...
 ```
 
-*Note: The proxy automatically activates whichever providers have keys configured in `.env`. Kilo Code and OVHcloud work out of the box with zero keys!*
+*Note: The proxy automatically activates whichever providers have keys configured in `.env`. Kilo Code and OVHcloud work out of the box with zero keys! OpenCode Go is a paid subscription and is only reachable through the `auto-go` / `auto-strata-go` aliases or explicit `opencode-go/<model>` targeting; it never participates in the free aliases.*
 
 ### 2. Start the Server (Docker or Local)
 
@@ -106,11 +107,17 @@ print(response.choices[0].message.content)
 | **`free-auto`** (Default) | Best overall model available across healthy active pool (Strata excluded) | 120B / 70B / Flash models |
 | **`strata-auto`** | Prioritizes local Strata (localhost:8080); fails over cleanly to auto pool when offline | Local live model / Orcarouter ➔ Auto pool fallback |
 | **`auto-strata`** | Adds Strata into the standard Tier 1 round-robin auto rotation pool | Local Strata + Tier 1 providers |
+| **`auto-go`** | Free auto pool with OpenCode Go as a last-resort paid fallback (Strata excluded) | Tier 1+2 free providers ➔ OpenCode Go |
+| **`auto-strata-go`** | Same as `auto-go`, but Strata joins the Tier 1 rotation | Local Strata + Tier 1+2 free providers ➔ OpenCode Go |
 | **`strata`** | Strictly targets local Strata; fails fast with error if offline (zero silent cloud fallback) | Whichever model is live on localhost:8080 |
 | **`free-fast`** | Sub-second ultra-low latency models | 20B / 8B / Flash-Lite models |
 | **`free-reasoning`** | Deep reasoning / thinking models | DeepSeek-R1, Flint, Beam, QwQ |
 | **Any Custom Name** | Pass-through or fallback (e.g. `deepseek-chat`, `gpt-4o`) | Automatically routes via `free-auto` |
 | **Targeted Provider** | Explicitly target a provider first (e.g. `groq/qwen3.8-27b`) | Routes to specified provider with fallback |
+
+### OpenCode Go (Paid Tier)
+
+`opencode-go` discovers its catalog from `https://opencode.ai/zen/go/v1/models` — there is no model list to maintain. Set `OPENCODE_GO_API_KEY` to activate it. It is **never** part of `free-auto`, `auto-strata`, `free-fast`, or `free-reasoning`; only `auto-go`, `auto-strata-go`, and explicit `opencode-go/<model>` requests can reach it. Within the `*-go` aliases it sits after both the healthy and cooling free candidates, so a 429 cooldown storm still tries free providers first. If its catalog cannot be read, the proxy fails closed instead of sending a paid request with an ungrounded model name. The proxy forwards a client `x-opencode-session` header only after validating it, or derives a stable fallback session ID automatically, since Go requires one on every chat request.
 
 ---
 

@@ -25,9 +25,6 @@ logger = logging.getLogger("engine")
 TTL_SKIP_HOURS = 24
 TTL_WARM_DAYS = 7
 
-# Uses Mode.JSON so gpt-5.6-luna can run with reasoning_effort="medium" without 400 tool conflict
-get_research_openai_client = get_openai_json_client
-
 
 class CompanyResearchDossierOutput(BaseModel):
     """Structured response model for an individual company or sector research dossier."""
@@ -190,9 +187,11 @@ async def research_single_target(
         "5. Output complete Markdown formatted dossier under `full_report_markdown`."
     )
 
-    client = openai_client or get_research_openai_client()
+    client = openai_client or get_openai_json_client()
     target_model = OPENAI_MODEL
-    kwargs: dict[str, Any] = {"reasoning_effort": "medium"}
+    kwargs: dict[str, Any] = {}
+    if any(m in target_model.lower() for m in ("luna", "o1", "o3")):
+        kwargs["reasoning_effort"] = "medium"
 
     dossier: CompanyResearchDossierOutput = await client.chat.completions.create(
         model=target_model,

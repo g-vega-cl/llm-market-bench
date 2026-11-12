@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
+from core.llm.clients import get_openai_json_client
 from tasks.research_newsletter_tickers import (
     CompanyResearchDossierOutput,
-    get_research_openai_client,
     research_latest_newsletter,
     research_newsletter_targets,
     research_single_target,
@@ -252,17 +252,17 @@ async def test_research_latest_newsletter_from_handoff(mock_supabase):
         assert mock_targets.call_args.kwargs["raw_mentions"] == [{"ticker": "NVDA", "company_name": "NVIDIA"}]
 
 
-def test_get_research_openai_client_uses_mode_json():
-    """Verify research client uses Mode.JSON to avoid 400 error when reasoning_effort is medium."""
+def test_get_openai_json_client_uses_mode_json():
+    """Verify JSON client uses Mode.JSON to avoid 400 error when reasoning_effort is medium."""
     import instructor
 
-    client = get_research_openai_client(api_key="fake-key-test")
+    client = get_openai_json_client(api_key="fake-key-test")
     assert client.mode == instructor.Mode.JSON
 
 
 @pytest.mark.asyncio
-async def test_research_single_target_defaults_to_json_client(mock_supabase):
-    """Verify research_single_target initializes get_research_openai_client when none passed."""
+async def test_research_single_target_invokes_json_client_with_reasoning(mock_supabase):
+    """Verify research_single_target initializes get_openai_json_client and forwards reasoning kwargs."""
     mock_reports_query = MockTableQuery([])
     mock_mentions_query = MockTableQuery()
     mock_supabase.table.side_effect = lambda name: {
@@ -295,7 +295,7 @@ async def test_research_single_target_defaults_to_json_client(mock_supabase):
 
     with (
         patch(
-            "tasks.research_newsletter_tickers.get_research_openai_client", return_value=mock_json_client
+            "tasks.research_newsletter_tickers.get_openai_json_client", return_value=mock_json_client
         ) as mock_get_client,
         patch("tasks.research_newsletter_tickers.gather_target_context", new_callable=AsyncMock) as mock_ctx,
     ):
@@ -308,3 +308,57 @@ async def test_research_single_target_defaults_to_json_client(mock_supabase):
         )
         assert mock_get_client.called
         assert res["ticker"] == "NVDA"
+        assert mock_json_client.chat.completions.create.called
+        call_kwargs = mock_json_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["response_model"] == CompanyResearchDossierOutput
+        assert call_kwargs["reasoning_effort"] == "medium"
+        assert call_kwargs["model"] == "gpt-5.6-luna"
+
+
+@pytest.mark.asyncio
+async def test_research_single_target_omits_reasoning_for_standard_models(mock_supabase):
+    """Verify reasoning_effort is omitted when OPENAI_MODEL is not a reasoning model."""
+    mock_reports_query = MockTableQuery([])
+    mock_mentions_query = MockTableQuery()
+    mock_supabase.table.side_effect = lambda name: {
+        "company_research_reports": mock_reports_query,
+        "newsletter_company_mentions": mock_mentions_query,
+    }[name]
+
+    mock_json_client = MagicMock()
+    mock_json_client.chat.completions.create = AsyncMock(
+        return_value=CompanyResearchDossierOutput(
+            ticker="NVDA",
+            company_name="NVIDIA",
+            sector="Semiconductors",
+            is_sector_etf=False,
+            entity_type="stock",
+            verdict="bullish",
+            conviction_score=90,
+            risk_reward_score=3.0,
+            target_horizon="3-6 months",
+            valuation_summary="Solid margins",
+            buffett_moat_analysis={},
+            options_sentiment_summary="Bullish",
+            catalyst_context="AI demand",
+            falsification_triggers=[],
+            full_report_markdown="# Report",
+        )
+    )
+
+    mention = CompanyMention(ticker="NVDA", company_name="NVIDIA", sector="Semiconductors")
+
+    with (
+        patch("tasks.research_newsletter_tickers.OPENAI_MODEL", "gpt-4o"),
+        patch("tasks.research_newsletter_tickers.get_openai_json_client", return_value=mock_json_client),
+        patch("tasks.research_newsletter_tickers.gather_target_context", new_callable=AsyncMock) as mock_ctx,
+    ):
+        mock_ctx.return_value = (140.0, "Context")
+        await research_single_target(
+            mention=mention,
+            session="open",
+            sb_client=mock_supabase,
+            target_date="2026-11-12",
+        )
+        call_kwargs = mock_json_client.chat.completions.create.call_args.kwargs
+        assert "reasoning_effort" not in call_kwargs

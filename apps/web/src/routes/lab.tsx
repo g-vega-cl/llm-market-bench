@@ -22,6 +22,12 @@ export const LAB_CATEGORIES: LabCategory[] = [
         subtitle: 'Autonomous prompt evolution, backtest harnesses, and sector forecasting',
         items: [
             {
+                to: '/recipes',
+                label: 'Recipe Studio',
+                description:
+                    'Visual Voxel DAG builder for news catalyst streams, technical indicator gates, and LLM trading recipes.',
+            },
+            {
                 to: '/autoresearch',
                 label: 'Auto-Research',
                 description:

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/recipe-studio]] — Auto-indexed page
 - [[entities/daily-stock-picker]] — Auto-indexed page
 - [[entities/company-research-reports]] — Institutional stock & sector research dossiers extracted from daily briefings, with `/companies` explorer, CLI command, and TTL deduplication
 - [[entities/sentiment-fader]] — Auto-indexed page
@@ -104,6 +105,7 @@
 
 ## Concepts
 
+- [[concepts/recipe-dag-backtesting]] — Auto-indexed page
 - [[concepts/state-machines]] — Auto-indexed page
 - [[concepts/in-flow-inspection]] — Zero floating tooltips/popovers; secondary telemetry renders in-flow in recessed `.voxel-trough` slots with keyboard-operable triggers
 - [[concepts/overreaction-mean-reversion]] — Auto-indexed page

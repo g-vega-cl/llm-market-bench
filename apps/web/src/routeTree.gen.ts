@@ -41,6 +41,7 @@ import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
 import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
 import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
+import { Route as RecipesIndexRouteImport } from './routes/recipes/index'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -203,6 +204,11 @@ const ReasoningIndexRoute = ReasoningIndexRouteImport.update({
   path: '/reasoning/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecipesIndexRoute = RecipesIndexRouteImport.update({
+  id: '/recipes/',
+  path: '/recipes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
   id: '/memories/chain/$memoryId',
   path: '/memories/chain/$memoryId',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
+  '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
 }
 export interface FileRoutesByTo {
@@ -275,6 +282,7 @@ export interface FileRoutesByTo {
   '/memories': typeof MemoriesIndexRoute
   '/portfolios': typeof PortfoliosIndexRoute
   '/reasoning': typeof ReasoningIndexRoute
+  '/recipes': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
 }
 export interface FileRoutesById {
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
+  '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
 }
 export interface FileRouteTypes {
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/memories/'
     | '/portfolios/'
     | '/reasoning/'
+    | '/recipes/'
     | '/memories/chain/$memoryId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/memories'
     | '/portfolios'
     | '/reasoning'
+    | '/recipes'
     | '/memories/chain/$memoryId'
   id:
     | '__root__'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/memories/'
     | '/portfolios/'
     | '/reasoning/'
+    | '/recipes/'
     | '/memories/chain/$memoryId'
   fileRoutesById: FileRoutesById
 }
@@ -450,6 +462,7 @@ export interface RootRouteChildren {
   MemoriesIndexRoute: typeof MemoriesIndexRoute
   PortfoliosIndexRoute: typeof PortfoliosIndexRoute
   ReasoningIndexRoute: typeof ReasoningIndexRoute
+  RecipesIndexRoute: typeof RecipesIndexRoute
   MemoriesChainMemoryIdRoute: typeof MemoriesChainMemoryIdRoute
 }
 
@@ -679,6 +692,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReasoningIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recipes/': {
+      id: '/recipes/'
+      path: '/recipes'
+      fullPath: '/recipes/'
+      preLoaderRoute: typeof RecipesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/memories/chain/$memoryId': {
       id: '/memories/chain/$memoryId'
       path: '/memories/chain/$memoryId'
@@ -743,6 +763,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoriesIndexRoute: MemoriesIndexRoute,
   PortfoliosIndexRoute: PortfoliosIndexRoute,
   ReasoningIndexRoute: ReasoningIndexRoute,
+  RecipesIndexRoute: RecipesIndexRoute,
   MemoriesChainMemoryIdRoute: MemoriesChainMemoryIdRoute,
 }
 export const routeTree = rootRouteImport

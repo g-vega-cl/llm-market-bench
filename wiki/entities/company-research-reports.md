@@ -29,8 +29,9 @@ The Company Research system extracts individual stocks and sector benchmark ETFs
    - Options volatility surface, IV/RV ratios, and put/call skew via `execute_get_options_sentiment_tool` (`apps/engine/tools/technicals_options.py`).
    - Every fetch is individually wrapped — a failing tool is logged at debug level and simply omitted, so one unavailable provider never aborts the dossier.
 
-4. **Deep-Dive Synthesis (OpenAI Luna with Thinking)**:
+4. **Deep-Dive Synthesis (OpenAI Luna with Thinking)** — `Mode.JSON` extraction:
    - Invokes OpenAI `gpt-5.6-luna` (`OPENAI_MODEL`) using Instructor with `reasoning_effort="medium"` and `response_model=CompanyResearchDossierOutput`.
+   - The client is built by `get_research_openai_client`, an alias of `get_openai_json_client` in `apps/engine/core/llm/clients.py`. That factory wraps `AsyncOpenAI` with `instructor.from_openai(..., mode=instructor.Mode.JSON)` so structured extraction is driven by JSON-schema guidance in the prompt rather than injected function tools. This is required because OpenAI's `/v1/chat/completions` API rejects `reasoning_effort != 'none'` whenever function tools are present in the request — `Mode.JSON` keeps the reasoning budget intact without triggering a `400 invalid_request_error`. See [[concepts/thinking-agents]].
    - Produces structured output:
      - Definitive Verdict (`bullish`, `bearish`, or `neutral`).
      - Conviction Score (1-100, clamped server-side) and Risk/Reward ratio (rounded, clamped 0.1–99.0).
@@ -104,3 +105,4 @@ To generate a briefing and dispatch research on its spotlighted companies in one
 - [[entities/web-app]] — the `/companies` and `/companies/$ticker` routes
 - [[concepts/ingestion]] — newsletter ingestion feeding the extractor
 - [[concepts/zero-frontend-compute]] — lean web read path for the directory
+- [[concepts/thinking-agents]] — per-provider thinking/extraction mode allocation

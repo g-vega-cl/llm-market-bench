@@ -22,7 +22,7 @@ Structured extraction libraries (such as Instructor with `Mode.TOOLS` or `Mode.A
 - **Consequence**: When thinking was turned on, structured trade extraction immediately threw 400 errors, causing the engine to fall back to ungrounded heuristics or fail entirely.
 
 ### B. Tool Call Narration Hallucination (DeepSeek R1/Flash)
-When reasoning models received tool declarations with thinking enabled in the prompt loop, they frequently described their intent to call tools in English prose inside the `<think>` reasoning block (e.g., *"Let me call `get_stock_quote` for NVDA to see the price..."*) rather than emitting the structured API `tool_calls` payload.
+When reasoning models received tool declarations with thinking enabled in the prompt loop, they frequently described their intent to call tools in English prose inside the ` thinking` reasoning block (e.g., *"Let me call `get_stock_quote` for NVDA to see the price..."*) rather than emitting the structured API `tool_calls` payload.
 - **The Conflict**: The API returned zero function calls in the message object. The engine's tool loop saw no tools invoked, terminated prematurely, and the trade was rejected by HARD ENFORCEMENT rules.
 
 ### C. Discarded Multi-Turn Cryptographic Signatures (Anthropic)
@@ -51,12 +51,13 @@ OpenAI's `/v1/chat/completions` API explicitly disallows `reasoning_effort != 'n
 
 We enabled thinking mode across all competing models because market reasoning requires deep, multi-step deliberation over messy quantitative data (valuation multiples, options open interest, macro inflection points, and catalyst dates). As demonstrated in live tests, thinking agents evaluate disconfirming evidence and reject bad trades with high conviction rather than chasing momentum.
 
-We resolved each historical blocker through four architectural solutions:
+We resolved each historical blocker through five architectural solutions:
 
-### Solution 1: Decoupled Extraction Modes (`Mode.ANTHROPIC_JSON` & `Mode.MD_JSON`)
+### Solution 1: Decoupled Extraction Modes (`Mode.ANTHROPIC_JSON`, `Mode.MD_JSON`, & `Mode.JSON`)
 In `apps/engine/core/llm/clients.py`, we configured Anthropic and MiniMax clients to use `mode=instructor.Mode.ANTHROPIC_JSON`, and DeepSeek to use `mode=instructor.Mode.MD_JSON`.
 - Structured extraction operates via JSON schema guidance in the prompt/system instruction rather than forcing `tool_choice`.
 - Thinking budgets (1,024 to 2,048 tokens) now run freely during extraction without triggering 400 gateway errors.
+- For OpenAI, `get_openai_json_client()` wraps `AsyncOpenAI` with `instructor.from_openai(..., mode=instructor.Mode.JSON)`. Because `Mode.JSON` never injects function tools into the request, OpenAI reasoning models (`gpt-5.6-luna`) can run with `reasoning_effort="medium"` without hitting the `/v1/chat/completions` function-tool block described in §1.E. The company research pipeline consumes this factory via the `get_research_openai_client` alias in `apps/engine/tasks/research_newsletter_tickers.py`.
 
 ### Solution 2: State-Preserving Multi-Turn Loops
 In `apps/engine/core/llm/handlers/anthropic.py`, the assistant content accumulator explicitly preserves `content_block.type == "thinking"`, storing both `thinking` text and `signature`.
@@ -77,8 +78,11 @@ Rather than applying a naive global toggle, thinking parameters are tailored to 
 | `claude-haiku-5-5` | Anthropic | Adaptive (`{"type": "adaptive", "display": "summarized"}`) with `output_config={"effort": "medium"}` and preserved empty/signature blocks | Adaptive thinking with `output_config={"effort": "medium"}` (or `"high"` for autoresearch) | `Mode.ANTHROPIC_JSON` in `clients.py`, signature loop & `get_anthropic_thinking_kwargs` in `handlers/anthropic.py` |
 | `gemini-3.5-flash-lite` | Gemini | Active via `ThinkingConfig(thinking_level="high")` | Active (`thinking_level="low"` for verification, `"high"` for analysis) | `types.Content` preservation in `handlers/gemini.py` |
 | `deepseek-v4-flash` | DeepSeek | Suppressed during tool calls (prevents prose narration) | Active via `extra_body={"thinking": {"type": "enabled"}}` | Enabled in `daily_predictor`, `sector_predictor`, `verification`, `researcher` |
-| `gpt-5.6-luna` | OpenAI | Suppressed (`reasoning_effort="none"`) | Suppressed (`reasoning_effort="none"`) | Adheres to `/v1/chat/completions` function tool gateway rules |
+| `gpt-5.6-luna` | OpenAI | Suppressed (`reasoning_effort="none"`) — adheres to `/v1/chat/completions` function tool gateway rules | Active via `Mode.JSON` (no function tools injected) with `reasoning_effort="medium"` for company research dossiers; suppressed (`reasoning_effort="none"`) elsewhere | `get_openai_json_client` in `clients.py` (aliased as `get_research_openai_client` in `tasks/research_newsletter_tickers.py`) |
 | `MiniMax-M3` | MiniMax | Standard execution via Anthropic format | Structured extraction | `Mode.ANTHROPIC_JSON` in `clients.py` |
+
+### Solution 5: OpenAI JSON-Mode Extraction Factory
+`get_openai_json_client(api_key=None)` in `apps/engine/core/llm/clients.py` builds `instructor.from_openai(AsyncOpenAI(api_key=key, timeout=TIMEOUT), mode=instructor.Mode.JSON)`. Because `Mode.JSON` guides the model with a JSON schema in the prompt instead of declaring function tools, the request carries no `tools` array and OpenAI's `/v1/chat/completions` gateway accepts `reasoning_effort="medium"`. The company research pipeline (`tasks/research_newsletter_tickers.py`) imports it as `get_research_openai_client` and uses it as the default client for `research_single_target`, so Luna can deliberate over valuation, moat, and options context before emitting the structured `CompanyResearchDossierOutput`. See [[entities/company-research-reports]].
 
 ---
 
@@ -118,6 +122,8 @@ Thinking is unified across all autonomous decision and analytical pipelines in t
    - Executes multi-turn pull loops (`max_tool_steps = 5`) where models evaluate real-time quotes, technical momentum, and volatility surfaces before extracting final BUY/SELL/HOLD decisions.
 5. **Trade Verification Agent (`verification.py`)**:
    - Audits proposed trade decisions against Tier 2 academic papers, valuation DCF models, options Put/Call distributions, and news sentiment with thinking deliberation.
+6. **Company Research Dossiers (`tasks/research_newsletter_tickers.py`)**:
+   - OpenAI `gpt-5.6-luna` runs `reasoning_effort="medium"` through the `Mode.JSON` client (`get_research_openai_client`) to deliberate over valuation multiples, moat scorecards, and options sentiment before emitting a structured `CompanyResearchDossierOutput`.
 
 ---
 
@@ -127,3 +133,4 @@ Thinking is unified across all autonomous decision and analytical pipelines in t
 - [[concepts/tool-first-agency]] — Tool-first, agency-driven architecture (Principle 8)
 - [[concepts/reasoning]] — The 5 Whys, reasoning frameworks, and mental models
 - [[entities/engine]] — Engine architecture and tool-calling infrastructure
+- [[entities/company-research-reports]] — the dossier pipeline that consumes the `Mode.JSON` OpenAI client

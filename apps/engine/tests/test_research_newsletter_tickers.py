@@ -8,6 +8,7 @@ import pytest
 
 from tasks.research_newsletter_tickers import (
     CompanyResearchDossierOutput,
+    get_research_openai_client,
     research_latest_newsletter,
     research_newsletter_targets,
     research_single_target,
@@ -249,3 +250,61 @@ async def test_research_latest_newsletter_from_handoff(mock_supabase):
         assert mock_targets.call_args.kwargs["session"] == "open"
         assert mock_targets.call_args.kwargs["newsletter_id"] == "handoff-id-123"
         assert mock_targets.call_args.kwargs["raw_mentions"] == [{"ticker": "NVDA", "company_name": "NVIDIA"}]
+
+
+def test_get_research_openai_client_uses_mode_json():
+    """Verify research client uses Mode.JSON to avoid 400 error when reasoning_effort is medium."""
+    import instructor
+
+    client = get_research_openai_client(api_key="fake-key-test")
+    assert client.mode == instructor.Mode.JSON
+
+
+@pytest.mark.asyncio
+async def test_research_single_target_defaults_to_json_client(mock_supabase):
+    """Verify research_single_target initializes get_research_openai_client when none passed."""
+    mock_reports_query = MockTableQuery([])
+    mock_mentions_query = MockTableQuery()
+    mock_supabase.table.side_effect = lambda name: {
+        "company_research_reports": mock_reports_query,
+        "newsletter_company_mentions": mock_mentions_query,
+    }[name]
+
+    mock_json_client = MagicMock()
+    mock_json_client.chat.completions.create = AsyncMock(
+        return_value=CompanyResearchDossierOutput(
+            ticker="NVDA",
+            company_name="NVIDIA",
+            sector="Semiconductors",
+            is_sector_etf=False,
+            entity_type="stock",
+            verdict="bullish",
+            conviction_score=90,
+            risk_reward_score=3.0,
+            target_horizon="3-6 months",
+            valuation_summary="Solid margins",
+            buffett_moat_analysis={},
+            options_sentiment_summary="Bullish",
+            catalyst_context="AI demand",
+            falsification_triggers=[],
+            full_report_markdown="# Report",
+        )
+    )
+
+    mention = CompanyMention(ticker="NVDA", company_name="NVIDIA", sector="Semiconductors")
+
+    with (
+        patch(
+            "tasks.research_newsletter_tickers.get_research_openai_client", return_value=mock_json_client
+        ) as mock_get_client,
+        patch("tasks.research_newsletter_tickers.gather_target_context", new_callable=AsyncMock) as mock_ctx,
+    ):
+        mock_ctx.return_value = (140.0, "Context")
+        res = await research_single_target(
+            mention=mention,
+            session="open",
+            sb_client=mock_supabase,
+            target_date="2026-11-12",
+        )
+        assert mock_get_client.called
+        assert res["ticker"] == "NVDA"

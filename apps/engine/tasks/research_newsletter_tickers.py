@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from core.config import OPENAI_MODEL
 from core.db import get_supabase_client
-from core.llm.clients import get_openai_client
+from core.llm.clients import get_openai_json_client
 from execution.market_data import MarketDataManager
 from tasks.ticker_extractor import CompanyMention, extract_and_deduplicate_mentions
 from tools.analyst_personas import execute_call_warren_buffett_tool
@@ -24,6 +24,9 @@ logger = logging.getLogger("engine")
 
 TTL_SKIP_HOURS = 24
 TTL_WARM_DAYS = 7
+
+# Uses Mode.JSON so gpt-5.6-luna can run with reasoning_effort="medium" without 400 tool conflict
+get_research_openai_client = get_openai_json_client
 
 
 class CompanyResearchDossierOutput(BaseModel):
@@ -187,7 +190,7 @@ async def research_single_target(
         "5. Output complete Markdown formatted dossier under `full_report_markdown`."
     )
 
-    client = openai_client or get_openai_client()
+    client = openai_client or get_research_openai_client()
     target_model = OPENAI_MODEL
     kwargs: dict[str, Any] = {"reasoning_effort": "medium"}
 

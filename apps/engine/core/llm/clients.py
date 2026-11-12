@@ -22,6 +22,20 @@ def get_openai_client(api_key: str | None = None):
     return client
 
 
+def get_openai_json_client(api_key: str | None = None):
+    """Creates an async OpenAI client wrapped with Instructor in Mode.JSON.
+
+    Uses Mode.JSON so structured extraction does not inject function tools,
+    allowing OpenAI reasoning models (gpt-5.6-luna) to operate with reasoning_effort
+    without 400 invalid_request_error.
+    """
+    key = api_key or config.OPENAI_API_KEY
+    return instructor.from_openai(
+        AsyncOpenAI(api_key=key, timeout=TIMEOUT),
+        mode=instructor.Mode.JSON,
+    )
+
+
 def get_anthropic_client(api_key: str | None = None):
     """Creates an async Anthropic client wrapped with Instructor.
 

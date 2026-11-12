@@ -65,7 +65,7 @@ You do **not** need to register or configure keys for these; they are active in 
 * **Signup URL**: [opencode.ai/auth](https://opencode.ai/auth) → subscribe to Go / Go Plus / Go Teams.
 * **Env Variable**: Set `OPENCODE_GO_API_KEY=oc_sk_...` in `apps/free_llm_proxy/.env`.
 * **Catalog**: Discovered automatically from `GET https://opencode.ai/zen/go/v1/models` (no model list to maintain).
-* **Routing**: Reachable only via `auto-go`, `auto-strata-go`, or explicit `opencode-go/<model>`. It is deliberately excluded from every free alias (`free-auto`, `auto-strata`, `free-fast`, `free-reasoning`) and sits after both healthy and cooling free candidates as a last resort. Its `billing: "paid"` + `auto_aliases` configuration is fail-closed, and dispatch is refused if the live catalog cannot be discovered.
+* **Routing**: Reachable only via `auto-go`, `auto-strata-go`, `strata-auto-go`, or explicit `opencode-go/<model>`. It is deliberately excluded from every free alias (`free-auto`, `auto-strata`, `free-fast`, `free-reasoning`) and sits after both healthy and cooling free candidates as a last resort. Its `billing: "paid"` + `auto_aliases` configuration is fail-closed, and dispatch is refused if the live catalog cannot be discovered.
 
 ---
 

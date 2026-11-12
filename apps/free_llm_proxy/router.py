@@ -322,7 +322,7 @@ class Router:
             "auto",
             "",
         }
-        is_strata_primary = model_lower == "strata-auto"
+        is_strata_primary = model_lower in {"strata-auto", "strata-auto-go"}
 
         # If client explicitly specified a provider (e.g. 'groq/qwen...' or 'openrouter')
         explicit_provider = _resolve_explicit_provider(

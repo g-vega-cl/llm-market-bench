@@ -109,6 +109,7 @@ print(response.choices[0].message.content)
 | **`auto-strata`** | Adds Strata into the standard Tier 1 round-robin auto rotation pool | Local Strata + Tier 1 providers |
 | **`auto-go`** | Free auto pool with OpenCode Go as a last-resort paid fallback (Strata excluded) | Tier 1+2 free providers ➔ OpenCode Go |
 | **`auto-strata-go`** | Same as `auto-go`, but Strata joins the Tier 1 rotation | Local Strata + Tier 1+2 free providers ➔ OpenCode Go |
+| **`strata-auto-go`** | Strata primary; on failure falls over the free pool, then paid OpenCode Go | Local Strata ➔ Tier 1+2 free providers ➔ OpenCode Go |
 | **`strata`** | Strictly targets local Strata; fails fast with error if offline (zero silent cloud fallback) | Whichever model is live on localhost:8080 |
 | **`free-fast`** | Sub-second ultra-low latency models | 20B / 8B / Flash-Lite models |
 | **`free-reasoning`** | Deep reasoning / thinking models | DeepSeek-R1, Flint, Beam, QwQ |
@@ -117,7 +118,7 @@ print(response.choices[0].message.content)
 
 ### OpenCode Go (Paid Tier)
 
-`opencode-go` discovers its catalog from `https://opencode.ai/zen/go/v1/models` — there is no model list to maintain. Set `OPENCODE_GO_API_KEY` to activate it. It is **never** part of `free-auto`, `auto-strata`, `free-fast`, or `free-reasoning`; only `auto-go`, `auto-strata-go`, and explicit `opencode-go/<model>` requests can reach it. Within the `*-go` aliases it sits after both the healthy and cooling free candidates, so a 429 cooldown storm still tries free providers first. If its catalog cannot be read, the proxy fails closed instead of sending a paid request with an ungrounded model name. The proxy forwards a client `x-opencode-session` header only after validating it, or derives a stable fallback session ID automatically, since Go requires one on every chat request.
+`opencode-go` discovers its catalog from `https://opencode.ai/zen/go/v1/models` — there is no model list to maintain. Set `OPENCODE_GO_API_KEY` to activate it. It is **never** part of `free-auto`, `auto-strata`, `free-fast`, or `free-reasoning`; only `auto-go`, `auto-strata-go`, `strata-auto-go`, and explicit `opencode-go/<model>` requests can reach it. Within the `*-go` aliases it sits after both the healthy and cooling free candidates, so a 429 cooldown storm still tries free providers first. If its catalog cannot be read, the proxy fails closed instead of sending a paid request with an ungrounded model name. The proxy forwards a client `x-opencode-session` header only after validating it, or derives a stable fallback session ID automatically, since Go requires one on every chat request.
 
 ---
 

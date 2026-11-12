@@ -45,7 +45,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Premium Semantic Memory Search (Approach 3)** - Implement server-side vector embedding (`text-embedding-004`) + `match_memories` pgvector RPC for thematic conceptual discovery ("rate cuts" -> "dovish Fed"). Caveat: Requires runtime LLM embedding API call per search query; reserve as a premium/pro tier capability.
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - Benchify: scrape news from all time (historical backfill).
-- [ ] - Benchify: research every stock/sector mentioned in newsletters individually and decide if it would be worth investing in it. Save all these research reports in a DB where users could "look up all information about X company"
+- [x] - Benchify: research every stock/sector mentioned in newsletters individually and decide if it would be worth investing in it. Save all these research reports in a DB where users could "look up all information about X company"
 
 ---
 
@@ -56,9 +56,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] - Look for statistical analysis for markets
-- [x] - Benchify: follow the crowd strategy? Like using options and volume data?
-- [ ] - Benchify: an option targeter? A predictor that says "in X amount of time, this stock will move Y"
-- [ ] - Benchify; a daily stock picker, which stocks will go up today? And pick 3 up and 3 down.
+- [x] - Benchify; a daily stock picker, which stocks will go up today? And pick 3 up and 3 down.
 - [ ] - Benchify: train small model?
 
 ### Focused Assets (Single Ticker / ETF)
@@ -67,15 +65,11 @@ A living document of features and improvements in progress or planned for the pl
 
 ### Government, Fiscal & Alternative Data
 
-- [x] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
 - [ ] - audit all government information you have and how you are using it.
 - [ ] - Benchify: Toronto stock market
 
 ### Multimodal & Visual Market Prediction
 
-- [p] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
-- [p] - visual predictor- Somethuing like https://huggingface.co/foduucom/stockmarket-pattern-detection-yolov8 or even a minute-by-minute/ or short time x short time predictor of the market. Not necessarily visual, but it would be great to compare results of visual/non-visual.
- - I thought about this and making it work is probably not worth, it includes rendering sending images to the LLM, etc...  
 ---
 
 ## 🌐 Horizon 4: Product, Platform & Community (Long-Term)
@@ -86,10 +80,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: per user log and reasons tracker. This ties to the LLM chat. Each user can track their own trades too and their reasoning.
 - [ ] - I like the idea of a "finacial/trading" benchmark for agents.
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
-- [ ] - Benchify: market data free APIs?
 - [ ] - Benchify: build your AI trading strategy online (algobuilder.com, switchmarkets.com?)
   - [ ] - Kind of like a visual Unsloth dashboard?
-- [ ] - Benchify: So many posts like this. https://www.reddit.com/r/ai_trading/s/P9KnfLpbAV There must be a better way
 
 ### Gamifying
 

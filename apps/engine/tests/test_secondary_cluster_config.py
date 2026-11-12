@@ -92,3 +92,5 @@ def test_deploy_secondary_script():
     assert "cv-minipc@minipc" in content or "$TARGET_HOST" in content
     assert "docker-compose.secondary.yml" in content
     assert "rsync" in content or "scp" in content
+    assert "restart archive-postgrest" in content
+    assert "http://localhost:3001/rest/v1/" in content

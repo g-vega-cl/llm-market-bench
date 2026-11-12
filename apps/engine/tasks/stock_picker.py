@@ -30,9 +30,24 @@ from core.llm.stock_picker_prompts import (
 )
 
 DEFAULT_CANDIDATES = [
-    "NVDA", "TSM", "AAPL", "MSFT", "AMZN", "GOOGL",
-    "META", "TSLA", "AVGO", "CRWV", "ETR", "CB",
-    "XLF", "ABNB", "VRT", "DLR", "JPM", "WMT",
+    "NVDA",
+    "TSM",
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "TSLA",
+    "AVGO",
+    "CRWV",
+    "ETR",
+    "CB",
+    "XLF",
+    "ABNB",
+    "VRT",
+    "DLR",
+    "JPM",
+    "WMT",
 ]
 
 TARGET_MODELS = [

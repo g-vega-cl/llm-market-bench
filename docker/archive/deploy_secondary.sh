@@ -73,7 +73,14 @@ fi
 echo "=== [4/5] Setting execution permissions on remote helper scripts ==="
 ssh "${TARGET_HOST}" "chmod +x ${REMOTE_DIR}/docker/archive/*.sh"
 
-echo "=== [5/5] Rebuilding and launching Docker containers on ${TARGET_HOST} ==="
-ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build && docker compose -f docker-compose.secondary.yml ps"
+echo "=== [5/5] Rebuilding, launching Docker containers, and reloading PostgREST schema cache on ${TARGET_HOST} ==="
+ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build && docker compose -f docker-compose.secondary.yml restart archive-postgrest && docker compose -f docker-compose.secondary.yml ps"
+
+echo "=== [6/5] Verifying local read replica endpoint health on ${TARGET_HOST} ==="
+if ! ssh "${TARGET_HOST}" "curl -s -f -o /dev/null http://localhost:3001/rest/v1/"; then
+    echo "WARNING: Local PostgREST read endpoint on ${TARGET_HOST} did not return 200 OK. Inspect PostgREST logs."
+else
+    echo "PostgREST read endpoint on ${TARGET_HOST} is healthy and schema cache reloaded."
+fi
 
 echo "=== Deployment to ${TARGET_HOST} complete and services started! ==="

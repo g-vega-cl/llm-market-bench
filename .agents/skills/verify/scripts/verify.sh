@@ -108,6 +108,19 @@ fi
 if [ -d "supabase/migrations" ]; then
   echo "--> Verifying database migration grants and RLS integrity..."
   ./apps/engine/.venv/bin/python3 -m pytest apps/engine/tests/test_migration_grants.py -q
+
+  # Detect any modified or newly added migrations in working tree, staged, or recent commit
+  MIGRATIONS_TOUCHED=$(git diff --name-only HEAD~1 HEAD -- supabase/migrations/ 2>/dev/null || true)
+  MIGRATIONS_DIRTY=$(git status --porcelain -- supabase/migrations/ 2>/dev/null || true)
+  if [ -n "$MIGRATIONS_TOUCHED" ] || [ -n "$MIGRATIONS_DIRTY" ]; then
+    echo "--> [DATABASE / REPLICA MANDATE] Database migrations detected in recent changes:"
+    echo "    NOTE: Physical PostgreSQL streaming replication to the secondary MiniPC edge"
+    echo "    (cv-minipc@minipc) does NOT propagate NOTIFY events (NOTIFY pgrst, 'reload schema')."
+    echo "    Standby PostgREST does NOT auto-reload its schema cache without container restart."
+    echo "    MANDATORY ACTION: Deploy to secondary edge and reload schema cache:"
+    echo "      ./docker/archive/deploy_secondary.sh cv-minipc@minipc"
+    echo "    Verify live read probe against SUPABASE_PROJECT_URL (https://benchify-archive-db.clvg.uk) with zero PGRST205 errors."
+  fi
 fi
 
 

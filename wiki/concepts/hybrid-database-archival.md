@@ -142,7 +142,7 @@ Migrations are applied manually to the primary; the standby receives DDL through
 - **PgBouncer-style signature drift (PGRST202)**: a stale `match_memories` definition without `filter_memory_types` makes every 4-argument engine call fail with `Could not find the function public.match_memories(...) in the schema cache`. Re-apply the function section of the migration rather than restarting PostgREST.
 - **Missing `search_path` (42883)**: `CREATE OR REPLACE FUNCTION` without `SET search_path = public, extensions` leaves the `<=>` operator unresolvable at runtime (`operator does not exist: extensions.vector <=> extensions.vector`). Qualify the argument as `extensions.vector` and pin the search path on every `match_*` function.
 
-After applying DDL, run `NOTIFY pgrst, 'reload schema';` on the primary. `NOTIFY` does not cross a physical standby, so the MiniPC PostgREST needs `docker kill -s SIGUSR1 market-bench-archive-postgrest-replica` to reload its cache. Verify with the 4-argument RPC probe above plus a `retrieve_for_decision()` call, which labels `ACADEMIC_PAPER` rows as `[ACADEMIC PRINCIPLE]`.
+After applying DDL, run `NOTIFY pgrst, 'reload schema';` on the primary. Because PostgreSQL physical streaming replication does not forward transactional `NOTIFY` events across standby instances (`PGRST_DB_CHANNEL_ENABLED: false`), the MiniPC PostgREST replica must be restarted to reload its schema cache. Deploy and restart via `./docker/archive/deploy_secondary.sh cv-minipc@minipc` (which executes `docker compose restart archive-postgrest` and verifies local read health). Verify with the 4-argument RPC probe above plus a `retrieve_for_decision()` call, which labels `ACADEMIC_PAPER` rows as `[ACADEMIC PRINCIPLE]`.
 
 ## Related
 

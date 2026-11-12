@@ -71,10 +71,10 @@ Section 5 of the CLS rules in `.agents/rules/design-spec.md` (and the matching `
 - **How** — call `isQuerySettled(queries, isTransitionPending)` from `apps/web/src/lib/query-client.tsx` and render the secondary element only when it returns `true`.
 - **What must NOT be gated** — primary chart and container chrome stay stably mounted so the gating itself never introduces layout shift.
 
-```tsx
+tsx
 const isQueriesSettled = isQuerySettled([listQuery, comparisonQuery]);
 const isChartSettled = isQueriesSettled && !isPending;
-```
+
 
 See [[concepts/cumulative-layout-shift]] for the CLS rationale and [[concepts/tanstack-query]] for the helper's full semantics.
 
@@ -98,13 +98,23 @@ Whenever an agent builds, modifies, or fixes edge server services or configurati
 Agents MUST:
 
 1. **Deploy and launch immediately** — run the secondary edge deployment, which synchronizes files and automatically rebuilds/restarts containers in its `[5/5]` step:
-   ```sh
+   sh
    ./docker/archive/deploy_secondary.sh cv-minipc@minipc
-   ```
+   
 2. **Verify health** — confirm health endpoints respond and inspect container logs after the restart.
 3. **Never leave services dirty** — an unstarted, dirty, or crashed server service is a failed task. The operating assumption is that "people assume it's running when we commit or finish it."
 
 See [[entities/secondary-minipc-edge]] for the edge topology and [[entities/live-agent-trader]] for the trader container that this mandate most frequently covers.
+
+### Database Migrations & Edge Replica Schema Cache Parity (MANDATORY)
+
+Whenever creating, modifying, or executing database migrations (`supabase/migrations/*.sql`) or altering table schemas/RPCs, applying the migration to the primary workstation database is **not** the end of the task.
+
+- **Why**: Physical PostgreSQL streaming replication does **not** forward transactional `NOTIFY` events across standby instances, and the standby PostgREST runs with `PGRST_DB_CHANNEL_ENABLED: false`. Because `docker/archive/nginx.secondary.conf` routes all `GET` read queries directly to the local MiniPC PostgREST replica, a stale schema cache silently breaks public read paths with `PGRST205: Could not find table ... in schema cache`.
+- **Deploy and reload**: run `./docker/archive/deploy_secondary.sh cv-minipc@minipc`, which synchronizes configs, executes `docker compose restart archive-postgrest` on the replica to force a schema cache reload, and verifies local read health (`curl http://localhost:3001/rest/v1/`).
+- **Probe live reads**: execute a read probe against `SUPABASE_PROJECT_URL` (`https://benchify-archive-db.clvg.uk/rest/v1/<new_or_modified_table>?limit=1`) and confirm `200 OK` with zero `PGRST205` errors before marking work complete.
+
+See [[concepts/hybrid-database-archival]] and [[entities/database]] for the schema-parity failure modes, and [[entities/verify-skill]] for the Tier 4 enforcement.
 
 ## Verification Gate
 
@@ -133,3 +143,5 @@ A passing test suite with failing lint or low coverage is not done.
 - [[concepts/wiki-synchronization]]
 - [[entities/secondary-minipc-edge]]
 - [[entities/live-agent-trader]]
+- [[concepts/hybrid-database-archival]]
+- [[entities/verify-skill]]

@@ -118,6 +118,15 @@ Audit all changed files through these eight tiers. Do not skip any tier.
 5. **Database migration, RLS, and self-hosted schema parity**:
    - *RLS enforcement*: Any new table created in `supabase/migrations/*.sql` must explicitly include `ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;` and explicit `GRANT` statements per `[[concepts/supabase-grant-convention]]` and `[[concepts/rls-enforcement-standard]]`.
    - *Migration integrity check*: Migrations are version-controlled in `supabase/migrations/` and verified hermetically via `apps/engine/tests/test_migration_grants.py`. Unapplied migrations should be applied to the self-hosted PostgreSQL database (`docker/archive/docker-compose.yml`, `https://benchify-archive-db.clvg.uk`) to maintain schema parity.
+   - *Secondary edge replica & PostgREST schema reload (MANDATORY on migrations)*:
+     - Physical streaming replication on the MiniPC edge replica (`cv-minipc@minipc`) does NOT forward PostgreSQL `NOTIFY` events (`NOTIFY pgrst, 'reload schema'`), and standby PostgREST runs with `PGRST_DB_CHANNEL_ENABLED: false`.
+     - Because `docker/archive/nginx.secondary.conf` routes all `GET` read queries directly to MiniPC PostgREST, leaving the replica un-restarted will cause silent `PGRST205: Could not find table ... in schema cache` failures on public web read paths (`https://benchify-archive-db.clvg.uk`).
+     - Whenever migrations are created or applied, you MUST deploy to the MiniPC edge node:
+       ```bash
+       ./docker/archive/deploy_secondary.sh cv-minipc@minipc
+       ```
+       (which syncs configs, executes `docker compose restart archive-postgrest` on the replica to force schema cache reload, and probes health).
+     - Then execute a live read probe against `SUPABASE_PROJECT_URL` (`https://benchify-archive-db.clvg.uk/rest/v1/<new_or_modified_table>?limit=1`) to confirm `200 OK` and zero `PGRST205` errors.
    - *System portfolio & entity online verification*: When adding or updating system portfolios (`sys-*`) or baseline benchmark models, run a live read-only verification probe against the primary PostgREST database (`SUPABASE_PROJECT_URL`, via diagnostic scratch script) to ensure initial records are provisioned in the `portfolios` table with initial cash balances and Reg T metrics before deployment.
 6. **Tool definition parity**:
    - When introducing or altering tools, keep all four locations synchronized:
@@ -274,7 +283,7 @@ Conclude every verification run with an eight-tier status report and a mandatory
 | **Tier 1** | Static hygiene, LOC ceilings & hotspots | PASS / FAIL | Zero Ruff/Biome warnings; hotspot risk verified |
 | **Tier 2** | Builds & types | PASS / FAIL | TypeScript typecheck (`tsc --noEmit`) and production build status |
 | **Tier 3** | Hermetic tests & coverage | PASS / FAIL | Pytest / Vitest passing; coverage numbers |
-| **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, database schema parity |
+| **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, migration & edge replica schema cache parity |
 | **Tier 5** | Architecture & UI/UX | PASS / FAIL | Zero frontend compute, design system, layout |
 | **Tier 6** | Observability | PASS / FAIL | logger.exception used, zero swallowed exceptions |
 | **Tier 7** | Staff/Principal critical review | PASS / WARN / FAIL | Subagent verdict, debt incurred, and action items |

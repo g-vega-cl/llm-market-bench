@@ -117,6 +117,10 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
 18. **Live Edge & Server Deployment Mandate (Build Implies Run) (MANDATORY)**:
     - Whenever building, modifying, or fixing edge server services or configurations for the MiniPC or workstation (such as `live-spy-trader`, Nginx reverse proxy routes, `free-llm-proxy`, or database replicas), agents MUST NOT stop at git commits or file synchronization.
     - Agents MUST immediately deploy and launch the containers (e.g. via `./docker/archive/deploy_secondary.sh cv-minipc@minipc`, which synchronizes files and automatically rebuilds/restarts containers via step `[5/5]`), and verify health endpoints and logs.
+    - **Database Migrations & Edge Replica Schema Cache Parity (MANDATORY)**: Whenever creating, modifying, or executing database migrations (`supabase/migrations/*.sql`) or altering table schemas/RPCs, agents MUST NOT stop at applying the migration to the primary workstation database.
+      - Physical PostgreSQL streaming replication does NOT forward transactional `NOTIFY` events across standby instances (`PGRST_DB_CHANNEL_ENABLED: false`), and `nginx.secondary.conf` routes all `GET` read queries directly to the local MiniPC PostgREST replica.
+      - Agents MUST immediately deploy and sync the secondary edge replica: `./docker/archive/deploy_secondary.sh cv-minipc@minipc` (which synchronizes configs, restarts `archive-postgrest` to force a schema cache reload, and verifies local read health).
+      - Agents MUST execute a live read probe against `SUPABASE_PROJECT_URL` (`https://benchify-archive-db.clvg.uk`) on the new or altered table(s) to verify `200 OK` (guaranteeing zero `PGRST205: Could not find table ... in schema cache` errors on public read paths) before marking work complete.
     - Never leave server services in an unstarted, dirty, or crashed state: "people assume it's running when we commit or finish it."
 
 
@@ -129,7 +133,8 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
 - Toolbox definitions: `packages/config/tools.json`
 - Env vars: `apps/engine/.env.example`
 - DB schema: `supabase/migrations/`
-- DB schema source of truth is version-controlled migrations in `supabase/migrations/` deployed against the self-hosted PostgreSQL (pgvector) + PostgREST stack (`docker/archive/docker-compose.yml`, `https://benchify-archive-db.clvg.uk`)
+- DB schema source of truth is version-controlled migrations in `supabase/migrations/` deployed against the self-hosted PostgreSQL (pgvector) + PostgREST stack (`docker/archive/docker-compose.yml`, `https://benchify-archive-db.clvg.uk`).
+- **Edge Replica Schema Cache Reload Invariant (MANDATORY)**: Physical PostgreSQL streaming replication to the secondary MiniPC (`cv-minipc@minipc`) does not propagate `NOTIFY` events (`NOTIFY pgrst, 'reload schema'`). Because `nginx.secondary.conf` routes all `GET` read queries to the local MiniPC PostgREST instance, agents MUST execute `./docker/archive/deploy_secondary.sh cv-minipc@minipc` whenever migrations or schema alterations are executed, and verify live read probe against `https://benchify-archive-db.clvg.uk` to guarantee zero `PGRST205` errors.
 - **Workflow Secrets & Environment Variables (MANDATORY)**: Every GitHub Actions workflow YAML (`.github/workflows/*.yml`) invoking engine tasks (`python main.py <command>`) MUST explicitly declare and inject all required environment variables and secrets in its step `env:` blocks (e.g. `FMP_API_KEY`, `FRED_API_KEY`, `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and model provider keys `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`). When adding, updating, or routing models/providers (e.g., in `packages/config/models.json` or `apps/engine/core/config.py`), you MUST ensure every corresponding workflow YAML includes its proper environment variables. Omitting keys like `FMP_API_KEY` in workflow YAMLs causes live data fetching and pre-market analysis to fail on CI runners.
 
 

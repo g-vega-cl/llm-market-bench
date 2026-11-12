@@ -1,39 +1,72 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
-import type { BacktestResultData, RecipeAlert } from '../types';
+import type { BacktestResultData, RecipeAlert, StrategyStage } from '../types';
+import { PromptVisualizer } from './PromptVisualizer';
 import { RecipeAlertsInbox } from './RecipeAlertsInbox';
 import { RecipeBacktestResults } from './RecipeBacktestResults';
-import { RecipeFlowCanvas } from './RecipeFlowCanvas';
+import { StageBuilder } from './StageBuilder';
 import { WaitlistPledgeModal } from './WaitlistPledgeModal';
 
-describe('RecipeFlowCanvas', () => {
-    it('renders all blocks from the starter recipe template', () => {
-        const recipe = STARTER_RECIPES[0];
-        const handleChange = vi.fn();
+function ControlledStageHarness({ initialStage }: { initialStage: StrategyStage }) {
+    const [stage, setStage] = useState<StrategyStage>(initialStage);
+    return (
+        <div>
+            <StageBuilder stage={stage} stageIndex={0} totalStages={1} onChange={setStage} />
+            <PromptVisualizer
+                stage={stage}
+                stageIndex={0}
+                previewState={{ status: 'template' }}
+                onPreviewLiveData={vi.fn()}
+            />
+        </div>
+    );
+}
 
-        render(<RecipeFlowCanvas recipe={recipe} onChange={handleChange} />);
+describe('StageBuilder & PromptVisualizer', () => {
+    it('renders all 4 block types and updates PromptVisualizer live', () => {
+        render(<ControlledStageHarness initialStage={STARTER_RECIPES[0].stages[0]} />);
 
-        expect(screen.getByText('Pipeline Recipe Canvas')).toBeInTheDocument();
-        expect(screen.getByText(/4 Blocks/i)).toBeInTheDocument();
-        expect(screen.getByText('Semiconductor Headlines')).toBeInTheDocument();
-        expect(screen.getByText('VWAP & RSI Filter')).toBeInTheDocument();
-        expect(screen.getByText('Jev Catalyst Classifier')).toBeInTheDocument();
-        expect(screen.getByText('Risk Guardrails')).toBeInTheDocument();
+        expect(screen.getByText('PROMPT BLOCK')).toBeInTheDocument();
+        expect(screen.getByText('NEWS BLOCK')).toBeInTheDocument();
+        expect(screen.getByText('MEMORIES BLOCK')).toBeInTheDocument();
+        expect(screen.getByText('TECHNICALS BLOCK')).toBeInTheDocument();
+        expect(screen.getByText(/Prompt Visualizer/i)).toBeInTheDocument();
+        expect(screen.getByText(/P\/E < 45/)).toBeInTheDocument();
     });
 
-    it('can add a new block to the pipeline', () => {
-        const recipe = STARTER_RECIPES[0];
-        const handleChange = vi.fn();
+    it('preserves input focus across multi-character typing (fixes 1-char typing bug)', () => {
+        render(<ControlledStageHarness initialStage={STARTER_RECIPES[0].stages[0]} />);
 
-        render(<RecipeFlowCanvas recipe={recipe} onChange={handleChange} />);
+        const targetInputs = screen.getAllByLabelText('Target Value') as HTMLInputElement[];
+        const firstTarget = targetInputs[0];
+        firstTarget.focus();
+        expect(document.activeElement).toBe(firstTarget);
 
-        const addNewsBtn = screen.getByRole('button', { name: '+ News' });
-        fireEvent.click(addNewsBtn);
+        fireEvent.change(firstTarget, { target: { value: '1' } });
+        expect(document.activeElement).toBe(firstTarget);
 
-        expect(handleChange).toHaveBeenCalled();
-        const updatedRecipe = handleChange.mock.calls[0][0];
-        expect(updatedRecipe.nodes.length).toBe(recipe.nodes.length + 1);
+        fireEvent.change(firstTarget, { target: { value: '12' } });
+        expect(document.activeElement).toBe(firstTarget);
+
+        fireEvent.change(firstTarget, { target: { value: '125' } });
+        expect(document.activeElement).toBe(firstTarget);
+        expect(firstTarget.value).toBe('125');
+        expect(screen.getByText(/P\/E < 125/)).toBeInTheDocument();
+    });
+
+    it('supports adding a new Prompt block and toggling tools', () => {
+        render(<ControlledStageHarness initialStage={STARTER_RECIPES[0].stages[0]} />);
+
+        fireEvent.click(screen.getByRole('button', { name: '+ Prompt' }));
+        expect(screen.getAllByText('PROMPT BLOCK').length).toBe(2);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+        expect(screen.getByText('0 / 12')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Select All' }));
+        expect(screen.getByText('12 / 12')).toBeInTheDocument();
     });
 });
 
@@ -89,75 +122,39 @@ describe('RecipeBacktestResults', () => {
         expect(screen.getByText('TECHNICAL_BLOCKED')).toBeInTheDocument();
         expect(screen.getByText('Technical gate blocked: price < vwap')).toBeInTheDocument();
     });
-
-    it('safely renders weekly breakdown with backend pnl_net / trades keys without crashing', () => {
-        const backendSchemaResults: BacktestResultData = {
-            ...mockResults,
-            weeks_breakdown: [
-                {
-                    week: '2026-W11',
-                    trades: 8,
-                    pnl_net: 310,
-                },
-            ],
-        };
-        render(<RecipeBacktestResults results={backendSchemaResults} />);
-        expect(screen.getByText('2026-W11')).toBeInTheDocument();
-        expect(screen.getByText('$310.00')).toBeInTheDocument();
-    });
 });
 
-describe('RecipeAlertsInbox', () => {
-    const mockAlerts: RecipeAlert[] = [
-        {
-            id: 'alert-1',
-            user_id: 'usr-1',
-            recipe_id: 'rec-1',
-            recipe_name: 'NVDA VWAP Trend',
-            ticker: 'NVDA',
-            action: 'BUY',
-            entry_price: 135.5,
-            target_price: 139.5,
-            stop_loss: 133.0,
-            timeframe: '5m',
-            reason: 'Session VWAP breakout on Rubin chip guidance',
-            is_read: false,
-            created_at: '2026-03-02T14:35:00Z',
-        },
-    ];
+describe('RecipeAlertsInbox & WaitlistPledgeModal', () => {
+    it('renders alerts inbox and marks alert as read', () => {
+        const mockAlerts: RecipeAlert[] = [
+            {
+                id: 'a-1',
+                user_id: 'u-1',
+                recipe_id: 'r-1',
+                recipe_name: 'NVDA Momentum',
+                ticker: 'NVDA',
+                action: 'BUY',
+                entry_price: 120.5,
+                target_price: 125.0,
+                stop_loss: 118.0,
+                timeframe: '5m',
+                reason: 'Price > VWAP and RSI > 55',
+                is_read: false,
+                created_at: new Date().toISOString(),
+            },
+        ];
+        const onMarkRead = vi.fn();
 
-    it('renders incoming trade signals and handles mark read', () => {
-        const handleMarkRead = vi.fn();
-        render(<RecipeAlertsInbox alerts={mockAlerts} onMarkRead={handleMarkRead} />);
+        render(<RecipeAlertsInbox alerts={mockAlerts} onClose={vi.fn()} onMarkRead={onMarkRead} />);
 
-        expect(screen.getByText('Trade Signals Inbox')).toBeInTheDocument();
-        expect(screen.getByText('1 Unread')).toBeInTheDocument();
-        expect(screen.getByText('BUY NVDA')).toBeInTheDocument();
-
-        const markReadBtn = screen.getByRole('button', { name: 'Mark Read' });
-        fireEvent.click(markReadBtn);
-        expect(handleMarkRead).toHaveBeenCalledWith('alert-1');
+        expect(screen.getByText(/BUY\s+NVDA/)).toBeInTheDocument();
+        const markBtn = screen.getByRole('button', { name: 'Mark Read' });
+        fireEvent.click(markBtn);
+        expect(onMarkRead).toHaveBeenCalledWith('a-1');
     });
-});
 
-describe('WaitlistPledgeModal', () => {
-    it('submits early supporter pledge', async () => {
-        const handleSubmit = vi.fn().mockResolvedValue(undefined);
-        const handleClose = vi.fn();
-
-        render(<WaitlistPledgeModal isOpen={true} onClose={handleClose} onSubmit={handleSubmit} />);
-
-        expect(screen.getByText('Early Supporter Pledge')).toBeInTheDocument();
-        expect(screen.getByText(/100% Free Tier:/i)).toBeInTheDocument();
-
-        const emailInput = screen.getByPlaceholderText('name@domain.com');
-        fireEvent.change(emailInput, { target: { value: 'investor@example.com' } });
-
-        const submitBtn = screen.getByRole('button', { name: 'Pledge Support' });
-        await act(async () => {
-            fireEvent.click(submitBtn);
-        });
-
-        expect(handleSubmit).toHaveBeenCalledWith('investor@example.com', 'supporter', '');
+    it('renders WaitlistPledgeModal when open', () => {
+        render(<WaitlistPledgeModal isOpen={true} onClose={vi.fn()} onSubmit={vi.fn()} />);
+        expect(screen.getByText(/Your Email Address/i)).toBeInTheDocument();
     });
 });

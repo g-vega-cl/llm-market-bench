@@ -15,6 +15,7 @@ The table covers market data, options, macro, valuation, screening, research, an
 - `get_macro_options_sentiment` — cross-asset macro options skew; defaults `primary_ticker` to the calling ticker or `SPY`
 - `get_option_chain` — full option chain for a ticker/expiration
 - `get_volatility_metrics`, `get_volatility_index_details`
+- `get_technical_indicators` — computes RSI-14, MACD, Signal, Histogram, 20D VWAP, SMA-20, SMA-50, RVOL, and 52-week range % for a ticker, with an optional point-in-time `cutoff_date` for backtesting. Implemented in `apps/engine/tools/technicals.py` (`execute_technical_indicators_tool`, `compute_technical_snapshot`). Registered in `CANONICAL_TOOLS_REGISTRY` and `packages/config/tools.json`, marked ticker-required in `TICKER_REQUIRED_TOOLS`, and selectable by the Auto-Researcher (`PromptResearchResult.selected_tools`).
 - `audit_financial_valuation`, `get_sector_alternatives`, `find_uncorrelated_assets`, `run_stock_screener`
 - `web_search`, `get_ticker_news`, `get_market_moving_news`, `search_prediction_markets`, `get_prediction_market_odds`
 - `get_calendar_scenario_analysis`, `get_today_economic_releases`, `get_global_macro_context`, `get_market_health_barometer`, `get_market_feeling`

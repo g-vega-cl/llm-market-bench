@@ -23,6 +23,7 @@ The public entry point used by the pipeline. It wires together the cache, sessio
 - `is_market_open()`, `is_premarket()`, `is_trading_day(target_date)`, `get_market_holidays()` — session checks delegated to the session manager.
 - `screen_stocks(...)` — provider screening with an in-memory screener cache keyed on the sorted parameter set.
 - Provider passthroughs: `get_key_metrics`, `get_earnings_history`, `get_analyst_estimates`, `get_financial_growth`, `get_company_profile`.
+- Technical indicator computation: `get_technical_indicators` (`apps/engine/tools/technicals.py`) computes RSI-14, MACD, 20D VWAP, SMA-20/50, RVOL, and 52-week range % with optional point-in-time `cutoff_date`.
 
 The manager exposes `client`, `cache_ttl_seconds`, and `provider` as properties with setters, so overrides propagate into the underlying `MarketDataCache`. `_validate_date_coverage` remains as a backward-compatibility alias for `market_transforms.validate_date_coverage`.
 

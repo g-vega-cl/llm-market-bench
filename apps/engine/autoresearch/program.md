@@ -108,6 +108,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 54. **get_corporate_spending**: Retrieves corporate CapEx, CapEx YoY %, CapEx/Revenue %, CapEx/OCF %, R&D ($ and % of Revenue), SG&A, buybacks, dividends, M&A cash spend & filings, Free Cash Flow, ROIC, and matched government contract awards for a ticker or hyperscaler basket.
 55. **audit_price_overreaction**: Audits sharp stock price declines or surges against normalized return distributions (Z-scores), capitulation volume (RVOL), options-implied daily move cones, and analyst consensus revisions to classify moves as STATISTICAL_OVERREACTION (reversion setup), JUSTIFIED_REPRICING (falling knife warning), or NORMAL_VOLATILITY.
 56. **get_high_iv_ratio_watchlist**: Screens stocks with the highest ratio of 30-day ATM Implied Volatility to 20-day Historical Realized Volatility (IV/HistIV), identifying 'COILED_SPRING_EXTREME' setups (Ratio >= 1.8x) bracing for impending binary catalysts or extreme pricing dislocations across mega/mid caps, portfolio holdings, or custom universe.
+57. **get_technical_indicators**: Computes RSI-14, MACD, Signal, Histogram, 20D VWAP, SMA-20, SMA-50, RVOL, and 52-week range % for a ticker (supports point-in-time `cutoff_date`).
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list the execution tools.*
 

@@ -85,7 +85,10 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
                         Ending Capital
                     </span>
                     <span className="font-mono text-sm font-bold tabular-nums text-foreground">
-                        ${endingCap.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        $
+                        {(endingCap ?? 10000).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                        })}
                     </span>
                 </div>
                 <div className="flex flex-col gap-1 border border-border bg-boxel-canvas p-3 rounded-none">
@@ -125,7 +128,7 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
             </div>
 
             {/* Weeks Breakdown */}
-            {results.weeks_breakdown.length > 0 && (
+            {(results.weeks_breakdown ?? []).length > 0 && (
                 <div className="flex flex-col gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         ISO Week Performance Breakdown
@@ -141,7 +144,7 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {results.weeks_breakdown.map((w) => {
+                                {(results.weeks_breakdown ?? []).map((w) => {
                                     const tradesCount =
                                         typeof w.trades_count === 'number'
                                             ? w.trades_count
@@ -182,11 +185,11 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
             )}
 
             {/* Counterfactual Skipped Trades */}
-            {results.skipped_trades.length > 0 && (
+            {(results.skipped_trades ?? []).length > 0 && (
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Counterfactual Skipped Signals ({results.skipped_trades.length})
+                            Counterfactual Skipped Signals ({(results.skipped_trades ?? []).length})
                         </span>
                         <span className="text-xs font-normal text-muted-foreground">
                             Signals blocked by technical filters or LLM classification
@@ -202,7 +205,7 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {results.skipped_trades.slice(0, 15).map((s) => (
+                                {(results.skipped_trades ?? []).slice(0, 15).map((s) => (
                                     <tr
                                         key={`${s.time}-${s.skip_type}-${s.reason.slice(0, 15)}`}
                                         className="hover:bg-boxel-canvas"

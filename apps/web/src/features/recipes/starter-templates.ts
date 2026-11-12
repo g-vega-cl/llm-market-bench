@@ -1,227 +1,116 @@
-import type { RecipeGraph } from './types';
+import type { PushStrategy } from './types';
 
-export const STARTER_RECIPES: RecipeGraph[] = [
+export const STARTER_RECIPES: PushStrategy[] = [
     {
-        name: 'NVDA Semiconductor VWAP Momentum',
+        version: '2.0-push',
+        name: 'Trump & Chips News Momentum',
         description:
-            'Scalps high-volume semiconductor headlines when price confirms above session VWAP.',
-        cadence: '5m',
-        concurrency: {
-            max_open_trades: 2,
-            max_equity_pct_per_trade: 50.0,
-        },
-        nodes: [
-            {
-                id: 'news-1',
-                type: 'news_source',
-                title: 'Semiconductor Headlines',
-                config: {
-                    bucket: 'semiconductors',
-                    tickers: ['NVDA', 'AMD', 'TSM', 'AVGO'],
-                    lookback_hours: 24,
-                },
-            },
-            {
-                id: 'tech-1',
-                type: 'technical_gate',
-                title: 'VWAP & RSI Filter',
-                config: {
-                    conditions: [
-                        { metric: 'price', operator: '>', target: 'vwap' },
-                        { metric: 'rsi_14', operator: '<', target: 65.0 },
-                    ],
-                },
-            },
-            {
-                id: 'llm-1',
-                type: 'classification',
-                title: 'Jev Catalyst Classifier',
-                config: {
-                    model: '~typesafe/jev-latest',
-                    target_choice: 'BULLISH',
-                    min_confidence: 70.0,
-                },
-            },
-            {
-                id: 'risk-1',
-                type: 'risk_output',
-                title: 'Risk Guardrails',
-                config: {
-                    action: 'BUY',
-                    stop_loss_pct: 1.5,
-                    target_profit_pct: 3.0,
-                    max_hold_bars: 12,
-                    exit_on_session_close: true,
-                },
-            },
-        ],
-        edges: [
-            { from: 'news-1', to: 'tech-1' },
-            { from: 'tech-1', to: 'llm-1' },
-            { from: 'llm-1', to: 'risk-1' },
-        ],
-    },
-    {
-        name: 'SPY Macro Fed Rates Gate',
-        description:
-            'Filters Fed policy and CPI inflation headlines, requiring technical RSI pullback.',
-        cadence: '5m',
-        concurrency: {
-            max_open_trades: 1,
-            max_equity_pct_per_trade: 100.0,
-        },
-        nodes: [
-            {
-                id: 'news-fed',
-                type: 'news_source',
-                title: 'Fed & Macro Rates Feed',
-                config: {
-                    bucket: 'fed_rates',
-                    tickers: ['SPY', 'QQQ', 'TLT'],
-                    lookback_hours: 48,
-                },
-            },
-            {
-                id: 'tech-fed',
-                type: 'technical_gate',
-                title: 'Oversold Pullback Gate',
-                config: {
-                    conditions: [{ metric: 'rsi_14', operator: '<', target: 35.0 }],
-                },
-            },
-            {
-                id: 'analyst-fed',
-                type: 'generative_analyst',
-                title: 'Strata Macro Reasoner',
-                config: {
-                    model: 'auto-strata',
-                    system_prompt:
-                        'Analyze FOMC rate commentary and evaluate whether policy easing or hawkish pause is favored.',
-                },
-            },
-            {
-                id: 'risk-fed',
-                type: 'risk_output',
-                title: 'Macro Sizing',
-                config: {
-                    action: 'BUY',
-                    stop_loss_pct: 1.0,
-                    target_profit_pct: 2.0,
-                    max_hold_bars: 24,
-                    exit_on_session_close: true,
-                },
-            },
-        ],
-        edges: [
-            { from: 'news-fed', to: 'tech-fed' },
-            { from: 'tech-fed', to: 'analyst-fed' },
-            { from: 'analyst-fed', to: 'risk-fed' },
-        ],
-    },
-    {
-        name: 'Tech SMA Trend Following',
-        description:
-            'Pure trend alignment trading moving average golden crosses during market hours.',
+            'Single-stage push prompt combining chip-tariff news, relevant market memories, and technical screening criteria.',
         cadence: '1d',
-        concurrency: {
-            max_open_trades: 3,
-            max_equity_pct_per_trade: 33.3,
-        },
-        nodes: [
+        stages: [
             {
-                id: 'tape-tech',
-                type: 'price_tape',
-                title: 'Daily Market Tape',
-                config: {
-                    ticker: 'QQQ',
-                    cadence: '1d',
-                },
+                id: 'stage-1',
+                title: 'Stage 1: Catalyst & Technical Analysis',
+                selected_tools: [
+                    'get_technical_indicators',
+                    'get_key_metrics',
+                    'get_price_history',
+                    'get_todays_news_menu',
+                ],
+                blocks: [
+                    {
+                        id: 'blk-prompt-1',
+                        type: 'prompt',
+                        text: 'Analyze the injected news catalysts and historical memories. Use the tools to verify valuations and technicals, then output BUY or SELL decisions as JSON [{"action": "BUY", "ticker": "NVDA"}].',
+                    },
+                    {
+                        id: 'blk-news-1',
+                        type: 'news',
+                        contains: ['Trump', 'chips'],
+                        recency_hours: 48,
+                    },
+                    {
+                        id: 'blk-mem-1',
+                        type: 'memories',
+                        contains: ['tariff', 'semiconductor'],
+                        recency_hours: 168,
+                        category: 'MARKET_EVENT',
+                        min_importance: 5,
+                    },
+                    {
+                        id: 'blk-tech-1',
+                        type: 'technicals',
+                        rules: [
+                            { id: 'rule-pe', metric: 'P/E', operator: '<', target: '45' },
+                            { id: 'rule-rsi', metric: 'RSI', operator: '<', target: '70' },
+                        ],
+                    },
+                ],
             },
-            {
-                id: 'tech-sma',
-                type: 'technical_gate',
-                title: 'SMA-20 > SMA-50 Gate',
-                config: {
-                    conditions: [
-                        { metric: 'sma_20', operator: '>', target: 'sma_50' },
-                        { metric: 'price', operator: '>', target: 'sma_20' },
-                    ],
-                },
-            },
-            {
-                id: 'risk-sma',
-                type: 'risk_output',
-                title: 'Multi-Day Swing Risk',
-                config: {
-                    action: 'BUY',
-                    stop_loss_pct: 3.0,
-                    target_profit_pct: 7.0,
-                    max_hold_bars: 10,
-                    exit_on_session_close: false,
-                },
-            },
-        ],
-        edges: [
-            { from: 'tape-tech', to: 'tech-sma' },
-            { from: 'tech-sma', to: 'risk-sma' },
         ],
     },
     {
-        name: 'Earnings Guidance Drift',
-        description: 'Catches post-earnings guidance beat news confirmed by relative volume surge.',
-        cadence: '5m',
-        concurrency: {
-            max_open_trades: 2,
-            max_equity_pct_per_trade: 50.0,
-        },
-        nodes: [
+        version: '2.0-push',
+        name: '2-Stage Research -> Trade Decision',
+        description:
+            'Two sequential LLM calls: Stage 1 narrows candidates from news + memories; Stage 2 checks technicals & fundamentals before issuing trades.',
+        cadence: '1d',
+        stages: [
             {
-                id: 'news-earn',
-                type: 'news_source',
-                title: 'Earnings Beat Wire',
-                config: {
-                    bucket: 'earnings',
-                    lookback_hours: 12,
-                },
+                id: 'stage-1',
+                title: 'Stage 1: News & Memory Screener',
+                selected_tools: ['get_todays_news_menu', 'fetch_newsletter_content'],
+                blocks: [
+                    {
+                        id: 'blk-s1-prompt',
+                        type: 'prompt',
+                        text: 'Identify up to 3 tickers most impacted by recent Fed/macro news and our past lessons.',
+                    },
+                    {
+                        id: 'blk-s1-news',
+                        type: 'news',
+                        contains: ['Fed', 'rates', 'inflation'],
+                        recency_hours: 72,
+                    },
+                    {
+                        id: 'blk-s1-mem',
+                        type: 'memories',
+                        contains: ['FOMC'],
+                        recency_hours: 336,
+                        category: 'ALL',
+                        min_importance: 6,
+                    },
+                ],
             },
             {
-                id: 'tech-rvol',
-                type: 'technical_gate',
-                title: 'RVOL Volume Surge Filter',
-                config: {
-                    conditions: [
-                        { metric: 'rvol', operator: '>=', target: 1.5 },
-                        { metric: 'price', operator: '>', target: 'vwap' },
-                    ],
-                },
+                id: 'stage-2',
+                title: 'Stage 2: Technical Audit & Execution',
+                selected_tools: [
+                    'get_technical_indicators',
+                    'get_key_metrics',
+                    'get_price_history',
+                ],
+                blocks: [
+                    {
+                        id: 'blk-s2-prompt',
+                        type: 'prompt',
+                        text: 'Review Stage 1 candidates:\n{{prev_output}}\nVerify technicals and fundamentals, then emit BUY/SELL JSON.',
+                    },
+                    {
+                        id: 'blk-s2-tech',
+                        type: 'technicals',
+                        rules: [
+                            {
+                                id: 'rule-vwap',
+                                metric: 'Price vs VWAP',
+                                operator: '>',
+                                target: '0%',
+                            },
+                            { id: 'rule-fcf', metric: 'FCF', operator: '>', target: '0' },
+                        ],
+                    },
+                ],
             },
-            {
-                id: 'llm-earn',
-                type: 'classification',
-                title: 'Guidance Beat Classifier',
-                config: {
-                    model: '~typesafe/jev-latest',
-                    target_choice: 'BULLISH',
-                    min_confidence: 75.0,
-                },
-            },
-            {
-                id: 'risk-earn',
-                type: 'risk_output',
-                title: 'Earnings Drift Target',
-                config: {
-                    action: 'BUY',
-                    stop_loss_pct: 2.0,
-                    target_profit_pct: 4.5,
-                    max_hold_bars: 18,
-                    exit_on_session_close: true,
-                },
-            },
-        ],
-        edges: [
-            { from: 'news-earn', to: 'tech-rvol' },
-            { from: 'tech-rvol', to: 'llm-earn' },
-            { from: 'llm-earn', to: 'risk-earn' },
         ],
     },
 ];

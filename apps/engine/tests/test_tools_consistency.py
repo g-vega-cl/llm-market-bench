@@ -40,6 +40,7 @@ from core.llm.tools import (
     GET_SECTOR_BELLWETHERS_TOOL,
     GET_SECTOR_FUNDAMENTALS_TOOL,
     GET_SYSTEM_PORTFOLIOS_TOOL,
+    GET_TECHNICAL_INDICATORS_TOOL,
     GET_THEMATIC_FLOWS_TOOL,
     GET_TICKER_NEWS_TOOL,
     GET_TODAY_ECONOMIC_RELEASES_TOOL,
@@ -152,6 +153,7 @@ def test_tools_json_matches_engine_tool_definitions():
         GET_CORPORATE_SPENDING_TOOL,
         AUDIT_PRICE_OVERREACTION_TOOL,
         GET_HIGH_IV_RATIO_WATCHLIST_TOOL,
+        GET_TECHNICAL_INDICATORS_TOOL,
     ]
 
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}

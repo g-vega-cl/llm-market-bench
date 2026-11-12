@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -10,6 +11,8 @@ from core.config import logger
 from core.db import get_supabase_client
 from recipes.backtester import run_recipe_backtest
 from recipes.indicators import Bar, evaluate_technical_gate
+from recipes.push_runner import run_push_backtest, run_push_live
+from recipes.push_schema import PushStrategy
 from recipes.schema import ConditionRule, RecipeGraph
 from recipes.validator import validate_recipe_graph
 
@@ -236,17 +239,48 @@ def process_next_recipe_job(client: Any | None = None) -> bool:
             }
         ).eq("id", job_id).execute()
 
-        recipe_data, recipe_graph = _parse_job_recipe(job, sb)
-        is_valid, validation_errors = validate_recipe_graph(recipe_graph)
-        if not is_valid:
-            raise ValueError(f"Recipe validation failed: {'; '.join(validation_errors)}")
+        recipe_id = job["job_recipe_id"]
+        res = sb.table("strategy_recipes").select("*").eq("id", recipe_id).single().execute()
+        recipe_data = res.data or {}
+        graph_dict = recipe_data.get("graph_json", {})
+        if isinstance(graph_dict, str):
+            graph_dict = json.loads(graph_dict)
 
         mode = job.get("job_mode", "backtest")
 
-        if mode == "live_turn":
-            result = _execute_live_turn(job, recipe_data, recipe_graph, sb)
+        if isinstance(graph_dict, dict) and isinstance(graph_dict.get("stages"), list):
+            push_strategy = PushStrategy(**graph_dict)
+            if not push_strategy.stages:
+                raise ValueError("Push strategy must contain at least one stage")
+            if mode == "live_turn":
+                result = asyncio.run(run_push_live(push_strategy, sb))
+                for sig in result.get("signals", []):
+                    sb.table("recipe_alerts_inbox").insert(
+                        {
+                            "user_id": job.get("job_user_id", recipe_data.get("user_id")),
+                            "recipe_id": recipe_id,
+                            "recipe_name": push_strategy.name,
+                            "ticker": sig["ticker"],
+                            "action": sig["action"],
+                            "entry_price": 0.0,
+                            "timeframe": push_strategy.cadence,
+                            "reason": result.get("final_output", "")[:500],
+                            "context": {"stages": len(result.get("stages", []))},
+                            "is_read": False,
+                        }
+                    ).execute()
+            else:
+                result = asyncio.run(run_push_backtest(push_strategy, sb))
         else:
-            result = _execute_backtest_job(job, recipe_graph, sb)
+            recipe_graph = RecipeGraph(**graph_dict)
+            is_valid, validation_errors = validate_recipe_graph(recipe_graph)
+            if not is_valid:
+                raise ValueError(f"Recipe validation failed: {'; '.join(validation_errors)}")
+
+            if mode == "live_turn":
+                result = _execute_live_turn(job, recipe_data, recipe_graph, sb)
+            else:
+                result = _execute_backtest_job(job, recipe_graph, sb)
 
         # Mark job completed
         sb.table("recipe_execution_queue").update(

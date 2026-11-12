@@ -165,6 +165,9 @@ from tools.prediction_markets import (
 from tools.prediction_markets import (
     execute_search_prediction_markets_tool as execute_search_prediction_markets_tool,
 )
+from tools.technicals import (
+    execute_technical_indicators_tool as execute_technical_indicators_tool,
+)
 from tools.technicals_options import (
     execute_barrier_touch_probabilities_tool as execute_barrier_touch_probabilities_tool,
 )
@@ -1929,6 +1932,29 @@ GET_HIGH_IV_RATIO_WATCHLIST_TOOL = {
 }
 
 
+GET_TECHNICAL_INDICATORS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_technical_indicators",
+        "description": (
+            "Compute technical indicators for a ticker (RSI-14, MACD, Signal, Histogram, "
+            "20D VWAP, SMA-20, SMA-50, RVOL, and 52-week range %)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string", "description": "Stock ticker symbol (e.g. NVDA, SPY)"},
+                "cutoff_date": {
+                    "type": "string",
+                    "description": "Optional ISO YYYY-MM-DD cutoff date for point-in-time backtesting",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
     "get_price_history": PRICE_HISTORY_TOOL,
@@ -1988,6 +2014,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_corporate_spending": GET_CORPORATE_SPENDING_TOOL,
     "audit_price_overreaction": AUDIT_PRICE_OVERREACTION_TOOL,
     "get_high_iv_ratio_watchlist": GET_HIGH_IV_RATIO_WATCHLIST_TOOL,
+    "get_technical_indicators": GET_TECHNICAL_INDICATORS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
     "inspect_verifier_rules_and_rejections": INSPECT_VERIFIER_RULES_TOOL,
 }

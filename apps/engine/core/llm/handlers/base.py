@@ -74,6 +74,7 @@ async def execute_tool(name: str, args: dict, model_name: str, **kwargs) -> str:
 TICKER_REQUIRED_TOOLS = {
     "get_stock_quote",
     "get_price_history",
+    "get_technical_indicators",
     "get_position_pnl",
     "get_volatility_metrics",
     "get_sector_alternatives",
@@ -194,6 +195,10 @@ TOOL_DISPATCH_TABLE = {
         max_dte=args.get("max_dte"),
     ),
     "get_treasury_yield_curve": lambda ticker, args, mn, kw: tools.execute_get_treasury_yield_curve_tool(),
+    "get_technical_indicators": lambda ticker, args, mn, kw: tools.execute_technical_indicators_tool(
+        ticker=ticker or args.get("ticker", "SPY"),
+        cutoff_date=kw.get("cutoff_date") or args.get("cutoff_date"),
+    ),
     "get_yield_curve_regime": lambda ticker, args, mn, kw: tools.execute_yield_curve_regime_tool(),
     "get_options_vol_surface": lambda ticker, args, mn, kw: tools.execute_options_vol_surface_tool(
         ticker=ticker or "SPY"

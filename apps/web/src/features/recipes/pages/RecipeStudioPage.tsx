@@ -5,50 +5,64 @@ import {
     fetchRecipeAlertsFn,
     getRecipeJobStatusFn,
     markAlertReadFn,
+    previewStrategyPromptFn,
     saveRecipeFn,
     submitWaitlistPledgeFn,
 } from '../api/recipes-api';
+import { PromptVisualizer } from '../components/PromptVisualizer';
 import { RecipeAlertsInbox } from '../components/RecipeAlertsInbox';
 import { RecipeBacktestResults } from '../components/RecipeBacktestResults';
-import { RecipeFlowCanvas } from '../components/RecipeFlowCanvas';
+import { StageBuilder } from '../components/StageBuilder';
 import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
 import { STARTER_RECIPES } from '../starter-templates';
 import type {
     BacktestResultData,
+    ExecutionState,
+    LiveRunResult,
+    PreviewState,
+    PushStrategy,
     RecipeAlert,
-    RecipeCadence,
-    RecipeGraph,
     StrategyRecipeRecord,
+    StrategyStage,
 } from '../types';
 
 async function pollJobResults(
     jobId: string,
-    onComplete: (data: BacktestResultData) => void,
-): Promise<void> {
-    for (let attempts = 0; attempts < 6; attempts++) {
+    mode: 'live_turn' | 'backtest',
+): Promise<ExecutionState> {
+    for (let attempts = 0; attempts < 10; attempts++) {
         await new Promise((r) => setTimeout(r, 1000));
         try {
             const res = await getRecipeJobStatusFn({ data: { jobId } });
             if (res?.status === 'completed' && res.result_json) {
-                onComplete(res.result_json as BacktestResultData);
-                return;
+                if (mode === 'live_turn') {
+                    return { status: 'live_done', result: res.result_json as LiveRunResult };
+                }
+                return {
+                    status: 'backtest_done',
+                    result: res.result_json as BacktestResultData,
+                };
             }
-            if (res?.status === 'failed') return;
+            if (res?.status === 'failed') {
+                return { status: 'error', message: res.error_message || 'Execution failed' };
+            }
         } catch {
-            // Ignore transient network errors
+            // Ignore transient polling errors
         }
     }
+    return {
+        status: 'error',
+        message:
+            'Job queued — worker is still processing. Check Alerts Inbox or try again shortly.',
+    };
 }
 
 export function RecipeStudioPage() {
-    const [recipe, setRecipe] = useState<RecipeGraph>(STARTER_RECIPES[0]);
+    const [strategy, setStrategy] = useState<PushStrategy>(STARTER_RECIPES[0]);
     const [activeTemplateIdx, setActiveTemplateIdx] = useState<number>(0);
-    const [openRouterKey, setOpenRouterKey] = useState<string>('');
-    const [openCodeKey, setOpenCodeKey] = useState<string>('');
-    const [showKeyConfig, setShowKeyConfig] = useState<boolean>(false);
 
-    const [isSimulating, setIsSimulating] = useState<boolean>(false);
-    const [backtestResults, setBacktestResults] = useState<BacktestResultData | null>(null);
+    const [execution, setExecution] = useState<ExecutionState>({ status: 'idle' });
+    const [preview, setPreview] = useState<PreviewState>({ status: 'template' });
 
     const [alerts, setAlerts] = useState<RecipeAlert[]>([]);
     const [showAlertsInbox, setShowAlertsInbox] = useState<boolean>(false);
@@ -56,35 +70,98 @@ export function RecipeStudioPage() {
 
     const handleSelectTemplate = (idx: number) => {
         setActiveTemplateIdx(idx);
-        setRecipe(STARTER_RECIPES[idx]);
-        setBacktestResults(null);
+        setStrategy(STARTER_RECIPES[idx]);
+        setExecution({ status: 'idle' });
+        setPreview({ status: 'template' });
     };
 
-    const handleCadenceChange = (cadence: RecipeCadence) => {
-        setRecipe((prev) => ({ ...prev, cadence }));
+    const handleStageChange = (idx: number, updated: StrategyStage) => {
+        setStrategy((prev) => ({
+            ...prev,
+            stages: prev.stages.map((s, i) => (i === idx ? updated : s)),
+        }));
+        setPreview({ status: 'template' });
     };
 
-    const handleRunBacktest = async () => {
-        setIsSimulating(true);
+    const handleAddStage = () => {
+        setStrategy((prev) => ({
+            ...prev,
+            stages: [
+                ...prev.stages,
+                {
+                    id: `stage-${Date.now()}`,
+                    title: `Stage ${prev.stages.length + 1}: Follow-up`,
+                    selected_tools: ['get_technical_indicators', 'get_key_metrics'],
+                    blocks: [
+                        {
+                            id: `blk-prompt-${Date.now()}`,
+                            type: 'prompt',
+                            text: 'Given {{prev_output}}, finalize BUY/SELL picks.',
+                        },
+                    ],
+                },
+            ],
+        }));
+        setPreview({ status: 'template' });
+    };
+
+    const handleRemoveStage = (idx: number) => {
+        setStrategy((prev) => ({
+            ...prev,
+            stages: prev.stages.filter((_, i) => i !== idx),
+        }));
+        setPreview({ status: 'template' });
+    };
+
+    const handlePreviewLiveData = async () => {
+        setPreview({ status: 'loading' });
         try {
-            const saved = (await saveRecipeFn({ data: { recipe } })) as StrategyRecipeRecord;
+            const hydratedByBlockId = await previewStrategyPromptFn({ data: { strategy } });
+            setPreview({ status: 'hydrated', hydratedByBlockId });
+        } catch (err) {
+            setPreview({
+                status: 'error',
+                message: err instanceof Error ? err.message : 'Failed to preview live data',
+            });
+        }
+    };
+
+    const handleExecute = async (mode: 'live_turn' | 'backtest') => {
+        setExecution({ status: 'running', mode });
+        try {
+            const saved = (await saveRecipeFn({
+                data: { recipe: strategy },
+            })) as StrategyRecipeRecord;
+            setStrategy((prev) => (prev.id === saved.id ? prev : { ...prev, id: saved.id }));
             const job = (await enqueueRecipeJobFn({
                 data: {
                     recipeId: saved.id,
-                    mode: 'backtest',
-                    weeksRequested: ['2026-W09', '2026-W10'],
-                    openRouterKey: openRouterKey || undefined,
-                    openCodeKey: openCodeKey || undefined,
+                    mode,
                 },
-            })) as { id: string; status: string; result_json?: BacktestResultData };
+            })) as {
+                id: string;
+                status: string;
+                result_json?: LiveRunResult | BacktestResultData;
+            };
 
             if (job.result_json) {
-                setBacktestResults(job.result_json);
-            } else {
-                await pollJobResults(job.id, setBacktestResults);
+                setExecution(
+                    mode === 'live_turn'
+                        ? { status: 'live_done', result: job.result_json as LiveRunResult }
+                        : {
+                              status: 'backtest_done',
+                              result: job.result_json as BacktestResultData,
+                          },
+                );
+                return;
             }
-        } finally {
-            setIsSimulating(false);
+            const finalState = await pollJobResults(job.id, mode);
+            setExecution(finalState);
+        } catch (err) {
+            setExecution({
+                status: 'error',
+                message: err instanceof Error ? err.message : 'Execution failed',
+            });
         }
     };
 
@@ -92,19 +169,14 @@ export function RecipeStudioPage() {
         try {
             const list = await fetchRecipeAlertsFn();
             setAlerts(list);
-            setShowAlertsInbox(true);
-        } catch {
+        } finally {
             setShowAlertsInbox(true);
         }
     };
 
     const handleMarkAlertRead = async (alertId: string) => {
-        try {
-            await markAlertReadFn({ data: { alertId } });
-            setAlerts((prev) => prev.map((a) => (a.id === alertId ? { ...a, is_read: true } : a)));
-        } catch {
-            // Handled
-        }
+        await markAlertReadFn({ data: { alertId } });
+        setAlerts((prev) => prev.map((a) => (a.id === alertId ? { ...a, is_read: true } : a)));
     };
 
     const handlePledgeSubmit = async (email: string, tier: string, feedback: string) => {
@@ -113,23 +185,24 @@ export function RecipeStudioPage() {
         });
     };
 
+    const isRunning = execution.status === 'running';
+
     return (
         <PageLayout>
             <div className="flex flex-col gap-6">
-                {/* Header Section */}
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                             <h1 className="font-display text-lg font-bold text-foreground">
-                                Strategy Recipe Studio
+                                Strategy Builder MVP
                             </h1>
                             <Badge variant="outline" size="sm">
-                                Voxel DAG v2.0
+                                4-Block Push v2
                             </Badge>
                         </div>
                         <p className="text-xs font-normal text-muted-foreground">
-                            Compose visual trading recipes with news catalyst streams, technical
-                            indicator gates, and LLM classifiers.
+                            Compose Prompt, News, Memories, and Technicals blocks into one or more
+                            LLM stages with selectable tools.
                         </p>
                     </div>
 
@@ -139,125 +212,125 @@ export function RecipeStudioPage() {
                             variant="outline"
                             onClick={() => setShowPledgeModal(true)}
                         >
-                            ★ Early Supporter Waitlist
+                            ★ Waitlist
                         </Button>
                         <Button size="sm" variant="outline" onClick={handleLoadAlerts}>
-                            Alerts Inbox ({alerts.filter((a) => !a.is_read).length})
+                            Alerts ({alerts.filter((a) => !a.is_read).length})
                         </Button>
+                        <Badge variant="outline" size="sm">
+                            Free Auto-Strata
+                        </Badge>
                         <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setShowKeyConfig((p) => !p)}
+                            onClick={() => handleExecute('live_turn')}
+                            disabled={isRunning}
                         >
-                            {openRouterKey ? 'BYO Key (Active)' : 'BYO API Key'}
+                            {isRunning && execution.mode === 'live_turn'
+                                ? 'Running Live...'
+                                : '▶ Run Live'}
                         </Button>
-                        <Button size="sm" onClick={handleRunBacktest} disabled={isSimulating}>
-                            {isSimulating ? 'Simulating...' : '▶ Run Simulation'}
+                        <Button
+                            size="sm"
+                            variant="solid"
+                            onClick={() => handleExecute('backtest')}
+                            disabled={isRunning}
+                        >
+                            {isRunning && execution.mode === 'backtest'
+                                ? 'Backtesting...'
+                                : '▶ Backtest (Random 2W)'}
                         </Button>
                     </div>
                 </div>
 
-                {/* BYO Key Box */}
-                {showKeyConfig && (
-                    <div className="flex flex-col gap-3 border border-border bg-boxel-surface p-4 rounded-none voxel-card">
-                        <span className="font-display text-sm font-bold text-foreground">
-                            BYO Model Inference Routing
-                        </span>
-                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-3">
-                            <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
-                                <span>OpenRouter API Key (Enables Jev)</span>
-                                <input
-                                    type="password"
-                                    value={openRouterKey}
-                                    onChange={(e) => setOpenRouterKey(e.target.value)}
-                                    placeholder="sk-or-v1-..."
-                                    className="border border-border bg-boxel-canvas p-2 text-xs font-mono text-foreground rounded-none"
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
-                                <span>OpenCode Key (Optional /free endpoint)</span>
-                                <input
-                                    type="password"
-                                    value={openCodeKey}
-                                    onChange={(e) => setOpenCodeKey(e.target.value)}
-                                    placeholder="Free opencode token..."
-                                    className="border border-border bg-boxel-canvas p-2 text-xs font-mono text-foreground rounded-none"
-                                />
-                            </label>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-bold text-muted-foreground">Templates:</span>
+                        {STARTER_RECIPES.map((tmpl, idx) => (
+                            <Button
+                                key={tmpl.name}
+                                size="sm"
+                                variant={activeTemplateIdx === idx ? 'solid' : 'outline'}
+                                onClick={() => handleSelectTemplate(idx)}
+                            >
+                                {tmpl.name}
+                            </Button>
+                        ))}
+                    </div>
+                    <Button size="sm" variant="outline" onClick={handleAddStage}>
+                        + Add LLM Stage
+                    </Button>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                    {strategy.stages.map((stage, idx) => (
+                        <div key={stage.id} className="flex flex-col gap-3">
+                            <StageBuilder
+                                stage={stage}
+                                stageIndex={idx}
+                                totalStages={strategy.stages.length}
+                                onChange={(updated) => handleStageChange(idx, updated)}
+                                onRemoveStage={() => handleRemoveStage(idx)}
+                            />
+                            <PromptVisualizer
+                                stage={stage}
+                                stageIndex={idx}
+                                previewState={preview}
+                                onPreviewLiveData={handlePreviewLiveData}
+                            />
                         </div>
-                        <div className="voxel-trough p-2 font-mono text-xs text-muted-foreground">
-                            Free tier executes locally on our dedicated GPU queue (
-                            <b className="text-foreground">auto-strata</b>). Adding an OpenRouter
-                            key unlocks Jev Alpha Decisions classification.
-                        </div>
+                    ))}
+                </div>
+
+                {execution.status === 'error' && (
+                    <div className="border border-destructive bg-boxel-surface p-3 text-xs font-normal text-destructive rounded-none">
+                        {execution.message}
                     </div>
                 )}
 
-                {/* Template Picker & Cadence Toggle */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-boxel-surface p-3 rounded-none voxel-card">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-muted-foreground">
-                            Starter Recipes:
-                        </span>
-                        {STARTER_RECIPES.map((tmpl, idx) => (
-                            <button
-                                key={tmpl.name}
-                                type="button"
-                                onClick={() => handleSelectTemplate(idx)}
-                                className={`px-2 py-1 text-xs font-bold rounded-none ${
-                                    activeTemplateIdx === idx
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-boxel-canvas text-muted-foreground hover:text-foreground'
-                                }`}
+                {execution.status === 'live_done' && (
+                    <div className="flex flex-col gap-3 border border-border bg-boxel-surface p-4 rounded-none">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold text-foreground">
+                                Live Run Output ({execution.result.as_of_utc.slice(0, 16)})
+                            </span>
+                            <Badge variant="outline" size="sm">
+                                {execution.result.signals.length} Signals
+                            </Badge>
+                        </div>
+                        {execution.result.stages.map((st) => (
+                            <div
+                                key={st.stage_id}
+                                className="flex flex-col gap-2 border border-border bg-boxel-canvas p-3 rounded-none"
                             >
-                                {tmpl.name.split(' ')[0]}
-                            </button>
+                                <span className="text-xs font-bold text-foreground">
+                                    {st.title}
+                                </span>
+                                {st.tool_calls.length > 0 && (
+                                    <span className="text-xs font-normal text-muted-foreground">
+                                        Tools: {st.tool_calls.join(', ')}
+                                    </span>
+                                )}
+                                <pre className="text-xs font-mono font-normal text-foreground whitespace-pre-wrap break-words">
+                                    {st.output}
+                                </pre>
+                            </div>
                         ))}
                     </div>
+                )}
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-muted-foreground">Cadence:</span>
-                        <button
-                            type="button"
-                            onClick={() => handleCadenceChange('5m')}
-                            className={`px-2 py-1 text-xs font-bold rounded-none ${
-                                recipe.cadence === '5m'
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-boxel-canvas text-muted-foreground'
-                            }`}
-                        >
-                            5-Minute Bars
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleCadenceChange('1d')}
-                            className={`px-2 py-1 text-xs font-bold rounded-none ${
-                                recipe.cadence === '1d'
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-boxel-canvas text-muted-foreground'
-                            }`}
-                        >
-                            1-Day Bars
-                        </button>
-                    </div>
-                </div>
+                {execution.status === 'backtest_done' && (
+                    <RecipeBacktestResults results={execution.result} />
+                )}
 
-                {/* Recipe Canvas */}
-                <RecipeFlowCanvas recipe={recipe} onChange={setRecipe} />
-
-                {/* Backtest Results */}
-                <RecipeBacktestResults results={backtestResults} isLoading={isSimulating} />
-
-                {/* Alerts Inbox Drawer */}
                 {showAlertsInbox && (
                     <RecipeAlertsInbox
                         alerts={alerts}
-                        onMarkRead={handleMarkAlertRead}
                         onClose={() => setShowAlertsInbox(false)}
+                        onMarkRead={handleMarkAlertRead}
                     />
                 )}
 
-                {/* Waitlist Pledge Modal */}
                 <WaitlistPledgeModal
                     isOpen={showPledgeModal}
                     onClose={() => setShowPledgeModal(false)}

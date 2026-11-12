@@ -9,6 +9,7 @@ from tools import (
     news_memories,
     portfolio,
     prediction_markets,
+    technicals,
     technicals_options,
     valuation,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "news_memories",
     "portfolio",
     "prediction_markets",
+    "technicals",
     "technicals_options",
     "valuation",
 ]

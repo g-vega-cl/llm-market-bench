@@ -103,6 +103,19 @@ It scans `<scraper-dir>/output/corpus/*.jsonl` and `<scraper-dir>/output/news_*.
 
 The page is served by `apps/web/src/routes/recipes/index.tsx` (`createFileRoute('/recipes/')`) and is linked from the `/lab` directory under **Research & Prediction Engines**. The client polls `getRecipeJobStatusFn` up to six times at one-second intervals after enqueuing a backtest, rendering `RecipeBacktestResults` as soon as `status === 'completed'`.
 
+## 4-Block Push-Based MVP (`version: "2.0-push"`)
+
+In addition to legacy `RecipeGraph` DAGs, `/recipes` now defaults to a simpler linear **4-Block Push-Based Strategy Builder** (`apps/engine/recipes/push_schema.py`, `apps/engine/recipes/push_hydrator.py`, `apps/engine/recipes/push_runner.py`):
+
+- **Multi-Stage Sequential Chaining**: A strategy contains 1 or more ordered `StrategyStage` items (`Stage 1..N`), where Stage $N$'s output is passed into Stage $N+1$ via `{{prev_output}}`.
+- **4 Push Blocks**:
+  - `prompt`: Free-text prompt instructions.
+  - `news`: Keyword `contains` + `recency_hours` filter over `recipe_news_corpus`.
+  - `memories`: Keyword `contains` + `recency_hours` + `category` (`memory_type`) + `min_importance` filter over `memories` (explicitly projecting columns without `embedding` vectors).
+  - `technicals`: Company rules (`P/E`, `FCF`, `VWAP`, `RSI`, `MACD`, `price_52w_pct`, etc.) serialized as prompt criteria.
+- **UI & Prompt Visualizer**: `StageBuilder.tsx`, `ToolPicker.tsx` (curated 12-tool checklist including `get_technical_indicators`), and `PromptVisualizer.tsx` (instant template preview + `previewStrategyPromptFn` live DB hydration) in `apps/web/src/features/recipes/`.
+- **Random 2-Week Point-in-Time Backtest**: `run_push_backtest` selects a random contiguous 10-trading-day window (preventing overfitting), steps day-by-day injecting point-in-time news/memories (`<= sim_date`) and passing `cutoff_date` into tools, and scores `BUY`/`SELL` picks.
+
 ## Related Pages
 
 - [[concepts/recipe-dag-backtesting]] — DAG validation invariants, point-in-time news queries, and dual P&L accounting

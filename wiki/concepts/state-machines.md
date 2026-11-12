@@ -190,6 +190,13 @@ The following areas in the codebase currently manage state implicitly through co
 | **Systematic Sector Horizons** | `exit_date IS NULL` combined with application date math. | `PositionHorizonState = 'OPEN' \| 'MATURED_HOLD' \| 'EXIT_QUEUED' \| 'CLOSED'` |
 | **Live Trader WebSocket Session** | Ambient client connections and disconnected flags. | `StreamSessionState = 'CONNECTING' \| 'STREAMING' \| 'RECONNECTING' \| 'DISCONNECTED'` |
 
+### 2.6 Strategy Builder MVP Execution & Preview (`ExecutionState` / `PreviewState`)
+
+- **Source File**: [`apps/web/src/features/recipes/types.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/types.ts) (`RecipeStudioPage.tsx`)
+- **States**:
+  - `ExecutionState`: `idle` $\to$ `running` (`live_turn` | `backtest`) $\to$ `live_done` | `backtest_done` | `error`
+  - `PreviewState`: `template` $\to$ `loading` $\to$ `hydrated` | `error`
+
 ---
 
 ## 4. Verification & Audit Mandate

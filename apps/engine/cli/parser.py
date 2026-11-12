@@ -124,6 +124,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Dispatch deep-dive dossier research on companies mentioned in generated newsletter",
     )
     parser.add_argument(
+        "--from-newsletter",
+        action="store_true",
+        default=False,
+        help="Research companies extracted from the latest newsletter for session",
+    )
+    parser.add_argument(
         "--action",
         type=str,
         choices=["entry", "open", "exit", "close", "status", "target-orders"],

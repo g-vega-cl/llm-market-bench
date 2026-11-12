@@ -1,6 +1,7 @@
 """Task for generating a daily 1-2 minute synthesized market newsletter using DeepSeek V4 Flash."""
 
 import asyncio
+import json
 import logging
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -307,13 +308,12 @@ async def _dispatch_newsletter_research(
     newsletter_id: str | None,
     sb: Any,
     target_date: str | None,
-    await_research: bool = True,
 ) -> None:
-    """Dispatches background deep dive research on companies and sectors mentioned in the briefing."""
+    """Dispatches and awaits deep dive research on companies and sectors mentioned in the briefing."""
     try:
         from tasks.research_newsletter_tickers import research_newsletter_targets
 
-        coro = research_newsletter_targets(
+        await research_newsletter_targets(
             raw_mentions=getattr(output, "mentioned_companies", []),
             session=session,
             newsletter_id=newsletter_id,
@@ -321,10 +321,6 @@ async def _dispatch_newsletter_research(
             sb_client=sb,
             target_date=target_date,
         )
-        if await_research:
-            await coro
-        else:
-            asyncio.create_task(coro)
     except Exception as e:
         logger.warning(f"Could not dispatch company research for newsletter: {e}")
 
@@ -334,7 +330,6 @@ async def generate_daily_newsletter(
     sb_client=None,
     target_date: str | None = None,
     dispatch_research: bool = False,
-    await_research: bool = False,
 ) -> dict | None:
     """Main pipeline task to generate and store a daily newsletter.
 
@@ -462,6 +457,20 @@ async def generate_daily_newsletter(
         saved = {**record, **inserted_data}
         logger.info(f"Successfully generated and stored newsletter: '{output.title}' ({formatted_time})")
 
+        try:
+            handoff_data = {
+                "newsletter_id": saved.get("id"),
+                "session": session,
+                "target_date": target_date,
+                "title": output.title,
+                "mentioned_companies": getattr(output, "mentioned_companies", []),
+                "content": output.content,
+            }
+            with open(f"/tmp/latest_newsletter_{session}.json", "w") as f:
+                json.dump(handoff_data, f)
+        except Exception as e:
+            logger.debug(f"Could not write newsletter handoff file: {e}")
+
         if dispatch_research:
             await _dispatch_newsletter_research(
                 output,
@@ -469,7 +478,6 @@ async def generate_daily_newsletter(
                 newsletter_id=saved.get("id"),
                 sb=sb,
                 target_date=target_date,
-                await_research=await_research,
             )
 
         return saved

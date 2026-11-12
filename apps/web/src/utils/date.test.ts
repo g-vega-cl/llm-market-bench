@@ -48,6 +48,18 @@ describe('Centralized Eastern Time date formatters', () => {
         expect(formatted.includes('\u00a0')).toBe(false);
     });
 
+    it('formatEasternDate should format date-only strings (YYYY-MM-DD) without rolling backward to previous day in Eastern Time', () => {
+        expect(formatEasternDate('2026-11-10')).toBe('Tuesday, November 10, 2026');
+        expect(formatEasternShortDateWithYear('2026-11-10')).toBe('Nov 10, 2026');
+        expect(formatEasternShortDate('2026-11-10')).toBe('Nov 10');
+
+        // Also handles UTC midnight ISO strings and Date objects instantiated at UTC midnight
+        expect(formatEasternDate('2026-11-10T00:00:00Z')).toBe('Tuesday, November 10, 2026');
+        expect(formatEasternDate('2026-11-10T00:00:00.000Z')).toBe('Tuesday, November 10, 2026');
+        expect(formatEasternDate('2026-11-10T00:00:00+00:00')).toBe('Tuesday, November 10, 2026');
+        expect(formatEasternDate(new Date('2026-11-10'))).toBe('Tuesday, November 10, 2026');
+    });
+
     it('formatEasternDateTime should format to a short date and time structure', () => {
         const formatted = formatEasternDateTime(mockTimestamp);
         expect(formatted).toBe('May 29 • 10:45 AM ET');
@@ -139,6 +151,11 @@ describe('Centralized Eastern Time date formatters', () => {
             // At 15:00 UTC (10:00 AM EST)
             const dayTime = '2026-11-10T15:00:00Z';
             expect(getEasternDate(dayTime)).toBe('2026-11-10');
+
+            // Date-only and UTC midnight should not roll back to previous day
+            expect(getEasternDate('2026-11-10')).toBe('2026-11-10');
+            expect(getEasternDate('2026-11-10T00:00:00Z')).toBe('2026-11-10');
+            expect(getEasternDate(new Date('2026-11-10'))).toBe('2026-11-10');
         });
 
         it('handles null, undefined, or invalid dates gracefully', () => {

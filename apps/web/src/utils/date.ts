@@ -5,15 +5,48 @@
  */
 
 /**
+ * Safely parses a Date object or string.
+ * If the string is a date-only "YYYY-MM-DD" or UTC-midnight format (e.g. "YYYY-MM-DDT00:00:00Z"),
+ * or a Date object representing UTC midnight, anchors it at noon UTC (12:00:00Z)
+ * to prevent America/New_York (UTC-4 or UTC-5) timezone rollback to the previous calendar day.
+ */
+export function parseDateOrDateOnly(dateStrOrObj: string | Date): Date {
+    if (typeof dateStrOrObj !== 'string') {
+        if (dateStrOrObj instanceof Date && !Number.isNaN(dateStrOrObj.getTime())) {
+            if (
+                dateStrOrObj.getUTCHours() === 0 &&
+                dateStrOrObj.getUTCMinutes() === 0 &&
+                dateStrOrObj.getUTCSeconds() === 0 &&
+                dateStrOrObj.getUTCMilliseconds() === 0
+            ) {
+                return new Date(
+                    Date.UTC(
+                        dateStrOrObj.getUTCFullYear(),
+                        dateStrOrObj.getUTCMonth(),
+                        dateStrOrObj.getUTCDate(),
+                        12,
+                        0,
+                        0,
+                    ),
+                );
+            }
+        }
+        return dateStrOrObj;
+    }
+    const trimmed = dateStrOrObj.trim();
+    if (/^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?(\+00:00|Z)?)?$/.test(trimmed)) {
+        const [y, m, d] = trimmed.substring(0, 10).split('-').map(Number);
+        return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    }
+    return new Date(dateStrOrObj);
+}
+
+/**
  * Converts a timestamp or Date object into a YYYY-MM-DD date string in America/New_York (Eastern Time).
  * e.g. "2026-11-10"
  */
 export function getEasternDate(dateStrOrObj?: string | Date | null): string {
-    const date = dateStrOrObj
-        ? typeof dateStrOrObj === 'string'
-            ? new Date(dateStrOrObj)
-            : dateStrOrObj
-        : new Date();
+    const date = dateStrOrObj ? parseDateOrDateOnly(dateStrOrObj) : new Date();
     if (Number.isNaN(date.getTime())) return '';
     return date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
@@ -82,7 +115,7 @@ export function formatEasternTime(dateStr: string | null | undefined): string {
 export function formatEasternDate(dateStrOrObj: string | Date | null | undefined): string {
     if (!dateStrOrObj) return 'Unknown';
     try {
-        const date = typeof dateStrOrObj === 'string' ? new Date(dateStrOrObj) : dateStrOrObj;
+        const date = parseDateOrDateOnly(dateStrOrObj);
         if (Number.isNaN(date.getTime())) return 'Unknown';
 
         const dateStr = date.toLocaleDateString('en-US', {
@@ -154,7 +187,7 @@ export function formatEasternShortTime(dateStr: string | null | undefined): stri
 export function formatEasternShortDate(dateStr: string | null | undefined): string {
     if (!dateStr) return 'Unknown';
     try {
-        const date = new Date(dateStr);
+        const date = parseDateOrDateOnly(dateStr);
         if (Number.isNaN(date.getTime())) return 'Unknown';
 
         const dateStrFormatted = date.toLocaleDateString('en-US', {
@@ -228,7 +261,7 @@ export function formatEasternExactTime(dateStr: string | null | undefined): stri
 export function formatEasternShortDateWithYear(dateStr: string | null | undefined): string {
     if (!dateStr) return 'Unknown';
     try {
-        const date = new Date(dateStr);
+        const date = parseDateOrDateOnly(dateStr);
         if (Number.isNaN(date.getTime())) return 'Unknown';
 
         const dateStrFormatted = date.toLocaleDateString('en-US', {

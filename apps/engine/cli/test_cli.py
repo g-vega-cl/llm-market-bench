@@ -219,9 +219,20 @@ def test_handle_research_company_dispatches():
     """Verify handle_research_company invokes research_single_target."""
     with patch("tasks.research_newsletter_tickers.research_single_target", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = {"verdict": "bullish", "conviction_score": 90}
-        args = argparse.Namespace(ticker="NVDA", name="NVIDIA Corp", sector="Semiconductors", force=True)
+        args = argparse.Namespace(
+            ticker="NVDA", name="NVIDIA Corp", sector="Semiconductors", force=True, from_newsletter=False
+        )
         handle_research_company(args)
         mock_run.assert_awaited_once()
+
+
+def test_handle_research_company_from_newsletter_dispatches():
+    """Verify handle_research_company invokes research_latest_newsletter when from_newsletter is True."""
+    with patch("tasks.research_newsletter_tickers.research_latest_newsletter", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = [{"ticker": "NVDA", "verdict": "bullish"}]
+        args = argparse.Namespace(from_newsletter=True, session="close", target_date="2026-11-10", force=True)
+        handle_research_company(args)
+        mock_run.assert_awaited_once_with(session="close", target_date="2026-11-10", force_refresh=True)
 
 
 def test_handle_sector_trade_dispatches():

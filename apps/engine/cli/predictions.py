@@ -93,9 +93,26 @@ def handle_generate_newsletter(args: argparse.Namespace) -> None:
 
 
 def handle_research_company(args: argparse.Namespace) -> None:
-    """Run on-demand deep dive research for an individual ticker or sector."""
-    from tasks.research_newsletter_tickers import research_single_target
+    """Run on-demand deep dive research for an individual ticker or extract from latest newsletter."""
+    from tasks.research_newsletter_tickers import research_latest_newsletter, research_single_target
     from tasks.ticker_extractor import CompanyMention
+
+    from_newsletter = getattr(args, "from_newsletter", False)
+    if from_newsletter:
+        session = getattr(args, "session", "open")
+        target_date = getattr(args, "target_date", None)
+        force = getattr(args, "force", False)
+        results = asyncio.run(
+            research_latest_newsletter(
+                session=session,
+                target_date=target_date,
+                force_refresh=force,
+            )
+        )
+        print(
+            f"Newsletter company research completed for session '{session}': {len(results)} dossiers generated/linked."
+        )
+        return
 
     ticker = getattr(args, "ticker", None) or "NVDA"
     mention = CompanyMention(

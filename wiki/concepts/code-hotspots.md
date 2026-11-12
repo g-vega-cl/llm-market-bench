@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **250**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **251**).
 
 ## Top Hotspots
 
@@ -15,14 +15,14 @@ Files with high churn and high bug fix density represent code where changes freq
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/web/src/routes/__root.tsx` | 14 | 9 | 64.3% | 292 | 126 | **CRITICAL** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 19 | 6 | 31.6% | 400 | 114 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 18 | 5 | 27.8% | 341 | 90 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 19 | 5 | 26.3% | 341 | 95 | **HIGH** |
 | `apps/engine/tasks/daily_predictor.py` | 21 | 4 | 19.0% | 674 | 84 | **HIGH** |
 | `apps/web/src/routes/-__root.test.tsx` | 11 | 7 | 63.6% | 423 | 77 | **HIGH** |
-| `apps/engine/tasks/newsletter_generator.py` | 12 | 5 | 41.7% | 421 | 60 | **HIGH** |
+| `apps/engine/tasks/newsletter_generator.py` | 12 | 5 | 41.7% | 428 | 60 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 13 | 4 | 30.8% | 450 | 52 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 12 | 4 | 33.3% | 359 | 48 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 15 | 3 | 20.0% | 301 | 45 | **HIGH** |
-| `apps/engine/tests/test_newsletter_generator.py` | 11 | 4 | 36.4% | 604 | 44 | **HIGH** |
+| `apps/engine/tests/test_newsletter_generator.py` | 11 | 4 | 36.4% | 603 | 44 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 10 | 4 | 40.0% | 219 | 40 | **HIGH** |
 | `apps/engine/core/llm/tools.py` | 19 | 2 | 10.5% | 1907 | 38 | **HIGH** |
 | `apps/engine/tests/test_verify_skill.py` | 12 | 3 | 25.0% | 204 | 36 | **HIGH** |

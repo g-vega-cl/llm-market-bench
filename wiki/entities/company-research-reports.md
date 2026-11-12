@@ -14,12 +14,13 @@ The Company Research system extracts individual stocks and sector benchmark ETFs
    - `CompanyMention` (Pydantic model) carries `ticker`, `company_name`, `sector`, `is_sector_etf`, `entity_type` (`stock`/`etf`), and `context_snippet`.
    - `normalize_ticker` strips whitespace and `$` prefixes, uppercases, converts `-` to `.` (e.g. `BRK-B` → `BRK.B`), and resolves company-name aliases via `ALIAS_MAP` (`Google`/`Alphabet` → `GOOGL`, `Meta Platforms`/`Facebook` → `META`, `Taiwan Semiconductor`/`TSMC` → `TSM`, etc.).
    - `normalize_sector_to_etf` maps sector phrases to benchmark ETFs via `SECTOR_ETF_MAP` (e.g. `Semiconductors`/`Chips` → `SMH`, `Cybersecurity` → `CIBR`, `Software`/`SaaS`/`Cloud` → `IGV`, `Energy`/`Oil` → `XLE`, `Financials`/`Banks` → `XLF`, `Biotech`/`Pharma` → `XBI`, `Defense`/`Aerospace` → `ITA`). Sector returns are flagged `is_sector_etf=True`.
-   - **Text fallback**: `extract_and_deduplicate_mentions` scans for `$TICKER` cashtags and named parentheticals (`Apple (AAPL)`), applies `SECTOR_TEXT_PATTERNS` for explicit sector phrases, and filters out `FINANCIAL_ACRONYM_BLACKLIST` tokens (`EPS`, `YOY`, `PE`, `EV`, `TAM`, `AI`, `CEO`, `ETF`, `VIX`, `FED`, `CPI`, …) so headline acronyms and words like "blue-chip" or "central bank" never become false tickers.
+   - **Structured extraction** (`_extract_structured_targets`): maps each structured mention to a sector ETF when the ticker or sector resolves via `normalize_sector_to_etf`, otherwise emits the raw ticker as a single-stock target.
+   - **Text fallback** (`_extract_text_fallback_targets`): scans the newsletter Markdown body for `$TICKER` cashtags, named parentheticals (`Apple (AAPL)`), bold tickers (`**NVDA**`), and alias company names (`NVIDIA`, `Tesla`, `Apple`), and applies `SECTOR_TEXT_PATTERNS` for explicit sector phrases. All candidates are filtered through `FINANCIAL_ACRONYM_BLACKLIST`, which now also excludes macro benchmark core assets (`SPY`, `QQQ`, `DIA`, `IWM`, `UUP`, `TLT`, `GLD`, `USO`, `SHV`, `SOX`, `VIXY`, `VIXM`, `EURUSD`, `USDJPY`) so index/regime proxies are never treated as single-company dossiers. Symbols shorter than 2 characters are rejected.
    - All targets are deduplicated per run into a unique set — each ticker symbol appears at most once.
 
 2. **Smart TTL Deduplication** (`apps/engine/tasks/research_newsletter_tickers.py`):
    - `research_single_target` checks the latest `company_research_reports` row for the ticker. When an existing dossier is younger than `TTL_SKIP_HOURS` (24 hours), heavy LLM re-generation is skipped entirely: the new newsletter mention is linked to the existing report in `newsletter_company_mentions` and the fresh row is returned.
-   - `force_refresh=True` bypasses the TTL check and always regenerates a full deep dive.
+   - `force_refresh=True` bypasses the TTL check and always regenerates a full deep dive. `research_newsletter_targets` threads `force_refresh` through to every per-target call.
 
 3. **Multi-Dimensional Context Assembly** (`gather_target_context`):
    - Spot price and session-anchored quote via `MarketDataManager.get_reference_quote` (respecting `session` and `target_date`).
@@ -46,29 +47,42 @@ The Company Research system extracts individual stocks and sector benchmark ETFs
    - Both tables enable RLS with public `SELECT` and `service_role` full access, plus explicit `GRANT SELECT` to `anon`/`authenticated` per [[concepts/supabase-grant-convention]].
 
 6. **Dispatch & Concurrency**:
-   - Research dispatch is **opt-in**. `generate_daily_newsletter` only calls `_dispatch_newsletter_research` when invoked with `dispatch_research=True`; both `dispatch_research` and `await_research` default to `False`, so a plain newsletter run never triggers dossier generation. See [[entities/generated-newsletters]].
+   - Research dispatch is **opt-in**. `generate_daily_newsletter` only calls `_dispatch_newsletter_research` when invoked with `dispatch_research=True`; `dispatch_research` defaults to `False`, so a plain newsletter run never triggers dossier generation. See [[entities/generated-newsletters]].
    - When dispatched, `_dispatch_newsletter_research` calls `research_newsletter_targets`, passing `raw_mentions=output.mentioned_companies`, `newsletter_id`, `text_fallback=output.content`, and `target_date`. Errors are caught and logged as warnings so research failures never break newsletter generation.
    - `research_newsletter_targets` runs candidates under an `asyncio.Semaphore(3)` and gathers them with `asyncio.gather`, so multiple targets research concurrently without saturating providers. A single target failure is logged and dropped from the result set rather than aborting the batch.
-   - `.github/workflows/generate-newsletter.yml` runs research as a separate, non-critical step (`main.py generate-newsletter --session <session> --dispatch-research`) after the briefing is published.
+   - `.github/workflows/generate-newsletter.yml` runs research as a separate, non-critical step (`main.py research-company --from-newsletter --session <session>`) after the briefing is published.
+
+## Downstream Research from the Latest Newsletter
+
+`research_latest_newsletter(session="open", target_date=None, sb_client=None, force_refresh=False)` in `apps/engine/tasks/research_newsletter_tickers.py` is the decoupled entry point that researches the targets of an already-generated briefing without re-running newsletter synthesis. It resolves the briefing in two tiers:
+
+1. **Handoff file first** — reads `/tmp/latest_newsletter_{session}.json`, the snapshot written by `generate_daily_newsletter` after a successful insert (containing `newsletter_id`, `session`, `target_date`, `title`, `mentioned_companies`, and `content`). The file is accepted only when its `session` matches and either its `target_date` matches the requested date or (for live runs with no explicit date) its mtime is younger than 4 hours (`14400` seconds).
+2. **Database fallback** — when the handoff file is missing, stale, or lacks a `newsletter_id`/`content`, it queries the latest `generated_newsletters` row for the session (optionally bounded to `target_date`'s UTC day) ordered by `created_at` descending.
+
+If neither tier yields content, it logs a warning and returns `[]`. Otherwise it delegates to `research_newsletter_targets` with the resolved `newsletter_id`, `raw_mentions`, `text_fallback=content`, `target_date`, and `force_refresh`.
 
 ## CLI Usage
 
 Run on-demand company research from the terminal via the `research-company` command (`COMMAND_RESEARCH_COMPANY`, handled by `handle_research_company` in `apps/engine/cli/predictions.py`):
 
-bash
+```bash
 # Research an individual stock or sector
 ./apps/engine/.venv/bin/python3 apps/engine/main.py research-company --ticker NVDA
 
 # Force refresh ignoring the smart TTL cache
 ./apps/engine/.venv/bin/python3 apps/engine/main.py research-company --ticker SMH --force
 
+# Research all companies spotlighted in the latest generated briefing
+./apps/engine/.venv/bin/python3 apps/engine/main.py research-company --from-newsletter --session open
+```
 
-The command builds a `CompanyMention` from `--ticker` (default `NVDA`), optional `--name`/`--sector`, and calls `research_single_target` with `session="on_demand"`, then prints the verdict and conviction score. See [[entities/cli]].
+The command builds a `CompanyMention` from `--ticker` (default `NVDA`), optional `--name`/`--sector`, and calls `research_single_target` with `session="on_demand"`, then prints the verdict and conviction score. When `--from-newsletter` is passed, it invokes `research_latest_newsletter` to parse targets from `/tmp/latest_newsletter_{session}.json` (or database fallback) and research all targets. See [[entities/cli]].
 
 To generate a briefing and dispatch research on its spotlighted companies in one run, pass `--dispatch-research` to `generate-newsletter`:
 
-bash
+```bash
 ./apps/engine/.venv/bin/python3 apps/engine/main.py generate-newsletter --session open --dispatch-research
+```
 
 
 ## Web Experience

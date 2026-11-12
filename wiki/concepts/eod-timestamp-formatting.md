@@ -19,6 +19,16 @@ Daily bars sourced from the market data provider carry a midnight UTC timestamp.
 - A string matching `T00:00:00` (optionally with `.000`, `+00:00`, or `Z`) is treated as a midnight UTC EOD bar.
 - Anything else is a genuine intraday timestamp.
 
+## Noon-UTC Anchoring (`parseDateOrDateOnly`)
+
+`parseDateOrDateOnly(dateStrOrObj)` in `apps/web/src/utils/date.ts` is the shared parser that prevents date-only and UTC-midnight values from rolling back a calendar day when converted to `America/New_York` (UTC-4/UTC-5). It anchors such values at **noon UTC** (`12:00:00Z`):
+
+- A string matching `^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?(\+00:00|Z)?)?$` is parsed from its date portion and rebuilt as `Date.UTC(y, m-1, d, 12, 0, 0)`.
+- A `Date` object whose UTC hours/minutes/seconds/milliseconds are all zero is likewise re-anchored at noon UTC.
+- Any other string or `Date` is returned unchanged.
+
+All Eastern formatters (`getEasternDate`, `formatEasternDate`, `formatEasternShortDate`, `formatEasternShortDateWithYear`) route their input through `parseDateOrDateOnly`, so a `YYYY-MM-DD` value renders as the correct Eastern calendar day (e.g. `2026-11-10` → `Tuesday, November 10, 2026`) instead of the previous day.
+
 ## Formatting
 
 When a timestamp is classified as EOD, `formatEODDateClose` renders it as `Mon DD Close` (e.g. `Oct 21 Close`). It parses the date portion, anchors it at noon UTC to avoid off-by-one day shifts, and formats the month/day in `America/New_York`.
@@ -40,3 +50,4 @@ The engine side (`apps/engine/scripts/update_prices.py`) complements this by pri
 - [[entities/macro-tracker]] — the Global Macro Regime tracker that surfaces these timestamps
 - [[entities/web-app]] — the dashboard consuming the formatters
 - [[concepts/zero-frontend-compute]] — display-layer formatting conventions
+- [[concepts/hydration-symmetry]] — locale/timezone determinism across SSR and client

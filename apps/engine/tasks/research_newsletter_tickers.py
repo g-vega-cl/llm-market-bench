@@ -1,7 +1,10 @@
 """Asynchronous task for generating institutional-grade company/sector research dossiers from newsletter mentions."""
 
 import asyncio
+import json
 import logging
+import os
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -261,6 +264,7 @@ async def research_newsletter_targets(
     text_fallback: str | None = None,
     sb_client: Any | None = None,
     target_date: str | None = None,
+    force_refresh: bool = False,
 ) -> list[dict[str, Any]]:
     """Deduplicates mentions and generates research dossiers for all unique targets."""
     deduped_targets = extract_and_deduplicate_mentions(raw_mentions, text_fallback=text_fallback)
@@ -280,6 +284,7 @@ async def research_newsletter_targets(
                     newsletter_id=newsletter_id,
                     sb_client=sb_client,
                     target_date=target_date,
+                    force_refresh=force_refresh,
                 )
             except Exception as e:
                 logger.exception(f"Error researching target {target.ticker}: {e}")
@@ -288,3 +293,71 @@ async def research_newsletter_targets(
     tasks = [_bounded_research(target) for target in deduped_targets]
     raw_results = await asyncio.gather(*tasks)
     return [r for r in raw_results if r is not None]
+
+
+async def research_latest_newsletter(
+    session: str = "open",
+    target_date: str | None = None,
+    sb_client: Any | None = None,
+    force_refresh: bool = False,
+) -> list[dict[str, Any]]:
+    """Researches targets from the latest generated newsletter for the specified session.
+
+    First attempts to read the handoff file written by generate_daily_newsletter (/tmp/latest_newsletter_{session}.json),
+    falling back to querying the latest generated_newsletters row from Supabase.
+    """
+    sb = sb_client or get_supabase_client()
+    newsletter_id: str | None = None
+    raw_mentions: list[dict[str, Any]] = []
+    content: str | None = None
+
+    handoff_path = f"/tmp/latest_newsletter_{session}.json"
+    if os.path.exists(handoff_path):
+        try:
+            with open(handoff_path) as f:
+                data = json.load(f)
+            file_matches_session = data.get("session") == session
+            if target_date:
+                file_matches_date = data.get("target_date") == target_date
+            else:
+                # Require handoff file to be younger than 4 hours for live runs
+                file_matches_date = (time.time() - os.path.getmtime(handoff_path)) < 14400
+
+            if file_matches_session and file_matches_date:
+                newsletter_id = data.get("newsletter_id")
+                raw_mentions = data.get("mentioned_companies") or []
+                content = data.get("content")
+                logger.info(f"Loaded newsletter handoff for session '{session}' (ID: {newsletter_id})")
+        except Exception as e:
+            logger.warning(f"Failed to read newsletter handoff file {handoff_path}: {e}")
+
+    if not newsletter_id or not content:
+        try:
+            query = sb.table("generated_newsletters").select("id, title, content, created_at").eq("session", session)
+            if target_date:
+                query = query.gte("created_at", f"{target_date}T00:00:00Z").lte(
+                    "created_at", f"{target_date}T23:59:59Z"
+                )
+            res = query.order("created_at", desc=True).limit(1).execute()
+            rows = res.data or []
+            if rows:
+                latest = rows[0]
+                newsletter_id = latest.get("id")
+                content = latest.get("content")
+                logger.info(f"Fetched latest newsletter from database for session '{session}' (ID: {newsletter_id})")
+        except Exception as e:
+            logger.warning(f"Could not fetch latest newsletter from DB for session '{session}': {e}")
+
+    if not content:
+        logger.warning(f"No generated newsletter found for session '{session}' to research.")
+        return []
+
+    return await research_newsletter_targets(
+        raw_mentions=raw_mentions,
+        session=session,
+        newsletter_id=newsletter_id,
+        text_fallback=content,
+        sb_client=sb,
+        target_date=target_date,
+        force_refresh=force_refresh,
+    )

@@ -31,30 +31,32 @@ Any exception during dispatch is caught and logged as a warning, so research fai
 
 ## Research Dispatch Is Opt-In
 
-`generate_daily_newsletter` exposes two flags that both default to **`False`**:
+`generate_daily_newsletter` exposes an explicit opt-in flag:
 
 | Flag | Default | Effect |
 | :--- | :--- | :--- |
-| `dispatch_research` | `False` | When `False`, the newsletter is generated and persisted with **no** company-dossier research. When `True`, `_dispatch_newsletter_research` runs after the insert. |
-| `await_research` | `False` | When `True` (and `dispatch_research=True`), the research is awaited inline. When `False`, it is scheduled with `asyncio.create_task` and the newsletter returns immediately. |
+| `dispatch_research` | `False` | When `False`, the newsletter is generated and persisted with **no** inline company-dossier research. When `True`, `_dispatch_newsletter_research` runs after the insert and awaits completion. |
 
-Because the defaults are off, a plain `generate_daily_newsletter(session=...)` call is a fast, newsletter-only run. Deep-dive dossier generation is a separate, explicitly requested concern — it is expensive (multi-tool context assembly plus an OpenAI Luna reasoning call per spotlighted ticker) and must never silently extend the newsletter job's runtime.
+After successfully persisting the briefing, `generate_daily_newsletter` writes a handoff snapshot to `/tmp/latest_newsletter_{session}.json` containing the briefing's ID, session, structured `mentioned_companies`, and markdown body. This handoff allows downstream tasks and separate CI steps to execute research on the exact generated targets without re-running the newsletter synthesis.
 
 ### CLI
 
 `handle_generate_newsletter` (`apps/engine/cli/predictions.py`) forwards the `--dispatch-research` flag into `generate_daily_newsletter(dispatch_research=...)`. The flag is a `store_true` argument defaulting to `False`:
 
-bash
+```bash
 # Newsletter only (default)
 ./apps/engine/.venv/bin/python3 apps/engine/main.py generate-newsletter --session open
 
-# Newsletter + company dossier research
+# Newsletter + company dossier research inline
 ./apps/engine/.venv/bin/python3 apps/engine/main.py generate-newsletter --session open --dispatch-research
 
+# Downstream decoupled research from latest generated newsletter (preferred in CI)
+./apps/engine/.venv/bin/python3 apps/engine/main.py research-company --from-newsletter --session open
+```
 
 ### Workflow Wiring
 
-`.github/workflows/generate-newsletter.yml` runs the newsletter generation step, then a separate **"Research Newsletter Mentioned Companies"** step (`if: always() && !cancelled()`) that invokes `main.py generate-newsletter --session <session> --dispatch-research`. The step is non-critical (`|| echo "Newsletter company research failed non-critically."`), so a research failure never fails the workflow. Splitting the two concerns keeps the briefing publish path fast and isolates the heavier research run.
+`.github/workflows/generate-newsletter.yml` runs the newsletter generation step first, dispatches the time-sensitive daily predictor before market open, and then executes a separate **"Research Newsletter Mentioned Companies"** trailing step (`if: always() && !cancelled()`) that invokes `main.py research-company --from-newsletter --session <session>`. This decouples research from the critical briefing publishing path while guaranteeing zero duplicate newsletters.
 
 ## Session-Aware Reference Quotes
 

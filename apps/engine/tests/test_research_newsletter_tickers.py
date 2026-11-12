@@ -1,12 +1,14 @@
 """Hermetic unit tests for newsletter company research deep-dive generation and deduplication."""
 
+import json
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
 from tasks.research_newsletter_tickers import (
     CompanyResearchDossierOutput,
+    research_latest_newsletter,
     research_newsletter_targets,
     research_single_target,
 )
@@ -191,3 +193,59 @@ async def test_research_newsletter_targets_deduplicates_batch(mock_supabase):
         assert len(results) == 2
         called_tickers = [c.kwargs["mention"].ticker for c in mock_single_research.call_args_list]
         assert called_tickers == ["NVDA", "SMH"]
+
+
+@pytest.mark.asyncio
+async def test_research_latest_newsletter_from_db_fallback(mock_supabase):
+    mock_query = MockTableQuery(
+        [
+            {
+                "id": "mock-news-id",
+                "title": "Mock Briefing",
+                "content": "In tech, Apple (AAPL) surged while semiconductors rallied.",
+                "session": "close",
+                "created_at": "2026-11-10T22:00:00Z",
+            }
+        ]
+    )
+    mock_supabase.table.side_effect = None
+    mock_supabase.table.return_value = mock_query
+
+    with (
+        patch("os.path.exists", return_value=False),
+        patch("tasks.research_newsletter_tickers.research_newsletter_targets", new_callable=AsyncMock) as mock_targets,
+    ):
+        mock_targets.return_value = [{"ticker": "AAPL", "verdict": "bullish"}]
+        results = await research_latest_newsletter(session="close", sb_client=mock_supabase)
+
+        assert results == [{"ticker": "AAPL", "verdict": "bullish"}]
+        assert mock_targets.called
+        assert mock_targets.call_args.kwargs["session"] == "close"
+        assert mock_targets.call_args.kwargs["newsletter_id"] == "mock-news-id"
+        assert "Apple (AAPL)" in mock_targets.call_args.kwargs["text_fallback"]
+
+
+@pytest.mark.asyncio
+async def test_research_latest_newsletter_from_handoff(mock_supabase):
+    handoff_json = json.dumps(
+        {
+            "newsletter_id": "handoff-id-123",
+            "session": "open",
+            "mentioned_companies": [{"ticker": "NVDA", "company_name": "NVIDIA"}],
+            "content": "Full briefing content here",
+        }
+    )
+
+    with (
+        patch("os.path.exists", return_value=True),
+        patch("builtins.open", mock_open(read_data=handoff_json)),
+        patch("tasks.research_newsletter_tickers.research_newsletter_targets", new_callable=AsyncMock) as mock_targets,
+    ):
+        mock_targets.return_value = [{"ticker": "NVDA", "verdict": "bullish"}]
+        results = await research_latest_newsletter(session="open", sb_client=mock_supabase)
+
+        assert results == [{"ticker": "NVDA", "verdict": "bullish"}]
+        assert mock_targets.called
+        assert mock_targets.call_args.kwargs["session"] == "open"
+        assert mock_targets.call_args.kwargs["newsletter_id"] == "handoff-id-123"
+        assert mock_targets.call_args.kwargs["raw_mentions"] == [{"ticker": "NVDA", "company_name": "NVIDIA"}]

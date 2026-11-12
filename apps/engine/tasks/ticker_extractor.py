@@ -72,6 +72,22 @@ FINANCIAL_ACRONYM_BLACKLIST: set[str] = {
     "YTD",
     "LTM",
     "NTM",
+    # Macro benchmark core assets (analyzed as market regime, not single-company research dossiers)
+    "SPY",
+    "QQQ",
+    "DIA",
+    "IWM",
+    "UUP",
+    "TLT",
+    "GLD",
+    "USO",
+    "SHV",
+    "SOX",
+    "VIXY",
+    "VIXM",
+    "EURUSD",
+    "USDJPY",
+    "CHEAP",
 }
 
 # Explicit sector phrases to avoid accidental substrings like 'blue-chip' or 'central bank'
@@ -148,6 +164,60 @@ def normalize_sector_to_etf(sector_text: str) -> tuple[str, str] | None:
     return None
 
 
+def _extract_structured_targets(
+    raw_items: list[dict[str, Any]],
+    add_target: Any,
+) -> None:
+    """Extract targets from structured mentioned_companies dictionaries."""
+    for item in raw_items:
+        raw_tick = item.get("ticker") or ""
+        raw_name = item.get("company_name") or raw_tick
+        raw_sector = item.get("sector")
+        snippet = item.get("context_snippet")
+
+        etf_match = normalize_sector_to_etf(raw_tick) or (
+            normalize_sector_to_etf(raw_sector) if raw_tick.upper() in ["SECTOR", "ETF", "INDUSTRY"] else None
+        )
+
+        if etf_match:
+            add_target(etf_match[0], etf_match[1], raw_sector or raw_tick, True, snippet)
+        else:
+            add_target(raw_tick, raw_name, raw_sector, False, snippet)
+
+
+def _extract_text_fallback_targets(
+    text: str,
+    add_target: Any,
+) -> None:
+    """Scan newsletter Markdown body for cashtags, named parentheticals, bold tickers, and aliases."""
+    # Match cash tags: $XYZ
+    for sym in re.findall(r"\$([A-Z]{1,5})\b", text):
+        if sym not in FINANCIAL_ACRONYM_BLACKLIST and len(sym) >= 2:
+            add_target(sym, sym, None, False, None)
+
+    # Match named company parentheticals: e.g. "Apple (AAPL)", "Alphabet (GOOGL)"
+    for company_label, sym in re.findall(r"\b([A-Z][a-zA-Z0-9\s]{2,20})\s+\(([A-Z]{2,5})\)", text):
+        if sym not in FINANCIAL_ACRONYM_BLACKLIST:
+            add_target(sym, company_label.strip(), None, False, None)
+
+    # Match bold tickers: e.g. **NVDA**, **CRWV**
+    for sym in re.findall(r"\*\*([A-Z]{2,5})\*\*", text):
+        if sym not in FINANCIAL_ACRONYM_BLACKLIST:
+            add_target(sym, sym, None, False, None)
+
+    # Match alias company names: e.g. "NVIDIA", "Tesla", "Apple"
+    for alias_name, canonical_sym in ALIAS_MAP.items():
+        if canonical_sym not in FINANCIAL_ACRONYM_BLACKLIST and re.search(
+            r"\b" + re.escape(alias_name) + r"\b", text, re.IGNORECASE
+        ):
+            add_target(canonical_sym, alias_name.title(), None, False, None)
+
+    # Scan text for explicit sector phrases only
+    for pattern, etf_info in SECTOR_TEXT_PATTERNS.items():
+        if re.search(pattern, text, re.IGNORECASE):
+            add_target(etf_info[0], etf_info[1], etf_info[1].split()[0], True, None)
+
+
 def extract_and_deduplicate_mentions(
     raw_items: list[dict[str, Any]],
     text_fallback: str | None = None,
@@ -167,7 +237,6 @@ def extract_and_deduplicate_mentions(
         snippet: str | None,
     ):
         norm_sym = normalize_ticker(ticker)
-        # Check if the ticker itself is a sector name
         etf_match = normalize_sector_to_etf(norm_sym)
         if etf_match:
             norm_sym = etf_match[0]
@@ -175,6 +244,9 @@ def extract_and_deduplicate_mentions(
             is_etf = True
 
         if not norm_sym or norm_sym in seen_tickers:
+            return
+
+        if norm_sym in FINANCIAL_ACRONYM_BLACKLIST or len(norm_sym) < 2:
             return
 
         seen_tickers.add(norm_sym)
@@ -189,40 +261,8 @@ def extract_and_deduplicate_mentions(
             )
         )
 
-    # 1. Process explicit structured raw items
-    for item in raw_items:
-        raw_tick = item.get("ticker") or ""
-        raw_name = item.get("company_name") or raw_tick
-        raw_sector = item.get("sector")
-        snippet = item.get("context_snippet")
-
-        # Check if the item is explicitly a sector
-        etf_match = normalize_sector_to_etf(raw_tick) or (
-            normalize_sector_to_etf(raw_sector) if raw_tick.upper() in ["SECTOR", "ETF", "INDUSTRY"] else None
-        )
-
-        if etf_match:
-            _add_target(etf_match[0], etf_match[1], raw_sector or raw_tick, True, snippet)
-        else:
-            _add_target(raw_tick, raw_name, raw_sector, False, snippet)
-
-    # 2. If text fallback provided, scan for cashtags ($XYZ), named parentheticals, and explicit sectors
+    _extract_structured_targets(raw_items, _add_target)
     if text_fallback:
-        # Match cash tags: $XYZ
-        dollar_tickers = re.findall(r"\$([A-Z]{1,5})\b", text_fallback)
-        for sym in dollar_tickers:
-            if sym not in FINANCIAL_ACRONYM_BLACKLIST:
-                _add_target(sym, sym, None, False, None)
-
-        # Match named company parentheticals: e.g. "Apple (AAPL)", "Alphabet (GOOGL)"
-        named_parens = re.findall(r"\b([A-Z][a-zA-Z0-9\s]{2,20})\s+\(([A-Z]{1,5})\)", text_fallback)
-        for company_label, sym in named_parens:
-            if sym not in FINANCIAL_ACRONYM_BLACKLIST:
-                _add_target(sym, company_label.strip(), None, False, None)
-
-        # Scan text for explicit sector phrases only
-        for pattern, etf_info in SECTOR_TEXT_PATTERNS.items():
-            if re.search(pattern, text_fallback, re.IGNORECASE):
-                _add_target(etf_info[0], etf_info[1], etf_info[1].split()[0], True, None)
+        _extract_text_fallback_targets(text_fallback, _add_target)
 
     return result

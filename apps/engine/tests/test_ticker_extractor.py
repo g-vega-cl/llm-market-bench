@@ -79,7 +79,12 @@ def test_extract_rejects_financial_acronyms_and_accidental_substrings():
         "The market multiple (PE) expanded above 20x, boosting enterprise value (EV). "
         "Central bank policy remains accommodative for blue-chip companies with large addressable markets (TAM)."
     )
-    mentions = extract_and_deduplicate_mentions(raw_items=[], text_fallback=sample_text)
+    raw_structured = [
+        {"ticker": "SPY", "company_name": "SPDR S&P 500 ETF"},
+        {"ticker": "PE", "company_name": "Price to Earnings"},
+        {"ticker": "A", "company_name": "Single letter"},
+    ]
+    mentions = extract_and_deduplicate_mentions(raw_items=raw_structured, text_fallback=sample_text)
     tickers = [m.ticker for m in mentions]
 
     # Verify none of the financial acronyms or accidental substrings ("blue-chip", "central bank") became tickers
@@ -90,4 +95,28 @@ def test_extract_rejects_financial_acronyms_and_accidental_substrings():
     assert "TAM" not in tickers
     assert "SMH" not in tickers
     assert "XLF" not in tickers
+    assert "SPY" not in tickers
+    assert "A" not in tickers
     assert len(tickers) == 0
+
+
+def test_extract_bold_tickers_and_macro_blacklist():
+    sample_text = (
+        "Index action: **SPY** closed at $759.84, +1.32%, while **QQQ** gained +2.31%. "
+        "Treasury yields pressured **TLT** and the dollar boosted **UUP**. "
+        "In single stocks, **NVDA** staged a rebound, while CoreWeave (**CRWV**) raised guidance. "
+        "Agilent (A) was mentioned briefly."
+    )
+    mentions = extract_and_deduplicate_mentions(raw_items=[], text_fallback=sample_text)
+    tickers = [m.ticker for m in mentions]
+
+    # Macro core assets should NOT be extracted as single company targets
+    assert "SPY" not in tickers
+    assert "QQQ" not in tickers
+    assert "TLT" not in tickers
+    assert "UUP" not in tickers
+    # Single letter false positives like 'A' should NOT be extracted
+    assert "A" not in tickers
+    # Real company targets should be extracted
+    assert "NVDA" in tickers
+    assert "CRWV" in tickers

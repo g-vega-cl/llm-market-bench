@@ -670,7 +670,6 @@ async def test_dispatch_newsletter_research():
             newsletter_id="test-news-id",
             sb=MagicMock(),
             target_date="2026-11-10",
-            await_research=True,
         )
         assert mock_targets.called
         assert mock_targets.call_args.kwargs["raw_mentions"] == [{"ticker": "NVDA", "company_name": "NVIDIA"}]

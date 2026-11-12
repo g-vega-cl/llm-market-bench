@@ -105,6 +105,7 @@
 
 ## Concepts
 
+- [[concepts/grill-me]] — interview skill that resolves the design tree one decision at a time before any code is written
 - [[concepts/recipe-dag-backtesting]] — Auto-indexed page
 - [[concepts/state-machines]] — Auto-indexed page
 - [[concepts/in-flow-inspection]] — Zero floating tooltips/popovers; secondary telemetry renders in-flow in recessed `.voxel-trough` slots with keyboard-operable triggers

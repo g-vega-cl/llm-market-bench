@@ -164,7 +164,7 @@ Audit all changed files through these eight tiers. Do not skip any tier.
 Apply a rigorous staff/principal engineering audit to all changed code. Think counterfactually: **"Could this have been done better?"**, **"Is there a simpler, more robust way?"**, and **"How will this fail?"** See `[[concepts/staff-engineer-verification]]`.
 
 1. **Mandatory Adversarial Subagent Audit**:
-   - To eliminate author bias and conversational sycophancy, the main agent MUST invoke an isolated `research` subagent via `invoke_subagent` (`TypeName: "research"`, `Role: "Staff Engineer Reviewer"`).
+   - To eliminate author bias and conversational sycophancy, the main agent MUST invoke an isolated `research` subagent via `invoke_subagent` on Antigravity or `delegate_task` on Hermes (`Role: "Staff Engineer Reviewer"`).
    - **Cold Context Mandate**: The prompt to the subagent must contain ONLY the 1-sentence task goal and the git diff (`git diff HEAD~1` or staged/working diff). The main agent is **strictly prohibited from providing justifications or rationalizations** to the reviewer.
    - **Adversarial Posture**: The subagent assumes the code contains flaws, anti-patterns, or fragility under load, auditing against `GEMINI.md` mandates, SOLID principles, trade idempotency, and scaling limits.
    - **Triage Protocol**:
@@ -208,7 +208,7 @@ Apply a rigorous staff/principal engineering audit to all changed code. Think co
 
 9. **The 10/10 Agentic Debugging & Cold Subagent Prompts**:
 
-   #### A. Cold-Context Adversarial Reviewer Prompt (for `invoke_subagent`)
+   #### A. Cold-Context Adversarial Reviewer Prompt (for `invoke_subagent` on Antigravity / `delegate_task` on Hermes)
    When spawning the `research` subagent for Tier 7 staff review, pass strictly the 1-sentence goal and the diff inside this template:
    ```markdown
    You are an adversarial Staff Software Engineer performing a cold-context code audit.

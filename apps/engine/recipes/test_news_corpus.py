@@ -190,4 +190,4 @@ async def test_sync_live_news_to_corpus_hermetic():
     upserted_rows = news_tbl.upsert.call_args[0][0]
     ids = {r["article_id"] for r in upserted_rows}
     assert "wire_hash_1" in ids
-    assert any("nl_123" in i for i in ids)
+    assert "nl_123_2026-11-13" in ids

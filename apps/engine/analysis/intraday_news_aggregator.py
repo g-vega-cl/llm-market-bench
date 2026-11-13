@@ -233,13 +233,22 @@ async def fetch_fmp_news(
                 pub_date = datetime.now(UTC).isoformat()
 
             url = r.get("url")
-            tickers = [s.strip() for s in symbols.split(",") if s.strip()]
+            summary_text = (r.get("text", "") or "")[:250]
+            queried = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+            raw_sym = str(r.get("symbol") or "").upper().strip()
+            if raw_sym:
+                tickers = [raw_sym]
+            elif len(queried) == 1:
+                tickers = queried
+            else:
+                haystack = f"{title} {summary_text}".upper()
+                tickers = [s for s in queried if re.search(rf"\b{re.escape(s)}\b", haystack)]
             articles.append(
                 {
                     "source": f"FMP ({publisher})",
                     "headline": title,
                     "published_at": pub_date,
-                    "summary": (r.get("text", "") or "")[:250],
+                    "summary": summary_text,
                     "url": url,
                     "tickers": tickers,
                     "source_id_hash": generate_source_id_hash(title, f"FMP ({publisher})", pub_date),

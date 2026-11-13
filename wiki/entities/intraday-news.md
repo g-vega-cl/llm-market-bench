@@ -24,8 +24,18 @@ The intraday news subsystem (`apps/engine/analysis/intraday_news.py`) aggregates
 - **`deduplicate_news(items, similarity_threshold=0.5)`** — drops any article whose Jaccard word overlap with an already-seen headline is ≥ the threshold.
 - **`fetch_alpaca_news(alpaca_news_client=None, limit=10, symbols="SPY", api_key=None, secret_key=None)`** — fetches the Alpaca Benzinga wire. When no client is passed (or it lacks `get_news`), it lazily constructs a `NewsClient` from the supplied keys or the ambient `ALPACA_API_KEY`/`ALPACA_SECRET_KEY`. Each article carries `url`, `tickers` (from `item.symbols`), and `source_id_hash`.
 - **`fetch_polygon_news(http_client, api_key, limit)`** — Polygon reference news; each article carries `url` (`article_url`), `tickers`, and `source_id_hash`.
-- **`fetch_fmp_news(http_client, api_key, symbols, limit)`** — FMP stable stock news; normalizes `publishedDate` (space-separated → ISO `T…Z`), and attaches `url`, `tickers` (parsed from `symbols`), and `source_id_hash`.
+- **`fetch_fmp_news(http_client, api_key, symbols, limit)`** — FMP stable stock news; normalizes `publishedDate` (space-separated → ISO `T…Z`), and attaches `url`, `tickers`, and `source_id_hash`.
 - **`aggregate_intraday_news(..., alpaca_api_key="", alpaca_secret_key="", ...)`** — fans the three providers out with `asyncio.gather(..., return_exceptions=True)`, keeps only list results, deduplicates, and backfills `source_id_hash` on any item missing one. Each provider fails soft on missing keys, non-200 responses, or exceptions.
+
+### FMP Ticker Attribution (Per-Article Resolution)
+
+`fetch_fmp_news` queries FMP with a comma-separated multi-symbol universe (typically `SPY,QQQ,NVDA,TSLA,…`), but a single response article is usually about exactly one company. Attributing the whole queried universe to every headline polluted downstream ticker-scoped retrieval (memory matching, Recipe Studio `news` blocks, and per-ticker analysis agents all saw unrelated symbols). Tickers are therefore resolved per article, in priority order:
+
+1. **Provider symbol** — if the response row carries a `symbol` field, that single uppercased symbol is used verbatim.
+2. **Single-symbol query** — when the caller queried exactly one symbol, that symbol is used (FMP returned it by construction).
+3. **Whole-word text match** — otherwise only queried symbols that appear as a whole word (`\b<SYMBOL>\b`, case-insensitive) in `"<title> <summary[:250]>"` are kept. A headline that never names a queried ticker yields an empty `tickers` list rather than a false-positive broadcast.
+
+`source_id_hash` is unaffected (it hashes `headline|source|timestamp` only), so re-attribution never creates duplicate rows.
 
 ## Deduplication
 
@@ -63,6 +73,7 @@ Evaluation runs concurrently under an `asyncio.Semaphore(3)` and only the first 
 - [[concepts/jev-news-sieve]]
 - [[entities/intraday-news-wire]]
 - [[entities/live-agent-trader]]
+- [[entities/recipe-studio]]
 - [[entities/database]]
 - [[entities/tool-registry]]
 - [[entities/pipeline]]

@@ -217,19 +217,8 @@ def import_stock_news_corpus(
     return stats
 
 
-async def sync_live_news_to_corpus(
-    sb_client: Any,
-    *,
-    as_of_utc: datetime | None = None,
-    symbols: str = "SPY,QQQ,NVDA,AMD,AAPL,MSFT,AMZN,META,GOOGL,TSLA",
-    lookback_hours: int = 48,
-    batch_size: int = 50,
-) -> dict[str, int]:
-    """Sync live wire headlines and recent newsletter_snapshots into recipe_news_corpus."""
-    now_utc = as_of_utc or datetime.now(UTC)
-    floor_iso = (now_utc - timedelta(hours=max(1, lookback_hours))).isoformat()
+async def _collect_wire_records(now_utc: datetime, symbols: str) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
-
     try:
         wire_items = await aggregate_intraday_news(
             massive_api_key=MASSIVE_API_KEY or "",
@@ -262,7 +251,11 @@ async def sync_live_news_to_corpus(
                 records.append(norm)
     except Exception:
         logger.exception("Failed fetching live wire news for recipe_news_corpus")
+    return records
 
+
+def _collect_newsletter_records(sb_client: Any, now_utc: datetime, floor_iso: str) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
     try:
         snap_res = (
             sb_client.table("newsletter_snapshots")
@@ -276,13 +269,16 @@ async def sync_live_news_to_corpus(
             src_id = str(snap.get("source_id") or "").strip()
             if not src_id:
                 continue
-            aid = f"nl_{src_id}"
+            clean_src = src_id.removeprefix("nl_")
+            pub_raw = str(snap.get("date") or now_utc.isoformat())
+            snap_day = pub_raw[:10]
+            aid = f"nl_{clean_src}_{snap_day}"
             norm = parse_and_normalize_article(
                 {
                     "article_id": aid,
                     "title": snap.get("subject") or snap.get("sender") or "Market Newsletter",
-                    "url": f"https://benchify.app/newsletters/{src_id}",
-                    "date_published": snap.get("date") or now_utc.isoformat(),
+                    "url": f"https://benchify.app/newsletters/{clean_src}",
+                    "date_published": pub_raw,
                     "date_precision": "newsletter_date",
                     "source": snap.get("sender") or "newsletter",
                     "source_family": "newsletter",
@@ -295,14 +291,30 @@ async def sync_live_news_to_corpus(
                 records.append(norm)
     except Exception:
         logger.exception("Failed fetching newsletter_snapshots for recipe_news_corpus")
+    return records
 
-    inserted = 0
+
+async def sync_live_news_to_corpus(
+    sb_client: Any,
+    *,
+    as_of_utc: datetime | None = None,
+    symbols: str = "SPY,QQQ,NVDA,AMD,AAPL,MSFT,AMZN,META,GOOGL,TSLA",
+    lookback_hours: int = 48,
+    batch_size: int = 50,
+) -> dict[str, int]:
+    """Sync live wire headlines and recent newsletter_snapshots into recipe_news_corpus."""
+    now_utc = as_of_utc or datetime.now(UTC)
+    floor_iso = (now_utc - timedelta(hours=max(1, lookback_hours))).isoformat()
+    records = await _collect_wire_records(now_utc, symbols)
+    records.extend(_collect_newsletter_records(sb_client, now_utc, floor_iso))
+
+    upserted = 0
     for i in range(0, len(records), batch_size):
         chunk = records[i : i + batch_size]
         try:
             res = sb_client.table("recipe_news_corpus").upsert(chunk, on_conflict="article_id").execute()
-            inserted += len(res.data) if getattr(res, "data", None) else len(chunk)
+            upserted += len(res.data) if getattr(res, "data", None) else len(chunk)
         except Exception:
             logger.exception("Failed upserting live news batch into recipe_news_corpus")
 
-    return {"fetched": len(records), "inserted": inserted}
+    return {"fetched": len(records), "inserted": upserted}

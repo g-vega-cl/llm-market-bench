@@ -319,6 +319,7 @@ async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
     assert result["total_return_pct_midpoint"] > 0
     assert result["win_rate_pct"] == 100.0
     assert len(result["trades"]) > 0
+    assert "weeks_breakdown" not in result
 
 
 def test_output_format_block_renders_immutable_schema_section_last():

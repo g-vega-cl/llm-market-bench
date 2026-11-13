@@ -48,7 +48,7 @@ def test_process_next_job_empty_queue():
     client.rpc.return_value.execute.return_value.data = []
 
     res = process_next_recipe_job(client)
-    assert res is False
+    assert res == "EMPTY"
 
 
 def test_process_push_backtest_job_success():
@@ -77,7 +77,7 @@ def test_process_push_backtest_job_success():
     with patch("recipes.worker.run_push_backtest", new=AsyncMock(return_value=fake_result)):
         res = process_next_recipe_job(client)
 
-    assert res is True
+    assert res == "COMPLETED"
     completed_payloads = [
         call[0][0] for call in queue_table.update.call_args_list if call[0][0].get("status") == "completed"
     ]
@@ -117,7 +117,7 @@ def test_process_push_live_turn_deposits_alert():
     with patch("recipes.worker.run_push_live", new=AsyncMock(return_value=fake_live)):
         res = process_next_recipe_job(client)
 
-    assert res is True
+    assert res == "COMPLETED"
     alerts_table.insert.assert_called_once()
     alert_args = alerts_table.insert.call_args[0][0]
     assert alert_args["user_id"] == "usr-live-3"
@@ -154,7 +154,35 @@ def test_process_legacy_dag_payload_fails_cleanly():
     recipes_table.select.return_value.eq.return_value.single.return_value = recipe_select
 
     res = process_next_recipe_job(client)
-    assert res is False
+    assert res == "FAILED"
     failed_payloads = [call[0][0] for call in queue_table.update.call_args_list if call[0][0].get("status") == "failed"]
     assert len(failed_payloads) == 1
     assert "stages" in failed_payloads[0]["error_message"].lower()
+
+
+def test_process_unsupported_mode_fails_cleanly():
+    client, queue_table, recipes_table, _ = _make_mock_supabase()
+    client.rpc.return_value.execute.return_value.data = [
+        {
+            "job_id": "job-badmode-1",
+            "job_recipe_id": "rec-1",
+            "job_user_id": "usr-1",
+            "job_mode": "invalid_mode",
+            "job_priority": 10,
+        }
+    ]
+    strategy = _sample_push_strategy()
+    recipe_select = MagicMock()
+    recipe_select.execute.return_value.data = {
+        "id": "rec-1",
+        "name": strategy.name,
+        "graph_json": strategy.model_dump(),
+        "trial_count": 0,
+    }
+    recipes_table.select.return_value.eq.return_value.single.return_value = recipe_select
+
+    res = process_next_recipe_job(client)
+    assert res == "FAILED"
+    failed_payloads = [call[0][0] for call in queue_table.update.call_args_list if call[0][0].get("status") == "failed"]
+    assert len(failed_payloads) == 1
+    assert "unsupported" in failed_payloads[0]["error_message"].lower()

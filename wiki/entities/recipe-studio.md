@@ -19,8 +19,8 @@ The **Recipe Studio** (`/recipes`) is a 5-block push-based multi-stage LLM strat
 2. **Engine Processing (`apps/engine/recipes/`)**:
    - `push_schema.py`: Pydantic models for Push v2 (`PushStrategy`, `StrategyStage`, `PromptBlock`, `NewsBlock`, `MemoriesBlock`, `TechnicalsBlock`, `OutputFormatBlock`).
    - `push_hydrator.py`: Point-in-time filtering and stage prompt hydration (`fetch_push_context_batch`, `hydrate_stage_prompt`, `build_news_excerpt`).
-   - `push_runner.py`: Sequential stage execution (`run_push_live`) and random 10-trading-day point-in-time backtesting (`run_push_backtest`) backed by `public.price_history` and `STRATA_BASE_URL` / `FREE_LLM_PROXY_URL` (`https://llm.clvg.uk/v1`).
-   - `worker.py`: `process_next_recipe_job()` / `async_process_next_recipe_job()` returning a `JobOutcome` (`"EMPTY"`, `"COMPLETED"`, `"FAILED"`) — pops one Push v2 job from `recipe_execution_queue`, rejects legacy/unsupported payloads, executes `run_push_live` or `run_push_backtest`, and deposits `live_turn` signals into `recipe_alerts_inbox`.
+   - `push_runner.py`: Sequential stage execution (`run_push_live`) and random 10-trading-day point-in-time backtesting (`run_push_backtest`) backed by `public.price_history` and `STRATA_BASE_URL` / `FREE_LLM_PROXY_URL` (`https://llm.clvg.uk/v1`). Stage LLM calls go through a local-first endpoint failover chain (see below).
+   - `worker.py`: `async_process_next_recipe_job()` (canonical) and the sync wrapper `process_next_recipe_job()` returning a `JobOutcome` (`"EMPTY"`, `"COMPLETED"`, `"FAILED"`) — pops one Push v2 job from `recipe_execution_queue`, rejects legacy/unsupported payloads and unsupported execution modes, executes `run_push_live` or `run_push_backtest`, and deposits `live_turn` signals into `recipe_alerts_inbox`.
    - `runner.py`: MiniPC daemon (`python3 -m recipes.runner --loop`) running hourly `sync_live_news_to_corpus()` + `enqueue_live_recipes()` and polling the priority queue every 5s via `async_process_next_recipe_job` / `_drain_sync_queue`.
    - `news_corpus.py` & `import_news_cli.py`: Bucket derivation (`derive_article_buckets`), JSONL shard importer, and `sync_live_news_to_corpus()` reusing `analysis/intraday_news_aggregator.py` + `newsletter_snapshots`.
 
@@ -40,14 +40,15 @@ The **Recipe Studio** (`/recipes`) is a 5-block push-based multi-stage LLM strat
 
 ## Hourly Runner Daemon (`apps/engine/recipes/runner.py`)
 
-`recipes.runner` is the MiniPC-hosted scheduler and queue worker that keeps the corpus fresh and drains the execution queue. It is deployed as the `recipe-worker` container in `docker/archive/docker-compose.secondary.yml` (see [[entities/secondary-minipc-edge]]).
+`recipes.runner` is the MiniPC-hosted scheduler and queue worker that keeps the corpus fresh and drains the execution queue. It is deployed as the `recipe-worker` container in `docker/archive/docker-compose.secondary.yml` (512M memory limit, see [[entities/secondary-minipc-edge]]).
 
 ### Cycle Functions
 
-- **`seed_starter_recipes(sb_client)`** — loads `packages/config/starter-recipes.json` and idempotently inserts any template whose `name` is not already present among `is_template = true` rows. Seeded rows carry `user_id = ANONYMOUS_USER_ID` (`00000000-0000-0000-0000-000000000000`), `is_public = true`, `is_template = true`, `is_live = false`, and the default concurrency config (`max_open_trades: 3`, `max_equity_pct_per_trade: 33.3`). Returns the number inserted.
-- **`enqueue_live_recipes(sb_client)`** — selects every `is_live = true` recipe and inserts a `live_turn` job (priority `1`, provider `auto-strata`, model `strata`) for each one that does not already have a `pending`/`processing` queue row. Returns the number enqueued.
-- **`run_hourly_cycle(sb_client, as_of_utc=None, max_jobs=25)`** — runs `sync_live_news_to_corpus()`, then `enqueue_live_recipes()`, then drains up to `max_jobs` queue jobs via `process_next_recipe_job()`. Returns `{news_synced, live_enqueued, jobs_processed}`.
-- **`_run_daemon_loop(sb_client)`** — seeds templates once, then runs `run_hourly_cycle` every `HOURLY_INTERVAL_SECONDS` (3600s) and otherwise polls the queue every `POLL_INTERVAL_SECONDS` (5s), draining up to `MAX_JOBS_PER_CYCLE` (25) jobs per pass. Cycle failures are logged via `logger.exception` and never terminate the loop.
+- **`seed_starter_recipes(sb_client)`** — loads `packages/config/starter-recipes.json` and idempotently inserts any template whose `name` is not already present among `is_template = true` rows (`.limit(100)` capped existence check). Seeded rows carry `user_id = ANONYMOUS_USER_ID` (`00000000-0000-0000-0000-000000000000`), `is_public = true`, `is_template = true`, `is_live = false`, and the default concurrency config (`max_open_trades: 3`, `max_equity_pct_per_trade: 33.3`). Returns the number inserted. A seeding failure is logged via `logger.exception` and never prevents the cycle from running.
+- **`enqueue_live_recipes(sb_client)`** — selects every `is_live = true` recipe (`.limit(500)`, selecting `id, user_id, name, graph_json`), skips any that already have a `pending`/`processing` queue row (`.limit(1000)` open-job scan), and validates each candidate through `_is_push_v2_graph()`: a recipe whose `graph_json` is not a dict carrying a non-empty `stages` list (i.e. legacy DAG `nodes`/`edges` payloads) is skipped with a `logger.warning` and never queued. All surviving jobs are inserted in a **single batched `.insert([...])`** rather than one round-trip per recipe. Returns the number enqueued.
+- **`run_hourly_cycle(sb_client, as_of_utc=None, max_jobs=25)`** — runs `sync_live_news_to_corpus()`, then `enqueue_live_recipes()`, then drains up to `max_jobs` queue jobs via `await async_process_next_recipe_job(sb_client)`. Draining stops only on `"EMPTY"`; `"FAILED"` outcomes increment `jobs_failed` and the loop continues, so one poisoned job can never starve the rest of the queue. Returns `{news_synced, live_enqueued, jobs_processed, jobs_failed}`.
+- **`_drain_sync_queue(sb_client, max_jobs=MAX_JOBS_PER_CYCLE)`** — the off-hour drain path used by the daemon loop; calls the synchronous `process_next_recipe_job()` until `"EMPTY"` or the job budget is exhausted.
+- **`_run_daemon_loop(sb_client)`** — seeds templates once inside a `try/except` (startup seeding failure is logged and the loop still starts), then runs `run_hourly_cycle` every `HOURLY_INTERVAL_SECONDS` (3600s) and otherwise polls the queue every `POLL_INTERVAL_SECONDS` (5s) through `_drain_sync_queue`, draining up to `MAX_JOBS_PER_CYCLE` (25) jobs per pass. Cycle failures are logged via `logger.exception` and never terminate the loop.
 
 ### CLI
 
@@ -55,7 +56,7 @@ The **Recipe Studio** (`/recipes`) is a 5-block push-based multi-stage LLM strat
 # Continuous daemon (hourly sync + 5s queue polling)
 python3 -m recipes.runner --loop
 
-# One hourly sync + enqueue + queue drain
+# One hourly sync + enqueue + queue drain (default action)
 python3 -m recipes.runner --once
 
 # Seed starter templates only
@@ -65,14 +66,14 @@ python3 -m recipes.runner --seed-only
 python3 -m recipes.runner --sync-news-only
 ```
 
-Running with no flags seeds templates and executes a single `run_hourly_cycle`.
+Running with no flags behaves like `--once`: it seeds templates (failing soft) and executes a single `run_hourly_cycle`.
 
 ## Live News Sync (`sync_live_news_to_corpus`)
 
-`apps/engine/recipes/news_corpus.py` exposes `sync_live_news_to_corpus(sb_client, as_of_utc=None, symbols="SPY,QQQ,NVDA,AMD,AAPL,MSFT,AMZN,META,GOOGL,TSLA", lookback_hours=48, batch_size=50)`, which keeps `recipe_news_corpus` current with the live tape:
+`apps/engine/recipes/news_corpus.py` exposes `sync_live_news_to_corpus(sb_client, as_of_utc=None, symbols="SPY,QQQ,NVDA,AMD,AAPL,MSFT,AMZN,META,GOOGL,TSLA", lookback_hours=48, batch_size=50)`, which keeps `recipe_news_corpus` current with the live tape. It is composed of two independently fail-soft collectors, `_collect_wire_records()` and `_collect_newsletter_records()`:
 
-1. **Market wire ingestion** — calls `aggregate_intraday_news()` (Alpaca Benzinga wire, Polygon reference news, FMP stable stock news) with `limit_per_source=25`. Each item is normalized through `parse_and_normalize_article()` using its `source_id_hash` as `article_id`, `source_family = "market_wire"`, and `date_precision = "wire_timestamp"`.
-2. **Newsletter snapshots** — queries `newsletter_snapshots` for rows newer than `as_of_utc - lookback_hours` (max 50) and normalizes each as `article_id = "nl_<source_id>"`, `source_family = "newsletter"`, `date_precision = "newsletter_date"`.
+1. **Market wire ingestion (`_collect_wire_records`)** — calls `aggregate_intraday_news()` (Alpaca Benzinga wire, Polygon reference news, FMP stable stock news) with `limit_per_source=25`. Each item is normalized through `parse_and_normalize_article()` using its `source_id_hash` as `article_id`, `source_family = "market_wire"`, and `date_precision = "wire_timestamp"`.
+2. **Newsletter snapshots (`_collect_newsletter_records`)** — queries `newsletter_snapshots` for rows newer than `as_of_utc - lookback_hours` (max 50) and normalizes each as `article_id = "nl_<clean_source_id>_<YYYY-MM-DD>"`, `source_family = "newsletter"`, `date_precision = "newsletter_date"`. Any pre-existing `nl_` prefix on the snapshot `source_id` is stripped (`removeprefix("nl_")`) before composing the id and the archive URL (`https://benchify.app/newsletters/<clean_source_id>`), so a snapshot that was itself generated from the corpus cannot accumulate repeated `nl_nl_…` prefixes. The publication day is appended to the article id, making each newsletter-day pair a distinct corpus row (the same newsletter re-observed on a later sync of a later day is a new, correctly dated article) while keeping the upsert idempotent for repeats within a day.
 3. **Idempotent upsert** — batches records (`batch_size`, default 50) into `recipe_news_corpus` with `on_conflict="article_id"`.
 
 Both source fetches are individually wrapped in `try/except` with `logger.exception`, so a single upstream outage still persists whatever succeeded. Returns `{"fetched": N, "inserted": M}`.
@@ -81,18 +82,36 @@ Both source fetches are individually wrapped in `try/except` with `logger.except
 
 `run_push_backtest(strategy, sb_client, llm_caller=None, rng=None, slippage_bps=5.0)` simulates a random contiguous 10-trading-day window with zero forward leakage:
 
-1. **Trading calendar** — `_load_window_dates(sb_client)` reads the most recent 120 `price_history` rows for `SPY` and derives the distinct trading dates; when the table is empty or the query fails it falls back to the last 20 weekdays.
+1. **Trading calendar** — `_load_window_dates(sb_client)` reads the most recent 1,000 `price_history` rows for `SPY` (`.limit(1000)`) and derives the distinct trading dates; when the table is empty or the query fails it falls back to the last 20 weekdays.
 2. **Window selection** — `pick_random_two_week_window()` picks a seeded random contiguous slice of up to 10 trading days.
 3. **Point-in-time hydration** — `fetch_push_context_batch()` gathers news and memories bounded by each simulated day's cutoff (lookback extended by 20 days for the news window).
 4. **Signal generation** — every stage is executed per day and `parse_trade_signals()` extracts `{action, ticker}` picks; the union of traded tickers is collected.
-5. **Pricing** — `_load_daily_closes(sb_client, tickers, start_day, end_day)` batch-fetches `price_history` rows (`ticker, fetched_at, close, price`) for exactly those tickers, preferring `close` and falling back to `price`.
-6. **Accounting** — trades are closed against the next day's close with `slippage_bps` friction, producing the dual Midpoint / Net P&L result payload.
+5. **Pricing** — `_load_daily_closes(sb_client, tickers, start_day, end_day)` batch-fetches `price_history` rows (`ticker, fetched_at, close, price`) for exactly those tickers with `.limit(10000)` (raised from 5,000 so wide multi-ticker windows are never truncated), preferring `close` and falling back to `price`.
+6. **Accounting** — trades are closed against the next day's close with `slippage_bps` friction, producing the dual Midpoint / Net P&L result payload (`midpoint` / `net` returns, `win_rate_pct`, `llm_calls_made`, `trades`, `skipped_trades`, `equity_curve`). The payload no longer carries a `weeks_breakdown` key — the random-window backtest reports a flat trade list and equity curve only.
 
 Because pricing is resolved after all signals are known, the backtest issues exactly one batched price query per run instead of per-day lookups.
 
+## Stage LLM Endpoint Failover (`_llm_endpoints` / `_run_tool_loop`)
+
+Every stage call in `push_runner.py` is executed through a small, ordered endpoint chain rather than a single hardcoded base URL:
+
+- **`_llm_endpoints(openrouter_key, model)`** builds the chain:
+  - With an explicit `openrouter_key`, a single OpenRouter endpoint (`https://openrouter.ai/api/v1`) is used, and `model == "auto-strata"` is remapped to `deepseek/deepseek-chat`.
+  - Otherwise the chain is local-first: `STRATA_BASE_URL` (if set) followed by `FREE_LLM_PROXY_URL` (default `https://llm.clvg.uk/v1`) when it differs from the Strata URL, both authenticated with `FREE_PROXY_MASTER_KEY` (falling back to `STRATA_API_KEY`, then `local`). If neither resolves, the centralized CLVG proxy is the sole endpoint.
+- **`_run_tool_loop(client, model_id, prompt, tool_schemas, cutoff_date)`** holds the OpenAI-compatible tool-calling loop (system prompt with immutable output contract, canonical tool schemas, cutoff-date enforcement) and is unchanged in behavior.
+- **`default_llm_caller(...)`** iterates the chain: a failing endpoint logs `Recipe LLM endpoint <url> failed (<exc>); failing over to next endpoint` and the next endpoint is attempted; if every endpoint fails the final exception is re-raised so the queue job is marked `failed` with the real error.
+
+## Worker Modes, Outcomes & Event-Loop Safety (`apps/engine/recipes/worker.py`)
+
+- **`JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED"]`** — the tri-state return distinguishes "queue was empty" from "job ran" and "job errored". Callers drain until `"EMPTY"` and count `"FAILED"` separately (`run_hourly_cycle` reports `jobs_processed` vs `jobs_failed`).
+- **`SUPPORTED_JOB_MODES = ("backtest", "preview", "live_turn")`** — the popped `job_mode` is validated immediately after dequeue; an unrecognized mode raises `ValueError("Unsupported recipe execution mode: <mode>")`, which is caught, persisted to `recipe_execution_queue.error_message` on the `failed` row, and returned as `"FAILED"`. A missing `job_mode` defaults to `backtest`.
+- **No nested event loop** — `async_process_next_recipe_job()` `await`s `run_push_live()` / `run_push_backtest()` directly, so it is safe to call from an already-running loop (e.g. inside `async run_hourly_cycle`). The legacy `asyncio.run(...)` nesting that raised `RuntimeError: asyncio.run() cannot be called from a running event loop` is confined to the synchronous wrapper `process_next_recipe_job()`.
+- **`process_next_recipe_job(client=None)`** — thin synchronous wrapper (`return asyncio.run(async_process_next_recipe_job(client))`) preserved for non-async callers and the off-hour daemon drain path.
+- Successful jobs still write `output_json`, `status = 'completed'`, increment `strategy_recipes.trial_count`, and deposit `live_turn` signals into `recipe_alerts_inbox`.
+
 ## Legacy DAG Removal
 
-The former `RecipeGraph` DAG pipeline (`schema.py`, `validator.py`, `indicators.py`, `backtester.py`, `backtest_models.py`) and its `recipe_intraday_bars` 5-minute candle cache have been removed. `process_next_recipe_job()` now rejects any `graph_json` that lacks a `stages` list with `ValueError("Recipe must use Push v2 format with a 'stages' list (legacy DAG format is removed).")`, marking the queue row `failed` with that message in `error_message`.
+The former `RecipeGraph` DAG pipeline (`schema.py`, `validator.py`, `indicators.py`, `backtester.py`, `backtest_models.py`) and its `recipe_intraday_bars` 5-minute candle cache have been removed. `async_process_next_recipe_job()` rejects any `graph_json` that lacks a `stages` list with `ValueError("Recipe must use Push v2 format with a 'stages' list (legacy DAG format is removed).")`, marking the queue row `failed` with that message in `error_message`. `enqueue_live_recipes()` applies the same Push v2 shape check before a live recipe may enter the queue.
 
 ## Related Pages
 

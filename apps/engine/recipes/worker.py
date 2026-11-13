@@ -5,18 +5,24 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from core.config import logger
 from core.db import get_supabase_client
 from recipes.push_runner import run_push_backtest, run_push_live
 from recipes.push_schema import PushStrategy
 
+JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED"]
+SUPPORTED_JOB_MODES = ("backtest", "preview", "live_turn")
 
-def process_next_recipe_job(client: Any | None = None) -> bool:
-    """Pop and process the next Push v2 recipe job from the priority queue.
 
-    Returns True if a job was processed, False if the queue was empty or failed.
+async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome:
+    """Pop and asynchronously process the next Push v2 recipe job from the priority queue.
+
+    Returns:
+        "EMPTY" when no pending job exists,
+        "COMPLETED" when the popped job succeeds,
+        "FAILED" when the popped job raises or uses an unsupported payload/mode.
     """
     sb = client or get_supabase_client()
     job: dict[str, Any] = {}
@@ -25,11 +31,15 @@ def process_next_recipe_job(client: Any | None = None) -> bool:
         rpc_res = sb.rpc("pop_next_recipe_job").execute()
         jobs = rpc_res.data or []
         if not jobs:
-            return False
+            return "EMPTY"
 
         job = jobs[0]
         job_id = job["job_id"]
-        logger.info(f"Processing recipe job {job_id} (mode={job.get('job_mode')}, priority={job.get('job_priority')})")
+        mode = str(job.get("job_mode") or "backtest")
+        logger.info("Processing recipe job %s (mode=%s, priority=%s)", job_id, mode, job.get("job_priority"))
+
+        if mode not in SUPPORTED_JOB_MODES:
+            raise ValueError(f"Unsupported recipe execution mode: {mode}")
 
         sb.table("recipe_execution_queue").update(
             {
@@ -52,9 +62,8 @@ def process_next_recipe_job(client: Any | None = None) -> bool:
         if not push_strategy.stages:
             raise ValueError("Push strategy must contain at least one stage")
 
-        mode = job.get("job_mode", "backtest")
         if mode == "live_turn":
-            result = asyncio.run(run_push_live(push_strategy, sb))
+            result = await run_push_live(push_strategy, sb)
             for sig in result.get("signals", []):
                 sb.table("recipe_alerts_inbox").insert(
                     {
@@ -71,7 +80,7 @@ def process_next_recipe_job(client: Any | None = None) -> bool:
                     }
                 ).execute()
         else:
-            result = asyncio.run(run_push_backtest(push_strategy, sb))
+            result = await run_push_backtest(push_strategy, sb)
 
         sb.table("recipe_execution_queue").update(
             {
@@ -90,7 +99,7 @@ def process_next_recipe_job(client: Any | None = None) -> bool:
             }
         ).eq("id", recipe_id).execute()
 
-        return True
+        return "COMPLETED"
 
     except Exception as exc:
         logger.exception("Error processing recipe queue job")
@@ -105,4 +114,9 @@ def process_next_recipe_job(client: Any | None = None) -> bool:
                 ).eq("id", job["job_id"]).execute()
             except Exception:
                 logger.exception("Failed to record error state on queue job")
-        return False
+        return "FAILED"
+
+
+def process_next_recipe_job(client: Any | None = None) -> JobOutcome:
+    """Synchronous wrapper around async_process_next_recipe_job for non-async callers."""
+    return asyncio.run(async_process_next_recipe_job(client))

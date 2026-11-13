@@ -233,6 +233,28 @@ async def test_fetch_fmp_news_includes_url_and_tickers():
     assert "T" in results[0]["published_at"]  # Normalized to ISO
 
 
+@pytest.mark.asyncio
+async def test_fetch_fmp_news_multi_symbol_does_not_broadcast_all_tickers():
+    mock_http = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {
+            "symbol": "NVDA",
+            "title": "Nvidia Launches Next-Gen Vera Rubin AI Rack Architecture",
+            "publishedDate": "2026-11-13 15:00:00",
+            "publisher": "Reuters",
+            "text": "Data center demand accelerates for Nvidia.",
+            "url": "https://example.com/nvda",
+        }
+    ]
+    mock_http.get.return_value = mock_resp
+
+    results = await fetch_fmp_news(mock_http, api_key="test_key", symbols="SPY,QQQ,NVDA,TSLA", limit=5)
+    assert len(results) == 1
+    assert results[0]["tickers"] == ["NVDA"]
+
+
 @pytest.mark.parametrize(
     "headline",
     [

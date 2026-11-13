@@ -56,23 +56,28 @@ def parse_trade_signals(output_text: str) -> list[dict[str, str]]:
     return signals
 
 
-async def default_llm_caller(
-    prompt: str,
-    selected_tools: list[str],
-    cutoff_date: str | None = None,
-    openrouter_key: str | None = None,
-    model: str = "auto-strata",
-) -> dict[str, Any]:
-    """Execute a single Stage with OpenAI-compatible tool calling."""
+def _llm_endpoints(openrouter_key: str | None, model: str) -> list[tuple[str, str, str]]:
     if openrouter_key:
-        client = AsyncOpenAI(api_key=openrouter_key, base_url="https://openrouter.ai/api/v1", timeout=90)
         model_id = "deepseek/deepseek-chat" if model == "auto-strata" else model
-    else:
-        base_url = os.getenv("STRATA_BASE_URL") or os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1")
-        client = AsyncOpenAI(api_key=os.getenv("STRATA_API_KEY", "local"), base_url=base_url, timeout=90)
-        model_id = model
+        return [("https://openrouter.ai/api/v1", openrouter_key, model_id)]
+    proxy_key = os.getenv("FREE_PROXY_MASTER_KEY") or os.getenv("STRATA_API_KEY", "local")
+    strata_url = os.getenv("STRATA_BASE_URL", "").strip()
+    proxy_url = os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1").strip()
+    endpoints: list[tuple[str, str, str]] = []
+    if strata_url:
+        endpoints.append((strata_url, proxy_key, model))
+    if proxy_url and proxy_url != strata_url:
+        endpoints.append((proxy_url, proxy_key, model))
+    return endpoints or [("https://llm.clvg.uk/v1", proxy_key, model)]
 
-    tool_schemas = [CANONICAL_TOOLS_REGISTRY[t] for t in selected_tools if t in CANONICAL_TOOLS_REGISTRY]
+
+async def _run_tool_loop(
+    client: AsyncOpenAI,
+    model_id: str,
+    prompt: str,
+    tool_schemas: list[dict[str, Any]],
+    cutoff_date: str | None,
+) -> dict[str, Any]:
     messages: list[dict[str, Any]] = [
         {
             "role": "system",
@@ -124,6 +129,32 @@ async def default_llm_caller(
             messages.append({"role": "tool", "tool_call_id": tc.id, "content": str(tool_result)[:4000]})
 
     return {"output": "Max tool iterations reached without final answer.", "tool_calls": tool_traces}
+
+
+async def default_llm_caller(
+    prompt: str,
+    selected_tools: list[str],
+    cutoff_date: str | None = None,
+    openrouter_key: str | None = None,
+    model: str = "auto-strata",
+) -> dict[str, Any]:
+    """Execute a single Stage with OpenAI-compatible tool calling and Strata->Proxy failover."""
+    tool_schemas = [CANONICAL_TOOLS_REGISTRY[t] for t in selected_tools if t in CANONICAL_TOOLS_REGISTRY]
+    endpoints = _llm_endpoints(openrouter_key, model)
+    last_exc: Exception | None = None
+    for idx, (base_url, api_key, model_id) in enumerate(endpoints):
+        client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=90)
+        try:
+            return await _run_tool_loop(client, model_id, prompt, tool_schemas, cutoff_date)
+        except Exception as exc:
+            last_exc = exc
+            if idx + 1 < len(endpoints):
+                logger.warning("Recipe LLM endpoint %s failed (%s); failing over to next endpoint", base_url, exc)
+                continue
+            raise
+    if last_exc:
+        raise last_exc
+    return {"output": "", "tool_calls": []}
 
 
 def _max_lookback_hours(strategy: PushStrategy) -> int:
@@ -195,7 +226,7 @@ def _load_window_dates(sb_client: Any) -> list[str]:
             .select("fetched_at")
             .eq("ticker", "SPY")
             .order("fetched_at", desc=True)
-            .limit(120)
+            .limit(1000)
             .execute()
         )
         dates = [str(r.get("fetched_at", ""))[:10] for r in (res.data or []) if r.get("fetched_at")]
@@ -225,7 +256,7 @@ def _load_daily_closes(sb_client: Any, tickers: set[str], start_day: str, end_da
             .gte("fetched_at", f"{start_day}T00:00:00+00:00")
             .lte("fetched_at", f"{end_day}T23:59:59+00:00")
             .order("fetched_at", desc=False)
-            .limit(5000)
+            .limit(10000)
             .execute()
         )
         for row in res.data or []:
@@ -362,6 +393,5 @@ async def run_push_backtest(
         "llm_calls_made": llm_calls_made,
         "trades": trades,
         "skipped_trades": skipped_trades,
-        "weeks_breakdown": [],
         "equity_curve": equity_curve,
     }

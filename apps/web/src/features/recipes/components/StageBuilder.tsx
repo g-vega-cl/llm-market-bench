@@ -45,6 +45,8 @@ function createBlock(type: StrategyBlock['type']): StrategyBlock {
 }
 
 export function StageBuilder({ stage, onChange }: StageBuilderProps) {
+    const hasOutputFormat = stage.blocks.some((block) => block.type === 'output_format');
+
     const updateBlock = (blockId: string, updater: (b: StrategyBlock) => StrategyBlock) => {
         onChange({
             ...stage,
@@ -129,6 +131,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                     <Button
                         size="sm"
                         variant="outline"
+                        disabled={hasOutputFormat}
                         onClick={() =>
                             onChange({
                                 ...stage,

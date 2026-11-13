@@ -13,7 +13,7 @@ from recipes.push_runner import run_push_backtest, run_push_live
 from recipes.push_schema import PushStrategy
 
 JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED"]
-SUPPORTED_JOB_MODES = ("backtest", "preview", "live_turn")
+SUPPORTED_JOB_MODES = ("backtest", "live_turn")
 
 
 async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome:
@@ -58,9 +58,9 @@ async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome
         if not (isinstance(graph_dict, dict) and isinstance(graph_dict.get("stages"), list)):
             raise ValueError("Recipe must use Push v2 format with a 'stages' list (legacy DAG format is removed).")
 
+        # PushStrategy enforces exactly one LLM stage; a second stage fails here
+        # and the job is marked failed with the schema message.
         push_strategy = PushStrategy(**graph_dict)
-        if not push_strategy.stages:
-            raise ValueError("Push strategy must contain at least one stage")
 
         if mode == "live_turn":
             result = await run_push_live(push_strategy, sb)

@@ -63,6 +63,26 @@ def test_push_strategy_rejects_more_than_one_llm_stage():
         PushStrategy(name="Two Calls", cadence="1d", stages=[first, second])
 
 
+def test_push_strategy_rejects_zero_llm_stages():
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="exactly one LLM stage"):
+        PushStrategy(name="No Call", cadence="1d", stages=[])
+
+
+def test_push_strategy_rejects_prev_output_placeholder():
+    from pydantic import ValidationError
+
+    from recipes.push_schema import PromptBlock, StrategyStage
+
+    stage = StrategyStage(
+        id="stage-1",
+        blocks=[PromptBlock(id="b1", type="prompt", text="Given {{prev_output}}, output BUY/SELL JSON.")],
+    )
+    with pytest.raises(ValidationError, match="prev_output is not available"):
+        PushStrategy(name="Two Calls", cadence="1d", stages=[stage])
+
+
 def test_filter_news_rows_enforces_contains_and_point_in_time_recency():
     as_of = datetime(2026, 3, 10, 14, 0, tzinfo=UTC)
     rows = [

@@ -11,9 +11,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from core.config import logger
 from core.db import get_supabase_client
 from recipes.news_corpus import sync_live_news_to_corpus
+from recipes.push_schema import PushStrategy
 from recipes.worker import async_process_next_recipe_job, process_next_recipe_job
 
 ANONYMOUS_USER_ID = "00000000-0000-0000-0000-000000000000"
@@ -59,13 +62,25 @@ def seed_starter_recipes(sb_client: Any) -> int:
     return inserted
 
 
-def _is_single_stage_push_v2_graph(raw_graph: Any) -> bool:
+def _is_valid_single_stage_graph(raw_graph: Any) -> bool:
+    """True only when graph_json validates as a single-stage Push v2 strategy.
+
+    The scheduler validates with the same schema the worker uses. A row that fails
+    validation is skipped here instead of being queued, which would otherwise leave
+    a failed queue row behind on every hourly cycle.
+    """
     if isinstance(raw_graph, str):
         try:
             raw_graph = json.loads(raw_graph)
         except json.JSONDecodeError:
             return False
-    return isinstance(raw_graph, dict) and isinstance(raw_graph.get("stages"), list) and len(raw_graph["stages"]) == 1
+    if not isinstance(raw_graph, dict):
+        return False
+    try:
+        PushStrategy.model_validate(raw_graph)
+    except ValidationError:
+        return False
+    return True
 
 
 def enqueue_live_recipes(sb_client: Any) -> int:
@@ -95,9 +110,9 @@ def enqueue_live_recipes(sb_client: Any) -> int:
         rec_id = str(rec.get("id", ""))
         if not rec_id or rec_id in open_ids:
             continue
-        if not _is_single_stage_push_v2_graph(rec.get("graph_json")):
+        if not _is_valid_single_stage_graph(rec.get("graph_json")):
             logger.warning(
-                "Skipping live recipe %s (%s): graph_json is not a single-stage Push v2 strategy",
+                "Skipping live recipe %s (%s): graph_json is not a valid single-stage Push v2 strategy",
                 rec.get("name"),
                 rec_id,
             )

@@ -198,6 +198,7 @@ The following areas in the codebase currently manage state implicitly through co
 - **States**:
   - `ExecutionState`: `idle` $\to$ `running` (`live_turn` | `backtest`) $\to$ `live_done` | `backtest_done` | `error`
   - `PreviewState`: `template` $\to$ `loading` $\to$ `hydrated` | `error`
+- **Cardinality invariant**: `PushStrategy.stages` is the one-element tuple `[StrategyStage]`, so the zero-stage and multi-stage states are unrepresentable in the type. The engine schema (`apps/engine/recipes/push_schema.py`) and the `strategy_recipes_single_stage_check` constraint enforce the same rule at runtime. See [[entities/recipe-studio]].
 
 ---
 

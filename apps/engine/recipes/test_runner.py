@@ -110,6 +110,35 @@ def test_enqueue_live_recipes_skips_multi_stage_recipes():
     queue_tbl.insert.assert_not_called()
 
 
+def test_enqueue_live_recipes_skips_graph_that_fails_strategy_validation():
+    sb = MagicMock()
+    recipes_tbl = MagicMock()
+    queue_tbl = MagicMock()
+
+    def _router(name: str):
+        if name == "strategy_recipes":
+            return recipes_tbl
+        if name == "recipe_execution_queue":
+            return queue_tbl
+        return MagicMock()
+
+    sb.table.side_effect = _router
+    recipes_chain = recipes_tbl.select.return_value.eq.return_value.limit.return_value
+    recipes_chain.execute.return_value.data = [
+        {
+            "id": "rec-broken",
+            "user_id": "u1",
+            "name": "Broken Block",
+            # One stage, but the block type is not a valid push block.
+            "graph_json": {"stages": [{"id": "s1", "blocks": [{"id": "b1", "type": "bogus"}]}]},
+        },
+    ]
+    queue_tbl.select.return_value.in_.return_value.limit.return_value.execute.return_value.data = []
+
+    assert enqueue_live_recipes(sb) == 0
+    queue_tbl.insert.assert_not_called()
+
+
 def test_starter_templates_are_single_llm_stage():
     templates = load_starter_recipes()
     assert templates

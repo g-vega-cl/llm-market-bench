@@ -17,7 +17,7 @@ The **Recipe Studio** (`/recipes`) is a 5-block push-based strategy builder wher
    - `public.recipe_waitlist_pledges`: Early supporter pledges for future dedicated GPU compute tiers.
 
 2. **Engine Processing (`apps/engine/recipes/`)**:
-   - `push_schema.py`: Pydantic models for Push v2 (`PushStrategy`, `StrategyStage`, `PromptBlock`, `NewsBlock`, `MemoriesBlock`, `TechnicalsBlock`, `OutputFormatBlock`). `PushStrategy` rejects more than one stage.
+   - `push_schema.py`: Pydantic models for Push v2 (`PushStrategy`, `StrategyStage`, `PromptBlock`, `NewsBlock`, `MemoriesBlock`, `TechnicalsBlock`, `OutputFormatBlock`). `PushStrategy` requires exactly one stage.
    - `push_hydrator.py`: Point-in-time filtering and stage prompt hydration (`fetch_push_context_batch`, `hydrate_stage_prompt`, `build_news_excerpt`).
    - `push_runner.py`: Single-call execution (`run_push_live`) and random 10-trading-day point-in-time backtesting (`run_push_backtest`) backed by `public.price_history` and `STRATA_BASE_URL` / `FREE_LLM_PROXY_URL` (`https://llm.clvg.uk/v1`). The LLM call goes through a local-first endpoint failover chain (see below).
    - `worker.py`: `async_process_next_recipe_job()` (canonical) and the sync wrapper `process_next_recipe_job()` returning a `JobOutcome` (`"EMPTY"`, `"COMPLETED"`, `"FAILED"`) — pops one Push v2 job from `recipe_execution_queue`, rejects legacy/unsupported payloads and unsupported execution modes, executes `run_push_live` or `run_push_backtest`, and deposits `live_turn` signals into `recipe_alerts_inbox`.
@@ -104,10 +104,10 @@ Every LLM call in `push_runner.py` is executed through a small, ordered endpoint
 ## Worker Modes, Outcomes & Event-Loop Safety (`apps/engine/recipes/worker.py`)
 
 - **`JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED"]`** — the tri-state return distinguishes "queue was empty" from "job ran" and "job errored". Callers drain until `"EMPTY"` and count `"FAILED"` separately (`run_hourly_cycle` reports `jobs_processed` vs `jobs_failed`).
-- **`SUPPORTED_JOB_MODES = ("backtest", "preview", "live_turn")`** — the popped `job_mode` is validated immediately after dequeue; an unrecognized mode raises `ValueError("Unsupported recipe execution mode: <mode>")`, which is caught, persisted to `recipe_execution_queue.error_message` on the `failed` row, and returned as `"FAILED"`. A missing `job_mode` defaults to `backtest`.
+- **`SUPPORTED_JOB_MODES = ("backtest", "live_turn")`** — the popped `job_mode` is validated immediately after dequeue; an unrecognized mode raises `ValueError("Unsupported recipe execution mode: <mode>")`, which is caught, persisted to `recipe_execution_queue.error_message` on the `failed` row, and returned as `"FAILED"`. A missing `job_mode` defaults to `backtest`. The `preview` mode was removed: it had no implementation and fell through to the backtest branch, so a preview job spent ten LLM calls.
 - **No nested event loop** — `async_process_next_recipe_job()` `await`s `run_push_live()` / `run_push_backtest()` directly, so it is safe to call from an already-running loop (e.g. inside `async run_hourly_cycle`). The legacy `asyncio.run(...)` nesting that raised `RuntimeError: asyncio.run() cannot be called from a running event loop` is confined to the synchronous wrapper `process_next_recipe_job()`.
 - **`process_next_recipe_job(client=None)`** — thin synchronous wrapper (`return asyncio.run(async_process_next_recipe_job(client))`) preserved for non-async callers and the off-hour daemon drain path.
-- Successful jobs still write `output_json`, `status = 'completed'`, increment `strategy_recipes.trial_count`, and deposit `live_turn` signals into `recipe_alerts_inbox`.
+- Successful jobs still write `result_json`, `status = 'completed'`, increment `strategy_recipes.trial_count`, and deposit `live_turn` signals into `recipe_alerts_inbox`.
 
 ## Legacy DAG Removal
 
@@ -115,14 +115,29 @@ The former `RecipeGraph` DAG pipeline (`schema.py`, `validator.py`, `indicators.
 
 ## Single LLM Call Limit (MVP)
 
-Each strategy makes one LLM call per live run or per backtest day. Multi-stage chaining is off for the MVP. The limit is enforced in four places, so a stale client or an old queued row cannot bypass it.
+Each strategy makes one LLM call per live run or per backtest day. Multi-stage chaining is off for the MVP. The limit is enforced at every boundary a strategy can cross, so a stale client, an old queued row, or a hand-written API call cannot bypass it.
 
-- The Studio UI (`apps/web/src/features/recipes/pages/RecipeStudioPage.tsx`) shows one `LLM Call` card with no add or remove stage controls. The starter templates are single-stage (`packages/config/starter-recipes.json`).
-- The save API (`apps/web/src/features/recipes/api/recipes-api.ts`) calls `assertSingleLlmStage()` inside `saveRecipeFn` and throws `Invalid strategy: must contain exactly one LLM stage`.
-- The scheduler (`apps/engine/recipes/runner.py`) uses `_is_single_stage_push_v2_graph()` in `enqueue_live_recipes()`. A multi-stage live recipe is skipped with a `logger.warning`, so no queue row is written.
-- The engine schema (`apps/engine/recipes/push_schema.py`) runs the `PushStrategy` validator `validate_single_llm_stage`, which raises `Push strategies are limited to one LLM stage for the MVP`. The worker stores that message in `recipe_execution_queue.error_message` and returns `FAILED`.
+- The Studio UI (`apps/web/src/features/recipes/pages/RecipeStudioPage.tsx`) shows one `LLM Call` card with no add or remove stage controls. `PushStrategy.stages` is typed as the one-element tuple `[StrategyStage]`, and `starter-templates.ts` validates the imported JSON at load time.
+- The engine schema (`apps/engine/recipes/push_schema.py`) is the source of truth. `PushStrategy.stages` is a required field with `min_length=1, max_length=1`; the `validate_exactly_one_llm_stage` validator raises `Push strategies must contain exactly one LLM stage for the MVP`, and `reject_prev_output_placeholder` rejects a `{{prev_output}}` prompt because a single-stage strategy has no previous output to reference.
+- The scheduler (`apps/engine/recipes/runner.py`) uses `_is_valid_single_stage_graph()` in `enqueue_live_recipes()`. It validates with the same schema the worker uses, so a malformed or multi-stage live recipe is skipped with a `logger.warning` instead of being queued. Queueing it would leave a failed row behind on every hourly cycle.
+- The save API (`apps/web/src/features/recipes/api/recipes-api.ts`) calls `assertSingleLlmStage()` and `assertNoPrevOutputPlaceholder()` inside `saveRecipe()` before any write.
+- The enqueue API rejects a recipe the caller neither owns nor may see, rejects a multi-stage or malformed `graph_json` before it reaches the queue, and caps the number of open jobs per user.
+- The database enforces it too. The `strategy_recipes_single_stage_check` constraint (`supabase/migrations/20261113190000_unpublish_legacy_multistage_recipe_template.sql`) rejects a `graph_json` whose `stages` array is not exactly one element on insert and update. It was added `NOT VALID` so the legacy row did not block it.
 
-Existing data stays in place. The seeder only inserts missing template names, so the former `2-Stage Research -> Trade Decision` row remains in `strategy_recipes`. No UI path reads DB templates (`fetchPublicRecipes` has no callers), and a multi-stage row that runs fails with the validator message. The `stages` list shape and the `{{prev_output}}` hydrator path are kept inert. To bring multi-stage back, relax the validator and the three checks above, then restore the stage controls in the UI.
+`{{prev_output}}` is rejected rather than left in place. The hydrator substituted it with an empty string, so a single-stage prompt that referenced a previous output silently reached the model truncated, and the Studio preview showed a token the run would not contain.
+
+The legacy `2-Stage Research -> Trade Decision` template was unpublished by the same migration (`is_public = FALSE`, `is_template = FALSE`). It was removed from `packages/config/starter-recipes.json`, so the seeder never recreates it. The row is kept for auditability and is no longer publicly readable.
+
+To bring multi-stage back, drop the `{{prev_output}}` rejection, relax the schema cardinality and the DB constraint, restore the stage controls in the UI, and re-add the second stage to the enqueue and scheduler guards.
+
+## Recipe API Authorization
+
+The Studio runs against the archive DB, where `strategy_recipes` is publicly readable for templates and public recipes while `recipe_execution_queue` and `recipe_alerts_inbox` are service-role only. The API in `apps/web/src/features/recipes/api/recipes-api.ts` keeps the logic in plain exported functions and the server functions as thin wrappers, so each rule is unit tested.
+
+- `saveRecipe()` fails closed. It reads the existing row first, rejects a row owned by another user, and never transfers ownership: `user_id` is absent from the update payload and the update is scoped with `.eq('user_id', userId)`.
+- `enqueueRecipeJob()` requires the caller to own the recipe or to be allowed to see it (`is_public` or `is_template`), validates the recipe's `graph_json` before it reaches the queue, and caps the number of open jobs per user so one caller cannot flood the queue with LLM runs.
+- `getRecipeJobStatus()` reads the service-role-only queue with the admin client and scopes the row to the requesting user's `user_id`, so one caller cannot read another caller's job result. The earlier anon-key read could never return a row, which left the Studio showing a generic "still processing" message after every run.
+- Anonymous visitors share the `00000000-0000-0000-0000-000000000000` user id, so ownership only separates signed-in users. No UI path loads a recipe from the database: the Studio always starts from a local starter template.
 
 ## Related Pages
 

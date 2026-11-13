@@ -65,7 +65,8 @@ export interface PushStrategy {
     name: string;
     description?: string;
     cadence: RecipeCadence;
-    stages: StrategyStage[];
+    /** Exactly one stage: a strategy is one LLM call. */
+    stages: [StrategyStage];
 }
 
 export interface CuratedToolOption {

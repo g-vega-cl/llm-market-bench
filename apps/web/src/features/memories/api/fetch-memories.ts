@@ -21,6 +21,9 @@ function applyCategoryFilter(query: any, category: string) {
         case 'CALENDAR_EVENT':
         case 'calendar_event':
             return query.eq('memory_type', 'CALENDAR_EVENT');
+        case 'GOVERNMENT_INCENTIVE':
+        case 'government_incentive':
+            return query.eq('memory_type', 'GOVERNMENT_INCENTIVE');
         case 'ACADEMIC_PAPER':
         case 'academic_paper':
             return query.eq('memory_type', 'ACADEMIC_PAPER');

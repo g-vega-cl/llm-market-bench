@@ -38,6 +38,7 @@ export function getMemoryCategory(m: Memory): string {
     // Direct matches for unified types
     if (memType === 'MARKET_EVENT') return 'MARKET_EVENT';
     if (memType === 'CALENDAR_EVENT') return 'CALENDAR_EVENT';
+    if (memType === 'GOVERNMENT_INCENTIVE') return 'GOVERNMENT_INCENTIVE';
     if (memType === 'POST_MORTEM') return 'POST_MORTEM';
     if (memType === 'ACADEMIC_PAPER') return 'ACADEMIC_PAPER';
 
@@ -66,6 +67,7 @@ const FILTERS = [
     { id: 'all', label: 'All' },
     { id: 'MARKET_EVENT', label: 'Events' },
     { id: 'CALENDAR_EVENT', label: 'Calendar Events' },
+    { id: 'GOVERNMENT_INCENTIVE', label: 'Gov Policy' },
     { id: 'POST_MORTEM', label: 'Post-Mortems' },
     { id: 'ACADEMIC_PAPER', label: 'Principles' },
     { id: 'RESOLVED', label: 'Resolved' },

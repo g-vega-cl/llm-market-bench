@@ -719,6 +719,90 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            gov_contracts: {
+                Row: {
+                    agency_name: string | null;
+                    award_amount: number;
+                    award_date: string;
+                    award_id: string;
+                    contract_number: string | null;
+                    country: string;
+                    created_at: string;
+                    currency: string;
+                    description: string | null;
+                    id: string;
+                    raw_metadata: Json | null;
+                    recipient_name: string;
+                    source_url: string | null;
+                };
+                Insert: {
+                    agency_name?: string | null;
+                    award_amount?: number;
+                    award_date: string;
+                    award_id: string;
+                    contract_number?: string | null;
+                    country: string;
+                    created_at?: string;
+                    currency?: string;
+                    description?: string | null;
+                    id?: string;
+                    raw_metadata?: Json | null;
+                    recipient_name: string;
+                    source_url?: string | null;
+                };
+                Update: {
+                    agency_name?: string | null;
+                    award_amount?: number;
+                    award_date?: string;
+                    award_id?: string;
+                    contract_number?: string | null;
+                    country?: string;
+                    created_at?: string;
+                    currency?: string;
+                    description?: string | null;
+                    id?: string;
+                    raw_metadata?: Json | null;
+                    recipient_name?: string;
+                    source_url?: string | null;
+                };
+                Relationships: [];
+            };
+            gov_macro_liquidity: {
+                Row: {
+                    created_at: string;
+                    debt_held_public: number | null;
+                    id: string;
+                    intragov_holdings: number | null;
+                    monthly_deficit_surplus: number | null;
+                    raw_metadata: Json | null;
+                    record_date: string;
+                    tga_balance: number | null;
+                    tot_pub_debt: number | null;
+                };
+                Insert: {
+                    created_at?: string;
+                    debt_held_public?: number | null;
+                    id?: string;
+                    intragov_holdings?: number | null;
+                    monthly_deficit_surplus?: number | null;
+                    raw_metadata?: Json | null;
+                    record_date: string;
+                    tga_balance?: number | null;
+                    tot_pub_debt?: number | null;
+                };
+                Update: {
+                    created_at?: string;
+                    debt_held_public?: number | null;
+                    id?: string;
+                    intragov_holdings?: number | null;
+                    monthly_deficit_surplus?: number | null;
+                    raw_metadata?: Json | null;
+                    record_date?: string;
+                    tga_balance?: number | null;
+                    tot_pub_debt?: number | null;
+                };
+                Relationships: [];
+            };
             ingestion_logs: {
                 Row: {
                     created_at: string | null;
@@ -743,6 +827,105 @@ export type Database = {
                     run_date?: string;
                     run_id?: string;
                     run_number?: number;
+                };
+                Relationships: [];
+            };
+            insider_trades: {
+                Row: {
+                    created_at: string;
+                    filing_date: string;
+                    id: string;
+                    price: number;
+                    reporting_name: string;
+                    securities_owned: number | null;
+                    securities_transacted: number;
+                    source_url: string | null;
+                    symbol: string;
+                    total_value: number;
+                    transaction_date: string;
+                    transaction_type: string;
+                    type_of_owner: string | null;
+                };
+                Insert: {
+                    created_at?: string;
+                    filing_date: string;
+                    id?: string;
+                    price?: number;
+                    reporting_name: string;
+                    securities_owned?: number | null;
+                    securities_transacted?: number;
+                    source_url?: string | null;
+                    symbol: string;
+                    total_value?: number;
+                    transaction_date: string;
+                    transaction_type: string;
+                    type_of_owner?: string | null;
+                };
+                Update: {
+                    created_at?: string;
+                    filing_date?: string;
+                    id?: string;
+                    price?: number;
+                    reporting_name?: string;
+                    securities_owned?: number | null;
+                    securities_transacted?: number;
+                    source_url?: string | null;
+                    symbol?: string;
+                    total_value?: number;
+                    transaction_date?: string;
+                    transaction_type?: string;
+                    type_of_owner?: string | null;
+                };
+                Relationships: [];
+            };
+            institutional_whale_stakes: {
+                Row: {
+                    accepted_date: string | null;
+                    created_at: string;
+                    filer_cik: string | null;
+                    filer_name: string;
+                    filing_date: string;
+                    filing_type: string;
+                    id: string;
+                    is_exit: boolean;
+                    percent_of_class: number;
+                    raw_metadata: Json | null;
+                    reporting_type: string | null;
+                    shares_beneficially_owned: number;
+                    source_url: string | null;
+                    symbol: string;
+                };
+                Insert: {
+                    accepted_date?: string | null;
+                    created_at?: string;
+                    filer_cik?: string | null;
+                    filer_name: string;
+                    filing_date: string;
+                    filing_type?: string;
+                    id?: string;
+                    is_exit?: boolean;
+                    percent_of_class?: number;
+                    raw_metadata?: Json | null;
+                    reporting_type?: string | null;
+                    shares_beneficially_owned?: number;
+                    source_url?: string | null;
+                    symbol: string;
+                };
+                Update: {
+                    accepted_date?: string | null;
+                    created_at?: string;
+                    filer_cik?: string | null;
+                    filer_name?: string;
+                    filing_date?: string;
+                    filing_type?: string;
+                    id?: string;
+                    is_exit?: boolean;
+                    percent_of_class?: number;
+                    raw_metadata?: Json | null;
+                    reporting_type?: string | null;
+                    shares_beneficially_owned?: number;
+                    source_url?: string | null;
+                    symbol?: string;
                 };
                 Relationships: [];
             };

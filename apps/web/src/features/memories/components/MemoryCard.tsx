@@ -102,6 +102,7 @@ const CATEGORY_BADGE_CONFIG: Record<
 > = {
     MARKET_EVENT: { label: 'Consensus Event', colorScheme: 'accent' },
     CALENDAR_EVENT: { label: 'Calendar Event', colorScheme: 'info' },
+    GOVERNMENT_INCENTIVE: { label: 'Gov Policy', colorScheme: 'success' },
     decision_reasoning: { label: 'Decision Reasoning', colorScheme: 'info' },
     POST_MORTEM: { label: 'Post-Mortem', colorScheme: 'warning' },
     ACADEMIC_PAPER: { label: 'Empirical Principle', colorScheme: 'success' },
@@ -109,6 +110,7 @@ const CATEGORY_BADGE_CONFIG: Record<
     // Legacy support keys
     consensus_event: { label: 'Consensus Event', colorScheme: 'accent' },
     calendar_event: { label: 'Calendar Event', colorScheme: 'info' },
+    government_incentive: { label: 'Gov Policy', colorScheme: 'success' },
     post_mortem: { label: 'Post-Mortem', colorScheme: 'warning' },
     academic_paper: { label: 'Empirical Principle', colorScheme: 'success' },
     lesson_learned: { label: 'Lesson Learned', colorScheme: 'neutral' },

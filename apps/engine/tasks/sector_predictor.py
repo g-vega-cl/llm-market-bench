@@ -212,6 +212,48 @@ async def _execute_single_sector_prediction(
     return {}
 
 
+async def _build_sector_macro_context() -> str:
+    """Gather FRED macro benchmarks, yield curve regime, and forward calendar scenarios."""
+    sections: list[str] = []
+
+    try:
+        from analytics.yield_curve import get_yield_curve_regime_report
+
+        yield_report = await get_yield_curve_regime_report()
+        if (
+            isinstance(yield_report, dict)
+            and yield_report.get("source") != "NONE"
+            and yield_report.get("regime") != "UNAVAILABLE"
+        ):
+            yield_md = yield_report.get("markdown") or ""
+            if yield_md:
+                sections.append(yield_md)
+    except Exception:
+        logger.exception("Error fetching yield curve regime for sector predictor")
+
+    try:
+        from core.fred import get_curated_macro_dashboard
+
+        fred_dashboard = await get_curated_macro_dashboard()
+        if fred_dashboard and not fred_dashboard.startswith("Error"):
+            sections.append(fred_dashboard)
+    except Exception:
+        logger.exception("Error fetching FRED macro dashboard for sector predictor")
+
+    try:
+        from core.llm.tools import execute_get_calendar_scenario_analysis_tool
+
+        cal_str = await execute_get_calendar_scenario_analysis_tool(
+            timeframe="all_upcoming", min_importance=6, detail=False
+        )
+        if cal_str and not cal_str.startswith("Error"):
+            sections.append(f"Upcoming High-Impact Catalysts & Macro Scenarios:\n{cal_str}")
+    except Exception:
+        logger.exception("Error fetching forward calendar scenarios for sector predictor")
+
+    return ("\n\n" + "\n\n".join(sections) + "\n") if sections else ""
+
+
 async def run_sector_predictions(target_model: str | None = None, date_anchor: date | None = None):
     client = get_supabase_client()
     data_block = await get_predictor_data()
@@ -220,17 +262,7 @@ async def run_sector_predictions(target_model: str | None = None, date_anchor: d
     from core.time_utils import get_current_day_info
 
     day_info = get_current_day_info()
-    forward_cal_context = ""
-    try:
-        from core.llm.tools import execute_get_calendar_scenario_analysis_tool
-
-        cal_str = await execute_get_calendar_scenario_analysis_tool(
-            timeframe="all_upcoming", min_importance=6, detail=False
-        )
-        if cal_str and not cal_str.startswith("Error"):
-            forward_cal_context = f"\n\nUpcoming High-Impact Catalysts & Macro Scenarios:\n{cal_str}\n"
-    except Exception as e:
-        logger.warning(f"Error fetching forward calendar scenarios for sector predictor: {e}")
+    macro_context = await _build_sector_macro_context()
 
     models = [
         {"name": DEEPSEEK_FLASH_MODEL, "client": get_deepseek_client(), "type": "instructor", "provider": "deepseek"},
@@ -257,7 +289,7 @@ async def run_sector_predictions(target_model: str | None = None, date_anchor: d
                         f"=== EXACT TEMPORAL CONTEXT ===\n{day_info}\n"
                         f"Target Forecast Horizon: {tf} (from {today.isoformat()} to {target_date.isoformat()})\n"
                         f"==============================\n"
-                        f"{forward_cal_context}\n"
+                        f"{macro_context}\n"
                         f"Historical Market Correlation and Return Data:\n{data_block}\n\n"
                         f"Predict the best sector, worst sector, and pair for the next {tf}."
                     )

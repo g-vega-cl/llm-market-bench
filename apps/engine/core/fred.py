@@ -517,7 +517,8 @@ async def get_curated_macro_dashboard(indicators: list[str] | None = None) -> st
     lines = ["=== Macro & Economic Context (FRED) ==="]
     for key in indicators:
         try:
-            data = await fetch_fred_series_observations(key, lookback_periods=3)
+            # Fetch >=10 observations so shared treasury_10y / treasury_2y cache entries satisfy yield-curve alignment
+            data = await fetch_fred_series_observations(key, lookback_periods=10)
             title = data.get("title", key)
             latest_val = data.get("latest_value")
             latest_date = data.get("latest_date", "N/A")

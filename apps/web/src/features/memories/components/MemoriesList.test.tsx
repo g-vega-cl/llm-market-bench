@@ -133,6 +133,11 @@ describe('MemoriesList', () => {
         fireEvent.click(eventsButton);
 
         expect(onFilterChange).toHaveBeenCalledWith('MARKET_EVENT');
+
+        const govButton = screen.getByText('Gov Policy');
+        fireEvent.click(govButton);
+
+        expect(onFilterChange).toHaveBeenCalledWith('GOVERNMENT_INCENTIVE');
     });
 
     it('displays metadata badges correctly', () => {
@@ -355,6 +360,21 @@ describe('MemoriesList', () => {
                 target_date: null,
             };
             expect(getMemoryCategory(mLesson)).toBe('LESSON_LEARNED');
+
+            const mGov: Memory = {
+                id: '4',
+                content: '[GOVERNMENT INCENTIVE] US Semiconductor Incentives',
+                created_at: '',
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'GOVERNMENT_INCENTIVE',
+                importance_score: null,
+                target_date: null,
+            };
+            expect(getMemoryCategory(mGov)).toBe('GOVERNMENT_INCENTIVE');
         });
     });
 });

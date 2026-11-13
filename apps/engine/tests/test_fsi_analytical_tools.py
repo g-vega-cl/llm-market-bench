@@ -332,3 +332,74 @@ async def test_options_surface_anchors_spy_to_vix():
         assert report["vol_regime"] == "RICH"
         assert "30-Day VIX" in report["markdown"]
         assert "14.28%" in report["markdown"]
+
+
+@pytest.mark.asyncio
+async def test_get_yield_curve_regime_report_falls_back_to_fred():
+    """Verify yield curve classifier uses FRED Treasury yields when FMP key is missing or HTTP fails."""
+    from analytics.yield_curve import get_yield_curve_regime_report
+
+    async def mock_fetch_fred(series_id_or_alias, lookback_periods=10, **kwargs):
+        # Prior: 3M=4.50, 2Y=4.20, 5Y=4.15, 10Y=4.30, 30Y=4.60 (spread 10y-2y = +10 bps)
+        # Latest: 3M=4.00, 2Y=3.80, 5Y=3.95, 10Y=4.10, 30Y=4.50 (spread 10y-2y = +30 bps, falling yields + steepening = BULL_STEEPENER)
+        series_map = {
+            "treasury_3m": [
+                {"date": "2026-11-10", "value": 4.50},
+                {"date": "2026-11-11", "value": 4.00},
+            ],
+            "treasury_2y": [
+                {"date": "2026-11-10", "value": 4.20},
+                {"date": "2026-11-11", "value": 3.80},
+            ],
+            "treasury_5y": [
+                {"date": "2026-11-10", "value": 4.15},
+                {"date": "2026-11-11", "value": 3.95},
+            ],
+            "treasury_10y": [
+                {"date": "2026-11-10", "value": 4.30},
+                {"date": "2026-11-11", "value": 4.10},
+            ],
+            "treasury_30y": [
+                {"date": "2026-11-10", "value": 4.60},
+                {"date": "2026-11-11", "value": 4.50},
+            ],
+        }
+        return {"series_id": series_id_or_alias, "observations": series_map.get(series_id_or_alias, [])}
+
+    with (
+        patch("analytics.yield_curve.FMP_API_KEY", ""),
+        patch("core.fred.fetch_fred_series_observations", side_effect=mock_fetch_fred),
+    ):
+        report = await get_yield_curve_regime_report()
+
+    assert report["regime"] == "BULL_STEEPENER"
+    assert report["spread_10y_2y_bps"] == 30.0
+    assert report["spread_10y_3m_bps"] == 10.0
+    assert report["yield_level_direction"] == "FALLING"
+    assert report["source"] == "FRED"
+
+
+def test_classify_yield_curve_regime_handles_missing_tenors_and_empty_history():
+    """Missing month3/year5/year30 must return None spreads, and empty/1-point history returns UNAVAILABLE."""
+    empty_res = classify_yield_curve_regime([])
+    assert empty_res["regime"] == YieldCurveRegime.UNAVAILABLE.value
+    assert empty_res["spread_10y_2y_bps"] is None
+    assert empty_res["historical_factor_tailwinds"] == []
+    assert "N/A" in format_yield_curve_regime_markdown(empty_res)
+
+    single_point = [{"date": "2026-11-11", "year2": 3.80, "year10": 4.10}]
+    single_res = classify_yield_curve_regime(single_point)
+    assert single_res["regime"] == YieldCurveRegime.UNAVAILABLE.value
+    assert single_res["spread_10y_2y_bps"] == 30.0
+    assert single_res["spread_10y_3m_bps"] is None
+    assert single_res["spread_30y_5y_bps"] is None
+
+    partial_two_points = [
+        {"date": "2026-11-10", "year2": 4.20, "year10": 4.30},
+        {"date": "2026-11-11", "year2": 3.80, "year10": 4.10},
+    ]
+    partial_res = classify_yield_curve_regime(partial_two_points)
+    assert partial_res["regime"] == YieldCurveRegime.BULL_STEEPENER.value
+    assert partial_res["spread_10y_3m_bps"] is None
+    assert partial_res["spread_30y_5y_bps"] is None
+    assert "`N/A`" in format_yield_curve_regime_markdown(partial_res)

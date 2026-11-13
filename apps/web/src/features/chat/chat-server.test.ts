@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleChatMessage } from './chat-server';
+import { executeDatabaseQueryTool, getDatabaseSchemaSummary } from './chat-tools';
 
 // Mock Supabase Server Client
 const mockGetUser = vi.fn();
@@ -89,9 +90,15 @@ describe('Chat Server Handler (handleChatMessage)', () => {
         expect(toolNames).toContain('search_memories_and_theses');
         expect(toolNames).toContain('get_stock_context_and_trades');
 
-        // Verify system prompt includes database table catalog
+        // Verify system prompt includes database table catalog including gov/macro tables
         expect(body.messages[0].role).toBe('system');
         expect(body.messages[0].content).toContain('Available Database Tables:');
+        expect(body.messages[0].content).toContain('gov_macro_liquidity');
+        expect(body.messages[0].content).toContain('gov_contracts');
+        expect(body.messages[0].content).toContain('congress_trades');
+        expect(body.messages[0].content).toContain('insider_trades');
+        expect(body.messages[0].content).toContain('institutional_whale_stakes');
+        expect(body.messages[0].content).toContain('fred_series_cache');
 
         expect(result).toEqual({
             role: 'assistant',
@@ -352,5 +359,39 @@ describe('Chat Server Handler (handleChatMessage)', () => {
         expect(
             Array.isArray(result.suggested_questions) || result.suggested_questions === undefined,
         ).toBe(true);
+    });
+
+    it('should report accurate fred_series_cache columns and table-aware default order_by without vectors', async () => {
+        const schema = await getDatabaseSchemaSummary(null);
+        expect(schema).toContain(
+            '- fred_series_cache: series_id, title, units, frequency, latest_date, latest_value, observations, fetched_at',
+        );
+        expect(schema).not.toContain('fred_series_cache: series_id, fetched_at, data');
+
+        const mockOrder = vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({
+                data: [{ series_id: 'FEDFUNDS', latest_value: 4.33, embedding: [0.1, 0.2] }],
+                error: null,
+            }),
+        });
+        const mockClient = {
+            from: vi.fn().mockReturnValue({
+                select: vi.fn().mockReturnValue({
+                    eq: vi.fn(),
+                    ilike: vi.fn(),
+                    contains: vi.fn(),
+                    order: mockOrder,
+                }),
+            }),
+        };
+
+        const out = await executeDatabaseQueryTool({ table_name: 'fred_series_cache' }, mockClient);
+        expect(mockOrder).toHaveBeenCalledWith('fetched_at', { ascending: false });
+        const parsed = JSON.parse(out.result);
+        expect(parsed.rows[0].embedding).toBeUndefined();
+        expect(parsed.rows[0].series_id).toBe('FEDFUNDS');
+
+        await executeDatabaseQueryTool({ table_name: 'gov_contracts' }, mockClient);
+        expect(mockOrder).toHaveBeenLastCalledWith('award_date', { ascending: false });
     });
 });

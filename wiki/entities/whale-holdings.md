@@ -11,7 +11,7 @@ This lets portfolio agents evaluate institutional sponsorship, hedge-fund concen
 
 ## Architecture
 
-1. **Beneficial Ownership (13D/13G)** — `apps/engine/tools/whale_tools.py` fetches from FMP's `/stable/acquisition-of-beneficial-ownership` endpoint and identifies >5% institutional blockholders (e.g. Vanguard, BlackRock, Berkshire Hathaway, activist investors) for any US stock ticker. `format_beneficial_ownership_markdown()` renders a deduplicated Markdown table of filers, ownership type, percent of class, and shares.
+1. **Beneficial Ownership (13D/13G)** — `apps/engine/tools/whale_tools.py` queries Supabase `institutional_whale_stakes` first via `fetch_whale_stakes_from_db()` (treating rows with `created_at` within 7 days as fresh). On a cache miss or stale cache, it fetches live from FMP's `/stable/acquisition-of-beneficial-ownership` endpoint and persists normalized (`min_percent=4.0`, plus exits) rows back into `institutional_whale_stakes` via `upsert_whale_stakes_to_db()`. `format_beneficial_ownership_markdown()` renders a deduplicated Markdown table of filers, ownership type, percent of class, and shares.
 2. **Form 13F Fund Portfolios** — `get_fund_holdings()` from `apps/engine/analysis/sec_13f_client.py` retrieves 13F filings for funds in `DEFAULT_THEMATIC_FUNDS` (e.g. `BERKSHIRE_HATHAWAY`, `COATUE`, `APPALOOSA`, `WHALE_ROCK`, `DUQUESNE`). `format_fund_holdings_markdown()` ranks positions by value with portfolio weight.
 3. **Query** — Agents call the `get_whale_holdings` tool (registered in `CANONICAL_TOOLS_REGISTRY` and `packages/config/tools.json`). Ticker and fund lookups can be combined in one call; fund names support partial matching against the curated list.
 

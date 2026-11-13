@@ -1,11 +1,85 @@
 """Tool handlers for Institutional Whale Holdings (Schedule 13D/13G and Form 13F)."""
 
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import httpx
 
 from analysis.sec_13f_client import DEFAULT_THEMATIC_FUNDS, get_fund_holdings
 from core.config import FMP_API_KEY, logger
+from core.db import get_supabase_client
 
 FMP_STABLE_URL = "https://financialmodelingprep.com/stable"
+
+
+def _db_row_to_filing_dict(row: dict[str, Any]) -> dict[str, Any]:
+    """Convert an institutional_whale_stakes row into FMP-compatible dict fields for formatting."""
+    return {
+        "symbol": row.get("symbol", ""),
+        "nameOfReportingPerson": row.get("filer_name") or "Unknown",
+        "typeOfReportingPerson": row.get("reporting_type") or "-",
+        "percentOfClass": row.get("percent_of_class") or 0.0,
+        "amountBeneficiallyOwned": row.get("shares_beneficially_owned") or 0.0,
+        "filingDate": row.get("filing_date") or "",
+        "filingType": row.get("filing_type") or "13G",
+        "isExit": bool(row.get("is_exit", False)),
+    }
+
+
+async def fetch_whale_stakes_from_db(symbol: str, limit: int = 15, days: int = 180) -> list[dict[str, Any]]:
+    """Query cached Schedule 13D/13G stakes for a symbol from institutional_whale_stakes."""
+    cutoff_date = (datetime.now(UTC) - timedelta(days=days)).date().isoformat()
+    try:
+        sb = get_supabase_client()
+        res = (
+            sb.table("institutional_whale_stakes")
+            .select(
+                "symbol, filer_name, filer_cik, filing_date, accepted_date, "
+                "percent_of_class, shares_beneficially_owned, reporting_type, filing_type, is_exit, source_url, created_at"
+            )
+            .eq("symbol", symbol.upper().strip())
+            .gte("filing_date", cutoff_date)
+            .order("filing_date", desc=True)
+            .limit(max(limit * 3, 30))
+            .execute()
+        )
+        return list(getattr(res, "data", None) or [])
+    except Exception:
+        logger.exception("Failed fetching institutional_whale_stakes from DB for %s", symbol)
+        return []
+
+
+def _is_whale_cache_fresh(db_rows: list[dict[str, Any]], max_age_days: int = 7) -> bool:
+    """Return True if cached DB whale rows were ingested within max_age_days."""
+    if not db_rows:
+        return False
+    timestamps = [row.get("created_at") for row in db_rows if row.get("created_at")]
+    if not timestamps:
+        return True
+    cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
+    for ts in timestamps:
+        try:
+            parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=UTC)
+            if parsed >= cutoff:
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+async def upsert_whale_stakes_to_db(records: list[dict[str, Any]]) -> int:
+    """Persist normalized 13D/13G filings into institutional_whale_stakes."""
+    if not records:
+        return 0
+    try:
+        from ingest.whale_fetchers import upsert_institutional_whale_stakes
+
+        return await upsert_institutional_whale_stakes(records)
+    except Exception:
+        logger.exception("Failed upserting whale stakes to DB")
+        return 0
 
 
 async def fetch_beneficial_ownership_from_fmp(symbol: str) -> list[dict]:
@@ -28,8 +102,8 @@ async def fetch_beneficial_ownership_from_fmp(symbol: str) -> list[dict]:
             if not isinstance(data, list):
                 return []
             return data
-    except Exception as e:
-        logger.warning("Failed to fetch beneficial ownership from FMP: %s", e)
+    except Exception:
+        logger.exception("Failed to fetch beneficial ownership from FMP for %s", symbol)
         return []
 
 
@@ -129,10 +203,22 @@ async def handle_get_whale_holdings(
 
     sections = []
 
-    # 1. If ticker is requested, retrieve Schedule 13D/13G whale blockholders
+    # 1. If ticker is requested, retrieve Schedule 13D/13G whale blockholders (DB-first with staleness TTL, FMP fallback)
     if ticker:
-        filings = await fetch_beneficial_ownership_from_fmp(ticker.strip().upper())
-        sec_md = format_beneficial_ownership_markdown(filings, ticker.strip().upper(), limit=limit)
+        clean_symbol = ticker.strip().upper()
+        db_rows = await fetch_whale_stakes_from_db(clean_symbol, limit=limit)
+        if _is_whale_cache_fresh(db_rows):
+            filings = [_db_row_to_filing_dict(row) for row in db_rows]
+        else:
+            filings = await fetch_beneficial_ownership_from_fmp(clean_symbol)
+            if filings:
+                from ingest.whale_fetchers import filter_whale_stakes
+
+                normalized = filter_whale_stakes(filings, min_percent=4.0, max_records=max(limit * 3, 50))
+                await upsert_whale_stakes_to_db(normalized)
+            elif db_rows:
+                filings = [_db_row_to_filing_dict(row) for row in db_rows]
+        sec_md = format_beneficial_ownership_markdown(filings, clean_symbol, limit=limit)
         sections.append(sec_md)
 
     # 2. If fund_name is requested, retrieve 13F holdings

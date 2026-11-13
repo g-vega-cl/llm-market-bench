@@ -145,8 +145,8 @@ async def upsert_institutional_whale_stakes(records: list[dict[str, Any]]) -> in
         )
         data = getattr(res, "data", None)
         return len(data) if data else len(records)
-    except Exception as e:
-        logger.error("Failed to upsert institutional_whale_stakes: %s", e)
+    except Exception:
+        logger.exception("Failed to upsert institutional_whale_stakes")
         return 0
 
 

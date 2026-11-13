@@ -86,9 +86,10 @@ async def test_fetch_beneficial_ownership_from_fmp():
 
 @pytest.mark.asyncio
 async def test_handle_get_whale_holdings_by_ticker():
-    """Verify handle_get_whale_holdings fetches and formats ticker blockholders."""
+    """Verify handle_get_whale_holdings fetches and formats ticker blockholders without hidden DB network fallbacks."""
     mock_data = [
         {
+            "symbol": "NVDA",
             "nameOfReportingPerson": "Coatue Management LLC",
             "typeOfReportingPerson": "IA",
             "percentOfClass": 5.2,
@@ -96,7 +97,11 @@ async def test_handle_get_whale_holdings_by_ticker():
             "filingDate": "2026-05-15",
         }
     ]
-    with patch("tools.whale_tools.fetch_beneficial_ownership_from_fmp", new_callable=AsyncMock) as mock_fetch:
+    with (
+        patch("tools.whale_tools.fetch_whale_stakes_from_db", new_callable=AsyncMock, return_value=[]),
+        patch("tools.whale_tools.fetch_beneficial_ownership_from_fmp", new_callable=AsyncMock) as mock_fetch,
+        patch("tools.whale_tools.upsert_whale_stakes_to_db", new_callable=AsyncMock, return_value=1),
+    ):
         mock_fetch.return_value = mock_data
         out = await handle_get_whale_holdings(ticker="NVDA")
         assert "Coatue Management LLC" in out
@@ -126,3 +131,101 @@ async def test_execute_get_whale_holdings_tool():
         res = await execute_get_whale_holdings_tool(ticker="TSLA")
         assert res == "Whale Data"
         mock_handle.assert_called_once_with(ticker="TSLA", fund_name=None, limit=15)
+
+
+@pytest.mark.asyncio
+async def test_handle_get_whale_holdings_db_hit_skips_fmp():
+    """Verify DB cache hit returns formatted institutional_whale_stakes rows without calling FMP."""
+    from tools.whale_tools import fetch_whale_stakes_from_db  # noqa: F401
+
+    db_rows = [
+        {
+            "symbol": "NVDA",
+            "filer_name": "Vanguard Group Inc",
+            "reporting_type": "IA",
+            "filing_type": "13G",
+            "percent_of_class": 8.45,
+            "shares_beneficially_owned": 200000000,
+            "filing_date": "2026-10-15",
+            "is_exit": False,
+        }
+    ]
+    with (
+        patch("tools.whale_tools.fetch_whale_stakes_from_db", new_callable=AsyncMock, return_value=db_rows) as mock_db,
+        patch("tools.whale_tools.fetch_beneficial_ownership_from_fmp", new_callable=AsyncMock) as mock_fmp,
+    ):
+        out = await handle_get_whale_holdings(ticker="NVDA")
+        assert "Vanguard Group Inc" in out
+        assert "8.45%" in out
+        mock_db.assert_awaited_once_with("NVDA", limit=15)
+        mock_fmp.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handle_get_whale_holdings_db_miss_falls_back_and_upserts():
+    """Verify DB cache miss fetches from FMP and persists normalized rows to institutional_whale_stakes."""
+    fmp_rows = [
+        {
+            "symbol": "NVDA",
+            "nameOfReportingPerson": "BlackRock Inc",
+            "typeOfReportingPerson": "HC",
+            "percentOfClass": 7.12,
+            "amountBeneficiallyOwned": 175000000,
+            "filingDate": "2026-10-18",
+            "url": "https://www.sec.gov/Archives/edgar/data/1045810/13g.htm",
+        }
+    ]
+    with (
+        patch("tools.whale_tools.fetch_whale_stakes_from_db", new_callable=AsyncMock, return_value=[]),
+        patch(
+            "tools.whale_tools.fetch_beneficial_ownership_from_fmp",
+            new_callable=AsyncMock,
+            return_value=fmp_rows,
+        ) as mock_fmp,
+        patch("tools.whale_tools.upsert_whale_stakes_to_db", new_callable=AsyncMock, return_value=1) as mock_upsert,
+    ):
+        out = await handle_get_whale_holdings(ticker="NVDA")
+        assert "BlackRock Inc" in out
+        assert "7.12%" in out
+        mock_fmp.assert_awaited_once_with("NVDA")
+        mock_upsert.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_get_whale_holdings_stale_db_cache_refreshes_from_fmp():
+    """Verify DB cache rows older than TTL trigger an FMP refresh."""
+    stale_rows = [
+        {
+            "symbol": "PLTR",
+            "filer_name": "Stale Fund LP",
+            "reporting_type": "IA",
+            "filing_type": "13G",
+            "percent_of_class": 5.5,
+            "shares_beneficially_owned": 10000000,
+            "filing_date": "2026-08-01",
+            "created_at": "2026-08-01T00:00:00+00:00",
+            "is_exit": False,
+        }
+    ]
+    fresh_fmp_rows = [
+        {
+            "symbol": "PLTR",
+            "nameOfReportingPerson": "Fresh Activist Partners",
+            "typeOfReportingPerson": "IA",
+            "percentOfClass": 6.4,
+            "amountBeneficiallyOwned": 15000000,
+            "filingDate": "2026-11-10",
+            "url": "https://www.sec.gov/Archives/edgar/data/1321655/13d.htm",
+        }
+    ]
+    with (
+        patch("tools.whale_tools.fetch_whale_stakes_from_db", new_callable=AsyncMock, return_value=stale_rows),
+        patch(
+            "tools.whale_tools.fetch_beneficial_ownership_from_fmp", new_callable=AsyncMock, return_value=fresh_fmp_rows
+        ) as mock_fmp,
+        patch("tools.whale_tools.upsert_whale_stakes_to_db", new_callable=AsyncMock, return_value=1) as mock_upsert,
+    ):
+        out = await handle_get_whale_holdings(ticker="PLTR")
+        assert "Fresh Activist Partners" in out
+        mock_fmp.assert_awaited_once_with("PLTR")
+        mock_upsert.assert_awaited_once()

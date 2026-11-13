@@ -72,7 +72,13 @@ const queryMemories = createServerFn({ method: 'GET' })
 
 export const Route = createFileRoute('/memories/')({
     loader: async () => {
-        const categories = ['MARKET_EVENT', 'CALENDAR_EVENT', 'POST_MORTEM', 'ACADEMIC_PAPER'];
+        const categories = [
+            'MARKET_EVENT',
+            'CALENDAR_EVENT',
+            'GOVERNMENT_INCENTIVE',
+            'POST_MORTEM',
+            'ACADEMIC_PAPER',
+        ];
 
         const [allRes, ...catResults] = await Promise.all([
             getMemories({ data: { cursor: undefined, category: undefined, limit: 5 } }),

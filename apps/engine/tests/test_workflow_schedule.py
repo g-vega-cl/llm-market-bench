@@ -347,3 +347,25 @@ def test_generate_newsletter_workflow_openai_key():
     step_env = run_step.get("env", {})
     assert "OPENAI_API_KEY" in step_env, f"Expected OPENAI_API_KEY in step env, found: {list(step_env.keys())}"
     assert step_env["OPENAI_API_KEY"] == "${{ secrets.OPENAI_API_KEY }}"
+
+
+def test_sector_predictions_workflow_env_keys():
+    """Verify sector-predictions.yml injects FRED_API_KEY and FMP_API_KEY into the sector predictor step."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    sector_yml_path = root / ".github" / "workflows" / "sector-predictions.yml"
+
+    assert sector_yml_path.exists(), f"Could not find workflow file at {sector_yml_path}"
+
+    with open(sector_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    jobs = config.get("jobs", {})
+    job = jobs.get("run-predictions", {})
+    steps = job.get("steps", [])
+
+    pred_step = next((s for s in steps if "sector_predictor.py" in s.get("run", "")), None)
+    assert pred_step is not None, "Could not find sector_predictor.py step in sector-predictions.yml"
+
+    step_env = pred_step.get("env", {})
+    assert step_env.get("FRED_API_KEY") == "${{ secrets.FRED_API_KEY }}"
+    assert step_env.get("FMP_API_KEY") == "${{ secrets.FMP_API_KEY }}"

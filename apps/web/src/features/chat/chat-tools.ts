@@ -163,10 +163,7 @@ let cachedSchemaSummary: string | null = null;
 let cachedSchemaTimestamp = 0;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-const FALLBACK_SCHEMA_SUMMARY = `Available Database Tables:
-- portfolios: id, agent_name, cash, total_equity, updated_at
-- trades: id, ticker, action, quantity, price, model_name, thesis, reasoning, created_at
-- memories: id, title, content, tickers, tags, importance_score, possible_scenarios, created_at
+const SHARED_STATIC_TABLES_SUMMARY = `- memories: id, title, content, tickers, tags, importance_score, possible_scenarios, created_at
 - cause_and_effect: id, cause, effect, tickers, confidence, horizon, created_at
 - market_feeling: id, sentiment, confidence, why_explanation, attempts_summary, created_at
 - portfolio_snapshots: id, agent_name, snapshot_date, total_equity, daily_pnl
@@ -174,7 +171,18 @@ const FALLBACK_SCHEMA_SUMMARY = `Available Database Tables:
 - prompt_experiments: id, prompt_tag, confidence, track_id, research_reasoning, created_at
 - generated_newsletters: id, title, content, created_at
 - decisions: id, model_name, ticker, action, thesis, created_at
-- leaderboard: rank, model_name, win_rate, return_pct, sharpe_ratio`;
+- leaderboard: rank, model_name, win_rate, return_pct, sharpe_ratio
+- gov_macro_liquidity: record_date, tga_balance, tot_pub_debt, debt_held_public, intragov_holdings, monthly_deficit_surplus
+- gov_contracts: country, award_id, recipient_name, award_amount, currency, agency_name, award_date, description
+- congress_trades: chamber, symbol, representative_name, transaction_date, disclosure_date, transaction_type, amount_range
+- insider_trades: symbol, reporting_name, filing_date, transaction_date, transaction_type, securities_transacted, total_value
+- institutional_whale_stakes: symbol, filer_name, filing_date, filing_type, percent_of_class, shares_beneficially_owned, is_exit
+- fred_series_cache: series_id, title, units, frequency, latest_date, latest_value, observations, fetched_at`;
+
+const FALLBACK_SCHEMA_SUMMARY = `Available Database Tables:
+- portfolios: id, agent_name, cash, total_equity, updated_at
+- trades: id, ticker, action, quantity, price, model_name, thesis, reasoning, created_at
+${SHARED_STATIC_TABLES_SUMMARY}`;
 
 export async function getDatabaseSchemaSummary(supabaseClient: unknown): Promise<string> {
     const now = Date.now();
@@ -201,15 +209,7 @@ export async function getDatabaseSchemaSummary(supabaseClient: unknown): Promise
             dynamicSummary += sampleTrades
                 ? `- trades: ${Object.keys(sampleTrades[0] || {}).join(', ') || 'id, ticker, action, quantity, price, model_name, thesis, created_at'}\n`
                 : '- trades: id, ticker, action, quantity, price, model_name, thesis, created_at\n';
-            dynamicSummary += `- memories: id, title, content, tickers, tags, importance_score, possible_scenarios, created_at\n`;
-            dynamicSummary += `- cause_and_effect: id, cause, effect, tickers, confidence, horizon, created_at\n`;
-            dynamicSummary += `- market_feeling: id, sentiment, confidence, why_explanation, created_at\n`;
-            dynamicSummary += `- portfolio_snapshots: id, agent_name, snapshot_date, total_equity, daily_pnl\n`;
-            dynamicSummary += `- sector_predictions: id, prediction_date, target_date, model_name, predicted_sector, status\n`;
-            dynamicSummary += `- prompt_experiments: id, prompt_tag, confidence, track_id, research_reasoning, created_at\n`;
-            dynamicSummary += `- generated_newsletters: id, title, content, created_at\n`;
-            dynamicSummary += `- decisions: id, model_name, ticker, action, thesis, created_at\n`;
-            dynamicSummary += `- leaderboard: rank, model_name, win_rate, return_pct, sharpe_ratio`;
+            dynamicSummary += SHARED_STATIC_TABLES_SUMMARY;
 
             cachedSchemaSummary = dynamicSummary;
             cachedSchemaTimestamp = now;
@@ -256,6 +256,28 @@ async function performSupabaseSelect(
     return await query.limit(params.limitCount);
 }
 
+const DEFAULT_ORDER_BY_COLUMN: Record<string, string> = {
+    fred_series_cache: 'fetched_at',
+    portfolios: 'last_updated_at',
+    trades: 'executed_at',
+    gov_macro_liquidity: 'record_date',
+    gov_contracts: 'award_date',
+    institutional_whale_stakes: 'filing_date',
+    congress_trades: 'disclosure_date',
+    insider_trades: 'filing_date',
+};
+
+function stripVectorFields(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+    return rows.map((row) => {
+        if (!('embedding' in row)) {
+            return row;
+        }
+        const cleaned = { ...row };
+        delete cleaned.embedding;
+        return cleaned;
+    });
+}
+
 export async function executeDatabaseQueryTool(
     args: Record<string, unknown>,
     supabaseClient: unknown,
@@ -270,12 +292,13 @@ export async function executeDatabaseQueryTool(
         };
     }
 
+    const defaultOrderBy = DEFAULT_ORDER_BY_COLUMN[tableName] ?? 'created_at';
     const queryParams: QueryParams = {
         tableName,
         selectCols: String(args.select_columns || '*').trim(),
         filterCol: args.filter_column ? String(args.filter_column).trim() : null,
         filterVal: args.filter_value,
-        orderBy: args.order_by ? String(args.order_by).trim() : 'created_at',
+        orderBy: args.order_by ? String(args.order_by).trim() : defaultOrderBy,
         ascending: Boolean(args.ascending),
         limitCount: Math.min(Math.max(Number(args.limit) || 10, 1), 50),
     };
@@ -299,7 +322,7 @@ export async function executeDatabaseQueryTool(
                 };
             }
 
-            const rows = res.data || [];
+            const rows = stripVectorFields(res.data || []);
             return {
                 result: JSON.stringify({ table: tableName, count: rows.length, rows }),
                 trace: {

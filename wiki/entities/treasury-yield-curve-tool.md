@@ -33,8 +33,13 @@ Observations are pulled concurrently via `asyncio.gather` over `fetch_fred_serie
 
 This tool is the primary data source for the [[entities/bond-predictor]] and is available to autonomous analysis agents that reason about duration and rate risk. See [[entities/tool-registry]] for the full tool lineup.
 
+## Regime Classification & FRED Fallback
+
+The raw snapshot above is distinct from the regime classifier in `apps/engine/analytics/yield_curve.py`, which turns the same curve into a `BULL_STEEPENER` / `BEAR_STEEPENER` / `BULL_FLATTENER` / `BEAR_FLATTENER` / `UNAVAILABLE` call. That module prefers FMP `/stable/treasury-rates` and falls back to the identical FRED tenor aliases (`treasury_3m` … `treasury_30y`) when FMP is unavailable, so the two surfaces stay consistent. See [[concepts/yield-curve-regime]].
+
 ## Related
 
 - [[entities/bond-predictor]]
 - [[entities/tool-registry]]
+- [[concepts/yield-curve-regime]]
 - [[concepts/macroeconomic-data-fred]]

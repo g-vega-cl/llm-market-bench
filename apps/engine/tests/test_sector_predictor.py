@@ -296,3 +296,88 @@ async def test_minimax_max_completion_tokens_and_conciseness_note():
         assert call_info.get("max_completion_tokens") == 8192
         user_msg = next((m["content"] for m in call_info["messages"] if m["role"] == "user"), "")
         assert "concise" in user_msg.lower()
+
+
+@pytest.mark.asyncio
+async def test_sector_predictor_injects_fred_macro_and_yield_regime():
+    """Verify run_sector_predictions injects curated FRED macro dashboard and yield curve regime context."""
+    mock_client = MagicMock()
+
+    def mock_table_routing(table_name):
+        chain = MagicMock()
+        chain.select.return_value = chain
+        chain.eq.return_value = chain
+        chain.order.return_value = chain
+        chain.limit.return_value = chain
+        chain.upsert.return_value = chain
+        if table_name == "prompt_experiments":
+            chain.execute.return_value = MagicMock(data=[{"variant_tag": "test-tag", "prompt_content": "TEST_PROMPT"}])
+        elif table_name == "correlation_runs":
+            chain.execute.return_value = MagicMock(data=[{"id": "run-1", "run_date": "2026-08-01"}])
+        elif table_name == "correlation_data":
+            chain.execute.return_value = MagicMock(data=[{"ticker_a": "XLK", "ticker_b": "XLV", "pearson_corr": 0.1}])
+        else:
+            chain.execute.return_value = MagicMock(data=[])
+        return chain
+
+    mock_client.table.side_effect = mock_table_routing
+
+    captured_user_msgs = []
+
+    async def mock_minimax_json_call(messages, model=None, max_completion_tokens=None):
+        user_msg = next((m["content"] for m in messages if m["role"] == "user"), "")
+        captured_user_msgs.append(user_msg)
+        return {"predicted_sector": "XLK", "predicted_pair": ["XLK", "XLV"], "reasoning": "r"}
+
+    mock_minimax_client = MagicMock()
+    mock_minimax_client.chat_with_json_response = mock_minimax_json_call
+    mock_minimax_client.close = AsyncMock()
+
+    mock_inst_client = MagicMock()
+    mock_inst_client.chat.completions.create = AsyncMock(
+        return_value=SectorPredictionResponse(predicted_sector="XLK", predicted_pair=["XLK", "XLV"], reasoning="r")
+    )
+
+    with (
+        patch("tasks.sector_predictor.get_supabase_client", return_value=mock_client),
+        patch("tasks.sector_predictor.get_deepseek_client", return_value=mock_inst_client),
+        patch("tasks.sector_predictor.get_gemini_client", return_value=mock_inst_client),
+        patch("tasks.sector_predictor.get_openai_client", return_value=mock_inst_client),
+        patch("tasks.sector_predictor.MiniMaxClient", return_value=mock_minimax_client),
+        patch("tasks.sector_predictor.close_client", new_callable=AsyncMock),
+        patch(
+            "core.fred.get_curated_macro_dashboard",
+            new_callable=AsyncMock,
+            return_value="=== FRED MACROECONOMIC BENCHMARK DASHBOARD ===\nfed_funds: 4.33%",
+        ),
+        patch(
+            "analytics.yield_curve.get_yield_curve_regime_report",
+            new_callable=AsyncMock,
+            return_value={"regime": "BULL_STEEPENER", "markdown": "### Yield Curve Regime: BULL_STEEPENER"},
+        ),
+    ):
+        await run_sector_predictions(target_model=MINIMAX_MODEL)
+
+    assert len(captured_user_msgs) == 4
+    assert "FRED MACROECONOMIC BENCHMARK DASHBOARD" in captured_user_msgs[0]
+    assert "Yield Curve Regime: BULL_STEEPENER" in captured_user_msgs[0]
+
+
+@pytest.mark.asyncio
+async def test_build_sector_macro_context_omits_unavailable_yield_curve():
+    """When Treasury curve is UNAVAILABLE / source NONE, misleading fallback markdown is omitted."""
+    from tasks.sector_predictor import _build_sector_macro_context
+
+    with (
+        patch("core.fred.get_curated_macro_dashboard", new_callable=AsyncMock, return_value="=== Macro ==="),
+        patch(
+            "analytics.yield_curve.get_yield_curve_regime_report",
+            new_callable=AsyncMock,
+            return_value={"source": "NONE", "regime": "UNAVAILABLE", "markdown": "### Yield Curve UNAVAILABLE"},
+        ),
+        patch("core.llm.tools.execute_get_calendar_scenario_analysis_tool", new_callable=AsyncMock, return_value=""),
+    ):
+        ctx = await _build_sector_macro_context()
+
+    assert "=== Macro ===" in ctx
+    assert "Yield Curve UNAVAILABLE" not in ctx

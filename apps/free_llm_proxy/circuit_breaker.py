@@ -2,6 +2,11 @@
 
 import time
 
+# Deterministic client errors that mean "this provider can never serve this
+# request" rather than a transient fault. Cool down on these so the provider
+# is skipped on the next attempt instead of retried head-on.
+_DETERMINISTIC_4XX = frozenset({400, 403, 408, 409, 413, 422})
+
 
 class CircuitBreaker:
     def __init__(self, default_cooldown_seconds: int = 60):
@@ -35,7 +40,14 @@ class CircuitBreaker:
         status_code: int = 429,
         retry_after: float | str | None = None,
     ) -> None:
-        """Records an error and trips the circuit breaker on 429 or repeated 5xx."""
+        """Records an error and trips the circuit breaker on 429 or repeated 5xx.
+
+        Deterministic 4xx responses (400/403/408/409/413/422) mean this provider
+        cannot serve *this* request at any size/shape — e.g. groq's 413 payload
+        too-large or 400 bad request. They are treated like a rate limit: the
+        provider goes into cooldown instead of staying in rotation and being
+        re-probed first on every subsequent request.
+        """
         now = time.time()
         self._failures[provider_id] = self._failures.get(provider_id, 0) + 1
 
@@ -53,6 +65,11 @@ class CircuitBreaker:
                 except (ValueError, TypeError):
                     pass
             self._cooldowns[provider_id] = now + cooldown
+
+        elif status_code in _DETERMINISTIC_4XX:
+            # Deterministic client errors are not transient: cool down once so the
+            # provider is skipped on the next request instead of retried head-on.
+            self._cooldowns[provider_id] = now + self.default_cooldown
 
         elif status_code >= 500:
             # Trip cooldown if 2 consecutive 5xx errors occur

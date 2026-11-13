@@ -13,7 +13,7 @@ from apps.free_llm_proxy.client import execute_completion
 from apps.free_llm_proxy.db import AuditDB
 from apps.free_llm_proxy.discovery import ModelDiscovery
 from apps.free_llm_proxy.models import ChatCompletionRequest
-from apps.free_llm_proxy.router import Router
+from apps.free_llm_proxy.router import Router, estimate_prompt_tokens
 from apps.free_llm_proxy.security import UnauthorizedMonitor
 from apps.free_llm_proxy.session import SESSION_HEADER, derive_session_id
 from apps.free_llm_proxy.streaming import audited_sse_stream
@@ -227,7 +227,10 @@ async def chat_completions(
     )
     prompt_preview = extract_prompt_preview(req.messages, max_length=60)
 
-    candidate_chain = router.get_candidate_chain(req.model)
+    # Estimate prompt size so providers with a context ceiling below it are
+    # excluded from the chain before dispatch (e.g. groq's 413 at >8k tokens).
+    prompt_tokens = estimate_prompt_tokens(req.messages)
+    candidate_chain = router.get_candidate_chain(req.model, prompt_tokens=prompt_tokens)
     if not candidate_chain:
         raise HTTPException(
             status_code=503,

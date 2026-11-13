@@ -1333,6 +1333,172 @@ def test_auto_go_exhausts_cooling_free_pool_before_paid_provider(monkeypatch):
     assert set(free_ids).issubset(chain)
 
 
+def test_router_excludes_provider_over_prompt_token_cap():
+    """A provider whose max_prompt_tokens is below the estimate must leave the chain.
+
+    Reproduces the production skew: groq cannot serve ~50k-token prompts (HTTP 413),
+    so it must be dropped before dispatch rather than probed on every request.
+    """
+    router = Router()
+    router.providers["groq"]["max_prompt_tokens"] = 8000
+
+    small_chain = [
+        p[0] for p in router.get_candidate_chain("auto-go", prompt_tokens=4000)
+    ]
+    assert "groq" in small_chain
+
+    big_chain = [
+        p[0] for p in router.get_candidate_chain("auto-go", prompt_tokens=60000)
+    ]
+    assert "groq" not in big_chain
+    # Tier 1 rotation must still cover the request with the remaining healthy providers
+    assert "kilo" in big_chain or "gemini" in big_chain
+
+
+def test_circuit_breaker_trips_on_deterministic_4xx():
+    """HTTP 413/400/422 are deterministic, not transient: trip cooldown like a 429.
+
+    Before this fix only 429 and 5xx put a provider in cooldown, so groq was
+    re-probed first on every request after a 413, wasting a full round trip each time.
+    """
+    cb = CircuitBreaker(default_cooldown_seconds=60)
+    assert cb.is_healthy("groq")
+
+    cb.record_failure("groq", status_code=413)
+    assert not cb.is_healthy("groq")
+    assert 0 < cb.get_cooldown_remaining("groq") <= 60
+
+    # 400 and 422 behave the same way
+    cb.record_failure("groq", status_code=400)
+    assert not cb.is_healthy("groq")
+    cb.reset("groq")
+    assert cb.is_healthy("groq")
+
+
+def test_large_prompt_never_reaches_oversized_provider(client, monkeypatch):
+    """End-to-end: an oversized prompt must not even attempt groq (RED before fix)."""
+    attempted: list[str] = []
+
+    async def mock_fetch(provider_id, base_url, headers):
+        return ["test-model"]
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        attempted.append(provider_cfg.get("name"))
+        return (
+            200,
+            {
+                "id": "chatcmpl-mock",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": payload.get("model"),
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "OK"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 5,
+                    "total_tokens": 10,
+                },
+            },
+            {},
+        )
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    big_prompt = {"role": "user", "content": "x" * 40000}  # ~10k estimated tokens
+    resp = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "auto-go",
+            "messages": [big_prompt],
+        },
+    )
+    assert resp.status_code == 200
+    assert "Groq" not in attempted, (
+        "groq (max_prompt_tokens=8000) must be excluded before dispatch"
+    )
+
+
+def test_groq_413_cools_and_is_skipped_on_next_request(client, monkeypatch):
+    """After groq returns 413 it must stay out of rotation for the next request."""
+    attempted: list[str] = []
+
+    async def mock_fetch(provider_id, base_url, headers):
+        return ["test-model"]
+
+    async def mock_execute(provider_cfg, payload, stream=False):
+        name = provider_cfg.get("name")
+        attempted.append(name)
+        if name == "Groq":
+            return 413, {"error": {"message": "Request too large"}}, {}
+        if name == "Google Gemini":
+            return 429, {"error": {"message": "rate limited"}}, {"retry-after": "1"}
+        return (
+            200,
+            {
+                "id": "chatcmpl-mock",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": payload.get("model"),
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "OK"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 5,
+                    "total_tokens": 10,
+                },
+            },
+            {},
+        )
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    # Rotation counters are shared module state; reset so this test is deterministic
+    from apps.free_llm_proxy.server import router as server_router
+
+    server_router._tier_counters.clear()
+
+    headers = {"Authorization": "Bearer sk-test-master-key"}
+    small_prompt = {"role": "user", "content": "Say OK"}
+
+    resp1 = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "auto-go", "messages": [small_prompt]},
+    )
+    assert resp1.status_code == 200
+    assert attempted[:2] == ["Groq", "Google Gemini"], attempted
+    assert "Kilo Code" in attempted, attempted
+
+    attempted.clear()
+    resp2 = client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "auto-go", "messages": [small_prompt]},
+    )
+    assert resp2.status_code == 200
+    assert "Groq" not in attempted, (
+        "groq must stay in deterministic-4xx cooldown and be skipped on retry"
+    )
+
+
 def test_paid_provider_without_alias_allowlist_never_enters_auto(monkeypatch):
     """Paid routing must fail closed if its alias allowlist is missing or emptied."""
     monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")

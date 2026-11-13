@@ -7,6 +7,7 @@
       "tier": 1,
       "requires_auth": true,
       "models_endpoint": "/models",
+      "max_prompt_tokens": 8000,
       "preferred_patterns": [
         "*gpt-oss-120b*",
         "*qwen3.8-27b*",

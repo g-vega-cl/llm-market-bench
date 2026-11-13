@@ -131,17 +131,20 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 
 ### 2.5 Free LLM Proxy Provider Cooldowns & Live Intraday Streaming
 
-- **Source Files**: [`apps/free_llm_proxy/circuit_breaker.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/free_llm_proxy/circuit_breaker.py), [`apps/free_llm_proxy/server.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/free_llm_proxy/server.py), [`apps/engine/trading/runner.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/trading/runner.py), [`apps/engine/trading/tape_stream.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/trading/tape_stream.py)
+- **Source Files**: [`apps/free_llm_proxy/circuit_breaker.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/free_llm_proxy/circuit_breaker.py), [`apps/free_llm_proxy/server.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/free_llm_proxy/server.py), [`apps/free_llm_proxy/router.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/free_llm_proxy/router.py), [`apps/engine/trading/runner.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/trading/runner.py), [`apps/engine/trading/tape_stream.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/trading/tape_stream.py)
 - **Current Runtime Nature**:
   - `CircuitBreaker` in `apps/free_llm_proxy/circuit_breaker.py` tracks provider cooldown timestamps via `_cooldowns: dict[str, float]` and consecutive failure counts via `_failures: dict[str, int]`.
   - A provider is deemed healthy when `now >= cooldown_until`. On HTTP 429 or 2 consecutive 5xx errors, cooldown is set to `now + default_cooldown_seconds` (or parsed `retry-after`).
+  - **Deterministic 4xx cooldown**: `_DETERMINISTIC_4XX = frozenset({400, 403, 408, 409, 413, 422})`. These client errors are not transient — they mean the provider cannot serve *this* request at any shape (e.g. Groq's 413 payload-too-large, or a 400 malformed request). They trip an immediate cooldown exactly like a 429, so the provider is skipped on the next attempt instead of being re-probed head-on on every request.
+  - **Prompt-size pre-dispatch exclusion**: providers declare an optional `max_prompt_tokens` (Groq: `8000`) in `providers.json`. `Router.get_candidate_chain(requested_model, prompt_tokens=...)` estimates the request size with `estimate_prompt_tokens` (~4 chars/token over message `content` strings and text parts) and drops any provider whose documented ceiling is below the estimate before a round trip is ever attempted. A guaranteed 413 therefore never reaches the network.
   - Routing is cost-segmented: paid providers (`billing: "paid"`) are never placed ahead of a cooling free candidate for the `auto-go` / `auto-strata-go` aliases. Paid eligibility is fail-closed through an `auto_aliases` allowlist, and a paid provider is skipped entirely when its live model catalog is unavailable.
   - The breaker is per provider, not per cost class: `opencode-go` participates in the same cooldown FSM as free providers, but its healthy state never pre-empts the free cooling segment.
 
 ```text
        [Provider Healthy: now >= cooldown_until]
                            │
-       (HTTP 429 or 2 consecutive 5xx errors)
+   (HTTP 429 | 2 consecutive 5xx | deterministic 4xx:
+    400, 403, 408, 409, 413, 422)
                            ▼
      [Tripped Cooldown: now < cooldown_until]
                            │

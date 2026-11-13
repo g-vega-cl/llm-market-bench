@@ -1,11 +1,40 @@
 """Routing engine: tier waterfall, round-robin load balancing, and model resolution."""
 
 import itertools
+from typing import Any
+
 from apps.free_llm_proxy import config
 from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
 from apps.free_llm_proxy.discovery import ModelDiscovery
 
 PAID_BILLING = "paid"
+
+
+def estimate_prompt_tokens(messages: list[Any] | None) -> int:
+    """Cheap ~4-chars-per-token estimate of a request's prompt size.
+
+    Used only to skip providers whose documented context ceiling is below the
+    prompt (e.g. groq 413s on prompts over ~8k tokens). A real tokenizer would
+    be more accurate but adds a heavy dependency for a pre-dispatch filter; the
+    estimate errs high on prose and low on code, so treat it as a lower bound.
+    """
+    if not messages:
+        return 0
+    total = 0
+    for msg in messages:
+        if isinstance(msg, dict):
+            content = msg.get("content")
+        else:
+            content = getattr(msg, "content", None)
+        if isinstance(content, str):
+            total += len(content)
+        elif isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict):
+                    text = part.get("text")
+                    if isinstance(text, str):
+                        total += len(text)
+    return total // 4
 
 
 def _normalize_tier(raw: object, default: int = 2) -> int:
@@ -295,7 +324,9 @@ class Router:
                 resolved = matched or "gemini-flash-latest"
         return resolved.replace("*", "").strip()
 
-    def get_candidate_chain(self, requested_model: str) -> list[tuple[str, dict]]:
+    def get_candidate_chain(
+        self, requested_model: str, prompt_tokens: int | None = None
+    ) -> list[tuple[str, dict]]:
         """Returns ordered list of (provider_id, provider_cfg) to attempt for a request.
 
         Prioritizes Tier 1 healthy providers (round-robin balanced),
@@ -333,6 +364,16 @@ class Router:
         paid_buckets: dict[int, list[tuple[str, dict]]] = {}
 
         for p_id, p_cfg in active.items():
+            # Skip providers whose documented context ceiling is below this prompt.
+            # A 413 on a big prompt is deterministic; excluding before dispatch
+            # avoids a guaranteed-wasted round trip on every oversized request.
+            max_prompt = p_cfg.get("max_prompt_tokens")
+            if (
+                prompt_tokens is not None
+                and isinstance(max_prompt, int)
+                and prompt_tokens > max_prompt
+            ):
+                continue
             tier = _tier_for_provider(
                 p_id, p_cfg, model_lower, explicit_provider, include_strata_in_auto
             )

@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import {
-    fetchAllActivePortfolioPerformance,
-    fetchBenchmarkHistory,
+    fetchCachedComparisonData,
     fetchPortfolios,
 } from '~/features/portfolios/api/fetch-portfolios';
 import { BENCHMARK_OPTIONS } from '~/features/portfolios/components/BenchmarkSelector';
@@ -13,27 +12,32 @@ const getPortfolios = createServerFn({ method: 'GET' }).handler(async () => {
 });
 
 const getComparisonData = createServerFn({ method: 'GET' }).handler(async () => {
-    const { portfolios, startDate, endDate } = await fetchAllActivePortfolioPerformance(
-        36500, // 100 years (full history)
-    );
     const benchmarks = BENCHMARK_OPTIONS.map((opt) => opt.ticker);
-    const benchmarkData = await fetchBenchmarkHistory(benchmarks, startDate, endDate);
-    return { portfolios, startDate, endDate, benchmarkData };
+    return fetchCachedComparisonData(benchmarks, 36500);
 });
 
 export const Route = createFileRoute('/portfolios/')({
-    loader: async () => await getPortfolios(),
+    loader: async () => {
+        const [portfolios, comparisonData] = await Promise.all([
+            getPortfolios(),
+            getComparisonData(),
+        ]);
+        return { portfolios, comparisonData };
+    },
     component: RouteComponent,
 });
 
 function RouteComponent() {
-    const initialData = Route.useLoaderData();
+    const loaderData = Route.useLoaderData();
+    const initialData = Array.isArray(loaderData) ? loaderData : loaderData.portfolios;
+    const initialComparisonData = Array.isArray(loaderData) ? undefined : loaderData.comparisonData;
     const getPortfoliosFn = useServerFn(getPortfolios);
     const getComparisonDataFn = useServerFn(getComparisonData);
 
     return (
         <PortfoliosPage
             initialData={initialData}
+            initialComparisonData={initialComparisonData}
             fetchFn={() => getPortfoliosFn()}
             comparisonFetchFn={() => getComparisonDataFn()}
         />

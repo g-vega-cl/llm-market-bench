@@ -44,15 +44,14 @@ export function PortfolioComparisonSelector({
         if (value && canAdd) {
             onAdd(value);
         }
-        // Reset select back to placeholder value
         e.target.value = '';
     };
 
     return (
-        <div className="flex flex-col gap-3 p-3 bg-zinc-50 dark:bg-zinc-900/60 rounded-none border border-zinc-200/80 dark:border-zinc-800/80">
+        <div className="voxel-trough flex flex-col gap-2 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <span className="text-xs font-bold uppercase tracking-wider text-boxel-muted whitespace-nowrap">
                         Agents to Compare
                     </span>
                     <Badge
@@ -64,97 +63,20 @@ export function PortfolioComparisonSelector({
                         {selectedCount} / {maxSelected}
                     </Badge>
                     {selectedCount === maxSelected && (
-                        <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500 hidden sm:inline">
+                        <span className="text-xs font-normal text-boxel-muted whitespace-nowrap">
                             (Max reached)
                         </span>
                     )}
                 </div>
 
-                {onReset && (
-                    <Button
-                        variant="ghost"
-                        colorScheme="neutral"
-                        size="sm"
-                        rounded="none"
-                        onClick={onReset}
-                        className="text-xs py-1 px-2.5 h-auto text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-                    >
-                        Reset to Top 5
-                    </Button>
-                )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
-                {selectedIds.map((portfolioId) => {
-                    const portfolio = availablePortfolios.find(
-                        (p) => p.portfolioId === portfolioId,
-                    );
-                    const ownerName = portfolio ? formatOwnerName(portfolio.ownerId) : portfolioId;
-                    const color = portfolioColors[portfolioId] || '#94a3b8';
-                    const pct = values?.[portfolioId];
-
-                    return (
-                        <span
-                            key={portfolioId}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-xs font-bold bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm transition-all"
-                        >
-                            <span
-                                className="w-2 h-2 rounded-none shrink-0"
-                                style={{ backgroundColor: color }}
-                                aria-hidden="true"
-                            />
-                            <span className="capitalize text-zinc-700 dark:text-zinc-200 max-w-xs truncate">
-                                {ownerName}
-                            </span>
-                            {pct !== undefined && (
-                                <span
-                                    className={`font-bold font-mono ${
-                                        pct >= 0 ? 'text-emerald-600' : 'text-red-600'
-                                    }`}
-                                >
-                                    {pct >= 0 ? '+' : ''}
-                                    {pct.toFixed(2)}%
-                                </span>
-                            )}
-                            <button
-                                type="button"
-                                onClick={() => onRemove(portfolioId)}
-                                aria-label={`Remove ${ownerName} from comparison`}
-                                className="ml-0.5 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 rounded-none p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors focus:outline-none focus:ring-1 focus:ring-red-400"
-                            >
-                                <svg
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden="true"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </span>
-                    );
-                })}
-
-                {selectedCount === 0 && (
-                    <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400 italic py-1">
-                        No agents selected. Choose up to {maxSelected} below to compare performance.
-                    </span>
-                )}
-
-                {unselectedPortfolios.length > 0 && (
-                    <div className="relative inline-block">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    {unselectedPortfolios.length > 0 && (
                         <select
                             defaultValue=""
                             disabled={!canAdd}
                             onChange={handleSelectChange}
                             aria-label="Add agent to comparison"
-                            className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs rounded-none px-2.5 py-1 font-bold text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                            className="bg-boxel-surface border border-boxel-bevel-hi text-xs rounded-none px-2.5 py-1 font-bold text-boxel-ink focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                         >
                             <option value="" disabled>
                                 {canAdd ? '+ Add Agent...' : `+ Add Agent (Max ${maxSelected})`}
@@ -165,9 +87,99 @@ export function PortfolioComparisonSelector({
                                 </option>
                             ))}
                         </select>
-                    </div>
-                )}
+                    )}
+
+                    {onReset && (
+                        <Button
+                            variant="ghost"
+                            colorScheme="neutral"
+                            size="sm"
+                            rounded="none"
+                            onClick={onReset}
+                            className="text-xs py-1 px-2.5 h-auto text-boxel-muted hover:text-boxel-ink"
+                        >
+                            Reset to Top 5
+                        </Button>
+                    )}
+                </div>
             </div>
+
+            {selectedCount === 0 ? (
+                <div className="h-9 flex items-center text-xs font-normal text-boxel-muted italic">
+                    No agents selected. Choose up to {maxSelected} above to compare performance.
+                </div>
+            ) : (
+                <div
+                    data-testid="portfolio-selector-grid"
+                    className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2 items-stretch w-full min-w-0"
+                >
+                    {selectedIds.map((portfolioId) => {
+                        const portfolio = availablePortfolios.find(
+                            (p) => p.portfolioId === portfolioId,
+                        );
+                        const ownerName = portfolio
+                            ? formatOwnerName(portfolio.ownerId)
+                            : portfolioId;
+                        const color = portfolioColors[portfolioId] || '#94a3b8';
+                        const pct = values?.[portfolioId];
+
+                        return (
+                            <div
+                                key={portfolioId}
+                                data-testid="portfolio-selector-chip"
+                                className="w-full min-w-0 h-9 px-2.5 flex items-center justify-between gap-2 rounded-none text-xs font-bold bg-boxel-surface border border-boxel-bevel-hi transition-colors"
+                            >
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <span
+                                        className="w-2 h-2 rounded-none shrink-0"
+                                        style={{ backgroundColor: color }}
+                                        aria-hidden="true"
+                                    />
+                                    <span
+                                        data-testid="portfolio-chip-name"
+                                        className="capitalize text-boxel-ink min-w-0 flex-1 truncate"
+                                    >
+                                        {ownerName}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    {pct !== undefined && (
+                                        <span
+                                            className={`font-bold font-mono tabular-nums whitespace-nowrap ${
+                                                pct >= 0 ? 'text-success' : 'text-danger'
+                                            }`}
+                                        >
+                                            {pct >= 0 ? '+' : ''}
+                                            {pct.toFixed(2)}%
+                                        </span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => onRemove(portfolioId)}
+                                        aria-label={`Remove ${ownerName} from comparison`}
+                                        className="text-boxel-muted hover:text-danger rounded-none p-0.5 hover:bg-boxel-elevated transition-colors focus:outline-none focus:ring-1 focus:ring-danger shrink-0"
+                                    >
+                                        <svg
+                                            className="w-3 h-3"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M6 18L18 6M6 6l12 12"
+                                            />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

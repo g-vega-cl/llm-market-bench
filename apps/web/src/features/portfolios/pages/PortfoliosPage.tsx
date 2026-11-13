@@ -11,11 +11,19 @@ import { Link } from '@tanstack/react-router';
 import * as React from 'react';
 import { isQuerySettled } from '~/lib/query-client';
 import { formatEasternDateTime } from '~/utils/date';
-import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
+import type { ComparisonPayload } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PortfolioComparisonChart } from '../components/PortfolioComparisonChart';
+import {
+    COMPARISON_TIMEFRAMES,
+    type ComparisonTimeframe,
+    computeTimeframeSlice,
+    precomputeAllTimeframes,
+} from '../lib/comparison-timeframes';
 import { getPortfolioTrack, hasVerifier, isSystemPortfolio } from '../lib/config';
 import { portfolioQueries } from '../queries/options';
+
+export { COMPARISON_TIMEFRAMES, type ComparisonTimeframe, computeTimeframeSlice };
 
 type PortfolioWithActive = Portfolio & {
     is_active: boolean;
@@ -25,13 +33,9 @@ type PortfolioWithActive = Portfolio & {
 
 interface PortfoliosPageProps {
     initialData: PortfolioWithActive[];
+    initialComparisonData?: ComparisonPayload;
     fetchFn: () => Promise<PortfolioWithActive[]>;
-    comparisonFetchFn: () => Promise<{
-        portfolios: PortfolioPerformanceItem[];
-        startDate: string;
-        endDate: string;
-        benchmarkData: Record<string, BenchmarkDataPoint[]>;
-    }>;
+    comparisonFetchFn: () => Promise<ComparisonPayload>;
 }
 
 const SYSTEM_PORTFOLIO_SUBTITLES: Record<string, string> = {
@@ -201,7 +205,12 @@ function PortfolioCard({
     );
 }
 
-export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: PortfoliosPageProps) {
+export function PortfoliosPage({
+    initialData,
+    initialComparisonData,
+    fetchFn,
+    comparisonFetchFn,
+}: PortfoliosPageProps) {
     const listQuery = useSuspenseQuery({
         ...portfolioQueries.list({ fetchFn }),
         initialData,
@@ -209,13 +218,14 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
     const { data } = listQuery;
 
     const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('SPY');
-    const [timeframe, setTimeframe] = React.useState<'7d' | '30d' | '90d' | 'all'>('90d');
+    const [timeframe, setTimeframe] = React.useState<ComparisonTimeframe>('90d');
     const [isPending, startTransition] = React.useTransition();
 
     const comparisonQuery = useQuery({
         ...portfolioQueries.comparison({
             fetchFn: () => comparisonFetchFn(),
         }),
+        initialData: initialComparisonData,
         placeholderData: keepPreviousData,
     });
     const { data: comparisonData } = comparisonQuery;
@@ -223,67 +233,11 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
     const isQueriesSettled = isQuerySettled([listQuery, comparisonQuery]);
     const isChartSettled = isQueriesSettled && !isPending;
 
-    const processedComparisonData = React.useMemo(() => {
-        if (!comparisonData?.portfolios) return { portfolios: [], benchmarkData: {} };
-
-        const now = new Date();
-        const cutoffDate = (() => {
-            if (timeframe === 'all') return new Date(0);
-            const days = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : 90;
-            return new Date(
-                Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - days),
-            );
-        })();
-
-        const portfolios = comparisonData.portfolios.map((portfolio) => {
-            const filteredPerf = portfolio.performance.filter(
-                (p) => new Date(p.date) >= cutoffDate,
-            );
-            if (filteredPerf.length === 0) {
-                return {
-                    portfolioId: portfolio.portfolioId,
-                    ownerId: portfolio.ownerId,
-                    performance: [],
-                };
-            }
-
-            const firstEquity = filteredPerf[0].totalEquity;
-            const performance = filteredPerf.map((p) => ({
-                date: p.date,
-                totalEquity: p.totalEquity,
-                value: firstEquity > 0 ? ((p.totalEquity - firstEquity) / firstEquity) * 100 : 0,
-            }));
-
-            return {
-                portfolioId: portfolio.portfolioId,
-                ownerId: portfolio.ownerId,
-                performance,
-            };
-        });
-
-        const getReturnPct = (p: { performance: { value: number }[] }) => {
-            if (!p.performance || p.performance.length === 0) return -Infinity;
-            const val = p.performance[p.performance.length - 1]?.value;
-            return typeof val === 'number' && !Number.isNaN(val) ? val : -Infinity;
-        };
-
-        portfolios.sort((a, b) => {
-            const aVal = getReturnPct(a);
-            const bVal = getReturnPct(b);
-            if (bVal !== aVal) return bVal - aVal;
-            return a.ownerId.localeCompare(b.ownerId);
-        });
-
-        const benchmarkData: Record<string, BenchmarkDataPoint[]> = {};
-        if (comparisonData.benchmarkData) {
-            for (const [ticker, points] of Object.entries(comparisonData.benchmarkData)) {
-                const filteredPoints = points.filter((p) => new Date(p.date) >= cutoffDate);
-                benchmarkData[ticker] = filteredPoints;
-            }
-        }
-
-        return { portfolios, benchmarkData };
-    }, [comparisonData, timeframe]);
+    const precomputedTimeframes = React.useMemo(
+        () => precomputeAllTimeframes(comparisonData),
+        [comparisonData],
+    );
+    const processedComparisonData = precomputedTimeframes[timeframe];
 
     const todayPctMap = React.useMemo(() => {
         const map = new Map<string, number>();
@@ -332,7 +286,7 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="voxel-trough flex gap-1 p-1">
-                                {(['7d', '30d', '90d', 'all'] as const).map((tf) => (
+                                {COMPARISON_TIMEFRAMES.map((tf) => (
                                     <Button
                                         key={tf}
                                         variant={timeframe === tf ? 'solid' : 'ghost'}

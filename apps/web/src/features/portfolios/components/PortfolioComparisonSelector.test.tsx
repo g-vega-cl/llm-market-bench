@@ -142,4 +142,50 @@ describe('PortfolioComparisonSelector', () => {
         fireEvent.click(resetButton);
         expect(onReset).toHaveBeenCalledTimes(1);
     });
+
+    it('renders all portfolio chips in an equal-sized CSS grid with ellipsis truncation and Boxel tokens (zero dark: classes)', () => {
+        const variedPortfolios = [
+            { portfolioId: 'p-short', ownerId: 'ai' },
+            {
+                portfolioId: 'p-long',
+                ownerId: 'sys-smid-quality-compounder-extremely-long-portfolio-name',
+            },
+            { portfolioId: 'p-3', ownerId: 'deepseek-v4-flash' },
+            { portfolioId: 'p-4', ownerId: 'claude-3-5-sonnet' },
+            { portfolioId: 'p-5', ownerId: 'gemini-3-5-pro' },
+        ];
+
+        const { container } = render(
+            <PortfolioComparisonSelector
+                availablePortfolios={variedPortfolios}
+                selectedIds={['p-short', 'p-long', 'p-3', 'p-4', 'p-5']}
+                portfolioColors={mockColors}
+                values={{ 'p-short': 1.25, 'p-long': -12.34 }}
+                onAdd={vi.fn()}
+                onRemove={vi.fn()}
+            />,
+        );
+
+        const chipsGrid = container.querySelector('[data-testid="portfolio-selector-grid"]');
+        expect(chipsGrid).not.toBeNull();
+        expect(chipsGrid?.className).toContain(
+            'grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))]',
+        );
+        expect(chipsGrid?.className).toContain('items-stretch');
+
+        const chips = container.querySelectorAll('[data-testid="portfolio-selector-chip"]');
+        expect(chips.length).toBe(5);
+        for (const chip of chips) {
+            expect(chip.className).toContain('w-full');
+            expect(chip.className).toContain('min-w-0');
+            expect(chip.className).toContain('h-9');
+            const nameSpan = chip.querySelector('[data-testid="portfolio-chip-name"]');
+            expect(nameSpan).not.toBeNull();
+            expect(nameSpan?.className).toContain('truncate');
+            expect(nameSpan?.className).toContain('min-w-0');
+            expect(nameSpan?.className).toContain('flex-1');
+        }
+
+        expect(container.innerHTML).not.toContain('dark:');
+    });
 });

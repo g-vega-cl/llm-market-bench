@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **269**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **270**).
 
 ## Top Hotspots
 
@@ -13,11 +13,11 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/web/src/routes/__root.tsx` | 15 | 9 | 60.0% | 335 | 135 | **CRITICAL** |
-| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 19 | 6 | 31.6% | 400 | 114 | **CRITICAL** |
+| `apps/web/src/routes/__root.tsx` | 16 | 9 | 56.2% | 339 | 144 | **CRITICAL** |
+| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 19 | 6 | 31.6% | 361 | 114 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 19 | 5 | 26.3% | 341 | 95 | **HIGH** |
+| `apps/web/src/routes/-__root.test.tsx` | 13 | 7 | 53.8% | 479 | 91 | **HIGH** |
 | `apps/engine/tasks/daily_predictor.py` | 21 | 4 | 19.0% | 674 | 84 | **HIGH** |
-| `apps/web/src/routes/-__root.test.tsx` | 12 | 7 | 58.3% | 433 | 84 | **HIGH** |
 | `apps/engine/tasks/newsletter_generator.py` | 13 | 6 | 46.2% | 428 | 78 | **HIGH** |
 | `apps/engine/tests/test_newsletter_generator.py` | 12 | 5 | 41.7% | 603 | 60 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 13 | 4 | 30.8% | 450 | 52 | **HIGH** |
@@ -36,11 +36,13 @@ Files that consistently change in the same commit indicate implicit architectura
 | Primary File | Coupled File | Shared Commits | Coupling Strength |
 | :--- | :--- | :---: | :---: |
 | `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 12 | 100% |
-| `apps/web/src/routes/-__root.test.tsx` | `apps/web/src/routes/__root.tsx` | 11 | 92% |
+| `apps/web/src/routes/-__root.test.tsx` | `apps/web/src/routes/__root.tsx` | 12 | 92% |
+| `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 10 | 83% |
 | `apps/engine/tasks/newsletter_generator.py` | `apps/engine/tests/test_newsletter_generator.py` | 10 | 83% |
 | `apps/web/src/features/home/components/LiveAgentConsole.test.tsx` | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 9 | 100% |
-| `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 9 | 82% |
-| `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/tests/test_proxy.py` | 8 | 89% |
+| `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/tests/test_proxy.py` | 9 | 90% |
+| `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/router.py` | 8 | 89% |
+| `apps/free_llm_proxy/router.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 8 | 89% |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 8 | 80% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 8 | 50% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 8 | 50% |
@@ -48,8 +50,6 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/engine/core/llm/tools.py` | `packages/config/tools.json` | 8 | 50% |
 | `apps/web/src/features/home/api/fetch-intraday-tape.test.ts` | `apps/web/src/features/home/api/fetch-intraday-tape.ts` | 7 | 100% |
 | `apps/web/src/features/home/components/ConsoleQueueCard.test.tsx` | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 7 | 100% |
-| `apps/engine/trading/runner.py` | `apps/engine/trading/test_runner.py` | 7 | 100% |
-| `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/router.py` | 7 | 88% |
 
 ## Usage Guidelines for LLM Agents
 

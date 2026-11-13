@@ -17,8 +17,11 @@ vi.mock('~/lib/db', () => ({
 }));
 
 import {
+    COMPARISON_CACHE_TTL_MS,
+    clearComparisonPayloadCache,
     fetchAllActivePortfolioPerformance,
     fetchBenchmarkHistory,
+    fetchCachedComparisonData,
     fetchLatestBenchmarkQuote,
     fetchPortfolios,
     fetchPositions,
@@ -513,4 +516,85 @@ test('fetchBenchmarkHistory handles empty endDate string safely without invalid 
     const result = await fetchBenchmarkHistory(['SPY'], '2024-01-01', '');
     expect(result.SPY).toEqual([]);
     expect(mockClient.lte).not.toHaveBeenCalled();
+});
+
+test('fetchCachedComparisonData caches payload for 4 hours and serves fallback on transient error', async () => {
+    clearComparisonPayloadCache();
+
+    const mockPortfolios = [{ id: 'p-1', owner_id: 'gemini-3.5-flash-lite', total_equity: 10000 }];
+    const mockPerformance = [{ portfolio_id: 'p-1', date: '2026-06-15', total_equity: 10000 }];
+    const mockPrices = [{ ticker: 'SPY', price: 500, fetched_at: '2026-06-15T12:00:00Z' }];
+
+    let shouldFail = false;
+    let portfolioCalls = 0;
+
+    // biome-ignore lint/suspicious/noExplicitAny: mock client needs to be typed as any
+    const mockClient: any = {
+        from: vi.fn((table) => {
+            if (shouldFail) {
+                return {
+                    select: vi.fn(() => ({
+                        order: vi.fn(() =>
+                            Promise.resolve({ data: null, error: new Error('DB timeout') }),
+                        ),
+                    })),
+                };
+            }
+            if (table === 'portfolios') {
+                portfolioCalls++;
+                return {
+                    select: vi.fn(() => ({
+                        order: vi.fn(() => Promise.resolve({ data: mockPortfolios, error: null })),
+                    })),
+                };
+            }
+            if (table === 'portfolio_performance') {
+                return {
+                    select: vi.fn(() => ({
+                        in: vi.fn(() => ({
+                            order: vi.fn(() =>
+                                Promise.resolve({ data: mockPerformance, error: null }),
+                            ),
+                        })),
+                    })),
+                };
+            }
+            if (table === 'price_history') {
+                const chain: MockSupabaseChain = {
+                    range: vi.fn(() => Promise.resolve({ data: mockPrices, error: null })),
+                    order: vi.fn(() => chain),
+                    lte: vi.fn(() => chain),
+                    gte: vi.fn(() => chain),
+                    in: vi.fn(() => chain),
+                    select: vi.fn(() => chain),
+                };
+                return chain;
+            }
+            return mockClient;
+        }),
+    };
+    mockSupabaseClient = mockClient;
+
+    vi.useFakeTimers();
+    const baseTime = new Date('2026-06-15T12:00:00Z').getTime();
+    vi.setSystemTime(baseTime);
+
+    const first = await fetchCachedComparisonData(['SPY'], 36500);
+    expect(first.portfolios).toHaveLength(1);
+    expect(portfolioCalls).toBe(1);
+
+    // Within 4h TTL -> served from memory without hitting DB again
+    vi.setSystemTime(baseTime + 60 * 60 * 1000);
+    const second = await fetchCachedComparisonData(['SPY'], 36500);
+    expect(second).toBe(first);
+    expect(portfolioCalls).toBe(1);
+
+    // After 4h TTL -> refetches, and if DB fails, returns last known good cached payload
+    vi.setSystemTime(baseTime + COMPARISON_CACHE_TTL_MS + 1000);
+    shouldFail = true;
+    const fallback = await fetchCachedComparisonData(['SPY'], 36500);
+    expect(fallback).toBe(first);
+
+    vi.useRealTimers();
+    clearComparisonPayloadCache();
 });

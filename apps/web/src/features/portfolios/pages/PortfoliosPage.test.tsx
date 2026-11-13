@@ -1,5 +1,5 @@
 import type { Portfolio } from '@llm-market-bench/database';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getSystemPortfolioSubtitle, PortfoliosPage } from './PortfoliosPage';
@@ -314,6 +314,80 @@ describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
         await waitFor(() => {
             expect(lastComparisonChartProps?.isSettled).toBe(false);
             expect(screen.queryByText('+5.26%')).toBeNull();
+        });
+    });
+
+    it('hydrates immediately from initialComparisonData and switches timeframes (7D, 30D, 90D, ALL) instantaneously from precomputed cache without loading placeholder', async () => {
+        const now = new Date();
+        const fmt = (daysAgo: number) =>
+            new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysAgo))
+                .toISOString()
+                .split('T')[0];
+
+        const initialComparisonData = {
+            portfolios: [
+                {
+                    portfolioId: 'p1',
+                    ownerId: 'gemini-3-flash-preview',
+                    performance: [
+                        { date: fmt(120), totalEquity: 80000, value: 0 },
+                        { date: fmt(60), totalEquity: 90000, value: 12.5 },
+                        { date: fmt(20), totalEquity: 95000, value: 18.75 },
+                        { date: fmt(3), totalEquity: 100000, value: 25.0 },
+                        { date: fmt(0), totalEquity: 110000, value: 37.5 },
+                    ],
+                },
+                {
+                    portfolioId: 'p-sys',
+                    ownerId: 'sys-pead-drift',
+                    performance: [
+                        { date: fmt(120), totalEquity: 100000, value: 0 },
+                        { date: fmt(60), totalEquity: 102000, value: 2.0 },
+                        { date: fmt(20), totalEquity: 101000, value: 1.0 },
+                        { date: fmt(3), totalEquity: 90000, value: -10.0 },
+                        { date: fmt(0), totalEquity: 108000, value: 8.0 },
+                    ],
+                },
+            ],
+            startDate: fmt(120),
+            endDate: fmt(0),
+            benchmarkData: {
+                SPY: [
+                    { date: fmt(120), price: 500 },
+                    { date: fmt(3), price: 520 },
+                    { date: fmt(0), price: 530 },
+                ],
+            },
+        };
+
+        const fetchFn = vi.fn().mockResolvedValue(mockPortfolios);
+        const comparisonFetchFn = vi.fn().mockResolvedValue(initialComparisonData);
+
+        render(
+            <PortfoliosPage
+                initialData={mockPortfolios}
+                initialComparisonData={initialComparisonData}
+                fetchFn={fetchFn}
+                comparisonFetchFn={comparisonFetchFn}
+            />,
+        );
+
+        // Chart is mounted immediately on first render without "Loading performance comparison..."
+        expect(screen.queryByText(/Loading performance comparison/i)).toBeNull();
+        expect(screen.getByTestId('portfolio-comparison-chart')).toBeInTheDocument();
+
+        // Click 7D timeframe button - in the last 7 days, p-sys went 90k -> 108k (+20%) vs p1 100k -> 110k (+10%)
+        const btn7d = screen.getByRole('button', { name: '7D' });
+        fireEvent.click(btn7d);
+
+        await waitFor(() => {
+            expect(screen.getByTestId('portfolio-comparison-chart')).toBeInTheDocument();
+            const chartProps = lastComparisonChartProps as unknown as {
+                timeframe?: string;
+                data?: { portfolioId: string }[];
+            };
+            expect(chartProps?.timeframe).toBe('7d');
+            expect(chartProps?.data?.[0]?.portfolioId).toBe('p-sys');
         });
     });
 });

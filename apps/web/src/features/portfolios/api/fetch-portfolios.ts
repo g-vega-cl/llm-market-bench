@@ -348,6 +348,61 @@ export interface PortfolioPerformanceItem {
     performance: { date: string; value: number; totalEquity: number }[];
 }
 
+export interface ComparisonPayload {
+    portfolios: PortfolioPerformanceItem[];
+    startDate: string;
+    endDate: string;
+    benchmarkData: Record<string, BenchmarkDataPoint[]>;
+}
+
+export const COMPARISON_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+const cachedComparisonPayloads = new Map<string, { data: ComparisonPayload; fetchedAt: number }>();
+const inFlightComparisonRequests = new Map<string, Promise<ComparisonPayload>>();
+
+export function clearComparisonPayloadCache(): void {
+    cachedComparisonPayloads.clear();
+    inFlightComparisonRequests.clear();
+}
+
+export async function fetchCachedComparisonData(
+    benchmarks: string[],
+    maxDays = 36500,
+): Promise<ComparisonPayload> {
+    const cacheKey = `${[...benchmarks].sort().join(',')}:${maxDays}`;
+    const now = Date.now();
+    const cached = cachedComparisonPayloads.get(cacheKey);
+    if (cached && now - cached.fetchedAt < COMPARISON_CACHE_TTL_MS) {
+        return cached.data;
+    }
+
+    const existingInFlight = inFlightComparisonRequests.get(cacheKey);
+    if (existingInFlight) {
+        return existingInFlight;
+    }
+
+    const request = (async () => {
+        try {
+            const { portfolios, startDate, endDate } =
+                await fetchAllActivePortfolioPerformance(maxDays);
+            const benchmarkData = await fetchBenchmarkHistory(benchmarks, startDate, endDate);
+            const payload: ComparisonPayload = { portfolios, startDate, endDate, benchmarkData };
+            cachedComparisonPayloads.set(cacheKey, { data: payload, fetchedAt: Date.now() });
+            return payload;
+        } catch (error) {
+            if (cached) {
+                return cached.data;
+            }
+            throw error;
+        } finally {
+            inFlightComparisonRequests.delete(cacheKey);
+        }
+    })();
+
+    inFlightComparisonRequests.set(cacheKey, request);
+    return request;
+}
+
 export async function fetchAllActivePortfolioPerformance(maxDays: number = 90): Promise<{
     portfolios: PortfolioPerformanceItem[];
     startDate: string;

@@ -128,7 +128,6 @@ export function PortfolioComparisonChart({
         timeframe?: string;
         data: TooltipData | null;
     }>({ timeframe, data: null });
-    const [latestData, setLatestData] = React.useState<TooltipData | null>(null);
 
     const customSelectedIds = userSelection.timeframe === timeframe ? userSelection.ids : null;
     const clickedData = clickedSelection.timeframe === timeframe ? clickedSelection.data : null;
@@ -286,9 +285,7 @@ export function PortfolioComparisonChart({
         });
     }, [selectedPortfolioIds, data, setClickedData]);
 
-    React.useEffect(() => {
-        setLatestData(getLatestData());
-    }, [getLatestData]);
+    const latestData = React.useMemo(() => getLatestData(), [getLatestData]);
 
     const handleReset = React.useCallback(() => {
         setClickedData(null);
@@ -686,13 +683,13 @@ export function PortfolioComparisonChart({
     }, [displayData, data]);
 
     return (
-        <div className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none p-4 shadow-sm overflow-hidden flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+        <div className="voxel-card w-full bg-boxel-surface rounded-none p-4 overflow-hidden flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
+                <h3 className="text-xs font-bold text-boxel-muted uppercase tracking-wider">
                     Performance Comparison
                 </h3>
-                <div className="flex items-center gap-3">
-                    <div className="text-xs font-normal text-zinc-400">
+                <div className="flex items-center gap-2">
+                    <div className="text-xs font-normal text-boxel-muted">
                         Normalized to percentage returns
                     </div>
                     {isSettled && clickedData && (
@@ -726,32 +723,27 @@ export function PortfolioComparisonChart({
             )}
 
             {displayData && displayData.portfolioValues.length > 0 && (
-                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-none border border-zinc-100 dark:border-zinc-800 flex flex-col gap-2">
-                    <div className="text-xs font-normal text-zinc-500">{displayData.date}</div>
-                    <div className="space-y-1">
-                        {displayData.benchmarkValue !== undefined && (
-                            <div className="flex items-center justify-between gap-4 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-none bg-amber-500 shrink-0" />
-                                    <span className="text-amber-600 font-bold">
-                                        {BENCHMARK_OPTIONS.find(
-                                            (b) => b.ticker === selectedBenchmark,
-                                        )?.label || selectedBenchmark}
-                                    </span>
-                                </div>
-                                <span
-                                    className={`font-bold font-mono ${
-                                        displayData.benchmarkValue >= 0
-                                            ? 'text-emerald-600'
-                                            : 'text-red-600'
-                                    }`}
-                                >
-                                    {displayData.benchmarkValue >= 0 ? '+' : ''}
-                                    {displayData.benchmarkValue.toFixed(2)}%
+                <div className="voxel-trough p-3 flex flex-col gap-2">
+                    <div className="text-xs font-normal text-boxel-muted">{displayData.date}</div>
+                    {displayData.benchmarkValue !== undefined && (
+                        <div className="flex flex-wrap items-center justify-between gap-4 text-sm min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-2 h-2 rounded-none bg-accent shrink-0" />
+                                <span className="text-accent font-bold">
+                                    {BENCHMARK_OPTIONS.find((b) => b.ticker === selectedBenchmark)
+                                        ?.label || selectedBenchmark}
                                 </span>
                             </div>
-                        )}
-                    </div>
+                            <span
+                                className={`font-bold font-mono tabular-nums ${
+                                    displayData.benchmarkValue >= 0 ? 'text-success' : 'text-danger'
+                                }`}
+                            >
+                                {displayData.benchmarkValue >= 0 ? '+' : ''}
+                                {displayData.benchmarkValue.toFixed(2)}%
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
             <div className="w-full overflow-x-auto relative">
@@ -762,10 +754,9 @@ export function PortfolioComparisonChart({
                     height="400"
                     viewBox="0 0 800 400"
                     preserveAspectRatio="xMidYMid meet"
-                    style={{ transition: 'opacity 150ms ease' }}
                 />
             </div>
-            <div className="text-xs text-zinc-400 text-center">
+            <div className="text-xs text-boxel-muted text-center">
                 Click on chart to see performance at a specific date · Press Esc to reset
             </div>
         </div>

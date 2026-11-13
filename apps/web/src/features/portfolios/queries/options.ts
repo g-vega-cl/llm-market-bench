@@ -43,7 +43,8 @@ export const portfolioQueries = {
         queryOptions({
             queryKey: portfolioQueryKeys.comparison(),
             queryFn: opts?.fetchFn,
-            staleTime: Number.POSITIVE_INFINITY,
+            staleTime: 1000 * 60 * 60 * 4, // 4 hours
+            gcTime: 1000 * 60 * 60 * 4, // 4 hours
         }),
 
     benchmarks: {

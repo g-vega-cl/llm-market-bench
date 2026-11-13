@@ -7,7 +7,7 @@
     "stages": [
       {
         "id": "stage-1",
-        "title": "Stage 1: Catalyst & Technical Analysis",
+        "title": "Catalyst & Technical Analysis",
         "selected_tools": [
           "get_technical_indicators",
           "get_key_metrics",
@@ -44,68 +44,6 @@
           },
           {
             "id": "blk-format-1",
-            "type": "output_format"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "version": "2.0-push",
-    "name": "2-Stage Research -> Trade Decision",
-    "description": "Two sequential LLM calls: Stage 1 narrows candidates from news + memories; Stage 2 checks technicals & fundamentals before issuing trades.",
-    "cadence": "1d",
-    "stages": [
-      {
-        "id": "stage-1",
-        "title": "Stage 1: News & Memory Screener",
-        "selected_tools": ["get_todays_news_menu", "fetch_newsletter_content"],
-        "blocks": [
-          {
-            "id": "blk-s1-prompt",
-            "type": "prompt",
-            "text": "Identify up to 3 tickers most impacted by recent Fed/macro news and our past lessons."
-          },
-          {
-            "id": "blk-s1-news",
-            "type": "news",
-            "contains": ["Fed", "rates", "inflation"],
-            "recency_hours": 72
-          },
-          {
-            "id": "blk-s1-mem",
-            "type": "memories",
-            "contains": ["FOMC"],
-            "recency_hours": 336,
-            "category": "ALL",
-            "min_importance": 6
-          }
-        ]
-      },
-      {
-        "id": "stage-2",
-        "title": "Stage 2: Technical Audit & Execution",
-        "selected_tools": [
-          "get_technical_indicators",
-          "get_key_metrics",
-          "get_price_history"
-        ],
-        "blocks": [
-          {
-            "id": "blk-s2-prompt",
-            "type": "prompt",
-            "text": "Review Stage 1 candidates:\n{{prev_output}}\nVerify technicals and fundamentals."
-          },
-          {
-            "id": "blk-s2-tech",
-            "type": "technicals",
-            "rules": [
-              { "id": "rule-vwap", "metric": "Price vs VWAP", "operator": ">", "target": "0%" },
-              { "id": "rule-fcf", "metric": "FCF", "operator": ">", "target": "0" }
-            ]
-          },
-          {
-            "id": "blk-format-2",
             "type": "output_format"
           }
         ]

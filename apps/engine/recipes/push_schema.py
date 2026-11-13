@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PromptBlock(BaseModel):
@@ -89,3 +89,10 @@ class PushStrategy(BaseModel):
     description: str = ""
     cadence: Literal["5m", "1d"] = "1d"
     stages: list[StrategyStage] = Field(default_factory=list)
+
+    @field_validator("stages")
+    @classmethod
+    def validate_single_llm_stage(cls, stages: list[StrategyStage]) -> list[StrategyStage]:
+        if len(stages) > 1:
+            raise ValueError("Push strategies are limited to one LLM stage for the MVP")
+        return stages

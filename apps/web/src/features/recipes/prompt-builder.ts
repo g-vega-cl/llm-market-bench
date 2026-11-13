@@ -42,50 +42,21 @@ function formatOutputFormatPreview(): string {
 function formatBlockPreview(
     block: StrategyBlock,
     hydratedByBlockId: Record<string, string>,
-    stageIndex: number,
-): { text: string; usedPrev: boolean } {
-    if (block.type === 'prompt') {
-        const trimmed = block.text.trim();
-        const usedPrev = trimmed.includes('{{prev_output}}');
-        const text = usedPrev
-            ? trimmed.replaceAll(
-                  '{{prev_output}}',
-                  `<Output from Stage ${stageIndex} will be injected here>`,
-              )
-            : trimmed;
-        return { text, usedPrev };
-    }
-    if (block.type === 'news') {
-        return { text: formatNewsPreview(block, hydratedByBlockId[block.id]), usedPrev: false };
-    }
-    if (block.type === 'memories') {
-        return { text: formatMemoriesPreview(block, hydratedByBlockId[block.id]), usedPrev: false };
-    }
-    if (block.type === 'output_format') {
-        return { text: formatOutputFormatPreview(), usedPrev: false };
-    }
-    return { text: formatTechnicalsPreview(block), usedPrev: false };
+): string {
+    if (block.type === 'prompt') return block.text.trim();
+    if (block.type === 'news') return formatNewsPreview(block, hydratedByBlockId[block.id]);
+    if (block.type === 'memories') return formatMemoriesPreview(block, hydratedByBlockId[block.id]);
+    if (block.type === 'output_format') return formatOutputFormatPreview();
+    return formatTechnicalsPreview(block);
 }
 
 export function buildStagePromptPreview(
     stage: StrategyStage,
     hydratedByBlockId: Record<string, string> = {},
-    stageIndex = 0,
 ): string {
-    const sections: string[] = [];
-    let usedPrev = false;
-
-    for (const block of stage.blocks) {
-        const res = formatBlockPreview(block, hydratedByBlockId, stageIndex);
-        if (res.usedPrev) usedPrev = true;
-        if (res.text) sections.push(res.text);
-    }
-
-    if (stageIndex > 0 && !usedPrev) {
-        sections.push(
-            `[Previous Stage Output]:\n<Output from Stage ${stageIndex} will be appended here>`,
-        );
-    }
+    const sections = stage.blocks
+        .map((block) => formatBlockPreview(block, hydratedByBlockId))
+        .filter((text) => text.length > 0);
 
     return sections.join('\n\n') || '(Empty stage — add a block above)';
 }

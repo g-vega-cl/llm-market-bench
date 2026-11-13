@@ -75,41 +75,8 @@ export function RecipeStudioPage() {
         setPreview({ status: 'template' });
     };
 
-    const handleStageChange = (idx: number, updated: StrategyStage) => {
-        setStrategy((prev) => ({
-            ...prev,
-            stages: prev.stages.map((s, i) => (i === idx ? updated : s)),
-        }));
-        setPreview({ status: 'template' });
-    };
-
-    const handleAddStage = () => {
-        setStrategy((prev) => ({
-            ...prev,
-            stages: [
-                ...prev.stages,
-                {
-                    id: `stage-${Date.now()}`,
-                    title: `Stage ${prev.stages.length + 1}: Follow-up`,
-                    selected_tools: ['get_technical_indicators', 'get_key_metrics'],
-                    blocks: [
-                        {
-                            id: `blk-prompt-${Date.now()}`,
-                            type: 'prompt',
-                            text: 'Given {{prev_output}}, finalize BUY/SELL picks.',
-                        },
-                    ],
-                },
-            ],
-        }));
-        setPreview({ status: 'template' });
-    };
-
-    const handleRemoveStage = (idx: number) => {
-        setStrategy((prev) => ({
-            ...prev,
-            stages: prev.stages.filter((_, i) => i !== idx),
-        }));
+    const handleStageChange = (updated: StrategyStage) => {
+        setStrategy((prev) => ({ ...prev, stages: [updated] }));
         setPreview({ status: 'template' });
     };
 
@@ -202,7 +169,7 @@ export function RecipeStudioPage() {
                         </div>
                         <p className="text-xs font-normal text-muted-foreground">
                             Compose Prompt, News, Memories, Technicals, and Output Format blocks
-                            into one or more LLM stages with selectable tools.
+                            into a single LLM call with selectable tools.
                         </p>
                     </div>
 
@@ -257,29 +224,15 @@ export function RecipeStudioPage() {
                             </Button>
                         ))}
                     </div>
-                    <Button size="sm" variant="outline" onClick={handleAddStage}>
-                        + Add LLM Stage
-                    </Button>
                 </div>
 
                 <div className="flex flex-col gap-4">
-                    {strategy.stages.map((stage, idx) => (
-                        <div key={stage.id} className="flex flex-col gap-3">
-                            <StageBuilder
-                                stage={stage}
-                                stageIndex={idx}
-                                totalStages={strategy.stages.length}
-                                onChange={(updated) => handleStageChange(idx, updated)}
-                                onRemoveStage={() => handleRemoveStage(idx)}
-                            />
-                            <PromptVisualizer
-                                stage={stage}
-                                stageIndex={idx}
-                                previewState={preview}
-                                onPreviewLiveData={handlePreviewLiveData}
-                            />
-                        </div>
-                    ))}
+                    <StageBuilder stage={strategy.stages[0]} onChange={handleStageChange} />
+                    <PromptVisualizer
+                        stage={strategy.stages[0]}
+                        previewState={preview}
+                        onPreviewLiveData={handlePreviewLiveData}
+                    />
                 </div>
 
                 {execution.status === 'error' && (

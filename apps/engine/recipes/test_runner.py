@@ -7,8 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from recipes.push_schema import PushStrategy
 from recipes.runner import (
     enqueue_live_recipes,
+    load_starter_recipes,
     run_hourly_cycle,
     seed_starter_recipes,
 )
@@ -19,11 +21,11 @@ def test_seed_starter_recipes_inserts_missing_templates():
     tbl = MagicMock()
     sb.table.return_value = tbl
 
-    # Existing templates query returns empty -> both templates inserted
+    # Existing templates query returns empty -> every starter template inserted
     tbl.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
 
     count = seed_starter_recipes(sb)
-    assert count >= 2
+    assert count == len(load_starter_recipes())
     assert tbl.insert.call_count == count
     first_row = tbl.insert.call_args_list[0][0][0]
     assert first_row["is_template"] is True
@@ -78,6 +80,42 @@ def test_enqueue_live_recipes_skips_if_already_pending():
     assert inserted_batch[0]["recipe_id"] == "rec-2"
     assert inserted_batch[0]["mode"] == "live_turn"
     assert inserted_batch[0]["priority"] == 1
+
+
+def test_enqueue_live_recipes_skips_multi_stage_recipes():
+    sb = MagicMock()
+    recipes_tbl = MagicMock()
+    queue_tbl = MagicMock()
+
+    def _router(name: str):
+        if name == "strategy_recipes":
+            return recipes_tbl
+        if name == "recipe_execution_queue":
+            return queue_tbl
+        return MagicMock()
+
+    sb.table.side_effect = _router
+    recipes_chain = recipes_tbl.select.return_value.eq.return_value.limit.return_value
+    recipes_chain.execute.return_value.data = [
+        {
+            "id": "rec-two-calls",
+            "user_id": "u1",
+            "name": "Two Calls",
+            "graph_json": {"stages": [{"id": "s1"}, {"id": "s2"}]},
+        },
+    ]
+    queue_tbl.select.return_value.in_.return_value.limit.return_value.execute.return_value.data = []
+
+    assert enqueue_live_recipes(sb) == 0
+    queue_tbl.insert.assert_not_called()
+
+
+def test_starter_templates_are_single_llm_stage():
+    templates = load_starter_recipes()
+    assert templates
+    for tmpl in templates:
+        assert len(tmpl["stages"]) == 1, tmpl["name"]
+        PushStrategy(**tmpl)
 
 
 @pytest.mark.asyncio

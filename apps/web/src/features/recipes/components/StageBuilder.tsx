@@ -17,10 +17,7 @@ import { ToolPicker } from './ToolPicker';
 
 interface StageBuilderProps {
     stage: StrategyStage;
-    stageIndex: number;
-    totalStages: number;
     onChange: (updated: StrategyStage) => void;
-    onRemoveStage?: () => void;
 }
 
 function createBlock(type: StrategyBlock['type']): StrategyBlock {
@@ -47,13 +44,7 @@ function createBlock(type: StrategyBlock['type']): StrategyBlock {
     };
 }
 
-export function StageBuilder({
-    stage,
-    stageIndex,
-    totalStages,
-    onChange,
-    onRemoveStage,
-}: StageBuilderProps) {
+export function StageBuilder({ stage, onChange }: StageBuilderProps) {
     const updateBlock = (blockId: string, updater: (b: StrategyBlock) => StrategyBlock) => {
         onChange({
             ...stage,
@@ -82,11 +73,11 @@ export function StageBuilder({
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                 <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" size="sm">
-                        LLM Call #{stageIndex + 1}
+                        LLM Call
                     </Badge>
                     <input
                         type="text"
-                        aria-label={`Stage ${stageIndex + 1} Title`}
+                        aria-label="LLM Call Title"
                         value={stage.title}
                         onChange={(e) => onChange({ ...stage, title: e.target.value })}
                         className="border border-border bg-boxel-canvas px-2 py-1 text-sm font-bold text-foreground rounded-none"
@@ -147,11 +138,6 @@ export function StageBuilder({
                     >
                         + Output Format
                     </Button>
-                    {totalStages > 1 && onRemoveStage && (
-                        <Button size="sm" variant="outline" onClick={onRemoveStage}>
-                            Remove Stage
-                        </Button>
-                    )}
                 </div>
             </div>
 

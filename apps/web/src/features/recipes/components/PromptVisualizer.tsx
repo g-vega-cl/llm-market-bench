@@ -4,19 +4,17 @@ import type { PreviewState, StrategyStage } from '../types';
 
 interface PromptVisualizerProps {
     stage: StrategyStage;
-    stageIndex: number;
     previewState: PreviewState;
     onPreviewLiveData: () => void;
 }
 
 export function PromptVisualizer({
     stage,
-    stageIndex,
     previewState,
     onPreviewLiveData,
 }: PromptVisualizerProps) {
     const hydratedMap = previewState.status === 'hydrated' ? previewState.hydratedByBlockId : {};
-    const promptText = buildStagePromptPreview(stage, hydratedMap, stageIndex);
+    const promptText = buildStagePromptPreview(stage, hydratedMap);
 
     return (
         <div className="flex flex-col gap-2 border border-border bg-boxel-surface p-4 rounded-none">

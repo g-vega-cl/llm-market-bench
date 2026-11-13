@@ -13,10 +13,9 @@ function ControlledStageHarness({ initialStage }: { initialStage: StrategyStage 
     const [stage, setStage] = useState<StrategyStage>(initialStage);
     return (
         <div>
-            <StageBuilder stage={stage} stageIndex={0} totalStages={1} onChange={setStage} />
+            <StageBuilder stage={stage} onChange={setStage} />
             <PromptVisualizer
                 stage={stage}
-                stageIndex={0}
                 previewState={{ status: 'template' }}
                 onPreviewLiveData={vi.fn()}
             />

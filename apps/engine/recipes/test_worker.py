@@ -186,3 +186,36 @@ def test_process_unsupported_mode_fails_cleanly():
     failed_payloads = [call[0][0] for call in queue_table.update.call_args_list if call[0][0].get("status") == "failed"]
     assert len(failed_payloads) == 1
     assert "unsupported" in failed_payloads[0]["error_message"].lower()
+
+
+def test_process_multi_stage_payload_fails_cleanly():
+    client, queue_table, recipes_table, _ = _make_mock_supabase()
+    client.rpc.return_value.execute.return_value.data = [
+        {
+            "job_id": "job-multi-1",
+            "job_recipe_id": "rec-multi-2",
+            "job_user_id": "usr-333",
+            "job_mode": "backtest",
+            "job_priority": 10,
+        }
+    ]
+
+    stage = _sample_push_strategy().model_dump()["stages"][0]
+    recipe_select = MagicMock()
+    recipe_select.execute.return_value.data = {
+        "id": "rec-multi-2",
+        "name": "Two Calls",
+        "graph_json": {"name": "Two Calls", "cadence": "1d", "stages": [stage, {**stage, "id": "stage-2"}]},
+        "trial_count": 0,
+    }
+    recipes_table.select.return_value.eq.return_value.single.return_value = recipe_select
+
+    fake_backtest = AsyncMock(return_value={"mode": "backtest"})
+    with patch("recipes.worker.run_push_backtest", new=fake_backtest):
+        res = process_next_recipe_job(client)
+
+    assert res == "FAILED"
+    fake_backtest.assert_not_called()
+    failed_payloads = [call[0][0] for call in queue_table.update.call_args_list if call[0][0].get("status") == "failed"]
+    assert len(failed_payloads) == 1
+    assert "one llm stage" in failed_payloads[0]["error_message"].lower()

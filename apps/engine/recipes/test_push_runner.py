@@ -23,7 +23,7 @@ from recipes.push_runner import (
 from recipes.push_schema import PushStrategy
 
 
-def _sample_strategy(multi_stage: bool = False) -> PushStrategy:
+def _sample_strategy() -> PushStrategy:
     stages = [
         {
             "id": "stage-1",
@@ -51,22 +51,16 @@ def _sample_strategy(multi_stage: bool = False) -> PushStrategy:
             ],
         }
     ]
-    if multi_stage:
-        stages.append(
-            {
-                "id": "stage-2",
-                "title": "Trade Decision",
-                "selected_tools": ["get_price_history"],
-                "blocks": [
-                    {
-                        "id": "b5",
-                        "type": "prompt",
-                        "text": "Given {{prev_output}}, output BUY/SELL JSON.",
-                    }
-                ],
-            }
-        )
     return PushStrategy(name="Chip Tariff Momentum", cadence="1d", stages=stages)
+
+
+def test_push_strategy_rejects_more_than_one_llm_stage():
+    from pydantic import ValidationError
+
+    first = _sample_strategy().stages[0]
+    second = first.model_copy(update={"id": "stage-2"})
+    with pytest.raises(ValidationError, match="one LLM stage"):
+        PushStrategy(name="Two Calls", cadence="1d", stages=[first, second])
 
 
 def test_filter_news_rows_enforces_contains_and_point_in_time_recency():
@@ -149,7 +143,9 @@ def test_filter_memory_rows_enforces_contains_recency_category_and_importance():
 
 
 def test_hydrate_stage_prompt_renders_all_four_blocks_and_prev_output():
-    strategy = _sample_strategy(multi_stage=True)
+    from recipes.push_schema import PromptBlock, StrategyStage
+
+    strategy = _sample_strategy()
     as_of = datetime(2026, 3, 10, 14, 0, tzinfo=UTC)
     news = [
         {
@@ -177,7 +173,11 @@ def test_hydrate_stage_prompt_renders_all_four_blocks_and_prev_output():
     assert "P/E < 35" in p1
     assert "RSI < 70" in p1
 
-    p2 = hydrate_stage_prompt(strategy.stages[1], news, memories, as_of, prev_output="NVDA looks strong")
+    follow_up = StrategyStage(
+        id="stage-2",
+        blocks=[PromptBlock(id="b5", type="prompt", text="Given {{prev_output}}, output BUY/SELL JSON.")],
+    )
+    p2 = hydrate_stage_prompt(follow_up, news, memories, as_of, prev_output="NVDA looks strong")
     assert "NVDA looks strong" in p2
 
 
@@ -228,8 +228,8 @@ def _mock_sb_client(news_rows, memory_rows, price_rows):
 
 
 @pytest.mark.asyncio
-async def test_run_push_live_executes_multiple_stages_with_selected_tools():
-    strategy = _sample_strategy(multi_stage=True)
+async def test_run_push_live_makes_exactly_one_llm_call_with_selected_tools():
+    strategy = _sample_strategy()
     as_of = datetime(2026, 3, 10, 14, 0, tzinfo=UTC)
     sb = _mock_sb_client(
         news_rows=[
@@ -257,25 +257,22 @@ async def test_run_push_live_executes_multiple_stages_with_selected_tools():
 
     async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
         calls.append({"prompt": prompt, "tools": selected_tools, "cutoff": cutoff_date})
-        if len(calls) == 1:
-            return {"output": "Stage 1 says NVDA", "tool_calls": ["get_technical_indicators(NVDA)"]}
         return {
             "output": '[{"action": "BUY", "ticker": "NVDA"}]',
-            "tool_calls": ["get_price_history(NVDA)"],
+            "tool_calls": ["get_technical_indicators(NVDA)"],
         }
 
     result = await run_push_live(strategy, sb, llm_caller=fake_llm, as_of_utc=as_of)
 
-    assert len(result["stages"]) == 2
+    assert len(calls) == 1
+    assert len(result["stages"]) == 1
     assert calls[0]["tools"] == ["get_technical_indicators", "get_key_metrics"]
-    assert calls[1]["tools"] == ["get_price_history"]
-    assert "Stage 1 says NVDA" in calls[1]["prompt"]
     assert result["signals"] == [{"action": "BUY", "ticker": "NVDA"}]
 
 
 @pytest.mark.asyncio
 async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
-    strategy = _sample_strategy(multi_stage=False)
+    strategy = _sample_strategy()
     base_day = datetime(2026, 2, 2, 0, 0, tzinfo=UTC)
     prices = []
     for i in range(20):

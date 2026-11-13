@@ -6,6 +6,12 @@ import type { PushStrategy, RecipeAlert, StrategyRecipeRecord } from '../types';
 
 const ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
 
+export function assertSingleLlmStage(recipe: Pick<PushStrategy, 'stages'>): void {
+    if (!Array.isArray(recipe.stages) || recipe.stages.length !== 1) {
+        throw new Error('Invalid strategy: must contain exactly one LLM stage');
+    }
+}
+
 export async function fetchPublicRecipes(): Promise<StrategyRecipeRecord[]> {
     const db = getDbServerClient();
     const { data, error } = await db
@@ -78,9 +84,7 @@ export const saveRecipeFn = createServerFn({ method: 'POST' })
         const userId = user?.id || ANONYMOUS_USER_ID;
         const db = getDbAdminClient();
 
-        if (!recipe.stages || recipe.stages.length === 0) {
-            throw new Error('Invalid strategy: must contain at least one stage');
-        }
+        assertSingleLlmStage(recipe);
 
         const payload = {
             user_id: userId,

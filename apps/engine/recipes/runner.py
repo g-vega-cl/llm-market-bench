@@ -59,13 +59,13 @@ def seed_starter_recipes(sb_client: Any) -> int:
     return inserted
 
 
-def _is_push_v2_graph(raw_graph: Any) -> bool:
+def _is_single_stage_push_v2_graph(raw_graph: Any) -> bool:
     if isinstance(raw_graph, str):
         try:
             raw_graph = json.loads(raw_graph)
         except json.JSONDecodeError:
             return False
-    return isinstance(raw_graph, dict) and isinstance(raw_graph.get("stages"), list) and len(raw_graph["stages"]) > 0
+    return isinstance(raw_graph, dict) and isinstance(raw_graph.get("stages"), list) and len(raw_graph["stages"]) == 1
 
 
 def enqueue_live_recipes(sb_client: Any) -> int:
@@ -95,8 +95,12 @@ def enqueue_live_recipes(sb_client: Any) -> int:
         rec_id = str(rec.get("id", ""))
         if not rec_id or rec_id in open_ids:
             continue
-        if not _is_push_v2_graph(rec.get("graph_json")):
-            logger.warning("Skipping live recipe %s (%s): non-Push-v2 graph_json", rec.get("name"), rec_id)
+        if not _is_single_stage_push_v2_graph(rec.get("graph_json")):
+            logger.warning(
+                "Skipping live recipe %s (%s): graph_json is not a single-stage Push v2 strategy",
+                rec.get("name"),
+                rec_id,
+            )
             continue
         new_jobs.append(
             {

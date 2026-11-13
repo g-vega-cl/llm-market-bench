@@ -8,7 +8,7 @@ export const Route = createFileRoute('/recipes/')({
             ...seo({
                 title: 'Strategy Recipe Studio | Benchify',
                 description:
-                    'Multi-stage 5-block push strategy builder for news catalyst streams, historical memories, technical criteria, and LLM trading recipes.',
+                    'Single-call 5-block push strategy builder for news catalyst streams, historical memories, technical criteria, and LLM trading recipes.',
             }),
         ],
     }),

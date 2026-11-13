@@ -1,4 +1,4 @@
-"""Push-based multi-stage LLM execution & random 2-week point-in-time backtester."""
+"""Push-based single-call LLM execution & random 2-week point-in-time backtester."""
 
 from __future__ import annotations
 
@@ -172,7 +172,7 @@ async def run_push_live(
     llm_caller: LLMCaller | None = None,
     as_of_utc: datetime | None = None,
 ) -> dict[str, Any]:
-    """Run all Stages sequentially as of now (or as_of_utc) with selected tools."""
+    """Run the single LLM stage as of now (or as_of_utc) with selected tools."""
     now_utc = as_of_utc or datetime.now(UTC)
     caller = llm_caller or default_llm_caller
     news_rows, memory_rows = fetch_push_context_batch(sb_client, now_utc, _max_lookback_hours(strategy))

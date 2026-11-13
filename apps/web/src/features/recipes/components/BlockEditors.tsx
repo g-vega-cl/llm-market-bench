@@ -84,7 +84,7 @@ export function PromptBlockEditor({
             aria-label="Prompt text"
             value={block.text}
             onChange={(e) => onUpdate(e.target.value)}
-            placeholder="Write instructions for the LLM (use {{prev_output}} in Stage 2+ to reference prior stage output)..."
+            placeholder="Write instructions for the LLM..."
             className="w-full border border-border bg-boxel-surface p-2 text-xs font-normal text-foreground rounded-none"
         />
     );

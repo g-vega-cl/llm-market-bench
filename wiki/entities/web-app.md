@@ -29,7 +29,7 @@ This ensures the homepage benchmark reflects intraday SPY movement during market
 
 ## Specialized lab routes
 
-- **Recipe Studio** (`/recipes`): 5-block push-based multi-stage LLM strategy builder (`apps/web/src/features/recipes/`). Compose prompt, news, memories, technicals, and output-format blocks across sequential stages with curated tools, run random 2-week point-in-time backtests with dual Midpoint/Net P&L, and read in-app trade alerts. See [[entities/recipe-studio]].
+- **Recipe Studio** (`/recipes`): 5-block push-based single-call LLM strategy builder (`apps/web/src/features/recipes/`). Compose prompt, news, memories, technicals, and output-format blocks into one LLM call with curated tools, run random 2-week point-in-time backtests with dual Midpoint/Net P&L, and read in-app trade alerts. See [[entities/recipe-studio]].
 - **Autoresearch Arena** (`/autoresearch`): Renders the Unified Risk-Adjusted Z-Score with $\sigma$ unit suffix, baseline comparisons, and step-by-step arithmetic drawers (`ScoreBreakdown.tsx`, `ScoreCalculation.tsx`, see [[concepts/risk-adjusted-z-score]]).
 - **Daily Predictions** (`/daily-predictions`): Independent model tabs with strict track isolation and 4-pillar composite ratchet scores. See [[entities/daily-market-predictor]].
 - **Portfolio Detail Pages** (`/portfolios/:id` and `/renko`): Real-time portfolio analysis, performance charts, current positions, and recent trades audit trail in Eastern Time (`ET`).

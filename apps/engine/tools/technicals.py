@@ -43,9 +43,7 @@ def compute_technical_snapshot(
         cutoff_day = cutoff_date[:10]
         filtered = [h for h in history if str(h.get("fetched_at", ""))[:10] <= cutoff_day]
 
-    ordered = [
-        r for r in sorted(filtered, key=lambda r: str(r.get("fetched_at", ""))) if r.get("price") is not None
-    ]
+    ordered = [r for r in sorted(filtered, key=lambda r: str(r.get("fetched_at", ""))) if r.get("price") is not None]
     if not ordered:
         return {}
 

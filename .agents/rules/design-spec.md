@@ -114,7 +114,7 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Boxel** aesthetic inspired b
 
 ## 6. Information Density & Layout Budgets
 
-1. **Topbar 3-item budget**: The global navigation bar displays strictly 3 items: `B` (Home), `Portfolios`, and `Lab`. Zero sidebars.
+1. **Topbar 3-item budget & uniform button sizing**: The global navigation bar displays strictly 3 items: `B` (Home), `Portfolios`, and `Lab`. Zero sidebars. All buttons in the navbar must always be the same size: primary nav items (`B`, `Portfolios`, `Lab`) use identical square dimensions (`h-9 w-9`, `inline-flex items-center justify-center`), and the trailing auth button (`Login` / `Logout`) matches the exact same height (`h-9`).
 2. **Page 3-block budget**: Any page renders at most 3 major vertical blocks.
 3. **Row 3-stat budget**: Every table row or card slot displays at most 3 data points.
 4. **Zero cards inside cards**: Raised `.voxel-card` surfaces never nest inside another `.voxel-card`. Inner metrics, code blocks, formula bars, and tables sit inside recessed `.voxel-trough` slots.

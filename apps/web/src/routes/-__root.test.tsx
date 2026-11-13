@@ -6,7 +6,15 @@ import {
 } from '@tanstack/react-router';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { BriefcaseIcon, NavLink, navItems, PostHogAuthSync, RootDocument, Route } from './__root';
+import {
+    BeakerIcon,
+    BriefcaseIcon,
+    NavLink,
+    navItems,
+    PostHogAuthSync,
+    RootDocument,
+    Route,
+} from './__root';
 
 const mockPostHogProvider = vi.fn(({ children }) => <>{children}</>);
 const mockIdentify = vi.fn();
@@ -154,6 +162,53 @@ describe('Root layout navigation', () => {
         const nav = logoutLink.closest('nav');
         expect(nav).toBeInTheDocument();
         expect(nav?.className).not.toContain('flex-wrap');
+    });
+
+    it('all navbar buttons enforce uniform sizing (h-9 w-9 for nav items, h-9 for auth button)', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
+        const router = createRouter({ routeTree: testRoute, history: memoryHistory });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        await screen.findByText('Content');
+
+        for (const name of ['Home', 'Portfolios', 'Lab']) {
+            const link = screen.getByRole('link', { name });
+            expect(link).toHaveClass('inline-flex', 'items-center', 'justify-center', 'h-9', 'w-9');
+        }
+
+        const loginLink = screen.getByRole('link', { name: 'Login' });
+        expect(loginLink).toHaveClass('inline-flex', 'items-center', 'justify-center', 'h-9');
+    });
+
+    it('BriefcaseIcon and BeakerIcon render recognizable briefcase and conical flask SVGs', () => {
+        const { container: briefcaseContainer } = render(<BriefcaseIcon />);
+        const briefcaseSvg = briefcaseContainer.querySelector('svg');
+        expect(briefcaseSvg).toBeInTheDocument();
+        expect(briefcaseSvg?.querySelector('rect')).toBeInTheDocument();
+        expect(briefcaseSvg?.querySelectorAll('path').length).toBeGreaterThanOrEqual(2);
+
+        const { container: beakerContainer } = render(<BeakerIcon />);
+        const beakerSvg = beakerContainer.querySelector('svg');
+        expect(beakerSvg).toBeInTheDocument();
+        const beakerPaths = Array.from(beakerSvg?.querySelectorAll('path') ?? []).map((p) =>
+            p.getAttribute('d'),
+        );
+        expect(beakerPaths).toContain('M9 3h6');
+        expect(beakerPaths).toContain('M6.5 15h11');
+        expect(beakerPaths.length).toBeGreaterThanOrEqual(3);
     });
 });
 

@@ -180,8 +180,9 @@ export function BriefcaseIcon() {
             strokeLinecap="round"
             strokeLinejoin="round"
         >
-            <path d="M21 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V2h2l2 4-2 4h14l2-4-2-4h2z" />
-            <path d="M3 10h18v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" />
+            <rect x="2" y="7" width="20" height="14" rx="1" />
+            <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <path d="M2 12h20" />
         </svg>
     );
 }
@@ -198,9 +199,9 @@ export function BeakerIcon() {
             strokeLinecap="round"
             strokeLinejoin="round"
         >
-            <path d="M18 14h2v-4a6 6 0 00-6-6h-4a6 6 0 00-6 6v4h2" />
-            <path d="M12 10v4" />
-            <path d="M12 18v2" />
+            <path d="M9 3h6" />
+            <path d="M10 3v5.2L4.2 18.2A2 2 0 0 0 6 21h12a2 2 0 0 0 1.8-2.8L14 8.2V3" />
+            <path d="M6.5 15h11" />
         </svg>
     );
 }
@@ -234,7 +235,10 @@ export function NavLink({
                 className: 'bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated',
             }}
             activeOptions={{ exact }}
-            className={cn('voxel-btn py-1.5 shrink-0', isLogo ? 'px-2.5 font-mono' : 'px-3.5')}
+            className={cn(
+                'voxel-btn inline-flex items-center justify-center h-9 w-9 shrink-0',
+                isLogo && 'font-mono',
+            )}
         >
             {label}
         </Link>
@@ -338,14 +342,14 @@ export function RootDocument({ children }: { children: ReactNode }) {
                             {user ? (
                                 <Link
                                     to="/logout"
-                                    className="voxel-btn inline-flex items-center justify-center font-bold bg-boxel-trough text-danger hover:bg-danger/10 px-3 py-1.5 text-sm uppercase tracking-wider"
+                                    className="voxel-btn inline-flex items-center justify-center h-9 px-3 font-bold bg-boxel-trough text-danger hover:bg-danger/10 text-sm uppercase tracking-wider"
                                 >
                                     Logout
                                 </Link>
                             ) : (
                                 <Link
                                     to="/login"
-                                    className="voxel-btn inline-flex items-center justify-center font-bold bg-accent text-boxel-trough hover:bg-accent-hover px-3 py-1.5 text-sm uppercase tracking-wider"
+                                    className="voxel-btn inline-flex items-center justify-center h-9 px-3 font-bold bg-accent text-boxel-trough hover:bg-accent-hover text-sm uppercase tracking-wider"
                                 >
                                     Login
                                 </Link>

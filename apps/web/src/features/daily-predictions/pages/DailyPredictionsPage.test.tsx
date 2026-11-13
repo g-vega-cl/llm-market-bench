@@ -959,3 +959,94 @@ You MUST return a valid JSON object.`,
         ).toBe(true);
     });
 });
+
+describe('DailyPredictionsPage — 3 UP / 3 DOWN tab data wiring', () => {
+    const basket = {
+        id: 'basket-consensus',
+        target_date: '2026-11-13',
+        model_name: 'consensus',
+        status: 'pending',
+        directional_hit_rate: null,
+        mean_long_return_pct: null,
+        mean_short_return_pct: null,
+        ls_spread_alpha_pct: null,
+        excess_alpha_vs_spy_pct: null,
+        benchmark_spy_return_pct: null,
+        created_at: '2026-11-13T13:30:00Z',
+        evaluated_at: null,
+        picks: [
+            {
+                id: 'pick-1',
+                basket_id: 'basket-consensus',
+                target_date: '2026-11-13',
+                model_name: 'consensus',
+                ticker: 'AMD',
+                direction: 'UP',
+                rank: 1,
+                confidence: 76.7,
+                expected_return_pct: 1.5,
+                reasoning: 'Relative momentum on AI accelerator demand.',
+                status: 'pending',
+                open_price: null,
+                close_price: null,
+                stock_return_pct: null,
+                position_return_pct: null,
+                is_hit: null,
+                conviction_points: null,
+                created_at: '2026-11-13T13:30:00Z',
+                evaluated_at: null,
+            },
+            {
+                id: 'pick-2',
+                basket_id: 'basket-consensus',
+                target_date: '2026-11-13',
+                model_name: 'consensus',
+                ticker: 'NVDA',
+                direction: 'DOWN',
+                rank: 1,
+                confidence: 82.3,
+                expected_return_pct: -1.5,
+                reasoning: 'Supply constraints and event risk.',
+                status: 'pending',
+                open_price: null,
+                close_price: null,
+                stock_return_pct: null,
+                position_return_pct: null,
+                is_hit: null,
+                conviction_points: null,
+                created_at: '2026-11-13T13:30:00Z',
+                evaluated_at: null,
+            },
+        ],
+    };
+
+    it('renders the picks supplied through initialBaskets on the PICKS tab', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={[]}
+                experiments={[]}
+                initialTicker="PICKS"
+                initialBaskets={[basket] as never}
+            />,
+        );
+
+        expect(screen.getByText('AMD')).toBeInTheDocument();
+        expect(screen.getByText('NVDA')).toBeInTheDocument();
+        // Session badge + history ledger row both carry the date.
+        expect(screen.getAllByText('2026-11-13').length).toBeGreaterThanOrEqual(2);
+        expect(screen.queryByText(/No active stock picks found/i)).not.toBeInTheDocument();
+    });
+
+    it('shows the empty state when no baskets are supplied', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={[]}
+                experiments={[]}
+                initialTicker="PICKS"
+                initialBaskets={[]}
+            />,
+        );
+
+        expect(screen.getByText(/No active stock picks found/i)).toBeInTheDocument();
+    });
+});

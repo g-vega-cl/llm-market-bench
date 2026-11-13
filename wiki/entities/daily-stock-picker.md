@@ -89,6 +89,43 @@ Surfaced as a first-class segmented tab in the Daily Predictions Arena (`apps/we
 * **Performance Tiles**: Directional Hit Rate, Net L/S Spread Alpha, SPY Benchmark move, and Excess Alpha.
 * **Historical Baskets Table**: Complete audited ledger of past sessions with right-aligned tabular numbers and zero floating tooltips (Principle 11).
 
+### Where To Read The Picks
+
+`https://www.benchify.dev/daily-predictions?ticker=PICKS` opens the 3 UP / 3 DOWN tab directly (the `PICKS` value is accepted by the route's `validateSearch` in `apps/web/src/routes/daily-predictions/index.tsx`). Without the query param the page lands on SPY and the tab must be clicked.
+
+The route loader delegates to `loadDailyPredictionsPageData()` (`apps/web/src/features/daily-predictions/api/load-daily-predictions-page-data.ts`), which fetches predictions, prompt experiments, and `fetchDailyStockBaskets()` in one `Promise.all`. The baskets payload is what the tab renders — a loader that omits it leaves the tab permanently on its empty state ("No active stock picks found for selected model track"), which is exactly how the surface silently broke before the aggregator existed.
+
+### Bounded Pick Scan (Newest Basket Per Track)
+
+`fetchDailyStockBaskets()` (`apps/web/src/features/daily-predictions/api/fetch-stock-picks.ts`) narrows the child-pick query with `latestBasketIdsByModel(baskets)`: it walks the newest-first basket list, keeps the first basket id seen for each `model_name`, and issues one `daily_stock_picks` query scoped with `.in('basket_id', latestBasketIds)` ordered by `rank`.
+
+Only the newest basket of each track is rendered as a 3 UP / 3 DOWN card set, and the historical ledger table reads basket-level pre-materialized metrics only. Fetching picks for every historical basket would grow the payload unbounded with nothing to render, so the pick scan stays bounded by model count rather than by session count (see [[concepts/zero-frontend-compute]]).
+
+## 8. Provider Client Contract
+
+`execute_model_picker` (`apps/engine/tasks/stock_picker.py`) resolves one instructor client per provider through the declarative `PROVIDER_CLIENTS` map (an unknown provider raises `ValueError` instead of silently falling through to another vendor), then builds the call with the shared `build_provider_extraction_args()` helper (`apps/engine/core/llm/analysis_pipeline/prompt_assembly.py`) used by the rest of the analysis/extraction stack:
+
+| Provider | Client | Args from the shared builder |
+| :--- | :--- | :--- |
+| `deepseek` | `get_deepseek_client()` | `max_retries=2`, schema-recovery handling; no `temperature` |
+| `minimax` | `get_minimax_client()` (Anthropic-format) | `max_tokens=32000`, system message hoisted to the `system` kwarg; no `temperature` |
+| `openai` | `get_openai_json_client()` (`Mode.JSON`, no tool injection) | `reasoning_effort="none"` — `gpt-5.6-luna` is a reasoning model that rejects function tools and any non-default temperature on `/v1/chat/completions` |
+
+Re-implementing per-provider kwargs inline would fork the token ceiling and reasoning contract from every other extraction call site, so the arena deliberately owns only client selection. `close_client(client, provider)` requires the provider argument; every track closes in a `finally` block so a failed model does not leak its HTTP client.
+
+## 9. Rerun Safety & Append-Only Sessions
+
+`persist_stock_basket` writes the basket row with `status='pending'` and explicitly nulls `directional_hit_rate`, `mean_long_return_pct`, `mean_short_return_pct`, `ls_spread_alpha_pct`, `excess_alpha_vs_spy_pct`, `benchmark_spy_return_pct` and `evaluated_at`, so a rerun cannot leave a pending basket carrying stale graded metrics.
+
+Picks are replaced by the `replace_daily_stock_picks(p_basket_id, p_picks)` RPC (`supabase/migrations/20261113130000_create_replace_daily_stock_picks_rpc.sql`), which runs the delete and the insert of the 6 picks inside one transaction. Two independent PostgREST round-trips could leave a basket with zero picks on a crash between them, and the rerun guard only skips dates that already have a consensus basket — an emptied basket would never be repaired.
+
+`session_skip_reason(existing_rows, force)` gates the session:
+
+* Any basket already `evaluated` → skip even with `--force` (`already-evaluated`). Graded sessions carry open/close/return/hit data, feed the `status='evaluated'` filter of `apps/engine/tasks/stock_picker_autoresearch.py`, and must stay immutable.
+* A consensus basket exists and `--force` was not passed → skip (`already-exists`).
+
+Regression coverage lives in `apps/engine/tests/test_stock_picker_arena.py` (hermetic: mocked clients, no network, no sleeps).
+
 ## Related
 
 - [[entities/daily-market-predictor]] — the SPY and TLT directional arenas

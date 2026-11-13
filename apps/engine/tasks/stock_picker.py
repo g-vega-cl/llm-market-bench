@@ -8,10 +8,9 @@ consensus basket via Reciprocal Rank Fusion, and persists to daily_stock_baskets
 from __future__ import annotations
 
 import asyncio
-import json
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from core.config import (
@@ -21,13 +20,37 @@ from core.config import (
     logger,
 )
 from core.db import get_supabase_client
-from core.llm.clients import close_client, get_deepseek_client, get_openai_client
-from core.llm.minimax import MiniMaxClient
+from core.llm.analysis_pipeline.prompt_assembly import build_provider_extraction_args
+from core.llm.clients import (
+    close_client,
+    get_deepseek_client,
+    get_minimax_client,
+    get_openai_json_client,
+)
 from core.llm.stock_picker_prompts import (
     STOCK_PICKER_PROMPT,
     StockPickerOutput,
     StockPickItem,
 )
+
+# Provider -> instructor client factory. Unknown providers fail loudly instead of
+# silently falling through to another vendor's client. Each entry resolves the
+# factory lazily so patching the module-level function (the repo-wide test
+# convention) actually takes effect; a captured reference would keep calling the
+# real, network-bound factory.
+PROVIDER_CLIENTS = {
+    "deepseek": lambda: get_deepseek_client(),
+    "minimax": lambda: get_minimax_client(),
+    "openai": lambda: get_openai_json_client(),
+}
+
+
+def _client_for_provider(provider: str):
+    factory = PROVIDER_CLIENTS.get(provider)
+    if factory is None:
+        raise ValueError(f"Unsupported stock picker provider: {provider!r}")
+    return factory()
+
 
 DEFAULT_CANDIDATES = [
     "NVDA",
@@ -175,45 +198,18 @@ async def execute_model_picker(
         "Select exactly 3 unique stocks to go UP (ranks 1-3) and 3 unique stocks to go DOWN (ranks 1-3)."
     )
 
-    if provider == "minimax":
-        client = MiniMaxClient()
-        response_text = await client.chat_completion(
-            messages=[
-                {"role": "system", "content": prompt_content},
-                {"role": "user", "content": user_prompt + "\nReturn ONLY valid JSON."},
-            ],
-            temperature=0.2,
+    messages = [
+        {"role": "system", "content": prompt_content},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    client = _client_for_provider(provider)
+    try:
+        output = await client.chat.completions.create(
+            **build_provider_extraction_args(provider, model_name, messages, StockPickerOutput)
         )
-        data = json.loads(re.sub(r"^```(?:json)?|```$", "", response_text.strip(), flags=re.MULTILINE))
-        output = StockPickerOutput(**data)
-    elif provider == "deepseek":
-        ds_client = get_deepseek_client()
-        try:
-            output = await ds_client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": prompt_content},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_model=StockPickerOutput,
-                temperature=0.2,
-            )
-        finally:
-            await close_client(ds_client)
-    else:  # openai
-        oai_client = get_openai_client()
-        try:
-            output = await oai_client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": prompt_content},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_model=StockPickerOutput,
-                temperature=0.2,
-            )
-        finally:
-            await close_client(oai_client)
+    finally:
+        await close_client(client, provider)
 
     # Sanitize and ensure uniqueness across both legs
     picks_up = sanitize_picks(output.picks_up, "UP", candidate_pool)
@@ -305,10 +301,19 @@ async def persist_stock_basket(
     """Persist parent basket and 6 child picks into Supabase."""
     supabase = get_supabase_client()
 
+    # A rerun reuses the basket row, so every evaluation field is cleared
+    # explicitly: a 'pending' basket must never keep stale graded metrics.
     basket_row = {
         "target_date": target_date,
         "model_name": model_name,
         "status": "pending",
+        "directional_hit_rate": None,
+        "mean_long_return_pct": None,
+        "mean_short_return_pct": None,
+        "ls_spread_alpha_pct": None,
+        "excess_alpha_vs_spy_pct": None,
+        "benchmark_spy_return_pct": None,
+        "evaluated_at": None,
     }
     basket_res = (
         supabase.table("daily_stock_baskets").upsert(basket_row, on_conflict="target_date,model_name").execute()
@@ -333,12 +338,31 @@ async def persist_stock_basket(
             }
         )
 
-    supabase.table("daily_stock_picks").upsert(
-        picks_data,
-        on_conflict="target_date,model_name,ticker",
+    # Replace the previous pick set inside a single DB transaction (see
+    # supabase/migrations/20261113130000_create_replace_daily_stock_picks_rpc.sql):
+    # two independent round-trips could leave the basket with zero picks on failure.
+    supabase.rpc(
+        "replace_daily_stock_picks",
+        {"p_basket_id": basket_id, "p_picks": picks_data},
     ).execute()
 
     return basket_id
+
+
+def session_skip_reason(existing_rows: list[dict[str, Any]], force: bool) -> str | None:
+    """Decide whether to skip a session that already has baskets.
+
+    Graded sessions are append-only: once any basket for the date is 'evaluated',
+    a rerun would delete execution prices and drop the session out of the
+    autoresearch window, so it is refused even with --force.
+    """
+    if not existing_rows:
+        return None
+    if any(str(row.get("status")) == "evaluated" for row in existing_rows):
+        return "already-evaluated"
+    if not force and any(row.get("model_name") == "consensus" for row in existing_rows):
+        return "already-exists"
+    return None
 
 
 async def run_daily_stock_picker(
@@ -351,18 +375,16 @@ async def run_daily_stock_picker(
     logger.info(f"Starting Daily Stock Picker Arena for session: {session_date}")
 
     supabase = get_supabase_client()
-    # Check if consensus basket already exists for today unless forced
-    if not force:
-        existing = (
-            supabase.table("daily_stock_baskets")
-            .select("id")
-            .eq("target_date", session_date)
-            .eq("model_name", "consensus")
-            .execute()
-        )
-        if existing.data:
-            logger.info(f"Consensus basket already exists for {session_date}. Skipping (use --force to overwrite).")
-            return {"status": "skipped", "target_date": session_date}
+    existing_res = (
+        supabase.table("daily_stock_baskets").select("model_name,status").eq("target_date", session_date).execute()
+    )
+    skip_reason = session_skip_reason(cast("list[dict[str, Any]]", existing_res.data or []), force)
+    if skip_reason == "already-evaluated":
+        logger.warning(f"Refusing to overwrite evaluated session {session_date}; graded picks stay immutable.")
+        return {"status": "skipped", "target_date": session_date, "reason": skip_reason}
+    if skip_reason == "already-exists":
+        logger.info(f"Consensus basket already exists for {session_date}. Skipping (use --force to overwrite).")
+        return {"status": "skipped", "target_date": session_date, "reason": skip_reason}
 
     # Fetch latest morning briefing text
     briefing_res = (

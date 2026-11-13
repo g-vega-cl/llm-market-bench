@@ -38,6 +38,24 @@ export interface DailyStockBasket {
     picks?: DailyStockPick[];
 }
 
+/**
+ * Newest basket id per model track. `baskets` must be ordered newest-first.
+ *
+ * Only the latest basket of each track is rendered as a 3 UP / 3 DOWN card set;
+ * the history table reads basket metrics only. Fetching picks for every basket
+ * would grow the payload unbounded with nothing to render them.
+ */
+export function latestBasketIdsByModel(baskets: DailyStockBasket[]): string[] {
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    for (const basket of baskets) {
+        if (seen.has(basket.model_name)) continue;
+        seen.add(basket.model_name);
+        ids.push(basket.id);
+    }
+    return ids;
+}
+
 export async function fetchDailyStockBaskets(): Promise<DailyStockBasket[]> {
     const db = getDbServerClient();
 
@@ -54,9 +72,15 @@ export async function fetchDailyStockBaskets(): Promise<DailyStockBasket[]> {
         return [];
     }
 
+    const typedBaskets = baskets as DailyStockBasket[];
+    const latestBasketIds = latestBasketIdsByModel(typedBaskets);
+
+    // Scoped to the newest basket per track so the pick scan stays bounded by
+    // model count instead of growing with every historical session.
     const { data: picks, error: pError } = await db
         .from('daily_stock_picks')
         .select('*')
+        .in('basket_id', latestBasketIds)
         .order('rank', { ascending: true });
 
     if (pError) {
@@ -70,7 +94,7 @@ export async function fetchDailyStockBaskets(): Promise<DailyStockBasket[]> {
         picksByBasket.set(p.basket_id, existing);
     }
 
-    return (baskets as DailyStockBasket[]).map((b) => ({
+    return typedBaskets.map((b) => ({
         ...b,
         picks: picksByBasket.get(b.id) || [],
     }));

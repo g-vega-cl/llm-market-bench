@@ -1,26 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
-import {
-    fetchDailyPredictions,
-    fetchDailyPredictorExperiments,
-} from '~/features/daily-predictions/api/fetch-daily-predictions';
+import { loadDailyPredictionsPageData } from '~/features/daily-predictions/api/load-daily-predictions-page-data';
 import { DailyPredictionsPage } from '~/features/daily-predictions/pages/DailyPredictionsPage';
 
-const getDailyPredictionsData = createServerFn({ method: 'GET' }).handler(async () => {
-    const [predictions, experiments] = await Promise.all([
-        fetchDailyPredictions(),
-        fetchDailyPredictorExperiments(),
-    ]);
-    return { predictions, experiments };
-});
+const getDailyPredictionsData = createServerFn({ method: 'GET' }).handler(async () =>
+    loadDailyPredictionsPageData(),
+);
 
 export const Route = createFileRoute('/daily-predictions/')({
-    validateSearch: (search: Record<string, unknown>): { ticker?: 'SPY' | 'TLT' } => ({
-        ticker:
-            typeof search.ticker === 'string' && search.ticker.toUpperCase() === 'TLT'
-                ? 'TLT'
-                : undefined,
-    }),
+    validateSearch: (search: Record<string, unknown>): { ticker?: 'SPY' | 'TLT' | 'PICKS' } => {
+        const raw = typeof search.ticker === 'string' ? search.ticker.toUpperCase() : '';
+        if (raw === 'TLT') return { ticker: 'TLT' };
+        if (raw === 'PICKS') return { ticker: 'PICKS' };
+        return { ticker: undefined };
+    },
     loader: async () => await getDailyPredictionsData(),
     component: RouteComponent,
 });
@@ -34,6 +27,7 @@ function RouteComponent() {
         <DailyPredictionsPage
             initialPredictions={initialData.predictions}
             experiments={initialData.experiments}
+            initialBaskets={initialData.baskets}
             initialTicker={ticker || 'SPY'}
             refreshFn={async () => {
                 const res = await getPredictionsFn();

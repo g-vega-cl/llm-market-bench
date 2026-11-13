@@ -13,9 +13,9 @@ A high-performance, model-agnostic OpenAI-compatible proxy that unifies free LLM
   - **Tier 2 (Fallback Pool)**: OVHcloud (anonymous EU), OpenRouter (17 `:free` models), NVIDIA NIM.
 - **Zero Hardcoded Model IDs**: Relies on dynamic runtime `/models` discovery, official dynamic provider aliases (`gemini-flash-latest`, `openrouter/free`), and virtual model aliases (`free-auto`, `strata-auto`) to insulate clients from model obsolescence.
 - **Circuit Breaker**: On HTTP 429 (rate limit) or 5xx downtime, automatically cools down the provider and retries next candidate seamlessly.
-- **Streaming & SSE**: Full pass-through token streaming (`stream: true`) with pre-flight failover protection.
+- **Streaming & SSE**: Full pass-through token streaming (`stream: true`) with pre-flight failover protection. SSE bytes are never rewritten; the final `usage` chunk is parsed for telemetry after the stream completes.
 - **Reasoning Token Preservation**: Preserves `reasoning` and thinking blocks for thinking models (`gpt-oss-120b`, `flint`, `beam`).
-- **Local SQLite Audit DB**: Records every call, latency, token count, and failover trace to `data/free_llm_proxy.db`.
+- **Local SQLite Audit DB**: Records every call, latency, token count, failover trace, stream usage availability, time-to-first-token, stream duration, and completion status to `data/free_llm_proxy.db`. Additive migrations preserve existing rows; indexes keep metrics queries fast. Audit rows are retained indefinitely.
 - **Zero New Dependencies**: Built entirely with existing repository packages (`fastapi`, `uvicorn`, `httpx`, `pydantic`, `sqlite3`).
 
 ---
@@ -120,18 +120,31 @@ print(response.choices[0].message.content)
 
 `opencode-go` discovers its catalog from `https://opencode.ai/zen/go/v1/models` — there is no model list to maintain. Set `OPENCODE_GO_API_KEY` to activate it. It is **never** part of `free-auto`, `auto-strata`, `free-fast`, or `free-reasoning`; only `auto-go`, `auto-strata-go`, `strata-auto-go`, and explicit `opencode-go/<model>` requests can reach it. Within the `*-go` aliases it sits after both the healthy and cooling free candidates, so a 429 cooldown storm still tries free providers first. If its catalog cannot be read, the proxy fails closed instead of sending a paid request with an ungrounded model name. The proxy forwards a client `x-opencode-session` header only after validating it, or derives a stable fallback session ID automatically, since Go requires one on every chat request.
 
+### Streaming Usage Telemetry
+
+The proxy treats streaming as observation-only:
+
+- It **never injects `stream_options`** and **never rewrites SSE bytes**. The client receives the provider's original `data:` frames and `[DONE]` marker.
+- It parses only `data:` lines in a bounded buffer and logs the final `usage` object after the stream ends or the client disconnects.
+- Strata, Groq, Kilo, and OpenRouter emit `usage` in their default streaming responses. OVHcloud may omit it; those rows are marked `usage_available = 0` rather than silently claiming zero cost.
+- `/v1/metrics` exposes `streaming_requests`, `usage_available_requests`, `zero_token_successes`, `token_coverage_pct`, `avg_stream_duration_ms`, `avg_ttft_ms`, and `incomplete_streams`.
+- Metrics are **per connector**. The public hostname load-balances between the workstation and MiniPC connectors, so `/v1/metrics` describes whichever connector served the request. Use `connector_id` and `scope: "connector"` to identify it.
+- A log-only `security.401_spike` warning fires when unauthorized requests exceed `SECURITY_ALERT_401_THRESHOLD` within `SECURITY_ALERT_WINDOW_SECONDS`. No external alert service is called.
+
+**Long Strata prompts:** Strata may hold an SSE stream open with `: keep-alive` frames while it processes a large prompt. The proxy forwards those frames unchanged and applies **no total duration cap**; it records time-to-first-token and total stream duration, and marks the row `stream_completed = 0` if the client disconnects first. Clients should use `stream: true` for long Strata prompts. If time-to-first-token can exceed 5–10 minutes, use an asynchronous job queue rather than holding a synchronous HTTP request; no timeout value fixes a 100-minute prefill.
+
 ---
 
 ## Inspection & Health Endpoints
 
-- **Health Check**: `GET http://localhost:8086/health` (unauthenticated)
+- **Health Check**: `GET http://localhost:8086/health` (unauthenticated). Includes `connector_id`.
 - **Live Models Catalog**: `GET http://localhost:8086/v1/models` (requires master key)
-- **Metrics & Cooldown Status**: `GET http://localhost:8086/v1/metrics` (requires master key)
+- **Metrics & Cooldown Status**: `GET http://localhost:8086/v1/metrics` (requires master key). Includes per-connector token coverage, stream counters, TTFT/duration, and the log-only 401 spike state.
 
 ---
 
 ## Running Hermetic Tests
 
 ```bash
-./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
+./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests -q
 ```

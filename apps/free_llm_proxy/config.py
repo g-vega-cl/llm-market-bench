@@ -2,7 +2,9 @@
 
 import json
 import os
+import socket
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load .env file strictly from app directory (never inherit engine keys)
@@ -22,6 +24,11 @@ ENABLE_STRATA = os.environ.get("ENABLE_STRATA", "true").lower() not in {
     "no",
 }
 CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "16384"))
+CONNECTOR_ID = os.environ.get("CONNECTOR_ID") or socket.gethostname()
+SECURITY_ALERT_401_THRESHOLD = int(os.environ.get("SECURITY_ALERT_401_THRESHOLD", "20"))
+SECURITY_ALERT_WINDOW_SECONDS = int(
+    os.environ.get("SECURITY_ALERT_WINDOW_SECONDS", "300")
+)
 
 
 def load_providers_config() -> dict:

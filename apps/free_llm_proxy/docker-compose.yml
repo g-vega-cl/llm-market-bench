@@ -13,6 +13,7 @@ services:
       - .env
     environment:
       STRATA_BASE_URL: ${STRATA_BASE_URL:-http://host.docker.internal:8080/v1}
+      CONNECTOR_ID: workstation
     volumes:
       - ./data:/app/apps/free_llm_proxy/data
     deploy:

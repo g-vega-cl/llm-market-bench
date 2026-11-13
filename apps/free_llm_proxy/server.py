@@ -3,6 +3,7 @@
 import secrets
 import time
 from typing import Any
+
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -13,7 +14,9 @@ from apps.free_llm_proxy.db import AuditDB
 from apps.free_llm_proxy.discovery import ModelDiscovery
 from apps.free_llm_proxy.models import ChatCompletionRequest
 from apps.free_llm_proxy.router import Router
+from apps.free_llm_proxy.security import UnauthorizedMonitor
 from apps.free_llm_proxy.session import SESSION_HEADER, derive_session_id
+from apps.free_llm_proxy.streaming import audited_sse_stream
 
 app = FastAPI(title="Free LLM Proxy", version="1.0.0")
 
@@ -22,6 +25,11 @@ audit_db = AuditDB(db_path=config.DB_PATH)
 circuit_breaker = CircuitBreaker(default_cooldown_seconds=config.DEFAULT_COOLDOWN)
 discovery = ModelDiscovery()
 router = Router(circuit_breaker=circuit_breaker, discovery=discovery)
+unauthorized_monitor = UnauthorizedMonitor(
+    threshold=config.SECURITY_ALERT_401_THRESHOLD,
+    window_seconds=config.SECURITY_ALERT_WINDOW_SECONDS,
+    connector_id=config.CONNECTOR_ID,
+)
 
 
 def extract_prompt_preview(messages: list[Any], max_length: int = 60) -> str | None:
@@ -63,6 +71,21 @@ def extract_client_info(request: Request | None) -> tuple[str, str]:
     return (client_ip, user_agent)
 
 
+def _record_unauthorized(request: Request | None, message: str) -> None:
+    """Persist a 401 attempt and feed the log-only spike monitor."""
+    client_ip, user_agent = extract_client_info(request)
+    audit_db.log_call(
+        requested_model="unauthorized",
+        routed_provider="none",
+        routed_model="none",
+        status_code=401,
+        error_message=message,
+        client_ip=client_ip,
+        user_agent=user_agent,
+    )
+    unauthorized_monitor.record(client_ip)
+
+
 def verify_master_key(
     authorization: str | None = Header(None),
     request: Request | None = None,
@@ -70,15 +93,9 @@ def verify_master_key(
     """Strictly validates Master API Key Bearer token and records 401 attempts."""
     expected_key = config.MASTER_KEY
     if not authorization or not authorization.startswith("Bearer "):
-        client_ip, user_agent = extract_client_info(request)
-        audit_db.log_call(
-            requested_model="unauthorized",
-            routed_provider="none",
-            routed_model="none",
-            status_code=401,
-            error_message="Invalid or missing master API key in Authorization header.",
-            client_ip=client_ip,
-            user_agent=user_agent,
+        _record_unauthorized(
+            request,
+            "Invalid or missing master API key in Authorization header.",
         )
         raise HTTPException(
             status_code=401,
@@ -91,15 +108,9 @@ def verify_master_key(
         )
     provided_key = authorization.split("Bearer ", 1)[1].strip()
     if not secrets.compare_digest(provided_key, expected_key):
-        client_ip, user_agent = extract_client_info(request)
-        audit_db.log_call(
-            requested_model="unauthorized",
-            routed_provider="none",
-            routed_model="none",
-            status_code=401,
-            error_message="Unauthorized: Master API key does not match.",
-            client_ip=client_ip,
-            user_agent=user_agent,
+        _record_unauthorized(
+            request,
+            "Unauthorized: Master API key does not match.",
         )
         raise HTTPException(
             status_code=401,
@@ -118,6 +129,7 @@ async def health_check() -> dict[str, Any]:
     cb_statuses = circuit_breaker.get_status_overview()
     return {
         "status": "ok",
+        "connector_id": config.CONNECTOR_ID,
         "active_providers": list(active.keys()),
         "providers_health": cb_statuses,
         "default_port": config.PORT,
@@ -172,6 +184,11 @@ async def get_metrics(
 ) -> dict[str, Any]:
     verify_master_key(authorization, request=request)
     db_metrics = audit_db.get_metrics()
+    db_metrics["connector_id"] = config.CONNECTOR_ID
+    db_metrics["scope"] = "connector"
+    db_metrics["unauthorized_last_5m"] = unauthorized_monitor.count()
+    db_metrics["unauthorized_window_seconds"] = unauthorized_monitor.window_seconds
+    db_metrics["security_alert_active"] = unauthorized_monitor.alert_active
     db_metrics["circuit_breaker"] = circuit_breaker.get_status_overview()
     return db_metrics
 
@@ -392,22 +409,39 @@ async def chat_completions(
             circuit_breaker.record_success(p_id)
 
             if req.stream:
-                audit_db.log_call(
-                    requested_model=req.model,
-                    routed_provider=p_id,
-                    routed_model=target_model,
-                    prompt_tokens=0,
-                    completion_tokens=0,
-                    total_tokens=0,
-                    latency_ms=elapsed_ms,
-                    status_code=200,
-                    failover_chain=failover_log,
-                    client_ip=client_ip,
-                    user_agent=user_agent,
-                    purpose=purpose,
-                    prompt_preview=prompt_preview,
+
+                def _log_stream(result: dict[str, Any]) -> None:
+                    usage = result.get("usage") or {}
+                    audit_db.log_call(
+                        requested_model=req.model,
+                        routed_provider=p_id,
+                        routed_model=target_model,
+                        prompt_tokens=int(usage.get("prompt_tokens", 0) or 0),
+                        completion_tokens=int(usage.get("completion_tokens", 0) or 0),
+                        total_tokens=int(usage.get("total_tokens", 0) or 0),
+                        latency_ms=elapsed_ms,
+                        status_code=200,
+                        failover_chain=failover_log,
+                        error_message=result.get("error"),
+                        client_ip=client_ip,
+                        user_agent=user_agent,
+                        purpose=purpose,
+                        prompt_preview=prompt_preview,
+                        is_stream=True,
+                        usage_available=result.get("usage") is not None,
+                        ttft_ms=float(result.get("ttft_ms") or 0.0),
+                        duration_ms=float(result.get("duration_ms") or elapsed_ms),
+                        stream_completed=bool(result.get("completed")),
+                    )
+
+                return StreamingResponse(
+                    audited_sse_stream(
+                        body_or_gen,
+                        _log_stream,
+                        started_at=start_time,
+                    ),
+                    media_type="text/event-stream",
                 )
-                return StreamingResponse(body_or_gen, media_type="text/event-stream")
 
             else:
                 # Ensure choices have a string content even if reasoning models omitted it
@@ -432,6 +466,9 @@ async def chat_completions(
                     user_agent=user_agent,
                     purpose=purpose,
                     prompt_preview=prompt_preview,
+                    usage_available=bool(usage),
+                    duration_ms=elapsed_ms,
+                    stream_completed=True,
                 )
                 return JSONResponse(content=body_or_gen, status_code=200)
 

@@ -60,6 +60,34 @@ class AuditDB:
         for col in ["client_ip", "user_agent", "purpose", "prompt_preview"]:
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE call_logs ADD COLUMN {col} TEXT")
+        migrations = {
+            "is_stream": "INTEGER DEFAULT 0",
+            "usage_available": "INTEGER DEFAULT 0",
+            "ttft_ms": "REAL DEFAULT 0",
+            "duration_ms": "REAL DEFAULT 0",
+            "stream_completed": "INTEGER DEFAULT 0",
+        }
+        added = set()
+        for col, ddl in migrations.items():
+            if col not in existing_cols:
+                conn.execute(f"ALTER TABLE call_logs ADD COLUMN {col} {ddl}")
+                added.add(col)
+        if "usage_available" in added:
+            conn.execute(
+                "UPDATE call_logs SET usage_available = "
+                "CASE WHEN total_tokens > 0 THEN 1 ELSE 0 END"
+            )
+        if "duration_ms" in added:
+            conn.execute("UPDATE call_logs SET duration_ms = latency_ms")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_call_logs_timestamp ON call_logs(timestamp)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_call_logs_status ON call_logs(status_code)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_call_logs_client_ip ON call_logs(client_ip)"
+        )
         conn.commit()
         if self._persistent_conn is None:
             conn.close()
@@ -80,10 +108,16 @@ class AuditDB:
         user_agent: str | None = None,
         purpose: str | None = None,
         prompt_preview: str | None = None,
+        is_stream: bool = False,
+        usage_available: bool = False,
+        ttft_ms: float = 0.0,
+        duration_ms: float | None = None,
+        stream_completed: bool = False,
     ) -> str:
         call_id = f"call_{uuid.uuid4().hex[:12]}"
         now_iso = datetime.now(UTC).isoformat()
         chain_json = json.dumps(failover_chain or [])
+        duration_ms = latency_ms if duration_ms is None else duration_ms
 
         conn = self._get_connection()
         conn.execute(
@@ -92,8 +126,9 @@ class AuditDB:
                 id, timestamp, requested_model, routed_provider, routed_model,
                 prompt_tokens, completion_tokens, total_tokens, latency_ms,
                 status_code, failover_chain, error_message,
-                client_ip, user_agent, purpose, prompt_preview
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                client_ip, user_agent, purpose, prompt_preview,
+                is_stream, usage_available, ttft_ms, duration_ms, stream_completed
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 call_id,
@@ -112,6 +147,11 @@ class AuditDB:
                 user_agent,
                 purpose,
                 prompt_preview,
+                int(is_stream),
+                int(usage_available),
+                ttft_ms,
+                duration_ms,
+                int(stream_completed),
             ),
         )
         conn.commit()
@@ -137,6 +177,33 @@ class AuditDB:
             ).fetchone()[0]
             or 0.0
         )
+        streaming_reqs = conn.execute(
+            "SELECT COUNT(*) FROM call_logs WHERE status_code = 200 AND is_stream = 1"
+        ).fetchone()[0]
+        usage_available_reqs = conn.execute(
+            "SELECT COUNT(*) FROM call_logs WHERE status_code = 200 AND usage_available = 1"
+        ).fetchone()[0]
+        zero_token_successes = conn.execute(
+            "SELECT COUNT(*) FROM call_logs WHERE status_code = 200 AND total_tokens = 0"
+        ).fetchone()[0]
+        incomplete_streams = conn.execute(
+            "SELECT COUNT(*) FROM call_logs "
+            "WHERE status_code = 200 AND is_stream = 1 AND stream_completed = 0"
+        ).fetchone()[0]
+        avg_stream_duration = (
+            conn.execute(
+                "SELECT AVG(duration_ms) FROM call_logs "
+                "WHERE status_code = 200 AND is_stream = 1 AND stream_completed = 1"
+            ).fetchone()[0]
+            or 0.0
+        )
+        avg_ttft = (
+            conn.execute(
+                "SELECT AVG(ttft_ms) FROM call_logs "
+                "WHERE status_code = 200 AND is_stream = 1 AND ttft_ms > 0"
+            ).fetchone()[0]
+            or 0.0
+        )
 
         cursor = conn.execute(
             """
@@ -157,8 +224,10 @@ class AuditDB:
         recent_rows = conn.execute(
             """
             SELECT id, timestamp, requested_model, routed_provider, routed_model,
-                   total_tokens, latency_ms, status_code, failover_chain,
-                   client_ip, user_agent, purpose, prompt_preview
+                   prompt_tokens, completion_tokens, total_tokens, latency_ms,
+                   status_code, failover_chain, client_ip, user_agent, purpose,
+                   prompt_preview, is_stream, usage_available, ttft_ms, duration_ms,
+                   stream_completed
             FROM call_logs
             ORDER BY timestamp DESC
             LIMIT 10
@@ -176,10 +245,20 @@ class AuditDB:
             "success_rate_pct": round(
                 (success_reqs / total_reqs * 100) if total_reqs > 0 else 100.0, 1
             ),
+            "streaming_requests": streaming_reqs,
+            "usage_available_requests": usage_available_reqs,
+            "zero_token_successes": zero_token_successes,
+            "incomplete_streams": incomplete_streams,
+            "token_coverage_pct": round(
+                (usage_available_reqs / success_reqs * 100) if success_reqs else 0.0,
+                1,
+            ),
             "total_prompt_tokens": tokens_row[0] or 0,
             "total_completion_tokens": tokens_row[1] or 0,
             "total_tokens": tokens_row[2] or 0,
             "avg_latency_ms": round(avg_lat, 1),
+            "avg_stream_duration_ms": round(avg_stream_duration, 1),
+            "avg_ttft_ms": round(avg_ttft, 1),
             "providers": providers_stats,
             "recent_calls": recent_logs,
         }

@@ -66,6 +66,7 @@ services:
       - ../../apps/free_llm_proxy/.env
     environment:
       STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
+      CONNECTOR_ID: secondary
     volumes:
       - free_llm_proxy_data:/app/apps/free_llm_proxy/data
     deploy:

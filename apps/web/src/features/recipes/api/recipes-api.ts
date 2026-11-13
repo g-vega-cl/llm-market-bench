@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getAuthServerClient } from '~/lib/auth';
 import { getDbAdminClient, getDbServerClient } from '~/lib/db';
+import { buildNewsExcerpt } from '../news-excerpt';
 import type { PushStrategy, RecipeAlert, StrategyRecipeRecord } from '../types';
 
 const ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
@@ -248,7 +249,11 @@ function hydrateNewsBlockText(
     if (matched.length === 0) return `${header}\n- (No matching news in window)`;
     return [
         header,
-        ...matched.map((n) => `- [${String(n.date_published).slice(0, 16)}] ${n.title}`),
+        ...matched.map((n) => {
+            const line = `- [${String(n.date_published).slice(0, 16)}] ${n.title}`;
+            const excerpt = buildNewsExcerpt(n.full_text, block.contains);
+            return excerpt ? `${line}\n  ${excerpt}` : line;
+        }),
     ].join('\n');
 }
 

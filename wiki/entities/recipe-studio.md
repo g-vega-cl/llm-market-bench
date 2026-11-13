@@ -111,6 +111,7 @@ In addition to legacy `RecipeGraph` DAGs, `/recipes` now defaults to a simpler l
 - **4 Push Blocks**:
   - `prompt`: Free-text prompt instructions.
   - `news`: Keyword `contains` + `recency_hours` filter over `recipe_news_corpus`.
+    Each hit renders its headline plus a ~300-char body excerpt centered on the first keyword hit (lead fallback), built by `build_news_excerpt` in `apps/engine/recipes/push_hydrator.py` and mirrored in `apps/web/src/features/recipes/news-excerpt.ts`. Both implementations are asserted against the shared cases in `packages/config/news-excerpt-cases.json`; regenerate expectations only from the engine and keep both suites green.
   - `memories`: Keyword `contains` + `recency_hours` + `category` (`memory_type`) + `min_importance` filter over `memories` (explicitly projecting columns without `embedding` vectors).
   - `technicals`: Company rules (`P/E`, `FCF`, `VWAP`, `RSI`, `MACD`, `price_52w_pct`, etc.) serialized as prompt criteria.
 - **UI & Prompt Visualizer**: `StageBuilder.tsx`, `ToolPicker.tsx` (curated 12-tool checklist including `get_technical_indicators`), and `PromptVisualizer.tsx` (instant template preview + `previewStrategyPromptFn` live DB hydration) in `apps/web/src/features/recipes/`.

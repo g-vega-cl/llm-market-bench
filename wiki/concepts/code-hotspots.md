@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **256**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **258**).
 
 ## Top Hotspots
 
@@ -39,17 +39,17 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/web/src/routes/-__root.test.tsx` | `apps/web/src/routes/__root.tsx` | 10 | 91% |
 | `apps/engine/tasks/newsletter_generator.py` | `apps/engine/tests/test_newsletter_generator.py` | 10 | 83% |
 | `apps/web/src/features/home/components/LiveAgentConsole.test.tsx` | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 9 | 100% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 9 | 56% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 9 | 56% |
-| `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 9 | 56% |
-| `apps/engine/core/llm/tools.py` | `packages/config/tools.json` | 9 | 56% |
-| `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 8 | 89% |
+| `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 9 | 82% |
+| `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/tests/test_proxy.py` | 8 | 89% |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 8 | 80% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/tests/test_tools_consistency.py` | 8 | 57% |
-| `apps/engine/autoresearch/researcher.py` | `apps/engine/tests/test_tools_consistency.py` | 8 | 57% |
-| `apps/engine/core/llm/handlers/base.py` | `apps/engine/tests/test_tools_consistency.py` | 8 | 57% |
-| `apps/engine/core/llm/tools.py` | `apps/engine/tests/test_tools_consistency.py` | 8 | 57% |
-| `apps/engine/tests/test_tools_consistency.py` | `packages/config/tools.json` | 8 | 57% |
+| `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 8 | 50% |
+| `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 8 | 50% |
+| `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 8 | 50% |
+| `apps/engine/core/llm/tools.py` | `packages/config/tools.json` | 8 | 50% |
+| `apps/web/src/features/home/api/fetch-intraday-tape.test.ts` | `apps/web/src/features/home/api/fetch-intraday-tape.ts` | 7 | 100% |
+| `apps/web/src/features/home/components/ConsoleQueueCard.test.tsx` | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 7 | 100% |
+| `apps/engine/trading/runner.py` | `apps/engine/trading/test_runner.py` | 7 | 100% |
+| `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/router.py` | 7 | 88% |
 
 ## Usage Guidelines for LLM Agents
 

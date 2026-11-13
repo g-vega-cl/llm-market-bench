@@ -1,0 +1,98 @@
+[
+  {
+    "name": "keyword mid-text",
+    "text": "alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha Trump announced new chips tariffs omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega ",
+    "keywords": [
+      "chips"
+    ],
+    "expected": "…alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha Trump announced new chips tariffs omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega omega…"
+  },
+  {
+    "name": "keyword at start",
+    "text": "Nvidia board vote filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler ",
+    "keywords": [
+      "nvidia"
+    ],
+    "expected": "Nvidia board vote filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler…"
+  },
+  {
+    "name": "keyword at end",
+    "text": "filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler final chips",
+    "keywords": [
+      "chips"
+    ],
+    "expected": "…filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler final chips"
+  },
+  {
+    "name": "end-trim boundary",
+    "text": "KEY! w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w",
+    "keywords": [
+      "key"
+    ],
+    "expected": "KEY! w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w w…"
+  },
+  {
+    "name": "no keywords uses lead",
+    "text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+    "keywords": [],
+    "expected": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"
+  },
+  {
+    "name": "no body hit uses lead",
+    "text": "start filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler ",
+    "keywords": [
+      "nvidia"
+    ],
+    "expected": "start filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler…"
+  },
+  {
+    "name": "multi-word keyword",
+    "text": "pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad the rate cut surprised markets pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad ",
+    "keywords": [
+      "rate cut"
+    ],
+    "expected": "…pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad the rate cut surprised markets pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad…"
+  },
+  {
+    "name": "first of several keywords wins",
+    "text": "a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a chips b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b trump c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c c ",
+    "keywords": [
+      "trump",
+      "chips"
+    ],
+    "expected": "…a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a chips b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b…"
+  },
+  {
+    "name": "whitespace and nbsp collapse",
+    "text": "Line one\n\n  mentions  TRUMP\there",
+    "keywords": [
+      "trump"
+    ],
+    "expected": "Line one mentions TRUMP here"
+  },
+  {
+    "name": "short text untouched",
+    "text": "Short body.",
+    "keywords": [
+      "body"
+    ],
+    "expected": "Short body."
+  },
+  {
+    "name": "empty text",
+    "text": "",
+    "keywords": [
+      "x"
+    ],
+    "expected": ""
+  },
+  {
+    "name": "blank keywords ignored",
+    "text": "some text here",
+    "keywords": [
+      " ",
+      ""
+    ],
+    "expected": "some text here"
+  }
+]

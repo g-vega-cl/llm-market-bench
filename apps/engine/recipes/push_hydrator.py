@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -34,6 +35,32 @@ def _matches_contains(haystack: str, keywords: list[str]) -> bool:
         return True
     lower = haystack.lower()
     return any(kw in lower for kw in cleaned)
+
+
+EXCERPT_RADIUS = 150
+EXCERPT_LEAD_CHARS = 300
+_WS_RUN = re.compile(r"[ \t\r\n\f\v\u00a0]+")
+
+
+def build_news_excerpt(full_text: str | None, keywords: list[str]) -> str:
+    """Return a bounded body excerpt centered on the first keyword hit (else the lead)."""
+    text = _WS_RUN.sub(" ", full_text or "").strip(" ")
+    if not text:
+        return ""
+    lower = text.lower()
+    if len(lower) != len(text):  # case folding changed length; keep indices aligned
+        lower = text
+    hits = [i for kw in keywords if kw.strip() and (i := lower.find(kw.strip().lower())) >= 0]
+    if not hits:
+        return text if len(text) <= EXCERPT_LEAD_CHARS else text[:EXCERPT_LEAD_CHARS].rstrip() + "…"
+    pos = min(hits)
+    start = max(0, pos - EXCERPT_RADIUS)
+    end = min(len(text), pos + EXCERPT_RADIUS)
+    if start > 0 and (sp := text.find(" ", start)) != -1 and sp < pos:
+        start = sp + 1
+    if end < len(text) and (sp := text.rfind(" ", pos, end)) != -1:
+        end = sp
+    return ("…" if start > 0 else "") + text[start:end] + ("…" if end < len(text) else "")
 
 
 def filter_news_rows(
@@ -171,11 +198,14 @@ def hydrate_stage_prompt(
             if not matched_news:
                 sections.append(f"{header}\n- (No matching news in window)")
             else:
-                items = [
-                    f"- [{str(n.get('date_published', ''))[:16]}] {n.get('title', '')} "
-                    f"(Tickers: {', '.join(n.get('tickers') or []) or 'MARKET'})"
-                    for n in matched_news
-                ]
+                items = []
+                for n in matched_news:
+                    line = (
+                        f"- [{str(n.get('date_published', ''))[:16]}] {n.get('title', '')} "
+                        f"(Tickers: {', '.join(n.get('tickers') or []) or 'MARKET'})"
+                    )
+                    excerpt = build_news_excerpt(n.get("full_text"), block.contains)
+                    items.append(f"{line}\n  {excerpt}" if excerpt else line)
                 sections.append("\n".join([header, *items]))
         elif isinstance(block, MemoriesBlock):
             matched_mem = filter_memory_rows(

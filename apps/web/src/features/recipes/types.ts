@@ -193,17 +193,6 @@ export interface SkippedTradeRecord {
     headline?: string;
 }
 
-export interface WeekBreakdown {
-    week: string;
-    trades_count?: number;
-    trades?: number;
-    week_pnl_midpoint?: number;
-    pnl_midpoint?: number;
-    week_pnl_net?: number;
-    pnl_net?: number;
-    ending_equity?: number;
-}
-
 export interface BacktestResultData {
     window_dates?: string[];
     starting_capital?: number;
@@ -221,7 +210,6 @@ export interface BacktestResultData {
     equity_curve: { time: string; equity: number }[];
     trades: CompletedTradeRecord[];
     skipped_trades?: SkippedTradeRecord[];
-    weeks_breakdown?: WeekBreakdown[];
 }
 
 export interface LiveStageOutput {

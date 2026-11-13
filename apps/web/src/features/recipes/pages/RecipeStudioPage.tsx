@@ -197,12 +197,12 @@ export function RecipeStudioPage() {
                                 Strategy Builder MVP
                             </h1>
                             <Badge variant="outline" size="sm">
-                                4-Block Push v2
+                                5-Block Push v2
                             </Badge>
                         </div>
                         <p className="text-xs font-normal text-muted-foreground">
-                            Compose Prompt, News, Memories, and Technicals blocks into one or more
-                            LLM stages with selectable tools.
+                            Compose Prompt, News, Memories, Technicals, and Output Format blocks
+                            into one or more LLM stages with selectable tools.
                         </p>
                     </div>
 

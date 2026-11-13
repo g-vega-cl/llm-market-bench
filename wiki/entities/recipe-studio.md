@@ -1,135 +1,104 @@
 ---
-tags: [recipes, dag, trading, backtest, news-corpus, voxel, studio]
+tags: [recipes, push-v2, trading, backtest, news-corpus, voxel, studio]
 category: entity
 ---
 
 # Recipe Studio
 
-The **Recipe Studio** (`/recipes`) is a visual, agency-driven trading strategy pipeline builder. Inspired by Unsloth Studio Data Recipes and systematic market inefficiency research, it enables quants and researchers to compose multi-stage Directed Acyclic Graphs (DAGs) connecting point-in-time financial news catalysts, technical indicator gates, and LLM classifiers without writing custom Python code.
+The **Recipe Studio** (`/recipes`) is a 5-block push-based multi-stage LLM strategy builder. Inspired by Unsloth Studio Data Recipes, it lets researchers compose ordered stages of prompts, point-in-time news filters, historical memories filters, technical criteria, and immutable trade-signal schemas, then backtest them over random 2-week point-in-time windows or schedule hourly live runs.
 
 ## Architecture
 
-The system is decoupled across three vertical slice layers:
-
-1. **Storage & Corpus (`supabase/migrations/20261112103000_create_recipe_studio_v2.sql`)**:
-   - `public.recipe_news_corpus`: Point-in-time news articles imported from `stock-news-scraper` shards, tagged across 10 canonical market buckets (`semiconductors`, `ai_cloud`, `fed_rates`, `earnings`, `macro_inflation`, `energy`, `financials`, `healthcare`, `tariffs_trade`, `m_and_a`). Carries a generated `search_tsv` column plus GIN indexes on `tickers`, `buckets`, and `search_tsv`.
-   - `public.strategy_recipes`: Recipe DAG configurations (`graph_json`), cadence (`5m` or `1d`), concurrency limits, and isolated paper ledgers (`paper_cash`, `paper_positions`, `paper_trades`, `paper_equity_curve`).
+1. **Storage & Corpus (`supabase/migrations/20261112103000_create_recipe_studio_v2.sql`, `supabase/migrations/20261113112000_drop_recipe_intraday_bars.sql`)**:
+   - `public.recipe_news_corpus`: Point-in-time news articles imported from `stock-news-scraper` shards and synced hourly from live market wires + `newsletter_snapshots`, tagged across canonical buckets with `search_tsv` and GIN indexes on `tickers`, `buckets`, and `search_tsv`.
+   - `public.strategy_recipes`: Push v2 strategy configurations (`graph_json` with `version: "2.0-push"` and `stages`), cadence (`5m` or `1d`), concurrency limits, and isolated paper ledgers. Starter templates live in `packages/config/starter-recipes.json` and are seeded into `strategy_recipes`.
    - `public.recipe_execution_queue`: Priority queue for backtests (priority 10) and live turns (priority 1) with atomic dequeue RPC `pop_next_recipe_job()`.
    - `public.recipe_alerts_inbox`: In-app trade alert delivery table.
-   - `public.recipe_intraday_bars`: Point-in-time 5-minute candle cache.
    - `public.recipe_waitlist_pledges`: Early supporter pledges for future dedicated GPU compute tiers.
 
 2. **Engine Processing (`apps/engine/recipes/`)**:
-   - `schema.py`: Pydantic models for the whole graph — `RecipeGraph`, `DAGNode`, `DAGEdge`, `ConditionRule`, and the per-node config models (`NewsSourceConfig`, `TechnicalGateConfig`, `ClassificationConfig`, `GenerativeAnalystConfig`, `RiskOutputConfig`).
-   - `validator.py`: `validate_recipe_graph()` — schema conformance, unique node IDs, edge integrity, source/sink presence, and three-color DFS cycle detection. See [[concepts/recipe-dag-backtesting]].
-   - `indicators.py`: Technical indicators computed on candle streams (`rsi_14`, `vwap`, `sma_20`, `sma_50`, `rvol`, `price`) and rule evaluation.
-   - `backtester.py`: Stepped timeline simulator across non-contiguous ISO weeks with technical gate short-circuiting, point-in-time LLM catalyst caching, dual-P&L tracking (Midpoint vs 5 bps Slippage-Adjusted), and counterfactual skipped trade attribution.
-   - `backtest_models.py`: `Position`, `CompletedTrade`, `SkippedTrade`, `close_position()`, and `build_backtest_summary()`.
-   - `worker.py`: `process_next_recipe_job()` — pops one job from the priority queue, validates the recipe, dispatches to the backtest or live-turn path, and records the result.
-   - `news_corpus.py`: News ingestion parser, bucket categorizer, and temporal query engine.
-   - `import_news_cli.py`: CLI importer for `stock-news-scraper/output/` JSONL files.
+   - `push_schema.py`: Pydantic models for Push v2 (`PushStrategy`, `StrategyStage`, `PromptBlock`, `NewsBlock`, `MemoriesBlock`, `TechnicalsBlock`, `OutputFormatBlock`).
+   - `push_hydrator.py`: Point-in-time filtering and stage prompt hydration (`fetch_push_context_batch`, `hydrate_stage_prompt`, `build_news_excerpt`).
+   - `push_runner.py`: Sequential stage execution (`run_push_live`) and random 10-trading-day point-in-time backtesting (`run_push_backtest`) backed by `public.price_history` and `STRATA_BASE_URL` / `FREE_LLM_PROXY_URL` (`https://llm.clvg.uk/v1`).
+   - `worker.py`: `process_next_recipe_job()` / `async_process_next_recipe_job()` returning a `JobOutcome` (`"EMPTY"`, `"COMPLETED"`, `"FAILED"`) — pops one Push v2 job from `recipe_execution_queue`, rejects legacy/unsupported payloads, executes `run_push_live` or `run_push_backtest`, and deposits `live_turn` signals into `recipe_alerts_inbox`.
+   - `runner.py`: MiniPC daemon (`python3 -m recipes.runner --loop`) running hourly `sync_live_news_to_corpus()` + `enqueue_live_recipes()` and polling the priority queue every 5s via `async_process_next_recipe_job` / `_drain_sync_queue`.
+   - `news_corpus.py` & `import_news_cli.py`: Bucket derivation (`derive_article_buckets`), JSONL shard importer, and `sync_live_news_to_corpus()` reusing `analysis/intraday_news_aggregator.py` + `newsletter_snapshots`.
 
 3. **Presentation & Studio UI (`apps/web/src/features/recipes/`)**:
-   - Built strictly with Cheddar Boxel (Voxel) tokens (`bg-boxel-canvas`, `bg-boxel-surface`, 0px corners, 2px directional bevels, recessed `.voxel-trough` slots).
-   - `RecipeFlowCanvas.tsx`: Stepped visual DAG pipeline canvas.
-   - `BlockConfigureModal.tsx`: Dropdown configuration builder for indicators and conditions.
-   - `RecipeBacktestResults.tsx`: Dual-P&L performance curves and counterfactual skipped trade forensics.
-   - `RecipeAlertsInbox.tsx`: In-app trade signals notifications.
-   - `WaitlistPledgeModal.tsx`: Free beta supporter pledge modal.
-   - `starter-templates.ts`: Four ready-made recipes (`NVDA Semiconductor VWAP Momentum`, `SPY Macro Fed Rates Gate`, `Tech SMA Trend Following`, `Earnings Guidance Drift`).
-   - `api/recipes-api.ts`: Server functions for save, enqueue, status polling, alerts, and waitlist pledges.
+   - Built with Cheddar Boxel (Voxel) tokens (`bg-boxel-canvas`, `bg-boxel-surface`, 0px corners, 2px directional bevels, recessed `.voxel-trough` slots).
+   - `StageBuilder.tsx`, `BlockEditors.tsx`, `ToolPicker.tsx`, `PromptVisualizer.tsx`, `RecipeBacktestResults.tsx`, `RecipeAlertsInbox.tsx`, `WaitlistPledgeModal.tsx`, `starter-templates.ts` (consuming `packages/config/starter-recipes.json`), and `api/recipes-api.ts`.
 
-## DAG Node Types
-
-| Node Type | Purpose | Key Parameters |
-| :--- | :--- | :--- |
-| `news_source` | Pulls point-in-time headlines within lookback window | `bucket`, `tickers`, `lookback_hours` |
-| `price_tape` | Streams market price bars | `ticker`, `cadence` (`5m`, `1d`) |
-| `technical_gate` | Filters execution based on technical rules (AND) | `metric`, `operator`, `target` |
-| `classification` | LLM catalyst sentiment classifier | `model` (`~typesafe/jev-latest`), `target_choice`, `min_confidence` |
-| `generative_analyst` | Open-ended reasoning analyst | `model` (`auto-strata`), `system_prompt`, `user_template` |
-| `risk_output` | Sizing, stops, profit targets, and exit rules | `action` (`BUY`/`SELL`), `stop_loss_pct`, `target_profit_pct`, `max_hold_bars` |
-
-## Queue Worker (`apps/engine/recipes/worker.py`)
-
-`process_next_recipe_job(client=None)` processes exactly one job per call and returns `True` when a job was handled, `False` when the queue was empty or the job failed.
-
-1. **Atomic dequeue** — calls the `pop_next_recipe_job()` RPC, which re-queues `processing` rows stalled longer than 5 minutes, then selects the lowest `priority` / oldest `created_at` pending row with `FOR UPDATE SKIP LOCKED` and flips it to `processing` with `progress_pct = 5`.
-2. **Mark processing** — stamps `status = 'processing'` and `started_at`.
-3. **Parse & validate** — loads `strategy_recipes.graph_json` (accepting a JSON string or object) and runs `validate_recipe_graph`. A validation failure raises `ValueError`, which marks the queue row `failed` with the joined error list in `error_message`.
-4. **Dispatch by mode** — `live_turn` routes to `_execute_live_turn`, everything else to `_execute_backtest_job`.
-5. **Complete** — writes `status = 'completed'`, `progress_pct = 100`, `result_json`, and `completed_at`, then increments `strategy_recipes.trial_count` and refreshes `updated_at`.
-
-### Backtest Path
-
-`_execute_backtest_job` resolves the ticker in priority order: the `price_tape` node's `ticker`, then the first entry of a `news_source` node's `tickers`, then the first word of the recipe name when it is alphabetic and ≤ 5 characters, defaulting to `SPY`. It loads that ticker's rows from `recipe_intraday_bars`, and when the cache is empty it substitutes a single synthetic anchor bar (`open 500.0`, `high 501.0`, `low 499.0`, `close 500.5`, `volume 10000`) so the simulation still produces a result. The 100 most recent `recipe_news_corpus` rows are passed as the news feed, and `run_recipe_backtest` is invoked **without** an injected `llm_evaluator` — `classification` nodes therefore resolve to their configured `target_choice` at 90% confidence rather than issuing a live LLM call.
-
-### Live Turn Path
-
-`_execute_live_turn` reads the latest `recipe_intraday_bars` row for the ticker (coercing missing or malformed OHLCV values to safe defaults), evaluates **only** the `technical_gate` conditions, and on a pass inserts a `recipe_alerts_inbox` row carrying the `risk_output` action, entry price, target price, stop loss, cadence, and the joined condition explanations. No news or LLM gate runs in the live path.
-
-## Web API Server Functions (`apps/web/src/features/recipes/api/recipes-api.ts`)
-
-| Function | Method | Purpose |
-| :--- | :--- | :--- |
-| `fetchPublicRecipes()` | direct DB read | Lists up to 20 recipes where `is_public` or `is_template` is true |
-| `fetchRecipeAlertsFn` | `GET` | Returns the caller's 50 most recent `recipe_alerts_inbox` rows |
-| `markAlertReadFn` | `POST` | Sets `is_read = true` on one alert scoped to the caller |
-| `saveRecipeFn` | `POST` | Inserts or updates a recipe; rejects edits to another user's recipe |
-| `enqueueRecipeJobFn` | `POST` | Enqueues a `preview` / `backtest` / `live_turn` job (priority 1 for live turns, 10 otherwise) and selects the provider from the supplied BYO keys |
-| `getRecipeJobStatusFn` | `GET` | Returns `status`, `progress_pct`, `result_json`, and `error_message` for a job |
-| `submitWaitlistPledgeFn` | `POST` | Records an early-supporter pledge |
-
-Unauthenticated callers are attributed to the sentinel `ANONYMOUS_USER_ID` (`00000000-0000-0000-0000-000000000000`). Privileged writes go through `getDbAdminClient()`; reads use `getDbServerClient()` (see [[concepts/auth-db-client-separation]]).
-
-## Model Routing & Free Tier Policy
-
-- **Free Tier Default**: All simulations and paper turns run at zero user cost via our dedicated local GPU queue (`auto-strata`).
-- **BYO OpenRouter Key**: Users providing an OpenRouter key unlock Jev (`~typesafe/jev-latest`) for low-cost catalyst classification. Jev is *only* invoked if an OpenRouter key is supplied.
-- **Queue Starvation Guard**: A hard limit of 40 local LLM calls per backtest prevents long multi-week simulations from exhausting GPU queues. Technical gates evaluate first to short-circuit non-viable entries before invoking LLMs.
-
-## News Corpus Import CLI
-
-`apps/engine/recipes/import_news_cli.py` imports `stock-news-scraper` JSONL shards into `recipe_news_corpus`:
-
-```sh
-PYTHONPATH=apps/engine ./apps/engine/.venv/bin/python3 -m recipes.import_news_cli \
-  --scraper-dir /path/to/stock-news-scraper [--batch-size 50] [--dry-run]
-```
-
-It scans `<scraper-dir>/output/corpus/*.jsonl` and `<scraper-dir>/output/news_*.jsonl`, upserts idempotently on `article_id`, and reports inserted/skipped counts. `--dry-run` parses and validates records without touching the database.
-
-## Route Registration
-
-The page is served by `apps/web/src/routes/recipes/index.tsx` (`createFileRoute('/recipes/')`) and is linked from the `/lab` directory under **Research & Prediction Engines**. The client polls `getRecipeJobStatusFn` up to six times at one-second intervals after enqueuing a backtest, rendering `RecipeBacktestResults` as soon as `status === 'completed'`.
-
-## 5-Block Push-Based MVP (`version: "2.0-push"`)
-
-In addition to legacy `RecipeGraph` DAGs, `/recipes` now defaults to a simpler linear **5-Block Push-Based Strategy Builder** (`apps/engine/recipes/push_schema.py`, `apps/engine/recipes/push_hydrator.py`, `apps/engine/recipes/push_runner.py`):
+## 5-Block Push-Based Model (`version: "2.0-push"`)
 
 - **Multi-Stage Sequential Chaining**: A strategy contains 1 or more ordered `StrategyStage` items (`Stage 1..N`), where Stage $N$'s output is passed into Stage $N+1$ via `{{prev_output}}`.
 - **5 Push Blocks**:
-  - `output_format`: Immutable output-format contract locked to the trade-signal schema
-    `[{"action": "BUY"|"SELL", "ticker": "..."}]`. Frozen content — add or remove the
-    block, but do not edit its rendered text. The block is rendered **last** in the
-    assembled stage prompt regardless of its position in the stage's block list, so the
-    schema lock is always the final instruction the model sees. `OutputFormatBlock` is a
-    frozen Pydantic model (`ConfigDict(frozen=True)`) and the UI hides its move/delete
-    controls, showing an `IMMUTABLE` badge instead.
+  - `output_format`: Immutable output-format contract locked to `[{"action": "BUY"|"SELL", "ticker": "..."}]`. Rendered **last** in the assembled stage prompt regardless of its block order.
   - `prompt`: Free-text prompt instructions.
-  - `news`: Keyword `contains` + `recency_hours` filter over `recipe_news_corpus`.
-    Each hit renders its headline plus a ~300-char body excerpt centered on the first keyword hit (lead fallback), built by `build_news_excerpt` in `apps/engine/recipes/push_hydrator.py` and mirrored in `apps/web/src/features/recipes/news-excerpt.ts`. Both implementations are asserted against the shared cases in `packages/config/news-excerpt-cases.json`; regenerate expectations only from the engine and keep both suites green.
+  - `news`: Keyword `contains` + `recency_hours` filter over `recipe_news_corpus`. Each hit renders its headline plus a ~300-char body excerpt (`build_news_excerpt` in `apps/engine/recipes/push_hydrator.py`, mirrored in `apps/web/src/features/recipes/news-excerpt.ts`, asserted against `packages/config/news-excerpt-cases.json`).
   - `memories`: Keyword `contains` + `recency_hours` + `category` (`memory_type`) + `min_importance` filter over `memories` (explicitly projecting columns without `embedding` vectors).
   - `technicals`: Company rules (`P/E`, `FCF`, `VWAP`, `RSI`, `MACD`, `price_52w_pct`, etc.) serialized as prompt criteria.
-- **UI & Prompt Visualizer**: `StageBuilder.tsx`, `ToolPicker.tsx` (curated 12-tool checklist including `get_technical_indicators`), and `PromptVisualizer.tsx` (instant template preview + `previewStrategyPromptFn` live DB hydration) in `apps/web/src/features/recipes/`.
-- **Random 2-Week Point-in-Time Backtest**: `run_push_backtest` selects a random contiguous 10-trading-day window (preventing overfitting), steps day-by-day injecting point-in-time news/memories (`<= sim_date`) and passing `cutoff_date` into tools, and scores `BUY`/`SELL` picks.
+
+## Hourly Runner Daemon (`apps/engine/recipes/runner.py`)
+
+`recipes.runner` is the MiniPC-hosted scheduler and queue worker that keeps the corpus fresh and drains the execution queue. It is deployed as the `recipe-worker` container in `docker/archive/docker-compose.secondary.yml` (see [[entities/secondary-minipc-edge]]).
+
+### Cycle Functions
+
+- **`seed_starter_recipes(sb_client)`** — loads `packages/config/starter-recipes.json` and idempotently inserts any template whose `name` is not already present among `is_template = true` rows. Seeded rows carry `user_id = ANONYMOUS_USER_ID` (`00000000-0000-0000-0000-000000000000`), `is_public = true`, `is_template = true`, `is_live = false`, and the default concurrency config (`max_open_trades: 3`, `max_equity_pct_per_trade: 33.3`). Returns the number inserted.
+- **`enqueue_live_recipes(sb_client)`** — selects every `is_live = true` recipe and inserts a `live_turn` job (priority `1`, provider `auto-strata`, model `strata`) for each one that does not already have a `pending`/`processing` queue row. Returns the number enqueued.
+- **`run_hourly_cycle(sb_client, as_of_utc=None, max_jobs=25)`** — runs `sync_live_news_to_corpus()`, then `enqueue_live_recipes()`, then drains up to `max_jobs` queue jobs via `process_next_recipe_job()`. Returns `{news_synced, live_enqueued, jobs_processed}`.
+- **`_run_daemon_loop(sb_client)`** — seeds templates once, then runs `run_hourly_cycle` every `HOURLY_INTERVAL_SECONDS` (3600s) and otherwise polls the queue every `POLL_INTERVAL_SECONDS` (5s), draining up to `MAX_JOBS_PER_CYCLE` (25) jobs per pass. Cycle failures are logged via `logger.exception` and never terminate the loop.
+
+### CLI
+
+```sh
+# Continuous daemon (hourly sync + 5s queue polling)
+python3 -m recipes.runner --loop
+
+# One hourly sync + enqueue + queue drain
+python3 -m recipes.runner --once
+
+# Seed starter templates only
+python3 -m recipes.runner --seed-only
+
+# Sync live news into recipe_news_corpus only
+python3 -m recipes.runner --sync-news-only
+```
+
+Running with no flags seeds templates and executes a single `run_hourly_cycle`.
+
+## Live News Sync (`sync_live_news_to_corpus`)
+
+`apps/engine/recipes/news_corpus.py` exposes `sync_live_news_to_corpus(sb_client, as_of_utc=None, symbols="SPY,QQQ,NVDA,AMD,AAPL,MSFT,AMZN,META,GOOGL,TSLA", lookback_hours=48, batch_size=50)`, which keeps `recipe_news_corpus` current with the live tape:
+
+1. **Market wire ingestion** — calls `aggregate_intraday_news()` (Alpaca Benzinga wire, Polygon reference news, FMP stable stock news) with `limit_per_source=25`. Each item is normalized through `parse_and_normalize_article()` using its `source_id_hash` as `article_id`, `source_family = "market_wire"`, and `date_precision = "wire_timestamp"`.
+2. **Newsletter snapshots** — queries `newsletter_snapshots` for rows newer than `as_of_utc - lookback_hours` (max 50) and normalizes each as `article_id = "nl_<source_id>"`, `source_family = "newsletter"`, `date_precision = "newsletter_date"`.
+3. **Idempotent upsert** — batches records (`batch_size`, default 50) into `recipe_news_corpus` with `on_conflict="article_id"`.
+
+Both source fetches are individually wrapped in `try/except` with `logger.exception`, so a single upstream outage still persists whatever succeeded. Returns `{"fetched": N, "inserted": M}`.
+
+## Point-in-Time Backtesting (`run_push_backtest`)
+
+`run_push_backtest(strategy, sb_client, llm_caller=None, rng=None, slippage_bps=5.0)` simulates a random contiguous 10-trading-day window with zero forward leakage:
+
+1. **Trading calendar** — `_load_window_dates(sb_client)` reads the most recent 120 `price_history` rows for `SPY` and derives the distinct trading dates; when the table is empty or the query fails it falls back to the last 20 weekdays.
+2. **Window selection** — `pick_random_two_week_window()` picks a seeded random contiguous slice of up to 10 trading days.
+3. **Point-in-time hydration** — `fetch_push_context_batch()` gathers news and memories bounded by each simulated day's cutoff (lookback extended by 20 days for the news window).
+4. **Signal generation** — every stage is executed per day and `parse_trade_signals()` extracts `{action, ticker}` picks; the union of traded tickers is collected.
+5. **Pricing** — `_load_daily_closes(sb_client, tickers, start_day, end_day)` batch-fetches `price_history` rows (`ticker, fetched_at, close, price`) for exactly those tickers, preferring `close` and falling back to `price`.
+6. **Accounting** — trades are closed against the next day's close with `slippage_bps` friction, producing the dual Midpoint / Net P&L result payload.
+
+Because pricing is resolved after all signals are known, the backtest issues exactly one batched price query per run instead of per-day lookups.
+
+## Legacy DAG Removal
+
+The former `RecipeGraph` DAG pipeline (`schema.py`, `validator.py`, `indicators.py`, `backtester.py`, `backtest_models.py`) and its `recipe_intraday_bars` 5-minute candle cache have been removed. `process_next_recipe_job()` now rejects any `graph_json` that lacks a `stages` list with `ValueError("Recipe must use Push v2 format with a 'stages' list (legacy DAG format is removed).")`, marking the queue row `failed` with that message in `error_message`.
 
 ## Related Pages
 
-- [[concepts/recipe-dag-backtesting]] — DAG validation invariants, point-in-time news queries, and dual P&L accounting
-- [[entities/database]] — the six `recipe_*` / `strategy_recipes` tables and the `pop_next_recipe_job()` RPC
+- [[entities/database]] — `recipe_*` / `strategy_recipes` tables, `price_history`, and `pop_next_recipe_job()`
+- [[entities/secondary-minipc-edge]] — hosts the `recipe-worker` container in `docker/archive/docker-compose.secondary.yml`
 - [[entities/free-llm-proxy]]
 - [[entities/design-system]]
-- [[entities/autoresearch]]
 - [[concepts/zero-frontend-compute]]
-- [[concepts/jev-decisions-model]]
+- [[concepts/zero-lookahead-materialization]]

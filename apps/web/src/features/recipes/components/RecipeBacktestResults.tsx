@@ -1,11 +1,6 @@
 import { Badge } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
-import type {
-    BacktestResultData,
-    CompletedTradeRecord,
-    SkippedTradeRecord,
-    WeekBreakdown,
-} from '../types';
+import type { BacktestResultData, CompletedTradeRecord, SkippedTradeRecord } from '../types';
 
 interface RecipeBacktestResultsProps {
     results: BacktestResultData | null;
@@ -21,16 +16,6 @@ function signedPct(value: number): string {
 
 function pnlColor(value: number): string {
     return value >= 0 ? 'text-success' : 'text-danger';
-}
-
-function normalizeWeek(w: WeekBreakdown) {
-    return {
-        week: w.week,
-        trades: typeof w.trades_count === 'number' ? w.trades_count : (w.trades ?? 0),
-        midPnl:
-            typeof w.week_pnl_midpoint === 'number' ? w.week_pnl_midpoint : (w.pnl_midpoint ?? 0),
-        netPnl: typeof w.week_pnl_net === 'number' ? w.week_pnl_net : (w.pnl_net ?? 0),
-    };
 }
 
 function StatePanel({
@@ -94,46 +79,6 @@ function PnlModeButton({
         >
             {label}
         </button>
-    );
-}
-
-function WeeksTable({ weeks }: { weeks: WeekBreakdown[] }) {
-    return (
-        <div className="flex flex-col gap-2">
-            <span className={SECTION_LABEL_CLASS}>ISO Week Performance Breakdown</span>
-            <div className="overflow-x-auto border border-border rounded-none">
-                <table className="w-full text-left text-xs font-normal">
-                    <thead className={TABLE_HEAD_CLASS}>
-                        <tr>
-                            <th className="p-2 font-bold">Week</th>
-                            <th className="p-2 font-bold text-right">Trades</th>
-                            <th className="p-2 font-bold text-right">Midpoint P&L</th>
-                            <th className="p-2 font-bold text-right">Net P&L</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                        {weeks.map(normalizeWeek).map((w) => (
-                            <tr key={w.week} className="hover:bg-boxel-canvas">
-                                <td className="p-2 font-mono font-bold text-foreground">
-                                    {w.week}
-                                </td>
-                                <td className="p-2 font-mono text-right tabular-nums text-foreground">
-                                    {w.trades}
-                                </td>
-                                <td className="p-2 font-mono text-right tabular-nums text-foreground">
-                                    ${w.midPnl.toFixed(2)}
-                                </td>
-                                <td
-                                    className={`p-2 font-mono text-right tabular-nums font-bold ${pnlColor(w.netPnl)}`}
-                                >
-                                    ${w.netPnl.toFixed(2)}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
     );
 }
 
@@ -277,7 +222,6 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
 
     const returnPct = useNetPnL ? results.total_return_pct_net : results.total_return_pct_midpoint;
     const endingCap = useNetPnL ? results.ending_capital_net : results.ending_capital_midpoint;
-    const weeks = results.weeks_breakdown ?? [];
     const skipped = results.skipped_trades ?? [];
 
     return (
@@ -325,7 +269,6 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
                 <StatCard label="LLM Invocations" value={results.llm_calls_made} />
             </div>
 
-            {weeks.length > 0 && <WeeksTable weeks={weeks} />}
             {skipped.length > 0 && <SkippedSignalsTable skipped={skipped} />}
             {results.trades.length > 0 && <ExecutedTradesTable trades={results.trades} />}
         </div>

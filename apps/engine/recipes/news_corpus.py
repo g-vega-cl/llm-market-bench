@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from core.config import logger
+from analysis.intraday_news_aggregator import aggregate_intraday_news
+from core.config import ALPACA_API_KEY, ALPACA_SECRET_KEY, FMP_API_KEY, MASSIVE_API_KEY, logger
 
 MACRO_INDEX_TICKERS = ["SPY", "QQQ", "TLT"]
 
@@ -216,69 +217,92 @@ def import_stock_news_corpus(
     return stats
 
 
-def query_corpus_point_in_time(
+async def sync_live_news_to_corpus(
     sb_client: Any,
-    cutoff_timestamp: str,
-    tickers: list[str] | None = None,
-    buckets: list[str] | None = None,
-    keywords: list[str] | None = None,
-    lookback_hours: int = 72,
-    limit: int = 20,
-) -> list[dict[str, Any]]:
-    """Strict point-in-time query for the recipe engine.
-
-    Guarantees:
-        date_published <= cutoff_timestamp (zero forward leakage)
-        date_published >= cutoff_timestamp - lookback_hours
-    """
-    try:
-        clean_cutoff = cutoff_timestamp.replace("Z", "+00:00")
-        cutoff_dt = datetime.fromisoformat(clean_cutoff)
-        if cutoff_dt.tzinfo is None:
-            cutoff_dt = cutoff_dt.replace(tzinfo=UTC)
-    except Exception:
-        cutoff_dt = datetime.now(UTC)
-
-    from datetime import timedelta
-
-    start_dt = cutoff_dt - timedelta(hours=lookback_hours)
-
-    query = (
-        sb_client.table("recipe_news_corpus")
-        .select("article_id, title, url, date_published, source, company, tickers, buckets, full_text, word_count")
-        .lte("date_published", cutoff_dt.isoformat())
-        .gte("date_published", start_dt.isoformat())
-        .order("date_published", desc=True)
-    )
-
-    if tickers:
-        clean_tickers = [t.upper().strip() for t in tickers if t.strip()]
-        if clean_tickers:
-            query = query.overlaps("tickers", clean_tickers)
-
-    if buckets:
-        clean_buckets = [b.lower().strip() for b in buckets if b.strip()]
-        if clean_buckets:
-            query = query.overlaps("buckets", clean_buckets)
-
-    query = query.limit(limit)
+    *,
+    as_of_utc: datetime | None = None,
+    symbols: str = "SPY,QQQ,NVDA,AMD,AAPL,MSFT,AMZN,META,GOOGL,TSLA",
+    lookback_hours: int = 48,
+    batch_size: int = 50,
+) -> dict[str, int]:
+    """Sync live wire headlines and recent newsletter_snapshots into recipe_news_corpus."""
+    now_utc = as_of_utc or datetime.now(UTC)
+    floor_iso = (now_utc - timedelta(hours=max(1, lookback_hours))).isoformat()
+    records: list[dict[str, Any]] = []
 
     try:
-        res = query.execute()
-        rows: list[dict[str, Any]] = res.data if isinstance(getattr(res, "data", None), list) else []
+        wire_items = await aggregate_intraday_news(
+            massive_api_key=MASSIVE_API_KEY or "",
+            fmp_api_key=FMP_API_KEY or "",
+            alpaca_api_key=ALPACA_API_KEY or "",
+            alpaca_secret_key=ALPACA_SECRET_KEY or "",
+            symbols=symbols,
+            limit_per_source=25,
+        )
+        for item in wire_items:
+            aid = str(item.get("source_id_hash") or "").strip()
+            if not aid:
+                continue
+            tickers = [str(t).upper().strip() for t in (item.get("tickers") or []) if str(t).strip()]
+            norm = parse_and_normalize_article(
+                {
+                    "article_id": aid,
+                    "title": item.get("headline", ""),
+                    "url": item.get("url") or f"https://benchify.app/news/{aid}",
+                    "date_published": item.get("published_at") or now_utc.isoformat(),
+                    "date_precision": "wire_timestamp",
+                    "source": item.get("source") or "market_wire",
+                    "source_family": "market_wire",
+                    "full_text": item.get("summary") or item.get("headline", ""),
+                    "company": tickers[0] if len(tickers) == 1 else "general_market",
+                    "tickers": tickers,
+                }
+            )
+            if norm:
+                records.append(norm)
     except Exception:
-        logger.exception("Error executing point-in-time news query")
-        return []
+        logger.exception("Failed fetching live wire news for recipe_news_corpus")
 
-    # Optional in-memory keyword filtering
-    if keywords:
-        clean_kw = [k.lower().strip() for k in keywords if k.strip()]
-        if clean_kw:
-            filtered = []
-            for r in rows:
-                content = f"{r.get('title', '')} {r.get('full_text', '')}".lower()
-                if any(kw in content for kw in clean_kw):
-                    filtered.append(r)
-            return filtered
+    try:
+        snap_res = (
+            sb_client.table("newsletter_snapshots")
+            .select("source_id, sender, subject, content, date")
+            .gte("date", floor_iso)
+            .order("date", desc=True)
+            .limit(50)
+            .execute()
+        )
+        for snap in snap_res.data or []:
+            src_id = str(snap.get("source_id") or "").strip()
+            if not src_id:
+                continue
+            aid = f"nl_{src_id}"
+            norm = parse_and_normalize_article(
+                {
+                    "article_id": aid,
+                    "title": snap.get("subject") or snap.get("sender") or "Market Newsletter",
+                    "url": f"https://benchify.app/newsletters/{src_id}",
+                    "date_published": snap.get("date") or now_utc.isoformat(),
+                    "date_precision": "newsletter_date",
+                    "source": snap.get("sender") or "newsletter",
+                    "source_family": "newsletter",
+                    "full_text": snap.get("content") or "",
+                    "company": "general_market",
+                    "tickers": [],
+                }
+            )
+            if norm:
+                records.append(norm)
+    except Exception:
+        logger.exception("Failed fetching newsletter_snapshots for recipe_news_corpus")
 
-    return rows
+    inserted = 0
+    for i in range(0, len(records), batch_size):
+        chunk = records[i : i + batch_size]
+        try:
+            res = sb_client.table("recipe_news_corpus").upsert(chunk, on_conflict="article_id").execute()
+            inserted += len(res.data) if getattr(res, "data", None) else len(chunk)
+        except Exception:
+            logger.exception("Failed upserting live news batch into recipe_news_corpus")
+
+    return {"fetched": len(records), "inserted": inserted}

@@ -68,7 +68,7 @@ async def default_llm_caller(
         client = AsyncOpenAI(api_key=openrouter_key, base_url="https://openrouter.ai/api/v1", timeout=90)
         model_id = "deepseek/deepseek-chat" if model == "auto-strata" else model
     else:
-        base_url = os.getenv("STRATA_BASE_URL", "http://localhost:8080/v1")
+        base_url = os.getenv("STRATA_BASE_URL") or os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1")
         client = AsyncOpenAI(api_key=os.getenv("STRATA_API_KEY", "local"), base_url=base_url, timeout=90)
         model_id = model
 
@@ -187,6 +187,58 @@ def pick_random_two_week_window(
     return unique_sorted[start_idx : start_idx + 10]
 
 
+def _load_window_dates(sb_client: Any) -> list[str]:
+    """Fetch recent trading dates from price_history (SPY anchor), falling back to weekdays."""
+    try:
+        res = (
+            sb_client.table("price_history")
+            .select("fetched_at")
+            .eq("ticker", "SPY")
+            .order("fetched_at", desc=True)
+            .limit(120)
+            .execute()
+        )
+        dates = [str(r.get("fetched_at", ""))[:10] for r in (res.data or []) if r.get("fetched_at")]
+        if dates:
+            return sorted(set(dates))
+    except Exception:
+        logger.exception("Failed fetching SPY trading calendar from price_history")
+
+    today = datetime.now(UTC).date()
+    return [
+        (today - timedelta(days=offset)).isoformat()
+        for offset in range(20, 0, -1)
+        if (today - timedelta(days=offset)).weekday() < 5
+    ]
+
+
+def _load_daily_closes(sb_client: Any, tickers: set[str], start_day: str, end_day: str) -> dict[str, dict[str, float]]:
+    """Batch-fetch daily closing prices from price_history for traded tickers."""
+    if not tickers:
+        return {}
+    daily_close: dict[str, dict[str, float]] = {}
+    try:
+        res = (
+            sb_client.table("price_history")
+            .select("ticker, fetched_at, close, price")
+            .in_("ticker", sorted(tickers))
+            .gte("fetched_at", f"{start_day}T00:00:00+00:00")
+            .lte("fetched_at", f"{end_day}T23:59:59+00:00")
+            .order("fetched_at", desc=False)
+            .limit(5000)
+            .execute()
+        )
+        for row in res.data or []:
+            day = str(row.get("fetched_at", ""))[:10]
+            tkr = str(row.get("ticker", "")).upper().strip()
+            raw_px = row.get("close") if row.get("close") is not None else row.get("price")
+            if day and tkr and raw_px is not None:
+                daily_close.setdefault(tkr, {})[day] = float(raw_px)
+    except Exception:
+        logger.exception("Failed fetching daily closes from price_history")
+    return daily_close
+
+
 async def run_push_backtest(
     strategy: PushStrategy,
     sb_client: Any,
@@ -194,34 +246,9 @@ async def run_push_backtest(
     rng: random.Random | None = None,
     slippage_bps: float = 5.0,
 ) -> dict[str, Any]:
-    """Run a random ~2-week point-in-time backtest across daily steps."""
+    """Run a random ~2-week point-in-time backtest across daily steps using price_history."""
     caller = llm_caller or default_llm_caller
-    bars_res = (
-        sb_client.table("recipe_intraday_bars")
-        .select("ticker, bar_time_utc, open, high, low, close")
-        .order("bar_time_utc", desc=True)
-        .limit(5000)
-        .execute()
-    )
-    bar_rows = list(reversed(bars_res.data or []))
-
-    daily_close: dict[str, dict[str, float]] = {}
-    all_dates: list[str] = []
-    for row in bar_rows:
-        day = str(row.get("bar_time_utc", ""))[:10]
-        tkr = str(row.get("ticker", "SPY")).upper()
-        if day:
-            daily_close.setdefault(tkr, {})[day] = float(row["close"])
-            all_dates.append(day)
-
-    if not all_dates:
-        today = datetime.now(UTC).date()
-        all_dates = [
-            (today - timedelta(days=offset)).isoformat()
-            for offset in range(20, 0, -1)
-            if (today - timedelta(days=offset)).weekday() < 5
-        ]
-
+    all_dates = _load_window_dates(sb_client)
     window_dates = pick_random_two_week_window(all_dates, rng=rng)
     end_dt = datetime.fromisoformat(f"{window_dates[-1]}T21:00:00+00:00")
     news_rows, memory_rows = fetch_push_context_batch(
@@ -230,15 +257,9 @@ async def run_push_backtest(
         lookback_hours=_max_lookback_hours(strategy) + 24 * 20,
     )
 
-    trades: list[dict[str, Any]] = []
-    skipped_trades: list[dict[str, Any]] = []
     llm_calls_made = 0
-    starting_capital = 10000.0
-    equity = starting_capital
-    equity_curve: list[dict[str, Any]] = []
-    peak = equity
-    max_dd = 0.0
-    slip = slippage_bps / 10000.0
+    day_signals: list[tuple[int, str, list[dict[str, str]]]] = []
+    traded_tickers: set[str] = set()
 
     for idx, day_str in enumerate(window_dates):
         step_dt = datetime.fromisoformat(f"{day_str}T14:30:00+00:00")
@@ -253,8 +274,25 @@ async def run_push_backtest(
                 logger.exception("Stage %s failed on backtest date %s", stage.id, day_str)
                 prev_output = ""
 
+        signals = parse_trade_signals(prev_output or "")
+        day_signals.append((idx, day_str, signals))
+        for sig in signals:
+            traded_tickers.add(sig["ticker"])
+
+    daily_close = _load_daily_closes(sb_client, traded_tickers, window_dates[0], window_dates[-1])
+
+    trades: list[dict[str, Any]] = []
+    skipped_trades: list[dict[str, Any]] = []
+    starting_capital = 10000.0
+    equity = starting_capital
+    equity_curve: list[dict[str, Any]] = []
+    peak = equity
+    max_dd = 0.0
+    slip = slippage_bps / 10000.0
+
+    for idx, day_str, signals in day_signals:
         next_day = window_dates[idx + 1] if idx + 1 < len(window_dates) else None
-        for sig in parse_trade_signals(prev_output or ""):
+        for sig in signals:
             tkr = sig["ticker"]
             prices = daily_close.get(tkr, {})
             entry_px = prices.get(day_str)

@@ -95,6 +95,25 @@ services:
         limits:
           memory: 1G
 
+  recipe-worker:
+    build:
+      context: ../..
+      dockerfile: docker/archive/Dockerfile.trader
+    container_name: market-bench-recipe-worker
+    restart: unless-stopped
+    command: ["python3", "-m", "recipes.runner", "--loop"]
+    extra_hosts:
+      - "primary-workstation:${PRIMARY_WORKSTATION_IP:-127.0.0.1}"
+    env_file:
+      - ../../apps/engine/.env
+    environment:
+      STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
+      FREE_LLM_PROXY_URL: https://llm.clvg.uk/v1
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
 volumes:
   archive_pgdata_replica:
     name: archive_pgdata_replica

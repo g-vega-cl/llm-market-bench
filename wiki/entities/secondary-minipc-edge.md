@@ -33,12 +33,13 @@ The secondary MiniPC server (`cv-minipc@minipc`) acts as a 24/7 dedicated edge g
 ## Core Components
 
 1. **`docker/archive/docker-compose.secondary.yml`**:
-   - Manages five coordinated edge services on the MiniPC:
+   - Manages six coordinated edge services on the MiniPC:
      - `archive-db-replica` (`ankane/pgvector:latest`): Read-only standby PostgreSQL instance attached to physical replication slot `minipc_standby_slot`.
      - `archive-postgrest` (`postgrest/postgrest:latest`): Connected locally to `archive-db-replica:5432` for fast read querying.
      - `archive-proxy` (`nginx:alpine`): Nginx reverse proxy listening on port 3001, executing method-based routing and upstream failover.
      - `free-llm-proxy` (`archive-free-llm-proxy:latest`): OpenAI-compatible model-agnostic proxy listening on port 8086 with automated circuit-breaking, caller attribution ("Who": client IP, User-Agent) and intent telemetry ("Why": purpose, prompt preview). Includes `extra_hosts` mapping `primary-workstation` to `${PRIMARY_WORKSTATION_IP:-127.0.0.1}` and routes Strata inference via `http://primary-workstation:3001/strata/v1` over Tailscale.
      - `live-spy-trader` (`market-bench-live-spy-trader`): The 24/7 autonomous intraday SPY trading daemon (see [[entities/live-agent-trader]]). Built from `docker/archive/Dockerfile.trader` (context `../..`), `restart: unless-stopped`, 1G memory limit. Runs `python3 -m trading.runner --loop`, executing a 5-minute reasoning turn via local Strata (Tier 1) with fallback to the centralized CLVG proxy (Tier 2), routing paper orders to Alpaca. An `extra_hosts` entry maps `primary-workstation` to `${PRIMARY_WORKSTATION_IP:-127.0.0.1}` so Tailscale routes Strata inference to the developer machine via `http://primary-workstation:3001/strata/v1`. **Credentials are loaded via `env_file: ../../apps/engine/.env`** (Supabase keys, Alpaca keys, `FMP_API_KEY` / `MASSIVE_API_KEY` / `POLYGON_API_KEY`), while only non-secret routing values (`STRATA_BASE_URL`, `FREE_LLM_PROXY_URL`) are set inline under `environment`. Exposes host port `8090:8090` for the intraday tape SSE server (see below).
+     - `recipe-worker` (`market-bench-recipe-worker`): Hourly Recipe Studio scheduler and 5-second queue poller (`python3 -m recipes.runner --loop`). Built from `docker/archive/Dockerfile.trader` with a 256M memory limit and the same `apps/engine/.env` + `STRATA_BASE_URL` / `FREE_LLM_PROXY_URL` routing. Syncs live news into `recipe_news_corpus`, enqueues `live_turn` jobs for `is_live = true` recipes every hour, and drains `recipe_execution_queue`. See [[entities/recipe-studio]].
 
    On the **primary** workstation, `docker/archive/docker-compose.yml` gives the `archive-proxy` service an `extra_hosts` entry mapping `minipc` to `${MINIPC_IP:-100.119.63.53}` (the MiniPC's Tailscale address), so the primary Nginx can reach the MiniPC-hosted trader SSE server by hostname without relying on Docker's embedded DNS.
 

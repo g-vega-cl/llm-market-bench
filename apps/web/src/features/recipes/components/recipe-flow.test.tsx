@@ -95,14 +95,6 @@ describe('RecipeBacktestResults', () => {
                 headline: 'Tech sector catalyst headline',
             },
         ],
-        weeks_breakdown: [
-            {
-                week: '2026-W10',
-                trades_count: 10,
-                week_pnl_midpoint: 500,
-                week_pnl_net: 420,
-            },
-        ],
     };
 
     it('toggles between Net P&L and Midpoint P&L', () => {

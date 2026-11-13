@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { BacktestResultData } from '../types';
 import { RecipeBacktestResults } from './RecipeBacktestResults';
@@ -61,7 +61,6 @@ describe('RecipeBacktestResults telemetry', () => {
 
     it('omits optional tables when there is nothing to show', () => {
         render(<RecipeBacktestResults results={base} />);
-        expect(screen.queryByText('ISO Week Performance Breakdown')).not.toBeInTheDocument();
         expect(screen.queryByText(/Counterfactual Skipped Signals/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Executed Trades/)).not.toBeInTheDocument();
     });
@@ -114,27 +113,6 @@ describe('RecipeBacktestResults tables', () => {
         expect(screen.getByText('$103.50')).toBeInTheDocument();
         expect(screen.getByText('$-11.00')).toBeInTheDocument();
         expect(screen.getByText('take_profit')).toBeInTheDocument();
-    });
-
-    it('renders week rows using legacy field fallbacks', () => {
-        render(
-            <RecipeBacktestResults
-                results={{
-                    ...base,
-                    weeks_breakdown: [
-                        { week: '2026-W10', trades: 4, pnl_midpoint: 12.5, pnl_net: -3 },
-                        { week: '2026-W11' },
-                    ],
-                }}
-            />,
-        );
-        const row10 = screen.getByText('2026-W10').closest('tr') as HTMLElement;
-        expect(within(row10).getByText('4')).toBeInTheDocument();
-        expect(within(row10).getByText('$12.50')).toBeInTheDocument();
-        expect(within(row10).getByText('$-3.00')).toBeInTheDocument();
-        const row11 = screen.getByText('2026-W11').closest('tr') as HTMLElement;
-        expect(within(row11).getByText('0')).toBeInTheDocument();
-        expect(within(row11).getAllByText('$0.00')).toHaveLength(2);
     });
 
     it('caps skipped signals at 15 rows and hides empty headlines', () => {

@@ -1,13 +1,16 @@
 """Hermetic unit tests for the Recipe Studio Unified News Corpus."""
 
 import json
-from unittest.mock import MagicMock
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from recipes.news_corpus import (
     derive_article_buckets,
     import_stock_news_corpus,
     parse_and_normalize_article,
-    query_corpus_point_in_time,
+    sync_live_news_to_corpus,
 )
 
 
@@ -80,11 +83,9 @@ def test_parse_and_normalize_article_valid():
 
 
 def test_parse_and_normalize_article_invalid():
-    # Missing title and date
     raw = {"article_id": "bad_id"}
     assert parse_and_normalize_article(raw) is None
 
-    # Invalid date string
     raw_bad_date = {
         "article_id": "art_2",
         "title": "Test Title",
@@ -95,7 +96,6 @@ def test_parse_and_normalize_article_invalid():
 
 
 def test_import_stock_news_corpus(tmp_path):
-    # Create temporary JSONL file
     shard_file = tmp_path / "news_shard000.jsonl"
     records = [
         {
@@ -137,55 +137,57 @@ def test_import_stock_news_corpus(tmp_path):
     mock_sb.table.assert_called_with("recipe_news_corpus")
 
 
-def test_query_corpus_point_in_time():
+@pytest.mark.asyncio
+async def test_sync_live_news_to_corpus_hermetic():
     mock_sb = MagicMock()
-    mock_table = MagicMock()
-    mock_sb.table.return_value = mock_table
+    news_tbl = MagicMock()
+    snap_tbl = MagicMock()
 
-    mock_query = MagicMock()
-    mock_table.select.return_value = mock_query
-    mock_query.lte.return_value = mock_query
-    mock_query.gte.return_value = mock_query
-    mock_query.order.return_value = mock_query
-    mock_query.overlaps.return_value = mock_query
-    mock_query.limit.return_value = mock_query
+    def _router(name: str):
+        if name == "recipe_news_corpus":
+            return news_tbl
+        if name == "newsletter_snapshots":
+            return snap_tbl
+        return MagicMock()
 
-    mock_rows = [
+    mock_sb.table.side_effect = _router
+    snap_chain = snap_tbl.select.return_value
+    snap_chain.gte.return_value = snap_chain
+    snap_chain.order.return_value = snap_chain
+    snap_chain.limit.return_value = snap_chain
+    snap_chain.execute.return_value.data = [
         {
-            "article_id": "art_1",
-            "title": "Nvidia Earnings Surge Beyond Expectations",
-            "url": "https://example.com/nvda",
-            "date_published": "2026-11-10T09:15:00+00:00",
-            "tickers": ["NVDA"],
-            "buckets": ["semiconductors", "earnings"],
-            "full_text": "Data center demand powers record beat.",
-        },
-        {
-            "article_id": "art_2",
-            "title": "Routine Corporate Update",
-            "url": "https://example.com/corp",
-            "date_published": "2026-11-10T08:00:00+00:00",
-            "tickers": ["NVDA"],
-            "buckets": ["semiconductors"],
-            "full_text": "Company board meeting held.",
-        },
+            "source_id": "nl_123",
+            "sender": "Daily Market Brief",
+            "subject": "Fed signals cautious rate path as NVDA rallies",
+            "content": "Jerome Powell noted inflation progress while semiconductor stocks surged.",
+            "date": "2026-11-13T12:00:00+00:00",
+        }
     ]
-    mock_query.execute.return_value.data = mock_rows
 
-    results = query_corpus_point_in_time(
-        sb_client=mock_sb,
-        cutoff_timestamp="2026-11-10T09:30:00Z",
-        tickers=["NVDA"],
-        buckets=["semiconductors"],
-        keywords=["earnings"],
-        lookback_hours=24,
-        limit=5,
-    )
+    news_tbl.upsert.return_value.execute.return_value.data = [{"article_id": "a1"}, {"article_id": "nl_123"}]
 
-    # Keyword filter should keep only article 1
-    assert len(results) == 1
-    assert results[0]["article_id"] == "art_1"
+    wire_items = [
+        {
+            "source": "FMP (Reuters)",
+            "headline": "TSMC expands AI chip packaging capacity",
+            "published_at": "2026-11-13T13:30:00Z",
+            "summary": "Foundry demand remains elevated for GPUs.",
+            "url": "https://example.com/tsmc",
+            "tickers": ["TSM", "NVDA"],
+            "source_id_hash": "wire_hash_1",
+        }
+    ]
 
-    # Verify point in time parameters
-    mock_query.lte.assert_called()
-    mock_query.gte.assert_called()
+    with patch("recipes.news_corpus.aggregate_intraday_news", new=AsyncMock(return_value=wire_items)):
+        stats = await sync_live_news_to_corpus(
+            mock_sb,
+            as_of_utc=datetime(2026, 11, 13, 14, 0, tzinfo=UTC),
+        )
+
+    assert stats["inserted"] == 2
+    assert news_tbl.upsert.called
+    upserted_rows = news_tbl.upsert.call_args[0][0]
+    ids = {r["article_id"] for r in upserted_rows}
+    assert "wire_hash_1" in ids
+    assert any("nl_123" in i for i in ids)

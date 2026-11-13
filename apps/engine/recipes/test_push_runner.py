@@ -201,13 +201,15 @@ def test_pick_random_two_week_window_returns_up_to_10_trading_days():
     assert window == sorted(window)
 
 
-def _mock_sb_client(news_rows, memory_rows, bar_rows):
+def _mock_sb_client(news_rows, memory_rows, price_rows):
     client = MagicMock()
 
     def _table(name: str):
         tbl = MagicMock()
         chain = tbl.select.return_value
         chain.order.return_value = chain
+        chain.eq.return_value = chain
+        chain.in_.return_value = chain
         chain.gte.return_value = chain
         chain.lte.return_value = chain
         chain.limit.return_value = chain
@@ -215,8 +217,8 @@ def _mock_sb_client(news_rows, memory_rows, bar_rows):
             chain.execute.return_value = MagicMock(data=news_rows)
         elif name == "memories":
             chain.execute.return_value = MagicMock(data=memory_rows)
-        elif name == "recipe_intraday_bars":
-            chain.execute.return_value = MagicMock(data=bar_rows)
+        elif name == "price_history":
+            chain.execute.return_value = MagicMock(data=price_rows)
         else:
             chain.execute.return_value = MagicMock(data=[])
         return tbl
@@ -248,7 +250,7 @@ async def test_run_push_live_executes_multiple_stages_with_selected_tools():
                 "created_at": (as_of - timedelta(hours=10)).isoformat(),
             }
         ],
-        bar_rows=[],
+        price_rows=[],
     )
 
     calls: list[dict] = []
@@ -274,21 +276,18 @@ async def test_run_push_live_executes_multiple_stages_with_selected_tools():
 @pytest.mark.asyncio
 async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
     strategy = _sample_strategy(multi_stage=False)
-    base_day = datetime(2026, 2, 2, 16, 0, tzinfo=UTC)
-    bars = []
+    base_day = datetime(2026, 2, 2, 0, 0, tzinfo=UTC)
+    prices = []
     for i in range(20):
         day = base_day + timedelta(days=i)
         if day.weekday() >= 5:
             continue
-        bars.append(
+        prices.append(
             {
                 "ticker": "NVDA",
-                "bar_time_utc": day.isoformat(),
-                "open": 100.0 + i,
-                "high": 102.0 + i,
-                "low": 99.0 + i,
+                "fetched_at": day.isoformat(),
                 "close": 101.0 + i,
-                "volume": 1_000_000,
+                "price": 101.0 + i,
             }
         )
 
@@ -303,7 +302,7 @@ async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
             }
         ],
         memory_rows=[],
-        bar_rows=bars,
+        price_rows=prices,
     )
 
     cutoffs_seen: list[str] = []

@@ -1,4 +1,4 @@
-"""Hermetic TDD tests for the 4-block push-based strategy schema, hydrator, and runner."""
+"""Hermetic TDD tests for the 5-block push-based strategy schema, hydrator, and runner."""
 
 from __future__ import annotations
 
@@ -320,3 +320,55 @@ async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
     assert result["total_return_pct_midpoint"] > 0
     assert result["win_rate_pct"] == 100.0
     assert len(result["trades"]) > 0
+
+
+def test_output_format_block_renders_immutable_schema_section_last():
+    from recipes.push_schema import OutputFormatBlock, PromptBlock, StrategyStage
+
+    stage = StrategyStage(
+        id="s1",
+        blocks=[
+            PromptBlock(id="p1", type="prompt", text="Analyze the catalysts."),
+            OutputFormatBlock(id="f1", type="output_format"),
+        ],
+    )
+    out = hydrate_stage_prompt(stage, [], [], datetime(2026, 1, 1, tzinfo=UTC))
+    assert "Analyze the catalysts." in out
+    assert "=== REQUIRED OUTPUT FORMAT ===" in out
+    assert '[{"action": "BUY", "ticker": "NVDA"}]' in out
+    # Output format section is rendered after the prompt (final instruction).
+    assert out.index("=== REQUIRED OUTPUT FORMAT ===") > out.index("Analyze the catalysts.")
+
+
+def test_parse_trade_signals_still_parses_through_output_format_footer():
+    signals = parse_trade_signals(
+        "Reasoning here.\n"
+        "=== REQUIRED OUTPUT FORMAT ===\n"
+        '[{"action": "BUY", "ticker": "NVDA"}]\n'
+        'Each object must have exactly "action" and "ticker".'
+    )
+    assert signals == [{"action": "BUY", "ticker": "NVDA"}]
+
+
+def test_output_format_block_is_frozen():
+    from pydantic import ValidationError
+
+    from recipes.push_schema import OutputFormatBlock
+
+    block = OutputFormatBlock(id="f1", type="output_format")
+    with pytest.raises(ValidationError):
+        block.type = "prompt"
+
+
+def test_output_format_block_renders_last_regardless_of_input_order():
+    from recipes.push_schema import OutputFormatBlock, PromptBlock, StrategyStage
+
+    stage = StrategyStage(
+        id="s1",
+        blocks=[
+            OutputFormatBlock(id="f1", type="output_format"),
+            PromptBlock(id="p1", type="prompt", text="Analyze the catalysts."),
+        ],
+    )
+    out = hydrate_stage_prompt(stage, [], [], datetime(2026, 1, 1, tzinfo=UTC))
+    assert out.index("=== REQUIRED OUTPUT FORMAT ===") > out.index("Analyze the catalysts.")

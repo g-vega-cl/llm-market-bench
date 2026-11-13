@@ -40,7 +40,17 @@ export interface TechnicalsBlock {
     rules: TechnicalsRule[];
 }
 
-export type StrategyBlock = PromptBlock | NewsBlock | MemoriesBlock | TechnicalsBlock;
+export interface OutputFormatBlock {
+    id: string;
+    type: 'output_format';
+}
+
+export type StrategyBlock =
+    | PromptBlock
+    | NewsBlock
+    | MemoriesBlock
+    | TechnicalsBlock
+    | OutputFormatBlock;
 
 export interface StrategyStage {
     id: string;

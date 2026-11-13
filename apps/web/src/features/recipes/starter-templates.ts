@@ -21,7 +21,7 @@ export const STARTER_RECIPES: PushStrategy[] = [
                     {
                         id: 'blk-prompt-1',
                         type: 'prompt',
-                        text: 'Analyze the injected news catalysts and historical memories. Use the tools to verify valuations and technicals, then output BUY or SELL decisions as JSON [{"action": "BUY", "ticker": "NVDA"}].',
+                        text: 'Analyze the injected news catalysts and historical memories. Use the tools to verify valuations and technicals.',
                     },
                     {
                         id: 'blk-news-1',
@@ -44,6 +44,10 @@ export const STARTER_RECIPES: PushStrategy[] = [
                             { id: 'rule-pe', metric: 'P/E', operator: '<', target: '45' },
                             { id: 'rule-rsi', metric: 'RSI', operator: '<', target: '70' },
                         ],
+                    },
+                    {
+                        id: 'blk-format-1',
+                        type: 'output_format',
                     },
                 ],
             },
@@ -94,7 +98,7 @@ export const STARTER_RECIPES: PushStrategy[] = [
                     {
                         id: 'blk-s2-prompt',
                         type: 'prompt',
-                        text: 'Review Stage 1 candidates:\n{{prev_output}}\nVerify technicals and fundamentals, then emit BUY/SELL JSON.',
+                        text: 'Review Stage 1 candidates:\n{{prev_output}}\nVerify technicals and fundamentals.',
                     },
                     {
                         id: 'blk-s2-tech',
@@ -108,6 +112,10 @@ export const STARTER_RECIPES: PushStrategy[] = [
                             },
                             { id: 'rule-fcf', metric: 'FCF', operator: '>', target: '0' },
                         ],
+                    },
+                    {
+                        id: 'blk-format-2',
+                        type: 'output_format',
                     },
                 ],
             },

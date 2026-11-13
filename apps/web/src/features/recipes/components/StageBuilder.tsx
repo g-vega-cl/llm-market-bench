@@ -37,6 +37,9 @@ function createBlock(type: StrategyBlock['type']): StrategyBlock {
             min_importance: 5,
         };
     }
+    if (type === 'output_format') {
+        return { id, type: 'output_format' };
+    }
     return {
         id,
         type: 'technicals',
@@ -132,6 +135,18 @@ export function StageBuilder({
                     >
                         + Technicals
                     </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                            onChange({
+                                ...stage,
+                                blocks: [...stage.blocks, createBlock('output_format')],
+                            })
+                        }
+                    >
+                        + Output Format
+                    </Button>
                     {totalStages > 1 && onRemoveStage && (
                         <Button size="sm" variant="outline" onClick={onRemoveStage}>
                             Remove Stage
@@ -150,31 +165,33 @@ export function StageBuilder({
                             <Badge variant="outline" size="sm">
                                 {block.type.toUpperCase()} BLOCK
                             </Badge>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => moveBlock(bIdx, -1)}
-                                    disabled={bIdx === 0}
-                                >
-                                    ↑
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => moveBlock(bIdx, 1)}
-                                    disabled={bIdx === stage.blocks.length - 1}
-                                >
-                                    ↓
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => removeBlock(block.id)}
-                                >
-                                    Delete
-                                </Button>
-                            </div>
+                            {block.type === 'output_format' ? null : (
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => moveBlock(bIdx, -1)}
+                                        disabled={bIdx === 0}
+                                    >
+                                        ↑
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => moveBlock(bIdx, 1)}
+                                        disabled={bIdx === stage.blocks.length - 1}
+                                    >
+                                        ↓
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => removeBlock(block.id)}
+                                    >
+                                        Delete
+                                    </Button>
+                                </div>
+                            )}
                         </div>
 
                         {block.type === 'prompt' && (
@@ -217,6 +234,14 @@ export function StageBuilder({
                                     }))
                                 }
                             />
+                        )}
+                        {block.type === 'output_format' && (
+                            <div className="flex items-center gap-2 text-xs">
+                                <Badge variant="outline" size="sm">
+                                    IMMUTABLE
+                                </Badge>
+                                Output format locked to BUY/SELL JSON schema.
+                            </div>
                         )}
                     </div>
                 ))}

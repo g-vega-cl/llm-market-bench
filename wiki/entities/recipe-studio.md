@@ -103,12 +103,19 @@ It scans `<scraper-dir>/output/corpus/*.jsonl` and `<scraper-dir>/output/news_*.
 
 The page is served by `apps/web/src/routes/recipes/index.tsx` (`createFileRoute('/recipes/')`) and is linked from the `/lab` directory under **Research & Prediction Engines**. The client polls `getRecipeJobStatusFn` up to six times at one-second intervals after enqueuing a backtest, rendering `RecipeBacktestResults` as soon as `status === 'completed'`.
 
-## 4-Block Push-Based MVP (`version: "2.0-push"`)
+## 5-Block Push-Based MVP (`version: "2.0-push"`)
 
-In addition to legacy `RecipeGraph` DAGs, `/recipes` now defaults to a simpler linear **4-Block Push-Based Strategy Builder** (`apps/engine/recipes/push_schema.py`, `apps/engine/recipes/push_hydrator.py`, `apps/engine/recipes/push_runner.py`):
+In addition to legacy `RecipeGraph` DAGs, `/recipes` now defaults to a simpler linear **5-Block Push-Based Strategy Builder** (`apps/engine/recipes/push_schema.py`, `apps/engine/recipes/push_hydrator.py`, `apps/engine/recipes/push_runner.py`):
 
 - **Multi-Stage Sequential Chaining**: A strategy contains 1 or more ordered `StrategyStage` items (`Stage 1..N`), where Stage $N$'s output is passed into Stage $N+1$ via `{{prev_output}}`.
-- **4 Push Blocks**:
+- **5 Push Blocks**:
+  - `output_format`: Immutable output-format contract locked to the trade-signal schema
+    `[{"action": "BUY"|"SELL", "ticker": "..."}]`. Frozen content — add or remove the
+    block, but do not edit its rendered text. The block is rendered **last** in the
+    assembled stage prompt regardless of its position in the stage's block list, so the
+    schema lock is always the final instruction the model sees. `OutputFormatBlock` is a
+    frozen Pydantic model (`ConfigDict(frozen=True)`) and the UI hides its move/delete
+    controls, showing an `IMMUTABLE` badge instead.
   - `prompt`: Free-text prompt instructions.
   - `news`: Keyword `contains` + `recency_hours` filter over `recipe_news_corpus`.
     Each hit renders its headline plus a ~300-char body excerpt centered on the first keyword hit (lead fallback), built by `build_news_excerpt` in `apps/engine/recipes/push_hydrator.py` and mirrored in `apps/web/src/features/recipes/news-excerpt.ts`. Both implementations are asserted against the shared cases in `packages/config/news-excerpt-cases.json`; regenerate expectations only from the engine and keep both suites green.

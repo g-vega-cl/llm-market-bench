@@ -1,10 +1,10 @@
-"""Pydantic schemas for the 4-block push-based Strategy Builder MVP."""
+"""Pydantic schemas for the 5-block push-based Strategy Builder MVP."""
 
 from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PromptBlock(BaseModel):
@@ -51,8 +51,22 @@ class TechnicalsBlock(BaseModel):
     rules: list[TechnicalsRule] = Field(default_factory=list)
 
 
+class OutputFormatBlock(BaseModel):
+    """Immutable output format contract locked to the trade-signal schema.
+
+    Rendered verbatim as the final instruction block so model output matches
+    [{"action": "BUY"|"SELL", "ticker": "..."}] exactly. Content is frozen;
+    users may add or remove the block but not edit its rendered text.
+    """
+
+    id: str
+    type: Literal["output_format"] = "output_format"
+
+    model_config = ConfigDict(frozen=True)
+
+
 StrategyBlock = Annotated[
-    PromptBlock | NewsBlock | MemoriesBlock | TechnicalsBlock,
+    PromptBlock | NewsBlock | MemoriesBlock | TechnicalsBlock | OutputFormatBlock,
     Field(discriminator="type"),
 ]
 
@@ -67,7 +81,7 @@ class StrategyStage(BaseModel):
 
 
 class PushStrategy(BaseModel):
-    """Top-level 4-block push-based strategy stored in strategy_recipes.graph_json."""
+    """Top-level 5-block push-based strategy stored in strategy_recipes.graph_json."""
 
     version: Literal["2.0-push"] = "2.0-push"
     id: str | None = None

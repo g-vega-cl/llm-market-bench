@@ -32,6 +32,7 @@ describe('StageBuilder & PromptVisualizer', () => {
         expect(screen.getByText('NEWS BLOCK')).toBeInTheDocument();
         expect(screen.getByText('MEMORIES BLOCK')).toBeInTheDocument();
         expect(screen.getByText('TECHNICALS BLOCK')).toBeInTheDocument();
+        expect(screen.getByText('OUTPUT_FORMAT BLOCK')).toBeInTheDocument();
         expect(screen.getByText(/Prompt Visualizer/i)).toBeInTheDocument();
         expect(screen.getByText(/P\/E < 45/)).toBeInTheDocument();
     });

@@ -28,6 +28,17 @@ function formatTechnicalsPreview(block: TechnicalsBlock): string {
     ].join('\n');
 }
 
+function formatOutputFormatPreview(): string {
+    return [
+        '=== REQUIRED OUTPUT FORMAT ===',
+        'Output BUY or SELL decisions strictly as a JSON array of objects:',
+        '[{"action": "BUY", "ticker": "NVDA"}]',
+        'Each object must have exactly "action" ("BUY" or "SELL") and "ticker" (uppercase ticker symbol).',
+        'Do not include any keys beyond "action" and "ticker", and do not add prose outside the JSON array.',
+        'This output-format block is immutable; do not edit its contents.',
+    ].join('\n');
+}
+
 function formatBlockPreview(
     block: StrategyBlock,
     hydratedByBlockId: Record<string, string>,
@@ -49,6 +60,9 @@ function formatBlockPreview(
     }
     if (block.type === 'memories') {
         return { text: formatMemoriesPreview(block, hydratedByBlockId[block.id]), usedPrev: false };
+    }
+    if (block.type === 'output_format') {
+        return { text: formatOutputFormatPreview(), usedPrev: false };
     }
     return { text: formatTechnicalsPreview(block), usedPrev: false };
 }

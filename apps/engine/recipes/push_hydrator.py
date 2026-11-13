@@ -10,6 +10,7 @@ from core.config import logger
 from recipes.push_schema import (
     MemoriesBlock,
     NewsBlock,
+    OutputFormatBlock,
     PromptBlock,
     StrategyStage,
     TechnicalsBlock,
@@ -174,11 +175,16 @@ def hydrate_stage_prompt(
     as_of_utc: datetime,
     prev_output: str | None = None,
 ) -> str:
-    """Assemble the exact prompt text for a Stage from its 4 push blocks."""
+    """Assemble the exact prompt text for a Stage from its push blocks."""
     sections: list[str] = []
     used_prev_placeholder = False
 
-    for block in stage.blocks:
+    # Render output_format blocks last so the schema lock is always the final
+    # instruction the model sees, regardless of block order in the stage.
+    ordered_blocks = [b for b in stage.blocks if not isinstance(b, OutputFormatBlock)] + [
+        b for b in stage.blocks if isinstance(b, OutputFormatBlock)
+    ]
+    for block in ordered_blocks:
         if isinstance(block, PromptBlock):
             text = block.text.strip()
             if "{{prev_output}}" in text:
@@ -231,6 +237,15 @@ def hydrate_stage_prompt(
                 sections.append("\n".join([header, *items]))
         elif isinstance(block, TechnicalsBlock):
             sections.append(format_technicals_block(block.rules))
+        elif isinstance(block, OutputFormatBlock):
+            sections.append(
+                "\n=== REQUIRED OUTPUT FORMAT ===\n"
+                "Output BUY or SELL decisions strictly as a JSON array of objects:\n"
+                '[{"action": "BUY", "ticker": "NVDA"}]\n'
+                'Each object must have exactly "action" ("BUY" or "SELL") and "ticker" (uppercase ticker symbol).\n'
+                'Do not include any keys beyond "action" and "ticker", and do not add prose outside the JSON array.\n'
+                "This output-format block is immutable; do not edit its contents."
+            )
 
     if prev_output and not used_prev_placeholder:
         sections.append(f"[Previous Stage Output]:\n{prev_output}")

@@ -34,7 +34,7 @@ export function PageLayout({
             className={cn(
                 'mx-auto w-full',
                 maxWidthMap[maxWidth],
-                withPadding && 'px-6 md:px-12 py-12',
+                withPadding && 'px-6 md:px-12 py-8 md:py-12',
                 className,
             )}
         >

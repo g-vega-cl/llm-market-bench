@@ -25,6 +25,21 @@ describe('Profile Navigation & Route Migration TDD', () => {
         expect(postsItem).toBeUndefined();
     });
 
+    it('topbar enforces the 3-item budget: B, Portfolios icon, Lab icon', () => {
+        expect(navItems).toHaveLength(3);
+        expect(navItems.map((item) => item.to).sort()).toEqual(['/', '/lab', '/portfolios']);
+        expect(navItems.map((item) => item.ariaLabel).sort()).toEqual([
+            'Home',
+            'Lab',
+            'Portfolios',
+        ]);
+        // Non-home items must render icons, not text labels
+        const portfoliosItem = navItems.find((item) => item.to === '/portfolios');
+        const labItem = navItems.find((item) => item.to === '/lab');
+        expect(portfoliosItem?.label).not.toBe('Portfolios');
+        expect(labItem?.label).not.toBe('Lab');
+    });
+
     it('does not render user email when logged in, and keeps logout on same row without flex-wrap', async () => {
         vi.spyOn(RootRoute, 'useRouteContext').mockReturnValue({
             user: { email: 'testuser@example.com' },

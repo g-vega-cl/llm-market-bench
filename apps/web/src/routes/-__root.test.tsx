@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-router';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { NavLink, navItems, PostHogAuthSync, RootDocument, Route } from './__root';
+import { BriefcaseIcon, NavLink, navItems, PostHogAuthSync, RootDocument, Route } from './__root';
 
 const mockPostHogProvider = vi.fn(({ children }) => <>{children}</>);
 const mockIdentify = vi.fn();
@@ -23,16 +23,25 @@ vi.mock('@posthog/react', () => ({
 }));
 
 describe('Root layout navigation', () => {
-    it('navItems should strictly contain 3 topbar items: B, Portfolios, and Lab', () => {
+    it('navItems should strictly contain 3 topbar items: B, Portfolios icon, and Lab icon', () => {
         expect(navItems).toHaveLength(3);
-        expect(navItems[0]).toEqual({ to: '/', label: 'B', exact: true });
-        expect(navItems[1]).toEqual({ to: '/portfolios', label: 'Portfolios' });
-        expect(navItems[2]).toEqual({ to: '/lab', label: 'Lab' });
+        expect(navItems[0]).toEqual({ to: '/', label: 'B', ariaLabel: 'Home', exact: true });
+        expect(navItems[1].to).toBe('/portfolios');
+        expect(navItems[1].ariaLabel).toBe('Portfolios');
+        expect(navItems[2].to).toBe('/lab');
+        expect(navItems[2].ariaLabel).toBe('Lab');
     });
 
     it('NavLink should render with correct properties and shrink-0 class', async () => {
         const rootRoute = createRootRoute({
-            component: () => <NavLink to="/portfolios" label="Portfolios" exact={true} />,
+            component: () => (
+                <NavLink
+                    to="/portfolios"
+                    label={<BriefcaseIcon />}
+                    ariaLabel="Portfolios"
+                    exact={true}
+                />
+            ),
         });
 
         const memoryHistory = createMemoryHistory({
@@ -47,17 +56,18 @@ describe('Root layout navigation', () => {
         render(<RouterProvider router={router} />);
 
         // Wait for router resolution and element to appear
-        const link = await screen.findByText('Portfolios');
+        const link = await screen.findByLabelText('Portfolios');
         expect(link).toBeInTheDocument();
         expect(link.tagName.toLowerCase()).toBe('a');
         expect(link).toHaveAttribute('href', '/portfolios');
         expect(link).toHaveClass('shrink-0');
         expect(link).toHaveClass('voxel-btn');
+        expect(link.querySelector('svg')).toBeInTheDocument();
     });
 
     it('NavLink for B should render with aria-label="Home" and font-mono class', async () => {
         const rootRoute = createRootRoute({
-            component: () => <NavLink to="/" label="B" exact={true} />,
+            component: () => <NavLink to="/" label="B" ariaLabel="Home" exact={true} />,
         });
 
         const memoryHistory = createMemoryHistory({

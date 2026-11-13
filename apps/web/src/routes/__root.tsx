@@ -168,18 +168,65 @@ function RootComponent() {
     );
 }
 
+export function BriefcaseIcon() {
+    return (
+        <svg
+            className="w-4 h-4 shrink-0"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M21 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V2h2l2 4-2 4h14l2-4-2-4h2z" />
+            <path d="M3 10h18v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" />
+        </svg>
+    );
+}
+
+export function BeakerIcon() {
+    return (
+        <svg
+            className="w-4 h-4 shrink-0"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M18 14h2v-4a6 6 0 00-6-6h-4a6 6 0 00-6 6v4h2" />
+            <path d="M12 10v4" />
+            <path d="M12 18v2" />
+        </svg>
+    );
+}
+
 export const navItems = [
-    { to: '/', label: 'B', exact: true },
-    { to: '/portfolios', label: 'Portfolios' },
-    { to: '/lab', label: 'Lab' },
+    { to: '/', label: 'B', ariaLabel: 'Home', exact: true },
+    { to: '/portfolios', label: <BriefcaseIcon />, ariaLabel: 'Portfolios' },
+    { to: '/lab', label: <BeakerIcon />, ariaLabel: 'Lab' },
 ];
 
-export function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {
-    const isLogo = label === 'B';
+export function NavLink({
+    to,
+    label,
+    ariaLabel,
+    exact,
+}: {
+    to: string;
+    label: ReactNode;
+    ariaLabel: string;
+    exact?: boolean;
+}) {
+    const isLogo = typeof label === 'string' && label === 'B';
     return (
         <Link
             to={to}
-            aria-label={isLogo ? 'Home' : undefined}
+            aria-label={ariaLabel}
             activeProps={{
                 className: 'bg-accent text-boxel-trough',
             }}
@@ -187,10 +234,7 @@ export function NavLink({ to, label, exact }: { to: string; label: string; exact
                 className: 'bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated',
             }}
             activeOptions={{ exact }}
-            className={cn(
-                'voxel-btn py-1.5 text-sm font-bold uppercase tracking-wider shrink-0',
-                isLogo ? 'px-2.5 font-mono' : 'px-3.5',
-            )}
+            className={cn('voxel-btn py-1.5 shrink-0', isLogo ? 'px-2.5 font-mono' : 'px-3.5')}
         >
             {label}
         </Link>
@@ -284,6 +328,7 @@ export function RootDocument({ children }: { children: ReactNode }) {
                                     key={item.to}
                                     to={item.to}
                                     label={item.label}
+                                    ariaLabel={item.ariaLabel}
                                     exact={item.exact}
                                 />
                             ))}

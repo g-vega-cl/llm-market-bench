@@ -4,17 +4,17 @@ import { LAB_CATEGORIES } from './lab';
 
 describe('Routing Migration TDD Verification', () => {
     it('should have B mapped to /, Portfolios to /portfolios, and Lab to /lab in navItems', () => {
-        const homeItem = navItems.find((item) => item.label === 'B');
+        const homeItem = navItems.find((item) => item.to === '/');
         expect(homeItem).toBeDefined();
-        expect(homeItem?.to).toBe('/');
+        expect(homeItem?.ariaLabel).toBe('Home');
 
-        const portfoliosItem = navItems.find((item) => item.label === 'Portfolios');
+        const portfoliosItem = navItems.find((item) => item.to === '/portfolios');
         expect(portfoliosItem).toBeDefined();
-        expect(portfoliosItem?.to).toBe('/portfolios');
+        expect(portfoliosItem?.ariaLabel).toBe('Portfolios');
 
-        const labItem = navItems.find((item) => item.label === 'Lab');
+        const labItem = navItems.find((item) => item.to === '/lab');
         expect(labItem).toBeDefined();
-        expect(labItem?.to).toBe('/lab');
+        expect(labItem?.ariaLabel).toBe('Lab');
     });
 
     it('should map Backtests item to /autoresearch-backtest in the Lab directory', () => {

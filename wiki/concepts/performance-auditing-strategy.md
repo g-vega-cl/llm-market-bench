@@ -185,10 +185,10 @@ To check performance, Core Web Vitals, accessibility, and SEO across the entire 
 ```bash
 # Run a quick, zero-install audit against a production or preview URL
 npx -y @unlighthouse/cli --site https://www.benchify.dev \
-  --urls /,/how-it-works,/portfolios,/audits,/autoresearch,/autoresearch-backtest,/cause-and-effect,/concepts,/market-overview,/memories,/reasoning,/leaderboard,/daily-predictions,/daily-predictions-backtest,/generated-newsletters,/renko,/barometer-audit,/earnings-audit,/retired-agents,/lab,/today,/ai-predictions,/login,/signup \
+  --urls /,/how-it-works,/portfolios,/audits,/autoresearch,/autoresearch-backtest,/cause-and-effect,/concepts,/market-overview,/memories,/reasoning,/leaderboard,/daily-predictions,/daily-predictions-backtest,/generated-newsletters,/companies,/recipes,/renko,/barometer-audit,/earnings-audit,/retired-agents,/lab,/today,/ai-predictions,/login,/signup \
   --reporter json
 ```
-Passing explicit `--urls` scopes the audit to the 23 core application routes and prevents the link crawler from expanding dynamic query permutations (such as `/chat?q=...`).
+Passing explicit `--urls` scopes the audit to the 26 core application routes and prevents the link crawler from expanding dynamic query permutations (such as `/chat?q=...`).
 
 ### Core Web Vitals & Accessibility Guardrails
 - **Semantic Main Landmark**: `apps/web/src/routes/__root.tsx` wraps page outlets in `<main id="main-content">` so every route satisfies `[landmark-one-main]`.

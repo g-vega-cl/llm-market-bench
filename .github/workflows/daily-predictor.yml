@@ -69,7 +69,14 @@ jobs:
           fi
 
       - name: Run Daily Predictor Command
-        if: steps.cmd.outputs.skip != 'true'
+        if: >-
+          steps.cmd.outputs.skip != 'true' && (
+            steps.cmd.outputs.command == 'daily-predictor' ||
+            steps.cmd.outputs.command == 'evaluate-daily-predictions' ||
+            steps.cmd.outputs.command == 'daily-autoresearch' ||
+            steps.cmd.outputs.command == 'daily-postmortem' ||
+            steps.cmd.outputs.command == 'daily-trade'
+          )
         env:
           SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

@@ -1,5 +1,6 @@
 """Tests to verify GitHub Actions workflow schedule configurations."""
 
+import re
 from pathlib import Path
 
 import yaml
@@ -369,3 +370,43 @@ def test_sector_predictions_workflow_env_keys():
     step_env = pred_step.get("env", {})
     assert step_env.get("FRED_API_KEY") == "${{ secrets.FRED_API_KEY }}"
     assert step_env.get("FMP_API_KEY") == "${{ secrets.FMP_API_KEY }}"
+
+
+def _eval_gh_if(expr: str, command: str) -> bool:
+    """Evaluate a step's GitHub Actions `if` expression for a non-skipped command."""
+    if not expr:
+        return True
+    py_expr = expr.replace("always()", "True").replace("steps.cmd.outputs.skip != 'true'", "True")
+    py_expr = py_expr.replace("steps.cmd.outputs.command", repr(command))
+    py_expr = py_expr.replace("&&", " and ").replace("||", " or ")
+    return bool(eval(py_expr, {"__builtins__": {}}, {}))
+
+
+def test_daily_predictor_no_duplicate_subcommand_execution():
+    """Verify every workflow_dispatch action runs its target command exactly once."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    predictor_yml_path = root / ".github" / "workflows" / "daily-predictor.yml"
+
+    with open(predictor_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    on_key = "on" if "on" in config else True
+    options = config[on_key]["workflow_dispatch"]["inputs"]["action"]["options"]
+    steps = config.get("jobs", {}).get("run-daily-predictor", {}).get("steps", [])
+
+    run_step = next((s for s in steps if s.get("name") == "Run Daily Predictor Command"), None)
+    assert run_step is not None, "Could not find 'Run Daily Predictor Command' step in daily-predictor.yml"
+    assert _eval_gh_if(str(run_step.get("if", "")), "unknown-future-action") is False
+
+    for action in options:
+        invocations = []
+        for step in steps:
+            run_script = step.get("run", "")
+            if "main.py " not in run_script:
+                continue
+            if not _eval_gh_if(str(step.get("if", "")), action):
+                continue
+            resolved = run_script.replace("${{ steps.cmd.outputs.command }}", action)
+            if re.search(rf"main\.py {re.escape(action)}\s*$", resolved, re.MULTILINE):
+                invocations.append(step.get("name"))
+        assert len(invocations) == 1, f"Action {action!r} invoked {len(invocations)} times: {invocations}"

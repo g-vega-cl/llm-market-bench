@@ -339,6 +339,108 @@ async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
     assert "weeks_breakdown" not in result
 
 
+@pytest.mark.asyncio
+async def test_run_push_backtest_emits_incremental_progress_checkpoints():
+    strategy = _sample_strategy()
+    base_day = datetime(2026, 2, 2, 0, 0, tzinfo=UTC)
+    prices = []
+    for i in range(20):
+        day = base_day + timedelta(days=i)
+        if day.weekday() >= 5:
+            continue
+        prices.append(
+            {
+                "ticker": "NVDA",
+                "fetched_at": day.isoformat(),
+                "close": 101.0 + i,
+                "price": 101.0 + i,
+            }
+        )
+
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=prices)
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        return {
+            "output": '[{"action": "BUY", "ticker": "NVDA"}]',
+            "tool_calls": [f'get_technical_indicators({{"ticker": "NVDA", "cutoff": "{cutoff_date}"}})'],
+        }
+
+    checkpoints: list[tuple[int, dict]] = []
+
+    def capture_progress(pct: int, partial: dict) -> None:
+        checkpoints.append((pct, partial))
+
+    result = await run_push_backtest(
+        strategy,
+        sb,
+        llm_caller=fake_llm,
+        rng=random.Random(7),
+        on_progress=capture_progress,
+    )
+
+    total_days = len(result["window_dates"])
+    assert len(checkpoints) == 1 + total_days
+
+    init_pct, init_payload = checkpoints[0]
+    assert init_pct == 10
+    assert init_payload["days_completed"] == 0
+    assert init_payload["total_days"] == total_days
+    assert init_payload["window_dates"] == result["window_dates"]
+    assert init_payload["day_steps"] == []
+
+    prev_pct = init_pct
+    for idx in range(total_days):
+        pct, payload = checkpoints[idx + 1]
+        assert pct > prev_pct
+        prev_pct = pct
+        assert payload["days_completed"] == idx + 1
+        assert len(payload["day_steps"]) == idx + 1
+        step = payload["day_steps"][-1]
+        assert step["day"] == result["window_dates"][idx]
+        assert step["signals"] == [{"action": "BUY", "ticker": "NVDA"}]
+        assert len(step["tool_calls"]) == 1
+        assert len(payload["equity_curve"]) == idx + 1
+        if idx == 0 and total_days > 1:
+            assert len(payload["trades"]) == 1
+
+    assert result["days_completed"] == total_days
+    assert len(result["day_steps"]) == total_days
+
+
+@pytest.mark.asyncio
+async def test_run_push_backtest_supports_async_on_progress_callback():
+    strategy = _sample_strategy()
+    base_day = datetime(2026, 2, 2, 0, 0, tzinfo=UTC)
+    prices = [
+        {
+            "ticker": "SPY",
+            "fetched_at": (base_day + timedelta(days=i)).isoformat(),
+            "close": 500.0 + i,
+            "price": 500.0 + i,
+        }
+        for i in range(5)
+    ]
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=prices)
+    seen: list[int] = []
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        return {"output": "HOLD", "tool_calls": []}
+
+    async def async_progress(pct: int, partial: dict) -> None:
+        seen.append(pct)
+
+    result = await run_push_backtest(
+        strategy,
+        sb,
+        llm_caller=fake_llm,
+        rng=random.Random(1),
+        on_progress=async_progress,
+    )
+
+    assert len(seen) == 1 + len(result["window_dates"])
+    assert seen[0] == 10
+
+
 def test_output_format_block_renders_immutable_schema_section_last():
     from recipes.push_schema import OutputFormatBlock, PromptBlock, StrategyStage
 
@@ -389,3 +491,28 @@ def test_output_format_block_renders_last_regardless_of_input_order():
     )
     out = hydrate_stage_prompt(stage, [], [], datetime(2026, 1, 1, tzinfo=UTC))
     assert out.index("=== REQUIRED OUTPUT FORMAT ===") > out.index("Analyze the catalysts.")
+
+
+@pytest.mark.asyncio
+async def test_run_push_backtest_caches_unknown_tickers_across_days(monkeypatch):
+    strategy = _sample_strategy()
+    news_rows = []
+    memory_rows = []
+    price_rows = [{"date": f"2026-03-{d:02d}", "ticker": "SPY", "close": 500.0} for d in range(1, 5)]
+    sb = _mock_sb_client(news_rows, memory_rows, price_rows)
+
+    fetch_calls = []
+    from recipes import push_runner as pr
+
+    def _spy_load_closes(client, tickers, start_day, end_day):
+        fetch_calls.append(set(tickers))
+        return {}
+
+    monkeypatch.setattr(pr, "_load_daily_closes", _spy_load_closes)
+
+    async def _llm(prompt: str, tools: list[str], sim_date: str | None = None):
+        return {"output": '[{"action": "BUY", "ticker": "GHOST"}]', "tool_calls": []}
+
+    result = await run_push_backtest(strategy, sb, llm_caller=_llm, rng=random.Random(1))
+    assert result["total_days"] == 10
+    assert fetch_calls == [{"GHOST"}]

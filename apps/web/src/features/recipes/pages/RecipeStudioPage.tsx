@@ -1,17 +1,15 @@
 import { Badge, Button, PageLayout } from '@llm-market-bench/ui-design-system';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { enqueueRecipeJobFn, getRecipeJobStatusFn, saveRecipeFn } from '../api/recipes-api';
 import {
-    enqueueRecipeJobFn,
     fetchRecipeAlertsFn,
-    getRecipeJobStatusFn,
     markAlertReadFn,
     previewStrategyPromptFn,
-    saveRecipeFn,
     submitWaitlistPledgeFn,
-} from '../api/recipes-api';
+} from '../api/recipes-studio-api';
 import { PromptVisualizer } from '../components/PromptVisualizer';
 import { RecipeAlertsInbox } from '../components/RecipeAlertsInbox';
-import { RecipeBacktestResults } from '../components/RecipeBacktestResults';
 import { StageBuilder } from '../components/StageBuilder';
 import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
 import { STARTER_RECIPES } from '../starter-templates';
@@ -22,26 +20,23 @@ import type {
     PreviewState,
     PushStrategy,
     RecipeAlert,
+    RecipeJobRecord,
     StrategyRecipeRecord,
     StrategyStage,
 } from '../types';
 
-async function pollJobResults(
-    jobId: string,
-    mode: 'live_turn' | 'backtest',
-): Promise<ExecutionState> {
-    for (let attempts = 0; attempts < 10; attempts++) {
+interface RecipeStudioPageProps {
+    initialStrategy?: PushStrategy | null;
+    recentBacktests?: RecipeJobRecord[];
+}
+
+async function pollJobResults(jobId: string): Promise<ExecutionState> {
+    for (let attempts = 0; attempts < 30; attempts++) {
         await new Promise((r) => setTimeout(r, 1000));
         try {
             const res = await getRecipeJobStatusFn({ data: { jobId } });
             if (res?.status === 'completed' && res.result_json) {
-                if (mode === 'live_turn') {
-                    return { status: 'live_done', result: res.result_json as LiveRunResult };
-                }
-                return {
-                    status: 'backtest_done',
-                    result: res.result_json as BacktestResultData,
-                };
+                return { status: 'live_done', result: res.result_json as LiveRunResult };
             }
             if (res?.status === 'failed') {
                 return { status: 'error', message: res.error_message || 'Execution failed' };
@@ -57,9 +52,17 @@ async function pollJobResults(
     };
 }
 
-export function RecipeStudioPage() {
-    const [strategy, setStrategy] = useState<PushStrategy>(STARTER_RECIPES[0]);
-    const [activeTemplateIdx, setActiveTemplateIdx] = useState<number>(0);
+export function RecipeStudioPage({
+    initialStrategy = null,
+    recentBacktests = [],
+}: RecipeStudioPageProps = {}) {
+    const navigate = useNavigate();
+    const [strategy, setStrategy] = useState<PushStrategy>(
+        () => initialStrategy ?? STARTER_RECIPES[0],
+    );
+    const [activeTemplateIdx, setActiveTemplateIdx] = useState<number>(() =>
+        initialStrategy ? -1 : 0,
+    );
 
     const [execution, setExecution] = useState<ExecutionState>({ status: 'idle' });
     const [preview, setPreview] = useState<PreviewState>({ status: 'template' });
@@ -111,18 +114,19 @@ export function RecipeStudioPage() {
                 result_json?: LiveRunResult | BacktestResultData;
             };
 
-            if (job.result_json) {
-                setExecution(
-                    mode === 'live_turn'
-                        ? { status: 'live_done', result: job.result_json as LiveRunResult }
-                        : {
-                              status: 'backtest_done',
-                              result: job.result_json as BacktestResultData,
-                          },
-                );
+            if (mode === 'backtest') {
+                await navigate({
+                    to: '/recipes/backtest/$jobId',
+                    params: { jobId: job.id },
+                });
                 return;
             }
-            const finalState = await pollJobResults(job.id, mode);
+
+            if (job.result_json) {
+                setExecution({ status: 'live_done', result: job.result_json as LiveRunResult });
+                return;
+            }
+            const finalState = await pollJobResults(job.id);
             setExecution(finalState);
         } catch (err) {
             setExecution({
@@ -202,13 +206,47 @@ export function RecipeStudioPage() {
                             variant="solid"
                             onClick={() => handleExecute('backtest')}
                             disabled={isRunning}
+                            isLoading={isRunning && execution.mode === 'backtest'}
                         >
                             {isRunning && execution.mode === 'backtest'
-                                ? 'Backtesting...'
+                                ? 'Starting Backtest...'
                                 : '▶ Backtest (Random 2W)'}
                         </Button>
                     </div>
                 </div>
+
+                {recentBacktests.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 voxel-trough bg-boxel-trough p-3">
+                        <span className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                            Recent Backtests:
+                        </span>
+                        {recentBacktests.slice(0, 5).map((run) => {
+                            const bt =
+                                run.result_json &&
+                                (!('mode' in run.result_json) ||
+                                    run.result_json.mode !== 'live_turn')
+                                    ? (run.result_json as BacktestResultData)
+                                    : null;
+                            const label =
+                                run.status === 'completed' &&
+                                bt &&
+                                typeof bt.total_return_pct_net === 'number'
+                                    ? `${bt.total_return_pct_net >= 0 ? '+' : ''}${bt.total_return_pct_net.toFixed(2)}%`
+                                    : `${run.status.toUpperCase()} (${run.progress_pct}%)`;
+                            return (
+                                <Link
+                                    key={run.id}
+                                    to="/recipes/backtest/$jobId"
+                                    params={{ jobId: run.id }}
+                                    className="voxel-btn inline-flex items-center gap-2 px-2 py-1 text-xs font-mono border border-boxel-bevel-hi bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated rounded-none"
+                                >
+                                    <span>{run.id.slice(0, 8)}</span>
+                                    <span className="text-accent">{label}</span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -270,10 +308,6 @@ export function RecipeStudioPage() {
                             </div>
                         ))}
                     </div>
-                )}
-
-                {execution.status === 'backtest_done' && (
-                    <RecipeBacktestResults results={execution.result} />
                 )}
 
                 {showAlertsInbox && (

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import random
@@ -15,10 +16,12 @@ from openai import AsyncOpenAI
 from core.config import logger
 from core.llm.handlers.base import execute_tool
 from core.llm.tools import CANONICAL_TOOLS_REGISTRY
+from recipes.backtest_accounting import BacktestAccumulator
 from recipes.push_hydrator import fetch_push_context_batch, hydrate_stage_prompt
 from recipes.push_schema import MemoriesBlock, NewsBlock, PushStrategy
 
 LLMCaller = Callable[[str, list[str], str | None], Awaitable[dict[str, Any]]]
+ProgressCallback = Callable[[int, dict[str, Any]], Awaitable[None] | None]
 
 _TRADE_LINE_RE = re.compile(r"(?<!not\s)\b(BUY|SELL)\s+([A-Z]{1,5})\b")
 
@@ -270,128 +273,89 @@ def _load_daily_closes(sb_client: Any, tickers: set[str], start_day: str, end_da
     return daily_close
 
 
+async def _emit_progress(
+    on_progress: ProgressCallback | None,
+    progress_pct: int,
+    snapshot: dict[str, Any],
+) -> None:
+    if on_progress is None:
+        return
+    maybe_awaitable = on_progress(progress_pct, snapshot)
+    if inspect.isawaitable(maybe_awaitable):
+        await maybe_awaitable
+
+
 async def run_push_backtest(
     strategy: PushStrategy,
     sb_client: Any,
     llm_caller: LLMCaller | None = None,
     rng: random.Random | None = None,
     slippage_bps: float = 5.0,
+    on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Run a random ~2-week point-in-time backtest across daily steps using price_history."""
     caller = llm_caller or default_llm_caller
     all_dates = _load_window_dates(sb_client)
     window_dates = pick_random_two_week_window(all_dates, rng=rng)
-    end_dt = datetime.fromisoformat(f"{window_dates[-1]}T21:00:00+00:00")
+    end_dt = datetime.fromisoformat(f"{window_dates[-1]}T21:00:00+00:00") if window_dates else datetime.now(UTC)
     news_rows, memory_rows = fetch_push_context_batch(
         sb_client,
         end_dt,
         lookback_hours=_max_lookback_hours(strategy) + 24 * 20,
     )
 
-    llm_calls_made = 0
-    day_signals: list[tuple[int, str, list[dict[str, str]]]] = []
-    traded_tickers: set[str] = set()
+    acc = BacktestAccumulator(window_dates=window_dates, slippage_bps=slippage_bps)
+    total_days = len(window_dates)
+
+    await _emit_progress(
+        on_progress,
+        10,
+        acc.snapshot(days_completed=0, current_day=window_dates[0] if window_dates else None),
+    )
 
     for idx, day_str in enumerate(window_dates):
         step_dt = datetime.fromisoformat(f"{day_str}T14:30:00+00:00")
         prev_output: str | None = None
+        day_tool_calls: list[str] = []
+        day_status = "completed"
         for stage in strategy.stages:
             prompt = hydrate_stage_prompt(stage, news_rows, memory_rows, step_dt, prev_output=prev_output)
             try:
                 res = await caller(prompt, stage.selected_tools, day_str)
-                llm_calls_made += 1
+                acc.llm_calls_made += 1
                 prev_output = str(res.get("output", ""))
+                day_tool_calls.extend(str(tc) for tc in (res.get("tool_calls") or []))
             except Exception:
                 logger.exception("Stage %s failed on backtest date %s", stage.id, day_str)
                 prev_output = ""
+                day_status = "error"
 
         signals = parse_trade_signals(prev_output or "")
-        day_signals.append((idx, day_str, signals))
-        for sig in signals:
-            traded_tickers.add(sig["ticker"])
+        new_tickers = {sig["ticker"] for sig in signals if sig["ticker"] not in acc.daily_close}
+        if new_tickers:
+            fetched_closes = _load_daily_closes(sb_client, new_tickers, window_dates[0], window_dates[-1])
+            for tkr in new_tickers:
+                acc.daily_close.setdefault(tkr, {}).update(fetched_closes.get(tkr, {}))
 
-    daily_close = _load_daily_closes(sb_client, traded_tickers, window_dates[0], window_dates[-1])
+        acc.settle_day(
+            idx=idx,
+            day_str=day_str,
+            signals=signals,
+            tool_calls=day_tool_calls,
+            output_text=prev_output or "",
+            day_status=day_status,
+        )
 
-    trades: list[dict[str, Any]] = []
-    skipped_trades: list[dict[str, Any]] = []
-    starting_capital = 10000.0
-    equity = starting_capital
-    equity_curve: list[dict[str, Any]] = []
-    peak = equity
-    max_dd = 0.0
-    slip = slippage_bps / 10000.0
+        days_completed = idx + 1
+        progress_pct = 95 if days_completed >= total_days else 10 + round((days_completed / total_days) * 85)
+        next_active_day = window_dates[idx + 1] if idx + 1 < total_days else day_str
+        await _emit_progress(
+            on_progress,
+            progress_pct,
+            acc.snapshot(days_completed=days_completed, current_day=next_active_day),
+        )
 
-    for idx, day_str, signals in day_signals:
-        next_day = window_dates[idx + 1] if idx + 1 < len(window_dates) else None
-        for sig in signals:
-            tkr = sig["ticker"]
-            prices = daily_close.get(tkr, {})
-            entry_px = prices.get(day_str)
-            exit_px = prices.get(next_day) if next_day else None
-            if entry_px and exit_px and entry_px > 0:
-                raw_ret = (exit_px - entry_px) / entry_px
-                if sig["action"] == "SELL":
-                    raw_ret = -raw_ret
-                net_ret = raw_ret - (2 * slip)
-                pnl_mid = 1000.0 * raw_ret
-                pnl_net = 1000.0 * net_ret
-                equity += pnl_net
-                peak = max(peak, equity)
-                dd = ((peak - equity) / peak) * 100.0 if peak > 0 else 0.0
-                max_dd = max(max_dd, dd)
-                trades.append(
-                    {
-                        "ticker": tkr,
-                        "action": sig["action"],
-                        "entry_time": day_str,
-                        "entry_price": round(entry_px, 2),
-                        "exit_time": next_day,
-                        "exit_price": round(exit_px, 2),
-                        "shares": round(1000.0 / entry_px, 4),
-                        "pnl_midpoint": round(pnl_mid, 2),
-                        "pnl_net": round(pnl_net, 2),
-                        "return_pct_midpoint": round(raw_ret * 100.0, 2),
-                        "return_pct_net": round(net_ret * 100.0, 2),
-                        "exit_reason": "NEXT_DAY_CLOSE",
-                        "confidence": 100,
-                    }
-                )
-            else:
-                skipped_trades.append(
-                    {
-                        "time": day_str,
-                        "skip_type": "NO_PRICE_DATA",
-                        "reason": f"Missing daily bar for {tkr} on {day_str} -> {next_day or 'EOF'}",
-                    }
-                )
-        equity_curve.append({"time": day_str, "equity": round(equity, 2)})
-
-    winning_trades = sum(1 for t in trades if t["pnl_net"] > 0)
-    losing_trades = len(trades) - winning_trades
-    gross_profit = sum(t["pnl_net"] for t in trades if t["pnl_net"] > 0)
-    gross_loss = abs(sum(t["pnl_net"] for t in trades if t["pnl_net"] < 0))
-    profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else (99.0 if gross_profit > 0 else 0.0)
-    win_rate = round((winning_trades / len(trades)) * 100.0, 1) if trades else 0.0
-    total_net_pct = round(((equity - starting_capital) / starting_capital) * 100.0, 2)
-    total_mid_pnl = sum(t["pnl_midpoint"] for t in trades)
-    total_mid_pct = round((total_mid_pnl / starting_capital) * 100.0, 2)
-
-    return {
-        "mode": "backtest",
-        "window_dates": window_dates,
-        "starting_capital": starting_capital,
-        "ending_capital_midpoint": round(starting_capital + total_mid_pnl, 2),
-        "ending_capital_net": round(equity, 2),
-        "total_return_pct_midpoint": total_mid_pct,
-        "total_return_pct_net": total_net_pct,
-        "win_rate_pct": win_rate,
-        "profit_factor": profit_factor,
-        "max_drawdown_pct": round(max_dd, 2),
-        "total_trades": len(trades),
-        "winning_trades": winning_trades,
-        "losing_trades": losing_trades,
-        "llm_calls_made": llm_calls_made,
-        "trades": trades,
-        "skipped_trades": skipped_trades,
-        "equity_curve": equity_curve,
-    }
+    return acc.snapshot(
+        days_completed=total_days,
+        current_day=window_dates[-1] if window_dates else None,
+    )

@@ -86,6 +86,45 @@ def test_process_push_backtest_job_success():
     assert completed_payloads[0]["result_json"] == fake_result
 
 
+def test_process_push_backtest_job_persists_progress_updates():
+    client, queue_table, recipes_table, _ = _make_mock_supabase()
+    client.rpc.return_value.execute.return_value.data = [
+        {
+            "job_id": "job-prog-1",
+            "job_recipe_id": "rec-222",
+            "job_user_id": "usr-333",
+            "job_mode": "backtest",
+            "job_priority": 10,
+        }
+    ]
+
+    strategy = _sample_push_strategy()
+    recipe_select = MagicMock()
+    recipe_select.execute.return_value.data = {
+        "id": "rec-222",
+        "name": strategy.name,
+        "graph_json": strategy.model_dump(),
+        "trial_count": 2,
+    }
+    recipes_table.select.return_value.eq.return_value.single.return_value = recipe_select
+
+    partial_payload = {"mode": "backtest", "days_completed": 1, "total_days": 10}
+    final_payload = {"mode": "backtest", "days_completed": 10, "total_days": 10}
+
+    async def fake_backtest(strat, sb, **kwargs):
+        cb = kwargs.get("on_progress")
+        assert cb is not None
+        cb(18, partial_payload)
+        return final_payload
+
+    with patch("recipes.worker.run_push_backtest", side_effect=fake_backtest):
+        res = process_next_recipe_job(client)
+
+    assert res == "COMPLETED"
+    update_payloads = [call[0][0] for call in queue_table.update.call_args_list]
+    assert {"progress_pct": 18, "result_json": partial_payload} in update_payloads
+
+
 def test_process_push_live_turn_deposits_alert():
     client, queue_table, recipes_table, alerts_table = _make_mock_supabase()
     client.rpc.return_value.execute.return_value.data = [

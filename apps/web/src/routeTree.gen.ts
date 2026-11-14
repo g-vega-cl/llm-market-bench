@@ -43,6 +43,7 @@ import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$
 import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as RecipesIndexRouteImport } from './routes/recipes/index'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
+import { Route as RecipesBacktestJobIdRouteImport } from './routes/recipes/backtest/$jobId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -214,6 +215,11 @@ const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
   path: '/memories/chain/$memoryId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecipesBacktestJobIdRoute = RecipesBacktestJobIdRouteImport.update({
+  id: '/recipes/backtest/$jobId',
+  path: '/recipes/backtest/$jobId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -249,6 +255,7 @@ export interface FileRoutesByFullPath {
   '/reasoning/': typeof ReasoningIndexRoute
   '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/recipes/backtest/$jobId': typeof RecipesBacktestJobIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -284,6 +291,7 @@ export interface FileRoutesByTo {
   '/reasoning': typeof ReasoningIndexRoute
   '/recipes': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/recipes/backtest/$jobId': typeof RecipesBacktestJobIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -321,6 +329,7 @@ export interface FileRoutesById {
   '/reasoning/': typeof ReasoningIndexRoute
   '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/recipes/backtest/$jobId': typeof RecipesBacktestJobIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/reasoning/'
     | '/recipes/'
     | '/memories/chain/$memoryId'
+    | '/recipes/backtest/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -393,6 +403,7 @@ export interface FileRouteTypes {
     | '/reasoning'
     | '/recipes'
     | '/memories/chain/$memoryId'
+    | '/recipes/backtest/$jobId'
   id:
     | '__root__'
     | '/'
@@ -429,6 +440,7 @@ export interface FileRouteTypes {
     | '/reasoning/'
     | '/recipes/'
     | '/memories/chain/$memoryId'
+    | '/recipes/backtest/$jobId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -464,6 +476,7 @@ export interface RootRouteChildren {
   ReasoningIndexRoute: typeof ReasoningIndexRoute
   RecipesIndexRoute: typeof RecipesIndexRoute
   MemoriesChainMemoryIdRoute: typeof MemoriesChainMemoryIdRoute
+  RecipesBacktestJobIdRoute: typeof RecipesBacktestJobIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -706,6 +719,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemoriesChainMemoryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recipes/backtest/$jobId': {
+      id: '/recipes/backtest/$jobId'
+      path: '/recipes/backtest/$jobId'
+      fullPath: '/recipes/backtest/$jobId'
+      preLoaderRoute: typeof RecipesBacktestJobIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -765,6 +785,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReasoningIndexRoute: ReasoningIndexRoute,
   RecipesIndexRoute: RecipesIndexRoute,
   MemoriesChainMemoryIdRoute: MemoriesChainMemoryIdRoute,
+  RecipesBacktestJobIdRoute: RecipesBacktestJobIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

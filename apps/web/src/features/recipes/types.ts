@@ -194,8 +194,24 @@ export interface SkippedTradeRecord {
     headline?: string;
 }
 
+export interface BacktestDayStep {
+    day: string;
+    day_index: number;
+    status: string;
+    signals: { action: string; ticker: string }[];
+    tool_calls: string[];
+    output_excerpt: string;
+    day_pnl_net: number;
+    trades_executed: number;
+    trades_skipped: number;
+}
+
 export interface BacktestResultData {
+    mode?: 'backtest';
     window_dates?: string[];
+    days_completed?: number;
+    total_days?: number;
+    current_day?: string | null;
     starting_capital?: number;
     ending_capital_midpoint?: number;
     ending_capital_net?: number;
@@ -211,6 +227,30 @@ export interface BacktestResultData {
     equity_curve: { time: string; equity: number }[];
     trades: CompletedTradeRecord[];
     skipped_trades?: SkippedTradeRecord[];
+    day_steps?: BacktestDayStep[];
+}
+
+export type RecipeJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface RecipeJobRecord {
+    id: string;
+    recipe_id?: string;
+    mode?: 'backtest' | 'live_turn';
+    status: RecipeJobStatus;
+    progress_pct: number;
+    provider?: string;
+    model?: string;
+    result_json: BacktestResultData | LiveRunResult | null;
+    error_message: string | null;
+    created_at?: string;
+    started_at?: string | null;
+    completed_at?: string | null;
+}
+
+export interface RecipeRunDetail {
+    job: RecipeJobRecord;
+    recipeName: string | null;
+    recipeCadence: RecipeCadence | null;
 }
 
 export interface LiveStageOutput {
@@ -233,7 +273,6 @@ export type ExecutionState =
     | { status: 'idle' }
     | { status: 'running'; mode: 'live_turn' | 'backtest' }
     | { status: 'live_done'; result: LiveRunResult }
-    | { status: 'backtest_done'; result: BacktestResultData }
     | { status: 'error'; message: string };
 
 export type PreviewState =

@@ -19,14 +19,16 @@ The **Recipe Studio** (`/recipes`) is a 5-block push-based strategy builder wher
 2. **Engine Processing (`apps/engine/recipes/`)**:
    - `push_schema.py`: Pydantic models for Push v2 (`PushStrategy`, `StrategyStage`, `PromptBlock`, `NewsBlock`, `MemoriesBlock`, `TechnicalsBlock`, `OutputFormatBlock`). `PushStrategy` requires exactly one stage.
    - `push_hydrator.py`: Point-in-time filtering and stage prompt hydration (`fetch_push_context_batch`, `hydrate_stage_prompt`, `build_news_excerpt`).
-   - `push_runner.py`: Single-call execution (`run_push_live`) and random 10-trading-day point-in-time backtesting (`run_push_backtest`) backed by `public.price_history` and `STRATA_BASE_URL` / `FREE_LLM_PROXY_URL` (`https://llm.clvg.uk/v1`). The LLM call goes through a local-first endpoint failover chain (see below).
-   - `worker.py`: `async_process_next_recipe_job()` (canonical) and the sync wrapper `process_next_recipe_job()` returning a `JobOutcome` (`"EMPTY"`, `"COMPLETED"`, `"FAILED"`) — pops one Push v2 job from `recipe_execution_queue`, rejects legacy/unsupported payloads and unsupported execution modes, executes `run_push_live` or `run_push_backtest`, and deposits `live_turn` signals into `recipe_alerts_inbox`.
+   - `push_runner.py` & `backtest_accounting.py`: Single-call execution (`run_push_live`) and random 10-trading-day point-in-time backtesting (`run_push_backtest`) backed by `public.price_history` and `STRATA_BASE_URL` / `FREE_LLM_PROXY_URL` (`https://llm.clvg.uk/v1`). `BacktestAccumulator` settles each simulated day incrementally and streams day-by-day checkpoints (`on_progress`). The LLM call goes through a local-first endpoint failover chain (see below).
+   - `worker.py`: `async_process_next_recipe_job()` (canonical) and the sync wrapper `process_next_recipe_job()` returning a `JobOutcome` (`"EMPTY"`, `"COMPLETED"`, `"FAILED"`) — pops one Push v2 job from `recipe_execution_queue`, rejects legacy/unsupported payloads and unsupported execution modes, executes `run_push_live` or `run_push_backtest` (persisting intermediate `progress_pct` and `result_json` checkpoints on every day), and deposits `live_turn` signals into `recipe_alerts_inbox`.
    - `runner.py`: MiniPC daemon (`python3 -m recipes.runner --loop`) running hourly `sync_live_news_to_corpus()` + `enqueue_live_recipes()` and polling the priority queue every 5s via `async_process_next_recipe_job` / `_drain_sync_queue`.
    - `news_corpus.py` & `import_news_cli.py`: Bucket derivation (`derive_article_buckets`), JSONL shard importer, and `sync_live_news_to_corpus()` reusing `analysis/intraday_news_aggregator.py` + `newsletter_snapshots`.
 
 3. **Presentation & Studio UI (`apps/web/src/features/recipes/`)**:
    - Built with Cheddar Boxel (Voxel) tokens (`bg-boxel-canvas`, `bg-boxel-surface`, 0px corners, 2px directional bevels, recessed `.voxel-trough` slots).
-   - `StageBuilder.tsx`, `BlockEditors.tsx`, `ToolPicker.tsx`, `PromptVisualizer.tsx`, `RecipeBacktestResults.tsx`, `RecipeAlertsInbox.tsx`, `WaitlistPledgeModal.tsx`, `starter-templates.ts` (consuming `packages/config/starter-recipes.json`), and `api/recipes-api.ts`.
+   - Studio (`/recipes`): `StageBuilder.tsx`, `BlockEditors.tsx`, `ToolPicker.tsx`, `PromptVisualizer.tsx`, `RecipeBacktestResults.tsx`, `RecipeAlertsInbox.tsx`, `WaitlistPledgeModal.tsx`, `starter-templates.ts` (consuming `packages/config/starter-recipes.json`), `prompt-builder.ts`, `api/recipes-api.ts`, and `api/recipes-studio-api.ts`.
+   - Live Backtest View (`/recipes/backtest/$jobId`): `RecipeBacktestPage.tsx`, `BacktestTimelineBlock.tsx`, `BacktestTelemetryBlock.tsx`, and `BacktestTradesBlock.tsx`. Clicking `Backtest (Random 2W)` saves and enqueues the job, then navigates straight to `/recipes/backtest/$jobId`, which polls `fetchRecipeRunDetailFn` every 1.5s while the job is `pending` or `processing`. Users watch the 10-day timeline, tool calls, model output excerpts, developing telemetry, equity progression, and executed/skipped trades stream in day by day.
+   - `prompt-builder.ts` owns the pure prompt-assembly helpers: `buildStagePromptPreview()` (unhydrated preview with `<Matching news headlines injected at run time>` placeholders) plus `hydrateNewsBlockText()` and `hydrateMemoriesBlockText()`, which apply recency windows, keyword `contains` matching, memory `category`, and `min_importance` filters to at most 15 rows. These hydration helpers were extracted out of the server API module so the Studio preview and the server function share one implementation.
 
 ## 5-Block Push-Based Model (`version: "2.0-push"`)
 
@@ -80,16 +82,45 @@ Both source fetches are individually wrapped in `try/except` with `logger.except
 
 ## Point-in-Time Backtesting (`run_push_backtest`)
 
-`run_push_backtest(strategy, sb_client, llm_caller=None, rng=None, slippage_bps=5.0)` simulates a random contiguous 10-trading-day window with zero forward leakage:
+`run_push_backtest(strategy, sb_client, llm_caller=None, rng=None, slippage_bps=5.0, on_progress=None)` simulates a random contiguous 10-trading-day window with zero forward leakage and emits incremental day-by-day snapshots:
 
 1. **Trading calendar** — `_load_window_dates(sb_client)` reads the most recent 1,000 `price_history` rows for `SPY` (`.limit(1000)`) and derives the distinct trading dates; when the table is empty or the query fails it falls back to the last 20 weekdays.
-2. **Window selection** — `pick_random_two_week_window()` picks a seeded random contiguous slice of up to 10 trading days.
+2. **Window selection** — `pick_random_two_week_window()` picks a seeded random contiguous slice of up to 10 trading days, then immediately emits an initial `10%` progress checkpoint with `window_dates` and `days_completed = 0` so the live UI displays the selected 2-week calendar before Day 1 completes.
 3. **Point-in-time hydration** — `fetch_push_context_batch()` gathers news and memories bounded by each simulated day's cutoff (lookback extended by 20 days for the news window).
-4. **Signal generation** — the single LLM call runs once per day and `parse_trade_signals()` extracts `{action, ticker}` picks; the union of traded tickers is collected.
-5. **Pricing** — `_load_daily_closes(sb_client, tickers, start_day, end_day)` batch-fetches `price_history` rows (`ticker, fetched_at, close, price`) for exactly those tickers with `.limit(10000)` (raised from 5,000 so wide multi-ticker windows are never truncated), preferring `close` and falling back to `price`.
-6. **Accounting** — trades are closed against the next day's close with `slippage_bps` friction, producing the dual Midpoint / Net P&L result payload (`midpoint` / `net` returns, `win_rate_pct`, `llm_calls_made`, `trades`, `skipped_trades`, `equity_curve`). The payload no longer carries a `weeks_breakdown` key — the random-window backtest reports a flat trade list and equity curve only.
+4. **Signal generation & incremental pricing** — for each simulated day, the single LLM call runs and `parse_trade_signals()` extracts `{action, ticker}` picks. `_load_daily_closes(sb_client, new_tickers, start_day, end_day)` caches `price_history` closes (`ticker, fetched_at, close, price`, `.limit(10000)`) for newly seen tickers so each day can settle immediately against the next day's close. Tickers already cached by an earlier day are never re-queried, so a strategy that keeps naming the same symbols issues exactly one price fetch per ticker for the whole run.
+5. **Accounting & checkpoints** — `BacktestAccumulator` (`apps/engine/recipes/backtest_accounting.py`) closes trades against the next day's close with `slippage_bps` friction and emits an immutable snapshot after every day (`day_steps`, `trades`, `skipped_trades`, `equity_curve`, `midpoint`/`net` returns, `win_rate_pct`, `llm_calls_made`). The payload no longer carries a `weeks_breakdown` key — the random-window backtest reports a flat trade list, day step trace, and equity curve.
 
-Because pricing is resolved after all signals are known, the backtest issues exactly one batched price query per run instead of per-day lookups.
+In `apps/engine/recipes/worker.py`, the `on_progress` callback persists `progress_pct` and `result_json` directly to `recipe_execution_queue` on every checkpoint (failing soft with `logger.warning` if a transient update fails), allowing `/recipes/backtest/$jobId` to render live progress as each simulated day resolves.
+
+### `BacktestAccumulator` (`apps/engine/recipes/backtest_accounting.py`)
+
+A pure, mutable accumulator that owns all backtest settlement math so `run_push_backtest` is a thin orchestration shell:
+
+- **`settle_day(*, idx, day_str, signals, tool_calls, output_text, day_status)`** — settles the signals emitted on simulated day `idx` against the *next* day's close. Each executed trade books a fixed `$1,000` notional, applies `2 × slippage_bps` friction for the net leg, updates running `equity`/`peak`/`max_dd`, and appends a trade record (`entry_time`, `entry_price`, `exit_time`, `exit_price`, `shares`, `pnl_midpoint`, `pnl_net`, `return_pct_midpoint`, `return_pct_net`, `exit_reason = "NEXT_DAY_CLOSE"`). A signal with no entry or exit bar is recorded in `skipped_trades` as `NO_PRICE_DATA` instead of silently vanishing. Every day also appends an `equity_curve` point and a `day_steps` entry carrying `status`, `signals`, `tool_calls`, a 600-char `output_excerpt`, `day_pnl_net`, `trades_executed`, and `trades_skipped`.
+- **`snapshot(*, days_completed, current_day)`** — returns an immutable point-in-time payload (`window_dates`, `days_completed`, `total_days`, `current_day`, `starting_capital`, `ending_capital_midpoint`/`_net`, `total_return_pct_midpoint`/`_net`, `win_rate_pct`, `profit_factor`, `max_drawdown_pct`, `total_trades`, `winning_trades`, `losing_trades`, `llm_calls_made`, `trades`, `skipped_trades`, `equity_curve`, `day_steps`). All list fields are copied, so an earlier snapshot handed to a progress callback is never mutated by later settlement — the UI can safely hold every checkpoint.
+- **`profit_factor`** is `gross_profit / gross_loss` when there are losses, `99.0` when there are only wins, and `0.0` when there are no trades.
+
+`_emit_progress(on_progress, progress_pct, snapshot)` in `push_runner.py` awaits the callback when it returns an awaitable and calls it synchronously otherwise, so both sync and async progress handlers are supported. Progress runs `10` (window selected) → `10 + round(days_completed / total_days × 85)` per settled day → `95` on the final day.
+
+## Live Backtest View (`/recipes/backtest/$jobId`)
+
+Clicking **Backtest (Random 2W)** in the Studio saves the recipe, enqueues a `backtest` job, and immediately navigates to `/recipes/backtest/$jobId` — the Studio no longer renders results inline. The route loader calls `fetchRecipeRunDetailFn` (failing soft to `null`), and `RecipeBacktestPage` polls it every 1.5s while the job status is `pending` or `processing` (`staleTime: 1000`, `refetchInterval` returning `false` once terminal).
+
+### Header
+
+`BacktestHeader` renders the `Edit in Studio` link (preserving `?recipeId=`), the recipe name, a solid status badge (`QUEUED` / `DAY n / N` / `COMPLETED` / `FAILED`), the numeric `progress_pct`, a `Re-run Backtest` button (gated on `isQuerySettled(query)` and a non-running job), and a progress bar colored by status. The meta row (`data-testid="backtest-meta-row"`) is `flex-wrap` with `whitespace-nowrap` fragments for the window range, model/provider, and job id, keeping it safe at 360px.
+
+### Three Blocks
+
+1. **`BacktestTimelineBlock`** — a fluid grid of day tiles (`repeat(auto-fit, minmax(min(100%,10.5rem), 1fr))`). Each tile shows `D<n> • <date>`, the day's net P&L, and a badge resolved by `formatDaySignal`: `RUNNING` (accent) for the in-flight day, `QUEUED` (neutral) for not-yet-reached days, `ERROR` (danger) for a failed stage, `HOLD` (neutral) for zero signals, or `BUY/SELL <TICKER>` (+`+N` overflow) colored success/danger. Clicking a tile opens the in-flow `DayInspector` trough (`data-testid="day-inspector-trough"`) showing the day's tool calls (deduplicated with occurrence suffixes) and the model's decision output excerpt — no floating tooltips. Before the worker picks a window the block renders a `Waiting for recipe worker to pick a 2-week historical window...` trough.
+2. **`BacktestTelemetryBlock`** — six `MetricTile`s (Ending Capital, Total Return, Win Rate `n / N`, Profit Factor, Max Drawdown, LLM Calls `made / total` while running) plus an `Equity Progression` trough rendering one horizontal bar per settled day, scaled between the starting capital and the observed equity range. A `P&L Model` toggle switches every tile between `Spread & Slippage Net` (default) and `Midpoint (Zero-Cost)`.
+3. **`BacktestTradesBlock`** — the executed-trades table (Action badge, Entry/Exit dates, Entry/Exit price, Net Return, Net P&L; numeric columns right-aligned with `tabular-nums font-mono`) plus a `Counterfactual Skipped Signals` table capped at 20 rows with `isInactive` rows for `NO_PRICE_DATA` skips.
+
+A `live_turn` job opened on this route renders an `Incompatible Job Mode` error card instead of backtest telemetry.
+
+### Studio Recent Backtests
+
+`/recipes` loads `fetchRecentBacktestJobsFn()` alongside the optional `?recipeId=` recipe and renders a `Recent Backtests:` trough of up to five `voxel-btn` links to `/recipes/backtest/$jobId`, each labeled with the short job id and either the net return (`+1.80%`) or `<STATUS> (<progress>%)`.
 
 ## LLM Endpoint Failover (`_llm_endpoints` / `_run_tool_loop`)
 
@@ -130,14 +161,33 @@ The legacy `2-Stage Research -> Trade Decision` template was unpublished by the 
 
 To bring multi-stage back, drop the `{{prev_output}}` rejection, relax the schema cardinality and the DB constraint, restore the stage controls in the UI, and re-add the second stage to the enqueue and scheduler guards.
 
+## API Module Split
+
+The Studio's server functions are split across two modules by concern, both keeping the logic in plain exported functions with the `createServerFn` wrappers as thin shells so each rule is unit tested:
+
+- **`api/recipes-api.ts`** — recipe persistence and job lifecycle: `saveRecipe` / `saveRecipeFn`, `enqueueRecipeJob` / `enqueueRecipeJobFn`, `getRecipeJobStatus` / `getRecipeJobStatusFn`, `fetchRecipeRunDetail` / `fetchRecipeRunDetailFn`, `fetchRecipeById` / `fetchRecipeByIdFn`, `fetchRecentBacktestJobs` / `fetchRecentBacktestJobsFn`, and `fetchPublicRecipes`.
+- **`api/recipes-studio-api.ts`** — Studio-side utilities that are not part of the job lifecycle: `fetchRecipeAlerts` / `fetchRecipeAlertsFn`, `markAlertRead` / `markAlertReadFn`, `submitWaitlistPledge` / `submitWaitlistPledgeFn`, and `previewStrategyPrompt` / `previewStrategyPromptFn` (which hydrates news and memories blocks through `prompt-builder.ts` without ever selecting `embedding` vectors).
+
+`RecipeStudioPage` imports the job functions from `recipes-api` and the alerts/waitlist/preview functions from `recipes-studio-api`; the split keeps the job module free of alert-inbox and waitlist concerns.
+
 ## Recipe API Authorization
 
 The Studio runs against the archive DB, where `strategy_recipes` is publicly readable for templates and public recipes while `recipe_execution_queue` and `recipe_alerts_inbox` are service-role only. The API in `apps/web/src/features/recipes/api/recipes-api.ts` keeps the logic in plain exported functions and the server functions as thin wrappers, so each rule is unit tested.
 
 - `saveRecipe()` fails closed. It reads the existing row first, rejects a row owned by another user, and never transfers ownership: `user_id` is absent from the update payload and the update is scoped with `.eq('user_id', userId)`.
 - `enqueueRecipeJob()` requires the caller to own the recipe or to be allowed to see it (`is_public` or `is_template`), validates the recipe's `graph_json` before it reaches the queue, and caps the number of open jobs per user so one caller cannot flood the queue with LLM runs.
-- `getRecipeJobStatus()` reads the service-role-only queue with the admin client and scopes the row to the requesting user's `user_id`, so one caller cannot read another caller's job result. The earlier anon-key read could never return a row, which left the Studio showing a generic "still processing" message after every run.
-- Anonymous visitors share the `00000000-0000-0000-0000-000000000000` user id, so ownership only separates signed-in users. No UI path loads a recipe from the database: the Studio always starts from a local starter template.
+- `getRecipeJobStatus()` and `fetchRecipeRunDetail()` read the service-role-only queue with the admin client and scope the row to the requesting user's `user_id`, so one caller cannot read another caller's job result. `fetchRecipeRunDetail()` additionally joins `strategy_recipes` for `name` and `cadence`, returning `{ job, recipeName, recipeCadence }` and degrading to nulls when `recipe_id` is absent. `fetchRecentBacktestJobs()` surfaces the caller's recent backtests in the Studio.
+- `fetchRecipeById()` allows the Studio (`/recipes?recipeId=<id>`) to reload a saved recipe when returning from `/recipes/backtest/$jobId` ("Edit in Studio"). It authorizes on ownership, `is_public`, or `is_template`, and drops `id` when loading another user's public/template recipe so edits fork into a new row instead of hitting an ownership error on save.
+- Anonymous visitors share the `00000000-0000-0000-0000-000000000000` user id, so ownership only separates signed-in users. By default `/recipes` starts from a local starter template unless `?recipeId=` is specified.
+
+## Client Types (`apps/web/src/features/recipes/types.ts`)
+
+- `BacktestDayStep` — `{ day, day_index, status, signals, tool_calls, output_excerpt, day_pnl_net, trades_executed, trades_skipped }`, the per-day trace rendered by the timeline inspector.
+- `BacktestResultData` — the accumulator snapshot shape, extended with `mode`, `days_completed`, `total_days`, `current_day`, and `day_steps` so a partial in-flight payload is a valid `BacktestResultData`.
+- `RecipeJobStatus` — `'pending' | 'processing' | 'completed' | 'failed'`.
+- `RecipeJobRecord` — the queue row projection (`id`, `recipe_id`, `mode`, `status`, `progress_pct`, `provider`, `model`, `result_json`, `error_message`, timestamps).
+- `RecipeRunDetail` — `{ job, recipeName, recipeCadence }`.
+- `ExecutionState` — `idle` → `running` (`live_turn` | `backtest`) → `live_done` | `error`. The former `backtest_done` state was removed because a backtest now navigates to its own route instead of rendering inline.
 
 ## Related Pages
 
@@ -147,3 +197,4 @@ The Studio runs against the archive DB, where `strategy_recipes` is publicly rea
 - [[entities/design-system]]
 - [[concepts/zero-frontend-compute]]
 - [[concepts/zero-lookahead-materialization]]
+- [[concepts/state-machines]] — `RecipeJobStatus` and `ExecutionState` lifecycle registry

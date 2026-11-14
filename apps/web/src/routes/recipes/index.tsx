@@ -1,8 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { fetchRecentBacktestJobsFn, fetchRecipeByIdFn } from '~/features/recipes/api/recipes-api';
 import { RecipeStudioPage } from '~/features/recipes/pages/RecipeStudioPage';
 import { seo } from '~/lib/seo';
 
 export const Route = createFileRoute('/recipes/')({
+    validateSearch: (search: Record<string, unknown>): { recipeId?: string } => ({
+        recipeId:
+            typeof search.recipeId === 'string' && search.recipeId ? search.recipeId : undefined,
+    }),
+    loaderDeps: ({ search }) => ({ recipeId: search.recipeId }),
+    loader: async ({ deps }) => {
+        const [initialStrategy, recentBacktests] = await Promise.all([
+            deps.recipeId
+                ? fetchRecipeByIdFn({ data: { recipeId: deps.recipeId } }).catch(() => null)
+                : Promise.resolve(null),
+            fetchRecentBacktestJobsFn().catch(() => []),
+        ]);
+        return { initialStrategy, recentBacktests };
+    },
     head: () => ({
         meta: [
             ...seo({
@@ -16,5 +31,6 @@ export const Route = createFileRoute('/recipes/')({
 });
 
 function RouteComponent() {
-    return <RecipeStudioPage />;
+    const { initialStrategy, recentBacktests } = Route.useLoaderData();
+    return <RecipeStudioPage initialStrategy={initialStrategy} recentBacktests={recentBacktests} />;
 }

@@ -211,11 +211,14 @@ The following areas in the codebase currently manage state implicitly through co
 | **Systematic Sector Horizons** | `exit_date IS NULL` combined with application date math. | `PositionHorizonState = 'OPEN' \| 'MATURED_HOLD' \| 'EXIT_QUEUED' \| 'CLOSED'` |
 | **Live Trader WebSocket Session** | Ambient client connections and disconnected flags. | `StreamSessionState = 'CONNECTING' \| 'STREAMING' \| 'RECONNECTING' \| 'DISCONNECTED'` |
 
-### 2.6 Strategy Builder MVP Execution & Preview (`ExecutionState` / `PreviewState`)
+### 2.7 Strategy Builder Studio, Incremental Backtest & Preview (`ExecutionState`, `RecipeJobStatus`, `PreviewState`)
 
-- **Source File**: [`apps/web/src/features/recipes/types.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/types.ts) (`RecipeStudioPage.tsx`)
+- **Source Files**:
+  - [`apps/web/src/features/recipes/types.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/types.ts) ([`RecipeStudioPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/pages/RecipeStudioPage.tsx), [`RecipeBacktestPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/pages/RecipeBacktestPage.tsx))
+  - [`apps/engine/recipes/worker.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/recipes/worker.py) ([`push_runner.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/recipes/push_runner.py))
 - **States**:
-  - `ExecutionState`: `idle` $\to$ `running` (`live_turn` | `backtest`) $\to$ `live_done` | `backtest_done` | `error`
+  - `ExecutionState` (inline in Studio): `idle` $\to$ `running` (`live_turn` | `backtest`) $\to$ `live_done` | `error` (when `mode === 'backtest'`, enqueueing immediately navigates to `/recipes/backtest/$jobId` instead of staying inline).
+  - `RecipeJobStatus` (`recipe_execution_queue`): `pending` $\to$ `processing` (streaming per-day checkpoints `progress_pct` + `result_json.day_steps` from `BacktestAccumulator`) $\to$ `completed` | `failed`.
   - `PreviewState`: `template` $\to$ `loading` $\to$ `hydrated` | `error`
 - **Cardinality invariant**: `PushStrategy.stages` is the one-element tuple `[StrategyStage]`, so the zero-stage and multi-stage states are unrepresentable in the type. The engine schema (`apps/engine/recipes/push_schema.py`) and the `strategy_recipes_single_stage_check` constraint enforce the same rule at runtime. See [[entities/recipe-studio]].
 

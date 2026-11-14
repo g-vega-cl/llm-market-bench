@@ -5,6 +5,9 @@ import {
     assertNoPrevOutputPlaceholder,
     assertSingleLlmStage,
     enqueueRecipeJob,
+    fetchRecentBacktestJobs,
+    fetchRecipeById,
+    fetchRecipeRunDetail,
     getRecipeJobStatus,
     saveRecipe,
 } from './recipes-api';
@@ -70,6 +73,9 @@ function createMockDb(results: Record<string, DbResult | ((call: RecordedCall) =
                 },
                 in(col: string, values: unknown[]) {
                     call.filters[col] = values;
+                    return chain;
+                },
+                order(_col: string, _opts?: unknown) {
                     return chain;
                 },
                 limit(_n: number) {
@@ -303,5 +309,108 @@ describe('enqueueRecipeJob', () => {
             mode: 'backtest',
             priority: 10,
         });
+    });
+});
+
+describe('fetchRecipeRunDetail', () => {
+    it('loads the user-scoped job and attaches recipe metadata', async () => {
+        const { db, calls } = createMockDb({
+            'select:recipe_execution_queue': {
+                data: {
+                    id: 'job-99',
+                    recipe_id: 'rec-1',
+                    mode: 'backtest',
+                    status: 'processing',
+                    progress_pct: 36,
+                    result_json: { days_completed: 3, total_days: 10 },
+                    error_message: null,
+                },
+            },
+            'select:strategy_recipes': {
+                data: { id: 'rec-1', name: 'Chip Tariff Momentum', cadence: '1d' },
+            },
+        });
+        mockServerDb = db;
+
+        const detail = await fetchRecipeRunDetail('job-99', 'user-1');
+
+        expect(calls[0]?.filters).toMatchObject({ id: 'job-99', user_id: 'user-1' });
+        expect(detail.job.status).toBe('processing');
+        expect(detail.job.progress_pct).toBe(36);
+        expect(detail.recipeName).toBe('Chip Tariff Momentum');
+        expect(detail.recipeCadence).toBe('1d');
+    });
+});
+
+describe('fetchRecipeById', () => {
+    it('preserves recipe id when owned by the caller', async () => {
+        const { db } = createMockDb({
+            'select:strategy_recipes': {
+                data: {
+                    ...recipeRow({ id: 'rec-own', user_id: 'user-1' }),
+                    name: 'My Strategy',
+                    description: 'Test',
+                    cadence: '1d',
+                },
+            },
+        });
+        mockServerDb = db;
+
+        const loaded = await fetchRecipeById('rec-own', 'user-1');
+        expect(loaded?.id).toBe('rec-own');
+        expect(loaded?.name).toBe('My Strategy');
+    });
+
+    it('drops recipe id when loading a public template owned by another user', async () => {
+        const { db } = createMockDb({
+            'select:strategy_recipes': {
+                data: {
+                    ...recipeRow({ id: 'rec-pub', user_id: 'other-user', is_public: true }),
+                    name: 'Public Template',
+                    description: 'Shared',
+                    cadence: '1d',
+                },
+            },
+        });
+        mockServerDb = db;
+
+        const loaded = await fetchRecipeById('rec-pub', 'user-1');
+        expect(loaded?.id).toBeUndefined();
+        expect(loaded?.name).toBe('Public Template');
+    });
+
+    it('rejects private recipes owned by another user', async () => {
+        const { db } = createMockDb({
+            'select:strategy_recipes': {
+                data: recipeRow({ id: 'rec-priv', user_id: 'other-user', is_public: false }),
+            },
+        });
+        mockServerDb = db;
+
+        await expect(fetchRecipeById('rec-priv', 'user-1')).rejects.toThrow('Unauthorized');
+    });
+});
+
+describe('fetchRecentBacktestJobs', () => {
+    it('queries backtest runs scoped to the requesting user', async () => {
+        const { db, calls } = createMockDb({
+            'select:recipe_execution_queue': {
+                data: [
+                    {
+                        id: 'job-1',
+                        recipe_id: 'rec-1',
+                        mode: 'backtest',
+                        status: 'completed',
+                        progress_pct: 100,
+                    },
+                ],
+            },
+        });
+        mockServerDb = db;
+
+        const jobs = await fetchRecentBacktestJobs('user-1', 5);
+        expect(calls[0]?.filters).toMatchObject({ user_id: 'user-1', mode: 'backtest' });
+        expect(jobs).toHaveLength(1);
+        expect(jobs[0]?.id).toBe('job-1');
     });
 });

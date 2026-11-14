@@ -1,47 +1,81 @@
 import { describe, expect, it } from 'vitest';
-import { buildStagePromptPreview } from './prompt-builder';
+import {
+    buildStagePromptPreview,
+    hydrateMemoriesBlockText,
+    hydrateNewsBlockText,
+} from './prompt-builder';
 import type { StrategyStage } from './types';
 
-const emptyStage: StrategyStage = {
-    id: 'stage-1',
-    title: 'Catalyst & Technical Analysis',
-    selected_tools: [],
-    blocks: [],
-};
-
-describe('buildStagePromptPreview', () => {
-    it('shows prompt text as written, without a previous-stage placeholder', () => {
+describe('prompt-builder', () => {
+    it('builds unhydrated and hydrated stage prompt previews', () => {
         const stage: StrategyStage = {
-            ...emptyStage,
+            id: 'stage-1',
+            title: 'Momentum',
+            selected_tools: [],
             blocks: [
-                { id: 'blk-p', type: 'prompt', text: '  Review {{prev_output}} carefully.  ' },
+                { id: 'b-prompt', type: 'prompt', text: 'Find semiconductor momentum.' },
+                { id: 'b-news', type: 'news', contains: ['NVDA'], recency_hours: 24 },
+                {
+                    id: 'b-tech',
+                    type: 'technicals',
+                    rules: [{ id: 'r1', metric: 'RSI_14', operator: '<', target: '70' }],
+                },
+                { id: 'b-fmt', type: 'output_format' },
             ],
         };
 
-        const preview = buildStagePromptPreview(stage);
+        const raw = buildStagePromptPreview(stage);
+        expect(raw).toContain('Find semiconductor momentum.');
+        expect(raw).toContain('<Matching news headlines injected at run time>');
+        expect(raw).toContain('- RSI_14 < 70');
+        expect(raw).toContain('=== REQUIRED OUTPUT FORMAT ===');
 
-        expect(preview).toBe('Review {{prev_output}} carefully.');
-        expect(preview).not.toContain('Output from Stage');
-        expect(preview).not.toContain('Previous Stage Output');
+        const hydrated = buildStagePromptPreview(stage, {
+            'b-news': '[News]:\n- NVDA breaks out on Blackwell guidance',
+        });
+        expect(hydrated).toContain('NVDA breaks out on Blackwell guidance');
     });
 
-    it('uses hydrated news text in place of the placeholder when live data is loaded', () => {
-        const stage: StrategyStage = {
-            ...emptyStage,
-            blocks: [
-                { id: 'blk-n', type: 'news', contains: ['Trump'], recency_hours: 48 },
-                { id: 'blk-p', type: 'prompt', text: 'Decide.' },
+    it('filters news and memory rows by recency, keywords, category, and importance', () => {
+        const now = Date.parse('2026-03-10T15:00:00Z');
+        const newsOut = hydrateNewsBlockText(
+            { contains: ['NVDA'], recency_hours: 12 },
+            [
+                {
+                    title: 'NVDA beats estimates',
+                    full_text: 'Strong NVDA datacenter demand.',
+                    date_published: '2026-03-10T10:00:00Z',
+                },
+                {
+                    title: 'Stale NVDA article',
+                    full_text: 'Too old',
+                    date_published: '2026-03-08T10:00:00Z',
+                },
             ],
-        };
-
-        const preview = buildStagePromptPreview(stage, { 'blk-n': '[News (live)]:\n- Headline' });
-
-        expect(preview).toBe('[News (live)]:\n- Headline\n\nDecide.');
-    });
-
-    it('shows the empty-stage hint when no blocks are configured', () => {
-        expect(buildStagePromptPreview(emptyStage)).toMatch(
-            /^\(Empty stage .+ add a block above\)$/,
+            now,
         );
+        expect(newsOut).toContain('NVDA beats estimates');
+        expect(newsOut).not.toContain('Stale NVDA article');
+
+        const memOut = hydrateMemoriesBlockText(
+            { contains: ['rates'], recency_hours: 24, category: 'MACRO', min_importance: 7 },
+            [
+                {
+                    content: 'Fed signals steady rates',
+                    created_at: '2026-03-10T12:00:00Z',
+                    memory_type: 'MACRO',
+                    importance_score: 8,
+                },
+                {
+                    content: 'Minor rates chatter',
+                    created_at: '2026-03-10T12:00:00Z',
+                    memory_type: 'MACRO',
+                    importance_score: 3,
+                },
+            ],
+            now,
+        );
+        expect(memOut).toContain('Fed signals steady rates');
+        expect(memOut).not.toContain('Minor rates chatter');
     });
 });

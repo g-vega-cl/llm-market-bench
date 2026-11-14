@@ -80,7 +80,19 @@ async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome
                     }
                 ).execute()
         else:
-            result = await run_push_backtest(push_strategy, sb)
+
+            def _on_progress(progress_pct: int, partial_result: dict[str, Any]) -> None:
+                try:
+                    sb.table("recipe_execution_queue").update(
+                        {
+                            "progress_pct": progress_pct,
+                            "result_json": partial_result,
+                        }
+                    ).eq("id", job_id).execute()
+                except Exception:
+                    logger.warning("Failed updating progress for recipe job %s", job_id, exc_info=True)
+
+            result = await run_push_backtest(push_strategy, sb, on_progress=_on_progress)
 
         sb.table("recipe_execution_queue").update(
             {

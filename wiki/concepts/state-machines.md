@@ -180,6 +180,22 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
     interactive badges, D3 charts)   lock secondary telemetry)
 ```
 
+### 2.7 Daily Stock Picker Arena (`daily_stock_baskets` & `daily_stock_picks`)
+
+- **Source Files**: [`apps/engine/tasks/stock_picker.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/tasks/stock_picker.py), [`apps/engine/tasks/evaluate_stock_picks.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/tasks/evaluate_stock_picks.py), [`supabase/migrations/20261112000000_create_daily_stock_picks.sql`](file:///home/cv/Documents/Code/llm-market-bench/supabase/migrations/20261112000000_create_daily_stock_picks.sql)
+- **States**: `pending` $\to$ `evaluated` | `cancelled`
+
+```text
+  09:17 ET (stock-picker)              16:05+ ET (evaluate-stock-picks)
+         [pending] ──────────────┬──────────────▶ [evaluated] (valid RTH open > 0 & close)
+                                 └──────────────▶ [cancelled] (halt / missing / sub-cent open)
+```
+
+- **Invariants**:
+  - `chk_pick_evaluation_invariants` enforces that `pending` picks keep `evaluated_at`, `is_hit`, and `close_price` null; `evaluated` picks require `open_price > 0` (checked after 2-decimal rounding) and non-null `close_price`, `stock_return_pct`, `position_return_pct`, `is_hit`, and `evaluated_at`; `cancelled` picks require `is_hit IS NULL`.
+  - `session_skip_reason` in `apps/engine/tasks/stock_picker.py` refuses morning overwrites once any basket for `target_date` is `evaluated`, even with `--force`.
+  - Evaluation batch upserts merge `{**orig, ...updates}` with `on_conflict="id"` so PostgreSQL `NOT NULL` checks during `INSERT ... ON CONFLICT DO UPDATE` never reject partial payloads, and `cancelled` baskets explicitly clear all six performance metrics.
+
 ---
 
 ## 3. Implicit State Debt & Refactoring Backlog

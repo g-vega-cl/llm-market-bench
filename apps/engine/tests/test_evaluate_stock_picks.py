@@ -135,3 +135,121 @@ async def test_evaluate_stock_picks_math_and_halts():
         # Valid picks: 5 total (1 halt cancelled)
         # Hits: CB (UP hit), ABNB (DOWN hit), NVDA (DOWN hit). 3 out of 5 = 60.0%
         assert basket_update_arg["directional_hit_rate"] == 60.0
+
+
+@pytest.mark.asyncio
+async def test_evaluate_stock_picks_full_row_batch_upsert_and_cancelled_basket():
+    """Verify O(1) batch upserts preserve NOT NULL columns, uniform keys, and cancelled-basket clearing."""
+    required_not_null = {
+        "daily_stock_baskets": {"target_date", "model_name"},
+        "daily_stock_picks": {"basket_id", "target_date", "model_name", "ticker", "direction", "rank", "confidence"},
+    }
+
+    mock_baskets = [
+        {
+            "id": "basket-1",
+            "target_date": "2026-11-13",
+            "model_name": "consensus",
+            "status": "pending",
+        },
+        {
+            "id": "basket-2",
+            "target_date": "2026-11-13",
+            "model_name": "deepseek-v4-flash",
+            "status": "evaluated",
+            "directional_hit_rate": 100.0,
+            "ls_spread_alpha_pct": 2.5,
+        },
+    ]
+    mock_picks = [
+        {
+            "id": "pick-1",
+            "basket_id": "basket-1",
+            "target_date": "2026-11-13",
+            "model_name": "consensus",
+            "ticker": "AMD",
+            "direction": "UP",
+            "rank": 1,
+            "confidence": 80.0,
+        },
+        {
+            "id": "pick-2",
+            "basket_id": "basket-1",
+            "target_date": "2026-11-13",
+            "model_name": "consensus",
+            "ticker": "NVDA",
+            "direction": "DOWN",
+            "rank": 1,
+            "confidence": 75.0,
+        },
+        {
+            "id": "pick-3",
+            "basket_id": "basket-2",
+            "target_date": "2026-11-13",
+            "model_name": "deepseek-v4-flash",
+            "ticker": "SUBCENT",
+            "direction": "UP",
+            "rank": 1,
+            "confidence": 70.0,
+        },
+    ]
+
+    upserted: dict[str, list[dict]] = {"daily_stock_picks": [], "daily_stock_baskets": []}
+
+    def _make_table(name: str):
+        tbl = MagicMock()
+        if name == "daily_stock_baskets":
+            tbl.select.return_value.eq.return_value.execute.return_value = MagicMock(data=mock_baskets)
+            tbl.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=mock_baskets)
+        else:
+            tbl.select.return_value.in_.return_value.execute.return_value = MagicMock(data=mock_picks)
+
+        def _strict_upsert(rows, *_args, **kwargs):
+            assert kwargs.get("on_conflict") == "id"
+            expected_keys = set(rows[0].keys())
+            for row in rows:
+                missing = required_not_null[name] - set(row.keys())
+                if missing:
+                    raise RuntimeError(f"null value in column {sorted(missing)[0]!r} violates not-null constraint")
+                assert set(row.keys()) == expected_keys, "PostgREST batch upsert requires uniform object keys"
+            upserted[name].append(rows)
+            return MagicMock()
+
+        tbl.upsert.side_effect = _strict_upsert
+        return tbl
+
+    mock_supabase = MagicMock()
+    mock_supabase.table.side_effect = _make_table
+
+    async def mock_fetch_prices(ticker, target_date, force_refresh=False):
+        return {
+            "SPY": (500.0, 505.0, 498.0, 502.0),
+            "AMD": (100.0, 104.0, 99.0, 103.0),
+            "NVDA": (200.0, 201.0, 194.0, 195.0),
+            "SUBCENT": (0.001, 0.002, 0.001, 0.002),  # rounds to 0.00 -> must cancel
+        }.get(ticker, (None, None, None, None))
+
+    with (
+        patch("tasks.evaluate_stock_picks.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.evaluate_stock_picks.fetch_intraday_prices", side_effect=mock_fetch_prices),
+    ):
+        result = await evaluate_stock_picks(target_date="2026-11-13", force_recalc=True)
+
+    assert result["status"] == "success"
+    assert len(upserted["daily_stock_picks"]) == 1
+    assert len(upserted["daily_stock_baskets"]) == 1
+
+    picks_by_id = {p["id"]: p for p in upserted["daily_stock_picks"][0]}
+    assert picks_by_id["pick-1"]["status"] == "evaluated"
+    assert picks_by_id["pick-1"]["is_hit"] is True
+    assert picks_by_id["pick-2"]["status"] == "evaluated"
+    assert picks_by_id["pick-2"]["is_hit"] is True
+    assert picks_by_id["pick-3"]["status"] == "cancelled"
+    assert picks_by_id["pick-3"]["open_price"] is None
+
+    baskets_by_id = {b["id"]: b for b in upserted["daily_stock_baskets"][0]}
+    assert baskets_by_id["basket-1"]["status"] == "evaluated"
+    assert baskets_by_id["basket-1"]["directional_hit_rate"] == 100.0
+    assert baskets_by_id["basket-2"]["status"] == "cancelled"
+    assert baskets_by_id["basket-2"]["directional_hit_rate"] is None
+    assert baskets_by_id["basket-2"]["ls_spread_alpha_pct"] is None

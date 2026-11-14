@@ -49,13 +49,27 @@ To enforce [[concepts/zero-frontend-compute]] and CP-safe atomic transactions, d
 
 ## 4. Post-Market Close Evaluation
 
-Scheduled at 17:00 ET (`apps/engine/tasks/evaluate_stock_picks.py`), the evaluator fetches Regular Trading Hours (09:30 to 16:00 ET) Open and Close prices:
-* **Halt Defensive Guard**: If `open_price <= 0` or missing (e.g. LULD volatility halts), the pick is marked `status = 'cancelled'`, preventing zero-division crashes.
-* **Return Metrics**:
-  * $\text{Stock Return} = \frac{\text{Close} - \text{Open}}{\text{Open}} \times 100\%$
-  * $\text{Position Return} = \text{Stock Return}$ for UP, $-\text{Stock Return}$ for DOWN.
-  * $\text{L/S Spread Alpha} = \text{Mean}(\text{Long Returns}) - \text{Mean}(\text{Short Stock Returns})$.
-  * $\text{Directional Hit Rate} = \frac{\text{Count}(\text{is\_hit})}{\text{Total Valid Picks}} \times 100\%$.
+Scheduled at 17:00 ET (`apps/engine/tasks/evaluate_stock_picks.py`), the evaluator fetches Regular Trading Hours (09:30 to 16:00 ET) Open and Close prices. The module is decomposed into three pure, independently testable helpers around a thin orchestration shell:
+
+| Helper | Responsibility |
+| :--- | :--- |
+| `_fetch_session_prices(tickers, session_date, force_recalc)` | Concurrently fetches RTH OHLC tuples for the unique ticker set (plus `SPY`) behind an `asyncio.Semaphore(5)` bulkhead. Any per-ticker exception is logged with `logger.exception` and mapped to `(None, None, None, None)` so one bad provider call cannot abort the whole session. |
+| `_grade_pick(pick, prices, session_date, evaluated_at_iso)` | Grades a single pick — halt guard, return math, hit determination, conviction points — and returns the full merged row. |
+| `_aggregate_basket(basket, basket_picks, spy_return_pct, evaluated_at_iso)` | Rolls graded picks up into basket-level mean long / mean short / L/S alpha / excess alpha / directional hit rate, or cancels a basket with zero valid picks. |
+
+### Halt & Sub-Cent Defensive Guard
+
+If `open_price` is `None`, `close_price` is `None`, `open_price <= 0`, **or `round(open_price, 2) <= 0`** (an LULD volatility halt, missing print, or a sub-cent penny quote that would round to `0.00` and violate the `open_price > 0` check constraint), the pick is marked `status = 'cancelled'` with `open_price`, `close_price`, `stock_return_pct`, `position_return_pct`, `is_hit`, `conviction_points`, and `evaluated_at` all explicitly set to `null`. The rounding guard is checked against the *persisted* (2-decimal) value, not the raw float, so a constraint violation can never reach PostgreSQL.
+
+### Return Metrics
+
+* $\text{Stock Return} = \frac{\text{Close} - \text{Open}}{\text{Open}} \times 100\%$ (rounded to 4 decimals)
+* $\text{Position Return} = \text{Stock Return}$ for UP, $-\text{Stock Return}$ for DOWN
+* $\text{L/S Spread Alpha} = \text{Mean}(\text{Long Position Returns}) - \text{Mean}(\text{Short Stock Returns})$
+* $\text{Excess Alpha vs SPY} = \text{L/S Spread Alpha} - \text{SPY Return}$ (left `null` when the SPY benchmark return itself is unavailable — never silently coerced to zero)
+* $\text{Directional Hit Rate} = \frac{\text{Count}(\text{is\_hit})}{\text{Total Valid Evaluated Picks}} \times 100\%$ (2 decimals)
+
+A basket whose picks are *all* cancelled is itself marked `status = 'cancelled'`, with `directional_hit_rate`, `mean_long_return_pct`, `mean_short_return_pct`, `ls_spread_alpha_pct`, and `excess_alpha_vs_spy_pct` explicitly cleared to `null` (so stale graded metrics from a prior run never survive), while `benchmark_spy_return_pct` and `evaluated_at` are still stamped.
 
 ## 5. Weekly Autoresearch & Normalized Ratchet Hurdle
 
@@ -124,7 +138,16 @@ Picks are replaced by the `replace_daily_stock_picks(p_basket_id, p_picks)` RPC 
 * Any basket already `evaluated` → skip even with `--force` (`already-evaluated`). Graded sessions carry open/close/return/hit data, feed the `status='evaluated'` filter of `apps/engine/tasks/stock_picker_autoresearch.py`, and must stay immutable.
 * A consensus basket exists and `--force` was not passed → skip (`already-exists`).
 
-Regression coverage lives in `apps/engine/tests/test_stock_picker_arena.py` (hermetic: mocked clients, no network, no sleeps).
+### Full-Row Batch Upserts (`on_conflict="id"`)
+
+Both the pick and basket write paths merge the graded fields onto the *original* row (`{**orig, ...updates}`) and upsert with `on_conflict="id"`. PostgreSQL evaluates `NOT NULL` constraints on the candidate tuple during `INSERT ... ON CONFLICT DO UPDATE`, so a partial payload (e.g. only `id` + `status`) would be rejected before the `DO UPDATE` branch ever ran. Carrying the source columns through:
+
+* keeps `daily_stock_picks` NOT NULL columns (`basket_id`, `target_date`, `model_name`, `ticker`, `direction`, `rank`, `confidence`) intact,
+* keeps `daily_stock_baskets` NOT NULL columns (`target_date`, `model_name`) intact,
+* guarantees every row in a batch shares an identical key set, which PostgREST requires for a multi-row upsert,
+* and makes `status`, `is_hit`, and the aggregate metrics idempotent on rerun because the same `id` is updated in place rather than re-inserted.
+
+Regression coverage lives in `apps/engine/tests/test_stock_picker_arena.py` and `apps/engine/tests/test_evaluate_stock_picks.py` (hermetic: mocked clients, no network, no sleeps). The evaluation suite's `test_evaluate_stock_picks_full_row_batch_upsert_and_cancelled_basket` asserts uniform keys, `on_conflict="id"`, NOT NULL preservation, sub-cent-open cancellation, and that a cancelled basket clears all six performance metrics.
 
 ## Related
 
@@ -136,3 +159,4 @@ Regression coverage lives in `apps/engine/tests/test_stock_picker_arena.py` (her
 - [[entities/cli]] — CLI commands `stock-picker`, `evaluate-stock-picks`, `stock-picker-autoresearch`
 - [[entities/database]] — `daily_stock_baskets` and `daily_stock_picks` tables
 - [[concepts/prompt-section-splitting]] — frozen header/mutable strategy/frozen footer prompt structure
+- [[concepts/state-machines]] — `pending` → `evaluated` | `cancelled` lifecycle registry

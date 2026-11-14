@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **270**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **271**).
 
 ## Top Hotspots
 
@@ -14,7 +14,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/web/src/routes/__root.tsx` | 16 | 9 | 56.2% | 339 | 144 | **CRITICAL** |
-| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 19 | 6 | 31.6% | 361 | 114 | **CRITICAL** |
+| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 20 | 6 | 30.0% | 361 | 120 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 19 | 5 | 26.3% | 341 | 95 | **HIGH** |
 | `apps/web/src/routes/-__root.test.tsx` | 13 | 7 | 53.8% | 479 | 91 | **HIGH** |
 | `apps/engine/tasks/daily_predictor.py` | 21 | 4 | 19.0% | 674 | 84 | **HIGH** |
@@ -41,9 +41,9 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/engine/tasks/newsletter_generator.py` | `apps/engine/tests/test_newsletter_generator.py` | 10 | 83% |
 | `apps/web/src/features/home/components/LiveAgentConsole.test.tsx` | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 9 | 100% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/tests/test_proxy.py` | 9 | 90% |
+| `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 9 | 82% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/router.py` | 8 | 89% |
 | `apps/free_llm_proxy/router.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 8 | 89% |
-| `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 8 | 80% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 8 | 50% |
 | `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 8 | 50% |
 | `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 8 | 50% |

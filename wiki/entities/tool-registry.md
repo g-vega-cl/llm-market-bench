@@ -7,6 +7,10 @@ category: entity
 
 `TOOL_DISPATCH_TABLE` in `apps/engine/core/llm/handlers/base.py` maps tool names to their executor lambdas. `execute_tool(name, args, model_name)` looks up the name, invokes the executor, and wraps the call in audit logging via `async_record_tool_audit` (see [[entities/tool-audit]]).
 
+## Point-in-Time (PIT) Routing
+
+`_dispatch_tool` short-circuits to `recipes.pit_tools.execute_pit_tool` whenever `pit_mode=True` or `as_of_utc` is supplied in the call kwargs. This is how Recipe Studio backtests enforce strict temporal isolation: the PIT router serves historical variants of `get_stock_quote`, `get_price_history`, `get_technical_indicators`, `get_ticker_news`, `get_todays_news_menu`, `fetch_newsletter_content`, `search_past_memories`, `get_market_feeling`, `get_earnings_history`, and `get_key_metrics`, and fails closed on live-only tools (`web_search`, option chains, etc.). A plain `cutoff_date` alone (without `as_of_utc` or `pit_mode`) does **not** hijack the router, so standalone historical analysis keeps using the live `tools.py` handlers. See [[entities/recipe-studio]].
+
 ## Dispatch Entries
 
 The table covers market data, options, macro, valuation, screening, research, and prediction-market tools. Notable entries include:
@@ -15,7 +19,7 @@ The table covers market data, options, macro, valuation, screening, research, an
 - `get_macro_options_sentiment` — cross-asset macro options skew; defaults `primary_ticker` to the calling ticker or `SPY`
 - `get_option_chain` — full option chain for a ticker/expiration
 - `get_volatility_metrics`, `get_volatility_index_details`
-- `get_technical_indicators` — computes RSI-14, MACD, Signal, Histogram, 20D VWAP, SMA-20, SMA-50, RVOL, and 52-week range % for a ticker, with an optional point-in-time `cutoff_date` for backtesting. Implemented in `apps/engine/tools/technicals.py` (`execute_technical_indicators_tool`, `compute_technical_snapshot`). Registered in `CANONICAL_TOOLS_REGISTRY` and `packages/config/tools.json`, marked ticker-required in `TICKER_REQUIRED_TOOLS`, and selectable by the Auto-Researcher (`PromptResearchResult.selected_tools`).
+- `get_technical_indicators` — computes RSI-14, MACD, Signal, Histogram, 20D VWAP, SMA-20, SMA-50, RVOL, and 52-week range % for a ticker, with an optional point-in-time `cutoff_date` for backtesting. When `cutoff_date` is supplied, it queries `price_history` directly (up to 365 rows, `fetched_at <= cutoff_date`) so historical windows never truncate. The `strict_pit=True` keyword (used by Recipe Studio's `pit_tools.py`) fails closed with `No price history available` rather than falling back to live `MarketDataManager.get_history`. Implemented in `apps/engine/tools/technicals.py` (`execute_technical_indicators_tool`, `compute_technical_snapshot`). Registered in `CANONICAL_TOOLS_REGISTRY` and `packages/config/tools.json`, marked ticker-required in `TICKER_REQUIRED_TOOLS`, and selectable by the Auto-Researcher (`PromptResearchResult.selected_tools`).
 - `audit_financial_valuation`, `get_sector_alternatives`, `find_uncorrelated_assets`, `run_stock_screener`
 - `web_search`, `get_ticker_news`, `get_market_moving_news`, `search_prediction_markets`, `get_prediction_market_odds`
 - `get_calendar_scenario_analysis`, `get_today_economic_releases`, `get_global_macro_context`, `get_market_health_barometer`, `get_market_feeling`
@@ -40,3 +44,4 @@ The table covers market data, options, macro, valuation, screening, research, an
 - [[entities/daily-market-predictor]]
 - [[concepts/system-portfolios]]
 - [[entities/government-ingestion]]
+- [[entities/recipe-studio]]

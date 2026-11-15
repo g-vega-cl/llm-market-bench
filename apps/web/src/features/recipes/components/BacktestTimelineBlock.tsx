@@ -27,9 +27,11 @@ function formatDaySignal(
     }
     const first = step.signals[0];
     const extra = step.signals.length > 1 ? ` +${step.signals.length - 1}` : '';
+    const colorScheme =
+        first.action === 'BUY' ? 'success' : first.action === 'EXIT' ? 'warning' : 'danger';
     return {
         label: `${first.action} ${first.ticker}${extra}`,
-        colorScheme: first.action === 'BUY' ? 'success' : 'danger',
+        colorScheme,
     };
 }
 
@@ -74,7 +76,7 @@ function DayTile({
         >
             <div className="flex flex-wrap items-baseline justify-between gap-2 min-w-0">
                 <span className="text-xs font-normal font-mono tabular-nums text-boxel-ink whitespace-nowrap">
-                    D{index + 1} • {day}
+                    S{index + 1} • {day}
                 </span>
                 <span
                     className={`text-xs font-normal font-mono tabular-nums whitespace-nowrap ${pnlColor}`}
@@ -104,8 +106,12 @@ function DayInspector({
     selectedStep: BacktestDayStep | undefined;
     isCurrentRunning: boolean;
 }) {
+    const openCount =
+        selectedStep && typeof selectedStep.open_positions_count === 'number'
+            ? ` • ${selectedStep.open_positions_count} open`
+            : '';
     const statusText = selectedStep
-        ? `${selectedStep.trades_executed} executed • ${selectedStep.trades_skipped} skipped`
+        ? `${selectedStep.trades_executed} executed • ${selectedStep.trades_skipped} skipped${openCount}`
         : isCurrentRunning
           ? 'Running LLM evaluation for this session...'
           : 'Waiting in timeline queue';
@@ -117,7 +123,7 @@ function DayInspector({
         >
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-boxel-bevel-lo pb-2">
                 <span className="text-sm font-bold text-boxel-ink whitespace-nowrap">
-                    Day Trace: {activeDay}
+                    Session Trace: {activeDay}
                 </span>
                 <span className="text-xs font-normal text-boxel-muted">{statusText}</span>
             </div>
@@ -159,7 +165,8 @@ function DayInspector({
                 </div>
             ) : (
                 <p className="text-xs font-normal text-boxel-muted">
-                    Select any settled day tile above to inspect its tool calls and decision trace.
+                    Select any settled session tile above to inspect its tool calls and decision
+                    trace.
                 </p>
             )}
         </div>
@@ -193,7 +200,7 @@ export function BacktestTimelineBlock({ status, results }: BacktestTimelineBlock
             <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
                 <SectionHeading gradient="electric">Simulation Timeline</SectionHeading>
                 <span className="text-xs font-normal font-mono tabular-nums text-boxel-muted">
-                    {daySteps.length} / {windowDates.length || 10} Days Settled
+                    {daySteps.length} / {windowDates.length || 30} Sessions Settled
                 </span>
             </div>
 
@@ -203,8 +210,8 @@ export function BacktestTimelineBlock({ status, results }: BacktestTimelineBlock
                         Waiting for recipe worker to pick a 2-week historical window...
                     </span>
                     <span className="text-xs font-normal text-boxel-muted">
-                        The worker daemon polls the queue every 5 seconds and streams each trading
-                        day here as it finishes.
+                        The worker daemon polls the queue every 5 seconds and streams each 3x/day ET
+                        session here as it finishes.
                     </span>
                 </div>
             ) : (

@@ -15,14 +15,47 @@ from pydantic import ValidationError
 
 from core.config import logger
 from core.db import get_supabase_client
+from core.time_utils import EASTERN_TZ
+from recipes.intraday_bars import TRADING_SLOTS_ET, snapshot_live_intraday_bars
 from recipes.news_corpus import sync_live_news_to_corpus
+from recipes.portfolio_engine import DEFAULT_CONCURRENCY_CONFIG
 from recipes.push_schema import PushStrategy
 from recipes.worker import async_process_next_recipe_job, process_next_recipe_job
 
 ANONYMOUS_USER_ID = "00000000-0000-0000-0000-000000000000"
-HOURLY_INTERVAL_SECONDS = 3600
+SLOT_WINDOW_SECONDS = 1200  # 20-minute trigger window per 09:30 / 12:30 / 15:30 ET slot
 POLL_INTERVAL_SECONDS = 5
 MAX_JOBS_PER_CYCLE = 25
+
+
+def due_trading_slot(now_dt: datetime, last_slot_key: str | None = None) -> str | None:
+    """Return 'YYYY-MM-DDTHH:MM' ET key when now_dt falls inside a 09:30/12:30/15:30 ET slot."""
+    dt_et = now_dt.astimezone(EASTERN_TZ) if now_dt.tzinfo else now_dt.replace(tzinfo=UTC).astimezone(EASTERN_TZ)
+    if dt_et.weekday() >= 5:
+        return None
+    day_str = dt_et.date().isoformat()
+    for hour_et, minute_et in TRADING_SLOTS_ET:
+        slot_start = dt_et.replace(hour=hour_et, minute=minute_et, second=0, microsecond=0)
+        delta_sec = (dt_et - slot_start).total_seconds()
+        if 0 <= delta_sec < SLOT_WINDOW_SECONDS:
+            slot_key = f"{day_str}T{hour_et:02d}:{minute_et:02d}"
+            return None if slot_key == last_slot_key else slot_key
+    return None
+
+
+def _collect_recipe_watchlist(sb_client: Any) -> list[str]:
+    """Collect held paper tickers from live/public recipes for live slot bar archiving."""
+    tickers: set[str] = {"SPY"}
+    try:
+        res = sb_client.table("strategy_recipes").select("paper_positions").eq("is_live", True).limit(200).execute()
+        for row in res.data or []:
+            for pos in row.get("paper_positions") or []:
+                tkr = str(pos.get("ticker", "")).upper().strip()
+                if tkr:
+                    tickers.add(tkr)
+    except Exception:
+        logger.debug("Failed loading recipe watchlist for intraday bar snapshot", exc_info=True)
+    return sorted(tickers)
 
 
 def load_starter_recipes() -> list[dict[str, Any]]:
@@ -52,9 +85,9 @@ def seed_starter_recipes(sb_client: Any) -> int:
             "is_public": True,
             "is_template": True,
             "is_live": False,
-            "cadence": tmpl.get("cadence", "1d"),
+            "cadence": tmpl.get("cadence", "3h"),
             "graph_json": tmpl,
-            "concurrency_config": {"max_open_trades": 3, "max_equity_pct_per_trade": 33.3},
+            "concurrency_config": dict(DEFAULT_CONCURRENCY_CONFIG),
         }
         sb_client.table("strategy_recipes").insert(payload).execute()
         inserted += 1
@@ -83,8 +116,14 @@ def _is_valid_single_stage_graph(raw_graph: Any) -> bool:
     return True
 
 
-def enqueue_live_recipes(sb_client: Any) -> int:
-    """Enqueue live_turn jobs for active Push v2 is_live recipes without an open queued job."""
+def _canonical_slot_utc(slot_key: str) -> datetime:
+    """Convert a 'YYYY-MM-DDTHH:MM' ET slot key to its canonical UTC datetime."""
+    naive = datetime.fromisoformat(slot_key)
+    return naive.replace(tzinfo=EASTERN_TZ).astimezone(UTC)
+
+
+def enqueue_live_recipes(sb_client: Any, *, slot_start_utc: datetime | None = None) -> int:
+    """Enqueue live_turn jobs for active Push v2 is_live recipes without an open or same-slot job."""
     live_res = (
         sb_client.table("strategy_recipes")
         .select("id, user_id, name, graph_json")
@@ -104,6 +143,17 @@ def enqueue_live_recipes(sb_client: Any) -> int:
         .execute()
     )
     open_ids = {str(r.get("recipe_id")) for r in (open_res.data or [])}
+
+    if slot_start_utc is not None:
+        slot_res = (
+            sb_client.table("recipe_execution_queue")
+            .select("recipe_id")
+            .eq("mode", "live_turn")
+            .gte("created_at", slot_start_utc.isoformat())
+            .limit(1000)
+            .execute()
+        )
+        open_ids.update(str(r.get("recipe_id")) for r in (slot_res.data or []))
 
     new_jobs: list[dict[str, Any]] = []
     for rec in live_recipes:
@@ -143,11 +193,16 @@ async def run_hourly_cycle(
     sb_client: Any,
     *,
     as_of_utc: datetime | None = None,
+    slot_start_utc: datetime | None = None,
     max_jobs: int = MAX_JOBS_PER_CYCLE,
 ) -> dict[str, int]:
     """Sync live news, enqueue hourly live recipes, and drain pending queue jobs."""
     news_stats = await sync_live_news_to_corpus(sb_client, as_of_utc=as_of_utc)
-    live_enqueued = enqueue_live_recipes(sb_client)
+    live_enqueued = (
+        enqueue_live_recipes(sb_client, slot_start_utc=slot_start_utc)
+        if slot_start_utc is not None
+        else enqueue_live_recipes(sb_client)
+    )
     jobs_processed = 0
     jobs_failed = 0
     for _ in range(max_jobs):
@@ -175,22 +230,27 @@ def _drain_sync_queue(sb_client: Any, max_jobs: int = MAX_JOBS_PER_CYCLE) -> Non
 
 
 def _run_daemon_loop(sb_client: Any) -> None:
-    """Run hourly news-sync + live-recipe scheduling while draining queued jobs every 5s."""
+    """Run 3x/day ET (09:30, 12:30, 15:30) recipe cycles while draining queued jobs every 5s."""
     try:
         seed_starter_recipes(sb_client)
     except Exception:
         logger.exception("Failed seeding starter recipes during worker startup; continuing loop")
 
-    last_hourly_ts = 0.0
+    last_slot_key: str | None = None
     while True:
-        now_mono = time.monotonic()
-        if last_hourly_ts == 0.0 or (now_mono - last_hourly_ts) >= HOURLY_INTERVAL_SECONDS:
+        now_utc = datetime.now(UTC)
+        slot_key = due_trading_slot(now_utc, last_slot_key)
+        if slot_key is not None:
+            slot_dt_utc = _canonical_slot_utc(slot_key)
             try:
-                stats = asyncio.run(run_hourly_cycle(sb_client, as_of_utc=datetime.now(UTC)))
-                logger.info("Hourly recipe cycle complete: %s", stats)
+                stats = asyncio.run(run_hourly_cycle(sb_client, as_of_utc=now_utc, slot_start_utc=slot_dt_utc))
+                snapped = asyncio.run(
+                    snapshot_live_intraday_bars(sb_client, _collect_recipe_watchlist(sb_client), slot_dt_utc)
+                )
+                logger.info("Scheduled ET slot %s cycle complete: %s (bars_snapped=%d)", slot_key, stats, snapped)
             except Exception:
-                logger.exception("Hourly recipe cycle failed")
-            last_hourly_ts = now_mono
+                logger.exception("Scheduled ET slot %s recipe cycle failed", slot_key)
+            last_slot_key = slot_key
         else:
             _drain_sync_queue(sb_client)
 

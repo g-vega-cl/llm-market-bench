@@ -173,7 +173,8 @@ export function RecipeStudioPage({
                         </div>
                         <p className="text-xs font-normal text-muted-foreground">
                             Compose Prompt, News, Memories, Technicals, and Output Format blocks
-                            into a single LLM call with selectable tools.
+                            into a single Long-Only LLM call (runs 3x/day ET at 09:30, 12:30,
+                            15:30).
                         </p>
                     </div>
 

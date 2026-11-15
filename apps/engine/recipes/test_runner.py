@@ -225,3 +225,49 @@ async def test_run_hourly_cycle_drains_real_worker_without_nested_event_loop_cra
 
     assert stats["jobs_processed"] == 1
     assert stats["jobs_failed"] == 0
+
+
+def test_due_trading_slot_matches_0930_1230_1530_et_only_once():
+    from zoneinfo import ZoneInfo
+
+    from recipes.runner import due_trading_slot
+
+    et = ZoneInfo("America/New_York")
+    # Monday 2026-04-06 (EDT) -> 09:32 ET matches slot 09:30; second call w/ same key skipped
+    slot1 = due_trading_slot(datetime(2026, 4, 6, 9, 32, tzinfo=et), last_slot_key=None)
+    assert slot1 == "2026-04-06T09:30"
+    assert due_trading_slot(datetime(2026, 4, 6, 9, 35, tzinfo=et), last_slot_key=slot1) is None
+
+    # 12:30 ET & 15:30 ET slots match; 11:00 ET & Saturday do NOT match
+    assert due_trading_slot(datetime(2026, 4, 6, 12, 31, tzinfo=et), last_slot_key=slot1) == "2026-04-06T12:30"
+    assert due_trading_slot(datetime(2026, 4, 6, 15, 34, tzinfo=et), last_slot_key=None) == "2026-04-06T15:30"
+    assert due_trading_slot(datetime(2026, 4, 6, 11, 0, tzinfo=et), last_slot_key=None) is None
+    assert due_trading_slot(datetime(2026, 4, 4, 9, 31, tzinfo=et), last_slot_key=None) is None  # Saturday
+
+
+def test_enqueue_live_recipes_dedups_already_enqueued_in_same_slot():
+    sb = MagicMock()
+    recipes_tbl = MagicMock()
+    queue_tbl = MagicMock()
+
+    def _router(name: str):
+        if name == "strategy_recipes":
+            return recipes_tbl
+        if name == "recipe_execution_queue":
+            return queue_tbl
+        return MagicMock()
+
+    sb.table.side_effect = _router
+    recipes_tbl.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {"id": "rec-1", "user_id": "u1", "name": "Live 1", "graph_json": {"stages": [{"id": "s1"}]}},
+        {"id": "rec-2", "user_id": "u2", "name": "Live 2", "graph_json": {"stages": [{"id": "s1"}]}},
+    ]
+    queue_tbl.select.return_value.in_.return_value.limit.return_value.execute.return_value.data = []
+    queue_tbl.select.return_value.eq.return_value.gte.return_value.limit.return_value.execute.return_value.data = [
+        {"recipe_id": "rec-1"}
+    ]
+
+    enqueued = enqueue_live_recipes(sb, slot_start_utc=datetime(2026, 4, 6, 13, 30, tzinfo=UTC))
+    assert enqueued == 1
+    inserted_batch = queue_tbl.insert.call_args[0][0]
+    assert [row["recipe_id"] for row in inserted_batch] == ["rec-2"]

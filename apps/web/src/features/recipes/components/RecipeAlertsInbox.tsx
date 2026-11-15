@@ -54,7 +54,13 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Badge
-                                        colorScheme={alert.action === 'BUY' ? 'success' : 'danger'}
+                                        colorScheme={
+                                            alert.action === 'BUY'
+                                                ? 'success'
+                                                : alert.action === 'EXIT'
+                                                  ? 'warning'
+                                                  : 'danger'
+                                        }
                                         size="sm"
                                     >
                                         {alert.action} {alert.ticker}

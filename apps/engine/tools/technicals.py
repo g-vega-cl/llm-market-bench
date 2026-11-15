@@ -104,12 +104,46 @@ def compute_technical_snapshot(
     }
 
 
-async def execute_technical_indicators_tool(ticker: str, cutoff_date: str | None = None) -> str:
+def _fetch_cutoff_history_from_db(ticker: str, cutoff_date: str) -> list[dict[str, Any]]:
+    """Query Postgres price_history directly up to cutoff_date so >1Y historical windows never truncate."""
+    try:
+        from core.db import get_supabase_client
+
+        sb = get_supabase_client()
+        res = (
+            sb.table("price_history")
+            .select("price, close, volume, fetched_at")
+            .eq("ticker", ticker)
+            .lte("fetched_at", f"{cutoff_date[:10]}T23:59:59+00:00")
+            .order("fetched_at", desc=True)
+            .limit(365)
+            .execute()
+        )
+        rows: list[dict[str, Any]] = []
+        for row in res.data or []:
+            px = row.get("close") if row.get("close") is not None else row.get("price")
+            if px is None:
+                continue
+            rows.append({"price": float(px), "volume": row.get("volume"), "fetched_at": row.get("fetched_at")})
+        return rows
+    except Exception:
+        logger.debug("Direct DB cutoff lookup unavailable for %s; falling back to MarketDataManager", ticker)
+        return []
+
+
+async def execute_technical_indicators_tool(
+    ticker: str,
+    cutoff_date: str | None = None,
+    *,
+    strict_pit: bool = False,
+) -> str:
     """Fetch price history and return RSI, MACD, VWAP, SMAs, RVOL, and 52W range %."""
     clean_ticker = ticker.upper().strip()
     manager = MarketDataManager()
     try:
-        history = await manager.get_history(clean_ticker, days=365)
+        history = _fetch_cutoff_history_from_db(clean_ticker, cutoff_date) if cutoff_date else []
+        if not history and not strict_pit:
+            history = await manager.get_history(clean_ticker, days=365)
         if not history:
             return f"No price history available for {clean_ticker}."
 

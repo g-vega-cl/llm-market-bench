@@ -31,7 +31,7 @@ function resolveStatusBadge(
     if (status === 'processing') {
         const label =
             totalDays > 0
-                ? `DAY ${Math.min(daysCompleted + 1, totalDays)} / ${totalDays}`
+                ? `SLOT ${Math.min(daysCompleted + 1, totalDays)} / ${totalDays}`
                 : 'PROCESSING';
         return { label, colorScheme: 'accent' };
     }

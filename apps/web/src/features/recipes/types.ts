@@ -3,7 +3,7 @@ export type JSONValue = JSONPrimitive | JSONObject | JSONArray;
 export type JSONObject = { [key: string]: JSONValue };
 export type JSONArray = JSONValue[];
 
-export type RecipeCadence = '5m' | '1d';
+export type RecipeCadence = '5m' | '3h' | '1d';
 
 export interface PromptBlock {
     id: string;
@@ -204,6 +204,7 @@ export interface BacktestDayStep {
     day_pnl_net: number;
     trades_executed: number;
     trades_skipped: number;
+    open_positions_count?: number;
 }
 
 export interface BacktestResultData {
@@ -215,6 +216,14 @@ export interface BacktestResultData {
     starting_capital?: number;
     ending_capital_midpoint?: number;
     ending_capital_net?: number;
+    cash?: number;
+    total_equity?: number;
+    open_positions?: {
+        ticker: string;
+        shares: number;
+        entry_price: number;
+        entry_time: string;
+    }[];
     total_return_pct_midpoint: number;
     total_return_pct_net: number;
     total_trades: number;

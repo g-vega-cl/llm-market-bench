@@ -5,113 +5,102 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from recipes.portfolio_engine import (
+    DEFAULT_CONCURRENCY_CONFIG,
+    DEFAULT_SLIPPAGE_BPS,
+    DEFAULT_STARTING_CAPITAL,
+    PortfolioState,
+    apply_portfolio_step,
+    compute_total_equity,
+    compute_unrealized_midpoint_pnl,
+)
+
 
 @dataclass
 class BacktestAccumulator:
-    """Mutable accumulator for incremental day-by-day backtest settlement."""
+    """Mutable accumulator for incremental multi-slot Long-Only backtest settlement."""
 
     window_dates: list[str]
-    starting_capital: float = 10000.0
-    slippage_bps: float = 5.0
-    equity: float = 10000.0
-    peak: float = 10000.0
-    max_dd: float = 0.0
+    starting_capital: float = DEFAULT_STARTING_CAPITAL
+    slippage_bps: float = DEFAULT_SLIPPAGE_BPS
+    concurrency_config: dict[str, Any] = field(default_factory=lambda: dict(DEFAULT_CONCURRENCY_CONFIG))
     llm_calls_made: int = 0
+    intraday_bars: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     daily_close: dict[str, dict[str, float]] = field(default_factory=dict)
-    trades: list[dict[str, Any]] = field(default_factory=list)
-    skipped_trades: list[dict[str, Any]] = field(default_factory=list)
-    equity_curve: list[dict[str, Any]] = field(default_factory=list)
+    portfolio: PortfolioState = field(init=False)
     day_steps: list[dict[str, Any]] = field(default_factory=list)
 
-    def settle_day(
+    def __post_init__(self) -> None:
+        self.portfolio = PortfolioState(
+            cash=float(self.starting_capital),
+            peak_equity=float(self.starting_capital),
+        )
+
+    def settle_slot(
         self,
         *,
         idx: int,
-        day_str: str,
+        slot_label: str,
         signals: list[dict[str, str]],
+        slot_prices: dict[str, float],
         tool_calls: list[str],
         output_text: str,
         day_status: str,
+        is_final_step: bool = False,
     ) -> None:
-        """Settle signals emitted on simulated day ``idx`` against next-day close."""
-        total_days = len(self.window_dates)
-        next_day = self.window_dates[idx + 1] if idx + 1 < total_days else None
-        slip = self.slippage_bps / 10000.0
-        day_pnl_net = 0.0
-        trades_executed = 0
-        trades_skipped = 0
-
-        for sig in signals:
-            tkr = sig["ticker"]
-            prices = self.daily_close.get(tkr, {})
-            entry_px = prices.get(day_str)
-            exit_px = prices.get(next_day) if next_day else None
-            if entry_px and exit_px and entry_px > 0:
-                raw_ret = (exit_px - entry_px) / entry_px
-                if sig["action"] == "SELL":
-                    raw_ret = -raw_ret
-                net_ret = raw_ret - (2 * slip)
-                pnl_mid = 1000.0 * raw_ret
-                pnl_net = 1000.0 * net_ret
-                self.equity += pnl_net
-                day_pnl_net += pnl_net
-                trades_executed += 1
-                self.peak = max(self.peak, self.equity)
-                dd = ((self.peak - self.equity) / self.peak) * 100.0 if self.peak > 0 else 0.0
-                self.max_dd = max(self.max_dd, dd)
-                self.trades.append(
-                    {
-                        "ticker": tkr,
-                        "action": sig["action"],
-                        "entry_time": day_str,
-                        "entry_price": round(entry_px, 2),
-                        "exit_time": next_day,
-                        "exit_price": round(exit_px, 2),
-                        "shares": round(1000.0 / entry_px, 4),
-                        "pnl_midpoint": round(pnl_mid, 2),
-                        "pnl_net": round(pnl_net, 2),
-                        "return_pct_midpoint": round(raw_ret * 100.0, 2),
-                        "return_pct_net": round(net_ret * 100.0, 2),
-                        "exit_reason": "NEXT_DAY_CLOSE",
-                        "confidence": 100,
-                    }
-                )
-            else:
-                trades_skipped += 1
-                self.skipped_trades.append(
-                    {
-                        "time": day_str,
-                        "skip_type": "NO_PRICE_DATA",
-                        "reason": f"Missing daily bar for {tkr} on {day_str} -> {next_day or 'EOF'}",
-                    }
-                )
-
-        self.equity_curve.append({"time": day_str, "equity": round(self.equity, 2)})
+        """Apply one 3h slot turn of Long-Only BUY / EXIT signals and record step telemetry."""
+        step_res = apply_portfolio_step(
+            self.portfolio,
+            slot_label=slot_label,
+            signals=signals,
+            prices=slot_prices,
+            concurrency_config=self.concurrency_config,
+            slippage_bps=self.slippage_bps,
+            is_final_step=is_final_step,
+        )
+        trades_executed = step_res["trades_opened"] + step_res["trades_closed"]
         self.day_steps.append(
             {
-                "day": day_str,
+                "day": slot_label,
                 "day_index": idx,
                 "status": day_status,
-                "signals": signals,
-                "tool_calls": tool_calls,
+                "signals": list(signals),
+                "tool_calls": list(tool_calls),
                 "output_excerpt": output_text[:600],
-                "day_pnl_net": round(day_pnl_net, 2),
+                "day_pnl_net": step_res["realized_pnl_net"],
                 "trades_executed": trades_executed,
-                "trades_skipped": trades_skipped,
+                "trades_skipped": step_res["trades_skipped"],
+                "open_positions_count": step_res["open_positions_count"],
+                "total_equity": step_res["total_equity"],
             }
         )
 
-    def snapshot(self, *, days_completed: int, current_day: str | None) -> dict[str, Any]:
-        """Return an immutable point-in-time snapshot of the running or completed backtest."""
-        winning_trades = sum(1 for t in self.trades if t["pnl_net"] > 0)
-        losing_trades = len(self.trades) - winning_trades
-        gross_profit = sum(t["pnl_net"] for t in self.trades if t["pnl_net"] > 0)
-        gross_loss = abs(sum(t["pnl_net"] for t in self.trades if t["pnl_net"] < 0))
+    def snapshot(
+        self,
+        *,
+        days_completed: int,
+        current_day: str | None,
+        latest_prices: dict[str, float] | None = None,
+    ) -> dict[str, Any]:
+        """Return an isolated point-in-time snapshot of the running or completed backtest."""
+        trades = [dict(t) for t in self.portfolio.trades]
+        winning_trades = sum(1 for t in trades if t["pnl_net"] > 0)
+        losing_trades = len(trades) - winning_trades
+        gross_profit = sum(t["pnl_net"] for t in trades if t["pnl_net"] > 0)
+        gross_loss = abs(sum(t["pnl_net"] for t in trades if t["pnl_net"] < 0))
         profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else (99.0 if gross_profit > 0 else 0.0)
-        win_rate = round((winning_trades / len(self.trades)) * 100.0, 1) if self.trades else 0.0
-        total_net_pct = round(((self.equity - self.starting_capital) / self.starting_capital) * 100.0, 2)
-        total_mid_pnl = sum(t["pnl_midpoint"] for t in self.trades)
-        total_mid_pct = round((total_mid_pnl / self.starting_capital) * 100.0, 2)
+        win_rate = round((winning_trades / len(trades)) * 100.0, 1) if trades else 0.0
+
+        current_equity = compute_total_equity(self.portfolio, latest_prices)
+        total_net_pct = (
+            round(((current_equity - self.starting_capital) / self.starting_capital) * 100.0, 2)
+            if self.starting_capital > 0
+            else 0.0
+        )
+        realized_mid_pnl = sum(t["pnl_midpoint"] for t in trades)
+        unrealized_mid_pnl = compute_unrealized_midpoint_pnl(self.portfolio, latest_prices)
+        total_mid_pnl = realized_mid_pnl + unrealized_mid_pnl
+        total_mid_pct = round((total_mid_pnl / self.starting_capital) * 100.0, 2) if self.starting_capital > 0 else 0.0
 
         return {
             "mode": "backtest",
@@ -120,19 +109,22 @@ class BacktestAccumulator:
             "total_days": len(self.window_dates),
             "current_day": current_day,
             "starting_capital": self.starting_capital,
+            "cash": round(self.portfolio.cash, 2),
+            "total_equity": round(current_equity, 2),
+            "open_positions": [dict(p) for p in self.portfolio.positions],
             "ending_capital_midpoint": round(self.starting_capital + total_mid_pnl, 2),
-            "ending_capital_net": round(self.equity, 2),
+            "ending_capital_net": round(current_equity, 2),
             "total_return_pct_midpoint": total_mid_pct,
             "total_return_pct_net": total_net_pct,
             "win_rate_pct": win_rate,
             "profit_factor": profit_factor,
-            "max_drawdown_pct": round(self.max_dd, 2),
-            "total_trades": len(self.trades),
+            "max_drawdown_pct": round(self.portfolio.max_drawdown_pct, 2),
+            "total_trades": len(trades),
             "winning_trades": winning_trades,
             "losing_trades": losing_trades,
             "llm_calls_made": self.llm_calls_made,
-            "trades": list(self.trades),
-            "skipped_trades": list(self.skipped_trades),
-            "equity_curve": list(self.equity_curve),
-            "day_steps": list(self.day_steps),
+            "trades": trades,
+            "skipped_trades": [dict(s) for s in self.portfolio.skipped_trades],
+            "equity_curve": [dict(pt) for pt in self.portfolio.equity_curve],
+            "day_steps": [dict(step) for step in self.day_steps],
         }

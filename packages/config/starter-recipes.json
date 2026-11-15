@@ -3,7 +3,7 @@
     "version": "2.0-push",
     "name": "Trump & Chips News Momentum",
     "description": "Single-stage push prompt combining chip-tariff news, relevant market memories, and technical screening criteria.",
-    "cadence": "1d",
+    "cadence": "3h",
     "stages": [
       {
         "id": "stage-1",

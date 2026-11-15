@@ -92,7 +92,7 @@ class PushStrategy(BaseModel):
     id: str | None = None
     name: str = "Untitled Strategy"
     description: str = ""
-    cadence: Literal["5m", "1d"] = "1d"
+    cadence: Literal["5m", "3h", "1d"] = "3h"
     stages: list[StrategyStage] = Field(min_length=1, max_length=1)
 
     @field_validator("stages", mode="before")

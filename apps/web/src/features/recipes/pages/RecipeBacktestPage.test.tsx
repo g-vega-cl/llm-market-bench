@@ -40,7 +40,7 @@ function renderWithQuery(ui: React.ReactElement) {
 
 const sampleProcessingDetail: RecipeRunDetail = {
     recipeName: 'Chip Tariff Momentum',
-    recipeCadence: '1d',
+    recipeCadence: '3h',
     job: {
         id: 'job-123',
         recipe_id: 'rec-456',
@@ -130,7 +130,7 @@ describe('RecipeBacktestPage', () => {
         );
 
         expect(screen.getByText('Chip Tariff Momentum')).toBeInTheDocument();
-        expect(screen.getByText('DAY 3 / 5')).toBeInTheDocument();
+        expect(screen.getByText('SLOT 3 / 5')).toBeInTheDocument();
         expect(screen.getByText('36%')).toBeInTheDocument();
         expect(screen.getAllByText('$10,099.00').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('+0.99%')).toBeInTheDocument();

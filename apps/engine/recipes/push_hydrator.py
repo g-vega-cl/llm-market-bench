@@ -168,16 +168,94 @@ def fetch_push_context_batch(
     return news_rows, memory_rows
 
 
+def _render_news_section(
+    block: NewsBlock,
+    news_rows: list[dict[str, Any]],
+    as_of_utc: datetime,
+) -> str:
+    """Format matched news headlines and excerpts for a NewsBlock."""
+    matched_news = filter_news_rows(
+        news_rows,
+        contains=block.contains,
+        recency_hours=block.recency_hours,
+        as_of_utc=as_of_utc,
+    )
+    kw_label = ", ".join(block.contains) if block.contains else "ALL"
+    header = f"[News (contains: {kw_label} | recency: {block.recency_hours}h)]:"
+    if not matched_news:
+        return f"{header}\n- (No matching news in window)"
+    items = []
+    for n in matched_news:
+        line = (
+            f"- [{str(n.get('date_published', ''))[:16]}] {n.get('title', '')} "
+            f"(Tickers: {', '.join(n.get('tickers') or []) or 'MARKET'})"
+        )
+        excerpt = build_news_excerpt(n.get("full_text"), block.contains)
+        items.append(f"{line}\n  {excerpt}" if excerpt else line)
+    return "\n".join([header, *items])
+
+
+def _render_memories_section(
+    block: MemoriesBlock,
+    memory_rows: list[dict[str, Any]],
+    as_of_utc: datetime,
+) -> str:
+    """Format matched persistent memories for a MemoriesBlock."""
+    matched_mem = filter_memory_rows(
+        memory_rows,
+        contains=block.contains,
+        recency_hours=block.recency_hours,
+        category=block.category,
+        min_importance=block.min_importance,
+        as_of_utc=as_of_utc,
+    )
+    kw_label = ", ".join(block.contains) if block.contains else "ALL"
+    header = (
+        f"[Memories (contains: {kw_label} | recency: {block.recency_hours}h | "
+        f"category: {block.category} | min_importance: {block.min_importance})]:"
+    )
+    if not matched_mem:
+        return f"{header}\n- (No matching memories in window)"
+    items = [
+        f"- [{m.get('memory_type', 'EVENT')} | imp={m.get('importance_score', 5)}] {m.get('content', '')}"
+        for m in matched_mem
+    ]
+    return "\n".join([header, *items])
+
+
+def _render_output_format_section() -> str:
+    """Return the immutable JSON array output-format instruction block."""
+    return (
+        "\n=== REQUIRED OUTPUT FORMAT ===\n"
+        "Output Long-Only BUY or EXIT decisions strictly as a JSON array of objects (or [] to HOLD):\n"
+        '[{"action": "BUY", "ticker": "NVDA"}]\n'
+        'Each object must have exactly "action" ("BUY" or "EXIT") and "ticker" (uppercase ticker symbol).\n'
+        'Do not include any keys beyond "action" and "ticker", and do not add prose outside the JSON array.\n'
+        "This output-format block is immutable; do not edit its contents."
+    )
+
+
+def _render_prompt_block(block: PromptBlock, prev_output: str | None) -> tuple[str | None, bool]:
+    """Render a PromptBlock with optional {{prev_output}} substitution."""
+    text = block.text.strip()
+    used_prev = "{{prev_output}}" in text
+    if used_prev:
+        text = text.replace("{{prev_output}}", prev_output or "")
+    return (text or None), used_prev
+
+
 def hydrate_stage_prompt(
     stage: StrategyStage,
     news_rows: list[dict[str, Any]],
     memory_rows: list[dict[str, Any]],
     as_of_utc: datetime,
     prev_output: str | None = None,
+    portfolio_block: str | None = None,
 ) -> str:
     """Assemble the exact prompt text for a Stage from its push blocks."""
     sections: list[str] = []
     used_prev_placeholder = False
+    portfolio_injected = False
 
     # Render output_format blocks last so the schema lock is always the final
     # instruction the model sees, regardless of block order in the stage.
@@ -186,66 +264,28 @@ def hydrate_stage_prompt(
     ]
     for block in ordered_blocks:
         if isinstance(block, PromptBlock):
-            text = block.text.strip()
-            if "{{prev_output}}" in text:
-                text = text.replace("{{prev_output}}", prev_output or "")
-                used_prev_placeholder = True
-            if text:
-                sections.append(text)
-        elif isinstance(block, NewsBlock):
-            matched_news = filter_news_rows(
-                news_rows,
-                contains=block.contains,
-                recency_hours=block.recency_hours,
-                as_of_utc=as_of_utc,
-            )
-            kw_label = ", ".join(block.contains) if block.contains else "ALL"
-            header = f"[News (contains: {kw_label} | recency: {block.recency_hours}h)]:"
-            if not matched_news:
-                sections.append(f"{header}\n- (No matching news in window)")
-            else:
-                items = []
-                for n in matched_news:
-                    line = (
-                        f"- [{str(n.get('date_published', ''))[:16]}] {n.get('title', '')} "
-                        f"(Tickers: {', '.join(n.get('tickers') or []) or 'MARKET'})"
-                    )
-                    excerpt = build_news_excerpt(n.get("full_text"), block.contains)
-                    items.append(f"{line}\n  {excerpt}" if excerpt else line)
-                sections.append("\n".join([header, *items]))
-        elif isinstance(block, MemoriesBlock):
-            matched_mem = filter_memory_rows(
-                memory_rows,
-                contains=block.contains,
-                recency_hours=block.recency_hours,
-                category=block.category,
-                min_importance=block.min_importance,
-                as_of_utc=as_of_utc,
-            )
-            kw_label = ", ".join(block.contains) if block.contains else "ALL"
-            header = (
-                f"[Memories (contains: {kw_label} | recency: {block.recency_hours}h | "
-                f"category: {block.category} | min_importance: {block.min_importance})]:"
-            )
-            if not matched_mem:
-                sections.append(f"{header}\n- (No matching memories in window)")
-            else:
-                items = [
-                    f"- [{m.get('memory_type', 'EVENT')} | imp={m.get('importance_score', 5)}] {m.get('content', '')}"
-                    for m in matched_mem
-                ]
-                sections.append("\n".join([header, *items]))
-        elif isinstance(block, TechnicalsBlock):
-            sections.append(format_technicals_block(block.rules))
-        elif isinstance(block, OutputFormatBlock):
-            sections.append(
-                "\n=== REQUIRED OUTPUT FORMAT ===\n"
-                "Output BUY or SELL decisions strictly as a JSON array of objects:\n"
-                '[{"action": "BUY", "ticker": "NVDA"}]\n'
-                'Each object must have exactly "action" ("BUY" or "SELL") and "ticker" (uppercase ticker symbol).\n'
-                'Do not include any keys beyond "action" and "ticker", and do not add prose outside the JSON array.\n'
-                "This output-format block is immutable; do not edit its contents."
-            )
+            rendered, used_prev = _render_prompt_block(block, prev_output)
+            used_prev_placeholder = used_prev_placeholder or used_prev
+            if rendered:
+                sections.append(rendered)
+            continue
+        if isinstance(block, OutputFormatBlock):
+            if portfolio_block and not portfolio_injected:
+                sections.append(portfolio_block)
+                portfolio_injected = True
+            sections.append(_render_output_format_section())
+            continue
+        renderers = {
+            NewsBlock: lambda b: _render_news_section(b, news_rows, as_of_utc),
+            MemoriesBlock: lambda b: _render_memories_section(b, memory_rows, as_of_utc),
+            TechnicalsBlock: lambda b: format_technicals_block(b.rules),
+        }
+        renderer = renderers.get(type(block))
+        if renderer is not None:
+            sections.append(renderer(block))
+
+    if portfolio_block and not portfolio_injected:
+        sections.append(portfolio_block)
 
     if prev_output and not used_prev_placeholder:
         sections.append(f"[Previous Stage Output]:\n{prev_output}")

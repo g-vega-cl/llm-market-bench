@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -293,20 +293,28 @@ async def test_run_push_live_makes_exactly_one_llm_call_with_selected_tools():
 @pytest.mark.asyncio
 async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
     strategy = _sample_strategy()
-    base_day = datetime(2026, 2, 2, 0, 0, tzinfo=UTC)
+    base_day = datetime(2026, 3, 2, 0, 0, tzinfo=UTC)
     prices = []
-    for i in range(20):
+    bars = []
+    for i in range(14):
         day = base_day + timedelta(days=i)
         if day.weekday() >= 5:
             continue
-        prices.append(
-            {
-                "ticker": "NVDA",
-                "fetched_at": day.isoformat(),
-                "close": 101.0 + i,
-                "price": 101.0 + i,
-            }
-        )
+        day_iso = day.date().isoformat()
+        prices.append({"ticker": "NVDA", "fetched_at": day.isoformat(), "close": 100.0 + i, "price": 100.0 + i})
+        for h_offset, px in ((13, 100.0 + i), (16, 101.0 + i), (19, 102.0 + i)):
+            bars.append(
+                {
+                    "ticker": "NVDA",
+                    "bar_time_utc": f"{day_iso}T{h_offset:02d}:30:00+00:00",
+                    "open": px,
+                    "high": px + 1.0,
+                    "low": px - 1.0,
+                    "close": px,
+                    "volume": 100,
+                    "source": "fmp",
+                }
+            )
 
     sb = _mock_sb_client(
         news_rows=[
@@ -314,7 +322,7 @@ async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
                 "article_id": "a1",
                 "title": "Trump chips rally",
                 "full_text": "Strong demand",
-                "date_published": "2026-02-01T12:00:00+00:00",
+                "date_published": "2026-03-01T12:00:00+00:00",
                 "tickers": ["NVDA"],
             }
         ],
@@ -323,94 +331,113 @@ async def test_run_push_backtest_runs_random_two_week_window_point_in_time():
     )
 
     cutoffs_seen: list[str] = []
+    prompts_seen: list[str] = []
 
     async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
         if cutoff_date:
             cutoffs_seen.append(cutoff_date)
-        return {"output": '[{"action": "BUY", "ticker": "NVDA"}]', "tool_calls": []}
+        prompts_seen.append(prompt)
+        if len(prompts_seen) == 1:
+            return {"output": '[{"action": "BUY", "ticker": "NVDA"}]', "tool_calls": []}
+        if len(prompts_seen) == 5:
+            return {"output": '[{"action": "EXIT", "ticker": "NVDA"}]', "tool_calls": []}
+        return {"output": "[]", "tool_calls": []}
 
-    result = await run_push_backtest(strategy, sb, llm_caller=fake_llm, rng=random.Random(7))
+    with patch(
+        "recipes.push_runner.fetch_intraday_bars_for_ticker", new=MagicMock(side_effect=AsyncMock(return_value=bars))
+    ):
+        result = await run_push_backtest(strategy, sb, llm_caller=fake_llm, rng=random.Random(7))
 
-    assert len(result["window_dates"]) > 0
-    assert len(cutoffs_seen) == len(result["window_dates"])
+    # 10 trading days expanded to 30 ET slots (09:30, 12:30, 15:30 ET)
+    assert len(result["window_dates"]) == 30
+    assert result["window_dates"][0].endswith("09:30 ET")
+    assert result["window_dates"][1].endswith("12:30 ET")
+    assert result["window_dates"][2].endswith("15:30 ET")
+    assert len(cutoffs_seen) == 30
+    # Turn 2 saw the open NVDA position injected into its prompt!
+    assert "NVDA:" in prompts_seen[1]
+    assert result["total_trades"] == 1
+    assert result["trades"][0]["exit_reason"] == "SIGNAL_EXIT"
     assert result["total_return_pct_midpoint"] > 0
     assert result["win_rate_pct"] == 100.0
-    assert len(result["trades"]) > 0
     assert "weeks_breakdown" not in result
 
 
 @pytest.mark.asyncio
 async def test_run_push_backtest_emits_incremental_progress_checkpoints():
     strategy = _sample_strategy()
-    base_day = datetime(2026, 2, 2, 0, 0, tzinfo=UTC)
+    base_day = datetime(2026, 3, 2, 0, 0, tzinfo=UTC)
     prices = []
-    for i in range(20):
+    for i in range(6):
         day = base_day + timedelta(days=i)
         if day.weekday() >= 5:
             continue
-        prices.append(
-            {
-                "ticker": "NVDA",
-                "fetched_at": day.isoformat(),
-                "close": 101.0 + i,
-                "price": 101.0 + i,
-            }
-        )
+        prices.append({"ticker": "NVDA", "fetched_at": day.isoformat(), "close": 101.0 + i, "price": 101.0 + i})
 
     sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=prices)
 
     async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
-        return {
-            "output": '[{"action": "BUY", "ticker": "NVDA"}]',
-            "tool_calls": [f'get_technical_indicators({{"ticker": "NVDA", "cutoff": "{cutoff_date}"}})'],
-        }
+        if cutoff_date == "2026-03-02" and "Open Positions: None" in prompt:
+            return {
+                "output": '[{"action": "BUY", "ticker": "NVDA"}]',
+                "tool_calls": [f'get_technical_indicators({{"ticker": "NVDA", "cutoff": "{cutoff_date}"}})'],
+            }
+        return {"output": "[]", "tool_calls": []}
 
     checkpoints: list[tuple[int, dict]] = []
 
     def capture_progress(pct: int, partial: dict) -> None:
         checkpoints.append((pct, partial))
 
-    result = await run_push_backtest(
-        strategy,
-        sb,
-        llm_caller=fake_llm,
-        rng=random.Random(7),
-        on_progress=capture_progress,
-    )
+    bars = [
+        {
+            "ticker": "NVDA",
+            "bar_time_utc": f"{row['fetched_at'][:10]}T14:30:00+00:00",
+            "open": row["price"],
+            "close": row["price"],
+        }
+        for row in prices
+    ]
+    with patch(
+        "recipes.push_runner.fetch_intraday_bars_for_ticker", new=MagicMock(side_effect=AsyncMock(return_value=bars))
+    ):
+        result = await run_push_backtest(
+            strategy,
+            sb,
+            llm_caller=fake_llm,
+            rng=random.Random(7),
+            on_progress=capture_progress,
+        )
 
-    total_days = len(result["window_dates"])
-    assert len(checkpoints) == 1 + total_days
+    total_slots = len(result["window_dates"])
+    assert len(checkpoints) == 1 + total_slots
 
     init_pct, init_payload = checkpoints[0]
     assert init_pct == 10
     assert init_payload["days_completed"] == 0
-    assert init_payload["total_days"] == total_days
-    assert init_payload["window_dates"] == result["window_dates"]
+    assert init_payload["total_days"] == total_slots
     assert init_payload["day_steps"] == []
 
     prev_pct = init_pct
-    for idx in range(total_days):
+    for idx in range(total_slots):
         pct, payload = checkpoints[idx + 1]
-        assert pct > prev_pct
+        assert pct >= prev_pct
         prev_pct = pct
         assert payload["days_completed"] == idx + 1
         assert len(payload["day_steps"]) == idx + 1
-        step = payload["day_steps"][-1]
-        assert step["day"] == result["window_dates"][idx]
-        assert step["signals"] == [{"action": "BUY", "ticker": "NVDA"}]
-        assert len(step["tool_calls"]) == 1
+        assert payload["day_steps"][-1]["day"] == result["window_dates"][idx]
         assert len(payload["equity_curve"]) == idx + 1
-        if idx == 0 and total_days > 1:
-            assert len(payload["trades"]) == 1
 
-    assert result["days_completed"] == total_days
-    assert len(result["day_steps"]) == total_days
+    # Held across window and settled at END_OF_WINDOW on final slot
+    assert len(result["trades"]) == 1
+    assert result["trades"][0]["exit_reason"] == "END_OF_WINDOW"
+    assert result["days_completed"] == total_slots
 
 
 @pytest.mark.asyncio
 async def test_run_push_backtest_supports_async_on_progress_callback():
     strategy = _sample_strategy()
-    base_day = datetime(2026, 2, 2, 0, 0, tzinfo=UTC)
+    base_day = datetime(2026, 3, 2, 0, 0, tzinfo=UTC)
     prices = [
         {
             "ticker": "SPY",
@@ -418,7 +445,7 @@ async def test_run_push_backtest_supports_async_on_progress_callback():
             "close": 500.0 + i,
             "price": 500.0 + i,
         }
-        for i in range(5)
+        for i in range(4)
     ]
     sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=prices)
     seen: list[int] = []
@@ -429,16 +456,33 @@ async def test_run_push_backtest_supports_async_on_progress_callback():
     async def async_progress(pct: int, partial: dict) -> None:
         seen.append(pct)
 
-    result = await run_push_backtest(
-        strategy,
-        sb,
-        llm_caller=fake_llm,
-        rng=random.Random(1),
-        on_progress=async_progress,
-    )
+    bars = [
+        {
+            "ticker": "NVDA",
+            "bar_time_utc": f"{row['fetched_at'][:10]}T14:30:00+00:00",
+            "open": row["price"],
+            "close": row["price"],
+        }
+        for row in prices
+    ]
+    with patch(
+        "recipes.push_runner.fetch_intraday_bars_for_ticker", new=MagicMock(side_effect=AsyncMock(return_value=bars))
+    ):
+        result = await run_push_backtest(
+            strategy,
+            sb,
+            llm_caller=fake_llm,
+            rng=random.Random(1),
+            on_progress=async_progress,
+        )
 
     assert len(seen) == 1 + len(result["window_dates"])
     assert seen[0] == 10
+
+
+def test_parse_trade_signals_supports_exit_json_and_text():
+    assert parse_trade_signals('[{"action": "EXIT", "ticker": "nvda"}]') == [{"action": "EXIT", "ticker": "NVDA"}]
+    assert parse_trade_signals("EXIT AMZN now") == [{"action": "EXIT", "ticker": "AMZN"}]
 
 
 def test_output_format_block_renders_immutable_schema_section_last():
@@ -509,10 +553,53 @@ async def test_run_push_backtest_caches_unknown_tickers_across_days(monkeypatch)
         return {}
 
     monkeypatch.setattr(pr, "_load_daily_closes", _spy_load_closes)
+    monkeypatch.setattr(pr, "fetch_intraday_bars_for_ticker", AsyncMock(return_value=[]))
 
     async def _llm(prompt: str, tools: list[str], sim_date: str | None = None):
         return {"output": '[{"action": "BUY", "ticker": "GHOST"}]', "tool_calls": []}
 
     result = await run_push_backtest(strategy, sb, llm_caller=_llm, rng=random.Random(1))
-    assert result["total_days"] == 10
+    assert result["total_days"] == 30
     assert fetch_calls == [{"GHOST"}]
+
+
+@pytest.mark.asyncio
+async def test_run_push_live_injects_held_positions_and_returns_updated_portfolio():
+    strategy = _sample_strategy()
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=[])
+    recipe_row = {
+        "id": "rec-live-1",
+        "concurrency_config": {"max_open_trades": 4, "max_equity_pct_per_trade": 25.0},
+        "paper_cash": 7500.0,
+        "paper_positions": [
+            {
+                "ticker": "NVDA",
+                "side": "LONG",
+                "shares": 25.0,
+                "entry_price": 100.0,
+                "entry_time": "2026-04-06 09:30 ET",
+                "cost_basis": 2500.0,
+            }
+        ],
+        "paper_trades": [],
+        "paper_equity_curve": [],
+    }
+    captured_prompts: list[str] = []
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        captured_prompts.append(prompt)
+        return {"output": '[{"action": "EXIT", "ticker": "NVDA"}]', "tool_calls": []}
+
+    with patch("recipes.push_runner._resolve_live_prices", new=AsyncMock(return_value={"NVDA": 110.0})):
+        res = await run_push_live(
+            strategy,
+            sb,
+            llm_caller=fake_llm,
+            as_of_utc=datetime(2026, 4, 7, 13, 30, tzinfo=UTC),
+            recipe_row=recipe_row,
+        )
+
+    assert "NVDA: 25.0000 shares" in captured_prompts[0]
+    assert res["updated_portfolio"]["paper_positions"] == []
+    assert len(res["updated_portfolio"]["paper_trades"]) == 1
+    assert res["updated_portfolio"]["paper_cash"] > 10200.0

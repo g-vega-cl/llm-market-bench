@@ -351,6 +351,19 @@ async def _dispatch_tool(name: str, args: dict, model_name: str, **kwargs) -> st
     if name in TICKER_REQUIRED_TOOLS and not ticker:
         return f"Error: Missing required 'ticker' argument for {name}."
 
+    cutoff_date = kwargs.get("cutoff_date")
+    as_of_utc = kwargs.get("as_of_utc")
+    if kwargs.get("pit_mode") or as_of_utc:
+        from recipes.pit_tools import execute_pit_tool
+
+        return await execute_pit_tool(
+            name,
+            ticker,
+            args if isinstance(args, dict) else {},
+            cutoff_date=cutoff_date,
+            as_of_utc=as_of_utc,
+        )
+
     handler = TOOL_DISPATCH_TABLE.get(name)
     if handler is None:
         return "Unknown tool"

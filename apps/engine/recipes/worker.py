@@ -16,6 +16,127 @@ JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED"]
 SUPPORTED_JOB_MODES = ("backtest", "live_turn")
 
 
+def _insert_live_alerts(
+    sb: Any,
+    job: dict[str, Any],
+    recipe_data: dict[str, Any],
+    recipe_id: str,
+    push_strategy: Any,
+    result: dict[str, Any],
+) -> None:
+    """Insert inbox alerts strictly for executed paper trades (or legacy mock signals when absent)."""
+    signal_prices = result.get("signal_prices") or {}
+    alerts_to_emit = result["executed_signals"] if "executed_signals" in result else result.get("signals", [])
+    for sig in alerts_to_emit:
+        sb.table("recipe_alerts_inbox").insert(
+            {
+                "user_id": job.get("job_user_id", recipe_data.get("user_id")),
+                "recipe_id": recipe_id,
+                "recipe_name": push_strategy.name,
+                "ticker": sig["ticker"],
+                "action": sig["action"],
+                "entry_price": float(sig.get("price", signal_prices.get(sig["ticker"], 0.0))),
+                "timeframe": push_strategy.cadence,
+                "reason": result.get("final_output", "")[:500],
+                "context": {"stages": len(result.get("stages", [])), "slot_label": result.get("slot_label")},
+                "is_read": False,
+            }
+        ).execute()
+
+
+def _update_recipe_cas(
+    sb: Any,
+    recipe_id: str,
+    recipe_data: dict[str, Any],
+    mode: str,
+    result: dict[str, Any],
+) -> None:
+    """Update trial_count and paper portfolio state guarded by optimistic trial_count CAS."""
+    current_trials = int(recipe_data.get("trial_count", 0))
+    recipe_update: dict[str, Any] = {
+        "trial_count": current_trials + 1,
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
+    if mode == "live_turn" and isinstance(result.get("updated_portfolio"), dict):
+        recipe_update.update(result["updated_portfolio"])
+
+    cas_res = (
+        sb.table("strategy_recipes")
+        .update(recipe_update)
+        .eq("id", recipe_id)
+        .eq("trial_count", current_trials)
+        .execute()
+    )
+    if isinstance(getattr(cas_res, "data", None), list) and len(cas_res.data) == 0:
+        logger.warning("Optimistic CAS miss updating recipe %s (expected trial_count=%d)", recipe_id, current_trials)
+
+
+def _load_validated_recipe(sb: Any, recipe_id: str) -> tuple[dict[str, Any], PushStrategy]:
+    """Fetch strategy_recipes row and validate its Push v2 single-stage schema."""
+    res = sb.table("strategy_recipes").select("*").eq("id", recipe_id).single().execute()
+    recipe_data = res.data or {}
+    graph_dict = recipe_data.get("graph_json", {})
+    if isinstance(graph_dict, str):
+        graph_dict = json.loads(graph_dict)
+
+    if not (isinstance(graph_dict, dict) and isinstance(graph_dict.get("stages"), list)):
+        raise ValueError("Recipe must use Push v2 format with a 'stages' list (legacy DAG format is removed).")
+
+    # PushStrategy enforces exactly one LLM stage; a second stage fails here
+    # and the job is marked failed with the schema message.
+    return recipe_data, PushStrategy(**graph_dict)
+
+
+async def _execute_recipe_job_mode(
+    sb: Any,
+    job: dict[str, Any],
+    recipe_data: dict[str, Any],
+    recipe_id: str,
+    job_id: str,
+    mode: str,
+    push_strategy: PushStrategy,
+) -> dict[str, Any]:
+    """Run either live_turn or backtest execution for a validated Push v2 recipe."""
+    if mode == "live_turn":
+        result = await run_push_live(push_strategy, sb, recipe_row=recipe_data)
+        _insert_live_alerts(sb, job, recipe_data, recipe_id, push_strategy, result)
+        return result
+
+    def _on_progress(progress_pct: int, partial_result: dict[str, Any]) -> None:
+        try:
+            sb.table("recipe_execution_queue").update(
+                {
+                    "progress_pct": progress_pct,
+                    "result_json": partial_result,
+                }
+            ).eq("id", job_id).execute()
+        except Exception:
+            logger.warning("Failed updating progress for recipe job %s", job_id, exc_info=True)
+
+    return await run_push_backtest(
+        push_strategy,
+        sb,
+        on_progress=_on_progress,
+        concurrency_config=recipe_data.get("concurrency_config"),
+    )
+
+
+def _record_job_failure(sb: Any, job: dict[str, Any], exc: Exception) -> None:
+    """Persist FAILED status on the popped queue row without masking the original error."""
+    if not job.get("job_id"):
+        return
+    try:
+        sb.table("recipe_execution_queue").update(
+            {
+                "status": "failed",
+                "error_message": str(exc),
+                "completed_at": datetime.now(UTC).isoformat(),
+            }
+        ).eq("id", job["job_id"]).execute()
+    except Exception:
+        logger.exception("Failed to record error state on queue job")
+
+
 async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome:
     """Pop and asynchronously process the next Push v2 recipe job from the priority queue.
 
@@ -49,50 +170,8 @@ async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome
         ).eq("id", job_id).execute()
 
         recipe_id = job["job_recipe_id"]
-        res = sb.table("strategy_recipes").select("*").eq("id", recipe_id).single().execute()
-        recipe_data = res.data or {}
-        graph_dict = recipe_data.get("graph_json", {})
-        if isinstance(graph_dict, str):
-            graph_dict = json.loads(graph_dict)
-
-        if not (isinstance(graph_dict, dict) and isinstance(graph_dict.get("stages"), list)):
-            raise ValueError("Recipe must use Push v2 format with a 'stages' list (legacy DAG format is removed).")
-
-        # PushStrategy enforces exactly one LLM stage; a second stage fails here
-        # and the job is marked failed with the schema message.
-        push_strategy = PushStrategy(**graph_dict)
-
-        if mode == "live_turn":
-            result = await run_push_live(push_strategy, sb)
-            for sig in result.get("signals", []):
-                sb.table("recipe_alerts_inbox").insert(
-                    {
-                        "user_id": job.get("job_user_id", recipe_data.get("user_id")),
-                        "recipe_id": recipe_id,
-                        "recipe_name": push_strategy.name,
-                        "ticker": sig["ticker"],
-                        "action": sig["action"],
-                        "entry_price": 0.0,
-                        "timeframe": push_strategy.cadence,
-                        "reason": result.get("final_output", "")[:500],
-                        "context": {"stages": len(result.get("stages", []))},
-                        "is_read": False,
-                    }
-                ).execute()
-        else:
-
-            def _on_progress(progress_pct: int, partial_result: dict[str, Any]) -> None:
-                try:
-                    sb.table("recipe_execution_queue").update(
-                        {
-                            "progress_pct": progress_pct,
-                            "result_json": partial_result,
-                        }
-                    ).eq("id", job_id).execute()
-                except Exception:
-                    logger.warning("Failed updating progress for recipe job %s", job_id, exc_info=True)
-
-            result = await run_push_backtest(push_strategy, sb, on_progress=_on_progress)
+        recipe_data, push_strategy = _load_validated_recipe(sb, recipe_id)
+        result = await _execute_recipe_job_mode(sb, job, recipe_data, recipe_id, job_id, mode, push_strategy)
 
         sb.table("recipe_execution_queue").update(
             {
@@ -103,29 +182,12 @@ async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome
             }
         ).eq("id", job_id).execute()
 
-        current_trials = int(recipe_data.get("trial_count", 0))
-        sb.table("strategy_recipes").update(
-            {
-                "trial_count": current_trials + 1,
-                "updated_at": datetime.now(UTC).isoformat(),
-            }
-        ).eq("id", recipe_id).execute()
-
+        _update_recipe_cas(sb, recipe_id, recipe_data, mode, result)
         return "COMPLETED"
 
     except Exception as exc:
         logger.exception("Error processing recipe queue job")
-        if job.get("job_id"):
-            try:
-                sb.table("recipe_execution_queue").update(
-                    {
-                        "status": "failed",
-                        "error_message": str(exc),
-                        "completed_at": datetime.now(UTC).isoformat(),
-                    }
-                ).eq("id", job["job_id"]).execute()
-            except Exception:
-                logger.exception("Failed to record error state on queue job")
+        _record_job_failure(sb, job, exc)
         return "FAILED"
 
 

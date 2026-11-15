@@ -229,7 +229,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                                 <Badge variant="outline" size="sm">
                                     IMMUTABLE
                                 </Badge>
-                                Output format locked to BUY/SELL JSON schema.
+                                Output format locked to Long-Only BUY/EXIT JSON schema.
                             </div>
                         )}
                     </div>

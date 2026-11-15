@@ -1,53 +1,72 @@
-"""Push-based single-call LLM execution & random 2-week point-in-time backtester."""
+"""Push-based single-call LLM execution & 3x/day ET point-in-time backtester."""
 
 from __future__ import annotations
 
 import inspect
 import json
-import os
 import random
 import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from openai import AsyncOpenAI
-
 from core.config import logger
-from core.llm.handlers.base import execute_tool
-from core.llm.tools import CANONICAL_TOOLS_REGISTRY
+from core.time_utils import EASTERN_TZ
 from recipes.backtest_accounting import BacktestAccumulator
+from recipes.intraday_bars import (
+    CORPUS_MIN_DATE,
+    expand_dates_to_et_slots,
+    fetch_intraday_bars_for_ticker,
+    resolve_slot_price,
+)
+from recipes.intraday_bars import (
+    load_daily_closes as _load_daily_closes,
+)
+from recipes.llm_caller import LLMCaller, default_llm_caller
+from recipes.llm_caller import invoke_llm as _invoke_llm
+from recipes.portfolio_engine import (
+    DEFAULT_CONCURRENCY_CONFIG,
+    PortfolioState,
+    apply_portfolio_step,
+    format_portfolio_prompt_block,
+)
 from recipes.push_hydrator import fetch_push_context_batch, hydrate_stage_prompt
 from recipes.push_schema import MemoriesBlock, NewsBlock, PushStrategy
 
-LLMCaller = Callable[[str, list[str], str | None], Awaitable[dict[str, Any]]]
 ProgressCallback = Callable[[int, dict[str, Any]], Awaitable[None] | None]
 
-_TRADE_LINE_RE = re.compile(r"(?<!not\s)\b(BUY|SELL)\s+([A-Z]{1,5})\b")
+_TRADE_LINE_RE = re.compile(r"(?<!not\s)\b(BUY|SELL|EXIT)\s+([A-Z]{1,5})\b")
+_VALID_ACTIONS = {"BUY", "SELL", "EXIT"}
+
+
+def _parse_json_signal_array(chunk: str) -> list[dict[str, str]]:
+    """Parse one candidate JSON array into validated BUY/SELL/EXIT signal dicts."""
+    try:
+        parsed = json.loads(chunk)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    signals: list[dict[str, str]] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        action = str(item.get("action") or "").upper().strip()
+        ticker = str(item.get("ticker") or "").upper().strip()
+        if action in _VALID_ACTIONS and ticker:
+            signals.append({"action": action, "ticker": ticker})
+    return signals
 
 
 def parse_trade_signals(output_text: str) -> list[dict[str, str]]:
-    """Extract BUY/SELL ticker signals from JSON blocks or plain text."""
+    """Extract BUY/SELL/EXIT ticker signals from JSON blocks or plain text."""
     if not output_text:
         return []
 
     for json_match in re.finditer(r"\[[\s\S]*?\]", output_text):
-        try:
-            parsed = json.loads(json_match.group(0))
-            if isinstance(parsed, list):
-                signals = []
-                for item in parsed:
-                    if isinstance(item, dict) and item.get("action") in {"BUY", "SELL"} and item.get("ticker"):
-                        signals.append(
-                            {
-                                "action": str(item["action"]).upper(),
-                                "ticker": str(item["ticker"]).upper().strip(),
-                            }
-                        )
-                if signals:
-                    return signals
-        except json.JSONDecodeError:
-            continue
+        signals = _parse_json_signal_array(json_match.group(0))
+        if signals:
+            return signals
 
     seen: set[tuple[str, str]] = set()
     signals: list[dict[str, str]] = []
@@ -59,107 +78,6 @@ def parse_trade_signals(output_text: str) -> list[dict[str, str]]:
     return signals
 
 
-def _llm_endpoints(openrouter_key: str | None, model: str) -> list[tuple[str, str, str]]:
-    if openrouter_key:
-        model_id = "deepseek/deepseek-chat" if model == "auto-strata" else model
-        return [("https://openrouter.ai/api/v1", openrouter_key, model_id)]
-    proxy_key = os.getenv("FREE_PROXY_MASTER_KEY") or os.getenv("STRATA_API_KEY", "local")
-    strata_url = os.getenv("STRATA_BASE_URL", "").strip()
-    proxy_url = os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1").strip()
-    endpoints: list[tuple[str, str, str]] = []
-    if strata_url:
-        endpoints.append((strata_url, proxy_key, model))
-    if proxy_url and proxy_url != strata_url:
-        endpoints.append((proxy_url, proxy_key, model))
-    return endpoints or [("https://llm.clvg.uk/v1", proxy_key, model)]
-
-
-async def _run_tool_loop(
-    client: AsyncOpenAI,
-    model_id: str,
-    prompt: str,
-    tool_schemas: list[dict[str, Any]],
-    cutoff_date: str | None,
-) -> dict[str, Any]:
-    messages: list[dict[str, Any]] = [
-        {
-            "role": "system",
-            "content": (
-                "You are a quantitative trading strategy agent. Use the provided tools when helpful "
-                "and finish with clear BUY/SELL ticker decisions (or HOLD) as JSON or concise text."
-            ),
-        },
-        {"role": "user", "content": prompt},
-    ]
-
-    tool_traces: list[str] = []
-    for _ in range(4):
-        kwargs: dict[str, Any] = {"model": model_id, "messages": messages, "temperature": 0.1}
-        if tool_schemas:
-            kwargs["tools"] = tool_schemas
-        resp = await client.chat.completions.create(**kwargs)
-        msg = resp.choices[0].message
-        tool_calls = getattr(msg, "tool_calls", None) or []
-        if not tool_calls:
-            return {"output": msg.content or "", "tool_calls": tool_traces}
-
-        messages.append(
-            {
-                "role": "assistant",
-                "content": msg.content or "",
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-                    }
-                    for tc in tool_calls
-                ],
-            }
-        )
-        for tc in tool_calls:
-            try:
-                args = json.loads(tc.function.arguments or "{}")
-            except json.JSONDecodeError:
-                args = {}
-            tool_traces.append(f"{tc.function.name}({json.dumps(args)})")
-            tool_result = await execute_tool(
-                tc.function.name,
-                args,
-                model_name=model_id,
-                cutoff_date=cutoff_date,
-            )
-            messages.append({"role": "tool", "tool_call_id": tc.id, "content": str(tool_result)[:4000]})
-
-    return {"output": "Max tool iterations reached without final answer.", "tool_calls": tool_traces}
-
-
-async def default_llm_caller(
-    prompt: str,
-    selected_tools: list[str],
-    cutoff_date: str | None = None,
-    openrouter_key: str | None = None,
-    model: str = "auto-strata",
-) -> dict[str, Any]:
-    """Execute a single Stage with OpenAI-compatible tool calling and Strata->Proxy failover."""
-    tool_schemas = [CANONICAL_TOOLS_REGISTRY[t] for t in selected_tools if t in CANONICAL_TOOLS_REGISTRY]
-    endpoints = _llm_endpoints(openrouter_key, model)
-    last_exc: Exception | None = None
-    for idx, (base_url, api_key, model_id) in enumerate(endpoints):
-        client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=90)
-        try:
-            return await _run_tool_loop(client, model_id, prompt, tool_schemas, cutoff_date)
-        except Exception as exc:
-            last_exc = exc
-            if idx + 1 < len(endpoints):
-                logger.warning("Recipe LLM endpoint %s failed (%s); failing over to next endpoint", base_url, exc)
-                continue
-            raise
-    if last_exc:
-        raise last_exc
-    return {"output": "", "tool_calls": []}
-
-
 def _max_lookback_hours(strategy: PushStrategy) -> int:
     max_h = 168
     for stage in strategy.stages:
@@ -169,22 +87,62 @@ def _max_lookback_hours(strategy: PushStrategy) -> int:
     return max_h
 
 
+async def _resolve_live_prices(tickers: set[str]) -> dict[str, float]:
+    """Fetch current live quote prices concurrently for open or newly signaled tickers."""
+    if not tickers:
+        return {}
+    import asyncio
+
+    from tools._compat import MarketDataManager
+
+    ordered = sorted(tickers)
+    manager = MarketDataManager()
+    results = await asyncio.gather(*(manager.get_quote(tkr) for tkr in ordered), return_exceptions=True)
+    prices: dict[str, float] = {}
+    for tkr, quote in zip(ordered, results, strict=True):
+        if isinstance(quote, Exception):
+            logger.warning("Failed fetching live quote for %s during live_turn", tkr, exc_info=quote)
+            continue
+        if quote and quote.exists and quote.price:
+            prices[tkr] = float(quote.price)
+    return prices
+
+
 async def run_push_live(
     strategy: PushStrategy,
     sb_client: Any,
     llm_caller: LLMCaller | None = None,
     as_of_utc: datetime | None = None,
+    recipe_row: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Run the single LLM stage as of now (or as_of_utc) with selected tools."""
+    """Run the single LLM stage live with persistent Long-Only portfolio tracking."""
     now_utc = as_of_utc or datetime.now(UTC)
+    now_et_label = now_utc.astimezone(EASTERN_TZ).strftime("%Y-%m-%d %H:%M ET")
     caller = llm_caller or default_llm_caller
     news_rows, memory_rows = fetch_push_context_batch(sb_client, now_utc, _max_lookback_hours(strategy))
+
+    concurrency_cfg = (recipe_row or {}).get("concurrency_config") or DEFAULT_CONCURRENCY_CONFIG
+    portfolio = PortfolioState.from_recipe_row(recipe_row)
+    held_tickers = {str(p.get("ticker", "")).upper() for p in portfolio.positions if p.get("ticker")}
+    live_prices = await _resolve_live_prices(held_tickers)
+    portfolio_block = format_portfolio_prompt_block(
+        portfolio,
+        current_prices=live_prices,
+        concurrency_config=concurrency_cfg,
+    )
 
     prev_output: str | None = None
     stage_results: list[dict[str, Any]] = []
     for stage in strategy.stages:
-        prompt = hydrate_stage_prompt(stage, news_rows, memory_rows, now_utc, prev_output=prev_output)
-        res = await caller(prompt, stage.selected_tools, None)
+        prompt = hydrate_stage_prompt(
+            stage,
+            news_rows,
+            memory_rows,
+            now_utc,
+            prev_output=prev_output,
+            portfolio_block=portfolio_block,
+        )
+        res = await _invoke_llm(caller, prompt, stage.selected_tools, None, as_of_utc=None)
         output_text = str(res.get("output", ""))
         stage_results.append(
             {
@@ -198,12 +156,33 @@ async def run_push_live(
         prev_output = output_text
 
     signals = parse_trade_signals(prev_output or "")
+    new_tickers = {sig["ticker"] for sig in signals if sig["ticker"] not in live_prices}
+    if new_tickers:
+        live_prices.update(await _resolve_live_prices(new_tickers))
+
+    step_res = apply_portfolio_step(
+        portfolio,
+        slot_label=now_et_label,
+        signals=signals,
+        prices=live_prices,
+        concurrency_config=concurrency_cfg,
+    )
+
     return {
         "mode": "live_turn",
         "as_of_utc": now_utc.isoformat(),
+        "slot_label": now_et_label,
         "stages": stage_results,
         "final_output": prev_output or "",
         "signals": signals,
+        "executed_signals": step_res["executed_signals"],
+        "signal_prices": live_prices,
+        "updated_portfolio": {
+            "paper_cash": round(portfolio.cash, 2),
+            "paper_positions": portfolio.positions,
+            "paper_trades": portfolio.trades,
+            "paper_equity_curve": portfolio.equity_curve,
+        },
     }
 
 
@@ -211,7 +190,7 @@ def pick_random_two_week_window(
     available_dates: list[str],
     rng: random.Random | None = None,
 ) -> list[str]:
-    """Select a random contiguous ~2-week (10 trading day) window to prevent overfitting."""
+    """Select a random contiguous 2-week (10 trading day) window to prevent overfitting."""
     unique_sorted = sorted(set(available_dates))
     if len(unique_sorted) <= 10:
         return unique_sorted
@@ -222,14 +201,15 @@ def pick_random_two_week_window(
 
 
 def _load_window_dates(sb_client: Any) -> list[str]:
-    """Fetch recent trading dates from price_history (SPY anchor), falling back to weekdays."""
+    """Fetch recent trading dates >= CORPUS_MIN_DATE from price_history (SPY anchor)."""
     try:
         res = (
             sb_client.table("price_history")
             .select("fetched_at")
             .eq("ticker", "SPY")
+            .gte("fetched_at", f"{CORPUS_MIN_DATE}T00:00:00+00:00")
             .order("fetched_at", desc=True)
-            .limit(1000)
+            .limit(500)
             .execute()
         )
         dates = [str(r.get("fetched_at", ""))[:10] for r in (res.data or []) if r.get("fetched_at")]
@@ -246,31 +226,29 @@ def _load_window_dates(sb_client: Any) -> list[str]:
     ]
 
 
-def _load_daily_closes(sb_client: Any, tickers: set[str], start_day: str, end_day: str) -> dict[str, dict[str, float]]:
-    """Batch-fetch daily closing prices from price_history for traded tickers."""
-    if not tickers:
-        return {}
-    daily_close: dict[str, dict[str, float]] = {}
-    try:
-        res = (
-            sb_client.table("price_history")
-            .select("ticker, fetched_at, close, price")
-            .in_("ticker", sorted(tickers))
-            .gte("fetched_at", f"{start_day}T00:00:00+00:00")
-            .lte("fetched_at", f"{end_day}T23:59:59+00:00")
-            .order("fetched_at", desc=False)
-            .limit(10000)
-            .execute()
-        )
-        for row in res.data or []:
-            day = str(row.get("fetched_at", ""))[:10]
-            tkr = str(row.get("ticker", "")).upper().strip()
-            raw_px = row.get("close") if row.get("close") is not None else row.get("price")
-            if day and tkr and raw_px is not None:
-                daily_close.setdefault(tkr, {})[day] = float(raw_px)
-    except Exception:
-        logger.exception("Failed fetching daily closes from price_history")
-    return daily_close
+async def _ensure_slot_prices(
+    acc: BacktestAccumulator,
+    sb_client: Any,
+    tickers: set[str],
+    start_day: str,
+    end_day: str,
+    slot_dt_utc: datetime,
+) -> dict[str, float]:
+    """Fetch missing intraday/daily prices for tickers and resolve slot execution prices."""
+    unseen = {t for t in tickers if t and t not in acc.intraday_bars}
+    if unseen:
+        daily_map = _load_daily_closes(sb_client, unseen, start_day, end_day)
+        for tkr in unseen:
+            acc.daily_close.setdefault(tkr, {}).update(daily_map.get(tkr, {}))
+            bars = await fetch_intraday_bars_for_ticker(sb_client, tkr, start_day, end_day)
+            acc.intraday_bars[tkr] = bars
+
+    resolved: dict[str, float] = {}
+    for tkr in tickers:
+        px = resolve_slot_price(acc.intraday_bars.get(tkr, []), acc.daily_close, tkr, slot_dt_utc)
+        if px and px > 0:
+            resolved[tkr] = px
+    return resolved
 
 
 async def _emit_progress(
@@ -292,70 +270,115 @@ async def run_push_backtest(
     rng: random.Random | None = None,
     slippage_bps: float = 5.0,
     on_progress: ProgressCallback | None = None,
+    concurrency_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Run a random ~2-week point-in-time backtest across daily steps using price_history."""
+    """Run a 10-trading-day, 3x/day ET (09:30/12:30/15:30) point-in-time swing backtest."""
     caller = llm_caller or default_llm_caller
     all_dates = _load_window_dates(sb_client)
     window_dates = pick_random_two_week_window(all_dates, rng=rng)
-    end_dt = datetime.fromisoformat(f"{window_dates[-1]}T21:00:00+00:00") if window_dates else datetime.now(UTC)
+    slots = expand_dates_to_et_slots(window_dates)
+    start_day = window_dates[0] if window_dates else datetime.now(UTC).date().isoformat()
+    end_day = window_dates[-1] if window_dates else start_day
+    end_dt = slots[-1]["timestamp_utc"] if slots else datetime.now(UTC)
+
     news_rows, memory_rows = fetch_push_context_batch(
         sb_client,
         end_dt,
         lookback_hours=_max_lookback_hours(strategy) + 24 * 20,
     )
 
-    acc = BacktestAccumulator(window_dates=window_dates, slippage_bps=slippage_bps)
-    total_days = len(window_dates)
+    acc = BacktestAccumulator(
+        window_dates=[s["slot_label"] for s in slots],
+        slippage_bps=slippage_bps,
+        concurrency_config=concurrency_config or dict(DEFAULT_CONCURRENCY_CONFIG),
+    )
+    total_slots = len(slots)
 
     await _emit_progress(
         on_progress,
         10,
-        acc.snapshot(days_completed=0, current_day=window_dates[0] if window_dates else None),
+        acc.snapshot(days_completed=0, current_day=slots[0]["slot_label"] if slots else None),
     )
 
-    for idx, day_str in enumerate(window_dates):
-        step_dt = datetime.fromisoformat(f"{day_str}T14:30:00+00:00")
+    last_prices: dict[str, float] = {}
+    for idx, slot in enumerate(slots):
+        held_tickers = {str(p["ticker"]).upper() for p in acc.portfolio.positions}
+        held_prices = await _ensure_slot_prices(
+            acc,
+            sb_client,
+            held_tickers,
+            start_day,
+            end_day,
+            slot["timestamp_utc"],
+        )
+        portfolio_block = format_portfolio_prompt_block(
+            acc.portfolio,
+            current_prices=held_prices,
+            concurrency_config=acc.concurrency_config,
+        )
+
         prev_output: str | None = None
         day_tool_calls: list[str] = []
         day_status = "completed"
         for stage in strategy.stages:
-            prompt = hydrate_stage_prompt(stage, news_rows, memory_rows, step_dt, prev_output=prev_output)
+            prompt = hydrate_stage_prompt(
+                stage,
+                news_rows,
+                memory_rows,
+                slot["timestamp_utc"],
+                prev_output=prev_output,
+                portfolio_block=portfolio_block,
+            )
             try:
-                res = await caller(prompt, stage.selected_tools, day_str)
+                res = await _invoke_llm(
+                    caller,
+                    prompt,
+                    stage.selected_tools,
+                    slot["day_str"],
+                    as_of_utc=slot["timestamp_iso"],
+                )
                 acc.llm_calls_made += 1
                 prev_output = str(res.get("output", ""))
                 day_tool_calls.extend(str(tc) for tc in (res.get("tool_calls") or []))
             except Exception:
-                logger.exception("Stage %s failed on backtest date %s", stage.id, day_str)
+                logger.exception("Stage %s failed on backtest slot %s", stage.id, slot["slot_label"])
                 prev_output = ""
                 day_status = "error"
 
         signals = parse_trade_signals(prev_output or "")
-        new_tickers = {sig["ticker"] for sig in signals if sig["ticker"] not in acc.daily_close}
-        if new_tickers:
-            fetched_closes = _load_daily_closes(sb_client, new_tickers, window_dates[0], window_dates[-1])
-            for tkr in new_tickers:
-                acc.daily_close.setdefault(tkr, {}).update(fetched_closes.get(tkr, {}))
+        needed_tickers = held_tickers | {sig["ticker"] for sig in signals}
+        slot_prices = await _ensure_slot_prices(
+            acc,
+            sb_client,
+            needed_tickers,
+            start_day,
+            end_day,
+            slot["timestamp_utc"],
+        )
+        last_prices = slot_prices
 
-        acc.settle_day(
+        acc.settle_slot(
             idx=idx,
-            day_str=day_str,
+            slot_label=slot["slot_label"],
             signals=signals,
+            slot_prices=slot_prices,
             tool_calls=day_tool_calls,
             output_text=prev_output or "",
             day_status=day_status,
+            is_final_step=(idx == total_slots - 1),
         )
 
-        days_completed = idx + 1
-        progress_pct = 95 if days_completed >= total_days else 10 + round((days_completed / total_days) * 85)
-        next_active_day = window_dates[idx + 1] if idx + 1 < total_days else day_str
+        steps_done = idx + 1
+        progress_pct = 95 if steps_done >= total_slots else 10 + round((steps_done / total_slots) * 85)
+        next_label = slots[idx + 1]["slot_label"] if idx + 1 < total_slots else slot["slot_label"]
         await _emit_progress(
             on_progress,
             progress_pct,
-            acc.snapshot(days_completed=days_completed, current_day=next_active_day),
+            acc.snapshot(days_completed=steps_done, current_day=next_label, latest_prices=slot_prices),
         )
 
     return acc.snapshot(
-        days_completed=total_days,
-        current_day=window_dates[-1] if window_dates else None,
+        days_completed=total_slots,
+        current_day=slots[-1]["slot_label"] if slots else None,
+        latest_prices=last_prices,
     )

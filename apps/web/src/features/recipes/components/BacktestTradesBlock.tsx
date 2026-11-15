@@ -24,6 +24,43 @@ function formatSignedDollar(value: number): string {
     return `${value >= 0 ? '+' : '-'}$${abs}`;
 }
 
+function badgeColorForAction(action: string): 'success' | 'warning' | 'danger' {
+    if (action === 'BUY') return 'success';
+    if (action === 'EXIT') return 'warning';
+    return 'danger';
+}
+
+function TradeRow({ trade }: { trade: BacktestResultData['trades'][number] }) {
+    return (
+        <TableRow>
+            <TableCell>
+                <Badge colorScheme={badgeColorForAction(trade.action)} size="xs">
+                    {trade.action} {trade.ticker}
+                </Badge>
+            </TableCell>
+            <TableCell align="right">{trade.entry_time}</TableCell>
+            <TableCell align="right">{trade.exit_time}</TableCell>
+            <TableCell numeric>${trade.entry_price.toFixed(2)}</TableCell>
+            <TableCell numeric>${trade.exit_price.toFixed(2)}</TableCell>
+            <TableCell>
+                <Badge variant="outline" size="xs">
+                    {trade.exit_reason || 'EXIT'}
+                </Badge>
+            </TableCell>
+            <TableCell numeric>
+                <span className={trade.return_pct_net >= 0 ? 'text-success' : 'text-danger'}>
+                    {signedPct(trade.return_pct_net)}
+                </span>
+            </TableCell>
+            <TableCell numeric>
+                <span className={trade.pnl_net >= 0 ? 'text-success' : 'text-danger'}>
+                    {formatSignedDollar(trade.pnl_net)}
+                </span>
+            </TableCell>
+        </TableRow>
+    );
+}
+
 export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
     const trades = results?.trades ?? [];
     const skipped = results?.skipped_trades ?? [];
@@ -42,7 +79,8 @@ export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
             {trades.length === 0 ? (
                 <div className="voxel-trough bg-boxel-trough p-4">
                     <span className="text-xs font-normal text-boxel-muted">
-                        No trades executed yet — fills appear here as each simulated day settles.
+                        No trades executed yet — closed positions appear here once exited or settled
+                        at end of window.
                     </span>
                 </div>
             ) : (
@@ -50,10 +88,11 @@ export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
                     <TableHeader>
                         <TableRow isHoverable={false}>
                             <TableHead>Action</TableHead>
-                            <TableHead align="right">Entry Date</TableHead>
-                            <TableHead align="right">Exit Date</TableHead>
+                            <TableHead align="right">Entry Session</TableHead>
+                            <TableHead align="right">Exit Session</TableHead>
                             <TableHead numeric>Entry</TableHead>
                             <TableHead numeric>Exit</TableHead>
+                            <TableHead>Exit Reason</TableHead>
                             <TableHead numeric>Net Return</TableHead>
                             <TableHead numeric>Net P&amp;L</TableHead>
                         </TableRow>
@@ -65,44 +104,7 @@ export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
                                 const baseKey = `${t.entry_time}-${t.ticker}-${t.action}-${t.exit_time}-${t.entry_price}`;
                                 const count = (seenTrades.get(baseKey) ?? 0) + 1;
                                 seenTrades.set(baseKey, count);
-                                return (
-                                    <TableRow key={`${baseKey}#${count}`}>
-                                        <TableCell>
-                                            <Badge
-                                                colorScheme={
-                                                    t.action === 'BUY' ? 'success' : 'danger'
-                                                }
-                                                size="xs"
-                                            >
-                                                {t.action} {t.ticker}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell align="right">{t.entry_time}</TableCell>
-                                        <TableCell align="right">{t.exit_time}</TableCell>
-                                        <TableCell numeric>${t.entry_price.toFixed(2)}</TableCell>
-                                        <TableCell numeric>${t.exit_price.toFixed(2)}</TableCell>
-                                        <TableCell numeric>
-                                            <span
-                                                className={
-                                                    t.return_pct_net >= 0
-                                                        ? 'text-success'
-                                                        : 'text-danger'
-                                                }
-                                            >
-                                                {signedPct(t.return_pct_net)}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell numeric>
-                                            <span
-                                                className={
-                                                    t.pnl_net >= 0 ? 'text-success' : 'text-danger'
-                                                }
-                                            >
-                                                {formatSignedDollar(t.pnl_net)}
-                                            </span>
-                                        </TableCell>
-                                    </TableRow>
-                                );
+                                return <TradeRow key={`${baseKey}#${count}`} trade={t} />;
                             });
                         })()}
                     </TableBody>

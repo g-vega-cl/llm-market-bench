@@ -16,13 +16,13 @@ const results: BacktestResultData = {
             action: 'BUY',
             entry_time: '2026-08-03',
             entry_price: 110.25,
-            exit_time: '2026-08-04',
+            exit_time: '2026-08-05 15:30 ET',
             exit_price: 115.5,
             pnl_midpoint: 47.62,
             pnl_net: 46.62,
             return_pct_midpoint: 4.76,
             return_pct_net: 4.66,
-            exit_reason: 'NEXT_DAY_CLOSE',
+            exit_reason: 'END_OF_WINDOW',
             confidence: 100,
         },
     ],
@@ -41,11 +41,12 @@ describe('BacktestTradesBlock', () => {
         expect(screen.getByText(/No trades executed yet/i)).toBeInTheDocument();
     });
 
-    it('renders executed trades with right-aligned numeric columns and skipped signals', () => {
+    it('renders executed trades with exit reason, right-aligned numeric columns, and skipped signals', () => {
         render(<BacktestTradesBlock results={results} />);
 
         expect(screen.getByText('Executed Trades (1)')).toBeInTheDocument();
         expect(screen.getByText('BUY NVDA')).toBeInTheDocument();
+        expect(screen.getByText('END_OF_WINDOW')).toBeInTheDocument();
         expect(screen.getByText('+$46.62')).toBeInTheDocument();
         expect(screen.getByText('Counterfactual Skipped Signals (1)')).toBeInTheDocument();
         expect(screen.getByText('NO_PRICE_DATA')).toBeInTheDocument();

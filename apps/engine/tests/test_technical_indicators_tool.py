@@ -77,3 +77,26 @@ async def test_execute_technical_indicators_tool_handles_empty_data():
         output = await execute_technical_indicators_tool("UNKNOWN")
 
     assert "No price history available" in output
+
+
+@pytest.mark.asyncio
+async def test_execute_technical_indicators_uses_db_cutoff_query_for_old_windows():
+    from unittest.mock import MagicMock
+
+    old_rows = _make_history(35, start_price=120.0, step=0.5)
+    mock_sb = MagicMock()
+    tbl = mock_sb.table.return_value
+    for m in ("select", "eq", "lte", "order", "limit"):
+        getattr(tbl, m).return_value = tbl
+    tbl.execute.return_value = MagicMock(data=old_rows)
+
+    with (
+        patch("core.db.get_supabase_client", return_value=mock_sb),
+        patch("tools.technicals.MarketDataManager") as mock_cls,
+    ):
+        mock_cls.return_value.get_history = AsyncMock()
+        output = await execute_technical_indicators_tool("NVDA", cutoff_date="2026-01-20")
+
+    assert "RSI (14)" in output
+    mock_cls.return_value.get_history.assert_not_called()
+    tbl.lte.assert_called_once_with("fetched_at", "2026-01-20T23:59:59+00:00")

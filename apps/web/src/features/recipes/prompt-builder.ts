@@ -32,9 +32,9 @@ function formatTechnicalsPreview(block: TechnicalsBlock): string {
 function formatOutputFormatPreview(): string {
     return [
         '=== REQUIRED OUTPUT FORMAT ===',
-        'Output BUY or SELL decisions strictly as a JSON array of objects:',
+        'This strategy is Long-Only. Output BUY (enter long) or EXIT (close open position) as a JSON array of objects, or [] to HOLD:',
         '[{"action": "BUY", "ticker": "NVDA"}]',
-        'Each object must have exactly "action" ("BUY" or "SELL") and "ticker" (uppercase ticker symbol).',
+        'Each object must have exactly "action" ("BUY" or "EXIT") and "ticker" (uppercase ticker symbol).',
         'Do not include any keys beyond "action" and "ticker", and do not add prose outside the JSON array.',
         'This output-format block is immutable; do not edit its contents.',
     ].join('\n');

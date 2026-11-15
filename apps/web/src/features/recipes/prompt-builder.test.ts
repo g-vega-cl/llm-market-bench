@@ -29,6 +29,8 @@ describe('prompt-builder', () => {
         expect(raw).toContain('<Matching news headlines injected at run time>');
         expect(raw).toContain('- RSI_14 < 70');
         expect(raw).toContain('=== REQUIRED OUTPUT FORMAT ===');
+        expect(raw).toContain('Long-Only');
+        expect(raw).toContain('"BUY" or "EXIT"');
 
         const hydrated = buildStagePromptPreview(stage, {
             'b-news': '[News]:\n- NVDA breaks out on Blackwell guidance',

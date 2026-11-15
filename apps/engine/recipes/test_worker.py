@@ -152,6 +152,13 @@ def test_process_push_live_turn_deposits_alert():
         "stages": [{"stage_id": "stage-1", "output": "BUY NVDA"}],
         "final_output": '[{"action": "BUY", "ticker": "NVDA"}]',
         "signals": [{"action": "BUY", "ticker": "NVDA"}],
+        "signal_prices": {"NVDA": 142.5},
+        "updated_portfolio": {
+            "paper_cash": 7500.0,
+            "paper_positions": [{"ticker": "NVDA", "entry_price": 142.5}],
+            "paper_trades": [],
+            "paper_equity_curve": [{"time": "2026-04-06 09:30 ET", "equity": 10000.0}],
+        },
     }
     with patch("recipes.worker.run_push_live", new=AsyncMock(return_value=fake_live)):
         res = process_next_recipe_job(client)
@@ -162,7 +169,10 @@ def test_process_push_live_turn_deposits_alert():
     assert alert_args["user_id"] == "usr-live-3"
     assert alert_args["ticker"] == "NVDA"
     assert alert_args["action"] == "BUY"
+    assert alert_args["entry_price"] == 142.5
     assert alert_args["is_read"] is False
+    recipe_updates = [c[0][0] for c in recipes_table.update.call_args_list]
+    assert any(u.get("paper_cash") == 7500.0 and len(u.get("paper_positions", [])) == 1 for u in recipe_updates)
     assert any(c[0][0].get("status") == "completed" for c in queue_table.update.call_args_list)
 
 
@@ -290,3 +300,44 @@ def test_process_zero_stage_payload_fails_cleanly():
     failed_payloads = [call[0][0] for call in queue_table.update.call_args_list if call[0][0].get("status") == "failed"]
     assert len(failed_payloads) == 1
     assert "exactly one llm stage" in failed_payloads[0]["error_message"].lower()
+
+
+def test_process_live_turn_inserts_alerts_only_for_executed_signals_and_applies_cas():
+    client, _queue_table, recipes_table, alerts_table = _make_mock_supabase()
+    client.rpc.return_value.execute.return_value.data = [
+        {
+            "job_id": "job-live-cas-1",
+            "job_recipe_id": "rec-live-cas-1",
+            "job_user_id": "usr-cas-1",
+            "job_mode": "live_turn",
+            "job_priority": 1,
+        }
+    ]
+    strategy = _sample_push_strategy()
+    recipe_select = MagicMock()
+    recipe_select.execute.return_value.data = {
+        "id": "rec-live-cas-1",
+        "user_id": "usr-cas-1",
+        "name": strategy.name,
+        "graph_json": strategy.model_dump(),
+        "trial_count": 3,
+    }
+    recipes_table.select.return_value.eq.return_value.single.return_value = recipe_select
+
+    fake_live = {
+        "mode": "live_turn",
+        "stages": [],
+        "final_output": '[{"action": "BUY", "ticker": "NVDA"}, {"action": "BUY", "ticker": "AAPL"}]',
+        "signals": [{"action": "BUY", "ticker": "NVDA"}, {"action": "BUY", "ticker": "AAPL"}],
+        "executed_signals": [{"action": "BUY", "ticker": "NVDA", "price": 142.5}],
+        "signal_prices": {"NVDA": 142.5, "AAPL": 210.0},
+        "updated_portfolio": {"paper_cash": 7500.0},
+    }
+    with patch("recipes.worker.run_push_live", new=AsyncMock(return_value=fake_live)):
+        res = process_next_recipe_job(client)
+
+    assert res == "COMPLETED"
+    alerts_table.insert.assert_called_once()
+    assert alerts_table.insert.call_args[0][0]["ticker"] == "NVDA"
+    cas_eq_trial = recipes_table.update.return_value.eq.return_value.eq
+    cas_eq_trial.assert_called_once_with("trial_count", 3)

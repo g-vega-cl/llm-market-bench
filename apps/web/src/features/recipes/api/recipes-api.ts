@@ -57,15 +57,11 @@ export async function saveRecipe(
 
     const db = getDbAdminClient();
 
-    const payload = {
+    const basePayload = {
         name: recipe.name,
         description: recipe.description || '',
         cadence: recipe.cadence,
         graph_json: recipe,
-        concurrency_config: {
-            max_open_trades: 3,
-            max_equity_pct_per_trade: 33.3,
-        },
         is_public: isPublic,
         updated_at: new Date().toISOString(),
     };
@@ -85,11 +81,11 @@ export async function saveRecipe(
             throw new Error('Unauthorized: cannot modify a recipe owned by another user');
         }
 
-        // user_id is deliberately absent from the update payload: ownership is
-        // never transferred, and the row is scoped to the owner it was read with.
+        // user_id and concurrency_config are omitted on update so ownership and custom
+        // slot/sizing limits set on the recipe row are preserved across graph edits.
         const { data, error } = await db
             .from('strategy_recipes')
-            .update(payload)
+            .update(basePayload)
             .eq('id', recipe.id)
             .eq('user_id', userId)
             .select('*')
@@ -101,7 +97,14 @@ export async function saveRecipe(
 
     const { data, error } = await db
         .from('strategy_recipes')
-        .insert({ ...payload, user_id: userId })
+        .insert({
+            ...basePayload,
+            concurrency_config: {
+                max_open_trades: 4,
+                max_equity_pct_per_trade: 25.0,
+            },
+            user_id: userId,
+        })
         .select('*')
         .single();
 

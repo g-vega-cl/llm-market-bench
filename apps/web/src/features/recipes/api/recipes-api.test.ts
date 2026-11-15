@@ -210,6 +210,13 @@ describe('saveRecipe', () => {
         const insert = calls.find((call) => call.op === 'insert');
         expect(insert).toBeDefined();
         expect((insert?.payload as { user_id: string }).user_id).toBe('user-1');
+        expect(
+            (insert?.payload as { concurrency_config: Record<string, number> }).concurrency_config,
+        ).toEqual({
+            max_open_trades: 4,
+            max_equity_pct_per_trade: 25.0,
+        });
+        expect((insert?.payload as { cadence: string }).cadence).toBe('3h');
     });
 
     it('refuses to update a recipe owned by another user', async () => {
@@ -248,6 +255,7 @@ describe('saveRecipe', () => {
         const update = calls.find((call) => call.op === 'update');
         expect(update).toBeDefined();
         expect(update?.payload).not.toHaveProperty('user_id');
+        expect(update?.payload).not.toHaveProperty('concurrency_config');
         expect(update?.filters).toMatchObject({ id: 'rec-1', user_id: 'user-1' });
     });
 });

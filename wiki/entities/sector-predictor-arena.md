@@ -47,7 +47,7 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 6. **Mutation & Deployment**: The meta-researcher (Gemini) mutates the active strategy instructions to deploy the next week's prompt variant.
 
 ### 4. Robust Frontend Visuals & Audit Transparency
-* **4-Model Scoreboard Grid**: Head-to-head scorecards dynamically calculate and display average percentile scores and top-quartile call rates across all 4 inference models (**DeepSeek Flash**, **MiniMax-M3**, **Gemini 3.5**, and **OpenAI GPT-5.6**). The grid uses the boxel design system: `grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch` with `Card` tiles (`h-full flex flex-col justify-between gap-4`), Tier 2 model names (`text-sm font-bold text-boxel-ink`), and `text-lg font-bold font-mono tabular-nums` metric values.
+* **4-Model Scoreboard Grid**: Head-to-head scorecards dynamically calculate and display average percentile scores and top-quartile call rates across all 4 inference models (**DeepSeek Flash**, **MiniMax-M3**, **Gemini 3.5**, and **OpenAI GPT-5.6**). The grid uses the Voxel design system: `grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch` with `Card` tiles (`h-full flex flex-col justify-between gap-4`), Tier 2 model names (`text-sm font-bold text-boxel-ink`), and `text-lg font-bold font-mono tabular-nums` metric values.
 * **Top Accuracy Chart & 4-Series Legend**: Historical accuracy trends render 4 distinct D3 color series (DeepSeek `#60a5fa`, MiniMax `#34d399`, Gemini `#f59e0b`, OpenAI `#a855f7`) at the top of the dashboard, supporting timeframe filters (`7d`, `30d`, `60d`, `90d`, `all`).
 * **Interactive Predictions Data Table**: Includes a dedicated data table (`AIPredictionsTable.tsx`) for high-density tracking across all forecast horizons. Features sortable headers (Prediction Date, Target Date, Return, Alpha, Model, Percentile Score), search, filters (Model, Status, Horizon), multi-target display (Best Sector + Worst Sector + Pair Combination), Alpha vs S&P 500 calculation, and expandable audit drawers.
 * **S&P 500 Benchmark Window Returns**: Evaluated predictions display actual window returns (`predicted_sector_return`, `predicted_worst_sector_return`, `predicted_pair_return`, `benchmark_spy_return`) alongside outperformance vs the S&P 500 (SPY) benchmark (e.g. `+2.4% vs S&P 500`).
@@ -89,4 +89,4 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 - [[entities/autoresearch]] — the parent autonomous prompt improvement engine
 - [[entities/web-app]] — parent dashboard
 - [[entities/database]] — details about Supabase database tables
-- [[entities/design-system]] — boxel primitives and equal-height grid rules
+- [[entities/design-system]] — Voxel primitives and equal-height grid rules

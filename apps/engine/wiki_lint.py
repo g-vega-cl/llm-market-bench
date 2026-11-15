@@ -29,7 +29,9 @@ WIKI_DIR = REPO_ROOT / "wiki"
 SCAFFOLD_FILES = {"SCHEMA.md", "index.md"}
 
 # Matches strings starting with key project directories inside backticks or links
-PATH_RE = re.compile(r"(?:`|\[.*?\]\()(apps|packages|scripts|supabase|wiki|\.github)\/([a-zA-Z0-9_\-\.\/]+)(?:`|\))")
+PATH_RE = re.compile(
+    r"(?:`|\[.*?\]\()(apps|packages|scripts|supabase|wiki|\.github|\.agents)\/([a-zA-Z0-9_\-\.\/]+)(?:`|\))"
+)
 
 # Files to exclude from codebase path checks (their content is schemas / guidelines containing templates/examples)
 EXCLUDED_FROM_CODEBASE_CHECK = {"SCHEMA.md", "concepts/code-reference-validation.md"}
@@ -105,6 +107,33 @@ def validate_config_parity(pages: dict[str, Path], repo_root: Path) -> list[str]
         except Exception as e:
             errors.append(f"Failed to read tools.json for parity check: {e}")
 
+    return errors
+
+
+MAX_AGENT_RULE_BYTES = 20_000
+
+
+def validate_agent_rules_budget(repo_root: Path) -> list[str]:
+    """Validates that root and .agents/rules/*.md files stay below the 20KB budget (24KB hard cap)."""
+    errors = []
+    rule_files = [
+        repo_root / "GEMINI.md",
+        repo_root / "AGENTS.md",
+    ]
+    rules_dir = repo_root / ".agents" / "rules"
+    if rules_dir.is_dir():
+        rule_files.extend(sorted(rules_dir.glob("*.md")))
+
+    for path in rule_files:
+        if not path.is_file():
+            continue
+        size = path.stat().st_size
+        rel = path.relative_to(repo_root)
+        if size > MAX_AGENT_RULE_BYTES:
+            errors.append(
+                f"Agent rule file `{rel}` is {size} bytes (exceeds {MAX_AGENT_RULE_BYTES} byte budget; "
+                "Antigravity truncates rule files at 24,000 bytes)"
+            )
     return errors
 
 
@@ -283,6 +312,9 @@ def lint(fix: bool = False) -> list[str]:
 
     for err in validate_config_parity(pages, REPO_ROOT):
         issues.append(f"[config-parity] {err}")
+
+    for err in validate_agent_rules_budget(REPO_ROOT):
+        issues.append(f"[agent-rules-budget] {err}")
 
     return issues
 

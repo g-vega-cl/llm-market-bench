@@ -86,3 +86,51 @@ def test_alpaca_audit_cli_models_are_active():
 
     invalid_models = [m for m in model_flags if m not in active_models]
     assert not invalid_models, f"alpaca-audit.md references inactive models: {invalid_models}"
+
+
+def test_agent_rule_files_under_truncation_limit():
+    """Ensure GEMINI.md, AGENTS.md, and .agents/rules/*.md stay under the 20KB budget (24KB hard cap)."""
+    max_rule_bytes = 20_000
+    rule_files = [
+        REPO_ROOT / "GEMINI.md",
+        REPO_ROOT / "AGENTS.md",
+        *sorted((REPO_ROOT / ".agents" / "rules").glob("*.md")),
+    ]
+
+    oversized = []
+    for path in rule_files:
+        assert path.is_file(), f"Expected rule file {path} to exist"
+        size = path.stat().st_size
+        if size > max_rule_bytes:
+            oversized.append((str(path.relative_to(REPO_ROOT)), size))
+
+    assert not oversized, (
+        f"Agent rule files exceed {max_rule_bytes} byte budget (risking 24KB runtime truncation): {oversized}"
+    )
+
+    prose_boxel_re = re.compile(r"(?<![a-zA-Z0-9_-])boxel(?![a-zA-Z0-9_-])", re.IGNORECASE)
+    gemini_text = (REPO_ROOT / "GEMINI.md").read_text()
+    assert "### QMD Search" in gemini_text, "GEMINI.md must retain QMD Search documentation"
+    assert not prose_boxel_re.search(gemini_text), "Use 'Voxel' instead of 'Boxel' in GEMINI.md prose"
+
+    design_spec_text = (REPO_ROOT / ".agents" / "rules" / "design-spec.md").read_text()
+    assert not prose_boxel_re.search(design_spec_text), "Use 'Voxel' instead of 'Boxel' in design-spec.md prose"
+
+    offending_wiki = []
+    for wiki_md in WIKI_DIR.rglob("*.md"):
+        if prose_boxel_re.search(wiki_md.read_text(errors="ignore")):
+            offending_wiki.append(str(wiki_md.relative_to(REPO_ROOT)))
+    assert not offending_wiki, f"Use 'Voxel' instead of 'Boxel' in wiki prose: {offending_wiki}"
+
+
+def test_validate_agent_rules_budget_flags_oversized(tmp_path):
+    """Ensure validate_agent_rules_budget catches rule files exceeding 20KB."""
+    from wiki_lint import validate_agent_rules_budget
+
+    assert validate_agent_rules_budget(REPO_ROOT) == []
+
+    fake_gemini = tmp_path / "GEMINI.md"
+    fake_gemini.write_text("x" * 20_500)
+    errors = validate_agent_rules_budget(tmp_path)
+    assert len(errors) == 1
+    assert "GEMINI.md" in errors[0]

@@ -48,7 +48,7 @@ Agents and developers must check UI proposals against `.agents/rules/design-spec
 
 ## Related
 
-- [[entities/design-system]] — boxel primitives, `.voxel-trough`, and the full rule cheat sheet
+- [[entities/design-system]] — Voxel primitives, `.voxel-trough`, and the full rule cheat sheet
 - [[entities/agent-rules]] — `GEMINI.md` mandate list
 - [[concepts/fluent-responsive-design]] — layout half of the same design specification
 - [[concepts/cumulative-layout-shift]] — zero layout shift standards

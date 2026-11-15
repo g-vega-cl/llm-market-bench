@@ -1,8 +1,10 @@
 ---
+trigger: glob
+globs: "**/*.tsx, **/*.ts, **/*.css"
 description: Canonical Benchify web design specification and styling rules
 ---
 
-# Benchify Design Specification: CSS-First & Boxel Architecture
+# Benchify Design Specification: CSS-First & Voxel Architecture
 
 This is the canonical source of truth for all web UI design, layout, typography, geometry, color, and interaction patterns across `apps/web` and `@llm-market-bench/ui-design-system`.
 
@@ -86,11 +88,11 @@ The entire interface standardizes on at most 3 font size and boldness combinatio
 
 ---
 
-## 5. Tactile Matcha & Cedar / Cheddar Boxel Geometry
+## 5. Tactile Matcha & Cedar / Cheddar Voxel Geometry
 
-All surfaces reflect the **Matcha & Cedar / Cheddar Boxel** aesthetic inspired by voxel hardware geometry and tactile physical controls.
+All surfaces reflect the **Matcha & Cedar / Cheddar Voxel** aesthetic inspired by voxel hardware geometry and tactile physical controls.
 
-1. **Sharp Boxel geometry**:
+1. **Sharp Voxel geometry**:
    - Every surface uses `rounded-none` (0px radius). Never use `rounded-md`, `rounded-xl`, `rounded-2xl`, or `rounded-full`.
    - Raised surfaces (`.voxel-card`) have 2px directional bevels (`border-boxel-bevel-hi` top/left, `border-boxel-bevel-lo` bottom/right) and hard `4px 4px 0px var(--color-boxel-bevel-lo)` offset drop shadows.
    - Recessed cells (`.voxel-trough`) invert the bevels (`border-boxel-bevel-lo` top/left, `border-boxel-bevel-hi` bottom/right) to visually carve into the terrace.

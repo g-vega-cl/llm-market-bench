@@ -1,4 +1,6 @@
 ---
+trigger: glob
+globs: "**/*.py"
 description: Enforce file-based Python script execution instead of inline python3 -c
 ---
 

@@ -7,7 +7,7 @@ category: concept
 
 Fluent responsive design builds interfaces that adapt to available container width without explicit viewport media query breakpoints. Rigid screen breakpoints like `sm:`, `md:`, and `lg:` make components fragile when nested inside multi-column panels or sidebars. Intrinsic fluid algorithms like `flex-wrap` and `auto-fit` grids let components flow naturally across all device sizes and split-screen layouts.
 
-The canonical, authoritative statement of these rules (together with the typography budget, boxel geometry, spacing, CLS, and overflow rules) lives in `.agents/rules/design-spec.md`. This page explains the reasoning behind the layout half of that specification.
+The canonical, authoritative statement of these rules (together with the typography budget, Voxel geometry, spacing, CLS, and overflow rules) lives in `.agents/rules/design-spec.md`. This page explains the reasoning behind the layout half of that specification.
 
 ## Core principles
 

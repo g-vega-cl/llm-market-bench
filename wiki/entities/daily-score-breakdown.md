@@ -72,4 +72,4 @@ The component renders inside nested detail panes that share horizontal space wit
 - [[concepts/brier-score]], The Brier score calibration diagnostic (no longer a scoring input)
 - [[concepts/intraday-hit-metrics]], Intraday target hit evaluation
 - [[concepts/experiment-display-score]], How the UI resolves a display score when metrics are empty
-- [[entities/design-system]], Boxel primitives and CSS-first layout rules
+- [[entities/design-system]], Voxel primitives and CSS-first layout rules

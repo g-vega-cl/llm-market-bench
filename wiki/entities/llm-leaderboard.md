@@ -75,4 +75,4 @@ $$\text{Composite Score} = (0.5 \times \text{Performance Score}) + (0.3 \times \
 - [[entities/web-app]] — Front-end application slice
 - [[entities/sector-predictor-arena]] — Sector predictor arena comparison
 - [[concepts/visual-planning]] — visual layout planning details
-- [[entities/design-system]] — boxel primitives and equal-height grid rules
+- [[entities/design-system]] — Voxel primitives and equal-height grid rules

@@ -1,0 +1,17 @@
+{
+  "agent-safety-gate": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ../apps/engine/agent_pre_tool_gate.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

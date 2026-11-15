@@ -19,6 +19,22 @@ Root `GEMINI.md` is injected directly into agent context during pair-programming
 2. **Wiki `SCHEMA.md` and `index.md`** govern documentation conventions.
 3. **Repository code** takes precedence over general framework assumptions.
 
+## Context Hygiene, Progressive Disclosure & Rule Size Budget
+
+Empirical research on repository context files (including the 2026 ETH Zurich evaluation of `AGENTS.md` / `CLAUDE.md` and Anthropic's context-hygiene practices) demonstrates that bloated root instruction files increase reasoning token overhead by 20%+ and dilute model attention when irrelevant domain rules are injected into every turn. Furthermore, Antigravity enforces a hard **24,000-byte per-file cap** on rule files, truncating any content past 24 KB.
+
+To prevent silent truncation and minimize per-turn context noise, repository instructions are organized into three layers:
+
+1. **Lean Root Index (`GEMINI.md` and `AGENTS.md`, strictly `< 20,000` bytes)**:
+   - Contains only universal commands, non-discoverable architectural invariants (Principles 1-18), commit conventions, and `qmd` search instructions.
+   - Enforced by `validate_agent_rules_budget` in `apps/engine/wiki_lint.py` and tested in `apps/engine/tests/test_wiki_consistency.py`.
+2. **Glob-Scoped Rules (`.agents/rules/*.md`)**:
+   - `.agents/rules/design-spec.md` declares `trigger: glob` (`globs: "**/*.tsx, **/*.ts, **/*.css"`), loading full Voxel UI, typography, and table specifications only when frontend files are touched.
+   - `.agents/rules/python-execution.md` declares `trigger: glob` (`globs: "**/*.py"`), loading Python virtualenv and scratch-script execution rules when Python files are active.
+3. **Deterministic PreToolUse Lifecycle Hooks (`.agents/hooks.json` & `apps/engine/agent_pre_tool_gate.py`)**:
+   - Hard boundaries are enforced programmatically via `PreToolUse` on `run_command` rather than relying solely on emphatic prose.
+   - `apps/engine/agent_pre_tool_gate.py` deterministically denies blanket git staging (`git add -A`, `git add .`, `git add -u`, `git commit -a`), multiline inline `python3 -c` execution, and direct shell dumps of `.env` files before the command runs. Tested in `apps/engine/tests/test_agent_pre_tool_gate.py`.
+
 ## Core Mandates Summary
 
 The full operational requirements are maintained in root `GEMINI.md`. Key principles link directly to deeper wiki concepts:
@@ -33,14 +49,18 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 8. **Tool-First, Agency-Driven Architecture**: Expose callable tools rather than injecting massive context tables (`[[concepts/tool-first-agency]]`).
 9. **Zero Compute on Frontend**: Pre-materialize all heavy calculations in background pipelines (`[[concepts/zero-frontend-compute]]`).
 10. **Vertical Slice Islands & File Size Ceiling**: 400 LOC soft ceiling, 800 LOC hard limit, colocated tests (`[[concepts/vertical-slice-islands]]`).
-11. **Design System & UI Consistency**: Strict primitive consumption from `@llm-market-bench/ui-design-system` with zero arbitrary utility escapes. **CSS-first architecture (avoid JS for design)**: all 1D and 2D layouts use declarative CSS Grid and Flexbox (`grid`, `flex`, `flex-wrap`, `items-stretch`); never use JavaScript (`window.innerWidth`, `matchMedia`, `ResizeObserver`) to compute column counts, dimensions, or responsive stacking modes, and never pass layout, typography, or color values through inline `style={{ ... }}` objects (only continuous dynamic data percentages, such as progress-bar fills, are permitted). **Zero floating tooltips or popovers**: never use floating tooltips, SVG `<title>` hovers, or popovers — secondary telemetry renders in-flow inside recessed `.voxel-trough` slots (`[[concepts/in-flow-inspection]]`). **Data-driven tables (numeric alignment & semantic row states)**: numeric columns (prices, returns, shares, ratios, percentages, counts, PnL, timestamps) and their matching `TableHead` cells must be right-aligned (`align="right"` or `numeric`) using `tabular-nums font-mono`; text and identity columns (company names, tickers, model handles, prompt names) stay left-aligned with `truncate`/`min-w-0`; bounded categorical states (direction, status, conviction) render as `Badge` primitives; inactive/halted/archived rows carry `isInactive` to mute them and disable hover elevation; truncated-cell clarification happens by click-to-inspect in an in-flow `.voxel-trough` bar or drawer, never a floating tooltip. **Secondary UI query settlement gating**: secondary action buttons and volatile derived badges must never flash during in-flight fetches, `keepPreviousData` refetches, or React transitions — gate them with `isQuerySettled(queries, isTransitionPending)` (`[[concepts/cumulative-layout-shift]]`). The single high-contrast dark theme is **Matcha & Cedar / Cheddar Boxel** — sharp `rounded-none` voxel geometry, 2px directional bevels, and recessed `.voxel-trough` slots (`[[entities/design-system]]`).
-12. **Dependency Restraint**: Do not add new packages, dev dependencies, test runners, or lockfile changes without explicit user approval; prefer the standard library and tooling already in the repo.
-13. **Targeted Git Staging & Multi-Agent Isolation**: Never blanket-stage; stage only the files touched by the active task (`[[entities/agent-rules]]`).
-14. **Live Edge & Server Deployment Mandate (Build Implies Run)**: Committing or syncing files is not completion — edge services must be deployed, launched, and health-verified (`[[entities/secondary-minipc-edge]]`).
+11. **Design System & UI Consistency**: Strict primitive consumption from `@llm-market-bench/ui-design-system` with zero arbitrary utility escapes. **CSS-first architecture (avoid JS for design)**: all 1D and 2D layouts use declarative CSS Grid and Flexbox (`grid`, `flex`, `flex-wrap`, `items-stretch`); never use JavaScript (`window.innerWidth`, `matchMedia`, `ResizeObserver`) to compute column counts, dimensions, or responsive stacking modes, and never pass layout, typography, or color values through inline `style={{ ... }}` objects (only continuous dynamic data percentages, such as progress-bar fills, are permitted). **Zero floating tooltips or popovers**: never use floating tooltips, SVG `<title>` hovers, or popovers — secondary telemetry renders in-flow inside recessed `.voxel-trough` slots (`[[concepts/in-flow-inspection]]`). **Data-driven tables (numeric alignment & semantic row states)**: numeric columns (prices, returns, shares, ratios, percentages, counts, PnL, timestamps) and their matching `TableHead` cells must be right-aligned (`align="right"` or `numeric`) using `tabular-nums font-mono`; text and identity columns (company names, tickers, model handles, prompt names) stay left-aligned with `truncate`/`min-w-0`; bounded categorical states (direction, status, conviction) render as `Badge` primitives; inactive/halted/archived rows carry `isInactive` to mute them and disable hover elevation; truncated-cell clarification happens by click-to-inspect in an in-flow `.voxel-trough` bar or drawer, never a floating tooltip. **Secondary UI query settlement gating**: secondary action buttons and volatile derived badges must never flash during in-flight fetches, `keepPreviousData` refetches, or React transitions — gate them with `isQuerySettled(queries, isTransitionPending)` (`[[concepts/cumulative-layout-shift]]`). The single high-contrast dark theme is **Matcha & Cedar / Cheddar Voxel** — sharp `rounded-none` voxel geometry, 2px directional bevels, and recessed `.voxel-trough` slots (`[[entities/design-system]]`).
+12. **File-Based Python Execution (Zero Inline `-c`)**: Never run multiline Python via `-c` (blocked by `.agents/hooks.json`). Write temporary scripts to conversation scratch or `.scratch/<name>.py` and run via `./apps/engine/.venv/bin/python3 <script.py>` (`.agents/rules/python-execution.md`).
+13. **Fluent Layout & Overflow Prevention**: Zero explicit viewport media query breakpoints (`sm:`, `md:`, `lg:`) or hardcoded pixel widths. Use `flex-wrap`, `repeat(auto-fit, minmax(...))`, relative `rem` tokens (`basis-72`, `basis-96`), `min-w-0`, and `whitespace-pre-wrap break-words` on `<pre>` (`[[concepts/fluent-responsive-design]]`).
+14. **Workflow Consolidation & Piggybacking**: Piggyback periodic CI tasks onto established scheduled workflows rather than creating standalone workflow files (`[[concepts/workflow-consolidation]]`).
+15. **Hermetic Local Autoresearch (Zero External Cloud API Calls)**: Local autoresearch, double-ratchet tournaments, and offline backtests run 100% locally on dedicated hardware (Strata and Laya) with zero cloud LLM fallbacks (`[[entities/local-autoresearch]]`).
+16. **Avoid New Dependencies**: Do not add new packages, dev dependencies, test runners, or lockfile changes without explicit user approval; prefer the standard library and tooling already in the repo.
+17. **Targeted Git Staging & Multi-Agent Isolation**: Never blanket-stage; stage only the files touched by the active task (`[[entities/agent-rules]]`).
+18. **Live Edge & Server Deployment Mandate (Build Implies Run)**: Committing or syncing files is not completion — edge services must be deployed, launched, and health-verified (`[[entities/secondary-minipc-edge]]`).
 
 ## Design Specification (Canonical)
 
-The complete web design specification — CSS-first layout, fluent responsive design, parent-owns-spacing, the 3-combination typography budget, boxel geometry and palette tokens, information-density budgets, CLS prevention, overflow/text-wrapping rules, the zero-floating-tooltip in-flow inspection rule, and the data-driven table rules (numeric `tabular-nums font-mono` right-alignment, `Badge` categorical states, `isInactive` row semantics) — is codified in `.agents/rules/design-spec.md`. That file is the single source of truth for `apps/web` and `@llm-market-bench/ui-design-system` styling, and it supersedes the former standalone CSS-overflow rule file. Section 11 of that spec covers data-driven tables; section 10 covers in-flow inspection; section 9 covers text-row wrapping. Related wiki concepts: [[concepts/fluent-responsive-design]], [[concepts/in-flow-inspection]], [[concepts/cumulative-layout-shift]], [[entities/design-system]].
+The complete web design specification — CSS-first layout, fluent responsive design, parent-owns-spacing, the 3-combination typography budget, Voxel geometry and palette tokens, information-density budgets, CLS prevention, overflow/text-wrapping rules, the zero-floating-tooltip in-flow inspection rule, and the data-driven table rules (numeric `tabular-nums font-mono` right-alignment, `Badge` categorical states, `isInactive` row semantics) — is codified in `.agents/rules/design-spec.md`. That file is the single source of truth for `apps/web` and `@llm-market-bench/ui-design-system` styling, and it supersedes the former standalone CSS-overflow rule file. Section 11 of that spec covers data-driven tables; section 10 covers in-flow inspection; section 9 covers text-row wrapping. Related wiki concepts: [[concepts/fluent-responsive-design]], [[concepts/in-flow-inspection]], [[concepts/cumulative-layout-shift]], [[entities/design-system]].
 
 ## Zero Floating Tooltips & Popovers (MANDATORY)
 
@@ -126,6 +146,18 @@ After every code change, lint and coverage must pass before work is marked compl
 - All backtick code references in wiki markdown must match existing paths on disk
 
 A passing test suite with failing lint or low coverage is not done.
+
+## One-Time QMD Installation Reference
+
+Requires Node.js >= 22 and <= 25 (`better-sqlite3` does not support Node 26+). When the system default is Node 26+, activate Node 24 via `nvm` first:
+
+```sh
+export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24
+npm config set allow-scripts=node-llama-cpp,tree-sitter-go,tree-sitter-python,tree-sitter-rust,tree-sitter-typescript,tree-sitter-javascript --location=user
+npm install -g @tobilu/qmd
+qmd collection add wiki/ --name wiki
+qmd embed
+```
 
 ## Related
 

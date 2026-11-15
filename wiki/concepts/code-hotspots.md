@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **274**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **273**).
 
 ## Top Hotspots
 
@@ -26,7 +26,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tests/test_workflow_schedule.py` | 11 | 4 | 36.4% | 306 | 44 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 11 | 4 | 36.4% | 954 | 44 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 10 | 4 | 40.0% | 219 | 40 | **HIGH** |
-| `apps/engine/core/llm/tools.py` | 19 | 2 | 10.5% | 1932 | 38 | **HIGH** |
+| `apps/engine/core/llm/tools.py` | 18 | 2 | 11.1% | 1932 | 36 | **HIGH** |
 | `apps/engine/tests/test_verify_skill.py` | 12 | 3 | 25.0% | 204 | 36 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
@@ -44,12 +44,12 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 9 | 82% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/router.py` | 8 | 89% |
 | `apps/free_llm_proxy/router.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 8 | 89% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/autoresearch/researcher.py` | 8 | 50% |
-| `apps/engine/autoresearch/program.md` | `apps/engine/core/llm/tools.py` | 8 | 50% |
-| `apps/engine/autoresearch/program.md` | `packages/config/tools.json` | 8 | 50% |
-| `apps/engine/core/llm/tools.py` | `packages/config/tools.json` | 8 | 50% |
 | `apps/web/src/features/home/api/fetch-intraday-tape.test.ts` | `apps/web/src/features/home/api/fetch-intraday-tape.ts` | 7 | 100% |
 | `apps/web/src/features/home/components/ConsoleQueueCard.test.tsx` | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 7 | 100% |
+| `apps/engine/trading/runner.py` | `apps/engine/trading/test_runner.py` | 7 | 100% |
+| `apps/web/src/features/home/api/fetch-intraday-tape.ts` | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 7 | 78% |
+| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/runner.py` | 7 | 64% |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 7 | 64% |
 
 ## Usage Guidelines for LLM Agents
 

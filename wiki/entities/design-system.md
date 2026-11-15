@@ -5,7 +5,7 @@ category: entity
 
 # Design System
 
-The `@llm-market-bench/ui-design-system` package provides the shared UI component library for the web dashboard. It enforces the tactile **Matcha & Cedar / Cheddar Boxel** aesthetic inspired by voxel hardware geometry and editorial clarity.
+The `@llm-market-bench/ui-design-system` package provides the shared UI component library for the web dashboard. It enforces the tactile **Matcha & Cedar / Cheddar Voxel** aesthetic inspired by voxel hardware geometry and editorial clarity.
 
 ## Design rules cheat sheet
 
@@ -16,7 +16,7 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 5. **Zero cards inside cards**: Raised `.voxel-card` surfaces never nest inside another `.voxel-card`. Inner metrics use recessed `.voxel-trough` slots.
 6. **Zero collapsibles or accordions**: Content that belongs on a page renders flat and visible immediately. Secondary telemetry lives in `/lab`.
 7. **Zero decorative emojis in UI chrome**: Section headers, metric labels, and buttons use crisp typography and square pixel indicators instead of emojis.
-8. **Sharp boxel geometry**: Corners use `rounded-none` with 2px directional bevels (`border-boxel-bevel-hi` on top and left, `border-boxel-bevel-lo` on right and bottom) and hard `4px 4px 0px` offset shadows.
+8. **Sharp Voxel geometry**: Corners use `rounded-none` with 2px directional bevels (`border-boxel-bevel-hi` on top and left, `border-boxel-bevel-lo` on right and bottom) and hard `4px 4px 0px` offset shadows.
 9. **Strict 3-combination typography budget**: The interface standardizes on at most 3 font size and boldness combinations across all chrome and content:
    - **Tier 1 (Display & Headings)**: `18px Bold` (`text-lg font-bold`, `.type-heading`) for page titles (`h1`), `h2`, and `SectionHeading`.
    - **Tier 2 (Controls & Cards)**: `14px Bold` (`text-sm font-bold`, `.type-control`) for buttons, card titles, table headers, badges, and prominent values.
@@ -115,9 +115,9 @@ Secondary telemetry, details, and point inspections therefore always render **in
 
 Interactive elements that drive the inspector — chart markers, data points, table cells — must be keyboard-operable: `tabindex="0"`, `role="button"`, an `aria-label`, and `Enter`/`Space` handlers, with click selection toggling or updating the trough slot. Nothing floats above the canvas. See [[concepts/in-flow-inspection]].
 
-## Page-level boxel migration
+## Page-level Voxel migration
 
-Beyond the primitives, the feature pages render through the same boxel tokens and equal-height grids. Representative surfaces:
+Beyond the primitives, the feature pages render through the same Voxel tokens and equal-height grids. Representative surfaces:
 
 - **AI Sector Predictor scoreboard** (`AIPredictionsPage.tsx`): the 4-model head-to-head grid uses `grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch` with `Card` tiles (`h-full flex flex-col justify-between gap-4`), Tier 2 model names, and `text-lg font-bold font-mono tabular-nums` metric values.
 - **Leaderboard podium** (`LeaderboardPodium.tsx`): equal-height `items-stretch` grid (no `items-end`, no arbitrary `min-h-[400px]`/`min-h-[350px]`/`min-h-[320px]`), `radius="none"` cards with rank-colored top/left bevels (`border-t-success`, `border-t-accent`, `border-t-warning`).
@@ -144,7 +144,7 @@ Beyond the primitives, the feature pages render through the same boxel tokens an
 4. **Fluent responsive layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72` and `basis-96`). See [[concepts/fluent-responsive-design]].
 5. **Cumulative layout shift prevention**: Enforce silent Suspense fallbacks (`fallback={null}`) and `keepPreviousData` on timeframe queries. See [[concepts/cumulative-layout-shift]].
 6. **No floating overlays**: Tooltips, popovers, poppers, `title` attributes, and SVG `<title>` hovers are prohibited; detail renders in-flow in a `.voxel-trough` slot with keyboard-operable triggers. See [[concepts/in-flow-inspection]].
-7. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` boxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` rendering NEUTRAL/HOLD telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) with zero `.voxel-badge` elements, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
+7. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` Voxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` rendering NEUTRAL/HOLD telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) with zero `.voxel-badge` elements, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
    - `ErrorCard` uses `rounded-none` (no `rounded-xl`), a `text-sm font-bold` title, a `text-xs font-normal` message, and a `text-sm font-bold` Retry button (no `rounded-lg`).
    - `EmptyState` uses a Tier 1 `text-lg font-bold` title (no `text-2xl`/`text-3xl`/`font-black`), a Tier 3 `text-xs font-normal` subtitle, no `text-6xl`/`text-7xl` emoji, and no `mb-*` margins.
    - `Input`/`Select` wrappers use `rounded-none` (no `rounded-xl`) and `Label` uses `text-sm font-bold` (no `font-semibold`).

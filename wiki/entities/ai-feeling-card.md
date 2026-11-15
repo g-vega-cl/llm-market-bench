@@ -20,13 +20,13 @@ No additional fetching is required; the data is passed from the parent `TodayPag
 
 The buy/sell split counts **only autonomous LLM trades**. Before counting, the component filters out mechanical system portfolios using `isSystemPortfolio(t.portfolios?.owner_id)` (imported from `~/features/portfolios/lib/config`), so `sys-*` strategies (e.g. `sys-pead-drift`, `sys-max-pain`) never inflate the AI buy/sell counts. The same exclusion is applied in `TodayStatusBar` so the sticky status bar and the feeling card agree.
 
-## Layout & Boxel Styling
+## Layout & Voxel Styling
 
-The card follows the Matcha & Cedar boxel design system (see [[entities/design-system]]):
+The card follows the Matcha & Cedar Voxel design system (see [[entities/design-system]]):
 
 - The outer `<section>` is `flex flex-col gap-4 h-full` so it stretches to match sibling cards in the Today page's `items-stretch` Row 2 grid.
 - The `Card` uses `isHoverable`, `padding="md"`, and `h-full flex flex-col justify-between gap-4`, with the footer pinned to the bottom via `mt-auto`.
-- The previous gradient background accent overlay has been removed in favor of the flat boxel surface.
+- The previous gradient background accent overlay has been removed in favor of the flat Voxel surface.
 
 ## Sub-Components
 

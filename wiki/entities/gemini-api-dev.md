@@ -14,6 +14,7 @@ The project uses Gemini models (e.g., `gemini-3.5-flash-lite`, `gemini-3.8-flash
 ## Location
 
 - Skill definition: `.agents/skills/gemini-api-dev/SKILL.md`
+- SDK examples reference: `.agents/skills/gemini-api-dev/references/sdk-examples.md`
 - Migration reference: `.agents/skills/gemini-api-dev/references/migration.md`
 - Claude Code symlink: `.claude/skills/gemini-api-dev` → `.agents/skills/gemini-api-dev`
 

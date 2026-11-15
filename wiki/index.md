@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/agent-pre-tool-gate]] — deterministic PreToolUse hook blocking blanket git staging, multiline python -c, and raw .env dumps
 - [[entities/recipe-studio]] — Auto-indexed page
 - [[entities/daily-stock-picker]] — Auto-indexed page
 - [[entities/company-research-reports]] — Institutional stock & sector research dossiers extracted from daily briefings, with `/companies` explorer, CLI command, and TTL deduplication

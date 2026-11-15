@@ -30,6 +30,10 @@ Docs are hints. When they conflict, trust the code. Read the code before acting 
 
 Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.
 
+## Deterministic Lifecycle Gates & Context Hygiene
+
+Hard execution rules (blocking blanket `git add -A` / `git add .` staging, multiline `python3 -c`, and raw `.env` dumps) are enforced before command execution via `.agents/hooks.json` (`apps/engine/agent_pre_tool_gate.py`) in addition to `.husky/pre-commit`. Root `GEMINI.md` and `.agents/rules/*.md` files are kept strictly below 20,000 bytes (`apps/engine/wiki_lint.py`) so no rule file is ever truncated by Antigravity's 24 KB per-file cap.
+
 ## Related
 
 - [[concepts/project-linting]]

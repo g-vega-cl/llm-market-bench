@@ -71,6 +71,8 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FREE_LLM_PROXY_URL: ${{ secrets.FREE_LLM_PROXY_URL }}
+          FREE_PROXY_MASTER_KEY: ${{ secrets.FREE_PROXY_MASTER_KEY }}
           POLYGON_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}

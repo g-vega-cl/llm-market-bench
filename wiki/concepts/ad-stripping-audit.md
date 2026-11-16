@@ -72,12 +72,19 @@ In `apps/engine/ingest/newsletter.py`:
 ### 6. Database Cleanup
 The 5 historical zero-length spam rows in Supabase were purged, bringing empty snapshot count to 0 and resolving the `empty_newsletter_content` weekly audit check.
 
+### 7. Client Initialization Failure Fallback
+In `apps/engine/ingest/cleaner.py`:
+- The `auto-go` client is constructed **inside** the `try` block (`client = None` is assigned first), so a factory-level failure — most commonly `ValueError("FREE_PROXY_MASTER_KEY must be configured for remote free-llm-proxy calls.")` when the proxy URL is remote and the master key is absent — is caught by the same handler that guards the LLM call.
+- The newsletter is returned unchanged as a `CleanedNewsletterText` with `is_pure_ad=False`, `ads_removed_count=0`, and an empty `ads_summary`, so a misconfigured proxy degrades ingestion to raw text instead of aborting the pipeline.
+- The `finally` block only calls `clients.close_client(client, "auto_go")` when `client is not None`, so the cleanup path cannot raise a second exception. See [[concepts/auto-go-utility-llm]].
+
 ---
 
 ## Verification & Status
 
 - Tested with live Gemini Flash Lite API calls verifying verbatim number preservation, multi-block ad removal with summary explanation, and pure marketing email detection.
 - Unit and regression test suite added in `apps/engine/tests/test_cleaner.py` and `apps/engine/tests/test_newsletter.py` (28 passing tests).
+- `apps/engine/tests/test_auto_go_migration.py::test_cleaner_handles_client_init_error_gracefully` asserts that a raising `get_auto_go_client` returns the original content with `ads_removed_count == 0`.
 - 1,223 total engine tests passing with 88% coverage.
 
 ---
@@ -88,3 +95,4 @@ The 5 historical zero-length spam rows in Supabase were purged, bringing empty s
 - [[concepts/weekly-audit]] — automated log and SQL checks monitoring empty snapshots
 - [[concepts/hallucination-audit]] — empirical verification of numerical accuracy
 - [[concepts/observability-standard]] — traceback logging requirements
+- [[concepts/auto-go-utility-llm]] — the auto-go client factory and its failure semantics

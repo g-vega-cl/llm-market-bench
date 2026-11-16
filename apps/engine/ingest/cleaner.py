@@ -47,9 +47,10 @@ async def clean_newsletter_content(content: str) -> str:
     logger.debug("Starting advertisement removal pass...")
 
     # Route de-advertisement pass through free-llm-proxy (auto-go).
-    client = clients.get_auto_go_client(purpose="newsletter-de-advertisement")
+    client = None
 
     try:
+        client = clients.get_auto_go_client(purpose="newsletter-de-advertisement")
         messages = PromptFactory.build_de_advertisement_messages(provider="openai", content=content)
 
         resp_awaitable = client.chat.completions.create(
@@ -99,4 +100,5 @@ async def clean_newsletter_content(content: str) -> str:
         logger.exception("Error during de-advertisement pass: %s. Falling back to original content.", e)
         return CleanedNewsletterText(content, is_pure_ad=False, ads_removed_count=0, ads_summary=[])
     finally:
-        await clients.close_client(client, "auto_go")
+        if client is not None:
+            await clients.close_client(client, "auto_go")

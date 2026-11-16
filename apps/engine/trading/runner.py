@@ -318,7 +318,7 @@ async def synthesize_recent_news(
         strata_url=strata_url,
         cheap_proxy_url=cheap_proxy_url,
         http_client=http_client,
-        max_tokens=800,
+        max_tokens=4096,
         purpose="homepage-news-synthesis",
     )
 

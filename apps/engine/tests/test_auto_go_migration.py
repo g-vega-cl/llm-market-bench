@@ -358,12 +358,21 @@ def test_ci_workflows_inject_free_proxy_secrets():
     workflow_steps = [
         ("ingest.yml", "Run ingestion & consensus pipeline"),
         ("weekend-ingest.yml", "Run weekend ingestion pipeline"),
+        ("generate-newsletter.yml", "Run Newsletter Generator"),
+        ("generate-newsletter.yml", "Research Newsletter Mentioned Companies"),
         ("calendar.yml", "Run Calendar Ingestion"),
         ("update-earnings-alpha.yml", "Run earnings alpha and bellwether update script"),
         ("post-analysis.yml", "Run post-analysis pipeline"),
         ("cause-and-effect.yml", "Run Cause & Effect Analysis"),
         ("audit.yml", "Run system audit"),
         ("audit.yml", "Cleanup old records"),
+        ("autoresearch.yml", "Run auto-research cycle"),
+        ("daily-predictor.yml", "Run Daily Predictor Command"),
+        ("daily-predictor.yml", "Run Daily TLT Bond Predictor"),
+        ("daily-predictor.yml", "Run Day-1 Earnings Movement Predictor"),
+        ("daily-predictor.yml", "Run Daily Stock Picker Arena (3 Up, 3 Down)"),
+        ("frontier-tech.yml", "Execute Frontier Tech Supercycle Task"),
+        ("future-forces.yml", "Execute Future Forces Task"),
     ]
     for wf_name, step_name in workflow_steps:
         wf_path = root / ".github" / "workflows" / wf_name
@@ -378,3 +387,37 @@ def test_ci_workflows_inject_free_proxy_secrets():
         assert env.get("FREE_LLM_PROXY_URL") == "${{ secrets.FREE_LLM_PROXY_URL }}", (
             f"{wf_name} -> {step_name} missing FREE_LLM_PROXY_URL"
         )
+
+
+@pytest.mark.asyncio
+async def test_synthesize_recent_news_avoids_800_token_truncation():
+    from trading import runner
+
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"source": "Reuters", "headline": "Fed flags sticky inflation; semis await NVDA"}]
+    )
+    mock_sb.table.return_value.select.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "feeling-1"}]
+    )
+
+    with patch("trading.runner.query_multi_tier_llm", new_callable=AsyncMock, return_value="Concise summary.") as mock_llm:
+        result = await runner.synthesize_recent_news(sb_client=mock_sb)
+
+    assert result == "Concise summary."
+    assert mock_llm.call_args.kwargs["max_tokens"] >= 2048
+
+
+@pytest.mark.asyncio
+async def test_cleaner_handles_client_init_error_gracefully():
+    from ingest.cleaner import clean_newsletter_content
+
+    original = "Important market content here."
+    with patch(
+        "ingest.cleaner.clients.get_auto_go_client",
+        side_effect=ValueError("FREE_PROXY_MASTER_KEY is required"),
+    ):
+        result = await clean_newsletter_content(original)
+
+    assert str(result) == original
+    assert result.ads_removed_count == 0

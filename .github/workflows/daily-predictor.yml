@@ -86,6 +86,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FREE_LLM_PROXY_URL: ${{ secrets.FREE_LLM_PROXY_URL }}
+          FREE_PROXY_MASTER_KEY: ${{ secrets.FREE_PROXY_MASTER_KEY }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
@@ -106,6 +108,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FREE_LLM_PROXY_URL: ${{ secrets.FREE_LLM_PROXY_URL }}
+          FREE_PROXY_MASTER_KEY: ${{ secrets.FREE_PROXY_MASTER_KEY }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
@@ -135,6 +139,8 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FREE_LLM_PROXY_URL: ${{ secrets.FREE_LLM_PROXY_URL }}
+          FREE_PROXY_MASTER_KEY: ${{ secrets.FREE_PROXY_MASTER_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         run: |
           cd apps/engine
@@ -148,6 +154,8 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          FREE_LLM_PROXY_URL: ${{ secrets.FREE_LLM_PROXY_URL }}
+          FREE_PROXY_MASTER_KEY: ${{ secrets.FREE_PROXY_MASTER_KEY }}
         run: |
           cd apps/engine
           PYTHONPATH=. ./venv/bin/python3 main.py stock-picker

@@ -60,6 +60,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          FREE_LLM_PROXY_URL: ${{ secrets.FREE_LLM_PROXY_URL }}
+          FREE_PROXY_MASTER_KEY: ${{ secrets.FREE_PROXY_MASTER_KEY }}
         run: |
           cd apps/engine
           DRY_RUN_FLAG=""

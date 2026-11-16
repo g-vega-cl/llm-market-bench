@@ -22,7 +22,24 @@ The free-proxy endpoint and credential are engine config, not per-call literals:
 | `FREE_LLM_PROXY_URL` | env (`FREE_LLM_PROXY_URL`) | `https://llm.clvg.uk/v1` |
 | `FREE_PROXY_MASTER_KEY` | env (`FREE_PROXY_MASTER_KEY`) | empty |
 
-Both env keys are declared in `apps/engine/.env.example`. Every GitHub Actions workflow that exercises a migrated flow (`ingest.yml`, `weekend-ingest.yml`, `calendar.yml`, `update-earnings-alpha.yml`, `post-analysis.yml`, `cause-and-effect.yml`, `audit.yml` — both the audit and cleanup steps) injects `FREE_LLM_PROXY_URL` and `FREE_PROXY_MASTER_KEY` from repo secrets, so CI runners reach the same proxy as local runs.
+Both env keys are declared in `apps/engine/.env.example`. Every GitHub Actions workflow that exercises a migrated flow injects `FREE_LLM_PROXY_URL` and `FREE_PROXY_MASTER_KEY` from repo secrets, so CI runners reach the same proxy as local runs. The covered workflow steps are:
+
+| Workflow | Step(s) |
+| :--- | :--- |
+| `ingest.yml` | Run ingestion & consensus pipeline |
+| `weekend-ingest.yml` | Run weekend ingestion pipeline |
+| `generate-newsletter.yml` | Run Newsletter Generator; Research Newsletter Mentioned Companies |
+| `calendar.yml` | Run Calendar Ingestion |
+| `update-earnings-alpha.yml` | Run earnings alpha and bellwether update script |
+| `post-analysis.yml` | Run post-analysis pipeline |
+| `cause-and-effect.yml` | Run Cause & Effect Analysis |
+| `audit.yml` | Run system audit; Cleanup old records |
+| `autoresearch.yml` | Run auto-research cycle |
+| `daily-predictor.yml` | Run Daily Predictor Command; Run Daily TLT Bond Predictor; Run Day-1 Earnings Movement Predictor; Run Daily Stock Picker Arena (3 Up, 3 Down) |
+| `frontier-tech.yml` | Execute Frontier Tech Supercycle Task |
+| `future-forces.yml` | Execute Future Forces Task |
+
+That is 15 guarded steps across 12 workflows. Any new workflow step that invokes a migrated flow must add both secrets to its `env:` block, otherwise the factory raises on a remote proxy URL and the flow degrades to its fallback behavior.
 
 ## Client Factories (`apps/engine/core/llm/clients.py`)
 
@@ -36,7 +53,7 @@ Credential resolution: an explicit `api_key` wins, otherwise `FREE_PROXY_MASTER_
 ### `get_auto_go_client(api_key=None, purpose=None)`
 Wraps the raw client with `instructor.from_openai(..., mode=instructor.Mode.MD_JSON)`. Markdown-JSON extraction avoids forced `tool_choice`, which is what lets the proxy's heterogeneous provider pool (reasoning models, Gemini, Groq, etc.) return structured Pydantic objects without 400 errors.
 
-Every migrated call site closes its client in a `finally` block via `close_client(client, "auto_go")` (or `client.close()` for the raw client), so no HTTP connection pool leaks across long pipeline runs.
+Every migrated call site closes its client in a `finally` block via `close_client(client, "auto_go")` (or `client.close()` for the raw client), so no HTTP connection pool leaks across long pipeline runs. Call sites that construct the client inside their `try` block guard the close with `if client is not None:` so a factory failure cannot raise a second time from the cleanup path.
 
 ## Migrated Call Sites
 
@@ -73,9 +90,11 @@ Legacy `strata_url`, `reasoning_budget_tokens`, and `strata_timeout` parameters 
 
 Migrated flows keep their pre-existing failure semantics. De-advertisement still falls back to the original newsletter text, the calendar pipeline returns `0` events, government extraction returns `0` memories, and post-analysis simply logs and skips the trade. The log analyzer returns `None` on a missing key, empty `choices`, or an exception — and now distinguishes the empty-response case explicitly with `logger.error("auto-go log analysis returned empty choices/content")` rather than crashing on `choices[0]`. All exception handlers were upgraded to `logger.exception(...)` per [[concepts/observability-standard]].
 
+`clean_newsletter_content` in `apps/engine/ingest/cleaner.py` constructs its auto-go client **inside** the `try` block, so a factory-level failure (for example a missing `FREE_PROXY_MASTER_KEY` while `FREE_LLM_PROXY_URL` points at a remote proxy) is caught by the same handler that guards the LLM call. The newsletter is returned unchanged as a `CleanedNewsletterText` with `is_pure_ad=False`, `ads_removed_count=0`, and an empty `ads_summary`, and the `finally` block only calls `close_client` when a client was actually created. A misconfigured proxy therefore degrades ingestion to raw text instead of aborting the pipeline.
+
 ## Verification
 
-`apps/engine/tests/test_auto_go_migration.py` is a hermetic reproduction suite covering: config defaults, factory kwargs (`api_key`, `base_url`, `max_retries=0`, `X-Purpose` header), the remote-key `ValueError`, MD_JSON wrapping, every migrated call site asserting `model="auto-go"` plus the paired `close_client(..., "auto_go")`, the policy-lookup exception that keeps Gemini + Google Search, and a YAML assertion that all seven workflows inject both free-proxy secrets. Existing suites (`test_cleaner.py`, `test_calendar.py`, `test_post_analysis.py`, `test_government_pipeline.py`, `test_memory_consolidation.py`, `test_audit_analyzer.py`, `test_deepseek_flash_migration.py`, `test_cause_and_effect_dedupe.py`, `test_newsletter_menu_flow.py`, `test_log_reduction.py`) were repointed from the old provider patches to `get_auto_go_client` / `get_auto_go_raw_client`.
+`apps/engine/tests/test_auto_go_migration.py` is a hermetic reproduction suite covering: config defaults, factory kwargs (`api_key`, `base_url`, `max_retries=0`, `X-Purpose` header), the remote-key `ValueError`, MD_JSON wrapping, every migrated call site asserting `model="auto-go"` plus the paired `close_client(..., "auto_go")`, the policy-lookup exception that keeps Gemini + Google Search, and a YAML assertion that all 15 guarded steps across the 12 workflows listed above inject both free-proxy secrets. It also asserts that `synthesize_recent_news` requests at least 2,048 completion tokens (see [[entities/live-agent-trader]]) and that `clean_newsletter_content` returns the original text when `get_auto_go_client` raises. Existing suites (`test_cleaner.py`, `test_calendar.py`, `test_post_analysis.py`, `test_government_pipeline.py`, `test_memory_consolidation.py`, `test_audit_analyzer.py`, `test_deepseek_flash_migration.py`, `test_cause_and_effect_dedupe.py`, `test_newsletter_menu_flow.py`, `test_log_reduction.py`) were repointed from the old provider patches to `get_auto_go_client` / `get_auto_go_raw_client`.
 
 `apps/engine/tests/conftest.py` seeds `FREE_PROXY_MASTER_KEY="mock-free-proxy-key"` alongside the other dummy credentials so the suite never depends on ambient env.
 

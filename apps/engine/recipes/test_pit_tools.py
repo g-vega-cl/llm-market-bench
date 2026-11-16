@@ -256,3 +256,41 @@ async def test_pit_price_history_uses_strict_prior_day_lt_filter():
 
     snap_tbl.lt.assert_called_with("fetched_at", "2026-03-02T00:00:00+00:00")
     assert "$120.00" in out
+
+
+@pytest.mark.asyncio
+async def test_pit_market_feeling_queries_existing_columns():
+    from core.llm.handlers.base import execute_tool
+
+    mf_tbl = MagicMock()
+    mf_tbl.execute.return_value = MagicMock(
+        data=[
+            {
+                "sentiment_label": "Cautious",
+                "market_direction": "BEARISH",
+                "confidence_score": 72,
+                "why_explanation": "Tariff headlines weighed on semiconductors.",
+                "primary_concern": "Trade policy",
+                "secondary_concern": "Yields",
+                "created_at": "2026-06-05T14:00:00+00:00",
+            }
+        ]
+    )
+    for m in ("select", "eq", "gte", "lt", "lte", "in_", "contains", "ilike", "order", "limit"):
+        getattr(mf_tbl, m).return_value = mf_tbl
+
+    sb = MagicMock()
+    sb.table.return_value = mf_tbl
+    with patch("recipes.pit_tools.get_supabase_client", return_value=sb):
+        out = await execute_tool(
+            "get_market_feeling",
+            {},
+            model_name="strata",
+            cutoff_date="2026-06-05",
+            as_of_utc="2026-06-05T16:30:00+00:00",
+        )
+
+    selected_cols = mf_tbl.select.call_args[0][0]
+    assert "feeling_text" not in selected_cols
+    assert "Cautious" in out
+    assert "Tariff headlines weighed on semiconductors." in out

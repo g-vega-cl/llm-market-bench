@@ -57,4 +57,48 @@ describe('BacktestTimelineBlock', () => {
         expect(screen.getByText('get_stock_quote({"ticker":"AMD"})')).toBeInTheDocument();
         expect(screen.getByText('[{"action": "EXIT", "ticker": "AMD"}]')).toBeInTheDocument();
     });
+
+    it('renders hydrated prompt, round-by-round reasoning, tool results, and full unclipped output', () => {
+        const baseStep = partialResults.day_steps?.[0];
+        if (!baseStep) throw new Error('Expected base day step');
+        const tracedResults: BacktestResultData = {
+            ...partialResults,
+            day_steps: [
+                {
+                    ...baseStep,
+                    prompt: 'Hydrated Stage Prompt for 2026-08-03',
+                    full_output:
+                        'Full reasoning summary beyond 600 chars: [{"action": "EXIT", "ticker": "AMD"}]',
+                    trace: {
+                        forced_final_synthesis: true,
+                        rounds: [
+                            {
+                                round: 1,
+                                reasoning: 'Need to check AMD quote before exiting.',
+                                assistant_text: '',
+                                tool_calls: [
+                                    {
+                                        name: 'get_stock_quote',
+                                        args: { ticker: 'AMD' },
+                                        result: 'Ticker: AMD | Price: $148.20',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            ],
+        };
+
+        render(<BacktestTimelineBlock status="completed" results={tracedResults} />);
+
+        expect(screen.getByText('Hydrated Stage Prompt for 2026-08-03')).toBeInTheDocument();
+        expect(screen.getByText('Need to check AMD quote before exiting.')).toBeInTheDocument();
+        expect(screen.getByText('Ticker: AMD | Price: $148.20')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'Full reasoning summary beyond 600 chars: [{"action": "EXIT", "ticker": "AMD"}]',
+            ),
+        ).toBeInTheDocument();
+    });
 });

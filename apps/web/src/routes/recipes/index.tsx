@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchRecentBacktestJobsFn, fetchRecipeByIdFn } from '~/features/recipes/api/recipes-api';
+import { fetchLivePortfolioAndRunsFn } from '~/features/recipes/api/recipes-studio-api';
 import { RecipeStudioPage } from '~/features/recipes/pages/RecipeStudioPage';
 import { seo } from '~/lib/seo';
 
@@ -10,13 +11,18 @@ export const Route = createFileRoute('/recipes/')({
     }),
     loaderDeps: ({ search }) => ({ recipeId: search.recipeId }),
     loader: async ({ deps }) => {
-        const [initialStrategy, recentBacktests] = await Promise.all([
+        const [initialStrategy, recentBacktests, initialLiveState] = await Promise.all([
             deps.recipeId
                 ? fetchRecipeByIdFn({ data: { recipeId: deps.recipeId } }).catch(() => null)
                 : Promise.resolve(null),
             fetchRecentBacktestJobsFn().catch(() => []),
+            deps.recipeId
+                ? fetchLivePortfolioAndRunsFn({ data: { recipeId: deps.recipeId } }).catch(
+                      () => null,
+                  )
+                : Promise.resolve(null),
         ]);
-        return { initialStrategy, recentBacktests };
+        return { initialStrategy, recentBacktests, initialLiveState };
     },
     head: () => ({
         meta: [
@@ -31,6 +37,12 @@ export const Route = createFileRoute('/recipes/')({
 });
 
 function RouteComponent() {
-    const { initialStrategy, recentBacktests } = Route.useLoaderData();
-    return <RecipeStudioPage initialStrategy={initialStrategy} recentBacktests={recentBacktests} />;
+    const { initialStrategy, recentBacktests, initialLiveState } = Route.useLoaderData();
+    return (
+        <RecipeStudioPage
+            initialStrategy={initialStrategy}
+            recentBacktests={recentBacktests}
+            initialLiveState={initialLiveState}
+        />
+    );
 }

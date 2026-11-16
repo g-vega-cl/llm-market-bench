@@ -54,4 +54,29 @@ describe('BacktestTradesBlock', () => {
         const entryHeader = screen.getByRole('columnheader', { name: 'Entry' });
         expect(entryHeader).toHaveClass('text-right');
     });
+
+    it('renders open BUY positions with an OPEN badge alongside closed trades so BUY NVDA is never hidden', () => {
+        const withOpen: BacktestResultData = {
+            ...results,
+            open_positions: [
+                {
+                    ticker: 'AMD',
+                    shares: 10,
+                    entry_price: 150,
+                    entry_time: '2026-08-04 09:30 ET',
+                    cost_basis: 1500,
+                    current_price: 156,
+                    market_value: 1559.22,
+                    unrealized_pnl_net: 59.22,
+                    unrealized_return_pct: 3.95,
+                },
+            ],
+        };
+        render(<BacktestTradesBlock results={withOpen} />);
+
+        expect(screen.getByText('Executed Trades (2)')).toBeInTheDocument();
+        expect(screen.getByText('BUY AMD')).toBeInTheDocument();
+        expect(screen.getByText('OPEN')).toBeInTheDocument();
+        expect(screen.getByText('+$59.22')).toBeInTheDocument();
+    });
 });

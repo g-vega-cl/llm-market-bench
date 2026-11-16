@@ -201,7 +201,9 @@ def _pit_market_feeling(as_of_iso: str) -> str:
     sb = get_supabase_client()
     res = (
         sb.table("market_feeling")
-        .select("sentiment_label, market_direction, confidence_score, why_explanation, feeling_text, created_at")
+        .select(
+            "sentiment_label, market_direction, confidence_score, why_explanation, primary_concern, secondary_concern, created_at"
+        )
         .lte("created_at", as_of_iso)
         .order("created_at", desc=True)
         .limit(1)
@@ -211,11 +213,13 @@ def _pit_market_feeling(as_of_iso: str) -> str:
     if not rows:
         return f"No market feeling snapshot available up to {as_of_iso[:16]}."
     f = rows[0]
+    concerns = [c for c in (f.get("primary_concern"), f.get("secondary_concern")) if c]
+    concern_line = f"\nConcerns: {' | '.join(concerns)}" if concerns else ""
     return (
         f"=== POINT-IN-TIME MARKET FEELING (<= {as_of_iso[:16]}) ===\n"
         f"Sentiment: {f.get('sentiment_label', 'Neutral')} | Direction: {f.get('market_direction', 'N/A')} | "
         f"Confidence: {f.get('confidence_score', 'N/A')}%\n"
-        f"Rationale: {f.get('why_explanation') or f.get('feeling_text') or ''}"
+        f"Rationale: {f.get('why_explanation') or ''}{concern_line}"
     )
 
 
@@ -254,6 +258,22 @@ async def _pit_technicals(ticker: str, args: dict[str, Any], as_of_dt: datetime)
         cutoff_date=prior_day,
         strict_pit=True,
     )
+
+
+PIT_SAFE_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "get_stock_quote",
+        "get_price_history",
+        "get_technical_indicators",
+        "get_ticker_news",
+        "get_todays_news_menu",
+        "fetch_newsletter_content",
+        "search_past_memories",
+        "get_market_feeling",
+        "get_earnings_history",
+        "get_key_metrics",
+    }
+)
 
 
 def _build_pit_dispatch(

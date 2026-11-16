@@ -178,6 +178,28 @@ describe('saveRecipe', () => {
         expect(calls).toHaveLength(0);
     });
 
+    it('strips disallowed web_search tool from stage selected_tools before saving', async () => {
+        const { db, calls } = createMockDb({
+            'insert:strategy_recipes': { data: recipeRow() },
+        });
+        mockAdminDb = db;
+        const dirtyStrategy: PushStrategy = {
+            ...STARTER_RECIPES[0],
+            stages: [
+                {
+                    ...stage,
+                    selected_tools: ['get_stock_quote', 'web_search', 'run_stock_screener'],
+                },
+            ],
+        };
+
+        await saveRecipe(dirtyStrategy, 'user-1');
+
+        const insert = calls.find((call) => call.op === 'insert');
+        const graph = (insert?.payload as { graph_json: PushStrategy }).graph_json;
+        expect(graph.stages[0].selected_tools).toEqual(['get_stock_quote', 'run_stock_screener']);
+    });
+
     it('rejects a strategy that references prev_output and writes nothing', async () => {
         const { db, calls } = createMockDb({});
         mockAdminDb = db;

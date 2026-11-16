@@ -92,3 +92,40 @@ def test_snapshot_ending_capital_midpoint_includes_open_position_mtm():
     snap = acc.snapshot(days_completed=1, current_day="2026-04-06 12:30 ET", latest_prices={"NVDA": 120.0})
     assert snap["ending_capital_midpoint"] == 10500.0
     assert snap["total_return_pct_midpoint"] == 5.0
+
+
+def test_snapshot_enriches_open_positions_with_mtm_and_stores_full_trace():
+    acc = BacktestAccumulator(
+        window_dates=["2026-04-06 09:30 ET"],
+        starting_capital=10000.0,
+        slippage_bps=5.0,
+        concurrency_config={"max_open_trades": 4, "max_equity_pct_per_trade": 25.0},
+    )
+    long_output = "X" * 800 + '\n[{"action": "BUY", "ticker": "NVDA"}]'
+    trace = {
+        "rounds": [{"round": 1, "reasoning": "Strong momentum", "tool_calls": []}],
+        "forced_final_synthesis": False,
+    }
+    acc.settle_slot(
+        idx=0,
+        slot_label="2026-04-06 09:30 ET",
+        signals=[{"action": "BUY", "ticker": "NVDA"}],
+        slot_prices={"NVDA": 100.0},
+        tool_calls=['get_stock_quote({"ticker": "NVDA"})'],
+        output_text=long_output,
+        day_status="completed",
+        prompt="Hydrated slot prompt",
+        trace=trace,
+    )
+    snap = acc.snapshot(days_completed=1, current_day="2026-04-06 09:30 ET", latest_prices={"NVDA": 110.0})
+    pos = snap["open_positions"][0]
+    assert pos["ticker"] == "NVDA"
+    assert pos["current_price"] == 110.0
+    assert pos["market_value"] > 2700.0
+    assert pos["unrealized_pnl_net"] > 240.0
+    assert pos["unrealized_return_pct"] > 9.0
+
+    step = snap["day_steps"][0]
+    assert step["prompt"] == "Hydrated slot prompt"
+    assert step["full_output"] == long_output
+    assert step["trace"] == trace

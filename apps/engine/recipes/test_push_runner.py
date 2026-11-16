@@ -603,3 +603,69 @@ async def test_run_push_live_injects_held_positions_and_returns_updated_portfoli
     assert res["updated_portfolio"]["paper_positions"] == []
     assert len(res["updated_portfolio"]["paper_trades"]) == 1
     assert res["updated_portfolio"]["paper_cash"] > 10200.0
+
+
+@pytest.mark.asyncio
+async def test_run_push_live_and_backtest_propagate_full_trace_and_prompt():
+    strategy = _sample_strategy()
+    prices = [{"date": f"2026-03-{d:02d}", "ticker": "SPY", "close": 500.0} for d in range(1, 15)]
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=prices)
+    sample_trace = {
+        "rounds": [
+            {
+                "round": 1,
+                "reasoning": "Checking NVDA price",
+                "assistant_text": "",
+                "tool_calls": [{"name": "get_stock_quote", "args": {"ticker": "NVDA"}, "result": "$100.00"}],
+            }
+        ],
+        "forced_final_synthesis": False,
+    }
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        return {"output": "[]", "tool_calls": ['get_stock_quote({"ticker": "NVDA"})'], "trace": sample_trace}
+
+    with patch("recipes.push_runner._resolve_live_prices", new=AsyncMock(return_value={})):
+        live_res = await run_push_live(
+            strategy,
+            sb,
+            llm_caller=fake_llm,
+            as_of_utc=datetime(2026, 4, 7, 13, 30, tzinfo=UTC),
+        )
+    assert live_res["stages"][0]["trace"] == sample_trace
+
+    bars = [
+        {"ticker": "SPY", "bar_time_utc": f"{row['date'][:10]}T14:30:00+00:00", "open": 500.0, "close": 500.0}
+        for row in prices
+    ]
+    with patch(
+        "recipes.push_runner.fetch_intraday_bars_for_ticker", new=MagicMock(side_effect=AsyncMock(return_value=bars))
+    ):
+        bt_res = await run_push_backtest(strategy, sb, llm_caller=fake_llm, rng=random.Random(1))
+    assert bt_res["day_steps"][0]["trace"] == sample_trace
+    assert "Find momentum catalysts." in bt_res["day_steps"][0]["prompt"]
+
+
+@pytest.mark.asyncio
+async def test_run_push_live_enriches_open_positions_and_preserves_equity_identity():
+    strategy = _sample_strategy()
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=[])
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        return {"output": '[{"action": "BUY", "ticker": "NVDA"}]', "tool_calls": []}
+
+    with patch("recipes.push_runner._resolve_live_prices", new=AsyncMock(return_value={"NVDA": 200.0})):
+        res = await run_push_live(
+            strategy,
+            sb,
+            llm_caller=fake_llm,
+            as_of_utc=datetime(2026, 4, 7, 13, 30, tzinfo=UTC),
+        )
+
+    pos = res["updated_portfolio"]["paper_positions"][0]
+    assert pos["current_price"] == 200.0
+    assert "market_value" in pos
+    assert "unrealized_pnl_net" in pos
+    total_eq = res["updated_portfolio"]["paper_cash"] + pos["market_value"]
+    latest_curve_eq = res["updated_portfolio"]["paper_equity_curve"][-1]["equity"]
+    assert abs(total_eq - latest_curve_eq) < 0.05

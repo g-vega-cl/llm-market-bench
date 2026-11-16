@@ -9,7 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from '@llm-market-bench/ui-design-system';
-import type { BacktestResultData } from '../types';
+import type { BacktestResultData, OpenPositionRecord } from '../types';
 
 interface BacktestTradesBlockProps {
     results: BacktestResultData | null;
@@ -61,26 +61,65 @@ function TradeRow({ trade }: { trade: BacktestResultData['trades'][number] }) {
     );
 }
 
+function OpenTradeRow({ position }: { position: OpenPositionRecord }) {
+    const curPx = position.current_price ?? position.entry_price;
+    const costBasis = position.cost_basis ?? position.shares * position.entry_price;
+    const mktVal = position.market_value ?? position.shares * curPx;
+    const unrPnl = position.unrealized_pnl_net ?? mktVal - costBasis;
+    const unrPct =
+        position.unrealized_return_pct ?? (costBasis > 0 ? (unrPnl / costBasis) * 100 : 0);
+
+    return (
+        <TableRow>
+            <TableCell>
+                <Badge colorScheme="success" size="xs">
+                    BUY {position.ticker}
+                </Badge>
+            </TableCell>
+            <TableCell align="right">{position.entry_time}</TableCell>
+            <TableCell align="right">--</TableCell>
+            <TableCell numeric>${position.entry_price.toFixed(2)}</TableCell>
+            <TableCell numeric>${curPx.toFixed(2)}</TableCell>
+            <TableCell>
+                <Badge variant="soft" colorScheme="accent" size="xs">
+                    OPEN
+                </Badge>
+            </TableCell>
+            <TableCell numeric>
+                <span className={unrPct >= 0 ? 'text-success' : 'text-danger'}>
+                    {signedPct(unrPct)}
+                </span>
+            </TableCell>
+            <TableCell numeric>
+                <span className={unrPnl >= 0 ? 'text-success' : 'text-danger'}>
+                    {formatSignedDollar(unrPnl)}
+                </span>
+            </TableCell>
+        </TableRow>
+    );
+}
+
 export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
     const trades = results?.trades ?? [];
+    const openPositions = results?.open_positions ?? [];
     const skipped = results?.skipped_trades ?? [];
+    const totalShown = openPositions.length + trades.length;
 
     return (
         <Card padding="md" className="flex flex-col gap-4 min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
-                <SectionHeading gradient="catalyst">
-                    Executed Trades ({trades.length})
-                </SectionHeading>
+                <SectionHeading gradient="catalyst">Executed Trades ({totalShown})</SectionHeading>
                 <span className="text-xs font-normal text-boxel-muted">
-                    {skipped.length} skipped signals
+                    {openPositions.length} open • {trades.length} closed • {skipped.length} skipped
+                    signals
                 </span>
             </div>
 
-            {trades.length === 0 ? (
+            {totalShown === 0 ? (
                 <div className="voxel-trough bg-boxel-trough p-4">
                     <span className="text-xs font-normal text-boxel-muted">
-                        No trades executed yet — closed positions appear here once exited or settled
-                        at end of window.
+                        No trades executed yet — open buys and closed positions appear here as
+                        signals execute.
                     </span>
                 </div>
             ) : (
@@ -91,13 +130,19 @@ export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
                             <TableHead align="right">Entry Session</TableHead>
                             <TableHead align="right">Exit Session</TableHead>
                             <TableHead numeric>Entry</TableHead>
-                            <TableHead numeric>Exit</TableHead>
-                            <TableHead>Exit Reason</TableHead>
+                            <TableHead numeric>Exit / Mark</TableHead>
+                            <TableHead>Status / Reason</TableHead>
                             <TableHead numeric>Net Return</TableHead>
                             <TableHead numeric>Net P&amp;L</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
+                        {openPositions.map((pos) => (
+                            <OpenTradeRow
+                                key={`open-${pos.ticker}-${pos.entry_time}`}
+                                position={pos}
+                            />
+                        ))}
                         {(() => {
                             const seenTrades = new Map<string, number>();
                             return trades.map((t) => {

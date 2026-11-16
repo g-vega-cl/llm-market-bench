@@ -6,14 +6,17 @@ interface ToolPickerProps {
     onChange: (nextTools: string[]) => void;
 }
 
+const CURATED_TOOL_NAME_SET = new Set(CURATED_TOOLS.map((t) => t.name));
+
 export function ToolPicker({ selectedTools, onChange }: ToolPickerProps) {
-    const selectedSet = new Set(selectedTools);
+    const cleanSelected = selectedTools.filter((t) => CURATED_TOOL_NAME_SET.has(t));
+    const selectedSet = new Set(cleanSelected);
 
     const toggleTool = (toolName: string) => {
         if (selectedSet.has(toolName)) {
-            onChange(selectedTools.filter((t) => t !== toolName));
+            onChange(cleanSelected.filter((t) => t !== toolName));
         } else {
-            onChange([...selectedTools, toolName]);
+            onChange([...cleanSelected, toolName]);
         }
     };
 
@@ -23,7 +26,7 @@ export function ToolPicker({ selectedTools, onChange }: ToolPickerProps) {
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-foreground">Allowed LLM Tools</span>
                     <Badge variant="outline" size="sm">
-                        {selectedTools.length} / {CURATED_TOOLS.length}
+                        {cleanSelected.length} / {CURATED_TOOLS.length}
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2">
@@ -59,9 +62,16 @@ export function ToolPicker({ selectedTools, onChange }: ToolPickerProps) {
                                 aria-label={tool.label}
                             />
                             <div className="flex flex-col gap-1 min-w-0">
-                                <span className="text-xs font-bold text-foreground">
-                                    {tool.label}
-                                </span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-bold text-foreground">
+                                        {tool.label}
+                                    </span>
+                                    {tool.liveOnly && (
+                                        <Badge size="xs" variant="outline" colorScheme="warning">
+                                            Live only
+                                        </Badge>
+                                    )}
+                                </div>
                                 <span className="text-xs font-normal text-muted-foreground">
                                     {tool.description}
                                 </span>

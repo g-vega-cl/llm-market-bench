@@ -81,6 +81,34 @@ def compute_total_equity(state: PortfolioState, prices: dict[str, float] | None 
     return state.cash + holdings_value
 
 
+def enrich_open_positions(
+    state: PortfolioState,
+    prices: dict[str, float] | None = None,
+    *,
+    slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+) -> list[dict[str, Any]]:
+    """Attach canonical mark price, market value, and net-of-slippage unrealized P&L."""
+    px_map = {str(k).upper(): float(v) for k, v in (prices or {}).items() if v}
+    slip = slippage_bps / 10000.0
+    enriched: list[dict[str, Any]] = []
+    for raw in state.positions:
+        pos = dict(raw)
+        shares = float(pos.get("shares") or 0.0)
+        entry_px = float(pos.get("entry_price") or 0.0)
+        cost_basis = float(pos.get("cost_basis") or (shares * entry_px))
+        cur_px = _resolve_mark_price(state, pos, px_map)
+        market_val = shares * cur_px
+        net_liquidation = market_val * (1.0 - slip)
+        unr_pnl = net_liquidation - cost_basis
+        unr_pct = (unr_pnl / cost_basis) * 100.0 if cost_basis > 0 else 0.0
+        pos["current_price"] = round(cur_px, 4)
+        pos["market_value"] = round(market_val, 2)
+        pos["unrealized_pnl_net"] = round(unr_pnl, 2)
+        pos["unrealized_return_pct"] = round(unr_pct, 2)
+        enriched.append(pos)
+    return enriched
+
+
 def compute_unrealized_midpoint_pnl(state: PortfolioState, prices: dict[str, float] | None = None) -> float:
     """Compute zero-slippage unrealized P&L across open long positions."""
     px_map = {str(k).upper(): float(v) for k, v in (prices or {}).items() if v}

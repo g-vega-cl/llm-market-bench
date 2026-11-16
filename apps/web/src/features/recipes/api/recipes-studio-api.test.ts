@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
 import {
+    fetchLivePortfolioAndRuns,
     fetchRecipeAlerts,
     markAlertRead,
     previewStrategyPrompt,
@@ -86,5 +87,176 @@ describe('recipes-studio-api', () => {
 
         const hydrated = await previewStrategyPrompt(STARTER_RECIPES[0]);
         expect(Object.keys(hydrated).length).toBeGreaterThan(0);
+    });
+
+    it('fetches live paper portfolio enriched with mark prices and recent live_turn runs', async () => {
+        mockServerDb = {
+            from(table: string) {
+                const chain = {
+                    select: () => chain,
+                    eq: () => chain,
+                    in: () => chain,
+                    order: () => chain,
+                    limit: () =>
+                        Promise.resolve({
+                            data:
+                                table === 'recipe_intraday_bars'
+                                    ? [
+                                          {
+                                              ticker: 'NVDA',
+                                              bar_time_utc: '2026-11-15T15:30:00+00:00',
+                                              close: 220.0,
+                                          },
+                                      ]
+                                    : table === 'recipe_execution_queue'
+                                      ? [
+                                            {
+                                                id: 'live-1',
+                                                recipe_id: 'rec-1',
+                                                mode: 'live_turn',
+                                                status: 'completed',
+                                                progress_pct: 100,
+                                                result_json: {
+                                                    mode: 'live_turn',
+                                                    as_of_utc: '2026-11-15T15:30:00+00:00',
+                                                    stages: [],
+                                                    final_output: '[]',
+                                                    signals: [],
+                                                },
+                                                error_message: null,
+                                                created_at: '2026-11-15T15:30:00+00:00',
+                                            },
+                                        ]
+                                      : [],
+                            error: null,
+                        }),
+                    single: () =>
+                        Promise.resolve({
+                            data: {
+                                id: 'rec-1',
+                                user_id: 'user-1',
+                                is_public: false,
+                                is_template: false,
+                                is_live: true,
+                                paper_cash: 7500,
+                                paper_positions: [
+                                    {
+                                        ticker: 'NVDA',
+                                        side: 'LONG',
+                                        shares: 12.5,
+                                        entry_price: 200.0,
+                                        entry_time: '2026-11-14 09:30 ET',
+                                        cost_basis: 2500.0,
+                                    },
+                                ],
+                                paper_trades: [],
+                                paper_equity_curve: [],
+                            },
+                            error: null,
+                        }),
+                };
+                return chain;
+            },
+        };
+
+        const liveState = await fetchLivePortfolioAndRuns('rec-1', 'user-1');
+        expect(liveState.portfolio.cash).toBe(7500);
+        expect(liveState.portfolio.open_positions[0].current_price).toBe(220.0);
+        expect(liveState.portfolio.open_positions[0].unrealized_pnl_net).toBeGreaterThan(240);
+        expect(liveState.recentLiveRuns).toHaveLength(1);
+    });
+
+    it('prefers newer live signal_prices over older intraday bars and bounds bar query with order and limit', async () => {
+        let barOrderCalled = false;
+        let barLimitCalled = false;
+        let queueUserFilter: unknown = null;
+
+        mockServerDb = {
+            from(table: string) {
+                const chain = {
+                    select: () => chain,
+                    eq: (col: string, val: unknown) => {
+                        if (table === 'recipe_execution_queue' && col === 'user_id') {
+                            queueUserFilter = val;
+                        }
+                        return chain;
+                    },
+                    in: () => chain,
+                    order: () => {
+                        if (table === 'recipe_intraday_bars') barOrderCalled = true;
+                        return chain;
+                    },
+                    limit: () => {
+                        if (table === 'recipe_intraday_bars') {
+                            barLimitCalled = true;
+                            return Promise.resolve({
+                                data: [
+                                    {
+                                        ticker: 'NVDA',
+                                        bar_time_utc: '2026-11-10T15:30:00+00:00',
+                                        close: 190.0,
+                                    },
+                                ],
+                                error: null,
+                            });
+                        }
+                        return Promise.resolve({
+                            data: [
+                                {
+                                    id: 'live-fresh',
+                                    recipe_id: 'rec-pub',
+                                    mode: 'live_turn',
+                                    status: 'completed',
+                                    progress_pct: 100,
+                                    result_json: {
+                                        mode: 'live_turn',
+                                        as_of_utc: '2026-11-15T15:30:00+00:00',
+                                        signal_prices: { NVDA: 230.0 },
+                                        stages: [],
+                                        final_output: '[]',
+                                        signals: [],
+                                    },
+                                    error_message: null,
+                                    created_at: '2026-11-15T15:30:00+00:00',
+                                },
+                            ],
+                            error: null,
+                        });
+                    },
+                    single: () =>
+                        Promise.resolve({
+                            data: {
+                                id: 'rec-pub',
+                                user_id: 'author-99',
+                                is_public: true,
+                                is_template: false,
+                                paper_cash: 7500,
+                                paper_positions: [
+                                    {
+                                        ticker: 'NVDA',
+                                        shares: 10,
+                                        entry_price: 200.0,
+                                        entry_time: '2026-11-14 09:30 ET',
+                                        cost_basis: 2000.0,
+                                    },
+                                ],
+                                paper_trades: [],
+                            },
+                            error: null,
+                        }),
+                };
+                return chain;
+            },
+        };
+
+        const res = await fetchLivePortfolioAndRuns('rec-pub', 'viewer-1');
+        expect(barOrderCalled).toBe(true);
+        expect(barLimitCalled).toBe(true);
+        expect(queueUserFilter).toBe('author-99');
+        expect(res.portfolio.open_positions[0]?.current_price).toBe(230.0);
+        expect(res.portfolio.total_equity).toBe(9800.0);
+        expect(res.portfolio.cash + (res.portfolio.open_positions[0]?.market_value ?? 0)).toBe(
+            res.portfolio.total_equity,
+        );
     });
 });

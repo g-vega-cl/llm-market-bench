@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RecipeRunDetail } from '../types';
+import type { BacktestResultData, RecipeRunDetail } from '../types';
 import { RecipeBacktestPage } from './RecipeBacktestPage';
 
 const mockNavigate = vi.fn();
@@ -161,6 +161,41 @@ describe('RecipeBacktestPage', () => {
         // Edit in Studio link preserves recipeId
         const editLink = screen.getByRole('link', { name: /Edit in Studio/i });
         expect(editLink).toHaveAttribute('href', '/recipes?recipeId=rec-456');
+    });
+
+    it('renders Current Portfolio & Open Positions panel with cash, mark price, and unrealized P&L', () => {
+        const withOpen: RecipeRunDetail = {
+            ...sampleProcessingDetail,
+            job: {
+                ...sampleProcessingDetail.job,
+                result_json: {
+                    ...(sampleProcessingDetail.job.result_json as BacktestResultData),
+                    cash: 7500,
+                    total_equity: 10050,
+                    open_positions: [
+                        {
+                            ticker: 'MSFT',
+                            shares: 5.5,
+                            entry_price: 420.0,
+                            entry_time: '2026-08-04 09:30 ET',
+                            cost_basis: 2310.0,
+                            current_price: 430.0,
+                            market_value: 2363.82,
+                            unrealized_pnl_net: 53.82,
+                            unrealized_return_pct: 2.33,
+                        },
+                    ],
+                },
+            },
+        };
+        vi.mocked(fetchRecipeRunDetailFn).mockResolvedValue(withOpen);
+
+        renderWithQuery(<RecipeBacktestPage jobId="job-123" initialData={withOpen} />);
+
+        expect(screen.getByText(/Current Portfolio & Open Positions/i)).toBeInTheDocument();
+        expect(screen.getByText('$7,500.00')).toBeInTheDocument();
+        expect(screen.getAllByText('MSFT').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('+$53.82').length).toBeGreaterThanOrEqual(1);
     });
 
     it('renders queued state cleanly before window dates are selected', () => {

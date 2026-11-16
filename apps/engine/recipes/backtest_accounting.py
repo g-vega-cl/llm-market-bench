@@ -13,6 +13,7 @@ from recipes.portfolio_engine import (
     apply_portfolio_step,
     compute_total_equity,
     compute_unrealized_midpoint_pnl,
+    enrich_open_positions,
 )
 
 
@@ -47,6 +48,8 @@ class BacktestAccumulator:
         output_text: str,
         day_status: str,
         is_final_step: bool = False,
+        prompt: str | None = None,
+        trace: dict[str, Any] | None = None,
     ) -> None:
         """Apply one 3h slot turn of Long-Only BUY / EXIT signals and record step telemetry."""
         step_res = apply_portfolio_step(
@@ -67,6 +70,9 @@ class BacktestAccumulator:
                 "signals": list(signals),
                 "tool_calls": list(tool_calls),
                 "output_excerpt": output_text[:600],
+                "full_output": output_text,
+                "prompt": prompt or "",
+                "trace": trace or {"rounds": [], "forced_final_synthesis": False},
                 "day_pnl_net": step_res["realized_pnl_net"],
                 "trades_executed": trades_executed,
                 "trades_skipped": step_res["trades_skipped"],
@@ -74,6 +80,10 @@ class BacktestAccumulator:
                 "total_equity": step_res["total_equity"],
             }
         )
+
+    def _enrich_open_positions(self, latest_prices: dict[str, float] | None) -> list[dict[str, Any]]:
+        """Attach current mark price, market value, and unrealized net P&L to open positions."""
+        return enrich_open_positions(self.portfolio, latest_prices, slippage_bps=self.slippage_bps)
 
     def snapshot(
         self,
@@ -111,7 +121,7 @@ class BacktestAccumulator:
             "starting_capital": self.starting_capital,
             "cash": round(self.portfolio.cash, 2),
             "total_equity": round(current_equity, 2),
-            "open_positions": [dict(p) for p in self.portfolio.positions],
+            "open_positions": self._enrich_open_positions(latest_prices),
             "ending_capital_midpoint": round(self.starting_capital + total_mid_pnl, 2),
             "ending_capital_net": round(current_equity, 2),
             "total_return_pct_midpoint": total_mid_pct,

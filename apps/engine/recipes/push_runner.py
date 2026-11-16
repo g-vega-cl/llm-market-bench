@@ -28,6 +28,7 @@ from recipes.portfolio_engine import (
     DEFAULT_CONCURRENCY_CONFIG,
     PortfolioState,
     apply_portfolio_step,
+    enrich_open_positions,
     format_portfolio_prompt_block,
 )
 from recipes.push_hydrator import fetch_push_context_batch, hydrate_stage_prompt
@@ -151,6 +152,7 @@ async def run_push_live(
                 "prompt": prompt,
                 "output": output_text,
                 "tool_calls": res.get("tool_calls", []),
+                "trace": res.get("trace") or {"rounds": [], "forced_final_synthesis": False},
             }
         )
         prev_output = output_text
@@ -179,7 +181,7 @@ async def run_push_live(
         "signal_prices": live_prices,
         "updated_portfolio": {
             "paper_cash": round(portfolio.cash, 2),
-            "paper_positions": portfolio.positions,
+            "paper_positions": enrich_open_positions(portfolio, live_prices),
             "paper_trades": portfolio.trades,
             "paper_equity_curve": portfolio.equity_curve,
         },
@@ -318,6 +320,8 @@ async def run_push_backtest(
         )
 
         prev_output: str | None = None
+        last_prompt = ""
+        last_trace: dict[str, Any] | None = None
         day_tool_calls: list[str] = []
         day_status = "completed"
         for stage in strategy.stages:
@@ -329,6 +333,7 @@ async def run_push_backtest(
                 prev_output=prev_output,
                 portfolio_block=portfolio_block,
             )
+            last_prompt = prompt
             try:
                 res = await _invoke_llm(
                     caller,
@@ -340,6 +345,7 @@ async def run_push_backtest(
                 acc.llm_calls_made += 1
                 prev_output = str(res.get("output", ""))
                 day_tool_calls.extend(str(tc) for tc in (res.get("tool_calls") or []))
+                last_trace = res.get("trace")
             except Exception:
                 logger.exception("Stage %s failed on backtest slot %s", stage.id, slot["slot_label"])
                 prev_output = ""
@@ -366,6 +372,8 @@ async def run_push_backtest(
             output_text=prev_output or "",
             day_status=day_status,
             is_final_step=(idx == total_slots - 1),
+            prompt=last_prompt,
+            trace=last_trace,
         )
 
         steps_done = idx + 1

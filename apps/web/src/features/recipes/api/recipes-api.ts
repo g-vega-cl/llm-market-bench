@@ -55,13 +55,25 @@ export async function saveRecipe(
     assertSingleLlmStage(recipe);
     assertNoPrevOutputPlaceholder(recipe);
 
+    const sanitizedRecipe: PushStrategy = {
+        ...recipe,
+        stages: [
+            {
+                ...recipe.stages[0],
+                selected_tools: (recipe.stages[0].selected_tools ?? []).filter(
+                    (tool) => tool !== 'web_search',
+                ),
+            },
+        ],
+    };
+
     const db = getDbAdminClient();
 
     const basePayload = {
-        name: recipe.name,
-        description: recipe.description || '',
-        cadence: recipe.cadence,
-        graph_json: recipe,
+        name: sanitizedRecipe.name,
+        description: sanitizedRecipe.description || '',
+        cadence: sanitizedRecipe.cadence,
+        graph_json: sanitizedRecipe,
         is_public: isPublic,
         updated_at: new Date().toISOString(),
     };

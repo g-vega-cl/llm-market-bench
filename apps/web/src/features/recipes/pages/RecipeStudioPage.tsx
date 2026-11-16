@@ -3,11 +3,13 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { enqueueRecipeJobFn, getRecipeJobStatusFn, saveRecipeFn } from '../api/recipes-api';
 import {
+    fetchLivePortfolioAndRunsFn,
     fetchRecipeAlertsFn,
     markAlertReadFn,
     previewStrategyPromptFn,
     submitWaitlistPledgeFn,
 } from '../api/recipes-studio-api';
+import { LiveRunsBlock } from '../components/LiveRunsBlock';
 import { PromptVisualizer } from '../components/PromptVisualizer';
 import { RecipeAlertsInbox } from '../components/RecipeAlertsInbox';
 import { StageBuilder } from '../components/StageBuilder';
@@ -16,6 +18,8 @@ import { STARTER_RECIPES } from '../starter-templates';
 import type {
     BacktestResultData,
     ExecutionState,
+    LivePortfolioAndRuns,
+    LivePortfolioSnapshot,
     LiveRunResult,
     PreviewState,
     PushStrategy,
@@ -28,6 +32,7 @@ import type {
 interface RecipeStudioPageProps {
     initialStrategy?: PushStrategy | null;
     recentBacktests?: RecipeJobRecord[];
+    initialLiveState?: LivePortfolioAndRuns | null;
 }
 
 async function pollJobResults(jobId: string): Promise<ExecutionState> {
@@ -52,9 +57,38 @@ async function pollJobResults(jobId: string): Promise<ExecutionState> {
     };
 }
 
+function buildInlinePortfolio(liveRes: LiveRunResult): LivePortfolioSnapshot | null {
+    const updated = liveRes.updated_portfolio;
+    if (!updated) return null;
+    const enrichedPositions = updated.paper_positions.map((pos) => {
+        const curPx = liveRes.signal_prices?.[pos.ticker] ?? pos.current_price ?? pos.entry_price;
+        const mktVal = pos.market_value ?? Number((pos.shares * curPx).toFixed(2));
+        const costBasis = pos.cost_basis ?? pos.shares * pos.entry_price;
+        const netLiq = mktVal * (1 - 0.0005);
+        const unrPnl = pos.unrealized_pnl_net ?? netLiq - costBasis;
+        const unrPct =
+            pos.unrealized_return_pct ?? (costBasis > 0 ? (unrPnl / costBasis) * 100 : 0);
+        return {
+            ...pos,
+            current_price: Number(curPx.toFixed(4)),
+            market_value: mktVal,
+            unrealized_pnl_net: Number(unrPnl.toFixed(2)),
+            unrealized_return_pct: Number(unrPct.toFixed(2)),
+        };
+    });
+    const holdingsVal = enrichedPositions.reduce((sum, p) => sum + Number(p.market_value ?? 0), 0);
+    return {
+        cash: updated.paper_cash,
+        total_equity: Number((updated.paper_cash + holdingsVal).toFixed(2)),
+        open_positions: enrichedPositions,
+        trades: updated.paper_trades,
+    };
+}
+
 export function RecipeStudioPage({
     initialStrategy = null,
     recentBacktests = [],
+    initialLiveState = null,
 }: RecipeStudioPageProps = {}) {
     const navigate = useNavigate();
     const [strategy, setStrategy] = useState<PushStrategy>(
@@ -66,6 +100,7 @@ export function RecipeStudioPage({
 
     const [execution, setExecution] = useState<ExecutionState>({ status: 'idle' });
     const [preview, setPreview] = useState<PreviewState>({ status: 'template' });
+    const [liveState, setLiveState] = useState<LivePortfolioAndRuns | null>(initialLiveState);
 
     const [alerts, setAlerts] = useState<RecipeAlert[]>([]);
     const [showAlertsInbox, setShowAlertsInbox] = useState<boolean>(false);
@@ -76,6 +111,7 @@ export function RecipeStudioPage({
         setStrategy(STARTER_RECIPES[idx]);
         setExecution({ status: 'idle' });
         setPreview({ status: 'template' });
+        setLiveState(null);
     };
 
     const handleStageChange = (updated: StrategyStage) => {
@@ -94,6 +130,21 @@ export function RecipeStudioPage({
                 message: err instanceof Error ? err.message : 'Failed to preview live data',
             });
         }
+    };
+
+    const applyCompletedLiveRun = async (recipeId: string, result: LiveRunResult) => {
+        setExecution({ status: 'live_done', result });
+        const optimisticPortfolio = buildInlinePortfolio(result);
+        if (optimisticPortfolio) {
+            setLiveState((prev) => ({
+                portfolio: optimisticPortfolio,
+                recentLiveRuns: prev?.recentLiveRuns ?? [],
+            }));
+        }
+        const refreshed = await fetchLivePortfolioAndRunsFn({
+            data: { recipeId },
+        }).catch(() => null);
+        if (refreshed) setLiveState(refreshed);
     };
 
     const handleExecute = async (mode: 'live_turn' | 'backtest') => {
@@ -123,10 +174,14 @@ export function RecipeStudioPage({
             }
 
             if (job.result_json) {
-                setExecution({ status: 'live_done', result: job.result_json as LiveRunResult });
+                await applyCompletedLiveRun(saved.id, job.result_json as LiveRunResult);
                 return;
             }
             const finalState = await pollJobResults(job.id);
+            if (finalState.status === 'live_done') {
+                await applyCompletedLiveRun(saved.id, finalState.result);
+                return;
+            }
             setExecution(finalState);
         } catch (err) {
             setExecution({
@@ -280,36 +335,11 @@ export function RecipeStudioPage({
                     </div>
                 )}
 
-                {execution.status === 'live_done' && (
-                    <div className="flex flex-col gap-3 border border-border bg-boxel-surface p-4 rounded-none">
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-bold text-foreground">
-                                Live Run Output ({execution.result.as_of_utc.slice(0, 16)})
-                            </span>
-                            <Badge variant="outline" size="sm">
-                                {execution.result.signals.length} Signals
-                            </Badge>
-                        </div>
-                        {execution.result.stages.map((st) => (
-                            <div
-                                key={st.stage_id}
-                                className="flex flex-col gap-2 border border-border bg-boxel-canvas p-3 rounded-none"
-                            >
-                                <span className="text-xs font-bold text-foreground">
-                                    {st.title}
-                                </span>
-                                {st.tool_calls.length > 0 && (
-                                    <span className="text-xs font-normal text-muted-foreground">
-                                        Tools: {st.tool_calls.join(', ')}
-                                    </span>
-                                )}
-                                <pre className="text-xs font-mono font-normal text-foreground whitespace-pre-wrap break-words">
-                                    {st.output}
-                                </pre>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <LiveRunsBlock
+                    portfolio={liveState?.portfolio ?? null}
+                    recentLiveRuns={liveState?.recentLiveRuns ?? []}
+                    latestInlineRun={execution.status === 'live_done' ? execution.result : null}
+                />
 
                 {showAlertsInbox && (
                     <RecipeAlertsInbox

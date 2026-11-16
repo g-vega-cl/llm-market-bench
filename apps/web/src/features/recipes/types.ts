@@ -73,6 +73,7 @@ export interface CuratedToolOption {
     name: string;
     label: string;
     description: string;
+    liveOnly?: boolean;
 }
 
 export const CURATED_TOOLS: CuratedToolOption[] = [
@@ -100,6 +101,7 @@ export const CURATED_TOOLS: CuratedToolOption[] = [
         name: 'run_stock_screener',
         label: 'Stock Screener',
         description: 'Filter universe by market cap, beta, sector, volume',
+        liveOnly: true,
     },
     {
         name: 'get_todays_news_menu',
@@ -130,11 +132,6 @@ export const CURATED_TOOLS: CuratedToolOption[] = [
         name: 'get_earnings_history',
         label: 'Earnings History',
         description: 'Historical EPS beats, misses, and surprises',
-    },
-    {
-        name: 'web_search',
-        label: 'Web Search',
-        description: 'Live web search for breaking macro/company news',
     },
 ];
 
@@ -194,6 +191,37 @@ export interface SkippedTradeRecord {
     headline?: string;
 }
 
+export interface LLMTraceToolCall {
+    name: string;
+    args: Record<string, unknown>;
+    result: string;
+}
+
+export interface LLMTraceRound {
+    round: number;
+    reasoning: string;
+    assistant_text: string;
+    tool_calls: LLMTraceToolCall[];
+}
+
+export interface LLMExecutionTrace {
+    rounds: LLMTraceRound[];
+    forced_final_synthesis?: boolean;
+}
+
+export interface OpenPositionRecord {
+    ticker: string;
+    side?: string;
+    shares: number;
+    entry_price: number;
+    entry_time: string;
+    cost_basis?: number;
+    current_price?: number;
+    market_value?: number;
+    unrealized_pnl_net?: number;
+    unrealized_return_pct?: number;
+}
+
 export interface BacktestDayStep {
     day: string;
     day_index: number;
@@ -201,6 +229,9 @@ export interface BacktestDayStep {
     signals: { action: string; ticker: string }[];
     tool_calls: string[];
     output_excerpt: string;
+    full_output?: string;
+    prompt?: string;
+    trace?: LLMExecutionTrace | null;
     day_pnl_net: number;
     trades_executed: number;
     trades_skipped: number;
@@ -218,12 +249,7 @@ export interface BacktestResultData {
     ending_capital_net?: number;
     cash?: number;
     total_equity?: number;
-    open_positions?: {
-        ticker: string;
-        shares: number;
-        entry_price: number;
-        entry_time: string;
-    }[];
+    open_positions?: OpenPositionRecord[];
     total_return_pct_midpoint: number;
     total_return_pct_net: number;
     total_trades: number;
@@ -268,14 +294,36 @@ export interface LiveStageOutput {
     prompt: string;
     output: string;
     tool_calls: string[];
+    trace?: LLMExecutionTrace | null;
 }
 
 export interface LiveRunResult {
     mode: 'live_turn';
     as_of_utc: string;
+    slot_label?: string;
     stages: LiveStageOutput[];
     final_output: string;
     signals: { action: string; ticker: string }[];
+    executed_signals?: { action: string; ticker: string; price?: number }[];
+    signal_prices?: Record<string, number>;
+    updated_portfolio?: {
+        paper_cash: number;
+        paper_positions: OpenPositionRecord[];
+        paper_trades: CompletedTradeRecord[];
+        paper_equity_curve: { time: string; equity: number }[];
+    };
+}
+
+export interface LivePortfolioSnapshot {
+    cash: number;
+    total_equity: number;
+    open_positions: OpenPositionRecord[];
+    trades: CompletedTradeRecord[];
+}
+
+export interface LivePortfolioAndRuns {
+    portfolio: LivePortfolioSnapshot;
+    recentLiveRuns: RecipeJobRecord[];
 }
 
 export type ExecutionState =

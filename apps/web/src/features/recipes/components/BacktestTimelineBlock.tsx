@@ -1,6 +1,7 @@
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useEffect, useState } from 'react';
 import type { BacktestDayStep, BacktestResultData, RecipeJobStatus } from '../types';
+import { TraceInspectorBlock } from './TraceInspectorBlock';
 
 interface BacktestTimelineBlockProps {
     status: RecipeJobStatus;
@@ -129,40 +130,13 @@ function DayInspector({
             </div>
 
             {selectedStep ? (
-                <div className="flex flex-col gap-2 min-w-0">
-                    {selectedStep.tool_calls.length > 0 && (
-                        <div className="flex flex-col gap-2 min-w-0">
-                            <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted">
-                                Tools Called
-                            </span>
-                            <div className="flex flex-col gap-2">
-                                {(() => {
-                                    const seen = new Map<string, number>();
-                                    return selectedStep.tool_calls.map((tc) => {
-                                        const count = (seen.get(tc) ?? 0) + 1;
-                                        seen.set(tc, count);
-                                        return (
-                                            <code
-                                                key={`${tc}#${count}`}
-                                                className="text-xs font-normal font-mono text-info break-all"
-                                            >
-                                                {tc}
-                                            </code>
-                                        );
-                                    });
-                                })()}
-                            </div>
-                        </div>
-                    )}
-                    <div className="flex flex-col gap-2 min-w-0">
-                        <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted">
-                            Model Decision Output
-                        </span>
-                        <pre className="text-xs font-normal font-mono text-boxel-ink whitespace-pre-wrap break-words">
-                            {selectedStep.output_excerpt || '(Empty model output)'}
-                        </pre>
-                    </div>
-                </div>
+                <TraceInspectorBlock
+                    prompt={selectedStep.prompt}
+                    trace={selectedStep.trace}
+                    toolCalls={selectedStep.tool_calls}
+                    fullOutput={selectedStep.full_output}
+                    outputExcerpt={selectedStep.output_excerpt}
+                />
             ) : (
                 <p className="text-xs font-normal text-boxel-muted">
                     Select any settled session tile above to inspect its tool calls and decision

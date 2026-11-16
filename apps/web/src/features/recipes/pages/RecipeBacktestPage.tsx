@@ -7,6 +7,7 @@ import { enqueueRecipeJobFn, fetchRecipeRunDetailFn } from '../api/recipes-api';
 import { BacktestTelemetryBlock } from '../components/BacktestTelemetryBlock';
 import { BacktestTimelineBlock } from '../components/BacktestTimelineBlock';
 import { BacktestTradesBlock } from '../components/BacktestTradesBlock';
+import { RecipePortfolioBlock } from '../components/RecipePortfolioBlock';
 import type {
     BacktestResultData,
     RecipeJobRecord,
@@ -136,26 +137,12 @@ function BacktestHeader({
     );
 }
 
-export function RecipeBacktestPage({ jobId, initialData }: RecipeBacktestPageProps) {
-    const navigate = useNavigate();
-    const [isRerunning, setIsRerunning] = useState(false);
-    const [rerunError, setRerunError] = useState<string | null>(null);
-    const [mountedAt] = useState(() => Date.now());
-
-    const query = useQuery({
-        queryKey: ['recipe-backtest-run', jobId],
-        queryFn: () => fetchRecipeRunDetailFn({ data: { jobId } }),
-        initialData: initialData ?? undefined,
-        initialDataUpdatedAt: initialData ? mountedAt : undefined,
-        staleTime: 1000,
-        refetchInterval: (q) => {
-            const st = q.state.data?.job.status;
-            return st === 'pending' || st === 'processing' ? 1500 : false;
-        },
-    });
-
-    const detail = query.data;
-    if (!detail && (query.isPending || query.isFetching)) {
+function renderUnavailableBacktestState(
+    detail: RecipeRunDetail | undefined,
+    isLoading: boolean,
+    jobId: string,
+) {
+    if (!detail && isLoading) {
         return (
             <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
                 <PageLayout maxWidth="xl" className="flex flex-col gap-6">
@@ -219,6 +206,35 @@ export function RecipeBacktestPage({ jobId, initialData }: RecipeBacktestPagePro
         );
     }
 
+    return null;
+}
+
+export function RecipeBacktestPage({ jobId, initialData }: RecipeBacktestPageProps) {
+    const navigate = useNavigate();
+    const [isRerunning, setIsRerunning] = useState(false);
+    const [rerunError, setRerunError] = useState<string | null>(null);
+    const [mountedAt] = useState(() => Date.now());
+
+    const query = useQuery({
+        queryKey: ['recipe-backtest-run', jobId],
+        queryFn: () => fetchRecipeRunDetailFn({ data: { jobId } }),
+        initialData: initialData ?? undefined,
+        initialDataUpdatedAt: initialData ? mountedAt : undefined,
+        staleTime: 1000,
+        refetchInterval: (q) => {
+            const st = q.state.data?.job.status;
+            return st === 'pending' || st === 'processing' ? 1500 : false;
+        },
+    });
+
+    const detail = query.data;
+    const guardView = renderUnavailableBacktestState(
+        detail,
+        query.isPending || query.isFetching,
+        jobId,
+    );
+    if (guardView || !detail) return guardView;
+
     const { job } = detail;
     const isRunning = job.status === 'pending' || job.status === 'processing';
     const results = extractBacktestResults(job);
@@ -263,6 +279,17 @@ export function RecipeBacktestPage({ jobId, initialData }: RecipeBacktestPagePro
 
                 <BacktestTimelineBlock status={job.status} results={results} />
                 <BacktestTelemetryBlock results={results} isRunning={isRunning} />
+                <RecipePortfolioBlock
+                    title="Current Portfolio & Open Positions"
+                    cash={results?.cash ?? results?.starting_capital ?? 10000}
+                    totalEquity={
+                        results?.total_equity ??
+                        results?.ending_capital_net ??
+                        results?.starting_capital ??
+                        10000
+                    }
+                    openPositions={results?.open_positions ?? []}
+                />
                 <BacktestTradesBlock results={results} />
             </PageLayout>
         </div>

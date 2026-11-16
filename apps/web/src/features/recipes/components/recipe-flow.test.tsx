@@ -63,10 +63,10 @@ describe('StageBuilder & PromptVisualizer', () => {
         expect(screen.getAllByText('PROMPT BLOCK').length).toBe(2);
 
         fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
-        expect(screen.getByText('0 / 12')).toBeInTheDocument();
+        expect(screen.getByText('0 / 11')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Select All' }));
-        expect(screen.getByText('12 / 12')).toBeInTheDocument();
+        expect(screen.getByText('11 / 11')).toBeInTheDocument();
     });
 });
 

@@ -355,7 +355,9 @@ export type ExecutionState =
     | { status: 'idle' }
     | { status: 'running'; mode: 'live_turn' | 'backtest' }
     | { status: 'live_done'; result: LiveRunResult }
-    | { status: 'error'; message: string };
+    | { status: 'error'; kind: 'navigation'; message: string; backtestJobId: string }
+    | { status: 'error'; kind: 'quota'; message: string; backtestJobId?: string }
+    | { status: 'error'; kind: 'execution'; message: string };
 
 export type PreviewState =
     | { status: 'template' }

@@ -13,14 +13,14 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/web/src/routes/__root.tsx` | 16 | 9 | 56.2% | 339 | 144 | **CRITICAL** |
+| `apps/web/src/routes/__root.tsx` | 16 | 9 | 56.2% | 344 | 144 | **CRITICAL** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 20 | 6 | 30.0% | 361 | 120 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 19 | 5 | 26.3% | 341 | 95 | **HIGH** |
-| `apps/web/src/routes/-__root.test.tsx` | 13 | 7 | 53.8% | 479 | 91 | **HIGH** |
-| `apps/engine/tasks/daily_predictor.py` | 20 | 4 | 20.0% | 674 | 80 | **HIGH** |
-| `apps/engine/tasks/newsletter_generator.py` | 13 | 6 | 46.2% | 428 | 78 | **HIGH** |
-| `apps/engine/tests/test_newsletter_generator.py` | 12 | 5 | 41.7% | 603 | 60 | **HIGH** |
+| `apps/web/src/routes/-__root.test.tsx` | 13 | 7 | 53.8% | 519 | 91 | **HIGH** |
+| `apps/engine/tasks/daily_predictor.py` | 19 | 4 | 21.1% | 674 | 76 | **HIGH** |
+| `apps/engine/tasks/newsletter_generator.py` | 12 | 6 | 50.0% | 428 | 72 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 14 | 4 | 28.6% | 436 | 56 | **HIGH** |
+| `apps/engine/tests/test_newsletter_generator.py` | 11 | 5 | 45.5% | 603 | 55 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 13 | 4 | 30.8% | 328 | 52 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 15 | 3 | 20.0% | 301 | 45 | **HIGH** |
 | `apps/engine/tests/test_workflow_schedule.py` | 11 | 4 | 36.4% | 306 | 44 | **HIGH** |
@@ -38,10 +38,10 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/web/src/routes/-__root.test.tsx` | `apps/web/src/routes/__root.tsx` | 12 | 92% |
 | `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 12 | 92% |
 | `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 10 | 83% |
-| `apps/engine/tasks/newsletter_generator.py` | `apps/engine/tests/test_newsletter_generator.py` | 10 | 83% |
 | `apps/web/src/features/home/components/LiveAgentConsole.test.tsx` | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 9 | 100% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/tests/test_proxy.py` | 9 | 90% |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 9 | 82% |
+| `apps/engine/tasks/newsletter_generator.py` | `apps/engine/tests/test_newsletter_generator.py` | 9 | 82% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/router.py` | 8 | 89% |
 | `apps/free_llm_proxy/router.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 8 | 89% |
 | `apps/web/src/features/home/api/fetch-intraday-tape.test.ts` | `apps/web/src/features/home/api/fetch-intraday-tape.ts` | 7 | 100% |

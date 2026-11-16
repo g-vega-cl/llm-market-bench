@@ -3,14 +3,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
 import { fetchLivePortfolioAndRunsFn } from '../api/recipes-studio-api';
+import * as liveStudioHelpers from '../utils/live-studio-helpers';
 import { RecipeStudioPage } from './RecipeStudioPage';
 
 const mockNavigate = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-    Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-        <a href={to}>{children}</a>
-    ),
+    Link: ({
+        children,
+        to,
+        params,
+        className,
+    }: {
+        children: React.ReactNode;
+        to: string;
+        params?: Record<string, string>;
+        className?: string;
+    }) => {
+        const href = params
+            ? Object.entries(params).reduce((acc, [key, val]) => acc.replace(`$${key}`, val), to)
+            : to;
+        return (
+            <a href={href} className={className}>
+                {children}
+            </a>
+        );
+    },
     useNavigate: () => mockNavigate,
 }));
 
@@ -294,5 +312,147 @@ describe('RecipeStudioPage', () => {
                 screen.getByRole('button', { name: /Scheduled Live: ON \(3x\/d\)/i }),
             ).toBeInTheDocument();
         });
+    });
+
+    it('surfaces quota errors above the quota strip with danger tokens, logs warning, and offers Waitlist CTA', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.mocked(saveRecipeFn).mockResolvedValue({ id: 'rec-quota-1' } as never);
+        vi.mocked(enqueueRecipeJobFn).mockRejectedValue(
+            new Error(
+                'Daily backtest limit reached (2/2 in 24h). Come back tomorrow or request higher capacity via Waitlist.',
+            ),
+        );
+
+        render(
+            <RecipeStudioPage
+                initialQuota={{
+                    tier: 'beta_starter',
+                    activeBacktests: 0,
+                    maxConcurrentBacktests: 1,
+                    backtestsLast24h: 2,
+                    dailyBacktestLimit: 2,
+                    liveTurnsLast24h: 0,
+                    dailyLiveTurnLimit: 3,
+                    activeLiveRecipes: 0,
+                    maxLiveRecipes: 1,
+                    globalPendingBacktests: 0,
+                    globalQueueCap: 20,
+                }}
+            />,
+        );
+
+        const backtestBtn = screen.getByRole('button', { name: /Backtest \(0\/2 Left\)/i });
+        fireEvent.click(backtestBtn);
+
+        await waitFor(() => {
+            const alert = screen.getByRole('alert');
+            expect(alert).toHaveTextContent(/Daily backtest limit reached \(2\/2 in 24h\)/i);
+            expect(alert.className).toContain('border-danger');
+            expect(alert.className).toContain('text-danger');
+            const quotaStrip = screen.getByTestId('recipe-quota-strip');
+            expect(
+                alert.compareDocumentPosition(quotaStrip) & Node.DOCUMENT_POSITION_FOLLOWING,
+            ).toBeTruthy();
+        });
+
+        expect(warnSpy).toHaveBeenCalled();
+        expect(errorSpy).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole('button', { name: /Request Capacity/i }));
+        expect(screen.getByText(/Early Supporter Pledge/i)).toBeInTheDocument();
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+    });
+
+    it('preserves fallback backtest link across quota retry and never attaches live_turn jobId', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.mocked(saveRecipeFn).mockResolvedValue({ id: 'rec-nav-1' } as never);
+        vi.mocked(enqueueRecipeJobFn).mockResolvedValueOnce({
+            id: 'job-nav-999',
+            status: 'pending',
+        } as never);
+        mockNavigate.mockRejectedValueOnce(new Error('Navigation aborted'));
+
+        render(<RecipeStudioPage />);
+        fireEvent.click(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i }));
+
+        await waitFor(() => {
+            const alert = screen.getByRole('alert');
+            expect(alert).toHaveTextContent('Navigation aborted');
+            const link = screen.getByRole('link', { name: /Open Backtest Run/i });
+            expect(link).toHaveAttribute('href', '/recipes/backtest/job-nav-999');
+        });
+        expect(errorSpy).toHaveBeenCalled();
+
+        // Retry hits concurrent backtest quota limit: fallback link must remain visible
+        vi.mocked(enqueueRecipeJobFn).mockRejectedValueOnce(
+            new Error('Concurrent backtest limit reached (1/1 active).'),
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i }));
+
+        await waitFor(() => {
+            const alert = screen.getByRole('alert');
+            expect(alert).toHaveTextContent('Concurrent backtest limit reached');
+            expect(screen.getByRole('link', { name: /Open Backtest Run/i })).toHaveAttribute(
+                'href',
+                '/recipes/backtest/job-nav-999',
+            );
+        });
+
+        // A live_turn failure after enqueue must never attach a backtest link
+        const pollSpy = vi
+            .spyOn(liveStudioHelpers, 'pollJobResults')
+            .mockRejectedValueOnce(new Error('Live poll crashed'));
+        vi.mocked(enqueueRecipeJobFn).mockResolvedValueOnce({
+            id: 'live-err-1',
+            status: 'pending',
+        } as never);
+        fireEvent.click(screen.getByRole('button', { name: /Run Live/i }));
+
+        await waitFor(() => {
+            const alert = screen.getByRole('alert');
+            expect(alert).toHaveTextContent('Live poll crashed');
+            expect(
+                screen.queryByRole('link', { name: /Open Backtest Run/i }),
+            ).not.toBeInTheDocument();
+        });
+
+        pollSpy.mockRestore();
+        errorSpy.mockRestore();
+        warnSpy.mockRestore();
+    });
+
+    it('surfaces Schedule Live errors in a single top alert without keeping stale execution errors', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.mocked(saveRecipeFn).mockResolvedValue({
+            id: 'rec-sched-err',
+            name: 'Schedule Error Recipe',
+            cadence: '3h',
+        } as never);
+        vi.mocked(enqueueRecipeJobFn).mockRejectedValueOnce(new Error('Prior backtest error'));
+        vi.mocked(toggleLiveScheduleFn).mockRejectedValueOnce(
+            new Error('Scheduled live limit reached (1/1). Pause your existing live recipe first.'),
+        );
+
+        render(<RecipeStudioPage />);
+
+        fireEvent.click(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i }));
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toHaveTextContent('Prior backtest error');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /Schedule Live \(3x\/d\)/i }));
+        await waitFor(() => {
+            const alerts = screen.getAllByRole('alert');
+            expect(alerts).toHaveLength(1);
+            expect(alerts[0]).toHaveTextContent(/Scheduled live limit reached \(1\/1\)/i);
+            expect(screen.getByRole('button', { name: /Request Capacity/i })).toBeInTheDocument();
+        });
+
+        expect(warnSpy).toHaveBeenCalled();
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
     });
 });

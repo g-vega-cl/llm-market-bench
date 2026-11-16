@@ -1,6 +1,95 @@
-import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
-import type { RecipeSummaryItem, RecipeUserQuotaStatus } from '../types';
+import type {
+    BacktestResultData,
+    ExecutionState,
+    RecipeJobRecord,
+    RecipeSummaryItem,
+    RecipeUserQuotaStatus,
+} from '../types';
+import { isQuotaLimitMessage } from '../utils/live-studio-helpers';
+
+export function resolveBacktestButtonLabel(
+    isStarting: boolean,
+    quotaStatus?: RecipeUserQuotaStatus | null,
+): string {
+    if (isStarting) return 'Starting Backtest...';
+    if (quotaStatus && quotaStatus.activeBacktests >= quotaStatus.maxConcurrentBacktests) {
+        return `Backtest (${quotaStatus.activeBacktests} Active)`;
+    }
+    if (quotaStatus && quotaStatus.backtestsLast24h >= quotaStatus.dailyBacktestLimit) {
+        return `Backtest (0/${quotaStatus.dailyBacktestLimit} Left)`;
+    }
+    return '▶ Backtest (Random 2W)';
+}
+
+export function RecipeExecutionAlert({
+    message,
+    kind,
+    backtestJobId,
+    onRequestCapacity,
+}: {
+    message: string;
+    kind: 'quota' | 'navigation' | 'execution';
+    backtestJobId?: string;
+    onRequestCapacity: () => void;
+}) {
+    return (
+        <div
+            role="alert"
+            className="border border-danger bg-boxel-surface p-3 flex flex-wrap items-center justify-between gap-2 text-xs font-normal text-danger rounded-none min-w-0"
+        >
+            <span className="min-w-0 break-words">{message}</span>
+            <div className="flex flex-wrap items-center gap-2 shrink-0 max-w-full min-w-0">
+                {backtestJobId && (
+                    <Link
+                        to="/recipes/backtest/$jobId"
+                        params={{ jobId: backtestJobId }}
+                        className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border border-boxel-bevel-hi bg-boxel-elevated text-boxel-ink rounded-none"
+                    >
+                        Open Backtest Run →
+                    </Link>
+                )}
+                {kind === 'quota' && (
+                    <Button size="sm" variant="outline" onClick={onRequestCapacity}>
+                        Request Capacity
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+export function StudioAlertSlot({
+    execution,
+    scheduleError,
+    onRequestCapacity,
+}: {
+    execution: ExecutionState;
+    scheduleError: string | null;
+    onRequestCapacity: () => void;
+}) {
+    if (execution.status === 'error') {
+        return (
+            <RecipeExecutionAlert
+                message={execution.message}
+                kind={execution.kind}
+                backtestJobId={execution.kind === 'execution' ? undefined : execution.backtestJobId}
+                onRequestCapacity={onRequestCapacity}
+            />
+        );
+    }
+    if (scheduleError) {
+        return (
+            <RecipeExecutionAlert
+                message={scheduleError}
+                kind={isQuotaLimitMessage(scheduleError) ? 'quota' : 'execution'}
+                onRequestCapacity={onRequestCapacity}
+            />
+        );
+    }
+    return null;
+}
 
 interface RecipeGuideAndQuotaBlockProps {
     quotaStatus?: RecipeUserQuotaStatus | null;
@@ -44,7 +133,7 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
                 </div>
                 <span className="whitespace-nowrap font-mono tabular-nums text-boxel-muted">
                     Global Backtest Queue: {quotaStatus?.globalPendingBacktests ?? 0}/
-                    {quotaStatus?.globalQueueCap ?? 20}
+                    {quotaStatus?.globalQueueCap ?? 20} (all users)
                 </span>
             </div>
 
@@ -149,6 +238,39 @@ export function SavedRecipesStrip({
                                 LIVE 3x/d
                             </Badge>
                         )}
+                    </Link>
+                );
+            })}
+        </div>
+    );
+}
+
+export function RecentBacktestsStrip({ recentBacktests }: { recentBacktests: RecipeJobRecord[] }) {
+    if (recentBacktests.length === 0) return null;
+    return (
+        <div className="flex flex-wrap items-center gap-2 voxel-trough bg-boxel-trough p-3">
+            <span className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                Recent Backtests:
+            </span>
+            {recentBacktests.slice(0, 5).map((run) => {
+                const bt =
+                    run.result_json &&
+                    (!('mode' in run.result_json) || run.result_json.mode !== 'live_turn')
+                        ? (run.result_json as BacktestResultData)
+                        : null;
+                const label =
+                    run.status === 'completed' && bt && typeof bt.total_return_pct_net === 'number'
+                        ? `${bt.total_return_pct_net >= 0 ? '+' : ''}${bt.total_return_pct_net.toFixed(2)}%`
+                        : `${run.status.toUpperCase()} (${run.progress_pct}%)`;
+                return (
+                    <Link
+                        key={run.id}
+                        to="/recipes/backtest/$jobId"
+                        params={{ jobId: run.id }}
+                        className="voxel-btn inline-flex items-center gap-2 px-2 py-1 text-xs font-mono border border-boxel-bevel-hi bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated rounded-none"
+                    >
+                        <span>{run.id.slice(0, 8)}</span>
+                        <span className="text-accent">{label}</span>
                     </Link>
                 );
             })}

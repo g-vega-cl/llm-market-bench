@@ -307,7 +307,15 @@ export function RootDocument({ children }: { children: ReactNode }) {
                                   'https://us.i.posthog.com',
                         ui_host: 'https://us.posthog.com',
                         defaults: '2025-05-24',
-                        capture_exceptions: true,
+                        capture_exceptions: {
+                            capture_unhandled_errors: true,
+                            capture_unhandled_rejections: true,
+                            capture_console_errors: true,
+                        },
+                        enable_recording_console_log: true,
+                        logs: {
+                            captureConsoleLogs: true,
+                        },
                         debug: import.meta.env.DEV,
                         session_recording: {
                             maskAllInputs: true,

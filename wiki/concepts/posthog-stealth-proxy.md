@@ -38,7 +38,7 @@ Server-side tracking (`posthog-server.ts`) connects directly to `https://us.i.po
 
 - **Deferred Declarative Initialization**: Initializing PostHog via the declarative component wrapper `<PostHogProvider apiKey={...} options={{ ... }}>` inside `__root.tsx` ensures the SDK is lazy-loaded out of the critical rendering path. As documented in [[concepts/performance-auditing-strategy]], top-level synchronous initialization was avoided because it bundled `posthog-js` into `main.js` and caused Lighthouse unused JavaScript penalties.
 - **SSR & Hydration Safety**: The provider dynamically manages client-side activation without emitting tracking script tags in the initial server-rendered HTML payloads, protecting FCP and LCP scores.
-- **Session Recording & Privacy Masking**: Session recording is enabled with strict client-side privacy controls (`session_recording: { maskAllInputs: true, maskTextSelector: '[data-ph-mask]' }`). The recording chunk (`recorder.js`) is loaded lazily via the same-origin asset rewrite proxy (`/p/static/*`) without blocking initial paint. Surveys remain disabled (`disable_surveys: true`) to strip unused survey code.
+- **Session Recording, Console Logs & Privacy Masking**: Session recording is enabled with strict client-side privacy controls (`session_recording: { maskAllInputs: true, maskTextSelector: '[data-ph-mask]' }`) alongside `enable_recording_console_log: true` and `logs: { captureConsoleLogs: true }` so browser console output is both attached to session replays and captured into PostHog Logs. Structured exception capture is enabled via the `capture_exceptions` object (`capture_unhandled_errors: true`, `capture_unhandled_rejections: true`, `capture_console_errors: true`) rather than the legacy boolean, so `console.error` calls are hoisted into `$exception` events. The recording chunk (`recorder.js`) is loaded lazily via the same-origin asset rewrite proxy (`/p/static/*`) without blocking initial paint. Surveys remain disabled (`disable_surveys: true`) to strip unused survey code.
 - **Proxy Caching Override Awareness**: Dynamic feature scripts (like `dead-clicks-autocapture.js?v=1.434.17`) and recording assets are fetched via the same-origin `/p/static/*` rewrite proxy. Because Netlify forwards the upstream headers of the proxied destination, the custom `Cache-Control` header defined in `netlify.toml` is overridden by PostHog's asset CDN headers, resulting in a short 4-hour Cache TTL.
 
 ## Error Tracking & Security Scanner Suppression
@@ -51,7 +51,7 @@ These crawlers run in headless **CefSharp** (.NET Chromium Embedded Framework) e
 2. Once the scan determines the URL is safe, the host process immediately terminates the session and disposes the host object.
 3. Pending asynchronous callbacks in the browser continue executing and attempt to call `.update()` again, producing an unhandled rejection:
    `"Non-Error promise rejection captured with value: Object Not Found Matching Id:2, MethodName:update, ParamCount:4"`
-4. Because `capture_exceptions: true` is enabled in `__root.tsx`, PostHog listens to `window.onunhandledrejection` and captures these synthetic scanner errors.
+4. Because `capture_exceptions` (`capture_unhandled_errors`, `capture_unhandled_rejections`, and `capture_console_errors`) is enabled in `__root.tsx`, PostHog listens to `window.onunhandledrejection` and `console.error` and captures these synthetic scanner errors.
 
 ### Suppression Strategy
 - **Synchronous `before_send` Drop**: To eliminate the race condition where short-lived crawlers terminate and flush events before `/p/decide/` remote config loads, `apps/web/src/utils/posthog-filter.ts` implements a synchronous `before_send` lifecycle filter.
@@ -96,7 +96,14 @@ When capturing errors inside reactive React components or lifecycle hooks, alway
 
 ### 3. Route Error Boundary Integration (`DefaultCatchBoundary`)
 
-TanStack Router's internal catch boundary isolates page, loader, and rendering errors without bubbling them to `window.onerror`. To prevent caught exceptions from becoming invisible in production, `apps/web/src/components/ui/DefaultCatchBoundary.tsx` hooks directly into PostHog via `usePostHog()`. When rendered, it records `posthog.captureException(err, { source: 'DefaultCatchBoundary', is_root, pathname, route_id })` guarded by a deduplication ref.
+TanStack Router's internal catch boundary isolates page, loader, and rendering errors without bubbling them to `window.onerror`. To prevent caught exceptions from becoming invisible in production, `apps/web/src/components/ui/DefaultCatchBoundary.tsx` hooks directly into PostHog via `usePostHog()` and defers all reporting to the pure helper `reportBoundaryError()`.
+
+`reportBoundaryError()` maintains **two independent deduplication refs**:
+
+- `trackedErrorRef` — guards the `posthog.captureException(err, { source: 'DefaultCatchBoundary', is_root, pathname, route_id })` call so the exact same error instance is captured only once per boundary mount.
+- `loggedErrorRef` — guards the console emission independently, so the log line is also written exactly once per distinct error instance.
+
+Because the client now opts into `capture_console_errors: true` (see Client Loading Optimization), any `console.error` at the boundary would be re-captured by PostHog's console wrapper and produce a **duplicate `$exception`** alongside the explicit `captureException`. To avoid that, when `posthog.captureException` is available the boundary logs via `console.warn('[DefaultCatchBoundary]', error)` instead. Only when PostHog is unavailable (no `usePostHog()` client, or no `captureException` method) does it fall back to `console.error(error)` so the error is still surfaced in the browser console.
 
 ## Server-Side Exception Autocapture & Request Middleware
 
@@ -154,9 +161,9 @@ To accurately track conversion funnels without splitting user profiles or leakin
 
 ## Testing
 
-- `apps/web/src/components/ui/DefaultCatchBoundary.test.tsx` verifies that `DefaultCatchBoundary` records exceptions to PostHog with route context and deduplicates consecutive captures on re-render.
+- `apps/web/src/components/ui/DefaultCatchBoundary.test.tsx` verifies that `DefaultCatchBoundary` records exceptions to PostHog with route context and deduplicates consecutive captures on re-render. It also asserts the boundary logs via `console.warn` (never `console.error`) when `captureException` is available — avoiding a duplicate `$exception` from `capture_console_errors` — and falls back to `console.error` when the PostHog client (or its `captureException`) is unavailable.
 - `apps/web/src/utils/posthog-filter.test.ts` verifies detection of CefSharp unhandled rejections across `$exception_list`, `$exception_values`, and `$exception_message`, confirming that scanner errors are dropped completely (`return null`) while legitimate errors and analytics events pass unchanged.
-- `apps/web/src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, enables session recording with privacy masking, sets `disable_surveys: true`, configures `before_send: posthogBeforeSend` dropping scanner errors, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
+- `apps/web/src/routes/-__root.test.tsx` tests that `PostHogProvider` initializes with `/p`, enables session recording with privacy masking, sets `disable_surveys: true`, configures `before_send: posthogBeforeSend` dropping scanner errors, asserts the `capture_exceptions` object (`capture_unhandled_errors` / `capture_unhandled_rejections` / `capture_console_errors` all `true`), `enable_recording_console_log: true`, and `logs: { captureConsoleLogs: true }`, and verifies that `PostHogAuthSync` identifies users with UUID and email properties while avoiding redundant calls.
 - `apps/web/src/routes/-logout.test.tsx` verifies that `LogoutComponent` triggers `posthog.reset()` before executing signout and navigation.
 
 ## Related

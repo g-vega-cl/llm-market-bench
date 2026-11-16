@@ -7,6 +7,51 @@ import type {
     StrategyRecipeRecord,
 } from '../types';
 
+export function isQuotaLimitMessage(message: string): boolean {
+    return /limit reached|queue is currently full/i.test(message);
+}
+
+export function resolvePreviousBacktestJobId(execution: ExecutionState): string | undefined {
+    if (
+        execution.status === 'error' &&
+        (execution.kind === 'navigation' || execution.kind === 'quota')
+    ) {
+        return execution.backtestJobId;
+    }
+    return undefined;
+}
+
+export function buildExecutionErrorState(params: {
+    err: unknown;
+    mode: 'live_turn' | 'backtest';
+    queuedBacktestJobId?: string;
+    prevBacktestJobId?: string;
+}): Extract<ExecutionState, { status: 'error' }> {
+    const message = params.err instanceof Error ? params.err.message : 'Execution failed';
+    if (isQuotaLimitMessage(message)) {
+        console.warn('[RecipeStudio] Execution blocked by quota:', message);
+        return {
+            status: 'error',
+            kind: 'quota',
+            message,
+            backtestJobId:
+                params.mode === 'backtest'
+                    ? (params.queuedBacktestJobId ?? params.prevBacktestJobId)
+                    : undefined,
+        };
+    }
+    console.error('[RecipeStudio] Execution failed:', params.err);
+    if (params.queuedBacktestJobId) {
+        return {
+            status: 'error',
+            kind: 'navigation',
+            message,
+            backtestJobId: params.queuedBacktestJobId,
+        };
+    }
+    return { status: 'error', kind: 'execution', message };
+}
+
 export async function pollJobResults(jobId: string): Promise<ExecutionState> {
     for (let attempts = 0; attempts < 30; attempts++) {
         await new Promise((r) => setTimeout(r, 1000));
@@ -16,10 +61,14 @@ export async function pollJobResults(jobId: string): Promise<ExecutionState> {
                 return { status: 'live_done', result: res.result_json as LiveRunResult };
             }
             if (res?.status === 'cancelled') {
-                return { status: 'error', message: 'Execution was cancelled.' };
+                return { status: 'error', kind: 'execution', message: 'Execution was cancelled.' };
             }
             if (res?.status === 'failed') {
-                return { status: 'error', message: res.error_message || 'Execution failed' };
+                return {
+                    status: 'error',
+                    kind: 'execution',
+                    message: res.error_message || 'Execution failed',
+                };
             }
         } catch {
             // Ignore transient polling errors
@@ -27,6 +76,7 @@ export async function pollJobResults(jobId: string): Promise<ExecutionState> {
     }
     return {
         status: 'error',
+        kind: 'execution',
         message:
             'Job queued — worker is still processing. Check Alerts Inbox or try again shortly.',
     };

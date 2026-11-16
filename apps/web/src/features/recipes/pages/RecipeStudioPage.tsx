@@ -1,5 +1,5 @@
 import { Badge, Button, PageLayout } from '@llm-market-bench/ui-design-system';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
@@ -14,8 +14,11 @@ import { LiveRunsBlock } from '../components/LiveRunsBlock';
 import { PromptVisualizer } from '../components/PromptVisualizer';
 import { RecipeAlertsInbox } from '../components/RecipeAlertsInbox';
 import {
+    RecentBacktestsStrip,
     RecipeGuideAndQuotaBlock,
+    resolveBacktestButtonLabel,
     SavedRecipesStrip,
+    StudioAlertSlot,
 } from '../components/RecipeGuideAndQuotaBlock';
 import { StageBuilder } from '../components/StageBuilder';
 import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
@@ -35,8 +38,11 @@ import type {
     StrategyStage,
 } from '../types';
 import {
+    buildExecutionErrorState,
     buildInlinePortfolio,
+    isQuotaLimitMessage,
     pollJobResults,
+    resolvePreviousBacktestJobId,
     upsertSavedRecipeSummary,
 } from '../utils/live-studio-helpers';
 
@@ -64,6 +70,7 @@ export function RecipeStudioPage({
     );
 
     const [execution, setExecution] = useState<ExecutionState>({ status: 'idle' });
+    const [scheduleError, setScheduleError] = useState<string | null>(null);
     const [preview, setPreview] = useState<PreviewState>({ status: 'template' });
     const [liveState, setLiveState] = useState<LivePortfolioAndRuns | null>(initialLiveState);
     const [quotaStatus, setQuotaStatus] = useState<RecipeUserQuotaStatus | null>(initialQuota);
@@ -87,6 +94,7 @@ export function RecipeStudioPage({
         setActiveTemplateIdx(idx);
         setStrategy(STARTER_RECIPES[idx]);
         setExecution({ status: 'idle' });
+        setScheduleError(null);
         setPreview({ status: 'template' });
         setLiveState(null);
     };
@@ -124,50 +132,61 @@ export function RecipeStudioPage({
         if (refreshed) setLiveState(refreshed);
     };
 
+    const persistActiveStrategy = async (): Promise<StrategyRecipeRecord> => {
+        const saved = (await saveRecipeFn({ data: { recipe: strategy } })) as StrategyRecipeRecord;
+        setStrategy((prev) => (prev.id === saved.id ? prev : { ...prev, id: saved.id }));
+        setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved));
+        return saved;
+    };
+
+    const settleLiveExecution = async (
+        recipeId: string,
+        job: { id: string; result_json?: LiveRunResult | BacktestResultData },
+    ) => {
+        if (job.result_json) {
+            await applyCompletedLiveRun(recipeId, job.result_json as LiveRunResult);
+            return;
+        }
+        const finalState = await pollJobResults(job.id);
+        if (finalState.status === 'live_done') {
+            await applyCompletedLiveRun(recipeId, finalState.result);
+            return;
+        }
+        setExecution(finalState);
+    };
+
     const handleExecute = async (mode: 'live_turn' | 'backtest') => {
+        if (isBusy) return;
+        const prevBacktestJobId = resolvePreviousBacktestJobId(execution);
         setExecution({ status: 'running', mode });
+        setScheduleError(null);
+        let queuedBacktestJobId: string | undefined;
+        let didNavigate = false;
         try {
-            const saved = (await saveRecipeFn({
-                data: { recipe: strategy },
-            })) as StrategyRecipeRecord;
-            setStrategy((prev) => (prev.id === saved.id ? prev : { ...prev, id: saved.id }));
-            setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved));
+            const saved = await persistActiveStrategy();
             const job = (await enqueueRecipeJobFn({
-                data: {
-                    recipeId: saved.id,
-                    mode,
-                },
-            })) as {
-                id: string;
-                status: string;
-                result_json?: LiveRunResult | BacktestResultData;
-            };
+                data: { recipeId: saved.id, mode },
+            })) as { id: string; status: string; result_json?: LiveRunResult | BacktestResultData };
 
             if (mode === 'backtest') {
-                await navigate({
-                    to: '/recipes/backtest/$jobId',
-                    params: { jobId: job.id },
-                });
+                queuedBacktestJobId = job.id;
+                await navigate({ to: '/recipes/backtest/$jobId', params: { jobId: job.id } });
+                didNavigate = true;
                 return;
             }
 
-            if (job.result_json) {
-                await applyCompletedLiveRun(saved.id, job.result_json as LiveRunResult);
-                return;
-            }
-            const finalState = await pollJobResults(job.id);
-            if (finalState.status === 'live_done') {
-                await applyCompletedLiveRun(saved.id, finalState.result);
-                return;
-            }
-            setExecution(finalState);
+            await settleLiveExecution(saved.id, job);
         } catch (err) {
-            setExecution({
-                status: 'error',
-                message: err instanceof Error ? err.message : 'Execution failed',
-            });
+            setExecution(
+                buildExecutionErrorState({
+                    err,
+                    mode,
+                    queuedBacktestJobId,
+                    prevBacktestJobId,
+                }),
+            );
         } finally {
-            await refreshQuota();
+            if (!didNavigate) await refreshQuota();
         }
     };
 
@@ -175,23 +194,27 @@ export function RecipeStudioPage({
     const isCurrentlyScheduledLive = Boolean(currentSavedRecord?.is_live);
 
     const handleToggleScheduledLive = async () => {
-        if (isTogglingLive) return;
+        if (isBusy) return;
         setIsTogglingLive(true);
+        setScheduleError(null);
+        if (execution.status === 'error') {
+            setExecution({ status: 'idle' });
+        }
         try {
-            const saved = (await saveRecipeFn({
-                data: { recipe: strategy },
-            })) as StrategyRecipeRecord;
-            setStrategy((prev) => (prev.id === saved.id ? prev : { ...prev, id: saved.id }));
+            const saved = await persistActiveStrategy();
             const updated = await toggleLiveScheduleFn({
                 data: { recipeId: saved.id, isLive: !isCurrentlyScheduledLive },
             });
             setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved, updated.is_live));
         } catch (err) {
-            setExecution({
-                status: 'error',
-                message:
-                    err instanceof Error ? err.message : 'Failed updating Scheduled Live status',
-            });
+            const message =
+                err instanceof Error ? err.message : 'Failed updating Scheduled Live status';
+            if (isQuotaLimitMessage(message)) {
+                console.warn('[RecipeStudio] Scheduled Live blocked by quota:', message);
+            } else {
+                console.error('[RecipeStudio] Failed updating Scheduled Live status:', err);
+            }
+            setScheduleError(message);
         } finally {
             setIsTogglingLive(false);
             await refreshQuota();
@@ -219,6 +242,11 @@ export function RecipeStudioPage({
     };
 
     const isRunning = execution.status === 'running';
+    const isBusy = isRunning || isTogglingLive;
+    const backtestButtonLabel = resolveBacktestButtonLabel(
+        isRunning && execution.mode === 'backtest',
+        quotaStatus,
+    );
 
     return (
         <PageLayout>
@@ -256,6 +284,7 @@ export function RecipeStudioPage({
                             variant={isCurrentlyScheduledLive ? 'solid' : 'outline'}
                             colorScheme={isCurrentlyScheduledLive ? 'success' : 'neutral'}
                             onClick={handleToggleScheduledLive}
+                            disabled={isBusy}
                             isLoading={isTogglingLive}
                         >
                             {isCurrentlyScheduledLive
@@ -266,7 +295,7 @@ export function RecipeStudioPage({
                             size="sm"
                             variant="outline"
                             onClick={() => handleExecute('live_turn')}
-                            disabled={isRunning}
+                            disabled={isBusy}
                         >
                             {isRunning && execution.mode === 'live_turn'
                                 ? 'Running Live...'
@@ -276,52 +305,25 @@ export function RecipeStudioPage({
                             size="sm"
                             variant="solid"
                             onClick={() => handleExecute('backtest')}
-                            disabled={isRunning}
+                            disabled={isBusy}
                             isLoading={isRunning && execution.mode === 'backtest'}
                         >
-                            {isRunning && execution.mode === 'backtest'
-                                ? 'Starting Backtest...'
-                                : '▶ Backtest (Random 2W)'}
+                            {backtestButtonLabel}
                         </Button>
                     </div>
                 </div>
+
+                <StudioAlertSlot
+                    execution={execution}
+                    scheduleError={scheduleError}
+                    onRequestCapacity={() => setShowPledgeModal(true)}
+                />
 
                 <RecipeGuideAndQuotaBlock quotaStatus={quotaStatus} />
 
                 <SavedRecipesStrip recipes={userRecipes} activeRecipeId={strategy.id} />
 
-                {recentBacktests.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 voxel-trough bg-boxel-trough p-3">
-                        <span className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
-                            Recent Backtests:
-                        </span>
-                        {recentBacktests.slice(0, 5).map((run) => {
-                            const bt =
-                                run.result_json &&
-                                (!('mode' in run.result_json) ||
-                                    run.result_json.mode !== 'live_turn')
-                                    ? (run.result_json as BacktestResultData)
-                                    : null;
-                            const label =
-                                run.status === 'completed' &&
-                                bt &&
-                                typeof bt.total_return_pct_net === 'number'
-                                    ? `${bt.total_return_pct_net >= 0 ? '+' : ''}${bt.total_return_pct_net.toFixed(2)}%`
-                                    : `${run.status.toUpperCase()} (${run.progress_pct}%)`;
-                            return (
-                                <Link
-                                    key={run.id}
-                                    to="/recipes/backtest/$jobId"
-                                    params={{ jobId: run.id }}
-                                    className="voxel-btn inline-flex items-center gap-2 px-2 py-1 text-xs font-mono border border-boxel-bevel-hi bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated rounded-none"
-                                >
-                                    <span>{run.id.slice(0, 8)}</span>
-                                    <span className="text-accent">{label}</span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
+                <RecentBacktestsStrip recentBacktests={recentBacktests} />
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -332,6 +334,7 @@ export function RecipeStudioPage({
                                 size="sm"
                                 variant={activeTemplateIdx === idx ? 'solid' : 'outline'}
                                 onClick={() => handleSelectTemplate(idx)}
+                                disabled={isBusy}
                             >
                                 {tmpl.name}
                             </Button>
@@ -347,12 +350,6 @@ export function RecipeStudioPage({
                         onPreviewLiveData={handlePreviewLiveData}
                     />
                 </div>
-
-                {execution.status === 'error' && (
-                    <div className="border border-destructive bg-boxel-surface p-3 text-xs font-normal text-destructive rounded-none">
-                        {execution.message}
-                    </div>
-                )}
 
                 <LiveRunsBlock
                     portfolio={liveState?.portfolio ?? null}

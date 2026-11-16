@@ -372,6 +372,56 @@ describe('RootDocument PostHog configuration', () => {
 
         expect(transformed).toBeNull();
     });
+
+    it('should configure PostHogProvider to capture console errors and record console logs', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Test Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({
+            initialEntries: ['/'],
+        });
+
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+        await screen.findByText('Test Content');
+
+        expect(mockPostHogProvider).toHaveBeenCalled();
+        const props = mockPostHogProvider.mock.calls[
+            mockPostHogProvider.mock.calls.length - 1
+        ][0] as {
+            options?: {
+                capture_exceptions?: {
+                    capture_unhandled_errors?: boolean;
+                    capture_unhandled_rejections?: boolean;
+                    capture_console_errors?: boolean;
+                };
+                enable_recording_console_log?: boolean;
+                logs?: {
+                    captureConsoleLogs?: boolean;
+                };
+            };
+        };
+        expect(props.options?.capture_exceptions).toEqual({
+            capture_unhandled_errors: true,
+            capture_unhandled_rejections: true,
+            capture_console_errors: true,
+        });
+        expect(props.options?.enable_recording_console_log).toBe(true);
+        expect(props.options?.logs).toEqual({ captureConsoleLogs: true });
+    });
 });
 
 describe('RootDocument Performance Optimizations', () => {

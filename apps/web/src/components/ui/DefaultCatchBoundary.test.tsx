@@ -4,10 +4,12 @@ import { DefaultCatchBoundary } from './DefaultCatchBoundary';
 
 const mockCaptureException = vi.fn();
 
+const mockUsePostHog = vi.fn(() => ({
+    captureException: mockCaptureException,
+}));
+
 vi.mock('@posthog/react', () => ({
-    usePostHog: () => ({
-        captureException: mockCaptureException,
-    }),
+    usePostHog: () => mockUsePostHog(),
 }));
 
 vi.mock('@tanstack/react-router', async () => {
@@ -32,20 +34,21 @@ vi.mock('@tanstack/react-router', async () => {
 describe('DefaultCatchBoundary', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockUsePostHog.mockReturnValue({ captureException: mockCaptureException });
     });
 
     it('renders "Try Again" button using DS Button component', () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         render(<DefaultCatchBoundary error={new Error('test error')} reset={vi.fn()} />);
 
         const button = screen.getByRole('button', { name: /try again/i });
         expect(button.className).toContain('inline-flex');
         expect(button.className).toContain('font-bold');
-        consoleSpy.mockRestore();
+        warnSpy.mockRestore();
     });
 
     it('captures error in PostHog with route context and metadata', () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const testErr = new Error('Database connection failed');
         render(<DefaultCatchBoundary error={testErr} reset={vi.fn()} />);
 
@@ -56,29 +59,36 @@ describe('DefaultCatchBoundary', () => {
             pathname: '/',
             route_id: '/portfolios',
         });
-        consoleSpy.mockRestore();
+        warnSpy.mockRestore();
     });
 
     it('deduplicates consecutive captures for the exact same error instance', () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         const testErr = new Error('Persistent render error');
         const { rerender } = render(<DefaultCatchBoundary error={testErr} reset={vi.fn()} />);
 
         expect(mockCaptureException).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(errorSpy).not.toHaveBeenCalled();
 
         // Re-render with identical error reference
         rerender(<DefaultCatchBoundary error={testErr} reset={vi.fn()} />);
         expect(mockCaptureException).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
 
         // Re-render with new error instance
         const nextErr = new Error('Different error');
         rerender(<DefaultCatchBoundary error={nextErr} reset={vi.fn()} />);
         expect(mockCaptureException).toHaveBeenCalledTimes(2);
-        consoleSpy.mockRestore();
+        expect(warnSpy).toHaveBeenCalledTimes(2);
+        expect(errorSpy).not.toHaveBeenCalled();
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
     });
 
     it('normalizes string errors into Error instances for PostHog', () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         render(
             <DefaultCatchBoundary error={'Network timeout' as unknown as Error} reset={vi.fn()} />,
         );
@@ -87,11 +97,11 @@ describe('DefaultCatchBoundary', () => {
         const capturedErr = mockCaptureException.mock.calls[0][0];
         expect(capturedErr).toBeInstanceOf(Error);
         expect(capturedErr.message).toBe('Network timeout');
-        consoleSpy.mockRestore();
+        warnSpy.mockRestore();
     });
 
     it('renders ErrorComponent and captures exception directly when chunk failure occurs', () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const chunkErr = new TypeError(
             'Failed to fetch dynamically imported module: https://www.benchify.dev/assets/index-CZJZmMUs.js',
         );
@@ -115,6 +125,21 @@ describe('DefaultCatchBoundary', () => {
                 route_id: '/portfolios',
             }),
         );
-        consoleSpy.mockRestore();
+        warnSpy.mockRestore();
+    });
+
+    it('falls back to console.error when PostHog captureException is unavailable', () => {
+        mockUsePostHog.mockReturnValue(undefined as never);
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const err = new Error('PostHog unavailable');
+
+        render(<DefaultCatchBoundary error={err} reset={vi.fn()} />);
+
+        expect(mockCaptureException).not.toHaveBeenCalled();
+        expect(errorSpy).toHaveBeenCalledWith(err);
+        expect(warnSpy).not.toHaveBeenCalled();
+        errorSpy.mockRestore();
+        warnSpy.mockRestore();
     });
 });

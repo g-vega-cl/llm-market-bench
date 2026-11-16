@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **274**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **276**).
 
 ## Top Hotspots
 
@@ -26,8 +26,8 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tests/test_workflow_schedule.py` | 11 | 4 | 36.4% | 306 | 44 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 11 | 4 | 36.4% | 954 | 44 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 10 | 4 | 40.0% | 219 | 40 | **HIGH** |
+| `apps/engine/trading/runner.py` | 13 | 3 | 23.1% | 463 | 39 | **HIGH** |
 | `apps/engine/tests/test_verify_skill.py` | 12 | 3 | 25.0% | 204 | 36 | **HIGH** |
-| `apps/engine/cli/predictions.py` | 9 | 4 | 44.4% | 129 | 36 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -49,7 +49,7 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/engine/trading/runner.py` | `apps/engine/trading/test_runner.py` | 7 | 100% |
 | `apps/web/src/features/home/api/fetch-intraday-tape.ts` | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 7 | 78% |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 7 | 64% |
-| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/runner.py` | 7 | 58% |
+| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/runner.py` | 7 | 54% |
 
 ## Usage Guidelines for LLM Agents
 

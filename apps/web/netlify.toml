@@ -1,6 +1,7 @@
 [build]
   command = "pnpm build:web"
   publish = "apps/web/dist/client"
+  ignore = "[ -n \"$CACHED_COMMIT_REF\" ] && [ \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" ] && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- . ':!ROADMAP.md' ':!wiki/' ':!apps/engine/' ':!apps/free_llm_proxy/' ':!.github/' ':!docker/' ':!supabase/' ':!.agents/' ':!GEMINI.md' ':!AGENTS.md' ':!README.md' ':!git-history/' ':!knowledge-db/' ':!raw/'"
 
 [build.environment]
   # Configure POSTHOG_API_KEY, POSTHOG_PROJECT_ID, and POSTHOG_HOST in

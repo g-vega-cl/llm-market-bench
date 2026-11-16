@@ -27,6 +27,7 @@ import { BenchmarkSelector } from '~/features/portfolios/components/BenchmarkSel
 import { PerformanceChart } from '~/features/portfolios/components/PerformanceChart';
 import { PositionsTable } from '~/features/portfolios/components/PositionsTable';
 import { TradesTable } from '~/features/portfolios/components/TradesTable';
+import { usePortfolioBenchmark } from '~/features/portfolios/hooks/usePortfolioBenchmark';
 import { portfolioQueries } from '~/features/portfolios/queries/options';
 
 const LIN_RENKO_OWNER_ID = 'lin-renko-agent-deepseek-flash';
@@ -148,7 +149,6 @@ export function RenkoAgentPageView({
     benchmarkFetchFn,
 }: RenkoAgentPageViewProps) {
     const [selectedModel] = useState('deepseek-v4-flash');
-    const [selectedBenchmark, setSelectedBenchmark] = useState<string>('');
 
     const { data } = useSuspenseQuery({
         ...portfolioQueries.detail({
@@ -164,15 +164,18 @@ export function RenkoAgentPageView({
     const startDate = hasHistory ? history[0].date : '';
     const endDate = hasHistory ? history[history.length - 1].date : '';
 
-    const { data: benchmarkData } = useSuspenseQuery(
-        portfolioQueries.benchmarks.history({
-            tickers: selectedBenchmark ? [selectedBenchmark] : [],
-            startDate,
-            endDate,
-            fetchFn: () =>
-                benchmarkFetchFn(selectedBenchmark ? [selectedBenchmark] : [], startDate, endDate),
-        }),
-    );
+    const {
+        selectedBenchmark,
+        onBenchmarkChange,
+        benchmarkData,
+        settledBenchmark,
+        pendingBenchmark,
+        benchmarkError,
+    } = usePortfolioBenchmark({
+        startDate,
+        endDate,
+        benchmarkFetchFn,
+    });
 
     // Chart price coordinate bounds
     const minPrice = 475.0;
@@ -405,14 +408,16 @@ export function RenkoAgentPageView({
                         </h3>
                         <BenchmarkSelector
                             selected={selectedBenchmark}
-                            onChange={setSelectedBenchmark}
+                            onChange={onBenchmarkChange}
                         />
                     </div>
                     <PerformanceChart
                         data={history || []}
                         benchmarkData={benchmarkData}
-                        selectedBenchmark={selectedBenchmark}
-                        showPercentage={!!selectedBenchmark}
+                        selectedBenchmark={settledBenchmark}
+                        pendingBenchmark={pendingBenchmark}
+                        benchmarkError={benchmarkError}
+                        showPercentage={!!settledBenchmark}
                     />
                     {(!history || history.length === 0) && (
                         <Card

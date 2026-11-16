@@ -150,6 +150,11 @@ Passing a dynamic value as the React `key` prop on a chart or data-heavy compone
 <PortfolioComparisonChart data={...} selectedBenchmark={selectedBenchmark} />
 ```
 
+### Non-Suspending On-Demand Benchmark Overlays (`usePortfolioBenchmark`)
+Calling `useSuspenseQuery` for an un-preloaded, user-triggered filter or overlay (e.g., `BenchmarkSelector` on `PortfolioDetailPage` or `RenkoAgentPageView`) suspends synchronously when the query key changes, unmounting the entire page up to the nearest route `<Suspense>` boundary.
+- **Solution**: Extract `usePortfolioBenchmark` (`apps/web/src/features/portfolios/hooks/usePortfolioBenchmark.ts`) using `useQuery` with `enabled: Boolean(selectedBenchmark && hasDateRange)` and `placeholderData: keepPreviousData`.
+- **State Derivation**: Derive `status` (`'idle' | 'loading' | 'settled' | 'error'`) and `settledBenchmark` directly from `benchmarkQuery.data` and `benchmarkQuery.isPlaceholderData` without `useEffect` state synchronization, keeping the previous settled chart mounted with an in-flow `Loading <TICKER>...` or error indicator.
+
 ### Server Function Validation & Strict Error Types
 
 With updated TanStack Start / Router packages:

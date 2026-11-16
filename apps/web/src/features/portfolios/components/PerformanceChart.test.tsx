@@ -160,3 +160,33 @@ test('displays correct percentage and outperformance when benchmark is selected'
     expect(screen.getByText('+10.00%')).toBeInTheDocument();
     expect(screen.getByText(/outperformance/i)).toBeInTheDocument();
 });
+
+test('renders in-flow loading indicator with wrap-safe classes when pendingBenchmark is set', () => {
+    const mockData = [
+        { date: '2023-01-01', total_equity: 10000 },
+        { date: '2023-01-02', total_equity: 10500 },
+    ];
+
+    render(<PerformanceChart data={mockData} pendingBenchmark="QQQ" />);
+
+    const status = screen.getByText('Loading QQQ...');
+    expect(status).toBeInTheDocument();
+    expect(status.className).toContain('whitespace-nowrap');
+
+    const header = status.closest('.flex-wrap');
+    expect(header).not.toBeNull();
+    expect(header?.className).toContain('min-w-0');
+});
+
+test('renders in-flow error status when benchmarkError is set', () => {
+    const mockData = [
+        { date: '2023-01-01', total_equity: 10000 },
+        { date: '2023-01-02', total_equity: 10500 },
+    ];
+
+    render(<PerformanceChart data={mockData} benchmarkError="Failed to load GLD" />);
+
+    const errorEl = screen.getByText('Failed to load GLD');
+    expect(errorEl).toBeInTheDocument();
+    expect(errorEl.className).toContain('whitespace-nowrap');
+});

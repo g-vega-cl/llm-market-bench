@@ -10,6 +10,8 @@ interface PerformanceChartProps {
     data: PerformanceSnapshot[];
     benchmarkData?: Record<string, BenchmarkDataPoint[]>;
     selectedBenchmark?: string;
+    pendingBenchmark?: string;
+    benchmarkError?: string;
     showPercentage?: boolean;
 }
 
@@ -31,6 +33,8 @@ export function PerformanceChart({
     data,
     benchmarkData,
     selectedBenchmark,
+    pendingBenchmark,
+    benchmarkError,
     showPercentage = false,
 }: PerformanceChartProps) {
     const svgRef = React.useRef<SVGSVGElement>(null);
@@ -442,15 +446,27 @@ export function PerformanceChart({
 
     return (
         <div className="w-full bg-white border border-zinc-200 rounded-none p-4 shadow-sm overflow-hidden flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
                 <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                     {showPercentage && hasBenchmark ? 'Performance vs Benchmark' : 'Equity Curve'}
                 </h3>
-                {hasBenchmark && (
-                    <div className="text-xs font-normal text-zinc-400">
-                        Normalized to percentage returns
-                    </div>
-                )}
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    {pendingBenchmark ? (
+                        <span className="text-xs font-normal text-zinc-400 whitespace-nowrap">
+                            Loading {pendingBenchmark}...
+                        </span>
+                    ) : benchmarkError ? (
+                        <span className="text-xs font-normal text-red-500 whitespace-nowrap">
+                            {benchmarkError}
+                        </span>
+                    ) : (
+                        hasBenchmark && (
+                            <span className="text-xs font-normal text-zinc-400 whitespace-nowrap">
+                                Normalized to percentage returns
+                            </span>
+                        )
+                    )}
+                </div>
             </div>
             {displayData && (
                 <div className="p-3 bg-zinc-50 rounded-none border border-zinc-100 flex flex-col gap-1">

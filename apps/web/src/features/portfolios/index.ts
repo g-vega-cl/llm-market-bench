@@ -18,6 +18,7 @@ export { PortfolioComparisonSelector } from './components/PortfolioComparisonSel
 export { PositionsTable } from './components/PositionsTable';
 export { StrategyExplainer } from './components/StrategyExplainer';
 export { TradesTable } from './components/TradesTable';
+export { usePortfolioBenchmark } from './hooks/usePortfolioBenchmark';
 export { getActiveOwnerIds, normalizeOwnerId } from './lib/config';
 export { PortfolioDetailPage } from './pages/PortfolioDetailPage';
 export { PortfoliosPage } from './pages/PortfoliosPage';

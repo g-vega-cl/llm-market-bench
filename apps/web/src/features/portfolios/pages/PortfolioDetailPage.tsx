@@ -23,6 +23,7 @@ import { PerformanceChart } from '../components/PerformanceChart';
 import { PositionsTable } from '../components/PositionsTable';
 import { StrategyExplainer } from '../components/StrategyExplainer';
 import { TradesTable } from '../components/TradesTable';
+import { usePortfolioBenchmark } from '../hooks/usePortfolioBenchmark';
 import { hasVerifier } from '../lib/config';
 import { portfolioQueries } from '../queries/options';
 
@@ -60,7 +61,6 @@ export function PortfolioDetailPage({
     benchmarkFetchFn,
 }: PortfolioDetailPageProps) {
     const posthog = usePostHog();
-    const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('');
 
     const { data } = useSuspenseQuery({
         ...portfolioQueries.detail({
@@ -84,15 +84,18 @@ export function PortfolioDetailPage({
     const startDate = hasHistory ? history[0].date : '';
     const endDate = hasHistory ? history[history.length - 1].date : '';
 
-    const { data: benchmarkData } = useSuspenseQuery(
-        portfolioQueries.benchmarks.history({
-            tickers: selectedBenchmark ? [selectedBenchmark] : [],
-            startDate,
-            endDate,
-            fetchFn: () =>
-                benchmarkFetchFn(selectedBenchmark ? [selectedBenchmark] : [], startDate, endDate),
-        }),
-    );
+    const {
+        selectedBenchmark,
+        onBenchmarkChange,
+        benchmarkData,
+        settledBenchmark,
+        pendingBenchmark,
+        benchmarkError,
+    } = usePortfolioBenchmark({
+        startDate,
+        endDate,
+        benchmarkFetchFn,
+    });
 
     React.useEffect(() => {
         posthog.capture('portfolio_viewed', {
@@ -155,14 +158,16 @@ export function PortfolioDetailPage({
                         <div className="flex flex-wrap items-center justify-between gap-4 w-full">
                             <BenchmarkSelector
                                 selected={selectedBenchmark}
-                                onChange={setSelectedBenchmark}
+                                onChange={onBenchmarkChange}
                             />
                         </div>
                         <PerformanceChart
                             data={history || []}
                             benchmarkData={benchmarkData}
-                            selectedBenchmark={selectedBenchmark}
-                            showPercentage={!!selectedBenchmark}
+                            selectedBenchmark={settledBenchmark}
+                            pendingBenchmark={pendingBenchmark}
+                            benchmarkError={benchmarkError}
+                            showPercentage={!!settledBenchmark}
                         />
                         {(!history || history.length === 0) && (
                             <Card

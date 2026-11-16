@@ -20,6 +20,7 @@ _DUMMY_ENV_VARS = {
     "MINIMAX_API_KEY": "mock-minimax-key",
     "OPENROUTER_API_KEY": "mock-openrouter-key",
     "FRED_API_KEY": "mock-fred-key",
+    "FREE_PROXY_MASTER_KEY": "mock-free-proxy-key",
 }
 for _env_name, _default_val in _DUMMY_ENV_VARS.items():
     if not os.getenv(_env_name):

@@ -13,7 +13,7 @@ Daily market newsletters are fetched and ingested as raw text for LLM parsing. T
 
 ## Economic Calendar Ingestion
 
-The `CalendarPipeline` (`apps/engine/ingest/calendar.py`) fetches the economic calendar HTML, parses nested event rows, and sends the resulting events to DeepSeek for relevance analysis.
+The `CalendarPipeline` (`apps/engine/ingest/calendar.py`) fetches the economic calendar HTML, parses nested event rows, and sends the resulting events to `auto-go` (`get_auto_go_client`) for relevance analysis.
 
 ### Critical-Economy Filtering
 

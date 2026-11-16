@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 # Mocking the imports before they happen in cause_and_effect_analysis
 with (
     patch("apps.engine.core.db.get_supabase_client") as mock_db,
-    patch("apps.engine.core.llm.get_gemini_client") as mock_gemini,
+    patch("apps.engine.core.llm.get_auto_go_client") as mock_gemini,
     patch("apps.engine.execution.market_data.MarketDataManager") as mock_mdm,
 ):
     from apps.engine.analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
@@ -61,7 +61,7 @@ async def test_cause_and_effect_semantic_dedupe():
 
     with (
         patch("apps.engine.analysis.cause_and_effect_analysis.get_supabase_client", return_value=mock_sb),
-        patch("apps.engine.analysis.cause_and_effect_analysis.get_gemini_client", return_value=mock_gemini_client),
+        patch("apps.engine.analysis.cause_and_effect_analysis.get_auto_go_client", return_value=mock_gemini_client),
         patch("apps.engine.analysis.cause_and_effect_analysis.MarketDataManager") as mock_mdm_cls,
         patch("apps.engine.analysis.cause_and_effect_analysis.find_similar_memory") as mock_find,
     ):
@@ -122,7 +122,7 @@ async def test_cause_and_effect_expanded_tickers():
 
     with (
         patch("apps.engine.analysis.cause_and_effect_analysis.get_supabase_client", return_value=mock_sb),
-        patch("apps.engine.analysis.cause_and_effect_analysis.get_gemini_client", return_value=mock_gemini_client),
+        patch("apps.engine.analysis.cause_and_effect_analysis.get_auto_go_client", return_value=mock_gemini_client),
         patch("apps.engine.analysis.cause_and_effect_analysis.MarketDataManager") as mock_mdm_cls,
         patch("apps.engine.analysis.cause_and_effect_analysis.find_similar_memory", return_value=None),
         patch("apps.engine.analysis.cause_and_effect_analysis.extract_related_tickers") as mock_extract,
@@ -185,7 +185,7 @@ async def test_cause_and_effect_includes_dates_in_market_performance():
 
     with (
         patch("apps.engine.analysis.cause_and_effect_analysis.get_supabase_client", return_value=mock_sb),
-        patch("apps.engine.analysis.cause_and_effect_analysis.get_gemini_client", return_value=mock_gemini_client),
+        patch("apps.engine.analysis.cause_and_effect_analysis.get_auto_go_client", return_value=mock_gemini_client),
         patch("apps.engine.analysis.cause_and_effect_analysis.MarketDataManager") as mock_mdm_cls,
         patch("apps.engine.analysis.cause_and_effect_analysis.find_similar_memory", return_value=None),
         patch("apps.engine.analysis.cause_and_effect_analysis.extract_related_tickers", return_value=["JPM"]),
@@ -267,7 +267,7 @@ async def test_cause_and_effect_ticker_cleaning():
 
     with (
         patch("apps.engine.analysis.cause_and_effect_analysis.get_supabase_client", return_value=mock_sb),
-        patch("apps.engine.analysis.cause_and_effect_analysis.get_gemini_client", return_value=mock_gemini_client),
+        patch("apps.engine.analysis.cause_and_effect_analysis.get_auto_go_client", return_value=mock_gemini_client),
         patch("apps.engine.analysis.cause_and_effect_analysis.MarketDataManager") as mock_mdm_cls,
         patch("apps.engine.analysis.cause_and_effect_analysis.find_similar_memory", return_value=None),
         patch("apps.engine.analysis.cause_and_effect_analysis.extract_related_tickers") as mock_extract,

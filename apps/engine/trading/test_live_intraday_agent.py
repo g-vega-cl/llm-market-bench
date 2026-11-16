@@ -46,7 +46,7 @@ def test_calculate_technical_snapshot():
 
 
 @pytest.mark.asyncio
-async def test_query_multi_tier_llm_strata_success():
+async def test_query_multi_tier_llm_calls_auto_go_directly_without_strata():
     mock_http = AsyncMock()
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -70,57 +70,38 @@ async def test_query_multi_tier_llm_strata_success():
     mock_http.post.return_value = mock_resp
 
     messages = [{"role": "user", "content": "Analyze tape"}]
-    result = await query_multi_tier_llm(
-        messages=messages,
-        strata_url="http://localhost:8080/v1",
-        cheap_proxy_url="https://llm.clvg.uk/v1",
-        http_client=mock_http,
-    )
+    with patch.dict(os.environ, {"FREE_PROXY_MASTER_KEY": "test-explicit-key"}):
+        result = await query_multi_tier_llm(
+            messages=messages,
+            strata_url="http://localhost:8080/v1",
+            cheap_proxy_url="https://llm.clvg.uk/v1",
+            fallback_api_key="test-explicit-key",
+            http_client=mock_http,
+            purpose="live-spy-trader",
+        )
 
     data = json.loads(result)
     assert data["action"] == "BUY"
     assert data["conviction"] == 85
-    # Strata was called on the first try with 45s runway and 16k/12k headroom
-    assert "localhost:8080" in mock_http.post.call_args_list[0][0][0]
-    strata_call = mock_http.post.call_args_list[0][1]
-    assert strata_call["timeout"] == 45.0
-    assert strata_call["json"]["max_tokens"] == 16384
-    assert strata_call["json"]["reasoning_budget_tokens"] == 12288
+    # Must bypass Strata completely and hit free-llm-proxy directly with auto-go
+    assert len(mock_http.post.call_args_list) == 1
+    call_url = mock_http.post.call_args_list[0][0][0]
+    call_kwargs = mock_http.post.call_args_list[0][1]
+    assert "llm.clvg.uk" in call_url
+    assert "localhost:8080" not in call_url
+    assert call_kwargs["json"]["model"] == "auto-go"
+    assert "reasoning_budget_tokens" not in call_kwargs["json"]
+    assert call_kwargs["headers"]["Authorization"] == "Bearer test-explicit-key"
+    assert call_kwargs["headers"]["X-Purpose"] == "live-spy-trader"
 
 
 @pytest.mark.asyncio
-async def test_query_multi_tier_llm_fallback_to_cheap_proxy():
+async def test_query_multi_tier_llm_returns_neutral_hold_when_auto_go_fails():
     mock_http = AsyncMock()
-
-    async def mock_post(url, **kwargs):
-        resp = MagicMock()
-        if "localhost:8080" in str(url):
-            # Strata stalls / down
-            resp.status_code = 503
-            resp.text = "Server Unavailable"
-        else:
-            # Fallback to cheap proxy succeeds
-            resp.status_code = 200
-            resp.json.return_value = {
-                "choices": [
-                    {
-                        "message": {
-                            "content": json.dumps(
-                                {
-                                    "action": "HOLD",
-                                    "conviction": 60,
-                                    "thought": "Chop near resistance, holding cash.",
-                                    "memories_consulted": [],
-                                    "allocation_pct": 0,
-                                }
-                            )
-                        }
-                    }
-                ]
-            }
-        return resp
-
-    mock_http.post.side_effect = mock_post
+    resp = MagicMock()
+    resp.status_code = 503
+    resp.text = "Server Unavailable"
+    mock_http.post.return_value = resp
 
     messages = [{"role": "user", "content": "Analyze tape"}]
     with patch.dict(os.environ, {"FREE_PROXY_MASTER_KEY": "test-mock-master-key"}):
@@ -128,59 +109,40 @@ async def test_query_multi_tier_llm_fallback_to_cheap_proxy():
             messages=messages,
             strata_url="http://localhost:8080/v1",
             cheap_proxy_url="https://llm.clvg.uk/v1",
-            fallback_api_key="test-explicit-key",
             http_client=mock_http,
         )
 
     data = json.loads(result)
     assert data["action"] == "HOLD"
-    assert data["conviction"] == 60
-    assert len(mock_http.post.call_args_list) == 2
-    fallback_call = mock_http.post.call_args_list[1][1]
-    assert fallback_call["json"]["max_tokens"] == 16384
-    assert fallback_call["json"]["model"] == "auto-strata"
-
-    # Verify fallback call headers and model
-    fallback_call = mock_http.post.call_args_list[1]
-    headers = fallback_call.kwargs.get("headers", {})
-    assert "Authorization" in headers
-    assert headers["Authorization"] == "Bearer test-explicit-key"
-    payload = fallback_call.kwargs.get("json", {})
-    assert payload.get("model") == "auto-strata"
+    assert data["allocation_pct"] == 0
+    assert len(mock_http.post.call_args_list) == 1
+    assert "llm.clvg.uk" in mock_http.post.call_args_list[0][0][0]
 
 
 @pytest.mark.asyncio
-async def test_query_multi_tier_llm_fallback_without_master_key_hermetic():
-    """Verify fallback executes cleanly when no master key is configured (e.g. Clean CI runner)."""
+async def test_query_multi_tier_llm_without_master_key_hermetic():
+    """Verify auto-go executes cleanly when no master key is configured (e.g. Clean CI runner)."""
     mock_http = AsyncMock()
-
-    async def mock_post(url, **kwargs):
-        resp = MagicMock()
-        if "localhost:8080" in str(url):
-            resp.status_code = 503
-            resp.text = "Server Unavailable"
-        else:
-            resp.status_code = 200
-            resp.json.return_value = {
-                "choices": [
-                    {
-                        "message": {
-                            "content": json.dumps(
-                                {
-                                    "action": "HOLD",
-                                    "conviction": 50,
-                                    "thought": "No key fallback.",
-                                    "memories_consulted": [],
-                                    "allocation_pct": 0,
-                                }
-                            )
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "action": "HOLD",
+                            "conviction": 50,
+                            "thought": "No key request.",
+                            "memories_consulted": [],
+                            "allocation_pct": 0,
                         }
-                    }
-                ]
+                    )
+                }
             }
-        return resp
-
-    mock_http.post.side_effect = mock_post
+        ]
+    }
+    mock_http.post.return_value = resp
 
     messages = [{"role": "user", "content": "Analyze tape"}]
     with patch("os.path.exists", return_value=False), patch.dict(os.environ, {"FREE_PROXY_MASTER_KEY": ""}):
@@ -193,9 +155,11 @@ async def test_query_multi_tier_llm_fallback_without_master_key_hermetic():
 
     data = json.loads(result)
     assert data["action"] == "HOLD"
-    fallback_call = mock_http.post.call_args_list[1]
-    headers = fallback_call.kwargs.get("headers", {})
+    assert len(mock_http.post.call_args_list) == 1
+    proxy_call = mock_http.post.call_args_list[0]
+    headers = proxy_call.kwargs.get("headers", {})
     assert "Authorization" not in headers
+    assert proxy_call.kwargs["json"]["model"] == "auto-go"
 
 
 @pytest.mark.asyncio

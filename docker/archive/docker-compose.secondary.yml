@@ -89,7 +89,7 @@ services:
     environment:
       STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
       FREE_LLM_PROXY_URL: https://llm.clvg.uk/v1
-      FREE_PROXY_MODEL: ${FREE_PROXY_MODEL:-auto-strata}
+      FREE_PROXY_MODEL: ${FREE_PROXY_MODEL:-auto-go}
     deploy:
       resources:
         limits:

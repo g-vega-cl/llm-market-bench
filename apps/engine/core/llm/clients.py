@@ -107,6 +107,29 @@ def get_minimax_client(api_key: str | None = None):
     )
 
 
+def get_auto_go_raw_client(api_key: str | None = None, purpose: str | None = None) -> AsyncOpenAI:
+    """Creates a raw async OpenAI-compatible client pointed at free-llm-proxy (auto-go)."""
+    key = ((api_key if api_key is not None else config.FREE_PROXY_MASTER_KEY) or "").strip()
+    base_url = (config.FREE_LLM_PROXY_URL or "https://llm.clvg.uk/v1").strip()
+    is_local_proxy = any(host in base_url for host in ("127.0.0.1", "localhost", "::1"))
+    if not key:
+        if not is_local_proxy:
+            raise ValueError("FREE_PROXY_MASTER_KEY must be configured for remote free-llm-proxy calls.")
+        key = "local"
+    kwargs: dict = {"api_key": key, "base_url": base_url, "timeout": TIMEOUT, "max_retries": 0}
+    if purpose:
+        kwargs["default_headers"] = {"X-Purpose": purpose}
+    return AsyncOpenAI(**kwargs)
+
+
+def get_auto_go_client(api_key: str | None = None, purpose: str | None = None):
+    """Creates an async free-llm-proxy (auto-go) client wrapped with Instructor in Mode.MD_JSON."""
+    return instructor.from_openai(
+        get_auto_go_raw_client(api_key=api_key, purpose=purpose),
+        mode=instructor.Mode.MD_JSON,
+    )
+
+
 # Provider Registry
 # NOTE: This dict is populated at import time with function references to the
 # factories above. Tests must patch `CLIENT_FACTORIES` (not the individual
@@ -121,6 +144,7 @@ CLIENT_FACTORIES = {
     "deepseek": get_deepseek_client,
     "gemini": get_gemini_client,
     "minimax": get_minimax_client,
+    "auto_go": get_auto_go_client,
 }
 
 

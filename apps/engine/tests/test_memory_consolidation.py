@@ -16,8 +16,8 @@ def mock_supabase():
 
 @pytest.fixture
 def mock_deepseek():
-    # Mock deepseek/deepseek-v4-pro client
-    with patch("core.llm.get_deepseek_client") as mock:
+    # Mock auto-go client
+    with patch("core.llm.get_auto_go_client") as mock:
         client = MagicMock()
         mock.return_value = client
         yield client

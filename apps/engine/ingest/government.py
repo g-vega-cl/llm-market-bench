@@ -11,9 +11,10 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from core.config import GEMINI_MODEL, logger
+from core.config import AUTO_GO_MODEL, logger
 from core.db import get_supabase_client
-from core.llm import get_gemini_client
+from core.llm import get_auto_go_client
+from core.llm.clients import close_client
 from core.models import DecisionsResponse
 from ingest.congress_fetchers import (
     fetch_latest_congress_trades,
@@ -41,7 +42,7 @@ class GovernmentPipeline:
 
     def __init__(self):
         try:
-            self.client = get_gemini_client()
+            self.client = get_auto_go_client(purpose="government-policy-extraction")
         except Exception:
             self.client = None
         try:
@@ -213,7 +214,7 @@ class GovernmentPipeline:
         )
         try:
             create_call = self.client.chat.completions.create(
-                model=GEMINI_MODEL,
+                model=AUTO_GO_MODEL,
                 response_model=DecisionsResponse,
                 messages=[
                     {
@@ -255,6 +256,8 @@ class GovernmentPipeline:
         except Exception:
             logger.exception("Government policy memory extraction skipped or failed")
             return 0
+        finally:
+            await close_client(self.client, "auto_go")
 
     async def run(self) -> int:
         """Executes the full government ingestion pipeline."""

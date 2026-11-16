@@ -38,6 +38,8 @@ jobs:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FREE_LLM_PROXY_URL: ${{ secrets.FREE_LLM_PROXY_URL }}
+          FREE_PROXY_MASTER_KEY: ${{ secrets.FREE_PROXY_MASTER_KEY }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}

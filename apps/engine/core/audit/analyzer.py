@@ -1,23 +1,25 @@
 import json
 import logging
 
-from openai import AsyncOpenAI
-
-from core.config import DEEPSEEK_FLASH_MODEL
+from core.config import AUTO_GO_MODEL, FREE_PROXY_MASTER_KEY
+from core.llm.clients import get_auto_go_raw_client
 
 logger = logging.getLogger("engine")
 
-DEEPSEEK_API_KEY = None
+FREE_PROXY_API_KEY: str | None = None
+DEEPSEEK_API_KEY: str | None = None  # Legacy alias preserved for test compatibility
 
 
-def configure(api_key: str):
-    global DEEPSEEK_API_KEY
+def configure(api_key: str | None):
+    global FREE_PROXY_API_KEY, DEEPSEEK_API_KEY
+    FREE_PROXY_API_KEY = api_key
     DEEPSEEK_API_KEY = api_key
 
 
-async def analyze_log_blob(log_blob: str) -> str:
-    if not DEEPSEEK_API_KEY:
-        logger.error("DeepSeek API key not configured")
+async def analyze_log_blob(log_blob: str) -> str | None:
+    resolved_key = ((DEEPSEEK_API_KEY or FREE_PROXY_API_KEY or FREE_PROXY_MASTER_KEY) or "").strip()
+    if not resolved_key:
+        logger.error("Free proxy master key not configured")
         return None
 
     truncated_blob = log_blob[-32000:] if len(log_blob) > 32000 else log_blob
@@ -39,14 +41,21 @@ Logs:
 
 Return a JSON array of findings with keys: title, severity, suggestion, run_id. Return only the JSON array, no other text."""
 
+    client = None
+    content = ""
     try:
-        client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+        client = get_auto_go_raw_client(api_key=resolved_key, purpose="weekly-log-audit")
 
         response = await client.chat.completions.create(
-            model=DEEPSEEK_FLASH_MODEL, messages=[{"role": "user", "content": prompt}], temperature=0.1
+            model=AUTO_GO_MODEL, messages=[{"role": "user", "content": prompt}], temperature=0.1
         )
 
-        content = response.choices[0].message.content.strip()
+        choices = getattr(response, "choices", None) or []
+        raw_content = getattr(choices[0].message, "content", None) if choices else None
+        if not raw_content:
+            logger.error("auto-go log analysis returned empty choices/content")
+            return None
+        content = raw_content.strip()
 
         if "<think>" in content and "</think>" in content:
             content = content.split("</think>", 1)[1].strip()
@@ -64,6 +73,12 @@ Return a JSON array of findings with keys: title, severity, suggestion, run_id. 
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse LLM response as JSON: {e}")
         return f"Raw analysis:\n{content[:2000]}"
-    except Exception as e:
-        logger.error(f"Log analysis failed: {e}")
+    except Exception:
+        logger.exception("Log analysis failed")
         return None
+    finally:
+        if client is not None and hasattr(client, "close"):
+            try:
+                await client.close()
+            except Exception as close_err:
+                logger.warning("Failed to close auto-go client: %s", close_err)

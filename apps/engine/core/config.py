@@ -36,6 +36,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+FREE_LLM_PROXY_URL = os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1").strip()
+FREE_PROXY_MASTER_KEY = os.getenv("FREE_PROXY_MASTER_KEY", "")
+AUTO_GO_MODEL = "auto-go"
 
 # --- Model Selection ---
 # Loaded from the shared packages/config/models.json — the single source of truth.

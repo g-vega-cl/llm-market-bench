@@ -137,22 +137,24 @@ async def execute_search_related_tickers_tool(theme: str) -> str:
     """Uses LLM to search for tickers related to a theme."""
     import asyncio
 
-    from core.config import GEMINI_MODEL
-    from core.llm.clients import get_gemini_client
+    from core.config import AUTO_GO_MODEL
+    from core.llm.clients import close_client, get_auto_go_client
     from core.llm.prompt_factory import PromptFactory
     from core.models import TickerSuggestion
 
-    client = get_gemini_client()
+    client = get_auto_go_client(purpose="tool-search-related-tickers")
     try:
-        messages = PromptFactory.build_ticker_suggestion_messages(provider="gemini", event_summary=theme)
+        messages = PromptFactory.build_ticker_suggestion_messages(provider="openai", event_summary=theme)
 
-        resp = client.chat.completions.create(model=GEMINI_MODEL, response_model=TickerSuggestion, messages=messages)
+        resp = client.chat.completions.create(model=AUTO_GO_MODEL, response_model=TickerSuggestion, messages=messages)
         if asyncio.iscoroutine(resp):
             resp = await resp
 
         return f"Suggested Tickers for '{theme}': {', '.join(resp.tickers)}\nReasoning: {resp.reasoning}"
     except Exception as e:
         return f"Error suggesting tickers for '{theme}': {str(e)}"
+    finally:
+        await close_client(client, "auto_go")
 
 
 async def execute_earnings_history_tool(ticker: str, limit: int = 8) -> str:

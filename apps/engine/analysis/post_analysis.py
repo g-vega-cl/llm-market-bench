@@ -10,9 +10,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.config import GEMINI_MODEL, logger
+from core.config import AUTO_GO_MODEL, logger
 from core.db import get_supabase_client
-from core.llm import get_gemini_client
+from core.llm import get_auto_go_client
+from core.llm.clients import close_client
 from core.llm.prompt_factory import PromptFactory
 from execution.market_data import MarketDataManager
 from memory.store import add_memory
@@ -71,123 +72,126 @@ async def perform_post_analysis(windows: list[int] = None):
     sb_client = get_supabase_client()
     mdm = MarketDataManager()
 
-    # Use Gemini Flash 3 as the Manager Agent
-    client = get_gemini_client()
+    # Route post-analysis evaluation through free-llm-proxy (auto-go)
+    client = get_auto_go_client(purpose="post-trade-analysis")
 
-    for days_back in windows:
-        # 1. Fetch trades from the target window
-        target_date = (datetime.now(UTC) - timedelta(days=days_back)).date()
-        start_time = datetime.combine(target_date, datetime.min.time()).isoformat()
-        end_time = datetime.combine(target_date, datetime.max.time()).isoformat()
+    try:
+        for days_back in windows:
+            # 1. Fetch trades from the target window
+            target_date = (datetime.now(UTC) - timedelta(days=days_back)).date()
+            start_time = datetime.combine(target_date, datetime.min.time()).isoformat()
+            end_time = datetime.combine(target_date, datetime.max.time()).isoformat()
 
-        logger.info(f"Checking window: {days_back} days ago ({target_date})...")
+            logger.info(f"Checking window: {days_back} days ago ({target_date})...")
 
-        # Join with portfolios and decisions to get model attribution and reasoning
-        res = (
-            sb_client.table("trades")
-            .select(
-                "id, ticker, quantity, price, signal, executed_at, reasoning, portfolio_id, "
-                "portfolios(owner_id), decisions(reasoning, model_name, metadata)"
-            )
-            .filter("executed_at", "gte", start_time)
-            .filter("executed_at", "lte", end_time)
-            .execute()
-        )
-
-        trades = res.data if res.data else []
-        if not trades:
-            logger.info(f"No trades found for post-analysis on {target_date}.")
-            continue
-
-        logger.info(f"Analyzing {len(trades)} trades for window {days_back}d...")
-
-        for trade in trades:
-            ticker = trade["ticker"]
-            entry_price = trade["price"]
-            signal = trade["signal"]
-            model_name, reasoning, strategy_reasoning = _resolve_trade_context(trade)
-
-            # 3. Check for existing post-analysis lesson FOR THIS SPECIFIC WINDOW
-            existing_memory = (
-                sb_client.table("memories")
-                .select("id")
-                .filter("metadata->>trade_id", "eq", str(trade["id"]))
-                .filter("metadata->>analysis_window", "eq", str(days_back))
-                .filter("memory_type", "eq", "POST_MORTEM")
+            # Join with portfolios and decisions to get model attribution and reasoning
+            res = (
+                sb_client.table("trades")
+                .select(
+                    "id, ticker, quantity, price, signal, executed_at, reasoning, portfolio_id, "
+                    "portfolios(owner_id), decisions(reasoning, model_name, metadata)"
+                )
+                .filter("executed_at", "gte", start_time)
+                .filter("executed_at", "lte", end_time)
                 .execute()
             )
 
-            if existing_memory.data:
-                logger.debug(
-                    f"Skipping trade {trade['id']} ({ticker}) for {days_back}d window: Analysis already exists."
-                )
+            trades = res.data if res.data else []
+            if not trades:
+                logger.info(f"No trades found for post-analysis on {target_date}.")
                 continue
 
-            # 4. Get current price
-            quote = await mdm.get_quote(ticker)
-            if not quote:
-                continue
+            logger.info(f"Analyzing {len(trades)} trades for window {days_back}d...")
 
-            current_price = quote.price
-            price_change_pct = ((current_price - entry_price) / entry_price) * 100
-            if signal.upper() == "SELL":
-                price_change_pct = -price_change_pct
+            for trade in trades:
+                ticker = trade["ticker"]
+                entry_price = trade["price"]
+                signal = trade["signal"]
+                model_name, reasoning, strategy_reasoning = _resolve_trade_context(trade)
 
-            try:
-                messages = PromptFactory.build_manager_messages(
-                    provider="gemini",
-                    ticker=ticker,
-                    signal=signal,
-                    entry_price=entry_price,
-                    current_price=current_price,
-                    price_change_pct=price_change_pct,
-                    reasoning=reasoning,
-                    strategy_reasoning=strategy_reasoning,
+                # 3. Check for existing post-analysis lesson FOR THIS SPECIFIC WINDOW
+                existing_memory = (
+                    sb_client.table("memories")
+                    .select("id")
+                    .filter("metadata->>trade_id", "eq", str(trade["id"]))
+                    .filter("metadata->>analysis_window", "eq", str(days_back))
+                    .filter("memory_type", "eq", "POST_MORTEM")
+                    .execute()
                 )
 
-                # Use a modified system prompt or context if it's a longer term window
-                # For now, using same templates but adding window context in the lesson content
-                for msg in messages:
-                    if msg["role"] == "user":
-                        msg["content"] = f"[WINDOW: {days_back} DAYS] " + msg["content"]
+                if existing_memory.data:
+                    logger.debug(
+                        f"Skipping trade {trade['id']} ({ticker}) for {days_back}d window: Analysis already exists."
+                    )
+                    continue
 
-                resp_awaitable = client.chat.completions.create(
-                    model=GEMINI_MODEL, response_model=PostAnalysisResult, messages=messages
-                )
+                # 4. Get current price
+                quote = await mdm.get_quote(ticker)
+                if not quote:
+                    continue
 
-                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-                    resp = await resp_awaitable
-                else:
-                    resp = resp_awaitable
+                current_price = quote.price
+                price_change_pct = ((current_price - entry_price) / entry_price) * 100
+                if signal.upper() == "SELL":
+                    price_change_pct = -price_change_pct
 
-                # 6. Inject into Memory with dynamic importance score
-                importance_score = _extract_importance_score(getattr(resp, "importance_score", None))
+                try:
+                    messages = PromptFactory.build_manager_messages(
+                        provider="openai",
+                        ticker=ticker,
+                        signal=signal,
+                        entry_price=entry_price,
+                        current_price=current_price,
+                        price_change_pct=price_change_pct,
+                        reasoning=reasoning,
+                        strategy_reasoning=strategy_reasoning,
+                    )
 
-                memory_content = (
-                    f"{days_back}-DAY POST-ANALYSIS ({ticker}): {resp.lesson} | "
-                    f"ORIGINAL TRADE: {signal} @ ${entry_price:.2f} | "
-                    f"OUTCOME: {price_change_pct:.2f}% | "
-                    f"ADVICE: {resp.sentiment_shift}"
-                )
+                    # Use a modified system prompt or context if it's a longer term window
+                    # For now, using same templates but adding window context in the lesson content
+                    for msg in messages:
+                        if msg["role"] == "user":
+                            msg["content"] = f"[WINDOW: {days_back} DAYS] " + msg["content"]
 
-                success = add_memory(
-                    content=memory_content,
-                    memory_type="POST_MORTEM",
-                    importance_score=importance_score,
-                    metadata={
-                        "price_change_pct": price_change_pct,
-                        "trade_id": str(trade["id"]),
-                        "analysis_window": str(days_back),
-                        "model_name": model_name,
-                        "is_regret": resp.is_regret,
-                    },
-                    check_similarity=True,
-                )
+                    resp_awaitable = client.chat.completions.create(
+                        model=AUTO_GO_MODEL, response_model=PostAnalysisResult, messages=messages
+                    )
 
-                if success:
-                    logger.info(f"Generated {days_back}d post-analysis memory for {ticker}. Lesson: {resp.lesson}")
+                    if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                        resp = await resp_awaitable
+                    else:
+                        resp = resp_awaitable
 
-            except Exception as e:
-                logger.error(f"Post-analysis failed for trade {trade['id']} ({ticker}) in {days_back}d window: {e}")
+                    # 6. Inject into Memory with dynamic importance score
+                    importance_score = _extract_importance_score(getattr(resp, "importance_score", None))
+
+                    memory_content = (
+                        f"{days_back}-DAY POST-ANALYSIS ({ticker}): {resp.lesson} | "
+                        f"ORIGINAL TRADE: {signal} @ ${entry_price:.2f} | "
+                        f"OUTCOME: {price_change_pct:.2f}% | "
+                        f"ADVICE: {resp.sentiment_shift}"
+                    )
+
+                    success = add_memory(
+                        content=memory_content,
+                        memory_type="POST_MORTEM",
+                        importance_score=importance_score,
+                        metadata={
+                            "price_change_pct": price_change_pct,
+                            "trade_id": str(trade["id"]),
+                            "analysis_window": str(days_back),
+                            "model_name": model_name,
+                            "is_regret": resp.is_regret,
+                        },
+                        check_similarity=True,
+                    )
+
+                    if success:
+                        logger.info(f"Generated {days_back}d post-analysis memory for {ticker}. Lesson: {resp.lesson}")
+
+                except Exception:
+                    logger.exception(f"Post-analysis failed for trade {trade['id']} ({ticker}) in {days_back}d window")
+    finally:
+        await close_client(client, "auto_go")
 
     logger.info("Post-Analysis processing complete.")

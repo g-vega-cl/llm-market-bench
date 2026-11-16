@@ -10,9 +10,9 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup
 
-from core.config import DEEPSEEK_FLASH_MODEL, logger
+from core.config import AUTO_GO_MODEL, logger
 from core.db import get_supabase_client
-from core.llm.clients import get_deepseek_client
+from core.llm.clients import close_client, get_auto_go_client
 from core.models import DecisionsResponse
 from memory.store import add_memory
 
@@ -51,7 +51,7 @@ class CalendarPipeline:
     """Pipeline for fetching and processing economic calendar data."""
 
     def __init__(self):
-        self.client = get_deepseek_client()
+        self.client = get_auto_go_client(purpose="economic-calendar-filter")
         self.sb_client = get_supabase_client()
         self.url = "https://tradingeconomics.com/calendar"
 
@@ -158,7 +158,12 @@ class CalendarPipeline:
     async def run(self):
         """Executes the calendar ingestion pipeline."""
         logger.info("Starting Economic Calendar Ingestion...")
+        try:
+            return await self._run_calendar_body()
+        finally:
+            await close_client(self.client, "auto_go")
 
+    async def _run_calendar_body(self):
         html = self.fetch_html()
         raw_events = self.parse_events(html)
         events = self.filter_events(raw_events)
@@ -167,9 +172,9 @@ class CalendarPipeline:
             logger.warning("No critical economy events parsed from calendar.")
             return 0
 
-        logger.info(f"Parsed {len(events)} critical events. Sending to DeepSeek for relevance analysis...")
+        logger.info(f"Parsed {len(events)} critical events. Sending to auto-go for relevance analysis...")
 
-        # DeepSeek to identify high-importance events
+        # auto-go to identify high-importance events
         events_text = "\n".join(
             [
                 f"- [#{idx}] [{e.get('date', '')} {e.get('time', '')}] {e.get('country', 'Global')}: {e.get('event', '')} "
@@ -206,7 +211,7 @@ class CalendarPipeline:
 
         try:
             res = await self.client.chat.completions.create(
-                model=DEEPSEEK_FLASH_MODEL,
+                model=AUTO_GO_MODEL,
                 response_model=DecisionsResponse,
                 messages=[
                     {
@@ -279,8 +284,8 @@ class CalendarPipeline:
             logger.info(f"Calendar pipeline complete. Added {count} high-importance memories.")
             return count
 
-        except Exception as e:
-            logger.error(f"Calendar pipeline failed: {e}")
+        except Exception:
+            logger.exception("Calendar pipeline failed")
             return 0
 
 

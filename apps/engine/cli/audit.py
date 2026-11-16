@@ -9,10 +9,10 @@ def handle_audit(args: argparse.Namespace) -> None:
     from core.audit import run_audit
     from core.audit.analyzer import configure as configure_analyzer
     from core.audit.runner import configure as configure_audit
-    from core.config import DEEPSEEK_API_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
+    from core.config import FREE_PROXY_MASTER_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
 
     configure_audit(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    configure_analyzer(DEEPSEEK_API_KEY)
+    configure_analyzer(FREE_PROXY_MASTER_KEY)
     asyncio.run(run_audit(dry_run=args.dry_run))
 
 

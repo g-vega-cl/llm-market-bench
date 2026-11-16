@@ -1,15 +1,13 @@
 """Continuous runner and daemon coordinator for the autonomous intraday trader.
 
-Polls active tape, executes 5-minute reasoning turns via local Strata with fallback
-to the centralized CLVG proxy, routes paper orders to Alpaca, and respects US regular
-market session hours.
+Polls active tape, executes 5-minute reasoning turns directly via the centralized CLVG
+proxy (`auto-go`), routes paper orders to Alpaca, and respects US regular market session hours.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-import contextlib
 import os
 from datetime import datetime
 from typing import Any
@@ -146,8 +144,10 @@ async def run_tape_poller_loop(
     """Continuously poll active tape from Alpaca, push to broadcaster, and update DB."""
     logger.info(f"Starting tape poller loop for {ticker} (interval={tape_interval_seconds}s)")
     if sb_client:
-        with contextlib.suppress(Exception):
+        try:
             await seed_broadcaster_from_db(sb_client, broadcaster)
+        except Exception:
+            logger.debug("Initial tape broadcaster DB seed failed", exc_info=True)
 
     while True:
         try:
@@ -319,6 +319,7 @@ async def synthesize_recent_news(
         cheap_proxy_url=cheap_proxy_url,
         http_client=http_client,
         max_tokens=800,
+        purpose="homepage-news-synthesis",
     )
 
     clean_summary = summary_text.strip().strip('"').strip("'")
@@ -380,8 +381,7 @@ async def run_loop(
     logger.info(
         f"Starting Live SPY Trader Daemon (ticker={ticker}, interval={interval_seconds}s, tape_interval={tape_interval_seconds}s, 24/7={continuous_24_7})"
     )
-    logger.info(f"Tier 1 Inference: {strata_url}")
-    logger.info(f"Tier 2 Inference: {cheap_proxy_url}")
+    logger.info(f"LLM Inference: {cheap_proxy_url} (model={os.getenv('FREE_PROXY_MODEL', 'auto-go')})")
 
     data_client, trading_client, sb_client = _create_clients()
     broadcaster = TapeBroadcaster()
@@ -437,8 +437,10 @@ async def run_loop(
     finally:
         if server:
             server.close()
-            with contextlib.suppress(Exception):
+            try:
                 await server.wait_closed()
+            except Exception:
+                logger.debug("Error waiting for tape server close", exc_info=True)
 
 
 def main() -> None:

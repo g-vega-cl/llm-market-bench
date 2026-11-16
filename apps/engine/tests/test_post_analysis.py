@@ -46,7 +46,7 @@ async def test_post_analysis_skips_existing_memory():
 
     with (
         patch("apps.engine.analysis.post_analysis.get_supabase_client", return_value=mock_sb),
-        patch("apps.engine.analysis.post_analysis.get_gemini_client", return_value=mock_gemini_client),
+        patch("apps.engine.analysis.post_analysis.get_auto_go_client", return_value=mock_gemini_client),
         patch("apps.engine.analysis.post_analysis.MarketDataManager"),
         patch("apps.engine.analysis.post_analysis.add_memory") as mock_add_memory,
     ):
@@ -166,7 +166,7 @@ async def test_post_analysis_metadata_includes_model_name():
 
     with (
         patch("apps.engine.analysis.post_analysis.get_supabase_client", return_value=mock_sb),
-        patch("apps.engine.analysis.post_analysis.get_gemini_client", return_value=mock_gemini_client),
+        patch("apps.engine.analysis.post_analysis.get_auto_go_client", return_value=mock_gemini_client),
         patch("apps.engine.analysis.post_analysis.MarketDataManager", return_value=mock_mdm),
         patch("apps.engine.analysis.post_analysis.add_memory") as mock_add_memory,
     ):
@@ -229,7 +229,7 @@ async def test_post_analysis_resolves_model_from_portfolio_and_passes_importance
 
     with (
         patch("apps.engine.analysis.post_analysis.get_supabase_client", return_value=mock_sb),
-        patch("apps.engine.analysis.post_analysis.get_gemini_client", return_value=mock_gemini_client),
+        patch("apps.engine.analysis.post_analysis.get_auto_go_client", return_value=mock_gemini_client),
         patch("apps.engine.analysis.post_analysis.MarketDataManager", return_value=mock_mdm),
         patch("apps.engine.analysis.post_analysis.add_memory") as mock_add_memory,
     ):

@@ -43,7 +43,7 @@ def test_newsletter_cleaning_response_schema():
 @pytest.mark.asyncio
 async def test_clean_newsletter_empty_and_no_content():
     """Verify empty content or NO_CONTENT_FOUND is returned unchanged without LLM calls."""
-    with patch("core.llm.clients.get_gemini_client") as mock_client:
+    with patch("core.llm.clients.get_auto_go_client") as mock_client:
         res_empty = await clean_newsletter_content("")
         assert res_empty == ""
 
@@ -73,7 +73,7 @@ async def test_clean_newsletter_happy_path_with_ad_removal():
     mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
 
     with (
-        patch("core.llm.clients.get_gemini_client", return_value=mock_client),
+        patch("core.llm.clients.get_auto_go_client", return_value=mock_client),
         patch("core.llm.clients.close_client", new_callable=AsyncMock) as mock_close,
     ):
         result = await clean_newsletter_content(
@@ -85,7 +85,7 @@ async def test_clean_newsletter_happy_path_with_ad_removal():
         assert result.ads_removed_count == 2
         assert result.ads_summary == ["RAD Intel sponsored pitch", "Coffee mug referral program"]
         assert result.is_pure_ad is False
-        mock_close.assert_awaited_once_with(mock_client, "gemini")
+        mock_close.assert_awaited_once_with(mock_client, "auto_go")
 
 
 @pytest.mark.asyncio
@@ -102,7 +102,7 @@ async def test_clean_newsletter_pure_ad_classification():
     mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
 
     with (
-        patch("core.llm.clients.get_gemini_client", return_value=mock_client),
+        patch("core.llm.clients.get_auto_go_client", return_value=mock_client),
         patch("core.llm.clients.close_client", new_callable=AsyncMock),
     ):
         result = await clean_newsletter_content("Get up to $500 bonus when you deposit today! Claim now.")
@@ -136,7 +136,7 @@ async def test_clean_newsletter_catastrophic_overstripping_fallback(caplog):
 
     with (
         caplog.at_level(logging.WARNING, logger="engine"),
-        patch("core.llm.clients.get_gemini_client", return_value=mock_client),
+        patch("core.llm.clients.get_auto_go_client", return_value=mock_client),
         patch("core.llm.clients.close_client", new_callable=AsyncMock),
     ):
         result = await clean_newsletter_content(long_content)
@@ -154,7 +154,7 @@ async def test_clean_newsletter_exception_observability(caplog):
 
     with (
         caplog.at_level(logging.ERROR, logger="engine"),
-        patch("core.llm.clients.get_gemini_client", return_value=mock_client),
+        patch("core.llm.clients.get_auto_go_client", return_value=mock_client),
         patch("core.llm.clients.close_client", new_callable=AsyncMock),
     ):
         result = await clean_newsletter_content("Market news to clean")

@@ -104,11 +104,11 @@ async def test_pre_filter_summary_generation():
     mock_instructor_resp = MagicMock()
     mock_instructor_resp.summaries = [mock_triage_item_1, mock_triage_item_2]
 
-    # Mock get_deepseek_client and chat completions
+    # Mock get_auto_go_client and chat completions
     mock_client = MagicMock()
     mock_client.chat.completions.create = AsyncMock(return_value=mock_instructor_resp)
 
-    with patch("core.llm.clients.get_deepseek_client", return_value=mock_client):
+    with patch("core.llm.clients.get_auto_go_client", return_value=mock_client):
         from analysis.pre_filter import summarize_newsletters
 
         summary_map = await summarize_newsletters(chunks)

@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from core import config
 from core.db import get_supabase_client
-from core.llm.clients import get_gemini_client
+from core.llm.clients import close_client, get_auto_go_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ranker")
@@ -28,7 +28,7 @@ class ImportanceRanking(BaseModel):
 
 async def rank_existing_memories():
     sb_client = get_supabase_client()
-    gemini = get_gemini_client()
+    llm_client = get_auto_go_client(purpose="rank-memories")
 
     # Fetch memories with default importance score
     # We assume 5 is the default from the migration
@@ -37,9 +37,10 @@ async def rank_existing_memories():
 
     logger.info(f"Found {len(memories)} memories to rank.")
 
-    for i, mem in enumerate(memories):
-        try:
-            prompt = f"""You are a senior financial analyst. Rank the following market event by its intrinsic importance on a scale of 1-10.
+    try:
+        for i, mem in enumerate(memories):
+            try:
+                prompt = f"""You are a senior financial analyst. Rank the following market event by its intrinsic importance on a scale of 1-10.
             
             10: Major global event (War, Global Pandemic, Financial Crisis, Major Central Bank Policy Shift).
             5: Moderate significance (Earnings of a major company, sector-wide regulatory shift, significant but local economic data).
@@ -51,32 +52,34 @@ async def rank_existing_memories():
             Provide the importance score (1-10) and a short reasoning for your choice.
             """
 
-            resp_call = gemini.chat.completions.create(
-                model=config.GEMINI_MODEL,
-                response_model=ImportanceRanking,
-                messages=[
-                    {"role": "system", "content": "You are a senior financial analyst."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
+                resp_call = llm_client.chat.completions.create(
+                    model=config.AUTO_GO_MODEL,
+                    response_model=ImportanceRanking,
+                    messages=[
+                        {"role": "system", "content": "You are a senior financial analyst."},
+                        {"role": "user", "content": prompt},
+                    ],
+                )
 
-            if hasattr(resp_call, "__await__"):
-                resp = await resp_call
-            else:
-                resp = resp_call
+                if hasattr(resp_call, "__await__"):
+                    resp = await resp_call
+                else:
+                    resp = resp_call
 
-            # Update the memory in the database
-            sb_client.table("memories").update(
-                {
-                    "importance_score": resp.importance_score,
-                    "metadata": {**mem.get("metadata", {}), "ranking_reasoning": resp.reasoning},
-                }
-            ).eq("id", mem["id"]).execute()
+                # Update the memory in the database
+                sb_client.table("memories").update(
+                    {
+                        "importance_score": resp.importance_score,
+                        "metadata": {**mem.get("metadata", {}), "ranking_reasoning": resp.reasoning},
+                    }
+                ).eq("id", mem["id"]).execute()
 
-            logger.info(f"[{i + 1}/{len(memories)}] Ranked memory {mem['id']} as {resp.importance_score}")
+                logger.info(f"[{i + 1}/{len(memories)}] Ranked memory {mem['id']} as {resp.importance_score}")
 
-        except Exception as e:
-            logger.error(f"Failed to rank memory {mem['id']}: {e}")
+            except Exception as e:
+                logger.error(f"Failed to rank memory {mem['id']}: {e}")
+    finally:
+        await close_client(llm_client, "auto_go")
 
     logger.info("Ranking process complete.")
 

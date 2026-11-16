@@ -804,12 +804,12 @@ def _find_similar_components(memories: list[dict[str, Any]], similarity_threshol
     return components
 
 
-async def _synthesize_memory_cluster(comp: list[str], memory_map: dict[str, Any], deepseek: Any) -> None:
+async def _synthesize_memory_cluster(comp: list[str], memory_map: dict[str, Any], llm_client: Any) -> None:
     from typing import Literal
 
     from pydantic import BaseModel, Field
 
-    from core.config import DEEPSEEK_FLASH_MODEL
+    from core.config import AUTO_GO_MODEL
     from core.llm.prompt_factory import PromptFactory
 
     class ConsolidationResponse(BaseModel):
@@ -829,10 +829,10 @@ async def _synthesize_memory_cluster(comp: list[str], memory_map: dict[str, Any]
     overlapping_text = "\n".join(formatted_memories)
 
     messages = PromptFactory.build_memory_consolidation_messages(
-        provider="deepseek", overlapping_memories=overlapping_text
+        provider="openai", overlapping_memories=overlapping_text
     )
-    resp_awaitable = deepseek.chat.completions.create(
-        model=DEEPSEEK_FLASH_MODEL, response_model=ConsolidationResponse, messages=messages
+    resp_awaitable = llm_client.chat.completions.create(
+        model=AUTO_GO_MODEL, response_model=ConsolidationResponse, messages=messages
     )
 
     if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
@@ -868,7 +868,8 @@ async def consolidate_overlapping_memories(similarity_threshold: float = 0.85):
     try:
         import json
 
-        from core.llm import get_deepseek_client
+        from core.llm import get_auto_go_client
+        from core.llm.clients import close_client
 
         client = get_supabase_client()
         response = (
@@ -898,10 +899,12 @@ async def consolidate_overlapping_memories(similarity_threshold: float = 0.85):
             return
 
         memory_map = {m["id"]: m for m in memories}
-        deepseek = get_deepseek_client()
-
-        for comp in components:
-            await _synthesize_memory_cluster(comp, memory_map, deepseek)
+        llm_client = get_auto_go_client(purpose="memory-consolidation")
+        try:
+            for comp in components:
+                await _synthesize_memory_cluster(comp, memory_map, llm_client)
+        finally:
+            await close_client(llm_client, "auto_go")
 
     except Exception as e:
         logger.error(f"Error in consolidate_overlapping_memories: {e}")

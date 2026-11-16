@@ -4,7 +4,7 @@ import logging
 
 from pydantic import BaseModel, Field
 
-from core.config import DEEPSEEK_FLASH_MODEL
+from core.config import AUTO_GO_MODEL
 from core.llm import clients
 
 logger = logging.getLogger("engine")
@@ -37,7 +37,7 @@ async def summarize_newsletters(chunks: list[dict]) -> dict[str, str]:
     if not chunks:
         return {}
 
-    logger.info(f"Pre-filtering {len(chunks)} newsletters using {DEEPSEEK_FLASH_MODEL}...")
+    logger.info(f"Pre-filtering {len(chunks)} newsletters using {AUTO_GO_MODEL}...")
 
     # Format the input text for the pre-filter model
     newsletter_batch_str = ""
@@ -61,11 +61,11 @@ async def summarize_newsletters(chunks: list[dict]) -> dict[str, str]:
 
     user_prompt = f"Here is the batch of newsletters to summarize:\n{newsletter_batch_str}"
 
-    client = clients.get_deepseek_client()
+    client = clients.get_auto_go_client(purpose="newsletter-pre-filter")
 
     try:
         resp = await client.chat.completions.create(
-            model=DEEPSEEK_FLASH_MODEL,
+            model=AUTO_GO_MODEL,
             response_model=NewsletterTriageResponse,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -85,4 +85,4 @@ async def summarize_newsletters(chunks: list[dict]) -> dict[str, str]:
         logger.exception("Pre-filtering newsletters failed. Falling back to empty summary map.")
         return {}
     finally:
-        await clients.close_client(client, "deepseek")
+        await clients.close_client(client, "auto_go")

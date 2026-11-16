@@ -83,7 +83,7 @@ Assembles real-world source context via `fetch_policy_grounding_context()` from:
 - `fetch_federal_register_documents()` in `apps/engine/ingest/federal_register.py` (`https://www.federalregister.gov/api/v1/documents.json` significant rules/notices)
 - Latest balanced US and Canadian procurement awards (`gov_contracts`, 30-day window), US Treasury liquidity (`gov_macro_liquidity`, 30-day window), and recent market newsletter summaries (`generated_newsletters`, 14-day window) in Supabase.
 
-If no grounding context is retrieved, `extract_policy_memories()` skips the LLM call and returns `0`. Otherwise, it prompts Gemini (`GEMINI_MODEL`) with a `DecisionsResponse` schema to synthesize verified US and Canadian budgets, rules, and incentives grounded strictly in that source payload. Each returned macro event is persisted via `add_memory()` as a `GOVERNMENT_INCENTIVE` memory containing the event name, reasoning, impact, and expiry date, feeding the [[concepts/catalyst-radar]].
+If no grounding context is retrieved, `extract_policy_memories()` skips the LLM call and returns `0`. Otherwise, it prompts `auto-go` (`get_auto_go_client`, `AUTO_GO_MODEL`) with a `DecisionsResponse` schema to synthesize verified US and Canadian budgets, rules, and incentives grounded strictly in that source payload. Each returned macro event is persisted via `add_memory()` as a `GOVERNMENT_INCENTIVE` memory containing the event name, reasoning, impact, and expiry date, feeding the [[concepts/catalyst-radar]].
 
 ## Congress Disclosures (`congress_fetchers.py`)
 

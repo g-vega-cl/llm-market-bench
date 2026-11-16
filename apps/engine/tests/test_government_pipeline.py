@@ -33,7 +33,7 @@ async def test_government_pipeline_await_crash():
     mock_client.chat.completions.create.return_value = mock_response
 
     with (
-        patch("ingest.government.get_gemini_client", return_value=mock_client),
+        patch("ingest.government.get_auto_go_client", return_value=mock_client),
         patch("ingest.government.get_supabase_client", return_value=mock_supabase),
         patch("ingest.government.add_memory", return_value="some-uuid") as mock_add_memory,
         patch(
@@ -60,7 +60,7 @@ async def test_extract_policy_memories_skips_when_ungrounded():
     """Verify extract_policy_memories refuses to call LLM when no real grounding context is retrieved."""
     mock_client = MagicMock()
     with (
-        patch("ingest.government.get_gemini_client", return_value=mock_client),
+        patch("ingest.government.get_auto_go_client", return_value=mock_client),
         patch("ingest.government.get_supabase_client", return_value=MagicMock()),
         patch(
             "ingest.government.GovernmentPipeline.fetch_policy_grounding_context",
@@ -142,7 +142,7 @@ async def test_extract_policy_memories_passes_grounded_context():
     ]
 
     with (
-        patch("ingest.government.get_gemini_client", return_value=mock_client),
+        patch("ingest.government.get_auto_go_client", return_value=mock_client),
         patch("ingest.government.get_supabase_client", return_value=mock_sb),
         patch("ingest.government.fetch_federal_register_documents", new_callable=AsyncMock, return_value=fr_docs),
         patch("ingest.government.add_memory", return_value="mem-uuid") as mock_add_memory,

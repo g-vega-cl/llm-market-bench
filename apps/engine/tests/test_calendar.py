@@ -66,7 +66,7 @@ REALISTIC_TE_HTML = """
 @pytest.fixture
 def pipeline():
     with (
-        patch("ingest.calendar.get_deepseek_client") as mock_get_client,
+        patch("ingest.calendar.get_auto_go_client") as mock_get_client,
         patch("ingest.calendar.get_supabase_client") as mock_get_sb,
     ):
         mock_get_client.return_value = MagicMock()

@@ -46,15 +46,14 @@ async def clean_newsletter_content(content: str) -> str:
 
     logger.debug("Starting advertisement removal pass...")
 
-    # We use Gemini Flash for this pass as it is fast and cost-effective for
-    # large batches of text processing like de-advertisement.
-    client = clients.get_gemini_client()
+    # Route de-advertisement pass through free-llm-proxy (auto-go).
+    client = clients.get_auto_go_client(purpose="newsletter-de-advertisement")
 
     try:
-        messages = PromptFactory.build_de_advertisement_messages(provider="gemini", content=content)
+        messages = PromptFactory.build_de_advertisement_messages(provider="openai", content=content)
 
         resp_awaitable = client.chat.completions.create(
-            model=config.GEMINI_MODEL, response_model=NewsletterCleaningResponse, messages=messages, max_retries=2
+            model=config.AUTO_GO_MODEL, response_model=NewsletterCleaningResponse, messages=messages, max_retries=2
         )
 
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
@@ -100,4 +99,4 @@ async def clean_newsletter_content(content: str) -> str:
         logger.exception("Error during de-advertisement pass: %s. Falling back to original content.", e)
         return CleanedNewsletterText(content, is_pure_ad=False, ads_removed_count=0, ads_summary=[])
     finally:
-        await clients.close_client(client, "gemini")
+        await clients.close_client(client, "auto_go")

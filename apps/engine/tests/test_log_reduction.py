@@ -30,7 +30,7 @@ async def test_ad_cleaner_logs_at_debug_not_info(caplog):
     mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
 
     with (
-        patch("core.llm.clients.get_gemini_client", return_value=mock_client),
+        patch("core.llm.clients.get_auto_go_client", return_value=mock_client),
         patch("core.llm.clients.close_client", new_callable=AsyncMock),
     ):
         result = await clean_newsletter_content("Some content with ad")

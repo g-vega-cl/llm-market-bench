@@ -11,7 +11,7 @@ This document records the empirical audit of the newsletter de-advertisement sys
 
 ## Context: The De-Advertisement Pass
 
-The newsletter ingestion pipeline runs raw newsletter bodies through a fast LLM pass (`gemini-3.5-flash-lite`) using `instructor` before downstream analysis agents consume the text. The goal is to strip commercial fluff, sponsored blurbs, and referral links while preserving substantive market data, company earnings reports, and financial analysis.
+The newsletter ingestion pipeline runs raw newsletter bodies through an `auto-go` LLM pass (`get_auto_go_client` -> `free-llm-proxy`) using `instructor` (`Mode.MD_JSON`) before downstream analysis agents consume the text. The goal is to strip commercial fluff, sponsored blurbs, and referral links while preserving substantive market data, company earnings reports, and financial analysis.
 
 ---
 

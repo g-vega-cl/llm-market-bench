@@ -52,8 +52,8 @@ def set_latest_news_synthesis(summary: str | None) -> None:
 
 
 def _get_free_proxy_master_key() -> str:
-    """Retrieve master API key for the free LLM proxy fallback."""
-    key = os.getenv("FREE_PROXY_MASTER_KEY", "")
+    """Retrieve master API key for the free LLM proxy."""
+    key = os.getenv("FREE_PROXY_MASTER_KEY", "").strip().strip('"').strip("'")
     if not key:
         for env_path in ("apps/free_llm_proxy/.env", "../../apps/free_llm_proxy/.env"):
             if os.path.exists(env_path):
@@ -61,9 +61,9 @@ def _get_free_proxy_master_key() -> str:
                     with open(env_path) as f:
                         for line in f:
                             if line.startswith("FREE_PROXY_MASTER_KEY="):
-                                return line.split("=", 1)[1].strip()
+                                return line.split("=", 1)[1].strip().strip('"').strip("'")
                 except Exception:
-                    pass
+                    logger.debug("Failed reading %s", env_path, exc_info=True)
     return key
 
 
@@ -169,61 +169,45 @@ def _extract_json_decision(raw_text: str | None) -> dict[str, Any]:
 
 async def query_multi_tier_llm(
     messages: list[dict[str, str]],
-    strata_url: str = DEFAULT_STRATA_URL,
+    strata_url: str = DEFAULT_STRATA_URL,  # Kept for signature compatibility; bypassed for auto-go
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
     fallback_api_key: str | None = None,
     http_client: httpx.AsyncClient | None = None,
     max_tokens: int = 16384,
-    reasoning_budget_tokens: int | None = 12288,
+    reasoning_budget_tokens: int | None = 12288,  # Unused for auto-go; kept for caller compatibility
     strata_timeout: float = 45.0,
-    fallback_timeout: float = 75.0,
+    fallback_timeout: float = 120.0,
+    purpose: str | None = None,
 ) -> str:
-    """Query local Strata first, falling back cleanly to the free proxy."""
+    """Query free-llm-proxy directly using auto-go (bypassing local Strata)."""
+    _ = (strata_url, reasoning_budget_tokens, strata_timeout)
     should_close = False
     if http_client is None:
         http_client = httpx.AsyncClient(timeout=120.0)
         should_close = True
 
     try:
-        # Tier 1: Local Strata
         try:
-            url_strata = f"{strata_url.rstrip('/')}/chat/completions"
+            url_proxy = f"{cheap_proxy_url.rstrip('/')}/chat/completions"
             payload: dict[str, Any] = {
-                "model": os.getenv("STRATA_MODEL", "orcarouter-qwen3.8-flash-next-uncensored-iq3_xxs"),
-                "messages": messages,
-                "temperature": 0.3,
-                "max_tokens": max_tokens,
-            }
-            if reasoning_budget_tokens is not None:
-                payload["reasoning_budget_tokens"] = reasoning_budget_tokens
-            resp = await http_client.post(url_strata, json=payload, timeout=strata_timeout)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data["choices"][0]["message"]["content"]
-            logger.warning(f"Strata returned status {resp.status_code}. Attempting fallback...")
-        except Exception as e:
-            logger.info(f"Strata unavailable or timed out ({e}). Cascading to fallback proxy...")
-
-        # Tier 2: CLVG Free Proxy
-        try:
-            url_fallback = f"{cheap_proxy_url.rstrip('/')}/chat/completions"
-            payload_fallback: dict[str, Any] = {
-                "model": os.getenv("FREE_PROXY_MODEL", "auto-strata"),
+                "model": os.getenv("FREE_PROXY_MODEL", "auto-go"),
                 "messages": messages,
                 "temperature": 0.3,
                 "max_tokens": max_tokens,
             }
             master_key = fallback_api_key or _get_free_proxy_master_key()
-            headers = {"Authorization": f"Bearer {master_key}"} if master_key else {}
-            resp = await http_client.post(
-                url_fallback, json=payload_fallback, headers=headers, timeout=fallback_timeout
-            )
+            headers: dict[str, str] = {}
+            if master_key:
+                headers["Authorization"] = f"Bearer {master_key}"
+            if purpose:
+                headers["X-Purpose"] = purpose
+            resp = await http_client.post(url_proxy, json=payload, headers=headers, timeout=fallback_timeout)
             if resp.status_code == 200:
                 data = resp.json()
                 return data["choices"][0]["message"]["content"]
-            logger.warning(f"Fallback proxy returned status {resp.status_code}: {resp.text[:120]}")
+            logger.warning(f"auto-go proxy returned status {resp.status_code}: {resp.text[:120]}")
         except Exception as e:
-            logger.warning(f"Fallback proxy call failed: {e}")
+            logger.warning("auto-go proxy call failed: %r", e)
 
         # Default fallback decision
         return json.dumps(
@@ -429,6 +413,7 @@ async def execute_intraday_agent_step(
         strata_url=strata_url,
         cheap_proxy_url=cheap_proxy_url,
         http_client=http_client,
+        purpose="live-spy-trader",
     )
     decision = _extract_json_decision(raw_output)
 
@@ -480,7 +465,7 @@ async def execute_intraday_agent_step(
             "primary_concern": f"RSI: {technicals['rsi_14']} | Trend: {technicals['trend']}",
             "secondary_concern": f"VWAP: ${technicals['vwap']:.2f}",
             "trades_summary": trades_payload,
-            "model_used": "Strata / Cheap-LLM-Cascade",
+            "model_used": os.getenv("FREE_PROXY_MODEL", "auto-go"),
         }
         effective_summary = news_summary or get_latest_news_synthesis()
         if effective_summary:

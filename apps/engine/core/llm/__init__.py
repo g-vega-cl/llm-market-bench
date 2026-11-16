@@ -13,6 +13,8 @@ get_openai_client = clients.get_openai_client
 get_anthropic_client = clients.get_anthropic_client
 get_deepseek_client = clients.get_deepseek_client
 get_gemini_client = clients.get_gemini_client
+get_auto_go_client = clients.get_auto_go_client
+get_auto_go_raw_client = clients.get_auto_go_raw_client
 _close_client = clients.close_client
 
 # MiniMax client
@@ -38,6 +40,8 @@ __all__ = [
     "get_anthropic_client",
     "get_deepseek_client",
     "get_gemini_client",
+    "get_auto_go_client",
+    "get_auto_go_raw_client",
     "_close_client",
     "MiniMaxClient",
     "_CLIENT_FACTORIES",

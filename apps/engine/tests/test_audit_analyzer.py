@@ -9,6 +9,14 @@ import pytest
 class TestAnalyzeLogBlob:
     """Tests for the analyze_log_blob function."""
 
+    @pytest.fixture(autouse=True)
+    def reset_analyzer_state(self):
+        from core.audit import analyzer
+
+        analyzer.configure(None)
+        yield
+        analyzer.configure(None)
+
     @pytest.fixture
     def mock_deepseek_response(self):
         """Sample valid DeepSeek response."""
@@ -43,7 +51,7 @@ class TestAnalyzeLogBlob:
 
         configure("test-key")
 
-        with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
+        with patch("core.audit.analyzer.get_auto_go_raw_client") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(
                 return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content=mock_deepseek_response))])
@@ -70,7 +78,7 @@ class TestAnalyzeLogBlob:
 ]
 ```"""
 
-        with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
+        with patch("core.audit.analyzer.get_auto_go_raw_client") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(
                 return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content=markdown_json))])
@@ -93,7 +101,7 @@ class TestAnalyzeLogBlob:
         long_blob = "x" * 50000
         expected_truncated = "x" * 32000
 
-        with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
+        with patch("core.audit.analyzer.get_auto_go_raw_client") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(
                 return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content="[]"))])
@@ -114,7 +122,7 @@ class TestAnalyzeLogBlob:
 
         configure("test-key")
 
-        with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
+        with patch("core.audit.analyzer.get_auto_go_raw_client") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(
                 return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content="This is not valid JSON"))])
@@ -133,7 +141,7 @@ class TestAnalyzeLogBlob:
 
         configure("test-key")
 
-        with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
+        with patch("core.audit.analyzer.get_auto_go_raw_client") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(side_effect=Exception("API Error"))
             mock_client.return_value = mock_instance
@@ -147,5 +155,10 @@ class TestAnalyzeLogBlob:
         """Verify behavior when API key is not configured."""
         from core.audit.analyzer import analyze_log_blob
 
-        result = await analyze_log_blob("test log")
-        assert result is None
+        with (
+            patch("core.audit.analyzer.FREE_PROXY_MASTER_KEY", ""),
+            patch("core.audit.analyzer.get_auto_go_raw_client") as mock_client,
+        ):
+            result = await analyze_log_blob("test log")
+            assert result is None
+            mock_client.assert_not_called()

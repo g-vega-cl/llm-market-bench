@@ -7,7 +7,6 @@ cycles, midterms, and rate decisions) grounded strictly in historical memories a
 
 from __future__ import annotations
 
-import contextlib
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -212,7 +211,7 @@ def _fetch_grounding_memories(
     try:
         if keywords:
             or_filter = ",".join([f"content.ilike.%{kw}%" for kw in keywords])
-            with contextlib.suppress(Exception):
+            try:
                 mem_res = (
                     sb_client.table("memories")
                     .select(
@@ -225,9 +224,11 @@ def _fetch_grounding_memories(
                     .execute()
                 )
                 raw_memories.extend(mem_res.data or [])
+            except Exception:
+                logger.debug("Active keyword memory query failed; falling back", exc_info=True)
 
             if not raw_memories:
-                with contextlib.suppress(Exception):
+                try:
                     mem_res = (
                         sb_client.table("memories")
                         .select("id, content, importance_score, metadata")
@@ -237,8 +238,10 @@ def _fetch_grounding_memories(
                         .execute()
                     )
                     raw_memories.extend(mem_res.data or [])
+                except Exception:
+                    logger.debug("Fallback keyword memory query failed", exc_info=True)
 
-        with contextlib.suppress(Exception):
+        try:
             fresh_res = (
                 sb_client.table("memories")
                 .select(
@@ -251,6 +254,8 @@ def _fetch_grounding_memories(
                 .execute()
             )
             raw_memories.extend(fresh_res.data or [])
+        except Exception:
+            logger.debug("Fresh active memory query failed", exc_info=True)
 
         return rank_and_filter_memories(raw_memories, query=query, now_dt=now_utc, limit=limit_memories)
     except Exception:
@@ -263,7 +268,7 @@ def _fetch_causal_chains(sb_client: Any, keywords: list[str]) -> list[dict[str, 
         ce_data: list[dict[str, Any]] = []
         if keywords:
             or_filter = ",".join([f"analysis.ilike.%{kw}%" for kw in keywords])
-            with contextlib.suppress(Exception):
+            try:
                 ce_res = (
                     sb_client.table("cause_and_effect")
                     .select("id, analysis, market_outcome, confidence, tags, created_at")
@@ -273,6 +278,8 @@ def _fetch_causal_chains(sb_client: Any, keywords: list[str]) -> list[dict[str, 
                     .execute()
                 )
                 ce_data = ce_res.data or []
+            except Exception:
+                logger.debug("Keyword causal chain query failed; falling back", exc_info=True)
 
         if not ce_data:
             ce_res = (
@@ -525,6 +532,7 @@ async def answer_audience_question(
         http_client=http_client,
         max_tokens=EXPLAINER_MAX_TOKENS,
         reasoning_budget_tokens=EXPLAINER_REASONING_BUDGET,
+        purpose="homepage-audience-qa",
     )
     trimmed = response.strip() if response else ""
     if is_llm_outage_fallback(trimmed):

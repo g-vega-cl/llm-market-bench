@@ -28,7 +28,7 @@ If the blob is already small, it is passed through unchanged.
 
 ## LLM Analysis
 
-Summarized logs are sent to DeepSeek (via OpenRouter) with a structured prompt that asks for findings with `title`, `severity`, `suggestion`, and `run_id`. The model output is parsed as JSON. Stripping of `thinking` / `response` prefixes is applied.
+Summarized logs are sent to `auto-go` via `free-llm-proxy` (`get_auto_go_raw_client`) with a structured prompt that asks for findings with `title`, `severity`, `suggestion`, and `run_id`. The model output is parsed as JSON. Stripping of `thinking` / `<think>` prefixes is applied.
 
 ## SQL Checks
 

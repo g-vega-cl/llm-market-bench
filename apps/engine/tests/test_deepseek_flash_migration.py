@@ -71,12 +71,13 @@ async def test_verification_deepseek_uses_flash():
 
 @pytest.mark.asyncio
 async def test_calendar_ingestion_uses_flash():
-    """Verify that CalendarPipeline uses DEEPSEEK_FLASH_MODEL."""
+    """Verify that CalendarPipeline uses auto-go."""
+    from core.config import AUTO_GO_MODEL
     from core.models import DecisionsResponse
     from ingest.calendar import CalendarPipeline
 
     with (
-        patch("ingest.calendar.get_deepseek_client") as mock_get_client,
+        patch("ingest.calendar.get_auto_go_client") as mock_get_client,
         patch("ingest.calendar.get_supabase_client"),
     ):
         mock_client = MagicMock()
@@ -107,17 +108,18 @@ async def test_calendar_ingestion_uses_flash():
             await pipeline.run()
 
         assert mock_completions.create.call_args is not None
-        assert mock_completions.create.call_args.kwargs.get("model") == DEEPSEEK_FLASH_MODEL
+        assert mock_completions.create.call_args.kwargs.get("model") == AUTO_GO_MODEL
 
 
 @pytest.mark.asyncio
 async def test_audit_analyzer_uses_flash():
-    """Verify that analyze_log_blob uses DEEPSEEK_FLASH_MODEL."""
+    """Verify that analyze_log_blob uses auto-go."""
     from core.audit.analyzer import analyze_log_blob, configure
+    from core.config import AUTO_GO_MODEL
 
-    configure("test-deepseek-key")
+    configure("test-proxy-key")
 
-    with patch("core.audit.analyzer.AsyncOpenAI") as mock_openai:
+    with patch("core.audit.analyzer.get_auto_go_raw_client") as mock_openai:
         mock_instance = AsyncMock()
         mock_instance.chat.completions.create = AsyncMock(
             return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content=json.dumps([])))])
@@ -127,12 +129,13 @@ async def test_audit_analyzer_uses_flash():
         await analyze_log_blob("Sample test log output")
 
         assert mock_instance.chat.completions.create.call_args is not None
-        assert mock_instance.chat.completions.create.call_args.kwargs.get("model") == DEEPSEEK_FLASH_MODEL
+        assert mock_instance.chat.completions.create.call_args.kwargs.get("model") == AUTO_GO_MODEL
 
 
 @pytest.mark.asyncio
 async def test_memory_consolidation_uses_flash():
-    """Verify that consolidate_overlapping_memories uses DEEPSEEK_FLASH_MODEL."""
+    """Verify that consolidate_overlapping_memories uses auto-go."""
+    from core.config import AUTO_GO_MODEL
     from memory.store import consolidate_overlapping_memories
 
     mock_memories = [
@@ -161,7 +164,7 @@ async def test_memory_consolidation_uses_flash():
 
     with (
         patch("memory.store.get_supabase_client") as mock_sb,
-        patch("core.llm.get_deepseek_client") as mock_get_ds,
+        patch("core.llm.get_auto_go_client") as mock_get_ds,
         patch("analysis.consensus.cosine_similarity", return_value=0.95),
         patch("memory.store.add_memory", return_value="new-mem-id"),
     ):
@@ -176,7 +179,7 @@ async def test_memory_consolidation_uses_flash():
         await consolidate_overlapping_memories()
 
         assert mock_ds_client.chat.completions.create.call_args is not None
-        assert mock_ds_client.chat.completions.create.call_args.kwargs.get("model") == DEEPSEEK_FLASH_MODEL
+        assert mock_ds_client.chat.completions.create.call_args.kwargs.get("model") == AUTO_GO_MODEL
 
 
 def test_autoresearch_track_models_flash():

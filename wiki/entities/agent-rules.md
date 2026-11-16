@@ -117,9 +117,11 @@ Whenever an agent builds, modifies, or fixes edge server services or configurati
 
 Agents MUST:
 
-1. **Deploy and launch immediately** — run the secondary edge deployment, which synchronizes files and automatically rebuilds/restarts containers in its `[5/5]` step:
-   sh
+1. **Deploy and launch immediately** — run the secondary edge deployment (unsandboxed), which synchronizes files and automatically rebuilds/restarts containers in its `[5/5]` step:
+   ```sh
+   ssh -o BatchMode=yes cv-minipc@minipc true  # verify Tailscale SSH session; if prompted for check-mode auth, ask user to run `ssh cv-minipc@minipc`
    ./docker/archive/deploy_secondary.sh cv-minipc@minipc
+   ```
    
 2. **Verify health** — confirm health endpoints respond and inspect container logs after the restart.
 3. **Never leave services dirty** — an unstarted, dirty, or crashed server service is a failed task. The operating assumption is that "people assume it's running when we commit or finish it."

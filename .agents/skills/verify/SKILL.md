@@ -121,7 +121,7 @@ Audit all changed files through these eight tiers. Do not skip any tier.
    - *Secondary edge replica & PostgREST schema reload (MANDATORY on migrations)*:
      - Physical streaming replication on the MiniPC edge replica (`cv-minipc@minipc`) does NOT forward PostgreSQL `NOTIFY` events (`NOTIFY pgrst, 'reload schema'`), and standby PostgREST runs with `PGRST_DB_CHANNEL_ENABLED: false`.
      - Because `docker/archive/nginx.secondary.conf` routes all `GET` read queries directly to MiniPC PostgREST, leaving the replica un-restarted will cause silent `PGRST205: Could not find table ... in schema cache` failures on public web read paths (`https://benchify-archive-db.clvg.uk`).
-     - Whenever migrations are created or applied, you MUST deploy to the MiniPC edge node:
+     - Whenever migrations are created or applied, you MUST deploy to the MiniPC edge node (unsandboxed, after verifying Tailscale SSH with `ssh -o BatchMode=yes cv-minipc@minipc true`—if Tailscale check-mode prompts for browser login, ask the user to authenticate via `ssh cv-minipc@minipc` first):
        ```bash
        ./docker/archive/deploy_secondary.sh cv-minipc@minipc
        ```

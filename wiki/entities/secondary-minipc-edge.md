@@ -66,6 +66,9 @@ The `live-spy-trader` container hosts a lightweight asyncio SSE server (`apps/en
 
 ## Operational Workflows
 
+> [!NOTE]
+> **Tailscale SSH Authentication**: SSH/rsync to `cv-minipc@minipc` runs over Tailscale SSH (outside the terminal sandbox) and fails if a Tailscale check-mode browser login is pending. Check with `ssh -o BatchMode=yes cv-minipc@minipc true`; if authentication is required, have the operator run `ssh cv-minipc@minipc` manually to complete the Tailscale auth URL before invoking `deploy_secondary.sh`.
+
 ### 1. Initial Setup
 On the primary workstation:
 ```bash

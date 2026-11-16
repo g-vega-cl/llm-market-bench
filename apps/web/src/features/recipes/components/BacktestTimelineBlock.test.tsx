@@ -1,7 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import type { BacktestResultData } from '../types';
-import { BacktestTimelineBlock } from './BacktestTimelineBlock';
+import { BacktestSessionTraceBlock } from './BacktestSessionTraceBlock';
+import { BacktestTimelineBlock, resolveBacktestTimelineSelection } from './BacktestTimelineBlock';
 
 const partialResults: BacktestResultData = {
     window_dates: ['2026-08-03 09:30 ET', '2026-08-03 12:30 ET', '2026-08-03 15:30 ET'],
@@ -31,31 +33,81 @@ const partialResults: BacktestResultData = {
     ],
 };
 
+function ConnectedTimelineAndTrace({
+    status,
+    results,
+    queuePosition,
+}: {
+    status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+    results: BacktestResultData | null;
+    queuePosition?: number | null;
+}) {
+    const [selectedDay, setSelectedDay] = useState<string | null>(null);
+    const selection = resolveBacktestTimelineSelection(status, results, selectedDay);
+    return (
+        <>
+            <BacktestTimelineBlock
+                queuePosition={queuePosition}
+                selection={selection}
+                onSelectDay={setSelectedDay}
+            />
+            <BacktestSessionTraceBlock
+                windowDates={selection.windowDates}
+                activeDay={selection.activeDay}
+                activeIndex={selection.activeIndex}
+                selectedStep={selection.selectedStep}
+                isCurrentRunning={selection.isCurrentRunning}
+                onSelectDay={setSelectedDay}
+            />
+        </>
+    );
+}
+
 describe('BacktestTimelineBlock', () => {
-    it('renders queue waiting trough before window dates exist', () => {
-        render(<BacktestTimelineBlock status="pending" results={null} />);
+    it('renders queue waiting trough before window dates exist and hides trace block', () => {
+        render(<ConnectedTimelineAndTrace status="pending" results={null} />);
         expect(
             screen.getByText(/Waiting for recipe worker to pick a 2-week historical window/i),
         ).toBeInTheDocument();
+        expect(screen.queryByTestId('day-inspector-trough')).not.toBeInTheDocument();
     });
 
-    it('renders settled, running, and queued session tiles and inspects clicked session in-flow', () => {
-        render(<BacktestTimelineBlock status="processing" results={partialResults} />);
+    it('renders settled, running, and queued session tiles with compact bar and trace controls', () => {
+        render(<ConnectedTimelineAndTrace status="processing" results={partialResults} />);
 
         expect(screen.getByText('1 / 3 Sessions Settled')).toBeInTheDocument();
-        expect(screen.getByText('S1 • 2026-08-03 09:30 ET')).toBeInTheDocument();
-        expect(screen.getByText('EXIT AMD')).toBeInTheDocument();
+        expect(screen.getAllByText('S1 • 2026-08-03 09:30 ET').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText('EXIT AMD').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('-$12.50')).toBeInTheDocument();
-        expect(screen.getByText('RUNNING')).toBeInTheDocument();
+        expect(screen.getAllByText('RUNNING').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('QUEUED')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Jump to Trace/i })).toHaveAttribute(
+            'href',
+            '#session-trace',
+        );
 
         fireEvent.click(screen.getByRole('button', { name: /2026-08-03 12:30 ET/ }));
-        expect(screen.getByText('Running LLM evaluation for this session...')).toBeInTheDocument();
+        expect(
+            screen.getAllByText('Running LLM evaluation for this session...').length,
+        ).toBeGreaterThanOrEqual(2);
 
         fireEvent.click(screen.getByRole('button', { name: /2026-08-03 09:30 ET/ }));
-        expect(screen.getByText(/1 open/)).toBeInTheDocument();
+        expect(screen.getAllByText(/1 open/).length).toBeGreaterThanOrEqual(2);
         expect(screen.getByText('get_stock_quote({"ticker":"AMD"})')).toBeInTheDocument();
         expect(screen.getByText('[{"action": "EXIT", "ticker": "AMD"}]')).toBeInTheDocument();
+
+        const nextBtn = screen.getByRole('button', { name: /Next/i });
+        const prevBtn = screen.getByRole('button', { name: /Prev/i });
+        expect(prevBtn).toBeDisabled();
+        expect(nextBtn).toBeEnabled();
+        fireEvent.click(nextBtn);
+        expect(
+            screen.getAllByText('Running LLM evaluation for this session...').length,
+        ).toBeGreaterThanOrEqual(2);
+        expect(screen.getByRole('link', { name: /Timeline/i })).toHaveAttribute(
+            'href',
+            '#simulation-timeline',
+        );
     });
 
     it('renders hydrated prompt, round-by-round reasoning, tool results, and full unclipped output', () => {
@@ -90,7 +142,7 @@ describe('BacktestTimelineBlock', () => {
             ],
         };
 
-        render(<BacktestTimelineBlock status="completed" results={tracedResults} />);
+        render(<ConnectedTimelineAndTrace status="completed" results={tracedResults} />);
 
         expect(screen.getByText('Hydrated Stage Prompt for 2026-08-03')).toBeInTheDocument();
         expect(screen.getByText('Need to check AMD quote before exiting.')).toBeInTheDocument();
@@ -104,12 +156,12 @@ describe('BacktestTimelineBlock', () => {
 
     it('renders queue position waiting message and clear hold decision summary', () => {
         const { rerender } = render(
-            <BacktestTimelineBlock status="pending" results={null} queuePosition={3} />,
+            <ConnectedTimelineAndTrace status="pending" results={null} queuePosition={3} />,
         );
         expect(screen.getByText(/Queued \(#3 in line\)/i)).toBeInTheDocument();
 
         rerender(
-            <BacktestTimelineBlock
+            <ConnectedTimelineAndTrace
                 status="completed"
                 results={{
                     ...partialResults,

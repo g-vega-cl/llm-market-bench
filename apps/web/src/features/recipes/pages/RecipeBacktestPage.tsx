@@ -5,8 +5,12 @@ import { useState } from 'react';
 import { isQuerySettled } from '~/lib/query-client';
 import { enqueueRecipeJobFn, fetchRecipeRunDetailFn } from '../api/recipes-api';
 import { cancelRecipeJobFn } from '../api/recipes-quota-api';
+import { BacktestSessionTraceBlock } from '../components/BacktestSessionTraceBlock';
 import { BacktestTelemetryBlock } from '../components/BacktestTelemetryBlock';
-import { BacktestTimelineBlock } from '../components/BacktestTimelineBlock';
+import {
+    BacktestTimelineBlock,
+    resolveBacktestTimelineSelection,
+} from '../components/BacktestTimelineBlock';
 import { BacktestTradesBlock } from '../components/BacktestTradesBlock';
 import { BacktestMethodologyBlock } from '../components/RecipeGuideAndQuotaBlock';
 import { RecipePortfolioBlock } from '../components/RecipePortfolioBlock';
@@ -287,6 +291,7 @@ export function RecipeBacktestPage({
     const [isRerunning, setIsRerunning] = useState(false);
     const [isCancelling, setIsCancelling] = useState(false);
     const [rerunError, setRerunError] = useState<string | null>(null);
+    const [selectedDay, setSelectedDay] = useState<string | null>(null);
     const [mountedAt] = useState(() => Date.now());
 
     const query = useQuery({
@@ -312,6 +317,7 @@ export function RecipeBacktestPage({
     const settled = readOnlyShowcase || isQuerySettled(query);
     const { isRunning, results, canRerun, canCancel, cashAvailable, totalEquity } =
         deriveBacktestViewMetrics(detail, readOnlyShowcase, settled, query.isPending);
+    const timelineSelection = resolveBacktestTimelineSelection(job.status, results, selectedDay);
 
     const handleRerun = async () => {
         if (!job.recipe_id || isRerunning) return;
@@ -369,9 +375,9 @@ export function RecipeBacktestPage({
                 )}
 
                 <BacktestTimelineBlock
-                    status={job.status}
-                    results={results}
                     queuePosition={detail.queuePosition}
+                    selection={timelineSelection}
+                    onSelectDay={setSelectedDay}
                 />
                 <BacktestTelemetryBlock results={results} isRunning={isRunning} />
                 <RecipePortfolioBlock
@@ -381,6 +387,14 @@ export function RecipeBacktestPage({
                     openPositions={results?.open_positions ?? []}
                 />
                 <BacktestTradesBlock results={results} />
+                <BacktestSessionTraceBlock
+                    windowDates={timelineSelection.windowDates}
+                    activeDay={timelineSelection.activeDay}
+                    activeIndex={timelineSelection.activeIndex}
+                    selectedStep={timelineSelection.selectedStep}
+                    isCurrentRunning={timelineSelection.isCurrentRunning}
+                    onSelectDay={setSelectedDay}
+                />
                 <BacktestMethodologyBlock />
             </PageLayout>
         </div>

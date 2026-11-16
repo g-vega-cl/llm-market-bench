@@ -349,4 +349,52 @@ describe('RecipeBacktestPage', () => {
         );
         expect(screen.getByRole('button', { name: 'Cancel Run' })).toBeInTheDocument();
     });
+
+    it('places Telemetry, Portfolio, and Trades above Session Trace and links them bidirectionally', () => {
+        vi.mocked(fetchRecipeRunDetailFn).mockResolvedValue(sampleProcessingDetail);
+        const { container } = renderWithQuery(
+            <RecipeBacktestPage jobId="job-123" initialData={sampleProcessingDetail} />,
+        );
+
+        const timelineEl = container.querySelector('#simulation-timeline');
+        const traceEl = container.querySelector('#session-trace');
+        const telemetryHeading = screen.getByText(/Developing Telemetry/i);
+        const portfolioHeading = screen.getByText(/Current Portfolio & Open Positions/i);
+        const tradesHeading = screen.getByText(/Executed Trades \(1\)/i);
+
+        expect(timelineEl).toBeInTheDocument();
+        expect(traceEl).toBeInTheDocument();
+        if (!timelineEl || !traceEl) throw new Error('Expected timeline and trace sections');
+
+        // DOM order: Timeline -> Telemetry -> Portfolio -> Trades -> Session Trace
+        expect(
+            timelineEl.compareDocumentPosition(telemetryHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+            telemetryHeading.compareDocumentPosition(portfolioHeading) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+            portfolioHeading.compareDocumentPosition(tradesHeading) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+            tradesHeading.compareDocumentPosition(traceEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+
+        // Bidirectional anchor links
+        const jumpToTrace = screen.getByRole('link', { name: /Jump to Trace/i });
+        expect(jumpToTrace).toHaveAttribute('href', '#session-trace');
+        const backToTimeline = screen.getByRole('link', { name: /Timeline/i });
+        expect(backToTimeline).toHaveAttribute('href', '#simulation-timeline');
+
+        // Default is S2 (2026-08-04, HOLD today). Stepping Prev switches to S1 (2026-08-03, NVDA).
+        expect(screen.getByText('HOLD today')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /Prev/i }));
+        expect(
+            screen.getByText('get_technical_indicators({"ticker": "NVDA"})'),
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+        expect(screen.getByText('HOLD today')).toBeInTheDocument();
+    });
 });

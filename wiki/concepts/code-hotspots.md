@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **273**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **274**).
 
 ## Top Hotspots
 
@@ -20,8 +20,8 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/tasks/daily_predictor.py` | 20 | 4 | 20.0% | 674 | 80 | **HIGH** |
 | `apps/engine/tasks/newsletter_generator.py` | 13 | 6 | 46.2% | 428 | 78 | **HIGH** |
 | `apps/engine/tests/test_newsletter_generator.py` | 12 | 5 | 41.7% | 603 | 60 | **HIGH** |
-| `apps/engine/trading/live_intraday_agent.py` | 13 | 4 | 30.8% | 436 | 52 | **HIGH** |
-| `apps/engine/trading/test_live_intraday_agent.py` | 12 | 4 | 33.3% | 328 | 48 | **HIGH** |
+| `apps/engine/trading/live_intraday_agent.py` | 14 | 4 | 28.6% | 436 | 56 | **HIGH** |
+| `apps/engine/trading/test_live_intraday_agent.py` | 13 | 4 | 30.8% | 328 | 52 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 15 | 3 | 20.0% | 301 | 45 | **HIGH** |
 | `apps/engine/tests/test_workflow_schedule.py` | 11 | 4 | 36.4% | 306 | 44 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 11 | 4 | 36.4% | 954 | 44 | **HIGH** |
@@ -35,8 +35,8 @@ Files that consistently change in the same commit indicate implicit architectura
 
 | Primary File | Coupled File | Shared Commits | Coupling Strength |
 | :--- | :--- | :---: | :---: |
-| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 12 | 100% |
 | `apps/web/src/routes/-__root.test.tsx` | `apps/web/src/routes/__root.tsx` | 12 | 92% |
+| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 12 | 92% |
 | `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 10 | 83% |
 | `apps/engine/tasks/newsletter_generator.py` | `apps/engine/tests/test_newsletter_generator.py` | 10 | 83% |
 | `apps/web/src/features/home/components/LiveAgentConsole.test.tsx` | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 9 | 100% |
@@ -48,8 +48,8 @@ Files that consistently change in the same commit indicate implicit architectura
 | `apps/web/src/features/home/components/ConsoleQueueCard.test.tsx` | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 7 | 100% |
 | `apps/engine/trading/runner.py` | `apps/engine/trading/test_runner.py` | 7 | 100% |
 | `apps/web/src/features/home/api/fetch-intraday-tape.ts` | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 7 | 78% |
-| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/runner.py` | 7 | 64% |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 7 | 64% |
+| `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/runner.py` | 7 | 58% |
 
 ## Usage Guidelines for LLM Agents
 

@@ -1,12 +1,71 @@
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
-import { useEffect, useState } from 'react';
 import type { BacktestDayStep, BacktestResultData, RecipeJobStatus } from '../types';
-import { TraceInspectorBlock } from './TraceInspectorBlock';
+
+export interface BacktestTimelineSelection {
+    windowDates: string[];
+    daySteps: BacktestDayStep[];
+    stepByDay: Map<string, BacktestDayStep>;
+    activeDay: string | null;
+    activeIndex: number;
+    selectedStep: BacktestDayStep | undefined;
+    isRunning: boolean;
+    currentRunningDay: string | null;
+    isCurrentRunning: boolean;
+}
 
 interface BacktestTimelineBlockProps {
-    status: RecipeJobStatus;
-    results: BacktestResultData | null;
     queuePosition?: number | null;
+    selection: BacktestTimelineSelection;
+    onSelectDay: (day: string) => void;
+}
+
+export function resolveBacktestTimelineSelection(
+    status: RecipeJobStatus,
+    results: BacktestResultData | null,
+    manualSelectedDay: string | null,
+): BacktestTimelineSelection {
+    const windowDates = results?.window_dates ?? [];
+    const daySteps = results?.day_steps ?? [];
+    const stepByDay = new Map(daySteps.map((s) => [s.day, s]));
+    const latestCompletedDay = daySteps.length > 0 ? daySteps[daySteps.length - 1]?.day : null;
+    const validLatestCompleted =
+        latestCompletedDay && windowDates.includes(latestCompletedDay) ? latestCompletedDay : null;
+    const activeDay =
+        manualSelectedDay && windowDates.includes(manualSelectedDay)
+            ? manualSelectedDay
+            : (validLatestCompleted ?? windowDates[0] ?? null);
+    const activeIndex = activeDay ? windowDates.indexOf(activeDay) : -1;
+    const selectedStep = activeDay ? stepByDay.get(activeDay) : undefined;
+    const isRunning = status === 'pending' || status === 'processing';
+    const currentRunningDay = isRunning ? (results?.current_day ?? null) : null;
+
+    return {
+        windowDates,
+        daySteps,
+        stepByDay,
+        activeDay,
+        activeIndex,
+        selectedStep,
+        isRunning,
+        currentRunningDay,
+        isCurrentRunning: Boolean(activeDay && currentRunningDay === activeDay),
+    };
+}
+
+export function formatDayStatusText(
+    selectedStep: BacktestDayStep | undefined,
+    isCurrentRunning: boolean,
+): string {
+    if (!selectedStep) {
+        return isCurrentRunning
+            ? 'Running LLM evaluation for this session...'
+            : 'Waiting in timeline queue';
+    }
+    const openCount =
+        typeof selectedStep.open_positions_count === 'number'
+            ? ` • ${selectedStep.open_positions_count} open`
+            : '';
+    return `${selectedStep.trades_executed} executed • ${selectedStep.trades_skipped} skipped${openCount}`;
 }
 
 function formatDaySignal(
@@ -99,144 +158,121 @@ function DayTile({
     );
 }
 
-function HoldSummaryNotice({ selectedStep }: { selectedStep: BacktestDayStep }) {
-    if (selectedStep.signals.length > 0) return null;
-    const toolCount = selectedStep.tool_calls?.length ?? 0;
-    const roundCount = selectedStep.trace?.rounds?.length ?? (toolCount > 0 ? 1 : 0);
-    return (
-        <div className="border border-boxel-bevel-lo bg-boxel-surface px-3 py-2 text-xs font-normal text-boxel-muted">
-            Hold decision: evaluated {toolCount} PIT tool {toolCount === 1 ? 'call' : 'calls'}{' '}
-            across {roundCount} reasoning {roundCount === 1 ? 'round' : 'rounds'} and stayed in cash
-            / existing positions ([]).
-        </div>
-    );
-}
-
-function DayInspector({
+function SelectedSlotBar({
     activeDay,
+    activeIndex,
     selectedStep,
     isCurrentRunning,
 }: {
-    activeDay: string | null;
+    activeDay: string;
+    activeIndex: number;
     selectedStep: BacktestDayStep | undefined;
     isCurrentRunning: boolean;
 }) {
-    const openCount =
-        selectedStep && typeof selectedStep.open_positions_count === 'number'
-            ? ` • ${selectedStep.open_positions_count} open`
-            : '';
-    const statusText = selectedStep
-        ? `${selectedStep.trades_executed} executed • ${selectedStep.trades_skipped} skipped${openCount}`
-        : isCurrentRunning
-          ? 'Running LLM evaluation for this session...'
-          : 'Waiting in timeline queue';
+    const badge = formatDaySignal(selectedStep, isCurrentRunning);
+    const statusText = formatDayStatusText(selectedStep, isCurrentRunning);
 
     return (
         <div
-            data-testid="day-inspector-trough"
-            className="voxel-trough bg-boxel-trough p-4 flex flex-col gap-4 min-w-0"
+            data-testid="selected-slot-bar"
+            className="voxel-trough bg-boxel-trough px-4 py-3 flex flex-wrap items-center justify-between gap-3 min-w-0"
         >
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-boxel-bevel-lo pb-2">
-                <span className="text-sm font-bold text-boxel-ink whitespace-nowrap">
-                    Session Trace: {activeDay}
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
+                <span className="text-sm font-bold font-mono text-boxel-ink whitespace-nowrap">
+                    S{activeIndex + 1} • {activeDay}
                 </span>
-                <span className="text-xs font-normal text-boxel-muted">{statusText}</span>
+                <Badge
+                    size="xs"
+                    variant={selectedStep || isCurrentRunning ? 'soft' : 'outline'}
+                    colorScheme={badge.colorScheme}
+                >
+                    {badge.label}
+                </Badge>
+                <span className="text-xs font-normal text-boxel-muted whitespace-nowrap">
+                    {statusText}
+                </span>
             </div>
-
-            {selectedStep ? (
-                <div className="flex flex-col gap-3 min-w-0">
-                    <HoldSummaryNotice selectedStep={selectedStep} />
-                    <TraceInspectorBlock
-                        prompt={selectedStep.prompt}
-                        trace={selectedStep.trace}
-                        toolCalls={selectedStep.tool_calls}
-                        fullOutput={selectedStep.full_output}
-                        outputExcerpt={selectedStep.output_excerpt}
-                    />
-                </div>
-            ) : (
-                <p className="text-xs font-normal text-boxel-muted">
-                    Select any settled session tile above to inspect its tool calls and decision
-                    trace.
-                </p>
-            )}
+            <a
+                href="#session-trace"
+                className="voxel-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold border border-accent text-accent bg-boxel-surface hover:bg-boxel-elevated rounded-none whitespace-nowrap"
+            >
+                Jump to Trace ↓
+            </a>
         </div>
     );
 }
 
 export function BacktestTimelineBlock({
-    status,
-    results,
     queuePosition = null,
+    selection,
+    onSelectDay,
 }: BacktestTimelineBlockProps) {
-    const windowDates = results?.window_dates ?? [];
-    const daySteps = results?.day_steps ?? [];
-    const stepByDay = new Map(daySteps.map((s) => [s.day, s]));
-    const latestCompletedDay = daySteps.length > 0 ? daySteps[daySteps.length - 1]?.day : null;
-
-    const [manualSelectedDay, setManualSelectedDay] = useState<string | null>(null);
-    const activeDay =
-        manualSelectedDay && windowDates.includes(manualSelectedDay)
-            ? manualSelectedDay
-            : (latestCompletedDay ?? windowDates[0] ?? null);
-
-    useEffect(() => {
-        if (manualSelectedDay && !windowDates.includes(manualSelectedDay)) {
-            setManualSelectedDay(null);
-        }
-    }, [manualSelectedDay, windowDates]);
-
-    const selectedStep = activeDay ? stepByDay.get(activeDay) : undefined;
-    const isRunning = status === 'pending' || status === 'processing';
-    const currentRunningDay = isRunning ? (results?.current_day ?? null) : null;
+    const {
+        windowDates,
+        daySteps,
+        stepByDay,
+        activeDay,
+        activeIndex,
+        selectedStep,
+        isRunning,
+        currentRunningDay,
+        isCurrentRunning,
+    } = selection;
 
     return (
-        <Card padding="md" className="flex flex-col gap-4 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
-                <SectionHeading gradient="electric">Simulation Timeline</SectionHeading>
-                <span className="text-xs font-normal font-mono tabular-nums text-boxel-muted">
-                    {daySteps.length} / {windowDates.length || 30} Sessions Settled
-                </span>
-            </div>
-
-            {windowDates.length === 0 ? (
-                <div className="voxel-trough bg-boxel-trough p-4 flex flex-col gap-2">
-                    <span className="text-sm font-bold text-boxel-ink">
-                        {queuePosition && queuePosition > 0
-                            ? `Queued (#${queuePosition} in line) — Waiting for recipe worker to pick a 2-week historical window...`
-                            : 'Waiting for recipe worker to pick a 2-week historical window...'}
-                    </span>
-                    <span className="text-xs font-normal text-boxel-muted">
-                        Single-GPU Strata runs 1 backtest globally at a time (strata-auto-go) while
-                        streaming each 3x/day ET session here. You can safely close this tab or
-                        cancel anytime.
+        <section id="simulation-timeline" className="min-w-0 scroll-mt-4">
+            <Card padding="md" className="flex flex-col gap-4 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
+                    <SectionHeading gradient="electric">Simulation Timeline</SectionHeading>
+                    <span className="text-xs font-normal font-mono tabular-nums text-boxel-muted whitespace-nowrap">
+                        {daySteps.length} / {windowDates.length || 30} Sessions Settled
                     </span>
                 </div>
-            ) : (
-                <>
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10.5rem),1fr))] gap-2">
-                        {windowDates.map((day, idx) => (
-                            <DayTile
-                                key={day}
-                                day={day}
-                                index={idx}
-                                step={stepByDay.get(day)}
-                                isCurrent={Boolean(
-                                    isRunning && !stepByDay.get(day) && currentRunningDay === day,
-                                )}
-                                isSelected={activeDay === day}
-                                onSelect={setManualSelectedDay}
-                            />
-                        ))}
-                    </div>
 
-                    <DayInspector
-                        activeDay={activeDay}
-                        selectedStep={selectedStep}
-                        isCurrentRunning={currentRunningDay === activeDay}
-                    />
-                </>
-            )}
-        </Card>
+                {windowDates.length === 0 ? (
+                    <div className="voxel-trough bg-boxel-trough p-4 flex flex-col gap-2">
+                        <span className="text-sm font-bold text-boxel-ink">
+                            {queuePosition && queuePosition > 0
+                                ? `Queued (#${queuePosition} in line) — Waiting for recipe worker to pick a 2-week historical window...`
+                                : 'Waiting for recipe worker to pick a 2-week historical window...'}
+                        </span>
+                        <span className="text-xs font-normal text-boxel-muted">
+                            Single-GPU Strata runs 1 backtest globally at a time (strata-auto-go)
+                            while streaming each 3x/day ET session here. You can safely close this
+                            tab or cancel anytime.
+                        </span>
+                    </div>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10.5rem),1fr))] gap-2">
+                            {windowDates.map((day, idx) => (
+                                <DayTile
+                                    key={day}
+                                    day={day}
+                                    index={idx}
+                                    step={stepByDay.get(day)}
+                                    isCurrent={Boolean(
+                                        isRunning &&
+                                            !stepByDay.get(day) &&
+                                            currentRunningDay === day,
+                                    )}
+                                    isSelected={activeDay === day}
+                                    onSelect={onSelectDay}
+                                />
+                            ))}
+                        </div>
+
+                        {activeDay && (
+                            <SelectedSlotBar
+                                activeDay={activeDay}
+                                activeIndex={activeIndex}
+                                selectedStep={selectedStep}
+                                isCurrentRunning={isCurrentRunning}
+                            />
+                        )}
+                    </>
+                )}
+            </Card>
+        </section>
     );
 }

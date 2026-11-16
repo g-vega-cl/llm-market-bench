@@ -7,30 +7,11 @@ import type {
     RecipeJobRecord,
     RecipeRunDetail,
     StrategyRecipeRecord,
-    StrategyStage,
 } from '../types';
+import { assertQuotaAllowsJob } from './recipes-quota-api';
+import { assertNoPrevOutputPlaceholder, assertSingleLlmStage } from './recipes-validators';
 
-const ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
-const PREV_OUTPUT_PLACEHOLDER = '{{prev_output}}';
-const MAX_OPEN_JOBS_PER_USER = 5;
-
-export function assertSingleLlmStage(recipe: { stages: readonly StrategyStage[] }): void {
-    if (!Array.isArray(recipe.stages) || recipe.stages.length !== 1) {
-        throw new Error('Invalid strategy: must contain exactly one LLM stage');
-    }
-}
-
-export function assertNoPrevOutputPlaceholder(recipe: { stages: readonly StrategyStage[] }): void {
-    for (const stage of recipe.stages ?? []) {
-        for (const block of stage.blocks ?? []) {
-            if (block.type === 'prompt' && block.text.includes(PREV_OUTPUT_PLACEHOLDER)) {
-                throw new Error(
-                    'Invalid strategy: prev_output is not available in a single-stage strategy',
-                );
-            }
-        }
-    }
-}
+export { assertNoPrevOutputPlaceholder, assertSingleLlmStage };
 
 export async function fetchPublicRecipes(): Promise<StrategyRecipeRecord[]> {
     const db = getDbServerClient();
@@ -134,8 +115,10 @@ export const saveRecipeFn = createServerFn({ method: 'POST' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        const userId = user?.id || ANONYMOUS_USER_ID;
-        return saveRecipe(recipe, userId, isPublic);
+        if (!user?.id) {
+            throw new Error('Unauthorized: please sign in to save recipes');
+        }
+        return saveRecipe(recipe, user.id, isPublic);
     });
 
 export async function getRecipeJobStatus(jobId: string, userId: string): Promise<RecipeJobRecord> {
@@ -162,19 +145,66 @@ export const getRecipeJobStatusFn = createServerFn({ method: 'GET' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        const userId = user?.id || ANONYMOUS_USER_ID;
-        return getRecipeJobStatus(jobId, userId);
+        if (!user?.id) {
+            throw new Error('Unauthorized: please sign in to view job status');
+        }
+        return getRecipeJobStatus(jobId, user.id);
     });
+
+async function resolveQueuePosition(
+    db: ReturnType<typeof getDbServerClient>,
+    job: RecipeJobRecord,
+): Promise<{ queuePosition: number | null; globalActiveBacktests: number }> {
+    if (job.mode === 'live_turn' || (job.status !== 'pending' && job.status !== 'processing')) {
+        return { queuePosition: null, globalActiveBacktests: 0 };
+    }
+    const { data: activeRows } = await db
+        .from('recipe_execution_queue')
+        .select('id, priority, status, created_at')
+        .eq('mode', 'backtest')
+        .in('status', ['pending', 'processing'])
+        .order('priority', { ascending: true })
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+    const rows = Array.isArray(activeRows)
+        ? (activeRows as Array<{
+              id: string;
+              priority?: number;
+              status: string;
+              created_at?: string;
+          }>)
+        : [];
+    if (rows.length === 0) {
+        return { queuePosition: null, globalActiveBacktests: 0 };
+    }
+    const globalActiveBacktests = rows.filter((r) => r.status === 'processing').length;
+    if (job.status === 'processing') {
+        return { queuePosition: 0, globalActiveBacktests };
+    }
+    const selfRow = rows.find((r) => r.id === job.id);
+    const selfPriority = selfRow?.priority ?? 10;
+    const createdAt = job.created_at || '';
+    const aheadCount = rows.filter(
+        (r) =>
+            r.status === 'processing' ||
+            (r.id !== job.id &&
+                ((r.priority ?? 10) < selfPriority ||
+                    ((r.priority ?? 10) === selfPriority && (r.created_at || '') < createdAt))),
+    ).length;
+    return { queuePosition: aheadCount + 1, globalActiveBacktests };
+}
 
 export async function fetchRecipeRunDetail(
     jobId: string,
     userId: string,
 ): Promise<RecipeRunDetail> {
     const job = await getRecipeJobStatus(jobId, userId);
-    if (!job.recipe_id) {
-        return { job, recipeName: null, recipeCadence: null };
-    }
     const db = getDbServerClient({ useServiceRole: true });
+    const queueMeta = await resolveQueuePosition(db, job);
+    if (!job.recipe_id) {
+        return { job, recipeName: null, recipeCadence: null, ...queueMeta };
+    }
     const { data } = await db
         .from('strategy_recipes')
         .select('id, name, cadence')
@@ -186,6 +216,7 @@ export async function fetchRecipeRunDetail(
         job,
         recipeName: row?.name ?? null,
         recipeCadence: row?.cadence ?? null,
+        ...queueMeta,
     };
 }
 
@@ -196,8 +227,10 @@ export const fetchRecipeRunDetailFn = createServerFn({ method: 'GET' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        const userId = user?.id || ANONYMOUS_USER_ID;
-        return fetchRecipeRunDetail(jobId, userId);
+        if (!user?.id) {
+            throw new Error('Unauthorized: please sign in to view backtest runs');
+        }
+        return fetchRecipeRunDetail(jobId, user.id);
     });
 
 export async function fetchRecipeById(
@@ -243,8 +276,10 @@ export const fetchRecipeByIdFn = createServerFn({ method: 'GET' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        const userId = user?.id || ANONYMOUS_USER_ID;
-        return fetchRecipeById(recipeId, userId);
+        if (!user?.id) {
+            throw new Error('Unauthorized: please sign in to open Strategy Recipes');
+        }
+        return fetchRecipeById(recipeId, user.id);
     });
 
 export async function fetchRecentBacktestJobs(
@@ -271,8 +306,10 @@ export const fetchRecentBacktestJobsFn = createServerFn({ method: 'GET' }).handl
     const {
         data: { user },
     } = await auth.auth.getUser();
-    const userId = user?.id || ANONYMOUS_USER_ID;
-    return fetchRecentBacktestJobs(userId);
+    if (!user?.id) {
+        throw new Error('Unauthorized: please sign in to view backtest history');
+    }
+    return fetchRecentBacktestJobs(user.id);
 });
 
 export async function enqueueRecipeJob(
@@ -305,16 +342,7 @@ export async function enqueueRecipeJob(
     assertSingleLlmStage(graph);
     assertNoPrevOutputPlaceholder(graph);
 
-    const { data: openJobs } = await db
-        .from('recipe_execution_queue')
-        .select('id')
-        .eq('user_id', userId)
-        .in('status', ['pending', 'processing'])
-        .limit(MAX_OPEN_JOBS_PER_USER + 1);
-
-    if ((openJobs?.length ?? 0) >= MAX_OPEN_JOBS_PER_USER) {
-        throw new Error('Too many queued recipe jobs. Wait for the running jobs to finish.');
-    }
+    await assertQuotaAllowsJob(userId, mode);
 
     const payload = {
         recipe_id: recipeId,
@@ -322,8 +350,8 @@ export async function enqueueRecipeJob(
         mode,
         priority: mode === 'live_turn' ? 1 : 10,
         status: 'pending',
-        provider: 'auto-strata',
-        model: 'strata',
+        provider: 'free-llm-proxy',
+        model: mode === 'live_turn' ? 'auto-go' : 'strata-auto-go',
         weeks_requested: weeksRequested,
         progress_pct: 0,
     };
@@ -347,6 +375,8 @@ export const enqueueRecipeJobFn = createServerFn({ method: 'POST' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        const userId = user?.id || ANONYMOUS_USER_ID;
-        return enqueueRecipeJob(recipeId, mode, userId, weeksRequested);
+        if (!user?.id) {
+            throw new Error('Unauthorized: please sign in to run Strategy Recipes');
+        }
+        return enqueueRecipeJob(recipeId, mode, user.id, weeksRequested);
     });

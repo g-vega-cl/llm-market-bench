@@ -669,3 +669,100 @@ async def test_run_push_live_enriches_open_positions_and_preserves_equity_identi
     total_eq = res["updated_portfolio"]["paper_cash"] + pos["market_value"]
     latest_curve_eq = res["updated_portfolio"]["paper_equity_curve"][-1]["equity"]
     assert abs(total_eq - latest_curve_eq) < 0.05
+
+
+@pytest.mark.asyncio
+async def test_run_push_backtest_refreshes_partial_intraday_bars_on_later_slot_days():
+    """If early slot fetch returned only Day 1 bars, later slot days must refresh instead of falling back to prior daily close."""
+    strategy = _sample_strategy()
+    prices = [
+        {"ticker": "SPY", "fetched_at": "2026-03-02T00:00:00+00:00", "close": 500.0, "price": 500.0},
+        {"ticker": "SPY", "fetched_at": "2026-03-03T00:00:00+00:00", "close": 502.0, "price": 502.0},
+        {"ticker": "NVDA", "fetched_at": "2026-03-02T00:00:00+00:00", "close": 100.0, "price": 100.0},
+        {"ticker": "NVDA", "fetched_at": "2026-03-03T00:00:00+00:00", "close": 250.0, "price": 250.0},
+    ]
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=prices)
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        if cutoff_date == "2026-03-02" and "Open Positions: None" in prompt:
+            return {"output": '[{"action": "BUY", "ticker": "NVDA"}]', "tool_calls": []}
+        if cutoff_date == "2026-03-03":
+            return {"output": '[{"action": "EXIT", "ticker": "NVDA"}]', "tool_calls": []}
+        return {"output": "[]", "tool_calls": []}
+
+    fetch_calls = []
+
+    async def partial_then_full(sb_client, tkr, start_day, end_day):
+        fetch_calls.append((tkr, start_day, end_day))
+        if len(fetch_calls) == 1:
+            return [{"ticker": "NVDA", "bar_time_utc": "2026-03-02T14:30:00+00:00", "open": 100.0, "close": 100.0}]
+        return [{"ticker": "NVDA", "bar_time_utc": "2026-03-03T14:30:00+00:00", "open": 250.0, "close": 250.0}]
+
+    with patch("recipes.push_runner.fetch_intraday_bars_for_ticker", side_effect=partial_then_full):
+        res = await run_push_backtest(strategy, sb, llm_caller=fake_llm, rng=random.Random(1))
+
+    assert res["trades"][0]["exit_price"] == 250.0
+    assert len(fetch_calls) >= 2
+
+
+@pytest.mark.asyncio
+async def test_run_push_backtest_stops_early_when_cancelled():
+    strategy = _sample_strategy()
+    prices = [
+        {"ticker": "SPY", "fetched_at": "2026-03-02T00:00:00+00:00", "close": 500.0, "price": 500.0},
+        {"ticker": "SPY", "fetched_at": "2026-03-03T00:00:00+00:00", "close": 502.0, "price": 502.0},
+    ]
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=prices)
+    calls = 0
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        nonlocal calls
+        calls += 1
+        return {"output": "[]", "tool_calls": []}
+
+    res = await run_push_backtest(
+        strategy,
+        sb,
+        llm_caller=fake_llm,
+        rng=random.Random(1),
+        is_cancelled=lambda: calls >= 2,
+    )
+
+    assert calls == 2
+    assert res["days_completed"] == 2
+    assert res.get("cancelled") is True
+
+
+@pytest.mark.asyncio
+async def test_run_push_backtest_refreshes_same_day_later_slot_when_earlier_slot_incomplete():
+    """If 09:30 ET fetch only held 09:30 bar, 12:30 ET on the SAME day must still refresh."""
+    strategy = _sample_strategy()
+    prices = [
+        {"ticker": "SPY", "fetched_at": "2026-03-02T00:00:00+00:00", "close": 500.0, "price": 500.0},
+        {"ticker": "NVDA", "fetched_at": "2026-03-02T00:00:00+00:00", "close": 100.0, "price": 100.0},
+    ]
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=prices)
+    turn = 0
+    fetch_calls = 0
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        nonlocal turn
+        turn += 1
+        if turn == 1:
+            return {"output": '[{"action": "BUY", "ticker": "NVDA"}]', "tool_calls": []}
+        if turn == 2:
+            return {"output": '[{"action": "EXIT", "ticker": "NVDA"}]', "tool_calls": []}
+        return {"output": "[]", "tool_calls": []}
+
+    async def progressive_fetch(sb_client, tkr, start_day, end_day):
+        nonlocal fetch_calls
+        fetch_calls += 1
+        if fetch_calls == 1:
+            return [{"ticker": "NVDA", "bar_time_utc": "2026-03-02T14:30:00+00:00", "open": 100.0, "close": 100.0}]
+        return [{"ticker": "NVDA", "bar_time_utc": "2026-03-02T17:30:00+00:00", "open": 125.0, "close": 125.0}]
+
+    with patch("recipes.push_runner.fetch_intraday_bars_for_ticker", side_effect=progressive_fetch):
+        res = await run_push_backtest(strategy, sb, llm_caller=fake_llm, rng=random.Random(1))
+
+    assert fetch_calls >= 2
+    assert res["trades"][0]["exit_price"] == 125.0

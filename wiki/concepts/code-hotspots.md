@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **274**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **272**).
 
 ## Top Hotspots
 
@@ -17,7 +17,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 20 | 6 | 30.0% | 361 | 120 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 19 | 5 | 26.3% | 341 | 95 | **HIGH** |
 | `apps/web/src/routes/-__root.test.tsx` | 13 | 7 | 53.8% | 479 | 91 | **HIGH** |
-| `apps/engine/tasks/daily_predictor.py` | 21 | 4 | 19.0% | 674 | 84 | **HIGH** |
+| `apps/engine/tasks/daily_predictor.py` | 20 | 4 | 20.0% | 674 | 80 | **HIGH** |
 | `apps/engine/tasks/newsletter_generator.py` | 13 | 6 | 46.2% | 428 | 78 | **HIGH** |
 | `apps/engine/tests/test_newsletter_generator.py` | 12 | 5 | 41.7% | 603 | 60 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 13 | 4 | 30.8% | 450 | 52 | **HIGH** |

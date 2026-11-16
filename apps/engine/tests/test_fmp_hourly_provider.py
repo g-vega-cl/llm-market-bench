@@ -74,3 +74,77 @@ async def test_get_hourly_history_caching():
         mock_read_cache.assert_called_once_with(ticker, from_date, to_date)
         mock_get.assert_not_called()
         mock_write_cache.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_hourly_history_refetches_when_sqlite_cache_only_partially_covers_range(tmp_path):
+    """Partial SQLite slices (e.g. from 3-day PIT quote lookups) must NOT skip full-range FMP fetch."""
+    provider = FMPProvider()
+    provider.api_key = "mock_key"
+    provider._db_path = str(tmp_path / "fmp_partial.db")
+    provider._init_db()
+    provider._cache_hourly_bars(
+        "NVDA",
+        [
+            {"date": "2026-05-13 09:30:00", "open": 220.0, "high": 221.0, "low": 219.0, "close": 220.5, "volume": 100},
+            {"date": "2026-05-13 12:30:00", "open": 220.5, "high": 222.0, "low": 220.0, "close": 221.0, "volume": 100},
+            {"date": "2026-05-13 15:30:00", "open": 221.0, "high": 223.0, "low": 220.5, "close": 222.0, "volume": 100},
+        ],
+    )
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {
+            "date": f"2026-05-{day:02d} {hr}:30:00",
+            "open": 225.0,
+            "high": 226.0,
+            "low": 224.0,
+            "close": 225.5,
+            "volume": 100,
+        }
+        for day in (13, 14, 15, 18, 19, 20, 21, 22)
+        for hr in ("09", "12", "15")
+    ]
+    mock_resp.raise_for_status = MagicMock()
+
+    with (
+        patch("core.config.FINANCIAL_API_THROTTLE_SECONDS", 0),
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp) as mock_get,
+    ):
+        bars = await provider.get_hourly_history("NVDA", "2026-05-13", "2026-05-22")
+
+    mock_get.assert_called_once()
+    assert len(bars) >= 24
+    assert any(b["date"].startswith("2026-05-22") for b in bars)
+
+
+@pytest.mark.asyncio
+async def test_get_hourly_history_refetches_single_day_when_under_3_bars(tmp_path):
+    """A 1-bar SQLite entry on a single requested day must still refetch full intraday bars."""
+    provider = FMPProvider()
+    provider.api_key = "mock_key"
+    provider._db_path = str(tmp_path / "fmp_single_bar.db")
+    provider._init_db()
+    provider._cache_hourly_bars(
+        "NVDA",
+        [{"date": "2026-05-13 09:30:00", "open": 220.0, "high": 221.0, "low": 219.0, "close": 220.5, "volume": 10}],
+    )
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {"date": "2026-05-13 09:30:00", "open": 220.0, "high": 221.0, "low": 219.0, "close": 220.5, "volume": 10},
+        {"date": "2026-05-13 12:30:00", "open": 221.0, "high": 222.0, "low": 220.0, "close": 221.5, "volume": 10},
+        {"date": "2026-05-13 15:30:00", "open": 222.0, "high": 223.0, "low": 221.0, "close": 222.5, "volume": 10},
+    ]
+    mock_resp.raise_for_status = MagicMock()
+
+    with (
+        patch("core.config.FINANCIAL_API_THROTTLE_SECONDS", 0),
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp) as mock_get,
+    ):
+        bars = await provider.get_hourly_history("NVDA", "2026-05-13", "2026-05-13")
+
+    mock_get.assert_called_once()
+    assert len(bars) == 3

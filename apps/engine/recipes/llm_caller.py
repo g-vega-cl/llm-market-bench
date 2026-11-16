@@ -69,15 +69,33 @@ def _build_assistant_history_entry(msg: Any, tool_calls: list[Any]) -> dict[str,
     return entry
 
 
+_LIVE_PROXY_ONLY_ALIASES = frozenset({"auto-go", "free-auto", "free-fast", "free-reasoning"})
+_PROXY_ROUTER_ALIASES = frozenset({"strata-auto-go", "auto-strata-go", "strata-auto"})
+
+
 def llm_endpoints(openrouter_key: str | None, model: str) -> list[tuple[str, str, str]]:
-    """Resolve prioritized (base_url, api_key, model_id) endpoints with Strata->Proxy failover."""
+    """Resolve prioritized (base_url, api_key, model_id) endpoints for direct or free-proxy routing."""
     if openrouter_key:
-        model_id = "deepseek/deepseek-chat" if model == "auto-strata" else model
+        model_id = "deepseek/deepseek-chat" if model in {"auto-strata", "strata-auto-go", "auto-go"} else model
         return [("https://openrouter.ai/api/v1", openrouter_key, model_id)]
     proxy_key = os.getenv("FREE_PROXY_MASTER_KEY") or os.getenv("STRATA_API_KEY", "local")
     strata_url = os.getenv("STRATA_BASE_URL", "").strip()
     proxy_url = os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1").strip()
-    endpoints: list[tuple[str, str, str]] = []
+    model_lower = (model or "auto-strata").strip().lower()
+
+    if model_lower in _LIVE_PROXY_ONLY_ALIASES:
+        # Exclude raw local Strata so live auto-go turns never contend with single-GPU backtests.
+        return [(proxy_url or "https://llm.clvg.uk/v1", proxy_key, model)]
+
+    if model_lower in _PROXY_ROUTER_ALIASES:
+        endpoints: list[tuple[str, str, str]] = []
+        if proxy_url:
+            endpoints.append((proxy_url, proxy_key, model))
+        if strata_url and strata_url != proxy_url:
+            endpoints.append((strata_url, proxy_key, "strata"))
+        return endpoints or [("https://llm.clvg.uk/v1", proxy_key, model)]
+
+    endpoints = []
     if strata_url:
         endpoints.append((strata_url, proxy_key, model))
     if proxy_url and proxy_url != strata_url:
@@ -279,9 +297,13 @@ async def invoke_llm(
     selected_tools: list[str],
     cutoff_date: str | None,
     as_of_utc: str | None = None,
+    model: str | None = None,
 ) -> dict[str, Any]:
-    """Call LLMCaller while passing as_of_utc only if supported by the callable."""
+    """Call LLMCaller while forwarding optional keyword arguments supported by the callable."""
     params = inspect.signature(caller).parameters
+    kwargs: dict[str, Any] = {}
     if "as_of_utc" in params:
-        return await caller(prompt, selected_tools, cutoff_date, as_of_utc=as_of_utc)  # type: ignore[call-arg]
-    return await caller(prompt, selected_tools, cutoff_date)
+        kwargs["as_of_utc"] = as_of_utc
+    if "model" in params and model:
+        kwargs["model"] = model
+    return await caller(prompt, selected_tools, cutoff_date, **kwargs)  # type: ignore[call-arg]

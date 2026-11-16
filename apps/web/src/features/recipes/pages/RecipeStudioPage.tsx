@@ -1,7 +1,8 @@
 import { Badge, Button, PageLayout } from '@llm-market-bench/ui-design-system';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { enqueueRecipeJobFn, getRecipeJobStatusFn, saveRecipeFn } from '../api/recipes-api';
+import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
+import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
 import {
     fetchLivePortfolioAndRunsFn,
     fetchRecipeAlertsFn,
@@ -12,6 +13,10 @@ import {
 import { LiveRunsBlock } from '../components/LiveRunsBlock';
 import { PromptVisualizer } from '../components/PromptVisualizer';
 import { RecipeAlertsInbox } from '../components/RecipeAlertsInbox';
+import {
+    RecipeGuideAndQuotaBlock,
+    SavedRecipesStrip,
+} from '../components/RecipeGuideAndQuotaBlock';
 import { StageBuilder } from '../components/StageBuilder';
 import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
 import { STARTER_RECIPES } from '../starter-templates';
@@ -19,76 +24,36 @@ import type {
     BacktestResultData,
     ExecutionState,
     LivePortfolioAndRuns,
-    LivePortfolioSnapshot,
     LiveRunResult,
     PreviewState,
     PushStrategy,
     RecipeAlert,
     RecipeJobRecord,
+    RecipeSummaryItem,
+    RecipeUserQuotaStatus,
     StrategyRecipeRecord,
     StrategyStage,
 } from '../types';
+import {
+    buildInlinePortfolio,
+    pollJobResults,
+    upsertSavedRecipeSummary,
+} from '../utils/live-studio-helpers';
 
 interface RecipeStudioPageProps {
     initialStrategy?: PushStrategy | null;
     recentBacktests?: RecipeJobRecord[];
     initialLiveState?: LivePortfolioAndRuns | null;
-}
-
-async function pollJobResults(jobId: string): Promise<ExecutionState> {
-    for (let attempts = 0; attempts < 30; attempts++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        try {
-            const res = await getRecipeJobStatusFn({ data: { jobId } });
-            if (res?.status === 'completed' && res.result_json) {
-                return { status: 'live_done', result: res.result_json as LiveRunResult };
-            }
-            if (res?.status === 'failed') {
-                return { status: 'error', message: res.error_message || 'Execution failed' };
-            }
-        } catch {
-            // Ignore transient polling errors
-        }
-    }
-    return {
-        status: 'error',
-        message:
-            'Job queued — worker is still processing. Check Alerts Inbox or try again shortly.',
-    };
-}
-
-function buildInlinePortfolio(liveRes: LiveRunResult): LivePortfolioSnapshot | null {
-    const updated = liveRes.updated_portfolio;
-    if (!updated) return null;
-    const enrichedPositions = updated.paper_positions.map((pos) => {
-        const curPx = liveRes.signal_prices?.[pos.ticker] ?? pos.current_price ?? pos.entry_price;
-        const mktVal = pos.market_value ?? Number((pos.shares * curPx).toFixed(2));
-        const costBasis = pos.cost_basis ?? pos.shares * pos.entry_price;
-        const netLiq = mktVal * (1 - 0.0005);
-        const unrPnl = pos.unrealized_pnl_net ?? netLiq - costBasis;
-        const unrPct =
-            pos.unrealized_return_pct ?? (costBasis > 0 ? (unrPnl / costBasis) * 100 : 0);
-        return {
-            ...pos,
-            current_price: Number(curPx.toFixed(4)),
-            market_value: mktVal,
-            unrealized_pnl_net: Number(unrPnl.toFixed(2)),
-            unrealized_return_pct: Number(unrPct.toFixed(2)),
-        };
-    });
-    const holdingsVal = enrichedPositions.reduce((sum, p) => sum + Number(p.market_value ?? 0), 0);
-    return {
-        cash: updated.paper_cash,
-        total_equity: Number((updated.paper_cash + holdingsVal).toFixed(2)),
-        open_positions: enrichedPositions,
-        trades: updated.paper_trades,
-    };
+    initialQuota?: RecipeUserQuotaStatus | null;
+    initialUserRecipes?: RecipeSummaryItem[];
 }
 
 export function RecipeStudioPage({
     initialStrategy = null,
     recentBacktests = [],
     initialLiveState = null,
+    initialQuota = null,
+    initialUserRecipes = [],
 }: RecipeStudioPageProps = {}) {
     const navigate = useNavigate();
     const [strategy, setStrategy] = useState<PushStrategy>(
@@ -101,10 +66,22 @@ export function RecipeStudioPage({
     const [execution, setExecution] = useState<ExecutionState>({ status: 'idle' });
     const [preview, setPreview] = useState<PreviewState>({ status: 'template' });
     const [liveState, setLiveState] = useState<LivePortfolioAndRuns | null>(initialLiveState);
+    const [quotaStatus, setQuotaStatus] = useState<RecipeUserQuotaStatus | null>(initialQuota);
+    const [userRecipes, setUserRecipes] = useState<RecipeSummaryItem[]>(initialUserRecipes);
+    const [isTogglingLive, setIsTogglingLive] = useState(false);
 
     const [alerts, setAlerts] = useState<RecipeAlert[]>([]);
     const [showAlertsInbox, setShowAlertsInbox] = useState<boolean>(false);
     const [showPledgeModal, setShowPledgeModal] = useState<boolean>(false);
+
+    const refreshQuota = async () => {
+        try {
+            const nextQuota = await fetchRecipeQuotaStatusFn();
+            if (nextQuota) setQuotaStatus(nextQuota);
+        } catch {
+            // Non-blocking UI refresh
+        }
+    };
 
     const handleSelectTemplate = (idx: number) => {
         setActiveTemplateIdx(idx);
@@ -154,6 +131,7 @@ export function RecipeStudioPage({
                 data: { recipe: strategy },
             })) as StrategyRecipeRecord;
             setStrategy((prev) => (prev.id === saved.id ? prev : { ...prev, id: saved.id }));
+            setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved));
             const job = (await enqueueRecipeJobFn({
                 data: {
                     recipeId: saved.id,
@@ -188,6 +166,35 @@ export function RecipeStudioPage({
                 status: 'error',
                 message: err instanceof Error ? err.message : 'Execution failed',
             });
+        } finally {
+            await refreshQuota();
+        }
+    };
+
+    const currentSavedRecord = userRecipes.find((r) => r.id === strategy.id);
+    const isCurrentlyScheduledLive = Boolean(currentSavedRecord?.is_live);
+
+    const handleToggleScheduledLive = async () => {
+        if (isTogglingLive) return;
+        setIsTogglingLive(true);
+        try {
+            const saved = (await saveRecipeFn({
+                data: { recipe: strategy },
+            })) as StrategyRecipeRecord;
+            setStrategy((prev) => (prev.id === saved.id ? prev : { ...prev, id: saved.id }));
+            const updated = await toggleLiveScheduleFn({
+                data: { recipeId: saved.id, isLive: !isCurrentlyScheduledLive },
+            });
+            setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved, updated.is_live));
+        } catch (err) {
+            setExecution({
+                status: 'error',
+                message:
+                    err instanceof Error ? err.message : 'Failed updating Scheduled Live status',
+            });
+        } finally {
+            setIsTogglingLive(false);
+            await refreshQuota();
         }
     };
 
@@ -244,9 +251,17 @@ export function RecipeStudioPage({
                         <Button size="sm" variant="outline" onClick={handleLoadAlerts}>
                             Alerts ({alerts.filter((a) => !a.is_read).length})
                         </Button>
-                        <Badge variant="outline" size="sm">
-                            Free Auto-Strata
-                        </Badge>
+                        <Button
+                            size="sm"
+                            variant={isCurrentlyScheduledLive ? 'solid' : 'outline'}
+                            colorScheme={isCurrentlyScheduledLive ? 'success' : 'neutral'}
+                            onClick={handleToggleScheduledLive}
+                            isLoading={isTogglingLive}
+                        >
+                            {isCurrentlyScheduledLive
+                                ? 'Scheduled Live: ON (3x/d)'
+                                : 'Schedule Live (3x/d)'}
+                        </Button>
                         <Button
                             size="sm"
                             variant="outline"
@@ -270,6 +285,10 @@ export function RecipeStudioPage({
                         </Button>
                     </div>
                 </div>
+
+                <RecipeGuideAndQuotaBlock quotaStatus={quotaStatus} />
+
+                <SavedRecipesStrip recipes={userRecipes} activeRecipeId={strategy.id} />
 
                 {recentBacktests.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2 voxel-trough bg-boxel-trough p-3">

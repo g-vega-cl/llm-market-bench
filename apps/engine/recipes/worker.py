@@ -12,8 +12,22 @@ from core.db import get_supabase_client
 from recipes.push_runner import run_push_backtest, run_push_live
 from recipes.push_schema import PushStrategy
 
-JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED"]
+JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED", "CANCELLED"]
 SUPPORTED_JOB_MODES = ("backtest", "live_turn")
+
+
+def _default_model_for_mode(mode: str) -> str:
+    return "auto-go" if mode == "live_turn" else "strata-auto-go"
+
+
+def _is_job_cancelled(sb: Any, job_id: str) -> bool:
+    """Return True only when the queue row was explicitly marked cancelled."""
+    try:
+        res = sb.table("recipe_execution_queue").select("status").eq("id", job_id).single().execute()
+        data = getattr(res, "data", None)
+        return isinstance(data, dict) and data.get("status") == "cancelled"
+    except Exception:
+        return False
 
 
 def _insert_live_alerts(
@@ -97,8 +111,9 @@ async def _execute_recipe_job_mode(
     push_strategy: PushStrategy,
 ) -> dict[str, Any]:
     """Run either live_turn or backtest execution for a validated Push v2 recipe."""
+    job_model = str(job.get("job_model") or _default_model_for_mode(mode))
     if mode == "live_turn":
-        result = await run_push_live(push_strategy, sb, recipe_row=recipe_data)
+        result = await run_push_live(push_strategy, sb, recipe_row=recipe_data, model=job_model)
         _insert_live_alerts(sb, job, recipe_data, recipe_id, push_strategy, result)
         return result
 
@@ -108,8 +123,9 @@ async def _execute_recipe_job_mode(
                 {
                     "progress_pct": progress_pct,
                     "result_json": partial_result,
+                    "heartbeat_at": datetime.now(UTC).isoformat(),
                 }
-            ).eq("id", job_id).execute()
+            ).eq("id", job_id).eq("status", "processing").execute()
         except Exception:
             logger.warning("Failed updating progress for recipe job %s", job_id, exc_info=True)
 
@@ -118,6 +134,8 @@ async def _execute_recipe_job_mode(
         sb,
         on_progress=_on_progress,
         concurrency_config=recipe_data.get("concurrency_config"),
+        model=job_model,
+        is_cancelled=lambda: _is_job_cancelled(sb, job_id),
     )
 
 
@@ -137,19 +155,28 @@ def _record_job_failure(sb: Any, job: dict[str, Any], exc: Exception) -> None:
         logger.exception("Failed to record error state on queue job")
 
 
-async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome:
+async def async_process_next_recipe_job(
+    client: Any | None = None,
+    *,
+    target_mode: str | None = None,
+) -> JobOutcome:
     """Pop and asynchronously process the next Push v2 recipe job from the priority queue.
 
     Returns:
         "EMPTY" when no pending job exists,
         "COMPLETED" when the popped job succeeds,
+        "CANCELLED" when cancelled mid-flight,
         "FAILED" when the popped job raises or uses an unsupported payload/mode.
     """
     sb = client or get_supabase_client()
     job: dict[str, Any] = {}
 
     try:
-        rpc_res = sb.rpc("pop_next_recipe_job").execute()
+        rpc_res = (
+            sb.rpc("pop_next_recipe_job", {"target_mode": target_mode}).execute()
+            if target_mode is not None
+            else sb.rpc("pop_next_recipe_job").execute()
+        )
         jobs = rpc_res.data or []
         if not jobs:
             return "EMPTY"
@@ -157,30 +184,52 @@ async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome
         job = jobs[0]
         job_id = job["job_id"]
         mode = str(job.get("job_mode") or "backtest")
-        logger.info("Processing recipe job %s (mode=%s, priority=%s)", job_id, mode, job.get("job_priority"))
+        logger.info(
+            "Processing recipe job %s (mode=%s, model=%s, priority=%s)",
+            job_id,
+            mode,
+            job.get("job_model"),
+            job.get("job_priority"),
+        )
 
         if mode not in SUPPORTED_JOB_MODES:
             raise ValueError(f"Unsupported recipe execution mode: {mode}")
 
+        now_iso = datetime.now(UTC).isoformat()
         sb.table("recipe_execution_queue").update(
             {
                 "status": "processing",
-                "started_at": datetime.now(UTC).isoformat(),
+                "started_at": now_iso,
+                "heartbeat_at": now_iso,
             }
-        ).eq("id", job_id).execute()
+        ).eq("id", job_id).eq("status", "processing").execute()
 
         recipe_id = job["job_recipe_id"]
         recipe_data, push_strategy = _load_validated_recipe(sb, recipe_id)
         result = await _execute_recipe_job_mode(sb, job, recipe_data, recipe_id, job_id, mode, push_strategy)
 
-        sb.table("recipe_execution_queue").update(
-            {
-                "status": "completed",
-                "progress_pct": 100,
-                "result_json": result,
-                "completed_at": datetime.now(UTC).isoformat(),
-            }
-        ).eq("id", job_id).execute()
+        if _is_job_cancelled(sb, job_id) or (isinstance(result, dict) and result.get("cancelled")):
+            logger.info("Recipe job %s was cancelled mid-run; skipping completion update", job_id)
+            return "CANCELLED"
+
+        comp_res = (
+            sb.table("recipe_execution_queue")
+            .update(
+                {
+                    "status": "completed",
+                    "progress_pct": 100,
+                    "result_json": result,
+                    "completed_at": datetime.now(UTC).isoformat(),
+                }
+            )
+            .eq("id", job_id)
+            .eq("status", "processing")
+            .execute()
+        )
+        comp_rows = getattr(comp_res, "data", None)
+        if isinstance(comp_rows, list) and len(comp_rows) == 0:
+            logger.info("Recipe job %s transitioned externally before completion; skipping CAS", job_id)
+            return "CANCELLED"
 
         _update_recipe_cas(sb, recipe_id, recipe_data, mode, result)
         return "COMPLETED"
@@ -191,6 +240,10 @@ async def async_process_next_recipe_job(client: Any | None = None) -> JobOutcome
         return "FAILED"
 
 
-def process_next_recipe_job(client: Any | None = None) -> JobOutcome:
+def process_next_recipe_job(
+    client: Any | None = None,
+    *,
+    target_mode: str | None = None,
+) -> JobOutcome:
     """Synchronous wrapper around async_process_next_recipe_job for non-async callers."""
-    return asyncio.run(async_process_next_recipe_job(client))
+    return asyncio.run(async_process_next_recipe_job(client, target_mode=target_mode))

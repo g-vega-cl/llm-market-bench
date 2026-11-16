@@ -1,5 +1,7 @@
 import { Button, Input, Label } from '@llm-market-bench/ui-design-system';
+import { useEffect, useState } from 'react';
 import { getAuthBrowserClient } from '~/lib/auth-client';
+import { buildOAuthCallbackUrl, resolveCurrentReturnPath } from '../redirect';
 
 function GoogleIcon() {
     return (
@@ -36,12 +38,21 @@ export function Auth({
     status: 'pending' | 'idle' | 'success' | 'error';
     afterSubmit?: React.ReactNode;
 }) {
+    const [returnPath, setReturnPath] = useState('/');
+    useEffect(() => {
+        setReturnPath(resolveCurrentReturnPath());
+    }, []);
+    const isRecipesGate = returnPath.startsWith('/recipes');
+
     const handleGoogleLogin = async () => {
         const authClient = getAuthBrowserClient();
         await authClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
+                redirectTo: buildOAuthCallbackUrl(
+                    window.location.origin,
+                    resolveCurrentReturnPath(),
+                ),
             },
         });
     };
@@ -52,6 +63,20 @@ export function Auth({
                 <h1 className="text-lg font-bold font-display uppercase tracking-wider text-white">
                     {actionText}
                 </h1>
+                {isRecipesGate && (
+                    <div className="voxel-trough bg-boxel-trough p-3 flex flex-col gap-2 text-xs font-normal text-boxel-muted">
+                        <span className="text-sm font-bold text-boxel-ink">
+                            Strategy Recipe Studio — Free Beta Access
+                        </span>
+                        <span>
+                            Sign in with Google or Email to get 2 free 2-week backtests/day
+                            (strata-auto-go) and 3 live paper turns/day (auto-go).
+                        </span>
+                        <a href="/recipes-demo" className="text-accent hover:underline">
+                            Or inspect a public sample backtest first →
+                        </a>
+                    </div>
+                )}
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();

@@ -4,6 +4,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { getAuthServerClient } from '~/lib/auth';
 import { Auth } from '~/shared/auth';
+import { sanitizeRedirectPath } from '~/shared/auth/redirect';
 
 type SignupVariables = { email: string; password: string; redirectUrl?: string };
 type AuthResult =
@@ -33,17 +34,26 @@ export const signupFn = createServerFn({ method: 'POST' })
                       email: authData.user.email ?? data.email,
                   }
                 : undefined,
-            redirectUrl: data.redirectUrl || '/',
+            redirectUrl: sanitizeRedirectPath(data.redirectUrl),
         };
     });
 
+function SignupRouteComponent() {
+    const { next } = Route.useSearch();
+    return <SignupComp redirectTo={next} />;
+}
+
 export const Route = createFileRoute('/signup')({
-    component: SignupComp,
+    validateSearch: (search: Record<string, unknown>) => ({
+        next: sanitizeRedirectPath(search.next),
+    }),
+    component: SignupRouteComponent,
 });
 
-export function SignupComp() {
+export function SignupComp({ redirectTo }: { redirectTo?: string } = {}) {
     const router = useRouter();
     const posthog = usePostHog();
+    const next = sanitizeRedirectPath(redirectTo);
     const signupMutation = useMutation<AuthResult, Error, SignupVariables>({
         mutationFn: (data: SignupVariables) => signupFn({ data }),
         onSuccess: async (data, variables) => {
@@ -53,7 +63,9 @@ export function SignupComp() {
                 }
                 posthog.capture('user_signed_up', { email: variables.email });
                 await router.invalidate();
-                const redirectHref = (data && 'redirectUrl' in data && data.redirectUrl) || '/';
+                const redirectHref = sanitizeRedirectPath(
+                    (data && 'redirectUrl' in data && data.redirectUrl) || next,
+                );
                 router.navigate({ href: redirectHref });
             }
         },
@@ -69,6 +81,7 @@ export function SignupComp() {
                 signupMutation.mutate({
                     email: formData.get('email') as string,
                     password: formData.get('password') as string,
+                    redirectUrl: next,
                 });
             }}
             afterSubmit={

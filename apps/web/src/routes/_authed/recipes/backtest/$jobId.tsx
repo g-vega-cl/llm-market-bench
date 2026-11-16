@@ -3,7 +3,7 @@ import { fetchRecipeRunDetailFn } from '~/features/recipes/api/recipes-api';
 import { RecipeBacktestPage } from '~/features/recipes/pages/RecipeBacktestPage';
 import { seo } from '~/lib/seo';
 
-export const Route = createFileRoute('/recipes/backtest/$jobId')({
+export const Route = createFileRoute('/_authed/recipes/backtest/$jobId')({
     loader: async ({ params }) => {
         try {
             return await fetchRecipeRunDetailFn({ data: { jobId: params.jobId } });

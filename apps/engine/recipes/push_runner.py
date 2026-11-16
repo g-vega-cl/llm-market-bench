@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import inspect
-import json
 import random
-import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -17,6 +15,8 @@ from recipes.intraday_bars import (
     CORPUS_MIN_DATE,
     expand_dates_to_et_slots,
     fetch_intraday_bars_for_ticker,
+    has_slot_bar,
+    merge_intraday_bars,
     resolve_slot_price,
 )
 from recipes.intraday_bars import (
@@ -32,51 +32,9 @@ from recipes.portfolio_engine import (
     format_portfolio_prompt_block,
 )
 from recipes.push_hydrator import fetch_push_context_batch, hydrate_stage_prompt
-from recipes.push_schema import MemoriesBlock, NewsBlock, PushStrategy
+from recipes.push_schema import MemoriesBlock, NewsBlock, PushStrategy, parse_trade_signals
 
 ProgressCallback = Callable[[int, dict[str, Any]], Awaitable[None] | None]
-
-_TRADE_LINE_RE = re.compile(r"(?<!not\s)\b(BUY|SELL|EXIT)\s+([A-Z]{1,5})\b")
-_VALID_ACTIONS = {"BUY", "SELL", "EXIT"}
-
-
-def _parse_json_signal_array(chunk: str) -> list[dict[str, str]]:
-    """Parse one candidate JSON array into validated BUY/SELL/EXIT signal dicts."""
-    try:
-        parsed = json.loads(chunk)
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(parsed, list):
-        return []
-    signals: list[dict[str, str]] = []
-    for item in parsed:
-        if not isinstance(item, dict):
-            continue
-        action = str(item.get("action") or "").upper().strip()
-        ticker = str(item.get("ticker") or "").upper().strip()
-        if action in _VALID_ACTIONS and ticker:
-            signals.append({"action": action, "ticker": ticker})
-    return signals
-
-
-def parse_trade_signals(output_text: str) -> list[dict[str, str]]:
-    """Extract BUY/SELL/EXIT ticker signals from JSON blocks or plain text."""
-    if not output_text:
-        return []
-
-    for json_match in re.finditer(r"\[[\s\S]*?\]", output_text):
-        signals = _parse_json_signal_array(json_match.group(0))
-        if signals:
-            return signals
-
-    seen: set[tuple[str, str]] = set()
-    signals: list[dict[str, str]] = []
-    for action, ticker in _TRADE_LINE_RE.findall(output_text):
-        key = (action, ticker)
-        if key not in seen:
-            seen.add(key)
-            signals.append({"action": action, "ticker": ticker})
-    return signals
 
 
 def _max_lookback_hours(strategy: PushStrategy) -> int:
@@ -115,6 +73,7 @@ async def run_push_live(
     llm_caller: LLMCaller | None = None,
     as_of_utc: datetime | None = None,
     recipe_row: dict[str, Any] | None = None,
+    model: str | None = None,
 ) -> dict[str, Any]:
     """Run the single LLM stage live with persistent Long-Only portfolio tracking."""
     now_utc = as_of_utc or datetime.now(UTC)
@@ -143,7 +102,7 @@ async def run_push_live(
             prev_output=prev_output,
             portfolio_block=portfolio_block,
         )
-        res = await _invoke_llm(caller, prompt, stage.selected_tools, None, as_of_utc=None)
+        res = await _invoke_llm(caller, prompt, stage.selected_tools, None, as_of_utc=None, model=model)
         output_text = str(res.get("output", ""))
         stage_results.append(
             {
@@ -236,14 +195,33 @@ async def _ensure_slot_prices(
     end_day: str,
     slot_dt_utc: datetime,
 ) -> dict[str, float]:
-    """Fetch missing intraday/daily prices for tickers and resolve slot execution prices."""
-    unseen = {t for t in tickers if t and t not in acc.intraday_bars}
-    if unseen:
-        daily_map = _load_daily_closes(sb_client, unseen, start_day, end_day)
-        for tkr in unseen:
+    """Fetch missing or partial intraday/daily prices for tickers and resolve slot execution prices."""
+    slot_et = slot_dt_utc.astimezone(EASTERN_TZ)
+    slot_day = slot_et.date().isoformat()
+    slot_refresh_key = slot_et.strftime("%Y-%m-%d %H:%M")
+    need_daily = {t for t in tickers if t and t not in acc.daily_close}
+    if need_daily:
+        daily_map = _load_daily_closes(sb_client, need_daily, start_day, end_day)
+        for tkr in need_daily:
             acc.daily_close.setdefault(tkr, {}).update(daily_map.get(tkr, {}))
-            bars = await fetch_intraday_bars_for_ticker(sb_client, tkr, start_day, end_day)
-            acc.intraday_bars[tkr] = bars
+
+    need_bars = {
+        t
+        for t in tickers
+        if t
+        and (
+            t not in acc.intraday_bars
+            or (
+                (t, slot_refresh_key) not in acc.refreshed_bar_days
+                and not has_slot_bar(acc.intraday_bars[t], slot_dt_utc)
+            )
+        )
+    }
+    for tkr in sorted(need_bars):
+        acc.refreshed_bar_days.add((tkr, slot_refresh_key))
+        fetch_from = slot_day if tkr in acc.intraday_bars else start_day
+        bars = await fetch_intraday_bars_for_ticker(sb_client, tkr, fetch_from, end_day)
+        acc.intraday_bars[tkr] = merge_intraday_bars(acc.intraday_bars.get(tkr, []), bars)
 
     resolved: dict[str, float] = {}
     for tkr in tickers:
@@ -273,6 +251,8 @@ async def run_push_backtest(
     slippage_bps: float = 5.0,
     on_progress: ProgressCallback | None = None,
     concurrency_config: dict[str, Any] | None = None,
+    model: str | None = None,
+    is_cancelled: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     """Run a 10-trading-day, 3x/day ET (09:30/12:30/15:30) point-in-time swing backtest."""
     caller = llm_caller or default_llm_caller
@@ -303,7 +283,17 @@ async def run_push_backtest(
     )
 
     last_prices: dict[str, float] = {}
+    steps_done = 0
     for idx, slot in enumerate(slots):
+        if is_cancelled is not None and is_cancelled():
+            snap = acc.snapshot(
+                days_completed=steps_done,
+                current_day=slot["slot_label"],
+                latest_prices=last_prices,
+            )
+            snap["cancelled"] = True
+            return snap
+
         held_tickers = {str(p["ticker"]).upper() for p in acc.portfolio.positions}
         held_prices = await _ensure_slot_prices(
             acc,
@@ -341,6 +331,7 @@ async def run_push_backtest(
                     stage.selected_tools,
                     slot["day_str"],
                     as_of_utc=slot["timestamp_iso"],
+                    model=model,
                 )
                 acc.llm_calls_made += 1
                 prev_output = str(res.get("output", ""))

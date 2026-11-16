@@ -265,7 +265,7 @@ export interface BacktestResultData {
     day_steps?: BacktestDayStep[];
 }
 
-export type RecipeJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type RecipeJobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 export interface RecipeJobRecord {
     id: string;
@@ -286,6 +286,31 @@ export interface RecipeRunDetail {
     job: RecipeJobRecord;
     recipeName: string | null;
     recipeCadence: RecipeCadence | null;
+    queuePosition?: number | null;
+    globalActiveBacktests?: number;
+}
+
+export interface RecipeUserQuotaStatus {
+    tier: string;
+    activeBacktests: number;
+    maxConcurrentBacktests: number;
+    backtestsLast24h: number;
+    dailyBacktestLimit: number;
+    liveTurnsLast24h: number;
+    dailyLiveTurnLimit: number;
+    activeLiveRecipes: number;
+    maxLiveRecipes: number;
+    globalPendingBacktests: number;
+    globalQueueCap: number;
+}
+
+export interface RecipeSummaryItem {
+    id: string;
+    name: string;
+    cadence: RecipeCadence;
+    is_live: boolean;
+    trial_count: number;
+    updated_at: string;
 }
 
 export interface LiveStageOutput {

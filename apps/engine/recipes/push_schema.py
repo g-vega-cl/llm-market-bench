@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -122,3 +124,46 @@ class PushStrategy(BaseModel):
         if len(stages) > 1:
             raise ValueError("Push strategies are limited to one LLM stage for the MVP")
         return stages
+
+
+_TRADE_LINE_RE = re.compile(r"(?<!not\s)\b(BUY|SELL|EXIT)\s+([A-Z]{1,5})\b")
+_VALID_ACTIONS = {"BUY", "SELL", "EXIT"}
+
+
+def _parse_json_signal_array(chunk: str) -> list[dict[str, str]]:
+    """Parse one candidate JSON array into validated BUY/SELL/EXIT signal dicts."""
+    try:
+        parsed = json.loads(chunk)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    signals: list[dict[str, str]] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        action = str(item.get("action") or "").upper().strip()
+        ticker = str(item.get("ticker") or "").upper().strip()
+        if action in _VALID_ACTIONS and ticker:
+            signals.append({"action": action, "ticker": ticker})
+    return signals
+
+
+def parse_trade_signals(output_text: str) -> list[dict[str, str]]:
+    """Extract BUY/SELL/EXIT ticker signals from JSON blocks or plain text."""
+    if not output_text:
+        return []
+
+    for json_match in re.finditer(r"\[[\s\S]*?\]", output_text):
+        signals = _parse_json_signal_array(json_match.group(0))
+        if signals:
+            return signals
+
+    seen: set[tuple[str, str]] = set()
+    signals: list[dict[str, str]] = []
+    for action, ticker in _TRADE_LINE_RE.findall(output_text):
+        key = (action, ticker)
+        if key not in seen:
+            seen.add(key)
+            signals.append({"action": action, "ticker": ticker})
+    return signals

@@ -271,3 +271,23 @@ def test_enqueue_live_recipes_dedups_already_enqueued_in_same_slot():
     assert enqueued == 1
     inserted_batch = queue_tbl.insert.call_args[0][0]
     assert [row["recipe_id"] for row in inserted_batch] == ["rec-2"]
+    assert inserted_batch[0]["model"] == "auto-go"
+    assert inserted_batch[0]["provider"] == "free-llm-proxy"
+
+
+@pytest.mark.asyncio
+async def test_drain_lane_passes_target_mode_independently():
+    from recipes.runner import drain_lane
+
+    sb = MagicMock()
+    with patch(
+        "recipes.runner.async_process_next_recipe_job",
+        new=AsyncMock(side_effect=["COMPLETED", "EMPTY", "COMPLETED", "EMPTY"]),
+    ) as mock_worker:
+        live_done = await drain_lane(sb, mode="live_turn", max_jobs=5)
+        bt_done = await drain_lane(sb, mode="backtest", max_jobs=1)
+
+    assert live_done == 1
+    assert bt_done == 1
+    assert mock_worker.await_args_list[0].kwargs == {"target_mode": "live_turn"}
+    assert mock_worker.await_args_list[2].kwargs == {"target_mode": "backtest"}

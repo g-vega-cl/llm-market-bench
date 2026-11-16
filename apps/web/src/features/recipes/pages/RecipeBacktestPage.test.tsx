@@ -27,7 +27,12 @@ vi.mock('../api/recipes-api', () => ({
     fetchRecipeRunDetailFn: vi.fn(),
 }));
 
+vi.mock('../api/recipes-quota-api', () => ({
+    cancelRecipeJobFn: vi.fn(),
+}));
+
 import { enqueueRecipeJobFn, fetchRecipeRunDetailFn } from '../api/recipes-api';
+import { cancelRecipeJobFn } from '../api/recipes-quota-api';
 
 function renderWithQuery(ui: React.ReactElement) {
     const client = new QueryClient({
@@ -292,5 +297,56 @@ describe('RecipeBacktestPage', () => {
         vi.mocked(fetchRecipeRunDetailFn).mockResolvedValue(liveDetail);
         renderWithQuery(<RecipeBacktestPage jobId="job-live" initialData={liveDetail} />);
         expect(screen.getByText('Incompatible Job Mode')).toBeInTheDocument();
+    });
+
+    it('renders queue position badge, Cancel Run control, and read-only showcase mode cleanly', async () => {
+        const queuedDetail: RecipeRunDetail = {
+            recipeName: 'Queued Showcase',
+            recipeCadence: '3h',
+            queuePosition: 2,
+            job: {
+                id: 'job-queued',
+                recipe_id: 'rec-q',
+                mode: 'backtest',
+                status: 'pending',
+                progress_pct: 0,
+                result_json: null,
+                error_message: null,
+            },
+        };
+        vi.mocked(fetchRecipeRunDetailFn).mockResolvedValue(queuedDetail);
+        vi.mocked(cancelRecipeJobFn).mockResolvedValue({ id: 'job-queued', status: 'cancelled' });
+
+        const { unmount } = renderWithQuery(
+            <RecipeBacktestPage jobId="job-queued" initialData={queuedDetail} />,
+        );
+        expect(screen.getByText('QUEUED #2')).toBeInTheDocument();
+        const cancelBtn = screen.getByRole('button', { name: 'Cancel Run' });
+        fireEvent.click(cancelBtn);
+
+        await waitFor(() => {
+            expect(cancelRecipeJobFn).toHaveBeenCalledWith({ data: { jobId: 'job-queued' } });
+        });
+        unmount();
+
+        renderWithQuery(
+            <RecipeBacktestPage
+                jobId="job-demo"
+                initialData={sampleProcessingDetail}
+                readOnlyShowcase
+            />,
+        );
+        expect(screen.getByText(/Sign In Free to Build & Run/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Cancel Run' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Re-run/i })).not.toBeInTheDocument();
+        expect(screen.getByText('How To Read This Backtest')).toBeInTheDocument();
+    });
+
+    it('keeps Cancel Run stably mounted while background polling fetch is in flight', () => {
+        vi.mocked(fetchRecipeRunDetailFn).mockImplementation(() => new Promise(() => {}));
+        renderWithQuery(
+            <RecipeBacktestPage jobId="job-123" initialData={sampleProcessingDetail} />,
+        );
+        expect(screen.getByRole('button', { name: 'Cancel Run' })).toBeInTheDocument();
     });
 });

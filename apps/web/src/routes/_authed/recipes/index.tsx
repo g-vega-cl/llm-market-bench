@@ -1,17 +1,27 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchRecentBacktestJobsFn, fetchRecipeByIdFn } from '~/features/recipes/api/recipes-api';
+import {
+    fetchRecipeQuotaStatusFn,
+    fetchUserRecipesFn,
+} from '~/features/recipes/api/recipes-quota-api';
 import { fetchLivePortfolioAndRunsFn } from '~/features/recipes/api/recipes-studio-api';
 import { RecipeStudioPage } from '~/features/recipes/pages/RecipeStudioPage';
 import { seo } from '~/lib/seo';
 
-export const Route = createFileRoute('/recipes/')({
+export const Route = createFileRoute('/_authed/recipes/')({
     validateSearch: (search: Record<string, unknown>): { recipeId?: string } => ({
         recipeId:
             typeof search.recipeId === 'string' && search.recipeId ? search.recipeId : undefined,
     }),
     loaderDeps: ({ search }) => ({ recipeId: search.recipeId }),
     loader: async ({ deps }) => {
-        const [initialStrategy, recentBacktests, initialLiveState] = await Promise.all([
+        const [
+            initialStrategy,
+            recentBacktests,
+            initialLiveState,
+            initialQuota,
+            initialUserRecipes,
+        ] = await Promise.all([
             deps.recipeId
                 ? fetchRecipeByIdFn({ data: { recipeId: deps.recipeId } }).catch(() => null)
                 : Promise.resolve(null),
@@ -21,8 +31,16 @@ export const Route = createFileRoute('/recipes/')({
                       () => null,
                   )
                 : Promise.resolve(null),
+            fetchRecipeQuotaStatusFn().catch(() => null),
+            fetchUserRecipesFn().catch(() => []),
         ]);
-        return { initialStrategy, recentBacktests, initialLiveState };
+        return {
+            initialStrategy,
+            recentBacktests,
+            initialLiveState,
+            initialQuota,
+            initialUserRecipes,
+        };
     },
     head: () => ({
         meta: [
@@ -37,12 +55,16 @@ export const Route = createFileRoute('/recipes/')({
 });
 
 function RouteComponent() {
-    const { initialStrategy, recentBacktests, initialLiveState } = Route.useLoaderData();
+    const { initialStrategy, recentBacktests, initialLiveState, initialQuota, initialUserRecipes } =
+        Route.useLoaderData();
     return (
         <RecipeStudioPage
+            key={initialStrategy?.id ?? 'starter'}
             initialStrategy={initialStrategy}
             recentBacktests={recentBacktests}
             initialLiveState={initialLiveState}
+            initialQuota={initialQuota}
+            initialUserRecipes={initialUserRecipes}
         />
     );
 }

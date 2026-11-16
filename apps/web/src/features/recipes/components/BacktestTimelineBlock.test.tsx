@@ -101,4 +101,51 @@ describe('BacktestTimelineBlock', () => {
             ),
         ).toBeInTheDocument();
     });
+
+    it('renders queue position waiting message and clear hold decision summary', () => {
+        const { rerender } = render(
+            <BacktestTimelineBlock status="pending" results={null} queuePosition={3} />,
+        );
+        expect(screen.getByText(/Queued \(#3 in line\)/i)).toBeInTheDocument();
+
+        rerender(
+            <BacktestTimelineBlock
+                status="completed"
+                results={{
+                    ...partialResults,
+                    day_steps: [
+                        {
+                            day: '2026-08-03 09:30 ET',
+                            day_index: 0,
+                            status: 'completed',
+                            signals: [],
+                            tool_calls: ['get_stock_quote({"ticker":"NVDA"})'],
+                            output_excerpt: '[]',
+                            full_output: '[]',
+                            day_pnl_net: 0,
+                            trades_executed: 0,
+                            trades_skipped: 0,
+                            trace: {
+                                forced_final_synthesis: false,
+                                rounds: [
+                                    {
+                                        round: 1,
+                                        reasoning: 'Wait for catalyst.',
+                                        assistant_text: '[]',
+                                        tool_calls: [],
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                /Hold decision: evaluated 1 PIT tool call across 1 reasoning round and stayed in cash/i,
+            ),
+        ).toBeInTheDocument();
+    });
 });

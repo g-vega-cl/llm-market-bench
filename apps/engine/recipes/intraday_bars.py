@@ -262,6 +262,26 @@ def resolve_slot_price(
     return None
 
 
+def has_slot_bar(bars: list[dict[str, Any]], slot_dt_utc: datetime) -> bool:
+    """True when cached intraday bars include a bar within 2h at or before slot_dt_utc."""
+    for bar in bars:
+        bar_dt = _parse_bar_dt_utc(bar.get("bar_time_utc"))
+        if bar_dt is None:
+            continue
+        if 0 <= (slot_dt_utc - bar_dt).total_seconds() <= _PRIOR_BAR_MAX_AGE_SECONDS:
+            return True
+    return False
+
+
+def merge_intraday_bars(existing: list[dict[str, Any]], fetched: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge intraday bars keyed by bar_time_utc sorted chronologically."""
+    merged: dict[str, dict[str, Any]] = {str(b["bar_time_utc"]): b for b in existing if b.get("bar_time_utc")}
+    for bar in fetched:
+        if bar.get("bar_time_utc"):
+            merged[str(bar["bar_time_utc"])] = bar
+    return sorted(merged.values(), key=lambda b: str(b["bar_time_utc"]))
+
+
 async def snapshot_live_intraday_bars(
     sb_client: Any,
     tickers: list[str],

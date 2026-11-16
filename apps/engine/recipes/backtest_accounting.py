@@ -28,6 +28,7 @@ class BacktestAccumulator:
     llm_calls_made: int = 0
     intraday_bars: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     daily_close: dict[str, dict[str, float]] = field(default_factory=dict)
+    refreshed_bar_days: set[tuple[str, str]] = field(default_factory=set)
     portfolio: PortfolioState = field(init=False)
     day_steps: list[dict[str, Any]] = field(default_factory=list)
 

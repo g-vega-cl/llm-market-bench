@@ -75,11 +75,21 @@ function createMockDb(results: Record<string, DbResult | ((call: RecordedCall) =
                     call.filters[col] = values;
                     return chain;
                 },
+                gte(_col: string, _value: unknown) {
+                    return chain;
+                },
+                neq(_col: string, _value: unknown) {
+                    return chain;
+                },
                 order(_col: string, _opts?: unknown) {
                     return chain;
                 },
                 limit(_n: number) {
                     return chain;
+                },
+                maybeSingle() {
+                    calls.push(call);
+                    return Promise.resolve(resolve(call));
                 },
                 single() {
                     calls.push(call);
@@ -322,22 +332,32 @@ describe('enqueueRecipeJob', () => {
         expect(calls.some((call) => call.op === 'insert')).toBe(false);
     });
 
-    it('queues a job for a recipe the caller owns', async () => {
+    it('queues backtests on strata-auto-go and live turns on auto-go via free-llm-proxy', async () => {
         const { db, calls } = createMockDb({
-            'select:strategy_recipes': { data: recipeRow() },
+            'select:strategy_recipes': (call) =>
+                call.filters.is_live === true ? { data: [] } : { data: recipeRow() },
             'select:recipe_execution_queue': { data: [] },
             'insert:recipe_execution_queue': { data: { id: 'job-1' } },
         });
         mockAdminDb = db;
 
         await enqueueRecipeJob('rec-1', 'backtest', 'user-1');
+        await enqueueRecipeJob('rec-1', 'live_turn', 'user-1');
 
-        const insert = calls.find((call) => call.op === 'insert');
-        expect(insert?.payload).toMatchObject({
+        const inserts = calls.filter((call) => call.op === 'insert');
+        expect(inserts[0]?.payload).toMatchObject({
             recipe_id: 'rec-1',
             user_id: 'user-1',
             mode: 'backtest',
             priority: 10,
+            provider: 'free-llm-proxy',
+            model: 'strata-auto-go',
+        });
+        expect(inserts[1]?.payload).toMatchObject({
+            mode: 'live_turn',
+            priority: 1,
+            provider: 'free-llm-proxy',
+            model: 'auto-go',
         });
     });
 });
@@ -442,5 +462,48 @@ describe('fetchRecentBacktestJobs', () => {
         expect(calls[0]?.filters).toMatchObject({ user_id: 'user-1', mode: 'backtest' });
         expect(jobs).toHaveLength(1);
         expect(jobs[0]?.id).toBe('job-1');
+    });
+
+    it('computes queue position for pending backtest runs in fetchRecipeRunDetail', async () => {
+        const { db } = createMockDb({
+            'select:recipe_execution_queue': (call) => {
+                if (call.filters.id === 'job-wait') {
+                    return {
+                        data: {
+                            id: 'job-wait',
+                            recipe_id: 'rec-1',
+                            mode: 'backtest',
+                            status: 'pending',
+                            progress_pct: 0,
+                            created_at: '2026-11-16T10:05:00+00:00',
+                            result_json: null,
+                            error_message: null,
+                        },
+                    };
+                }
+                return {
+                    data: [
+                        {
+                            id: 'job-active',
+                            status: 'processing',
+                            created_at: '2026-11-16T10:00:00+00:00',
+                        },
+                        {
+                            id: 'job-wait',
+                            status: 'pending',
+                            created_at: '2026-11-16T10:05:00+00:00',
+                        },
+                    ],
+                };
+            },
+            'select:strategy_recipes': {
+                data: { id: 'rec-1', name: 'Chip Momentum', cadence: '3h' },
+            },
+        });
+        mockServerDb = db;
+
+        const detail = await fetchRecipeRunDetail('job-wait', 'user-1');
+        expect(detail.queuePosition).toBe(2);
+        expect(detail.globalActiveBacktests).toBe(1);
     });
 });

@@ -6,7 +6,6 @@ import argparse
 import asyncio
 import json
 import sys
-import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -174,8 +173,8 @@ def enqueue_live_recipes(sb_client: Any, *, slot_start_utc: datetime | None = No
                 "mode": "live_turn",
                 "priority": 1,
                 "status": "pending",
-                "provider": "auto-strata",
-                "model": "strata",
+                "provider": "free-llm-proxy",
+                "model": "auto-go",
                 "weeks_requested": [],
                 "progress_pct": 0,
             }
@@ -221,6 +220,23 @@ async def run_hourly_cycle(
     }
 
 
+async def drain_lane(
+    sb_client: Any,
+    *,
+    mode: str,
+    max_jobs: int = MAX_JOBS_PER_CYCLE,
+) -> int:
+    """Drain queued jobs for a single execution lane (live_turn or backtest)."""
+    processed = 0
+    for _ in range(max_jobs):
+        outcome = await async_process_next_recipe_job(sb_client, target_mode=mode)
+        if outcome == "EMPTY":
+            break
+        if outcome == "COMPLETED":
+            processed += 1
+    return processed
+
+
 def _drain_sync_queue(sb_client: Any, max_jobs: int = MAX_JOBS_PER_CYCLE) -> None:
     """Drain queued jobs sequentially from the sync poll loop without stalling on failures."""
     for _ in range(max_jobs):
@@ -229,13 +245,8 @@ def _drain_sync_queue(sb_client: Any, max_jobs: int = MAX_JOBS_PER_CYCLE) -> Non
             break
 
 
-def _run_daemon_loop(sb_client: Any) -> None:
-    """Run 3x/day ET (09:30, 12:30, 15:30) recipe cycles while draining queued jobs every 5s."""
-    try:
-        seed_starter_recipes(sb_client)
-    except Exception:
-        logger.exception("Failed seeding starter recipes during worker startup; continuing loop")
-
+async def _live_lane_loop(sb_client: Any) -> None:
+    """Run scheduled 3x/day ET cycles and non-blocking live_turn jobs on clvg.uk auto-go."""
     last_slot_key: str | None = None
     while True:
         now_utc = datetime.now(UTC)
@@ -243,18 +254,53 @@ def _run_daemon_loop(sb_client: Any) -> None:
         if slot_key is not None:
             slot_dt_utc = _canonical_slot_utc(slot_key)
             try:
-                stats = asyncio.run(run_hourly_cycle(sb_client, as_of_utc=now_utc, slot_start_utc=slot_dt_utc))
-                snapped = asyncio.run(
-                    snapshot_live_intraday_bars(sb_client, _collect_recipe_watchlist(sb_client), slot_dt_utc)
+                news_stats = await sync_live_news_to_corpus(sb_client, as_of_utc=now_utc)
+                live_enqueued = enqueue_live_recipes(sb_client, slot_start_utc=slot_dt_utc)
+                live_done = await drain_lane(sb_client, mode="live_turn")
+                snapped = await snapshot_live_intraday_bars(
+                    sb_client, _collect_recipe_watchlist(sb_client), slot_dt_utc
                 )
-                logger.info("Scheduled ET slot %s cycle complete: %s (bars_snapped=%d)", slot_key, stats, snapped)
+                logger.info(
+                    "Scheduled ET slot %s live cycle complete: news=%s enqueued=%d done=%d bars_snapped=%d",
+                    slot_key,
+                    news_stats,
+                    live_enqueued,
+                    live_done,
+                    snapped,
+                )
             except Exception:
-                logger.exception("Scheduled ET slot %s recipe cycle failed", slot_key)
+                logger.exception("Scheduled ET slot %s live cycle failed", slot_key)
             last_slot_key = slot_key
         else:
-            _drain_sync_queue(sb_client)
+            try:
+                await drain_lane(sb_client, mode="live_turn")
+            except Exception:
+                logger.exception("Live turn lane iteration failed")
+        await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
-        time.sleep(POLL_INTERVAL_SECONDS)
+
+async def _backtest_lane_loop(sb_client: Any) -> None:
+    """Serialize Strata backtests strictly 1-at-a-time without blocking live_turn jobs."""
+    while True:
+        try:
+            await drain_lane(sb_client, mode="backtest", max_jobs=1)
+        except Exception:
+            logger.exception("Backtest lane iteration failed")
+        await asyncio.sleep(POLL_INTERVAL_SECONDS)
+
+
+async def _async_daemon_loop(sb_client: Any) -> None:
+    await asyncio.gather(_live_lane_loop(sb_client), _backtest_lane_loop(sb_client))
+
+
+def _run_daemon_loop(sb_client: Any) -> None:
+    """Run dual-lane 3x/day ET scheduler + live_turn lane concurrently with strict 1x backtest lane."""
+    try:
+        seed_starter_recipes(sb_client)
+    except Exception:
+        logger.exception("Failed seeding starter recipes during worker startup; continuing loop")
+
+    asyncio.run(_async_daemon_loop(sb_client))
 
 
 def main() -> int:

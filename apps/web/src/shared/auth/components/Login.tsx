@@ -4,12 +4,13 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { loginFn } from '~/routes/_authed';
 import { signupFn } from '~/routes/signup';
+import { resolveCurrentReturnPath } from '../redirect';
 import { Auth } from './Auth';
 
 type LoginVariables = { email: string; password: string };
 type AuthResult =
     | { error: true; message: string }
-    | { user: { id: string; email: string } }
+    | { user?: { id: string; email: string }; redirectUrl?: string }
     | undefined;
 
 export function Login() {
@@ -24,15 +25,35 @@ export function Login() {
                     posthog.identify(data.user.id, { email: data.user.email });
                 }
                 posthog.capture('user_logged_in', { email: variables.email });
+                const returnPath = resolveCurrentReturnPath();
                 await router.invalidate();
-                router.navigate({ to: '/' });
+                if (returnPath === '/') {
+                    router.navigate({ to: '/' });
+                } else {
+                    router.navigate({ href: returnPath });
+                }
                 return;
             }
         },
     });
 
-    const signupMutation = useMutation({
-        mutationFn: (variables: LoginVariables) => signupFn({ data: variables }),
+    const signupMutation = useMutation<AuthResult, Error, LoginVariables>({
+        mutationFn: (variables: LoginVariables) =>
+            signupFn({ data: { ...variables, redirectUrl: resolveCurrentReturnPath() } }),
+        onSuccess: async (data, variables) => {
+            if (!data || ('error' in data && data.error)) return;
+            if ('user' in data && data.user) {
+                posthog.identify(data.user.id, { email: data.user.email });
+            }
+            posthog.capture('user_signed_up', { email: variables.email });
+            const returnPath = resolveCurrentReturnPath();
+            await router.invalidate();
+            if (returnPath === '/') {
+                router.navigate({ to: '/' });
+            } else {
+                router.navigate({ href: returnPath });
+            }
+        },
     });
 
     return (

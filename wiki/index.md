@@ -106,6 +106,7 @@
 
 ## Concepts
 
+- [[concepts/auth-redirect-sanitization]] — open-redirect-safe return-path preservation for login, signup, and Google OAuth
 - [[concepts/workflow-command-dispatch-guard]] — allow-list gating the generic `main.py` step in daily-predictor.yml so each dispatched action runs exactly once
 - [[concepts/comparison-timeframe-precompute]] — 4-hour comparison payload cache with last-known-good fallback and O(1) precomputed timeframe slices
 - [[concepts/yield-curve-regime]] — Treasury curve regime classification with FRED fallback and an explicit UNAVAILABLE state

@@ -218,7 +218,7 @@ The following areas in the codebase currently manage state implicitly through co
   - [`apps/engine/recipes/worker.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/recipes/worker.py) ([`push_runner.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/recipes/push_runner.py))
 - **States**:
   - `ExecutionState` (inline in Studio): `idle` $\to$ `running` (`live_turn` | `backtest`) $\to$ `live_done` | `error` (when `mode === 'backtest'`, enqueueing immediately navigates to `/recipes/backtest/$jobId` instead of staying inline).
-  - `RecipeJobStatus` (`recipe_execution_queue`): `pending` $\to$ `processing` (streaming per-slot 3x/day ET checkpoints `progress_pct` + `result_json.day_steps` from `BacktestAccumulator`) $\to$ `completed` | `failed`.
+  - `RecipeJobStatus` (`recipe_execution_queue`): `pending` $\to$ `processing` (dual-lane dequeue via `pop_next_recipe_job(target_mode)`, streaming per-slot `progress_pct`, `heartbeat_at`, and `result_json.day_steps` from `BacktestAccumulator`) $\to$ `completed` | `failed` | `cancelled`.
   - `PreviewState`: `template` $\to$ `loading` $\to$ `hydrated` | `error`
 - **Cardinality invariant**: `PushStrategy.stages` is the one-element tuple `[StrategyStage]`, so the zero-stage and multi-stage states are unrepresentable in the type. The engine schema (`apps/engine/recipes/push_schema.py`) and the `strategy_recipes_single_stage_check` constraint enforce the same rule at runtime. See [[entities/recipe-studio]].
 

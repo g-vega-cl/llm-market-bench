@@ -549,8 +549,22 @@ class FMPProvider(FinancialProvider):
             logger.warning(f"Failed to fetch S&P 500 constituents dynamically (expected if free key): {e}")
             return []
 
+    @staticmethod
+    def _has_hourly_range_coverage(rows: list[dict], from_date: str, to_date: str) -> bool:
+        """True only when cached hourly bars cover enough weekdays and >=3 bars/day."""
+        if not rows:
+            return False
+        start_d = datetime.fromisoformat(from_date[:10]).date()
+        end_d = datetime.fromisoformat(to_date[:10]).date()
+        weekdays = sum(
+            1 for offset in range((end_d - start_d).days + 1) if (start_d + timedelta(days=offset)).weekday() < 5
+        )
+        covered_days = {str(row["bar_date"])[:10] for row in rows}
+        required_days = max(1, int(weekdays * 0.7)) if weekdays > 1 else 1
+        return len(covered_days) >= required_days and len(rows) >= len(covered_days) * 3
+
     def _get_cached_hourly_bars(self, ticker: str, from_date: str, to_date: str) -> list[HourlyBar]:
-        """Retrieve hourly bars from the local SQLite cache."""
+        """Retrieve hourly bars from the local SQLite cache if range coverage is complete."""
         try:
             conn = sqlite3.connect(self._db_path)
             conn.row_factory = sqlite3.Row
@@ -565,6 +579,9 @@ class FMPProvider(FinancialProvider):
             )
             rows = cursor.fetchall()
             conn.close()
+
+            if not self._has_hourly_range_coverage(rows, from_date, to_date):
+                return []
 
             return [
                 {

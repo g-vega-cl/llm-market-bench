@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
+import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
 import { fetchLivePortfolioAndRunsFn } from '../api/recipes-studio-api';
 import { RecipeStudioPage } from './RecipeStudioPage';
 
@@ -17,6 +18,11 @@ vi.mock('../api/recipes-api', () => ({
     enqueueRecipeJobFn: vi.fn(),
     getRecipeJobStatusFn: vi.fn(),
     saveRecipeFn: vi.fn(),
+}));
+
+vi.mock('../api/recipes-quota-api', () => ({
+    fetchRecipeQuotaStatusFn: vi.fn(),
+    toggleLiveScheduleFn: vi.fn(),
 }));
 
 vi.mock('../api/recipes-studio-api', () => ({
@@ -232,6 +238,61 @@ describe('RecipeStudioPage', () => {
         await waitFor(() => {
             expect(screen.getAllByText('$6,400.00').length).toBeGreaterThanOrEqual(1);
             expect(screen.getByText('AVGO')).toBeInTheDocument();
+        });
+    });
+
+    it('renders quota status strip and toggles Scheduled Live 3x/day ET', async () => {
+        vi.mocked(saveRecipeFn).mockResolvedValue({
+            id: 'rec-sched-1',
+            name: 'Live Scheduler Test',
+            cadence: '3h',
+        } as never);
+        vi.mocked(toggleLiveScheduleFn).mockResolvedValue({
+            id: 'rec-sched-1',
+            is_live: true,
+        });
+        vi.mocked(fetchRecipeQuotaStatusFn).mockResolvedValue({
+            tier: 'beta_starter',
+            activeBacktests: 0,
+            maxConcurrentBacktests: 1,
+            backtestsLast24h: 0,
+            dailyBacktestLimit: 2,
+            liveTurnsLast24h: 0,
+            dailyLiveTurnLimit: 3,
+            activeLiveRecipes: 1,
+            maxLiveRecipes: 1,
+            globalPendingBacktests: 1,
+            globalQueueCap: 20,
+        });
+
+        render(
+            <RecipeStudioPage
+                initialQuota={{
+                    tier: 'beta_starter',
+                    activeBacktests: 0,
+                    maxConcurrentBacktests: 1,
+                    backtestsLast24h: 0,
+                    dailyBacktestLimit: 2,
+                    liveTurnsLast24h: 0,
+                    dailyLiveTurnLimit: 3,
+                    activeLiveRecipes: 0,
+                    maxLiveRecipes: 1,
+                    globalPendingBacktests: 1,
+                    globalQueueCap: 20,
+                }}
+            />,
+        );
+
+        expect(screen.getByText(/Backtests: 2\/2 left today/i)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /Schedule Live \(3x\/d\)/i }));
+
+        await waitFor(() => {
+            expect(toggleLiveScheduleFn).toHaveBeenCalledWith({
+                data: { recipeId: 'rec-sched-1', isLive: true },
+            });
+            expect(
+                screen.getByRole('button', { name: /Scheduled Live: ON \(3x\/d\)/i }),
+            ).toBeInTheDocument();
         });
     });
 });

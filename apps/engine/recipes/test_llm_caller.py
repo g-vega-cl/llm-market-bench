@@ -184,3 +184,18 @@ async def test_default_llm_caller_closes_openai_client():
 
     fake_client.__aenter__.assert_awaited_once()
     fake_client.__aexit__.assert_awaited_once()
+
+
+def test_llm_endpoints_routes_proxy_aliases_to_free_proxy_and_skips_raw_strata_for_auto_go(monkeypatch):
+    from recipes.llm_caller import llm_endpoints
+
+    monkeypatch.setenv("STRATA_BASE_URL", "http://primary-workstation:3001/strata/v1")
+    monkeypatch.setenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1")
+    monkeypatch.setenv("FREE_PROXY_MASTER_KEY", "test-key")
+
+    live_endpoints = llm_endpoints(None, "auto-go")
+    assert live_endpoints == [("https://llm.clvg.uk/v1", "test-key", "auto-go")]
+
+    bt_endpoints = llm_endpoints(None, "strata-auto-go")
+    assert bt_endpoints[0] == ("https://llm.clvg.uk/v1", "test-key", "strata-auto-go")
+    assert bt_endpoints[1] == ("http://primary-workstation:3001/strata/v1", "test-key", "strata")

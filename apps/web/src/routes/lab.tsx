@@ -28,6 +28,12 @@ export const LAB_CATEGORIES: LabCategory[] = [
                     'Visual Voxel DAG builder for news catalyst streams, technical indicator gates, and LLM trading recipes.',
             },
             {
+                to: '/recipes-demo',
+                label: 'Recipe Sample Backtest',
+                description:
+                    'Public read-only walkthrough of a 30-slot point-in-time strategy backtest before signing in.',
+            },
+            {
                 to: '/autoresearch',
                 label: 'Auto-Research',
                 description:

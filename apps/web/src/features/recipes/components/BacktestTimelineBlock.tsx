@@ -6,6 +6,7 @@ import { TraceInspectorBlock } from './TraceInspectorBlock';
 interface BacktestTimelineBlockProps {
     status: RecipeJobStatus;
     results: BacktestResultData | null;
+    queuePosition?: number | null;
 }
 
 function formatDaySignal(
@@ -98,6 +99,19 @@ function DayTile({
     );
 }
 
+function HoldSummaryNotice({ selectedStep }: { selectedStep: BacktestDayStep }) {
+    if (selectedStep.signals.length > 0) return null;
+    const toolCount = selectedStep.tool_calls?.length ?? 0;
+    const roundCount = selectedStep.trace?.rounds?.length ?? (toolCount > 0 ? 1 : 0);
+    return (
+        <div className="border border-boxel-bevel-lo bg-boxel-surface px-3 py-2 text-xs font-normal text-boxel-muted">
+            Hold decision: evaluated {toolCount} PIT tool {toolCount === 1 ? 'call' : 'calls'}{' '}
+            across {roundCount} reasoning {roundCount === 1 ? 'round' : 'rounds'} and stayed in cash
+            / existing positions ([]).
+        </div>
+    );
+}
+
 function DayInspector({
     activeDay,
     selectedStep,
@@ -130,13 +144,16 @@ function DayInspector({
             </div>
 
             {selectedStep ? (
-                <TraceInspectorBlock
-                    prompt={selectedStep.prompt}
-                    trace={selectedStep.trace}
-                    toolCalls={selectedStep.tool_calls}
-                    fullOutput={selectedStep.full_output}
-                    outputExcerpt={selectedStep.output_excerpt}
-                />
+                <div className="flex flex-col gap-3 min-w-0">
+                    <HoldSummaryNotice selectedStep={selectedStep} />
+                    <TraceInspectorBlock
+                        prompt={selectedStep.prompt}
+                        trace={selectedStep.trace}
+                        toolCalls={selectedStep.tool_calls}
+                        fullOutput={selectedStep.full_output}
+                        outputExcerpt={selectedStep.output_excerpt}
+                    />
+                </div>
             ) : (
                 <p className="text-xs font-normal text-boxel-muted">
                     Select any settled session tile above to inspect its tool calls and decision
@@ -147,7 +164,11 @@ function DayInspector({
     );
 }
 
-export function BacktestTimelineBlock({ status, results }: BacktestTimelineBlockProps) {
+export function BacktestTimelineBlock({
+    status,
+    results,
+    queuePosition = null,
+}: BacktestTimelineBlockProps) {
     const windowDates = results?.window_dates ?? [];
     const daySteps = results?.day_steps ?? [];
     const stepByDay = new Map(daySteps.map((s) => [s.day, s]));
@@ -181,11 +202,14 @@ export function BacktestTimelineBlock({ status, results }: BacktestTimelineBlock
             {windowDates.length === 0 ? (
                 <div className="voxel-trough bg-boxel-trough p-4 flex flex-col gap-2">
                     <span className="text-sm font-bold text-boxel-ink">
-                        Waiting for recipe worker to pick a 2-week historical window...
+                        {queuePosition && queuePosition > 0
+                            ? `Queued (#${queuePosition} in line) — Waiting for recipe worker to pick a 2-week historical window...`
+                            : 'Waiting for recipe worker to pick a 2-week historical window...'}
                     </span>
                     <span className="text-xs font-normal text-boxel-muted">
-                        The worker daemon polls the queue every 5 seconds and streams each 3x/day ET
-                        session here as it finishes.
+                        Single-GPU Strata runs 1 backtest globally at a time (strata-auto-go) while
+                        streaming each 3x/day ET session here. You can safely close this tab or
+                        cancel anytime.
                     </span>
                 </div>
             ) : (

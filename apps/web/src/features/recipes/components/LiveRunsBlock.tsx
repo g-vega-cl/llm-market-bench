@@ -103,7 +103,14 @@ export function LiveRunsBlock({ portfolio, recentLiveRuns, latestInlineRun }: Li
             {hasRuns && (
                 <Card padding="md" className="flex flex-col gap-4 min-w-0">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
-                        <SectionHeading gradient="catalyst">Live Run Traces</SectionHeading>
+                        <div className="flex flex-col gap-1 min-w-0">
+                            <SectionHeading gradient="catalyst">Live Run Traces</SectionHeading>
+                            <span className="text-xs font-normal text-boxel-muted">
+                                Runs independently on clvg.uk auto-go against your isolated $10,000
+                                live paper ledger (on-demand or scheduled 3x/day ET at 09:30, 12:30,
+                                15:30).
+                            </span>
+                        </div>
                         {activeRun && (
                             <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant="outline" size="xs">

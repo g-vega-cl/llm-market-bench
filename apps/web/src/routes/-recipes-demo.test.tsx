@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Route } from './$jobId';
+import { Route } from './recipes-demo';
 
 vi.mock('~/features/recipes/pages/RecipeBacktestPage', () => ({
     RecipeBacktestPage: () => null,
@@ -7,10 +7,10 @@ vi.mock('~/features/recipes/pages/RecipeBacktestPage', () => ({
 
 type HeadTag = { name?: string; content?: string; title?: string };
 
-describe('Recipe Backtest route', () => {
-    it('configures SEO metadata for the live backtest run page', () => {
+describe('Recipe Showcase Demo route', () => {
+    it('configures public preview SEO metadata', () => {
         const head = Route.options.head as unknown as () => { meta: HeadTag[] };
         const description = head().meta.find((tag) => tag.name === 'description')?.content;
-        expect(description).toMatch(/^Live day-by-day point-in-time backtest telemetry/);
+        expect(description).toMatch(/^Read-only walkthrough of a 30-slot point-in-time/);
     });
 });

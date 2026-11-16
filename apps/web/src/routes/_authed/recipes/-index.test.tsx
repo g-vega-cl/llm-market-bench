@@ -7,7 +7,7 @@ vi.mock('~/features/recipes/pages/RecipeStudioPage', () => ({
 
 type HeadTag = { name?: string; content?: string; title?: string };
 
-describe('Recipe Studio route', () => {
+describe('Recipe Studio protected route', () => {
     it('describes the single-call strategy builder in its SEO metadata', () => {
         const head = Route.options.head as unknown as () => { meta: HeadTag[] };
 

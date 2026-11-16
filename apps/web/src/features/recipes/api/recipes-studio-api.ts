@@ -12,11 +12,8 @@ import type {
     RecipeJobRecord,
 } from '../types';
 
-const ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
-
 export async function fetchRecipeAlerts(userId: string): Promise<RecipeAlert[]> {
     const db = getDbAdminClient();
-
     const { data, error } = await db
         .from('recipe_alerts_inbox')
         .select('*')
@@ -35,7 +32,8 @@ export const fetchRecipeAlertsFn = createServerFn({ method: 'GET' }).handler(asy
     const {
         data: { user },
     } = await auth.auth.getUser();
-    return fetchRecipeAlerts(user?.id || ANONYMOUS_USER_ID);
+    if (!user?.id) throw new Error('Unauthorized: please sign in to view recipe alerts');
+    return fetchRecipeAlerts(user.id);
 });
 
 export async function markAlertRead(
@@ -60,7 +58,8 @@ export const markAlertReadFn = createServerFn({ method: 'POST' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        return markAlertRead(alertId, user?.id || ANONYMOUS_USER_ID);
+        if (!user?.id) throw new Error('Unauthorized: please sign in to update alerts');
+        return markAlertRead(alertId, user.id);
     });
 
 export async function submitWaitlistPledge(
@@ -88,7 +87,8 @@ export const submitWaitlistPledgeFn = createServerFn({ method: 'POST' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        return submitWaitlistPledge(user?.id || ANONYMOUS_USER_ID, email, intendedTier, feedback);
+        if (!user?.id) throw new Error('Unauthorized: please sign in to submit a waitlist pledge');
+        return submitWaitlistPledge(user.id, email, intendedTier, feedback);
     });
 
 export async function previewStrategyPrompt(
@@ -145,7 +145,14 @@ export async function previewStrategyPrompt(
 
 export const previewStrategyPromptFn = createServerFn({ method: 'POST' })
     .validator((d: { strategy: PushStrategy }) => d)
-    .handler(({ data: { strategy } }) => previewStrategyPrompt(strategy));
+    .handler(async ({ data: { strategy } }) => {
+        const auth = getAuthServerClient();
+        const {
+            data: { user },
+        } = await auth.auth.getUser();
+        if (!user?.id) throw new Error('Unauthorized: please sign in to preview live prompts');
+        return previewStrategyPrompt(strategy);
+    });
 
 const LIVE_SLIPPAGE_RATE = 0.0005;
 
@@ -302,6 +309,6 @@ export const fetchLivePortfolioAndRunsFn = createServerFn({ method: 'GET' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        const userId = user?.id || ANONYMOUS_USER_ID;
-        return fetchLivePortfolioAndRuns(recipeId, userId);
+        if (!user?.id) throw new Error('Unauthorized: please sign in to inspect live portfolios');
+        return fetchLivePortfolioAndRuns(recipeId, user.id);
     });

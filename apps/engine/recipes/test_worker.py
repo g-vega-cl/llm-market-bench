@@ -122,7 +122,10 @@ def test_process_push_backtest_job_persists_progress_updates():
 
     assert res == "COMPLETED"
     update_payloads = [call[0][0] for call in queue_table.update.call_args_list]
-    assert {"progress_pct": 18, "result_json": partial_payload} in update_payloads
+    assert any(
+        u.get("progress_pct") == 18 and u.get("result_json") == partial_payload and "heartbeat_at" in u
+        for u in update_payloads
+    )
 
 
 def test_process_push_live_turn_deposits_alert():
@@ -341,3 +344,78 @@ def test_process_live_turn_inserts_alerts_only_for_executed_signals_and_applies_
     assert alerts_table.insert.call_args[0][0]["ticker"] == "NVDA"
     cas_eq_trial = recipes_table.update.return_value.eq.return_value.eq
     cas_eq_trial.assert_called_once_with("trial_count", 3)
+
+
+def test_process_next_job_forwards_target_mode_model_and_heartbeat():
+    import asyncio
+
+    from recipes.worker import async_process_next_recipe_job
+
+    client, queue_table, recipes_table, _alerts_table = _make_mock_supabase()
+    client.rpc.return_value.execute.return_value.data = [
+        {
+            "job_id": "job-lane-1",
+            "job_recipe_id": "rec-lane-1",
+            "job_user_id": "usr-lane-1",
+            "job_mode": "live_turn",
+            "job_priority": 1,
+            "job_model": "auto-go",
+        }
+    ]
+    strategy = _sample_push_strategy()
+    recipe_select = MagicMock()
+    recipe_select.execute.return_value.data = {
+        "id": "rec-lane-1",
+        "user_id": "usr-lane-1",
+        "name": strategy.name,
+        "graph_json": strategy.model_dump(),
+        "trial_count": 0,
+    }
+    recipes_table.select.return_value.eq.return_value.single.return_value = recipe_select
+    queue_table.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+        "status": "processing"
+    }
+
+    fake_live = {"mode": "live_turn", "stages": [], "final_output": "HOLD", "signals": []}
+    with patch("recipes.worker.run_push_live", new=AsyncMock(return_value=fake_live)) as mock_live:
+        res = asyncio.run(async_process_next_recipe_job(client, target_mode="live_turn"))
+
+    assert res == "COMPLETED"
+    client.rpc.assert_called_once_with("pop_next_recipe_job", {"target_mode": "live_turn"})
+    assert mock_live.await_args.kwargs.get("model") == "auto-go"
+    processing_updates = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "processing"]
+    assert processing_updates and "heartbeat_at" in processing_updates[0]
+
+
+def test_process_push_backtest_does_not_overwrite_cancelled_job():
+    client, queue_table, recipes_table, _ = _make_mock_supabase()
+    client.rpc.return_value.execute.return_value.data = [
+        {
+            "job_id": "job-cancel-1",
+            "job_recipe_id": "rec-cancel-1",
+            "job_user_id": "usr-1",
+            "job_mode": "backtest",
+            "job_priority": 10,
+            "job_model": "strata-auto-go",
+        }
+    ]
+    strategy = _sample_push_strategy()
+    recipe_select = MagicMock()
+    recipe_select.execute.return_value.data = {
+        "id": "rec-cancel-1",
+        "name": strategy.name,
+        "graph_json": strategy.model_dump(),
+        "trial_count": 4,
+    }
+    recipes_table.select.return_value.eq.return_value.single.return_value = recipe_select
+    queue_table.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+        "status": "cancelled"
+    }
+
+    with patch("recipes.worker.run_push_backtest", new=AsyncMock(return_value={"mode": "backtest"})):
+        res = process_next_recipe_job(client)
+
+    assert res == "CANCELLED"
+    completed_updates = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "completed"]
+    assert completed_updates == []
+    recipes_table.update.assert_not_called()

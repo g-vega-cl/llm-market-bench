@@ -16,6 +16,7 @@ A living document of features and improvements in progress or planned for the pl
 ### Website Overhaul & UI/UX (PostHog / Voxel)
 
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
+- [ ] - Benchify: this but somehow voxel for Benchify? - procedural generation? [Swimmable underwater world in one 97 KB HTML file](https://www.reddit.com/r/ClaudeAI/comments/1xw376f/i_built_a_swimmable_underwater_world_in_one_97_kb/) — can we ship a single-file procedural voxel world as an explorable market backdrop?
 - [x] - Benchify: use unlightouse to audit our whole site and fix.
  - Do consistently, last time Done 2026/11/06
 

@@ -93,7 +93,9 @@ describe('EventChainPage', () => {
 
         // 2. Loading indicator is visible
         await waitFor(() => {
-            expect(screen.getByText(/Loading other memories in this chain/i)).toBeInTheDocument();
+            expect(
+                screen.getByRole('status', { name: /Loading other memories in this chain/i }),
+            ).toBeInTheDocument();
             expect(screen.getByText(/Loading chain/i)).toBeInTheDocument();
         });
 
@@ -106,7 +108,9 @@ describe('EventChainPage', () => {
         });
 
         // 5. Loading indicator should be gone
-        expect(screen.queryByText(/Loading other memories in this chain/i)).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('status', { name: /Loading other memories in this chain/i }),
+        ).not.toBeInTheDocument();
         expect(screen.queryByText(/Loading chain/i)).not.toBeInTheDocument();
     });
 

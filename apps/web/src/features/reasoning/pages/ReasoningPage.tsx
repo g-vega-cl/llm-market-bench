@@ -3,10 +3,10 @@ import {
     Button,
     ErrorCard,
     LoadingBoundary,
-    LoadingSpinner,
     PageLayout,
     SectionHeading,
     Select,
+    Skeleton,
 } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -227,11 +227,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                             </div>
                         )}
 
-                        {isFetching && !isFetchingNextPage && (
-                            <div className="text-center py-2">
-                                <LoadingSpinner size="sm" />
-                            </div>
-                        )}
+                        {isFetching && !isFetchingNextPage && <Skeleton variant="card" lines={2} />}
                     </div>
 
                     {/* Trace viewer */}
@@ -241,10 +237,8 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                         } lg:col-span-8 bg-white dark:bg-zinc-900/60 rounded-none border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm relative overflow-hidden max-h-[80vh] md:h-[75vh] flex flex-col gap-6`}
                     >
                         {!selectedLog ? (
-                            <div className="h-full flex flex-col items-center justify-center text-zinc-400 gap-3">
-                                <div className="w-12 h-12 rounded-none bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                                    <LoadingSpinner size="md" />
-                                </div>
+                            <div className="h-full flex flex-col items-center justify-center text-zinc-400 gap-4">
+                                <Skeleton variant="card" lines={3} className="w-full max-w-md" />
                                 <p className="italic font-normal text-xs text-center px-4 m-0">
                                     Select a reasoning trace to inspect the thinking process.
                                 </p>

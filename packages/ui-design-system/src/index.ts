@@ -40,17 +40,19 @@ export type { SubHeadingProps } from './patterns/SubHeading';
 export { SubHeading } from './patterns/SubHeading';
 export type { BadgeProps } from './primitives/Badge';
 export { Badge } from './primitives/Badge';
-export type { ButtonProps, LoadingSpinnerProps } from './primitives/Button';
+export type { ButtonProps } from './primitives/Button';
 // ---------------------------------------------------------------------------
 // Primitives
 // ---------------------------------------------------------------------------
-export { Button, LoadingSpinner } from './primitives/Button';
+export { Button } from './primitives/Button';
 export type { CardProps } from './primitives/Card';
 export { Card } from './primitives/Card';
 export type { InputProps, LabelProps } from './primitives/Input';
 export { Input, Label } from './primitives/Input';
 export type { SelectOption, SelectProps } from './primitives/Select';
 export { Select } from './primitives/Select';
+export type { SkeletonProps } from './primitives/Skeleton';
+export { Skeleton } from './primitives/Skeleton';
 export type {
     TableCellProps,
     TableHeadProps,

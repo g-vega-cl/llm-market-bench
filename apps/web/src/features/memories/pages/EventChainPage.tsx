@@ -2,9 +2,9 @@ import {
     Badge,
     Button,
     Card,
-    LoadingSpinner,
     PageLayout,
     SectionHeading,
+    Skeleton,
 } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -144,8 +144,11 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                             stress-tests, and market resolutions.
                         </p>
                         {isFetching && (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-amber-500 font-bold bg-amber-50/50 dark:bg-amber-950/20 px-2 py-0.5 rounded-none border border-amber-200/50 dark:border-amber-900/30">
-                                <LoadingSpinner size="sm" className="text-amber-500" />
+                            <span className="inline-flex items-center gap-1.5 text-xs text-accent font-bold bg-boxel-trough px-2 py-0.5 rounded-none border border-boxel-bevel-hi">
+                                <span
+                                    aria-hidden="true"
+                                    className="inline-block w-2 h-2 rounded-none bg-accent animate-pulse motion-reduce:animate-none"
+                                />
                                 Loading chain...
                             </span>
                         )}
@@ -408,21 +411,14 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
 
                     {/* Subsequent Loading Placeholder */}
                     {chain.length === 1 && isFetching && (
-                        <div className="flex flex-col items-center py-6">
-                            <div className="w-px h-8 bg-zinc-300 dark:bg-zinc-700" />
-                            <div className="border border-dashed border-zinc-300 dark:border-zinc-700 rounded-none p-5 bg-zinc-50/50 dark:bg-zinc-900/30 w-full flex items-center gap-4">
-                                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400">
-                                    <LoadingSpinner size="sm" className="text-zinc-400" />
-                                </div>
-                                <div className="flex-1 flex flex-col gap-1">
-                                    <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 m-0">
-                                        Loading other memories in this chain...
-                                    </p>
-                                    <p className="text-xs font-normal text-zinc-400 dark:text-zinc-500 m-0">
-                                        Retrieving preceding and succeeding events
-                                    </p>
-                                </div>
-                            </div>
+                        <div
+                            role="status"
+                            aria-busy="true"
+                            aria-label="Loading other memories in this chain..."
+                            className="flex flex-col items-center py-6 gap-2"
+                        >
+                            <div className="w-px h-8 bg-boxel-bevel-hi" />
+                            <Skeleton variant="card" lines={2} className="w-full" />
                         </div>
                     )}
                 </div>

@@ -9,32 +9,62 @@ Cumulative Layout Shift (CLS) measures visual stability by tracking unexpected l
 
 Benchify enforces a strict zero-layout-shift standard across all data loading and transition lifecycles.
 
-## The Anti-Pattern: Skeleton Shimmers
+## Tiered Loading Hierarchy: SSR First, Voxel Skeletons Over Spinners
 
-Skeleton loaders (`CardSkeleton`, pulsing gray wireframe rectangles) are a common web pattern that actively harms dashboard usability:
+Benchify separates hydrated transitions from cold client fetches so neither causes layout whiplash or unanchored blank screens:
 
-1. **Height Mismatch Whiplash**: Skeletons are static approximations (e.g., 4 rows of 64px). Real data might return 0 rows, 1 row, or 20 rows. When real data resolves, the container abruptly snaps to its true height, shoving all downstream content down or pulling it up.
-2. **Double Render Jitter**: The user first perceives pulsing gray cards, and then within 50–200ms the entire screen flickers and replaces them with colored cards and typography.
-3. **Destructive Refetches**: In naive implementations, initiating a background revalidation or changing an active tab replaces the existing rendered content with skeletons, erasing working context while the request is in flight.
+1. **Hydrated & Transitional Views (Zero Loader)**: Prefer SSR pre-hydration with silent Suspense (`fallback={null}`) and `keepPreviousData` on timeframe or tab switches. When data already exists, never replace it with a placeholder.
+2. **Cold / Uncached Feeds (Layout-Matched Voxel `Skeleton`)**: When a feed or panel has no cached data yet and must display a loading state, **skeleton placeholders are preferable to a single spinner** because they preserve the expected layout of the feed. Users can start scanning the structure immediately, and real content swaps in with less visual jump.
+3. **Zero Spinners (`LoadingSpinner` / `animate-spin` Banned)**: Standalone spinning icons provide zero structural preview and induce layout jumps when replaced by multi-card grids or tables. The `LoadingSpinner` primitive has been removed from `@llm-market-bench/ui-design-system` entirely. All loading indicators standardize on the `Skeleton` primitive and `LoadingBoundary` (with `Button[isLoading]` using a pulsing Voxel pixel square + `aria-busy="true"`).
+
+### The `Skeleton` Primitive
+
+`Skeleton` (`packages/ui-design-system/src/primitives/Skeleton.tsx`) is the canonical cold-load placeholder:
+
+| Prop | Values | Meaning |
+| :--- | :--- | :--- |
+| `variant` | `'text' \| 'block' \| 'card'` | Single text line(s), a rectangular block, or a multi-line card slot |
+| `lines` | number (default `3`) | Placeholder line count for `text` / `card` variants |
+
+Every variant renders `aria-hidden="true"` with `data-slot="skeleton"` (and `data-slot="skeleton-line"` per line), `rounded-none`, `bg-boxel-trough` / `bg-boxel-elevated`, and `animate-pulse motion-reduce:animate-none`. Line widths cycle through `w-2/3`, `w-full`, `w-4/5`, `w-5/6` so a card placeholder reads as prose rather than a solid bar. The legacy `.skeleton` shimmer CSS class in `apps/web/src/styles/app.css` has been deleted — there is exactly one skeleton implementation.
+
+### Skeleton Discipline (Avoiding Height-Mismatch Whiplash)
+
+To prevent the classic skeleton failure mode (arbitrary heights snapping when data resolves):
+
+- Build placeholders with `Skeleton` (`rounded-none`, `bg-boxel-trough` / `bg-boxel-elevated`, `motion-reduce:animate-none`, `aria-hidden="true"`).
+- Mirror the exact fluid CSS Grid tracks (`repeat(auto-fit, minmax(min(100%, 18rem), 1fr))`) and approximate card/line counts of the target feed.
+- Wrap the placeholder region in `aria-busy="true"` (and `role="status"` with an `aria-label` when the region is a named loading state) so assistive technology announces the pending load without a spinner.
 
 ## Core Architectural Invariants
 
 Benchify mandates the following design and querying rules to eliminate layout shifts:
 
-### 1. Zero Skeletons & Silent Suspense Fallbacks
+### 1. Silent Suspense Fallbacks for Hydrated Boundaries
 
-Pulsing placeholder skeletons are strictly eliminated across web pages (e.g., [`apps/web/src/features/today/pages/TodayPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.tsx)).
-
-Instead of rendering artificial skeletons, components wrapped in React `<Suspense>` use silent fallbacks:
+When components are wrapped in React `<Suspense>` alongside SSR pre-hydration (e.g., [`apps/web/src/features/today/pages/TodayPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.tsx)), use silent fallbacks so server-hydrated markup renders without double-render flicker:
 
 ```tsx
-{/* Silent Suspense: no pulsing skeletons or layout displacement */}
+{/* Silent Suspense for SSR-hydrated sections */}
 <Suspense fallback={null}>
     <AgentInsights memories={data.memories} />
 </Suspense>
 ```
 
-When coupled with server-side rendering (SSR) and prefetching, the initial markup renders immediately with server-hydrated state.
+For unhydrated client-only feeds, wrap with `LoadingBoundary`, which renders a 3-card Voxel `Skeleton` grid by default or a caller-provided layout-matched `fallback`:
+
+```tsx
+<LoadingBoundary isLoading={isLoading} loadingText="Loading feed">
+    <Feed items={items} />
+</LoadingBoundary>
+
+// or with a layout-matched placeholder
+<LoadingBoundary isLoading={isLoading} fallback={<Skeleton variant="card" lines={4} />}>
+    <Feed items={items} />
+</LoadingBoundary>
+```
+
+`LoadingBoundary` renders `role="status"`, `aria-busy="true"`, and `aria-label={loadingText ?? 'Loading content'}` on its wrapper, and never emits an SVG spinner.
 
 ### 2. Stale-While-Revalidate with `keepPreviousData`
 
@@ -49,10 +79,17 @@ const { data, isLoading } = useQuery({
     placeholderData: keepPreviousData,
 });
 
-// Table never unmounts during timeframe transitions; 
-// full-page loader only shows on cold starts when zero models exist
+// Table never unmounts during timeframe transitions;
+// layout-matched Voxel Skeleton grid only shows on cold starts when zero models exist
 {isLoading && models.length === 0 ? (
-    <LoadingSpinner />
+    <div className="flex flex-col gap-6" aria-busy="true">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
+            <Skeleton variant="card" lines={4} />
+            <Skeleton variant="card" lines={4} />
+            <Skeleton variant="card" lines={4} />
+        </div>
+        <Skeleton variant="block" className="h-48" />
+    </div>
 ) : (
     <LeaderboardTable models={models} />
 )}
@@ -104,6 +141,10 @@ const isChartSettled = isQueriesSettled && !isPending;
 ```
 
 The helper returns `true` only when every supplied query has valid data and is not `isFetching`, `isPending`, or `isPlaceholderData`, and no React transition is pending. Crucially, **primary chart and container chrome stay stably mounted** while secondary affordances are gated — the gating removes transient elements rather than swapping layout, so it never itself introduces a shift. See [[concepts/tanstack-query]] for the full helper semantics.
+
+### 8. No Optimistic Updates
+
+Mutations must wait for confirmed server responses with in-flow pending feedback (`Button[isLoading]`, which renders a pulsing Voxel pixel square plus `aria-busy="true"`) and explicit `ErrorCard` feedback on failure. Speculative `onMutate` cache rewrites and optimistic rollback machinery are prohibited: a value that renders, reverts, and re-renders is a layout shift by another name, and showing unconfirmed state on financial views is worse than a brief pending indicator.
 
 ## Related
 

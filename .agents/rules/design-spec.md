@@ -124,13 +124,16 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Voxel** aesthetic inspired b
 
 ---
 
-## 7. Cumulative Layout Shift (CLS) Prevention
+## 7. Loading States, CLS Prevention & Zero Spinners
 
-1. **Zero skeletons**: Never render pulsing wireframe skeletons (`CardSkeleton`). Use silent Suspense fallbacks (`fallback={null}`) with SSR pre-hydration.
-2. **Stale-while-revalidate**: All query timeframe switches must use `placeholderData: keepPreviousData` so existing views remain rendered during background fetches.
-3. **In-memory cache fallback**: Server fetchers retain last valid in-memory payloads to prevent layout wipeouts on transient disconnects.
-4. **Anchor stability**: Auxiliary tab panels (e.g. curated manifests) must sit below primary decision tables and hero charts, keeping visual focal points vertically invariant across tab clicks.
-5. **Secondary UI query settlement gating**: Secondary action buttons (such as 'Reset to Top 5' or 'Reset Crosshair') and volatile derived badges (such as daily percentage moves) must never flash or render during in-flight fetches, keepPreviousData background refetches, or React transition states. Use `isQuerySettled(queries, isTransitionPending)` from `apps/web/src/lib/query-client.tsx` to ensure secondary elements only appear once all relevant page queries and transitions have fully settled, while keeping primary chart and container chrome stably mounted to prevent CLS.
+1. **Tiered loading hierarchy (SSR / `keepPreviousData` first)**: Prefer SSR pre-hydration with silent Suspense fallbacks (`fallback={null}`) and TanStack Query `placeholderData: keepPreviousData` on timeframe or tab transitions so hydrated views never unmount or flash during background refetches.
+2. **Layout-matched Voxel skeletons over spinners**: When a cold or uncached feed, list, or detail panel must display a loading state, use composable `Skeleton` placeholders (`@llm-market-bench/ui-design-system`) or `LoadingBoundary` (with an optional layout-matched `fallback`) rather than a single centered spinner. Skeleton placeholders are preferable to a single spinner because they preserve the expected layout of the feed—users can start scanning the structure immediately, and real content swaps in with less visual jump.
+   - Style skeletons strictly with Voxel tokens (`rounded-none`, `bg-boxel-trough` / `bg-boxel-elevated`, `animate-pulse motion-reduce:animate-none`, `aria-hidden="true"`) and match the target card/row structure and fluid CSS Grid tracks.
+   - **Zero spinners**: `LoadingSpinner` and `animate-spin` loaders are prohibited across all feeds, panels, and buttons. Pending actions use `Button[isLoading]` (pulsing Voxel pixel square + `aria-busy="true"`).
+3. **Avoid optimistic updates**: Mutations must wait for confirmed server responses with in-flow pending button/status feedback (`Button[isLoading]`) and explicit `ErrorCard` feedback on failure. Do not add speculative `onMutate` cache rewrites or optimistic rollback machinery.
+4. **In-memory cache fallback**: Server fetchers retain last valid in-memory payloads to prevent layout wipeouts on transient disconnects.
+5. **Anchor stability**: Auxiliary tab panels (e.g. curated manifests) must sit below primary decision tables and hero charts, keeping visual focal points vertically invariant across tab clicks.
+6. **Secondary UI query settlement gating**: Secondary action buttons (such as 'Reset to Top 5' or 'Reset Crosshair') and volatile derived badges (such as daily percentage moves) must never flash or render during in-flight fetches, `keepPreviousData` background refetches, or React transition states. Use `isQuerySettled(queries, isTransitionPending)` from `apps/web/src/lib/query-client.tsx` to ensure secondary elements only appear once all relevant page queries and transitions have fully settled, while keeping primary chart and container chrome stably mounted to prevent CLS.
 
 ---
 

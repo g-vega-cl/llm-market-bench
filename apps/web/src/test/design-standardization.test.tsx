@@ -5,9 +5,11 @@ import {
     ErrorCard,
     Input,
     Label,
+    LoadingBoundary,
     MetricTile,
     SectionHeading,
     Select,
+    Skeleton,
     SubHeading,
     Table,
     TableBody,
@@ -478,6 +480,57 @@ describe('Design Standardization: Typography & Box Sizing', () => {
                 <AutoresearchMilestoneCards experiments={[]} predictions={[]} />,
             );
             expect(container.innerHTML).not.toMatch(/style="[^"]*color:\s*[^;"]+[^"]*"/);
+        });
+    });
+
+    describe('Voxel Skeleton & Zero-Spinner Loading States', () => {
+        it('Skeleton renders sharp rounded-none Boxel trough blocks with reduced-motion pulse and aria-hidden', () => {
+            const { container } = render(<Skeleton variant="card" lines={3} />);
+            const root = container.firstChild as HTMLElement;
+            expect(root).toBeTruthy();
+            expect(root.getAttribute('aria-hidden')).toBe('true');
+            expect(root.className).toContain('rounded-none');
+            expect(root.className).toContain('voxel-trough');
+            const bars = root.querySelectorAll('[data-slot="skeleton-line"]');
+            expect(bars.length).toBe(3);
+            expect((bars[0] as HTMLElement).className).toContain('motion-reduce:animate-none');
+        });
+
+        it('LoadingBoundary renders layout-preserving Voxel Skeleton fallback without any spinner SVG', () => {
+            const { container } = render(
+                <LoadingBoundary isLoading={true} loadingText="Loading feed">
+                    <div>Loaded</div>
+                </LoadingBoundary>,
+            );
+            const region = container.firstChild as HTMLElement;
+            expect(region.getAttribute('aria-busy')).toBe('true');
+            expect(container.querySelector('svg')).toBeNull();
+            expect(container.querySelector('.animate-spin')).toBeNull();
+            expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+        });
+
+        it('LoadingBoundary supports custom layout-matched skeleton fallback', () => {
+            render(
+                <LoadingBoundary
+                    isLoading={true}
+                    fallback={<Skeleton data-testid="custom-feed-skeleton" variant="card" />}
+                >
+                    <div>Loaded</div>
+                </LoadingBoundary>,
+            );
+            expect(screen.getByTestId('custom-feed-skeleton')).toBeInTheDocument();
+        });
+
+        it('Button[isLoading] renders Voxel pixel indicator and aria-busy without animate-spin SVG', () => {
+            const { container } = render(<Button isLoading>Submitting</Button>);
+            const btn = screen.getByRole('button', { name: /Submitting/i });
+            expect(btn).toBeDisabled();
+            expect(btn.getAttribute('aria-busy')).toBe('true');
+            expect(container.querySelector('svg')).toBeNull();
+            expect(container.querySelector('.animate-spin')).toBeNull();
+            const indicator = container.querySelector('[data-slot="button-pending-dot"]');
+            expect(indicator).not.toBeNull();
+            expect((indicator as HTMLElement).className).toContain('animate-pulse');
         });
     });
 });

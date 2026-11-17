@@ -121,9 +121,16 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 ref={ref}
                 className={cn(base, roundedClasses, colorClasses, sizeClasses, className)}
                 disabled={disabled || isLoading}
+                aria-busy={isLoading || undefined}
                 {...props}
             >
-                {isLoading && <LoadingSpinner size="sm" className="text-current" />}
+                {isLoading && (
+                    <span
+                        aria-hidden="true"
+                        data-slot="button-pending-dot"
+                        className="inline-block w-2 h-2 rounded-none bg-current animate-pulse motion-reduce:animate-none"
+                    />
+                )}
                 {!isLoading && leftIcon}
                 {children}
                 {!isLoading && rightIcon}
@@ -133,44 +140,3 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = 'Button';
-
-/**
- * Loading spinner sub-component used internally.
- * Exported for standalone usage as well.
- */
-
-export interface LoadingSpinnerProps extends React.SVGAttributes<SVGSVGElement> {
-    size?: 'sm' | 'md';
-}
-
-export function LoadingSpinner({ size = 'md', className, ...props }: LoadingSpinnerProps) {
-    const sizeMapSvg = {
-        sm: 'w-4 h-4',
-        md: 'w-5 h-5',
-    };
-
-    return (
-        <svg
-            className={cn('animate-spin', sizeMapSvg[size], className)}
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            {...props}
-        >
-            <title>SVG</title>
-            <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-            />
-            <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
-        </svg>
-    );
-}

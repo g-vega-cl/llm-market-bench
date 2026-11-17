@@ -161,6 +161,13 @@ With updated TanStack Start / Router packages:
 - **Server Function Validation**: Deprecated `.inputValidator(...)` on `createServerFn` is superseded by `.validator(...)`. It accepts the same identity validator pattern `(d: T) => d` while avoiding Vite build-time deprecation warnings.
 - **Strict Error Component Types**: Router `errorComponent` arguments strictly type `error` as `unknown` rather than ambient `any`. Error-checking logic must guard types explicitly (e.g., `error instanceof Error && error.message === '...'`) before accessing property fields.
 
+## Mutations: Avoid Optimistic Updates
+
+Benchify is primarily read-heavy financial and benchmark telemetry with low-frequency mutations (auth, recipe saves, waitlist pledges, queue submissions). Speculative `onMutate` cache rewrites and rollback machinery add unnecessary state-management complexity and risk showing unconfirmed state on financial or server-backed views.
+
+- **Wait for server confirmation**: Keep `useMutation` / server function flows straightforward—show in-flow pending feedback via `Button[isLoading]` (pulsing Voxel pixel square + `aria-busy="true"`) while the request is in flight.
+- **Reconcile on success**: Update local state or call `queryClient.invalidateQueries` only after the server confirms success, and render `ErrorCard` or in-flow error text on failure.
+
 ## Related
 
 - [[entities/web-app]]

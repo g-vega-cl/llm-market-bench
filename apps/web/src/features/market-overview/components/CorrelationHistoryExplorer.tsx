@@ -1,4 +1,4 @@
-import { Card } from '@llm-market-bench/ui-design-system';
+import { Card, Skeleton } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { fetchPairHistory, type PairHistoryPoint } from '../api/fetch-pair-history';
 import { etfDescriptions } from '../utils/etf-descriptions';
@@ -268,11 +268,9 @@ export function CorrelationHistoryExplorer({
 
             {/* Content States */}
             {loading && (
-                <div className="flex flex-col items-center justify-center py-24 gap-4">
-                    <div className="w-12 h-12 rounded-none border-4 border-zinc-200 dark:border-zinc-800 border-t-blue-500 animate-spin" />
-                    <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                        Fetching historical progression series...
-                    </span>
+                <div className="flex flex-col gap-4" aria-busy="true">
+                    <Skeleton variant="block" className="h-64" />
+                    <Skeleton variant="text" lines={2} />
                 </div>
             )}
 

@@ -1,4 +1,4 @@
-import { Badge, Button, LoadingSpinner } from '@llm-market-bench/ui-design-system';
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import { useNavigate } from '@tanstack/react-router';
 import * as React from 'react';
 import type { Memory } from '../components/MemoriesList';
@@ -123,9 +123,10 @@ export function ChainMemorySwitcher({ currentMemoryId, searchFn }: ChainMemorySw
                         </svg>
                     </span>
                     {isLoading && (
-                        <span className="absolute right-2.5 top-2">
-                            <LoadingSpinner size="sm" className="text-zinc-400" />
-                        </span>
+                        <span
+                            aria-hidden="true"
+                            className="absolute right-2.5 top-3 inline-block w-2 h-2 rounded-none bg-accent animate-pulse motion-reduce:animate-none"
+                        />
                     )}
                 </div>
             </div>

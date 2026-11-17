@@ -2,9 +2,9 @@ import {
     Button,
     ErrorCard,
     LoadingBoundary,
-    LoadingSpinner,
     PageLayout,
     SectionHeading,
+    Skeleton,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -127,11 +127,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                         </div>
                     )}
 
-                    {isFetching && !isFetchingNextPage && (
-                        <div className="text-center py-2">
-                            <LoadingSpinner size="sm" />
-                        </div>
-                    )}
+                    {isFetching && !isFetchingNextPage && <Skeleton variant="card" lines={3} />}
                 </div>
             </PageLayout>
         </div>

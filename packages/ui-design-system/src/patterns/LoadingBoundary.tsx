@@ -1,18 +1,18 @@
 import type * as React from 'react';
 import { cn } from '../lib/cn';
-import { LoadingSpinner } from '../primitives/Button';
+import { Skeleton } from '../primitives/Skeleton';
 
 /**
  * LoadingBoundary pattern.
  *
- * Wraps content and shows a centered spinner when `isLoading` is true.
- * Optionally renders a skeleton instead of a spinner.
+ * Wraps content and renders a layout-preserving Voxel skeleton placeholder
+ * (or a caller-supplied layout-matched `fallback`) while `isLoading` is true.
  */
 
 export interface LoadingBoundaryProps {
     isLoading: boolean;
     loadingText?: string;
-    minHeight?: string;
+    fallback?: React.ReactNode;
     children: React.ReactNode;
     className?: string;
 }
@@ -20,18 +20,25 @@ export interface LoadingBoundaryProps {
 export function LoadingBoundary({
     isLoading,
     loadingText,
-    minHeight = '60vh',
+    fallback,
     children,
     className,
 }: LoadingBoundaryProps) {
     if (isLoading) {
         return (
             <div
-                className={cn('flex flex-col items-center justify-center gap-3', className)}
-                style={{ minHeight }}
+                role="status"
+                aria-busy="true"
+                aria-label={loadingText ?? 'Loading content'}
+                className={cn('flex flex-col gap-4 w-full min-w-0', className)}
             >
-                <LoadingSpinner size="md" className="text-accent" />
-                {loadingText && <p className="text-sm text-zinc-500">{loadingText}</p>}
+                {fallback ?? (
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
+                        <Skeleton variant="card" lines={3} />
+                        <Skeleton variant="card" lines={3} />
+                        <Skeleton variant="card" lines={3} />
+                    </div>
+                )}
             </div>
         );
     }

@@ -30,8 +30,8 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 | `Table` | Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container. |
 | `Input` / `Label` / `ErrorMessage` | Recessed `.voxel-trough rounded-none` wrapper (`bg-boxel-trough`, `border-boxel-bevel-hi`). Tier 2 control typography. |
 | `Select` | Recessed `.voxel-trough rounded-none` wrapper with design system styling and Tier 2 typography. |
+| `Skeleton` | Sharp `rounded-none` Boxel trough placeholder (`text` / `block` / `card` variants) with reduced-motion pulse. |
 | `ErrorBoundary` | React error boundary with retry |
-| `LoadingSpinner` | `size` (xs/sm/md/lg) |
 
 ### Patterns
 
@@ -43,7 +43,7 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 | `StatPill` | Clickable filter pill with colored dot, label, and count. |
 | `MetricTile` | Recessed `.voxel-trough rounded-none p-3` tile (`flex flex-col justify-between gap-1`). |
 | `EmptyState` | Centered zero-data state with Tier 1 title, Tier 3 subtitle, and square icon box. |
-| `LoadingBoundary` | Suspense wrapper with silent fallback (zero layout shift). |
+| `LoadingBoundary` | Layout-preserving Voxel skeleton loading wrapper (`fallback` slot). |
 | `ErrorCard` | Tactile error display card with Tier 2 title, Tier 3 message, and retry button. |
 
 ### Layouts
@@ -68,7 +68,7 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 - **Portfolio Detail**: Card, MetricTile, SectionHeading, Badge
 - **Market Overview**: HeroBackground, Card, Badge, ConfidenceBar, SectionHeading, EmptyState
 - **Memories**: SectionHeading, Button, ErrorCard, LoadingBoundary
-- **Audits**: SectionHeading, Button, ErrorCard, LoadingBoundary, LoadingSpinner
+- **Audits**: SectionHeading, Button, ErrorCard, LoadingBoundary, Skeleton
 - **Reasoning**: zinc palette alignment (SectionHeading/Button for controls)
 - **Cause & Effect**: SectionHeading
 - **Root Layout**: Button, Badge, cn

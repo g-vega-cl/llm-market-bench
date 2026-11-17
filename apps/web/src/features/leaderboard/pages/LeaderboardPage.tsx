@@ -1,5 +1,5 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
-import { PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { PageLayout, SectionHeading, Skeleton } from '@llm-market-bench/ui-design-system';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
@@ -95,11 +95,13 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
 
                 {/* Loading state indicator */}
                 {isLoading && models.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 flex flex-col gap-4">
-                        <div className="animate-spin rounded-none h-8 w-8 border-t-2 border-b-2 border-accent" />
-                        <p className="text-xs font-normal text-zinc-400 font-mono">
-                            Aggregating engine metrics...
-                        </p>
+                    <div className="flex flex-col gap-6" aria-busy="true">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
+                            <Skeleton variant="card" lines={4} />
+                            <Skeleton variant="card" lines={4} />
+                            <Skeleton variant="card" lines={4} />
+                        </div>
+                        <Skeleton variant="block" className="h-48" />
                     </div>
                 ) : (
                     <>

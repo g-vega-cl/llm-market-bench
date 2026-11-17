@@ -16,7 +16,7 @@
 - Structural Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` (use `--fix` to auto-index new pages)
 - LLM Wiki Lint (Git Drift Auditor): `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint_llm.py --days 7 --model <model_name>`
 - Auto-wiki dry: `./apps/engine/.venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
-- Code Hotspot & Churn Forensics: `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py` (use `--write-wiki` to refresh wiki page)
+- Code Hotspot & Churn Forensics: `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py` (use `--write-wiki` to refresh wiki page; `--team` adds bus factor, commit velocity, and crisis cadence forensics)
 - Deploy & start MiniPC secondary edge stack: `./docker/archive/deploy_secondary.sh cv-minipc@minipc`
 
 ## Linting & Testing

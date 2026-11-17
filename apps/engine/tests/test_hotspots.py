@@ -193,13 +193,97 @@ def test_main_cli_write_wiki(mock_analyze, tmp_path, capsys):
         hotspots=[],
         couplings=[],
     )
-    with patch("sys.argv", ["hotspots.py", "--write-wiki"]), patch("apps.engine.hotspots.WIKI_FILE", wiki_dest):
+    with (
+        patch("sys.argv", ["hotspots.py", "--write-wiki"]),
+        patch("apps.engine.hotspots.WIKI_FILE", wiki_dest),
+        patch("apps.engine.hotspots.analyze_team_from_commits", return_value=_sample_team_report()),
+    ):
         from apps.engine.hotspots import main
 
         exit_code = main()
         assert exit_code == 0
         assert wiki_dest.exists()
-        assert "# Code Hotspots & Architectural Friction" in wiki_dest.read_text()
+        content = wiki_dest.read_text()
+        assert "# Code Hotspots & Architectural Friction" in content
+        assert "## Team Health" in content
+
+
+@patch("apps.engine.hotspots.analyze_hotspots")
+def test_main_cli_team_flag(mock_analyze, capsys):
+    mock_analyze.return_value = HotspotReport(
+        since="90 days ago",
+        total_commits=1,
+        hotspots=[],
+        couplings=[],
+    )
+    with (
+        patch("sys.argv", ["hotspots.py", "--team"]),
+        patch("apps.engine.hotspots.analyze_team_from_commits", return_value=_sample_team_report()),
+    ):
+        from apps.engine.hotspots import main
+
+        assert main() == 0
+        captured = capsys.readouterr()
+        assert "Team Health" in captured.out
+        assert "Bus factor" in captured.out
+
+
+@patch("apps.engine.hotspots.analyze_hotspots")
+def test_main_cli_team_json(mock_analyze, capsys):
+    mock_analyze.return_value = HotspotReport(
+        since="90 days ago",
+        total_commits=1,
+        hotspots=[],
+        couplings=[],
+    )
+    with (
+        patch("sys.argv", ["hotspots.py", "--team", "--json"]),
+        patch("apps.engine.hotspots.analyze_team_from_commits", return_value=_sample_team_report()),
+    ):
+        from apps.engine.hotspots import main
+
+        assert main() == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["team"]["bus_factor_author"] == "alice"
+        assert data["team"]["concentration"] == "FRAGILE"
+
+
+@patch("apps.engine.hotspots.analyze_hotspots")
+def test_main_cli_team_git_failure_degrades(mock_analyze, capsys):
+    import subprocess
+
+    mock_analyze.return_value = HotspotReport(since="90 days ago", total_commits=1, hotspots=[], couplings=[])
+    with (
+        patch("sys.argv", ["hotspots.py", "--team"]),
+        patch(
+            "apps.engine.hotspots.analyze_team_from_commits",
+            side_effect=subprocess.CalledProcessError(1, ["git"]),
+        ),
+    ):
+        from apps.engine.hotspots import main
+
+        # A failed team pass must not discard the hotspot report
+        assert main() == 0
+        captured = capsys.readouterr()
+        assert "Team forensics skipped" in captured.err
+        assert "Commits: 1" in captured.out
+
+
+def _sample_team_report():
+    from apps.engine.hotspot_team import TeamReport
+
+    return TeamReport(
+        since="90 days ago",
+        total_commits=4,
+        authors=[],
+        bus_factor=0.75,
+        bus_factor_author="alice",
+        concentration="FRAGILE",
+        velocity=[],
+        velocity_trend="INSUFFICIENT",
+        crisis_events=[],
+        crisis_status="STABLE",
+    )
 
 
 def test_determine_risk_level_and_loc():
@@ -227,3 +311,37 @@ def test_main_cli_error(mock_analyze, capsys):
 
         exit_code = main()
         assert exit_code == 1
+
+
+def test_run_git_log_excludes_merges_and_scopes():
+    from types import SimpleNamespace
+
+    from apps.engine.hotspots import run_git_log
+
+    with patch("apps.engine.hotspots.subprocess.run", return_value=SimpleNamespace(stdout="")) as mock_run:
+        run_git_log(since="7 days ago", scopes=["apps/", "packages/"])
+
+    cmd = mock_run.call_args.args[0]
+    # Merge commits carry no file lines but would still inflate the commit count,
+    # so the hotspot population and the team reference passes must agree on them.
+    assert "--no-merges" in cmd
+    assert cmd[-3:] == ["--", "apps/", "packages/"]
+    assert any(str(arg).startswith("--format=COMMIT") for arg in cmd)
+
+
+def test_parse_git_log_reads_author_metadata():
+    from apps.engine.hotspots import parse_git_log
+
+    raw = (
+        "COMMIT:abc1234:::feat: add loader:::g-vega-cl:::g.vega.cl@gmail.com:::2026-11\n"
+        "apps/engine/main.py\n"
+        "COMMIT:def5678:::fix: split a:::b subject:::Cesar Vega:::g.vega.cl@gmail.com:::2026-10\n"
+    )
+    commits = parse_git_log(raw)
+
+    assert commits[0].author == "g-vega-cl"
+    assert commits[0].email == "g.vega.cl@gmail.com"
+    assert commits[0].month == "2026-11"
+    # rsplit keeps ":::" inside the subject intact
+    assert commits[1].subject == "fix: split a:::b subject"
+    assert commits[1].month == "2026-10"

@@ -2,7 +2,9 @@
 """Code Hotspot and Churn Forensics Analyzer.
 
 Calculates code churn, bug fix density, hotspot risk scores, and temporal
-coupling (co-churn) across the git history.
+coupling (co-churn) across the git history. The optional ``--team`` mode adds
+team health forensics (bus factor, commit velocity, crisis cadence) from
+``hotspot_team.py``.
 """
 
 from __future__ import annotations
@@ -13,10 +15,32 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+try:
+    # Sibling import: engine code runs with apps/engine as its import root (script or CI cwd)
+    from hotspot_team import (
+        TeamReport,
+        analyze_team_from_commits,
+        format_team_markdown,
+        format_team_terminal,
+        to_team_commits,
+    )
+except ModuleNotFoundError as exc:  # imported as apps.engine.hotspots with only the repo root on sys.path
+    if exc.name != "hotspot_team":
+        raise
+    sys.path.insert(0, str(REPO_ROOT / "apps" / "engine"))
+    from hotspot_team import (
+        TeamReport,
+        analyze_team_from_commits,
+        format_team_markdown,
+        format_team_terminal,
+        to_team_commits,
+    )
+
 WIKI_FILE = REPO_ROOT / "wiki" / "concepts" / "code-hotspots.md"
 
 EXCLUDED_PATTERNS = [
@@ -43,6 +67,9 @@ class CommitRecord:
     subject: str
     is_fix: bool
     files: list[str]
+    author: str = ""
+    email: str = ""
+    month: str = ""
 
 
 @dataclass
@@ -71,6 +98,9 @@ class HotspotReport:
     total_commits: int
     hotspots: list[HotspotMetric]
     couplings: list[CouplingMetric]
+    team: TeamReport | None = None
+    # Parsed commits feed the team section so both sections describe one population.
+    commits: list[CommitRecord] = field(default_factory=list, repr=False)
 
     def to_json(self) -> str:
         return json.dumps(
@@ -79,6 +109,7 @@ class HotspotReport:
                 "total_commits": self.total_commits,
                 "hotspots": [asdict(h) for h in self.hotspots],
                 "couplings": [asdict(c) for c in self.couplings],
+                "team": asdict(self.team) if self.team else None,
             },
             indent=2,
         )
@@ -100,8 +131,10 @@ def run_git_log(since: str, scopes: list[str] | None = None) -> str:
         "git",
         "log",
         f"--since={since}",
+        "--no-merges",
         "--name-only",
-        "--format=COMMIT:%h:::%s",
+        "--format=COMMIT:%h:::%s:::%an:::%ae:::%ad",
+        "--date=format:%Y-%m",
     ]
     if scopes:
         cmd.append("--")
@@ -111,10 +144,29 @@ def run_git_log(since: str, scopes: list[str] | None = None) -> str:
     return res.stdout
 
 
+def _parse_commit_header(meta: str) -> tuple[str, str, str, str, str]:
+    """Split ``hash:::subject:::author:::email:::month`` from the right.
+
+    Splitting from the right keeps ``:::` sequences inside the subject intact, and
+    fixtures without the metadata tail still parse (author, email, month blank).
+    """
+    tail = meta.rsplit(":::", 3)
+    if len(tail) == 4:
+        head, author, email, month = tail
+        commit_hash, _, subject = head.partition(":::")
+        return commit_hash, subject, author, email, month
+
+    commit_hash, _, subject = meta.partition(":::")
+    return commit_hash, subject, "", "", ""
+
+
 def parse_git_log(log_output: str) -> list[CommitRecord]:
     commits: list[CommitRecord] = []
     current_hash: str | None = None
     current_subject: str = ""
+    current_author: str = ""
+    current_email: str = ""
+    current_month: str = ""
     current_files: list[str] = []
 
     for line in log_output.splitlines():
@@ -130,14 +182,15 @@ def parse_git_log(log_output: str) -> list[CommitRecord]:
                         subject=current_subject,
                         is_fix=is_bug_fix_commit(current_subject),
                         files=current_files,
+                        author=current_author,
+                        email=current_email,
+                        month=current_month,
                     )
                 )
                 current_files = []
 
             meta = line[len("COMMIT:") :]
-            parts = meta.split(":::", 1)
-            current_hash = parts[0]
-            current_subject = parts[1] if len(parts) > 1 else ""
+            current_hash, current_subject, current_author, current_email, current_month = _parse_commit_header(meta)
         else:
             if not is_excluded_path(line):
                 current_files.append(line)
@@ -149,6 +202,9 @@ def parse_git_log(log_output: str) -> list[CommitRecord]:
                 subject=current_subject,
                 is_fix=is_bug_fix_commit(current_subject),
                 files=current_files,
+                author=current_author,
+                email=current_email,
+                month=current_month,
             )
         )
 
@@ -284,6 +340,7 @@ def analyze_hotspots(
         total_commits=len(commits),
         hotspots=hotspots,
         couplings=couplings,
+        commits=commits,
     )
 
 
@@ -312,6 +369,9 @@ def format_terminal_table(report: HotspotReport) -> str:
                 f"  • {c.file_a} <-> {c.file_b}\n"
                 f"    {c.co_commits} shared commits ({c.ratio_a * 100:.0f}% of {Path(c.file_a).name}, {c.ratio_b * 100:.0f}% of {Path(c.file_b).name})"
             )
+
+    if report.team:
+        lines.extend(["", format_team_terminal(report.team)])
 
     return "\n".join(lines)
 
@@ -356,6 +416,9 @@ def format_markdown_report(report: HotspotReport) -> str:
         for c in report.couplings[:15]:
             max_ratio = max(c.ratio_a, c.ratio_b) * 100
             md.append(f"| `{c.file_a}` | `{c.file_b}` | {c.co_commits} | {max_ratio:.0f}% |")
+
+    if report.team:
+        md.append(format_team_markdown(report.team))
 
     md.extend(
         [
@@ -409,6 +472,11 @@ def main() -> int:
         help="Output raw JSON results",
     )
     parser.add_argument(
+        "--team",
+        action="store_true",
+        help="Include team health forensics (bus factor, commit velocity, crisis cadence); implied by --write-wiki",
+    )
+    parser.add_argument(
         "--write-wiki",
         action="store_true",
         help=f"Write output markdown to wiki page: {_display_path(WIKI_FILE)}",
@@ -421,6 +489,18 @@ def main() -> int:
     except subprocess.CalledProcessError as e:
         sys.stderr.write(f"Git command failed: {e}\n")
         return 1
+
+    # The wiki page always carries the team section so refreshes stay stable. Team
+    # analysis degrades to None rather than discarding the hotspot report.
+    if args.team or args.write_wiki:
+        try:
+            report.team = analyze_team_from_commits(
+                to_team_commits(report.commits),
+                since=args.since,
+                scopes=args.scope,
+            )
+        except (subprocess.CalledProcessError, OSError, ValueError) as e:
+            sys.stderr.write(f"Team forensics skipped, git command failed: {e}\n")
 
     if args.json:
         print(report.to_json())

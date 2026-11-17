@@ -120,6 +120,32 @@ print(response.choices[0].message.content)
 
 `opencode-go` discovers its catalog from `https://opencode.ai/zen/go/v1/models` — there is no model list to maintain. Set `OPENCODE_GO_API_KEY` to activate it. It is **never** part of `free-auto`, `auto-strata`, `free-fast`, or `free-reasoning`; only `auto-go`, `auto-strata-go`, `strata-auto-go`, and explicit `opencode-go/<model>` requests can reach it. Within the `*-go` aliases it sits after both the healthy and cooling free candidates, so a 429 cooldown storm still tries free providers first. If its catalog cannot be read, the proxy fails closed instead of sending a paid request with an ungrounded model name. The proxy forwards a client `x-opencode-session` header only after validating it, or derives a stable fallback session ID automatically, since Go requires one on every chat request.
 
+### Thinking Budgets and Output Ceilings
+
+Reasoning tokens are billed inside the completion budget on every OpenAI-compatible
+provider, so `max_tokens` / `max_completion_tokens` **is** the thinking cap. The
+proxy therefore clamps to a per-provider ceiling instead of a single global number:
+
+| Knob | Default | Effect |
+| :--- | :--- | :--- |
+| `providers.json` → `max_output_tokens` | gemini `65536`, all other cloud providers `32768` | Provider's own output/thinking ceiling. The clamp is `min(requested, ceiling)` and only ever lowers a caller's budget. |
+| `CLOUD_MAX_OUTPUT_TOKENS` | `32768` | Fallback ceiling for providers that declare none. Strata is exempt (keeps its 128k+ budget). |
+| `CLOUD_REQUEST_TIMEOUT_SECONDS` | `90.0` | Wall-clock cap per non-Strata attempt; also the httpx read window (`client.build_timeout`), so there is no second hidden cap. Non-streaming only — a streaming response returns its generator as soon as headers arrive. |
+| `PAID_TIMEOUT_GUARD` | `true` | A free provider timing out never falls through to the paid OpenCode Go tier. Set `false` to restore pre-audit failover. Explicit `opencode-go/<model>` requests are always served. |
+| `AUTO_GO_DEFAULT_REASONING_EFFORT` | unset | Optional thinking floor (`low`/`medium`/`high`) applied to `*-go` aliases. Unset keeps the provider default (Gemini 3 = dynamic/high), so the proxy never fabricates a cap. |
+
+Thinking controls are **only forwarded to providers that declare support** in
+`providers.json` via `thinking_params`:
+
+- `gemini`, `groq` → `reasoning_effort` (`low`/`medium`/`high`)
+- `openrouter` → `reasoning` object; a caller's `reasoning_effort` is normalized into `{"effort": "..."}`
+- `ovhcloud`, `nvidia`, `kilo`, `opencode-go` → nothing (these gateways 400 on unknown fields, and a 400 cools a healthy provider for 60s)
+- Strata keeps its native `reasoning_budget_tokens`
+
+A Strata-style `reasoning_budget_tokens` sent to a cloud provider is translated
+into an effort band (`>8192` → high, `>4096` → medium, else low) rather than
+silently deleted, unless the caller also sent an explicit `reasoning_effort`.
+
 ### Streaming Usage Telemetry
 
 The proxy treats streaming as observation-only:

@@ -423,3 +423,41 @@ async def test_cleaner_handles_client_init_error_gracefully():
 
     assert str(result) == original
     assert result.ads_removed_count == 0
+
+
+@pytest.mark.asyncio
+async def test_live_trader_turn_posts_high_output_budget():
+    """The end-to-end posted payload carries the raised budget, not 16384."""
+    from trading import live_intraday_agent
+
+    captured: dict = {}
+
+    class _Resp:
+        status_code = 200
+
+        def json(self):
+            return {
+                "choices": [
+                    {"message": {"content": json.dumps({"action": "HOLD", "conviction": 0.1, "reasoning": "flat"})}}
+                ]
+            }
+
+    class _Client:
+        async def post(self, url, json=None, headers=None, timeout=None):
+            captured["payload"] = json
+            return _Resp()
+
+    await live_intraday_agent.query_multi_tier_llm(
+        messages=[{"role": "user", "content": "decide"}],
+        http_client=_Client(),
+        purpose="live-spy-trader",
+    )
+
+    assert captured["payload"]["max_tokens"] >= 32768
+
+
+def test_explainer_requests_reasoning_sized_output_budget():
+    """The homepage explainer shares the auto-go path and needs the same headroom."""
+    from trading import conversational_explainer
+
+    assert conversational_explainer.EXPLAINER_MAX_TOKENS >= 32768

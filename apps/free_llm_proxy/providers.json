@@ -8,6 +8,8 @@
       "requires_auth": true,
       "models_endpoint": "/models",
       "max_prompt_tokens": 8000,
+      "max_output_tokens": 32768,
+      "thinking_params": ["reasoning_effort"],
       "preferred_patterns": [
         "*gpt-oss-120b*",
         "*qwen3.8-27b*",
@@ -22,6 +24,8 @@
       "tier": 1,
       "requires_auth": true,
       "models_endpoint": "/models",
+      "max_output_tokens": 65536,
+      "thinking_params": ["reasoning_effort"],
       "preferred_patterns": [
         "gemini-flash-latest",
         "*gemini-3.8-flash*",
@@ -39,6 +43,7 @@
       "tier": 1,
       "requires_auth": false,
       "models_endpoint": "/models",
+      "max_output_tokens": 32768,
       "preferred_patterns": [
         "kilo-auto/free",
         "*:free",
@@ -52,6 +57,8 @@
       "tier": 2,
       "requires_auth": true,
       "models_endpoint": "/models",
+      "max_output_tokens": 32768,
+      "thinking_params": ["reasoning"],
       "preferred_patterns": [
         "openrouter/free",
         "*ultra*",
@@ -71,6 +78,7 @@
       "tier": 2,
       "requires_auth": false,
       "models_endpoint": "/models",
+      "max_output_tokens": 32768,
       "preferred_patterns": [
         "gpt-oss-120b",
         "gpt-oss-20b",
@@ -85,6 +93,7 @@
       "tier": 2,
       "requires_auth": true,
       "models_endpoint": "/models",
+      "max_output_tokens": 32768,
       "preferred_patterns": [
         "*nemotron-3.5-super-vl-120b*",
         "*nemotron-3-ultra-550b*",
@@ -116,6 +125,7 @@
       "auto_aliases": ["auto-go", "auto-strata-go", "strata-auto-go"],
       "requires_auth": true,
       "models_endpoint": "/models",
+      "max_output_tokens": 32768,
       "extra_headers": {
         "User-Agent": "free-llm-proxy/1.0 (llm.clvg.uk)"
       },

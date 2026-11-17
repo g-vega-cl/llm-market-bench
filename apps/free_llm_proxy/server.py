@@ -69,6 +69,82 @@ async def _dispatch_with_timeout(
         )
 
 
+THINKING_KEYS = ("reasoning_effort", "reasoning", "reasoning_budget_tokens")
+
+
+def _effort_from_reasoning_budget(budget: float) -> str:
+    """Maps a Strata-style token budget onto an OpenAI effort band."""
+    for threshold, level in config.REASONING_BUDGET_BANDS:
+        if budget > threshold:
+            return level
+    return "low"
+
+
+def apply_thinking_params(
+    payload: dict[str, Any], p_cfg: dict[str, Any], model: str
+) -> None:
+    """Forwards thinking controls only to providers that declare support for them.
+
+    Every thinking key is stripped first: a gateway that 400s on unknown fields
+    otherwise converts a caller's effort request into a 60s provider cooldown
+    (circuit_breaker: deterministic 4xx). Declared params are then re-added, with
+    the OpenAI `reasoning_effort` spelling normalized to OpenRouter's object form.
+    """
+    requested_effort = payload.get("reasoning_effort")
+    requested_reasoning = payload.get("reasoning")
+    budget = payload.get("reasoning_budget_tokens")
+    for key in THINKING_KEYS:
+        payload.pop(key, None)
+
+    effort = (
+        requested_effort.strip().lower() if isinstance(requested_effort, str) else ""
+    )
+    if not effort and isinstance(budget, (int, float)) and not isinstance(budget, bool):
+        effort = _effort_from_reasoning_budget(budget)
+    if (
+        not effort
+        and config.AUTO_GO_DEFAULT_REASONING_EFFORT
+        and model.lower().endswith("-go")
+    ):
+        effort = config.AUTO_GO_DEFAULT_REASONING_EFFORT
+
+    declared = set(p_cfg.get("thinking_params") or [])
+    if (
+        "reasoning" in declared
+        and isinstance(requested_reasoning, dict)
+        and requested_reasoning
+    ):
+        payload["reasoning"] = dict(requested_reasoning)
+    if "reasoning_effort" in declared and effort:
+        payload["reasoning_effort"] = effort
+    elif "reasoning" in declared and effort:
+        reasoning = dict(payload.get("reasoning") or {})
+        reasoning.setdefault("effort", effort)
+        payload["reasoning"] = reasoning
+
+
+def apply_output_ceiling(payload: dict[str, Any], p_cfg: dict[str, Any]) -> None:
+    """Clamps both output-token spellings to the provider's declared ceiling.
+
+    Reasoning tokens are billed inside this budget, so the ceiling is the real
+    thinking cap. A provider's own limit wins; undeclared providers fall back to
+    CLOUD_MAX_OUTPUT_TOKENS. The clamp only ever lowers a caller's request.
+    """
+    ceiling = p_cfg.get("max_output_tokens")
+    if not isinstance(ceiling, int) or isinstance(ceiling, bool) or ceiling <= 0:
+        ceiling = config.CLOUD_MAX_OUTPUT_TOKENS
+    for key in ("max_tokens", "max_completion_tokens"):
+        value = payload.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value > ceiling:
+            payload[key] = ceiling
+
+
+def _is_explicit_paid_request(model: str, provider_id: str) -> bool:
+    """True when the caller deliberately targeted the paid provider."""
+    requested = model.strip().lower()
+    return requested == provider_id or requested.startswith(f"{provider_id}/")
+
+
 def extract_prompt_preview(messages: list[Any], max_length: int = 60) -> str | None:
     """Extract a concise text snippet (up to max_length chars) of caller intent/why."""
     if not messages:
@@ -282,8 +358,31 @@ async def chat_completions(
     start_time = time.perf_counter()
     failover_log = []
     last_error = None
+    timed_out_seen = False
 
     for p_id, p_cfg in candidate_chain:
+        # Money guard: a slow free provider must never buy paid-tier tokens.
+        if (
+            config.PAID_TIMEOUT_GUARD
+            and p_cfg.get("billing") == "paid"
+            and timed_out_seen
+            and not _is_explicit_paid_request(req.model, p_id)
+        ):
+            failover_log.append(f"{p_id} (skipped: paid guard after free timeout)")
+            # Keep the original timeout body as last_error so the terminal 502
+            # reports the real cause instead of the guard's own explanation.
+            if last_error is None:
+                last_error = {
+                    "error": {
+                        "message": (
+                            f"{p_id} skipped: cheap tier timed out; paid dispatch "
+                            "refused (set PAID_TIMEOUT_GUARD=false to override)"
+                        ),
+                        "type": "timeout_error",
+                    }
+                }
+            continue
+
         # Fetch or resolve target model for this candidate
         base_url = p_cfg["base_url"]
         headers = (
@@ -334,17 +433,8 @@ async def chat_completions(
 
         # Cloud free-tier providers enforce an output token limit; clamp when routing to cloud
         if p_id != "strata":
-            # Strip Strata-specific kwargs that cloud gateways (Gemini, OVHCloud) reject with 400
-            payload.pop("reasoning_budget_tokens", None)
-            if "max_tokens" in payload and payload["max_tokens"] is not None:
-                if payload["max_tokens"] > config.CLOUD_MAX_OUTPUT_TOKENS:
-                    payload["max_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS
-            if (
-                "max_completion_tokens" in payload
-                and payload["max_completion_tokens"] is not None
-            ):
-                if payload["max_completion_tokens"] > config.CLOUD_MAX_OUTPUT_TOKENS:
-                    payload["max_completion_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS
+            apply_thinking_params(payload, p_cfg, req.model)
+            apply_output_ceiling(payload, p_cfg)
 
         status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
             provider_id=p_id,
@@ -519,6 +609,11 @@ async def chat_completions(
 
         else:
             # Trip circuit breaker and try next candidate
+            if (
+                isinstance(body_or_gen, dict)
+                and (body_or_gen.get("error") or {}).get("type") == "timeout_error"
+            ):
+                timed_out_seen = True
             retry_after = resp_headers.get("retry-after") or resp_headers.get(
                 "ratelimit-reset"
             )

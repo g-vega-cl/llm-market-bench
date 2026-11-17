@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from trading.conversational_explainer import (
+    EXPLAINER_MAX_TOKENS,
     extract_search_keywords,
     format_qa_context,
     process_pending_queue_item,
@@ -153,7 +154,8 @@ async def test_process_pending_queue_item_answers_with_conversational_markdown()
         assert "divided government historically relieves tariff uncertainty" in res["response"]
 
         # Verify token headroom and reasoning budget passed to LLM
-        assert mock_llm.call_args.kwargs["max_tokens"] == 16384
+        assert mock_llm.call_args.kwargs["max_tokens"] == EXPLAINER_MAX_TOKENS
+        assert mock_llm.call_args.kwargs["max_tokens"] >= 32768
         assert mock_llm.call_args.kwargs["reasoning_budget_tokens"] == 12288
 
         # Verify prompt passed to LLM was conversational (not JSON schema)

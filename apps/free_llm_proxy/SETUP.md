@@ -66,6 +66,33 @@ You do **not** need to register or configure keys for these; they are active in 
 * **Env Variable**: Set `OPENCODE_GO_API_KEY=oc_sk_...` in `apps/free_llm_proxy/.env`.
 * **Catalog**: Discovered automatically from `GET https://opencode.ai/zen/go/v1/models` (no model list to maintain).
 * **Routing**: Reachable only via `auto-go`, `auto-strata-go`, `strata-auto-go`, or explicit `opencode-go/<model>`. It is deliberately excluded from every free alias (`free-auto`, `auto-strata`, `free-fast`, `free-reasoning`) and sits after both healthy and cooling free candidates as a last resort. Its `billing: "paid"` + `auto_aliases` configuration is fail-closed, and dispatch is refused if the live catalog cannot be discovered.
+* **Timeout guard**: `PAID_TIMEOUT_GUARD=true` (default) skips this tier when a free provider already timed out, so a slow reasoning pass cannot spend money. Explicit `opencode-go/<model>` requests bypass the guard because the charge is intentional. Set `PAID_TIMEOUT_GUARD=false` to restore unguarded failover.
+
+---
+
+## Output Ceilings & Thinking Budgets
+
+Reasoning tokens count against `max_tokens` / `max_completion_tokens` on every
+provider here, so the output ceiling is the thinking ceiling.
+
+* Per-provider ceilings live in `providers.json` → `max_output_tokens`
+  (`gemini` 65536, every other cloud provider 32768 — groq is held at 32768 because
+  its smaller models cap below 65k). `CLOUD_MAX_OUTPUT_TOKENS` (default 32768) is only the fallback for a
+  provider that declares none; Strata is exempt.
+* The clamp is `min(requested, ceiling)` — it never inflates a caller's budget.
+* `CLOUD_REQUEST_TIMEOUT_SECONDS` (default 90) bounds each non-Strata attempt and
+  is also the httpx read window (`client.build_timeout`), so there is no second,
+  tighter cap. Keep it below the tightest caller's patience so a failover still
+  lands inside their window: the live trader waits 200s, engine instructor clients
+  180s. A socket timeout now returns `504 timeout_error`; it used to surface as a
+  `503 connection_error`, which the paid guard could not see.
+* Thinking params are forwarded only to providers that declare them in
+  `providers.json` → `thinking_params` (`gemini`/`groq`: `reasoning_effort`;
+  `openrouter`: `reasoning`). Everything else has them stripped, because an
+  unknown field there returns 400 and cools a healthy provider for 60s.
+* `AUTO_GO_DEFAULT_REASONING_EFFORT` is empty by default, so the provider default
+  governs (Gemini 3 = dynamic/high). Set `low`/`medium`/`high` only if you want a
+  forced floor on `*-go` aliases.
 
 ---
 

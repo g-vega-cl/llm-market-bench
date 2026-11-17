@@ -486,7 +486,7 @@ def is_llm_outage_fallback(text: str | None) -> bool:
     return trimmed.startswith("{") and '"action"' in trimmed
 
 
-EXPLAINER_MAX_TOKENS = 16384
+EXPLAINER_MAX_TOKENS = 32768
 EXPLAINER_REASONING_BUDGET = 12288
 
 

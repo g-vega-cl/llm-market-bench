@@ -3,6 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from apps.free_llm_proxy import config
 from apps.free_llm_proxy.server import app
 from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
 from apps.free_llm_proxy.config import load_providers_config
@@ -765,7 +766,12 @@ def test_strata_env_disable(monkeypatch):
 
 
 def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypatch):
-    """Verify max_tokens >= 128k is preserved for Strata but clamped to 16384 for cloud providers."""
+    """Strata keeps a 128k budget; cloud providers clamp to their own ceiling.
+
+    The ceiling is no longer a single global 16384: providers.json declares
+    max_output_tokens per provider (gemini/groq 65536, others 32768), so the
+    assertion is an invariant rather than a magic number.
+    """
     executed_payloads = []
 
     async def mock_execute(provider_cfg, payload, stream=False, client=None):
@@ -804,7 +810,8 @@ def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypat
     assert executed_payloads[0][1]["max_tokens"] == 131072
     assert executed_payloads[0][1]["reasoning_budget_tokens"] == 12288
 
-    # Request 2: Cloud auto target with 131072 tokens -> must be clamped to 16384 and reasoning_budget_tokens stripped
+    # Request 2: Cloud auto target with 131072 tokens -> clamped to the provider
+    # ceiling (above the old 16k floor) and reasoning_budget_tokens never forwarded.
     resp2 = client.post(
         "/v1/chat/completions",
         headers=headers,
@@ -817,7 +824,16 @@ def test_max_tokens_unclamped_for_strata_and_clamped_for_cloud(client, monkeypat
     )
     assert resp2.status_code == 200
     assert len(executed_payloads) == 2
-    assert executed_payloads[1][1]["max_tokens"] == 16384
+    cloud_max = executed_payloads[1][1]["max_tokens"]
+    declared = {
+        p_cfg["max_output_tokens"]
+        for p_cfg in load_providers_config()["providers"].values()
+        if isinstance(p_cfg.get("max_output_tokens"), int)
+    }
+    # Clamped to SOME real ceiling (provider-declared or the global fallback),
+    # never to the retired flat 16384.
+    assert cloud_max in declared | {config.CLOUD_MAX_OUTPUT_TOKENS}
+    assert cloud_max > 16384
     assert "reasoning_budget_tokens" not in executed_payloads[1][1]
 
 

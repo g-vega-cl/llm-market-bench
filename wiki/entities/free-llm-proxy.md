@@ -5,7 +5,7 @@ category: entity
 
 # Free LLM Proxy
 
-A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint, with an opt-in paid OpenCode Go fallback tier. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, cloud output-token clamping, a per-attempt cloud request wall-clock timeout, and full token usage logging.
+A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint, with an opt-in paid OpenCode Go fallback tier. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, per-provider output/thinking ceilings declared in `providers.json`, declared-only reasoning-parameter passthrough, a per-attempt cloud request wall-clock timeout with a paid-tier timeout guard, and full token usage logging.
 
 ## Architecture & Lifecycle
 
@@ -56,9 +56,9 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ### Tiered Router (`apps/free_llm_proxy/router.py`)**: Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; for free-only aliases, cooling providers are used only as a last resort when no healthy candidate remains. Routing is split into free and paid cost segments: for `*-go` aliases the order is free healthy ➔ free cooling ➔ paid healthy ➔ paid cooling, so a rate-limit storm can never promote the paid provider ahead of a still-usable free one. An explicit `provider/model` prefix moves that provider to the front of its segment. Providers declaring `enabled_in_auto: false` (such as local Strata) are excluded from the standard auto rotation unless explicitly targeted or opted in: `strata-auto` and `strata-auto-go` move Strata to the front of the free segment, while `auto-strata` and `auto-strata-go` add it to the Tier 1 rotation. Paid providers declare `billing: "paid"` and an `auto_aliases` allowlist; eligibility is fail-closed, so a missing or edited `enabled_in_auto` flag cannot leak paid spend into a free alias. Tier buckets are created dynamically from each provider's normalized integer `tier` value (malformed values fall back to the default rather than crashing), and the paid OpenCode Go pool sits at Tier 3.
 
-### Cloud Output-Token Clamping (`apps/free_llm_proxy/server.py`)**: Before dispatch, requests routed to any non-Strata (cloud) provider have `max_tokens` and `max_completion_tokens` clamped down to `CLOUD_MAX_OUTPUT_TOKENS` (default `16384`), because cloud free-tier providers enforce a 16k output ceiling. Strata is exempt and preserves the caller's full budget (e.g. 131,072 tokens). Cloud routes also have the Strata-specific `reasoning_budget_tokens` key stripped from the payload, since cloud gateways (Gemini, OVHCloud) reject it with a 400.
+### Provider Output Ceilings & Thinking Passthrough (`apps/free_llm_proxy/server.py`, `providers.json`)**: Before dispatch, requests routed to any non-Strata (cloud) provider are rewritten by two helpers. `apply_output_ceiling` clamps `max_tokens` and `max_completion_tokens` to `min(requested, p_cfg["max_output_tokens"])` — the provider's own declared ceiling (`gemini` 65536, every other cloud provider 32768 — groq is held at 32768 because its smaller models cap below 65k), falling back to `CLOUD_MAX_OUTPUT_TOKENS` (default `32768`) only for a provider that declares none. Because reasoning tokens are billed inside the completion budget, this ceiling **is** the thinking budget: the previous global `16384` clamp silently truncated chain-of-thought-heavy answers, and every engine caller already requested exactly that ceiling. Strata is exempt and keeps the caller's full budget (e.g. 131,072 tokens). `apply_thinking_params` strips every thinking key (`reasoning_effort`, `reasoning`, `reasoning_budget_tokens`) and re-adds only those the provider declares in `thinking_params` — `reasoning_effort` for `gemini`/`groq`, a normalized `{"effort": ...}` object for `openrouter`, nothing for gateways that 400 on unknown fields. A Strata-style `reasoning_budget_tokens` sent to a cloud provider is translated into an effort band (`>8192` high, `>4096` medium, else low) instead of being silently dropped, and `AUTO_GO_DEFAULT_REASONING_EFFORT` (default unset) can impose an explicit floor on `*-go` aliases.
 
-### Cloud Wall-Clock Dispatch Timeout (`_dispatch_with_timeout`, `apps/free_llm_proxy/server.py`)**: Every upstream attempt on a non-Strata route is wrapped in `asyncio.wait_for(..., timeout=CLOUD_REQUEST_TIMEOUT_SECONDS)` (default `45.0`s). A provider that accepts the connection but never finishes — a hung socket, a silently stalled stream, or an aggressively throttled gateway — is cancelled and converted into a synthetic `504` `timeout_error` response so the existing failover chain immediately advances to the next candidate instead of pinning the request for the full `httpx` read timeout. Strata and any non-positive timeout are exempt and dispatched unwrapped, preserving deep local reasoning runs that legitimately exceed the cloud cap. See the dedicated section below.
+### Cloud Wall-Clock Dispatch Timeout (`_dispatch_with_timeout`, `apps/free_llm_proxy/server.py`)**: Every upstream attempt on a non-Strata route is wrapped in `asyncio.wait_for(..., timeout=CLOUD_REQUEST_TIMEOUT_SECONDS)` (default `90.0`s, deliberately below the caller's own patience — live trader 200s, engine instructor clients 180s — so one failover still fits in the caller's window). A provider that accepts the connection but never finishes — a hung socket, a silently stalled stream, or an aggressively throttled gateway — is cancelled and converted into a `504` `timeout_error`, the same shape `client.build_timeout` produces on a real `httpx.TimeoutException`, so the failover chain advances instead of pinning the request. Note the httpx read window is derived from this same knob: a hardcoded 60s read timeout would make the cap unreachable and label slow reasoning passes as `connection_error`. Strata and any non-positive timeout are exempt and dispatched unwrapped, preserving deep local reasoning runs that legitimately exceed the cloud cap. When a timeout has already occurred, the paid OpenCode Go tier is skipped (`PAID_TIMEOUT_GUARD`, default on) so a slow free provider can never convert a hung reasoning pass into spend. See the dedicated section below.
 
 ### Audit Database (`apps/free_llm_proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, failover chains, caller attribution, and stream telemetry (`is_stream`, `usage_available`, `ttft_ms`, `duration_ms`, `stream_completed`) to a local SQLite database (`data/free_llm_proxy.db`). Captures "Who" (`client_ip` via Cloudflare `CF-Connecting-IP`, `X-Forwarded-For`, or socket host, and `user_agent`) and "Why" (`purpose` via `X-Purpose` / `X-Client-Id` and `prompt_preview` containing a 60-character snippet of the user prompt). Logs failed authentication attempts (status 401) with caller IP and user agent to monitor unauthorized probes. `get_metrics()` aggregates total/successful/unauthorized requests, success rate, token totals, average latency, per-provider stats, the 10 most recent calls, and the token-coverage fields `streaming_requests`, `usage_available_requests`, `zero_token_successes`, `token_coverage_pct`, `avg_stream_duration_ms`, `avg_ttft_ms`, and `incomplete_streams`. Additive migrations preserve existing rows, and indexes on `timestamp`, `status_code`, and `client_ip` keep metrics queries fast. Audit rows are retained indefinitely (no retention job).
 
@@ -97,12 +97,16 @@ async def _dispatch_with_timeout(provider_id, provider_cfg, payload, stream):
 
 | Variable | Default | Meaning |
 | :--- | :--- | :--- |
-| `CLOUD_REQUEST_TIMEOUT_SECONDS` | `45.0` | Wall-clock cap applied to each non-Strata provider attempt; on expiry the attempt returns `504 timeout_error` and failover continues. `<= 0` disables the cap. |
+| `CLOUD_REQUEST_TIMEOUT_SECONDS` | `90.0` | Wall-clock cap applied to each non-Strata provider attempt, and the httpx read window (`client.build_timeout`). On expiry the attempt returns `504 timeout_error` and failover continues. `<= 0` disables the cap and falls back to a 300s read window. |
+| `PAID_TIMEOUT_GUARD` | `true` | Skip paid-tier candidates when a cheaper candidate already timed out (an explicit `opencode-go/<model>` request is always served). `false` restores unguarded failover. |
+| `CLOUD_MAX_OUTPUT_TOKENS` | `32768` | Fallback clamp for providers that declare no `max_output_tokens` in `providers.json`. |
+| `AUTO_GO_DEFAULT_REASONING_EFFORT` | unset | Optional `low`/`medium`/`high` floor for `*-go` aliases, applied only to providers declaring `thinking_params` support. |
 
 ### Verification
 
 - `test_cloud_provider_timeout_triggers_504_failover` monkeypatches the timeout to `0.01`s, makes the first candidate (OpenRouter) sleep past it, and asserts the request still returns `200` from the second candidate (Kilo Code) with `openrouter (HTTP 504)` recorded in the audit `failover_chain`.
 - `test_strata_provider_exempt_from_cloud_wall_clock_timeout` sets the timeout to `0.001`s and proves a Strata attempt sleeping `0.015`s still returns its completion untouched.
+- `apps/free_llm_proxy/tests/test_thinking_limits.py` covers the timeout money leak: `test_timeout_skips_paid_tier` proves a 504 on Kilo returns `502` with `paid guard` in the failover chain and zero OpenCode Go dispatches, `test_explicit_paid_target_survives_free_timeout` proves a deliberate `opencode-go/...` charge still runs, and `test_429_still_reaches_paid_tier` proves a genuine rate limit is not treated as a timeout.
 
 ## Dynamic Model Discovery & Anti-Hardcoding Philosophy
 
@@ -184,32 +188,29 @@ When an upstream endpoint returns temporary errors (503 high-demand spike, 404 d
 - **NVIDIA NIM**: Cascades from the primary model ➔ `minimax-m3.1-flash` ➔ `nemotron-3.5-super-vl-120b` ➔ `nemotron-3-ultra-550b` ➔ `mistral-large`.
 - **Kilo Code**: Cascades from the primary model ➔ `kilo-auto/free` ➔ `reflection/beam-free` ➔ `nemotron-3.5-super-vl:free`.
 
-## Cloud Output-Token Clamping
-Cloud free-tier providers enforce an output-token ceiling. To prevent upstream 400/422 rejections when a client (e.g. Pi configured with a 131,072-token budget for Strata) sends an oversized `max_tokens`, `chat_completions` in `apps/free_llm_proxy/server.py` clamps the payload **after** model resolution and **before** `execute_completion`:
+## Provider Output Ceilings & Thinking Passthrough
+
+Reasoning tokens are billed inside the completion budget on every OpenAI-compatible
+provider, so an output clamp **is** a thinking cap. The proxy therefore clamps to a
+per-provider ceiling declared in `providers.json` instead of a single global number,
+and forwards reasoning controls only to providers that declare support for them.
 
 ```python
-# Cloud free-tier providers enforce an output token limit; clamp when routing to cloud
+# server.py, after model resolution and before execute_completion
 if p_id != "strata":
-    # Strip Strata-specific kwargs that cloud gateways (Gemini, OVHCloud) reject with 400
-    payload.pop("reasoning_budget_tokens", None)
-    if "max_tokens" in payload and payload["max_tokens"] is not None:
-        if payload["max_tokens"] > config.CLOUD_MAX_OUTPUT_TOKENS:
-            payload["max_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS
-    if (
-        "max_completion_tokens" in payload
-        and payload["max_completion_tokens"] is not None
-    ):
-        if payload["max_completion_tokens"] > config.CLOUD_MAX_OUTPUT_TOKENS:
-            payload["max_completion_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS
+    apply_thinking_params(payload, p_cfg, req.model)
+    apply_output_ceiling(payload, p_cfg)
 ```
 
 Behavioral rules:
-- **Strata is exempt** — requests routed to the `strata` provider keep the caller's full budget (e.g. `max_tokens: 131072`) and any `reasoning_budget_tokens` value, since local inference has no cloud ceiling and understands the reasoning-budget kwarg.
-- **All cloud providers are clamped** — `free-auto`, `free-fast`, `free-reasoning`, `provider/model` targets, and any other non-Strata route are clamped to `CLOUD_MAX_OUTPUT_TOKENS` (default `16384`).
-- **`reasoning_budget_tokens` is stripped on cloud routes** — the Strata-specific reasoning-budget kwarg is removed from the payload before dispatch to any non-Strata provider, because cloud gateways (Gemini, OVHCloud) reject the unknown field with a 400.
-- **Both parameter names are handled** — `max_tokens` and `max_completion_tokens` are clamped independently, and `None` values are left untouched.
-- **Clamping only lowers** — values already at or below the ceiling pass through unchanged.
-This is verified by `test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` in `apps/free_llm_proxy/tests/test_proxy.py`, which asserts a 131,072-token request (with `reasoning_budget_tokens: 12288`) survives intact on the `strata` route and is clamped to `16384` with `reasoning_budget_tokens` stripped on the `free-auto` route.
+- **Strata is exempt** — requests routed to the `strata` provider keep the caller's full budget (e.g. `max_tokens: 131072`) and the native `reasoning_budget_tokens` kwarg, since local inference has no cloud ceiling and understands it.
+- **Per-provider ceilings** — `max_output_tokens` in `providers.json` (`gemini` 65536, everything else cloud-side 32768) is applied as `min(requested, ceiling)`. `CLOUD_MAX_OUTPUT_TOKENS` (default `32768`) covers only providers that declare nothing.
+- **Clamping only lowers** — values at or below the ceiling pass through unchanged, and `None` is untouched. Both `max_tokens` and `max_completion_tokens` are handled independently.
+- **Declared-only thinking passthrough** — `reasoning_effort` reaches `gemini`/`groq`; `openrouter` receives it normalized to `{"effort": ...}` or gets an explicit `reasoning` object verbatim; `ovhcloud`, `nvidia`, `kilo`, and `opencode-go` never see any thinking key, because those gateways 400 on unknown fields and a deterministic 400 cools a healthy provider for the cooldown window.
+- **Budget translation, not deletion** — a Strata-style `reasoning_budget_tokens` sent to a cloud provider is banded into `high` / `medium` / `low` (thresholds `REASONING_BUDGET_BANDS`, `>8192`/`>4096`) unless the caller also passed an explicit `reasoning_effort`, which always wins.
+- **Optional floor** — `AUTO_GO_DEFAULT_REASONING_EFFORT` is empty by default so the provider default governs (Gemini 3 = dynamic/high); setting it applies a floor to `*-go` aliases only.
+
+Verified by `apps/free_llm_proxy/tests/test_thinking_limits.py` (per-provider clamp, both token spellings, no inflation of small budgets, declared vs stripped passthrough, OpenRouter normalization, budget banding, explicit-effort precedence) and by `test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` in `apps/free_llm_proxy/tests/test_proxy.py`, which keeps the Strata 131,072-token passthrough and asserts the cloud route now clamps above the retired 16k floor.
 
 ## Virtual Model Aliases
 
@@ -254,8 +255,10 @@ Environment variables (loaded strictly from `apps/free_llm_proxy/.env` to isolat
 | `SQLITE_DB_PATH` | `data/free_llm_proxy.db` | Audit database location (`:memory:` supported for tests) |
 | `STRATA_BASE_URL` | `http://localhost:8080/v1` | Local Strata OpenAI-compatible endpoint URL |
 | `ENABLE_STRATA` | `true` | Toggle inclusion of local Strata provider in proxy pool |
-| `CLOUD_MAX_OUTPUT_TOKENS` | `16384` | Output-token ceiling enforced on all non-Strata (cloud) routes; Strata is exempt |
-| `CLOUD_REQUEST_TIMEOUT_SECONDS` | `45.0` | Wall-clock cap on each non-Strata provider attempt; on expiry the attempt yields `504 timeout_error` and failover continues. Strata exempt; `<= 0` disables |
+| `CLOUD_MAX_OUTPUT_TOKENS` | `32768` | Fallback output-token ceiling for cloud providers that declare no `max_output_tokens`; Strata is exempt |
+| `CLOUD_REQUEST_TIMEOUT_SECONDS` | `90.0` | Wall-clock cap on each non-Strata provider attempt (and the httpx read window); on expiry the attempt yields `504 timeout_error` and failover continues. Strata exempt; `<= 0` disables |
+| `PAID_TIMEOUT_GUARD` | `true` | Skip the paid OpenCode Go tier when a free provider already timed out (explicit `opencode-go/<model>` requests always served) |
+| `AUTO_GO_DEFAULT_REASONING_EFFORT` | unset | Optional `low`/`medium`/`high` thinking floor for `*-go` aliases; only sent to providers declaring `thinking_params` |
 | `CONNECTOR_ID` | hostname | Connector identity returned by `/health` and `/v1/metrics`; compose sets `workstation` / `secondary` |
 | `SECURITY_ALERT_401_THRESHOLD` | `20` | Unauthorized requests within the window required to emit one `security.401_spike` warning (`0` disables) |
 | `SECURITY_ALERT_WINDOW_SECONDS` | `300` | Rolling window for the log-only 401 spike monitor |

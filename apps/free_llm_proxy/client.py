@@ -2,7 +2,26 @@
 
 from collections.abc import AsyncGenerator
 from typing import Any
+
 import httpx
+
+from apps.free_llm_proxy import config
+
+# Used only when the wall-clock cap is disabled (<= 0): a generous read window.
+_FALLBACK_TOTAL_TIMEOUT = 300.0
+
+
+def build_timeout(connect: float = 3.0) -> httpx.Timeout:
+    """Returns the per-attempt httpx timeout derived from the configured cap.
+
+    The read window must not be a second, tighter cap: a hardcoded 60s here would
+    make `CLOUD_REQUEST_TIMEOUT_SECONDS` unreachable and surface long reasoning
+    passes as connection errors instead of `504 timeout_error`.
+    """
+    total = config.CLOUD_REQUEST_TIMEOUT_SECONDS
+    if total <= 0:
+        total = _FALLBACK_TOTAL_TIMEOUT
+    return httpx.Timeout(total, connect=connect)
 
 
 def build_request_headers(provider_cfg: dict) -> dict[str, str]:
@@ -35,13 +54,24 @@ async def execute_completion(
 
     should_close = False
     if client is None:
-        client = httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=3.0))
+        client = httpx.AsyncClient(timeout=build_timeout())
         should_close = True
 
     try:
         if not stream:
             try:
                 resp = await client.post(url, headers=headers, json=payload)
+            except httpx.TimeoutException as exc:
+                return (
+                    504,
+                    {
+                        "error": {
+                            "message": f"Provider {base_url} timed out: {exc}",
+                            "type": "timeout_error",
+                        }
+                    },
+                    {},
+                )
             except httpx.RequestError as exc:
                 return (
                     503,
@@ -67,6 +97,17 @@ async def execute_completion(
             try:
                 req = client.build_request("POST", url, headers=headers, json=payload)
                 resp = await client.send(req, stream=True)
+            except httpx.TimeoutException as exc:
+                return (
+                    504,
+                    {
+                        "error": {
+                            "message": f"Provider {base_url} timed out: {exc}",
+                            "type": "timeout_error",
+                        }
+                    },
+                    {},
+                )
             except httpx.RequestError as exc:
                 return (
                     503,

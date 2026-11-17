@@ -23,10 +23,26 @@ ENABLE_STRATA = os.environ.get("ENABLE_STRATA", "true").lower() not in {
     "false",
     "no",
 }
-CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "16384"))
+CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "32768"))
+# Wall clock per cloud attempt. Must stay below the tightest caller's patience so
+# failover can finish inside the caller's window (live trader: 200s, engine
+# instructor clients: 180s). Streaming is not bounded by this.
 CLOUD_REQUEST_TIMEOUT_SECONDS = float(
-    os.environ.get("CLOUD_REQUEST_TIMEOUT_SECONDS", "45.0")
+    os.environ.get("CLOUD_REQUEST_TIMEOUT_SECONDS", "90.0")
 )
+# Never let a wall-clock timeout on a free provider buy paid-tier tokens.
+PAID_TIMEOUT_GUARD = os.environ.get("PAID_TIMEOUT_GUARD", "true").lower() not in {
+    "0",
+    "false",
+    "no",
+}
+# Optional global reasoning effort for the *-go aliases. Empty keeps the
+# provider default (Gemini 3 = dynamic/high) instead of forcing a floor.
+AUTO_GO_DEFAULT_REASONING_EFFORT = (
+    os.environ.get("AUTO_GO_DEFAULT_REASONING_EFFORT", "").strip().lower()
+)
+# reasoning_budget_tokens (Strata-style) bands mapped onto effort levels.
+REASONING_BUDGET_BANDS = ((8192, "high"), (4096, "medium"))
 CONNECTOR_ID = os.environ.get("CONNECTOR_ID") or socket.gethostname()
 SECURITY_ALERT_401_THRESHOLD = int(os.environ.get("SECURITY_ALERT_401_THRESHOLD", "20"))
 SECURITY_ALERT_WINDOW_SECONDS = int(

@@ -173,17 +173,19 @@ async def query_multi_tier_llm(
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
     fallback_api_key: str | None = None,
     http_client: httpx.AsyncClient | None = None,
-    max_tokens: int = 16384,
+    max_tokens: int = 32768,
     reasoning_budget_tokens: int | None = 12288,  # Unused for auto-go; kept for caller compatibility
     strata_timeout: float = 45.0,
-    fallback_timeout: float = 120.0,
+    # Must exceed the proxy's per-candidate wall clock (CLOUD_REQUEST_TIMEOUT_SECONDS,
+    # default 90s) with room for one failover, or the caller hangs up mid-chain.
+    fallback_timeout: float = 200.0,
     purpose: str | None = None,
 ) -> str:
     """Query free-llm-proxy directly using auto-go (bypassing local Strata)."""
     _ = (strata_url, reasoning_budget_tokens, strata_timeout)
     should_close = False
     if http_client is None:
-        http_client = httpx.AsyncClient(timeout=120.0)
+        http_client = httpx.AsyncClient(timeout=fallback_timeout)
         should_close = True
 
     try:

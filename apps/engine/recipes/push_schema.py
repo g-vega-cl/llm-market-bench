@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -77,9 +79,29 @@ class StrategyStage(BaseModel):
     """Single LLM execution stage with ordered push blocks and allowed tool names."""
 
     id: str
-    title: str = "Stage 1"
     blocks: list[StrategyBlock] = Field(default_factory=list)
     selected_tools: list[str] = Field(default_factory=list)
+
+
+_RECIPE_NAMING_PATH = Path(__file__).resolve().parents[3] / "packages" / "config" / "recipe-naming.json"
+
+
+@lru_cache(maxsize=1)
+def recipe_naming() -> dict[str, Any]:
+    """Shared web/engine naming contract (packages/config/recipe-naming.json)."""
+    try:
+        with open(_RECIPE_NAMING_PATH, encoding="utf-8") as fh:
+            naming = json.load(fh)
+        return {
+            "defaultName": str(naming["defaultName"]),
+            "nameMaxLength": int(naming["nameMaxLength"]),
+        }
+    except (OSError, KeyError, ValueError) as exc:
+        raise RuntimeError(f"Recipe naming contract is missing or invalid: {_RECIPE_NAMING_PATH}") from exc
+
+
+DEFAULT_STRATEGY_NAME: str = recipe_naming()["defaultName"]
+RECIPE_NAME_MAX_LENGTH: int = recipe_naming()["nameMaxLength"]
 
 
 class PushStrategy(BaseModel):
@@ -92,10 +114,22 @@ class PushStrategy(BaseModel):
 
     version: Literal["2.0-push"] = "2.0-push"
     id: str | None = None
-    name: str = "Untitled Strategy"
+    name: str = Field(default=DEFAULT_STRATEGY_NAME, max_length=RECIPE_NAME_MAX_LENGTH)
     description: str = ""
     cadence: Literal["5m", "3h", "1d"] = "3h"
     stages: list[StrategyStage] = Field(min_length=1, max_length=1)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def normalize_name(cls, value: Any) -> str:
+        """`strategy_recipes.name` is NOT NULL, so blank or null falls back.
+
+        `graph_json` is free-form JSON: an older writer could store `name: null`,
+        which must normalize instead of failing validation in the worker.
+        """
+        if not isinstance(value, str):
+            return DEFAULT_STRATEGY_NAME
+        return value.strip()[:RECIPE_NAME_MAX_LENGTH] or DEFAULT_STRATEGY_NAME
 
     @field_validator("stages", mode="before")
     @classmethod

@@ -20,9 +20,7 @@ export function PromptVisualizer({
         <div className="flex flex-col gap-2 border border-border bg-boxel-surface p-4 rounded-none">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-foreground">
-                        Prompt Visualizer — {stage.title}
-                    </span>
+                    <span className="text-sm font-bold text-foreground">Prompt Visualizer</span>
                     <Badge variant="outline" size="sm">
                         {previewState.status === 'hydrated'
                             ? 'Live DB Hydrated'
@@ -40,7 +38,7 @@ export function PromptVisualizer({
             </div>
 
             {previewState.status === 'error' && (
-                <div className="border border-destructive bg-boxel-canvas p-2 text-xs font-normal text-destructive rounded-none">
+                <div className="border border-danger bg-boxel-canvas p-2 text-xs font-normal text-danger rounded-none">
                     {previewState.message}
                 </div>
             )}

@@ -78,6 +78,13 @@ def filter_diff(diff_content: str) -> str:
         ".map",
         "dist/",
         "build/",
+        # Documentation inputs: pages are regenerated from the code diff, so
+        # sending their full text (often >15k chars) only truncates the model
+        # response and blocks the commit.
+        " a/wiki/",
+        " a/raw/",
+        " a/knowledge-db/",
+        " a/docs/",
     ]
 
     # Split the diff into file blocks
@@ -298,9 +305,9 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 16384,
+        "max_tokens": 32768,
         "reasoning": {
-            "max_tokens": 2048,
+            "max_tokens": 4096,
         },
         "response_format": {"type": "json_object"},
     }
@@ -475,6 +482,38 @@ def apply_page_deletions(paths: list) -> None:
                 print(f"  [auto-wiki] index.md: removed entry for {rel_path}", file=sys.stderr)
 
 
+_FILE_PATH_LINK = re.compile(r"\[\[([^\[\]\n]*?\.(?:json|ya?ml|py|tsx?|sql|md|sh|toml|cfg|ini))\]\]")
+
+
+def sanitize_wikilinks(content: str) -> str:
+    """Render file-path "wiki links" as inline code.
+
+    `wiki_lint` resolves every `[[target]]` to a wiki page, so an LLM-emitted
+    link such as `[[packages/config/recipe-naming.json]]` has no page behind it
+    and fails the pre-commit lint. Page links (`[[entities/recipe-studio]]`)
+    are left untouched.
+    """
+    return _FILE_PATH_LINK.sub(lambda match: f"`{match.group(1)}`", content)
+
+
+_WIKILINK = re.compile(r"\[\[([^\[\]\n]+)\]\]")
+
+
+def delink_missing_pages(content: str) -> str:
+    """Turn `[[ghost-page]]` into plain text when no page exists for it.
+
+    The generator occasionally cites a page it never creates; `wiki_lint`
+    rejects those links, which blocks the commit.
+    """
+
+    def replace(match: re.Match[str]) -> str:
+        target = match.group(1).split("|")[0].strip()
+        rel = target if target.endswith(".md") else f"{target}.md"
+        return match.group(0) if (WIKI_DIR / rel).is_file() else match.group(1)
+
+    return _WIKILINK.sub(replace, content)
+
+
 def write_new_page(rel_path: str, content: str) -> None:
     rel_path = rel_path.removeprefix("wiki/").removeprefix("/")
     if rel_path in ("index.md", "SCHEMA.md"):
@@ -485,6 +524,7 @@ def write_new_page(rel_path: str, content: str) -> None:
         print(f"  [auto-wiki] ERROR: path traversal attempt: {rel_path}", file=sys.stderr)
         return
     target.parent.mkdir(parents=True, exist_ok=True)
+    content = delink_missing_pages(sanitize_wikilinks(content))
     if not content.endswith("\n"):
         content += "\n"
     target.write_text(content)

@@ -20,7 +20,9 @@ import {
     SavedRecipesStrip,
     StudioAlertSlot,
 } from '../components/RecipeGuideAndQuotaBlock';
+import { RecipeNameField } from '../components/RecipeNameField';
 import { StageBuilder } from '../components/StageBuilder';
+import { StudioActionBar } from '../components/StudioActionBar';
 import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
 import { STARTER_RECIPES } from '../starter-templates';
 import type {
@@ -45,6 +47,7 @@ import {
     resolvePreviousBacktestJobId,
     upsertSavedRecipeSummary,
 } from '../utils/live-studio-helpers';
+import { RecipeSaveError, useRecipeDraft } from '../utils/use-recipe-draft';
 
 interface RecipeStudioPageProps {
     initialStrategy?: PushStrategy | null;
@@ -62,9 +65,11 @@ export function RecipeStudioPage({
     initialUserRecipes = [],
 }: RecipeStudioPageProps = {}) {
     const navigate = useNavigate();
-    const [strategy, setStrategy] = useState<PushStrategy>(
-        () => initialStrategy ?? STARTER_RECIPES[0],
+    const draft = useRecipeDraft(
+        initialStrategy ?? STARTER_RECIPES[0],
+        initialStrategy?.name ?? null,
     );
+    const strategy = draft.strategy;
     const [activeTemplateIdx, setActiveTemplateIdx] = useState<number>(() =>
         initialStrategy ? -1 : 0,
     );
@@ -92,7 +97,7 @@ export function RecipeStudioPage({
 
     const handleSelectTemplate = (idx: number) => {
         setActiveTemplateIdx(idx);
-        setStrategy(STARTER_RECIPES[idx]);
+        draft.resetTo(STARTER_RECIPES[idx]);
         setExecution({ status: 'idle' });
         setScheduleError(null);
         setPreview({ status: 'template' });
@@ -100,7 +105,7 @@ export function RecipeStudioPage({
     };
 
     const handleStageChange = (updated: StrategyStage) => {
-        setStrategy((prev) => ({ ...prev, stages: [updated] }));
+        draft.setStage(updated);
         setPreview({ status: 'template' });
     };
 
@@ -133,10 +138,22 @@ export function RecipeStudioPage({
     };
 
     const persistActiveStrategy = async (): Promise<StrategyRecipeRecord> => {
-        const saved = (await saveRecipeFn({ data: { recipe: strategy } })) as StrategyRecipeRecord;
-        setStrategy((prev) => (prev.id === saved.id ? prev : { ...prev, id: saved.id }));
+        // One in-flight save at a time: run/schedule callers share the promise,
+        // so a recipe can never be inserted twice from a duplicate click.
+        const saved = await draft.save(
+            (recipe) => saveRecipeFn({ data: { recipe } }) as Promise<StrategyRecipeRecord>,
+        );
         setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved));
         return saved;
+    };
+
+    const handleSaveRecipe = async () => {
+        if (isBusy || !draft.isDirty) return;
+        try {
+            await persistActiveStrategy();
+        } catch {
+            // Draft state surfaces the message inline next to the field.
+        }
     };
 
     const settleLiveExecution = async (
@@ -177,14 +194,20 @@ export function RecipeStudioPage({
 
             await settleLiveExecution(saved.id, job);
         } catch (err) {
-            setExecution(
-                buildExecutionErrorState({
-                    err,
-                    mode,
-                    queuedBacktestJobId,
-                    prevBacktestJobId,
-                }),
-            );
+            // A failed save is reported inline next to the name field; surfacing
+            // it here too would duplicate the alert.
+            if (err instanceof RecipeSaveError) {
+                setExecution({ status: 'idle' });
+            } else {
+                setExecution(
+                    buildExecutionErrorState({
+                        err,
+                        mode,
+                        queuedBacktestJobId,
+                        prevBacktestJobId,
+                    }),
+                );
+            }
         } finally {
             if (!didNavigate) await refreshQuota();
         }
@@ -192,6 +215,19 @@ export function RecipeStudioPage({
 
     const currentSavedRecord = userRecipes.find((r) => r.id === strategy.id);
     const isCurrentlyScheduledLive = Boolean(currentSavedRecord?.is_live);
+
+    const applyScheduleError = (err: unknown) => {
+        // A failed save is reported inline next to the name field.
+        if (err instanceof RecipeSaveError) return;
+        const message =
+            err instanceof Error ? err.message : 'Failed updating Scheduled Live status';
+        if (isQuotaLimitMessage(message)) {
+            console.warn('[RecipeStudio] Scheduled Live blocked by quota:', message);
+        } else {
+            console.error('[RecipeStudio] Failed updating Scheduled Live status:', err);
+        }
+        setScheduleError(message);
+    };
 
     const handleToggleScheduledLive = async () => {
         if (isBusy) return;
@@ -207,14 +243,7 @@ export function RecipeStudioPage({
             });
             setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved, updated.is_live));
         } catch (err) {
-            const message =
-                err instanceof Error ? err.message : 'Failed updating Scheduled Live status';
-            if (isQuotaLimitMessage(message)) {
-                console.warn('[RecipeStudio] Scheduled Live blocked by quota:', message);
-            } else {
-                console.error('[RecipeStudio] Failed updating Scheduled Live status:', err);
-            }
-            setScheduleError(message);
+            applyScheduleError(err);
         } finally {
             setIsTogglingLive(false);
             await refreshQuota();
@@ -242,7 +271,7 @@ export function RecipeStudioPage({
     };
 
     const isRunning = execution.status === 'running';
-    const isBusy = isRunning || isTogglingLive;
+    const isBusy = isRunning || isTogglingLive || draft.isSaving;
     const backtestButtonLabel = resolveBacktestButtonLabel(
         isRunning && execution.mode === 'backtest',
         quotaStatus,
@@ -261,6 +290,15 @@ export function RecipeStudioPage({
                                 5-Block Push v2
                             </Badge>
                         </div>
+                        <RecipeNameField
+                            value={strategy.name}
+                            onChange={draft.setName}
+                            onSave={handleSaveRecipe}
+                            isDirty={draft.isDirty}
+                            saveState={draft.saveState}
+                            errorMessage={draft.saveError}
+                            disabled={isBusy}
+                        />
                         <p className="text-xs font-normal text-muted-foreground">
                             Compose Prompt, News, Memories, Technicals, and Output Format blocks
                             into a single Long-Only LLM call (runs 3x/day ET at 09:30, 12:30,
@@ -268,49 +306,20 @@ export function RecipeStudioPage({
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowPledgeModal(true)}
-                        >
-                            ★ Waitlist
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={handleLoadAlerts}>
-                            Alerts ({alerts.filter((a) => !a.is_read).length})
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant={isCurrentlyScheduledLive ? 'solid' : 'outline'}
-                            colorScheme={isCurrentlyScheduledLive ? 'success' : 'neutral'}
-                            onClick={handleToggleScheduledLive}
-                            disabled={isBusy}
-                            isLoading={isTogglingLive}
-                        >
-                            {isCurrentlyScheduledLive
-                                ? 'Scheduled Live: ON (3x/d)'
-                                : 'Schedule Live (3x/d)'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleExecute('live_turn')}
-                            disabled={isBusy}
-                        >
-                            {isRunning && execution.mode === 'live_turn'
-                                ? 'Running Live...'
-                                : '▶ Run Live'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="solid"
-                            onClick={() => handleExecute('backtest')}
-                            disabled={isBusy}
-                            isLoading={isRunning && execution.mode === 'backtest'}
-                        >
-                            {backtestButtonLabel}
-                        </Button>
-                    </div>
+                    <StudioActionBar
+                        isBusy={isBusy}
+                        isTogglingLive={isTogglingLive}
+                        isCurrentlyScheduledLive={isCurrentlyScheduledLive}
+                        isRunningLiveTurn={isRunning && execution.mode === 'live_turn'}
+                        isRunningBacktest={isRunning && execution.mode === 'backtest'}
+                        backtestButtonLabel={backtestButtonLabel}
+                        unreadAlerts={alerts.filter((a) => !a.is_read).length}
+                        onOpenWaitlist={() => setShowPledgeModal(true)}
+                        onOpenAlerts={handleLoadAlerts}
+                        onToggleScheduledLive={handleToggleScheduledLive}
+                        onRunLive={() => handleExecute('live_turn')}
+                        onBacktest={() => handleExecute('backtest')}
+                    />
                 </div>
 
                 <StudioAlertSlot

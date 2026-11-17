@@ -28,8 +28,23 @@ in ~20ms with no API cost and is invoked on every commit via a pre-commit hook.
 Resolution is done via `WIKI_DIR / target`; unresolvable targets return `None`
 and surface as broken-link findings.
 
+## Code Span Stripping (`strip_code`)
+
+`extract_links(content)` runs over `strip_code(content)` rather than the raw page
+body. `strip_code` removes fenced code blocks (`FENCED_CODE_RE`, ```` ```…``` ````
+with `re.DOTALL`) and then inline code spans (`INLINE_CODE_RE`, `` `…` `` on a
+single line) before the `LINK_RE` scan.
+
+This matters because documentation *about* wikilink syntax necessarily shows
+literal `target` examples inside backticks — for example a page explaining
+that `[[entities/engine]]` resolves to `entities/engine.md`. Those examples are
+not links, and without stripping they were reported as broken links, blocking
+the commit that documented the syntax. Fenced blocks are stripped first so a
+multi-line example cannot leave a stray backtick that swallows real prose.
+
 ## Related
 
 - [[entities/auto-wiki]] — the agent that produces wiki edits this linter verifies
 - [[concepts/wiki-synchronization]] — the workflow this linter backs
+- [[concepts/code-reference-validation]] — backtick codebase-path validation
 - [[entities/engine]]

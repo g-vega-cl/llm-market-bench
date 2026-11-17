@@ -7,7 +7,6 @@
     "stages": [
       {
         "id": "stage-1",
-        "title": "Catalyst & Technical Analysis",
         "selected_tools": [
           "get_technical_indicators",
           "get_key_metrics",

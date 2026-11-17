@@ -27,7 +27,6 @@ def _sample_strategy() -> PushStrategy:
     stages = [
         {
             "id": "stage-1",
-            "title": "Research & Filter",
             "selected_tools": ["get_technical_indicators", "get_key_metrics"],
             "blocks": [
                 {"id": "b1", "type": "prompt", "text": "Find momentum catalysts."},

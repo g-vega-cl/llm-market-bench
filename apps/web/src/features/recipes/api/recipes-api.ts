@@ -7,11 +7,16 @@ import type {
     RecipeJobRecord,
     RecipeRunDetail,
     StrategyRecipeRecord,
+    StrategyStage,
 } from '../types';
 import { assertQuotaAllowsJob } from './recipes-quota-api';
-import { assertNoPrevOutputPlaceholder, assertSingleLlmStage } from './recipes-validators';
+import {
+    assertNoPrevOutputPlaceholder,
+    assertSingleLlmStage,
+    normalizeRecipeName,
+} from './recipes-validators';
 
-export { assertNoPrevOutputPlaceholder, assertSingleLlmStage };
+export { assertNoPrevOutputPlaceholder, assertSingleLlmStage, normalizeRecipeName };
 
 export async function fetchPublicRecipes(): Promise<StrategyRecipeRecord[]> {
     const db = getDbServerClient();
@@ -36,12 +41,19 @@ export async function saveRecipe(
     assertSingleLlmStage(recipe);
     assertNoPrevOutputPlaceholder(recipe);
 
+    // Strip only the known-obsolete `title` key: a stale browser tab can still
+    // hold one and would copy it back into the row, while any stage field the
+    // engine adds later must survive the round trip untouched.
+    const { title: _obsoleteTitle, ...stage } = recipe.stages[0] as StrategyStage & {
+        title?: unknown;
+    };
     const sanitizedRecipe: PushStrategy = {
         ...recipe,
+        name: normalizeRecipeName(recipe.name),
         stages: [
             {
-                ...recipe.stages[0],
-                selected_tools: (recipe.stages[0].selected_tools ?? []).filter(
+                ...stage,
+                selected_tools: (stage.selected_tools ?? []).filter(
                     (tool) => tool !== 'web_search',
                 ),
             },

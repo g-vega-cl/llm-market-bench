@@ -10,7 +10,6 @@ describe('prompt-builder', () => {
     it('builds unhydrated and hydrated stage prompt previews', () => {
         const stage: StrategyStage = {
             id: 'stage-1',
-            title: 'Momentum',
             selected_tools: [],
             blocks: [
                 { id: 'b-prompt', type: 'prompt', text: 'Find semiconductor momentum.' },

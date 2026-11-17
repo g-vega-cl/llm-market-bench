@@ -73,18 +73,9 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
     return (
         <div className="flex flex-col gap-4 border border-border bg-boxel-surface p-4 rounded-none">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
-                <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" size="sm">
-                        LLM Call
-                    </Badge>
-                    <input
-                        type="text"
-                        aria-label="LLM Call Title"
-                        value={stage.title}
-                        onChange={(e) => onChange({ ...stage, title: e.target.value })}
-                        className="border border-border bg-boxel-canvas px-2 py-1 text-sm font-bold text-foreground rounded-none"
-                    />
-                </div>
+                <Badge variant="outline" size="sm">
+                    LLM Call
+                </Badge>
                 <div className="flex flex-wrap items-center gap-2">
                     <Button
                         size="sm"

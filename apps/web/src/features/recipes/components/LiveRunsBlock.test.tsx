@@ -21,7 +21,6 @@ describe('LiveRunsBlock', () => {
                 stages: [
                     {
                         stage_id: 's1',
-                        title: 'Stage 1',
                         prompt: 'Prompt newer',
                         output: '[{"action": "BUY", "ticker": "MSFT"}]',
                         tool_calls: [],
@@ -56,7 +55,6 @@ describe('LiveRunsBlock', () => {
                 stages: [
                     {
                         stage_id: 's1',
-                        title: 'Stage 1',
                         prompt: 'Prompt older',
                         output: 'HOLD',
                         tool_calls: [],
@@ -117,7 +115,6 @@ describe('LiveRunsBlock', () => {
             stages: [
                 {
                     stage_id: 's1',
-                    title: 'Stage 1',
                     prompt: 'Inline prompt',
                     output: '[{"action": "BUY", "ticker": "AVGO"}]',
                     tool_calls: [],

@@ -140,7 +140,7 @@ export function LiveRunsBlock({ portfolio, recentLiveRuns, latestInlineRun }: Li
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-boxel-bevel-lo pb-2">
                                         <span className="text-sm font-bold text-boxel-ink">
-                                            {st.title}
+                                            LLM Call
                                         </span>
                                         <span className="text-xs font-normal font-mono text-boxel-muted">
                                             {activeRun.signals.length > 0

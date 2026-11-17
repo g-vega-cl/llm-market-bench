@@ -154,8 +154,21 @@ def parse_frontmatter(content: str) -> dict | None:
         return None
 
 
+FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
+INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+
+
+def strip_code(content: str) -> str:
+    """Remove code spans and fences before link extraction.
+
+    Documentation about wikilink syntax shows literal `[[target]]` examples in
+    backticks; those are not links and must not be reported as broken.
+    """
+    return INLINE_CODE_RE.sub("", FENCED_CODE_RE.sub("", content))
+
+
 def extract_links(content: str) -> list[str]:
-    return [m.strip() for m in LINK_RE.findall(content)]
+    return [m.strip() for m in LINK_RE.findall(strip_code(content))]
 
 
 def resolve_link(target: str) -> str | None:

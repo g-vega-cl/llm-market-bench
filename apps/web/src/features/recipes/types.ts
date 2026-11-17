@@ -54,7 +54,6 @@ export type StrategyBlock =
 
 export interface StrategyStage {
     id: string;
-    title: string;
     blocks: StrategyBlock[];
     selected_tools: string[];
 }
@@ -315,7 +314,6 @@ export interface RecipeSummaryItem {
 
 export interface LiveStageOutput {
     stage_id: string;
-    title: string;
     prompt: string;
     output: string;
     tool_calls: string[];

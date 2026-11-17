@@ -10,26 +10,26 @@ describe('StageBuilder', () => {
         render(<StageBuilder stage={stage} onChange={vi.fn()} />);
 
         expect(screen.getByText('LLM Call')).toBeInTheDocument();
-        expect(screen.getByLabelText('LLM Call Title')).toHaveValue(stage.title);
+        expect(screen.queryByLabelText('LLM Call Title')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Remove Stage' })).not.toBeInTheDocument();
+    });
+
+    it('emits an updated stage when a prompt block is added', () => {
+        const onChange = vi.fn();
+        render(<StageBuilder stage={stage} onChange={onChange} />);
+
+        fireEvent.click(screen.getByRole('button', { name: '+ Prompt' }));
+
+        expect(onChange).toHaveBeenCalledTimes(1);
+        const updated = onChange.mock.calls[0][0];
+        expect(updated.id).toBe(stage.id);
+        expect(updated.blocks).toHaveLength(stage.blocks.length + 1);
+        expect(updated.blocks.at(-1)).toEqual(expect.objectContaining({ type: 'prompt' }));
     });
 
     it('disables adding a second immutable output format block', () => {
         render(<StageBuilder stage={stage} onChange={vi.fn()} />);
 
         expect(screen.getByRole('button', { name: '+ Output Format' })).toBeDisabled();
-    });
-
-    it('reports title edits as an updated stage', () => {
-        const onChange = vi.fn();
-        render(<StageBuilder stage={stage} onChange={onChange} />);
-
-        fireEvent.change(screen.getByLabelText('LLM Call Title'), {
-            target: { value: 'Momentum' },
-        });
-
-        expect(onChange).toHaveBeenLastCalledWith(
-            expect.objectContaining({ id: stage.id, title: 'Momentum' }),
-        );
     });
 });

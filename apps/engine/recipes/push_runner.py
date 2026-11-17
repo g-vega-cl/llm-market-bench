@@ -107,7 +107,6 @@ async def run_push_live(
         stage_results.append(
             {
                 "stage_id": stage.id,
-                "title": stage.title,
                 "prompt": prompt,
                 "output": output_text,
                 "tool_calls": res.get("tool_calls", []),

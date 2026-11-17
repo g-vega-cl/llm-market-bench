@@ -32,7 +32,6 @@ def _sample_push_strategy() -> PushStrategy:
         stages=[
             {
                 "id": "stage-1",
-                "title": "Stage 1",
                 "selected_tools": ["get_technical_indicators"],
                 "blocks": [
                     {"id": "b1", "type": "prompt", "text": "Analyze NVDA."},

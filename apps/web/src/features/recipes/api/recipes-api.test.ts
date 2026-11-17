@@ -188,6 +188,37 @@ describe('saveRecipe', () => {
         expect(calls).toHaveLength(0);
     });
 
+    it('trims the recipe name and falls back to Untitled Strategy when blank', async () => {
+        const { db, calls } = createMockDb({
+            'insert:strategy_recipes': { data: recipeRow() },
+        });
+        mockAdminDb = db;
+
+        await saveRecipe({ ...STARTER_RECIPES[0], name: '  Momentum Rotation  ' }, 'user-1');
+        await saveRecipe({ ...STARTER_RECIPES[0], name: '   ' }, 'user-1');
+
+        const inserts = calls.filter((call) => call.op === 'insert');
+        expect((inserts[0]?.payload as { name: string }).name).toBe('Momentum Rotation');
+        expect((inserts[1]?.payload as { name: string }).name).toBe('Untitled Strategy');
+    });
+
+    it('drops a legacy stage title from the persisted graph_json', async () => {
+        const { db, calls } = createMockDb({
+            'insert:strategy_recipes': { data: recipeRow() },
+        });
+        mockAdminDb = db;
+        const legacyStrategy = {
+            ...STARTER_RECIPES[0],
+            stages: [{ ...stage, title: 'Catalyst & Technical Analysis' }],
+        } as unknown as PushStrategy;
+
+        await saveRecipe(legacyStrategy, 'user-1');
+
+        const insert = calls.find((call) => call.op === 'insert');
+        const graph = (insert?.payload as { graph_json: PushStrategy }).graph_json;
+        expect(graph.stages[0]).not.toHaveProperty('title');
+    });
+
     it('strips disallowed web_search tool from stage selected_tools before saving', async () => {
         const { db, calls } = createMockDb({
             'insert:strategy_recipes': { data: recipeRow() },

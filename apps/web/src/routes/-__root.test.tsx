@@ -1,6 +1,7 @@
 import {
     createMemoryHistory,
     createRootRoute,
+    createRoute,
     createRouter,
     RouterProvider,
 } from '@tanstack/react-router';
@@ -605,9 +606,9 @@ describe('RootDocument PostHog identity synchronization', () => {
         expect(event.defaultPrevented).toBe(false);
     });
 
-    it('useIdleRouteWarmup preloads routes during idle callback', async () => {
-        const preloadSpy = vi.fn().mockResolvedValue(undefined);
+    it('useIdleRouteWarmup warms child route chunks via loadRouteChunk without executing route loaders', async () => {
         const { useIdleRouteWarmup } = await import('./__root');
+        const loaderSpy = vi.fn().mockResolvedValue(null);
 
         const testRoute = createRootRoute({
             component: () => {
@@ -615,20 +616,31 @@ describe('RootDocument PostHog identity synchronization', () => {
                 return <div>Warmup Active</div>;
             },
         });
+        const recipesDemoChild = createRoute({
+            getParentRoute: () => testRoute,
+            path: '/recipes-demo',
+            loader: loaderSpy,
+        });
 
         const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
         const router = createRouter({
-            routeTree: testRoute,
+            routeTree: testRoute.addChildren([recipesDemoChild]),
             history: memoryHistory,
         });
-        router.preloadRoute = preloadSpy;
+        const preloadSpy = vi.spyOn(router, 'preloadRoute').mockResolvedValue(undefined);
+        const loadRouteChunkSpy = vi.spyOn(router, 'loadRouteChunk').mockResolvedValue(undefined);
+        const getMatchedRoutesSpy = vi.spyOn(router, 'getMatchedRoutes');
 
         render(<RouterProvider router={router} />, {
             container: document.documentElement.parentNode as HTMLElement,
         });
 
-        // Wait for next tick / idle callback
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        expect(preloadSpy).toHaveBeenCalled();
+        // Wait for idle fallback + inter-chunk yields
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        expect(getMatchedRoutesSpy).toHaveBeenCalledWith('/recipes-demo');
+        const warmedIds = loadRouteChunkSpy.mock.calls.map(([route]) => route.id);
+        expect(warmedIds).toContain('/recipes-demo');
+        expect(preloadSpy).not.toHaveBeenCalled();
+        expect(loaderSpy).not.toHaveBeenCalled();
     });
 });

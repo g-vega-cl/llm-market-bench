@@ -19,6 +19,7 @@ import { getAuthServerClient } from '~/lib/auth';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
 import { seo } from '~/lib/seo';
 import { posthogBeforeSend } from '~/utils/posthog-filter';
+import { warmRouteChunks } from '~/utils/route-warmup';
 import appCss from '../styles/app.css?url';
 
 if (typeof window !== 'undefined') {
@@ -104,24 +105,6 @@ export const Route = createRootRoute({
     component: RootComponent,
 });
 
-export const PRELOAD_WARMUP_ROUTES = [
-    '/',
-    '/portfolios',
-    '/lab',
-    '/leaderboard',
-    '/companies',
-    '/how-it-works',
-    '/today',
-    '/audits',
-    '/autoresearch',
-    '/daily-predictions',
-    '/market-overview',
-    '/reasoning',
-    '/memories',
-    '/retired-agents',
-    '/chat',
-] as const;
-
 export function useIdleRouteWarmup() {
     const router = useRouter();
 
@@ -143,17 +126,15 @@ export function useIdleRouteWarmup() {
                 ? (id: number) => win.cancelIdleCallback?.(id)
                 : (id: number) => window.clearTimeout(id);
 
-        const handle = schedule(async () => {
-            for (const path of PRELOAD_WARMUP_ROUTES) {
-                try {
-                    await router.preloadRoute({ to: path as never });
-                } catch {
-                    // Non-blocking background warmup
-                }
-            }
+        const controller = new AbortController();
+        const handle = schedule(() => {
+            void warmRouteChunks(router, controller.signal);
         });
 
-        return () => cancel(handle);
+        return () => {
+            controller.abort();
+            cancel(handle);
+        };
     }, [router]);
 }
 

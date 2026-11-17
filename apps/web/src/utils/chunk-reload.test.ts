@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    claimChunkReloadAttempt,
     isDynamicChunkError,
+    reloadAtTarget,
     setupVitePreloadErrorHandler,
     triggerChunkReload,
 } from './chunk-reload';
@@ -158,6 +160,85 @@ describe('chunk-reload utilities', () => {
             });
 
             expect(reloadFn).toHaveBeenCalledWith(target);
+        });
+    });
+
+    describe('claimChunkReloadAttempt and reloadAtTarget', () => {
+        it('claimChunkReloadAttempt fails closed on corrupted NaN storage values and resets after cooldown', () => {
+            const now = 1000000;
+            vi.spyOn(Date, 'now').mockReturnValue(now);
+
+            mockStorage['benchify:chunk_reload_count'] = 'NaN';
+            mockStorage['benchify:last_chunk_reload_ts'] = String(now);
+            expect(claimChunkReloadAttempt({ storage: fakeSessionStorage })).toBe('circuit_open');
+
+            mockStorage = {};
+            expect(claimChunkReloadAttempt({ storage: fakeSessionStorage })).toBe('reloading');
+            expect(claimChunkReloadAttempt({ storage: fakeSessionStorage })).toBe('circuit_open');
+
+            vi.spyOn(Date, 'now').mockReturnValue(now + 61000);
+            expect(claimChunkReloadAttempt({ storage: fakeSessionStorage })).toBe('reloading');
+        });
+
+        it('reloadAtTarget calls location.reload() for relative path with #hash on same page and ignores cross-origin URLs', () => {
+            const reloadSpy = vi.fn();
+            const originalLocation = window.location;
+            const fakeLocation = {
+                href: 'https://www.benchify.dev/how-it-works#section',
+                origin: 'https://www.benchify.dev',
+                pathname: '/how-it-works',
+                search: '',
+                reload: reloadSpy,
+            };
+            Object.defineProperty(window, 'location', {
+                configurable: true,
+                value: fakeLocation,
+            });
+
+            try {
+                reloadAtTarget('/how-it-works#section');
+                expect(reloadSpy).toHaveBeenCalledTimes(1);
+                expect(fakeLocation.href).toBe('https://www.benchify.dev/how-it-works#section');
+
+                reloadAtTarget('https://evil.example/phish');
+                expect(reloadSpy).toHaveBeenCalledTimes(2);
+                expect(fakeLocation.href).toBe('https://www.benchify.dev/how-it-works#section');
+
+                reloadAtTarget('/recipes-demo');
+                expect(reloadSpy).toHaveBeenCalledTimes(2);
+                expect(fakeLocation.href).toBe('https://www.benchify.dev/recipes-demo');
+            } finally {
+                Object.defineProperty(window, 'location', {
+                    configurable: true,
+                    value: originalLocation,
+                });
+            }
+        });
+
+        it('claimChunkReloadAttempt fails closed when sessionStorage throws or getter throws SecurityError', () => {
+            const brokenStorage = {
+                getItem: vi.fn(() => null),
+                setItem: vi.fn(() => {
+                    throw new Error('QuotaExceededError');
+                }),
+            } as unknown as Storage;
+
+            expect(claimChunkReloadAttempt({ storage: brokenStorage })).toBe('circuit_open');
+
+            const originalDescriptor = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+            Object.defineProperty(window, 'sessionStorage', {
+                configurable: true,
+                get() {
+                    throw new DOMException('Blocked', 'SecurityError');
+                },
+            });
+            try {
+                expect(claimChunkReloadAttempt()).toBe('circuit_open');
+            } finally {
+                if (originalDescriptor) {
+                    Object.defineProperty(window, 'sessionStorage', originalDescriptor);
+                }
+            }
         });
     });
 

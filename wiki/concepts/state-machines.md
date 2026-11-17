@@ -196,6 +196,14 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
   - `session_skip_reason` in `apps/engine/tasks/stock_picker.py` refuses morning overwrites once any basket for `target_date` is `evaluated`, even with `--force`.
   - Evaluation batch upserts merge `{**orig, ...updates}` with `on_conflict="id"` so PostgreSQL `NOT NULL` checks during `INSERT ... ON CONFLICT DO UPDATE` never reject partial payloads, and `cancelled` baskets explicitly clear all six performance metrics.
 
+### 2.8 Dynamic Chunk Error Recovery (`ChunkRecoveryPhase`)
+
+- **Source Files**: [`apps/web/src/utils/chunk-reload.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/utils/chunk-reload.ts), [`apps/web/src/components/ui/DefaultCatchBoundary.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/components/ui/DefaultCatchBoundary.tsx)
+- **States**: `checking` (pre-commit render) $\to$ `reloading` $\to$ `dispatched` | `circuit_open`
+- **Invariants**:
+  - `claimChunkReloadAttempt()` atomically validates `sessionStorage` retry state (`Number.isFinite` and non-negative) and fails closed (`circuit_open`) whenever storage is unavailable, throws `SecurityError`/`QuotaExceededError`, or holds corrupted `NaN` values, preventing infinite reload loops.
+  - `DefaultCatchBoundary` claims the slot once per error identity, defers telemetry + dispatch by one macrotask so parent `PostHogProvider` `init()` completes on cold root-level errors, reports `auto_reloaded` truthfully to PostHog (`captureException`), transitions to `dispatched` inside the timer callback before calling `reloadAtTarget()`, and enforces same-origin `#hash`-safe reloading.
+
 ---
 
 ## 3. Implicit State Debt & Refactoring Backlog

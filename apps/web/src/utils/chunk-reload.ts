@@ -48,22 +48,67 @@ interface TriggerChunkReloadOptions {
     reloadFn?: (url?: string) => void;
 }
 
+function readReloadState(
+    storage: Storage | null,
+    cooldownMs: number,
+    now: number,
+): { count: number } {
+    if (!storage) return { count: Number.POSITIVE_INFINITY };
+    const rawTs = storage.getItem(CHUNK_RELOAD_TS_KEY);
+    const rawCount = storage.getItem(CHUNK_RELOAD_COUNT_KEY);
+    const lastTs = rawTs === null || rawTs === '' ? 0 : Number(rawTs);
+    let count = rawCount === null || rawCount === '' ? 0 : Number(rawCount);
+    if (!Number.isFinite(lastTs) || !Number.isFinite(count) || lastTs < 0 || count < 0) {
+        // Fail closed if storage values are corrupted so reloads can never loop infinitely
+        return { count: Number.POSITIVE_INFINITY };
+    }
+    // Reset counter if previous attempt happened outside the cooldown window
+    if (now - lastTs > cooldownMs) {
+        count = 0;
+    }
+    return { count };
+}
+
+/**
+ * Hard-reloads the current document or navigates to a different same-origin route URL.
+ * Resolves relative URLs against `window.location.href` and compares origin+pathname+search
+ * so same-document `#hash` URLs trigger a real `location.reload()` rather than a hash jump.
+ */
+export function reloadAtTarget(url?: string): void {
+    if (typeof window === 'undefined') return;
+
+    if (!url) {
+        window.location.reload();
+        return;
+    }
+
+    try {
+        const currentUrl = new URL(window.location.href);
+        const targetUrl = new URL(url, window.location.href);
+        if (targetUrl.origin !== currentUrl.origin) {
+            window.location.reload();
+            return;
+        }
+        if (targetUrl.pathname === currentUrl.pathname && targetUrl.search === currentUrl.search) {
+            window.location.reload();
+        } else {
+            window.location.href = targetUrl.href;
+        }
+    } catch {
+        window.location.reload();
+    }
+}
+
 function shouldAllowReloadAttempt(
     storage: Storage | null,
     cooldownMs: number,
     maxRetries: number,
     now: number,
 ): boolean {
-    if (!storage) return true;
+    if (!storage) return false;
 
     try {
-        const lastTs = Number(storage.getItem(CHUNK_RELOAD_TS_KEY) || '0');
-        let count = Number(storage.getItem(CHUNK_RELOAD_COUNT_KEY) || '0');
-
-        // Reset counter if previous attempt happened outside the cooldown window
-        if (now - lastTs > cooldownMs) {
-            count = 0;
-        }
+        const { count } = readReloadState(storage, cooldownMs, now);
 
         // Hard circuit-breaker: fail closed if max retries exceeded
         if (count >= maxRetries) {
@@ -74,9 +119,40 @@ function shouldAllowReloadAttempt(
         storage.setItem(CHUNK_RELOAD_TS_KEY, String(now));
         return true;
     } catch {
-        // Storage quota or privacy sandbox errors; fall through to allow reload once
-        return true;
+        // Fail closed when storage is blocked/full so reloads can never loop infinitely
+        return false;
     }
+}
+
+function getSessionStorageSafe(provided?: Storage): Storage | null {
+    if (provided !== undefined) {
+        return provided;
+    }
+    try {
+        return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+    } catch {
+        return null;
+    }
+}
+
+export type ChunkReloadClaimStatus = 'reloading' | 'circuit_open';
+
+/**
+ * Atomically claims a single chunk-reload slot in sessionStorage before dispatching navigation.
+ * Guarantees telemetry sees the authoritative reload decision before teardown starts.
+ */
+export function claimChunkReloadAttempt(
+    options?: Pick<TriggerChunkReloadOptions, 'cooldownMs' | 'maxRetries' | 'storage'>,
+): ChunkReloadClaimStatus {
+    if (typeof window === 'undefined') return 'circuit_open';
+
+    const cooldownMs = options?.cooldownMs ?? DEFAULT_COOLDOWN_WINDOW_MS;
+    const maxRetries = options?.maxRetries ?? MAX_AUTO_RELOADS;
+    const storage = getSessionStorageSafe(options?.storage);
+
+    return shouldAllowReloadAttempt(storage, cooldownMs, maxRetries, Date.now())
+        ? 'reloading'
+        : 'circuit_open';
 }
 
 /**
@@ -87,26 +163,11 @@ function shouldAllowReloadAttempt(
  */
 export function triggerChunkReload(options?: TriggerChunkReloadOptions): boolean {
     if (typeof window === 'undefined') return false;
-
-    const cooldownMs = options?.cooldownMs ?? DEFAULT_COOLDOWN_WINDOW_MS;
-    const maxRetries = options?.maxRetries ?? MAX_AUTO_RELOADS;
-    const storage =
-        options?.storage ?? (typeof sessionStorage !== 'undefined' ? sessionStorage : null);
-    const reloadFn =
-        options?.reloadFn ??
-        ((url?: string) => {
-            if (url && typeof window !== 'undefined' && url !== window.location.href) {
-                window.location.href = url;
-            } else if (typeof window !== 'undefined') {
-                window.location.reload();
-            }
-        });
-
-    const now = Date.now();
-    if (!shouldAllowReloadAttempt(storage, cooldownMs, maxRetries, now)) {
+    if (claimChunkReloadAttempt(options) !== 'reloading') {
         return false;
     }
 
+    const reloadFn = options?.reloadFn ?? reloadAtTarget;
     try {
         reloadFn(options?.targetHref);
         return true;

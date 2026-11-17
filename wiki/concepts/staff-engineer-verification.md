@@ -1,11 +1,11 @@
 ---
-tags: [verification, architecture, code-quality, staff-engineer, solid, code-smells, distributed-systems, state-machines, debugging]
+tags: [verification, architecture, code-quality, principal-engineer, distinguished-engineer, technical-fellow, solid, code-smells, distributed-systems, state-machines, debugging]
 category: concept
 ---
 
-# Staff/Principal Engineer Critical Verification
+# Principal / Distinguished Engineer / Technical Fellow Critical Verification
 
-Staff and Principal engineers evaluate code not merely by whether it compiles and passes tests, but through a critical architectural lens: **"Could this have been done better?"**, **"Is there a simpler way?"**, and **"How will this fail under load or partition?"**
+Principal Engineers, Distinguished Engineers, and Technical Fellows evaluate code not merely by whether it compiles and passes tests, but through a critical architectural lens: **"Could this have been done better?"**, **"Is there a simpler way?"**, and **"How will this fail under load or partition?"**
 
 While automated test suites and linters detect **bad code** (unhandled exceptions, syntax errors, low test coverage), they fail to detect **misaligned code** and **structural drift** (Kent Beck, Luca Rossi in `knowledge-db/2026-04-27-bad-code-progressive-complexity-and-weekly-readings-19dcdc15bacc9c0e.md`). Code can be completely covered by unit tests yet introduce severe architectural debt, implicit coupling, or silent distributed systems failure modes.
 
@@ -15,12 +15,12 @@ AI models naturally suffer from conversational sycophancy (`knowledge-db/2026-10
 
 ### 1.1 The Isolated Subagent Red-Team Pattern
 
-When the agent that writes code also performs the staff review in the same conversation turn, cognitive dissonance and self-justification degrade the review into rubber-stamping. To break this feedback loop:
-- **Cold Review Boundary**: The main agent spawns an isolated `research` subagent passing *only* the git diff and objective requirements. The main agent is prohibited from priming or defending the implementation.
+When the agent that writes code also performs the review in the same conversation turn, cognitive dissonance and self-justification degrade the review into rubber-stamping. To break this feedback loop:
+- **Cold Review Boundary**: The main agent spawns an isolated `research` subagent (`Role: "Principal / Distinguished Engineer / Technical Fellow Reviewer"`) passing *only* the git diff and objective requirements. The main agent is prohibited from priming or defending the implementation.
 - **Adversarial Mandate**: The subagent explicitly hunts for leaky abstractions, race conditions, edge-case failures, and architectural drift.
 - **Triage Loop**: Tactical bugs caught by the subagent are fixed immediately; structural critiques are recorded as debt rather than being rationalized away.
 
-Staff-level review forces counterfactual examination before committing any change:
+Principal / Distinguished Engineer / Technical Fellow review forces counterfactual examination before committing any change:
 
 1. **The "Do Nothing / Delete" Check**:
    - Could this requirement be satisfied by removing code, leveraging an existing PostgREST query, or reusing an existing utility instead of adding new lines?
@@ -71,7 +71,7 @@ Systems running background cron jobs, database persistence, and external APIs op
 
 ## 5. Performance & Resource Intuition (Orders of Magnitude)
 
-Staff engineers think in physical orders of magnitude:
+Principal Engineers, Distinguished Engineers, and Technical Fellows think in physical orders of magnitude:
 - CPU Cache: ~1 nanosecond
 - RAM Access: ~100 nanoseconds
 - NVMe SSD / Disk I/O: ~10–100 microseconds
@@ -84,7 +84,7 @@ Staff engineers think in physical orders of magnitude:
 
 ## 6. The 5-Step System Design Interview Framework
 
-When auditing features, treat the pull request as an L5/L6 System Design Interview (based on the framework by Neo Kim & Abdirahman Jama in `knowledge-db/2026-03-07-i-struggled-with-system-design-interview-until-i-learned-thi-19cc890c76fbffe2.md`):
+When auditing features, treat the pull request as an L8–L10 (Principal / Distinguished Engineer / Technical Fellow) System Design and Evolutionary Architecture Review (extending the framework by Neo Kim & Abdirahman Jama in `knowledge-db/2026-03-07-i-struggled-with-system-design-interview-until-i-learned-thi-19cc890c76fbffe2.md`):
 
 1. **Functional & Non-Functional Boundaries**:
    - What are the core user flows? What is explicitly out of scope?
@@ -104,7 +104,7 @@ When auditing features, treat the pull request as an L5/L6 System Design Intervi
 
 ## 7. State-Space Minimization ("Make Illegal States Unrepresentable")
 
-Systems with unbounded or loosely typed state suffer from combinatorial explosion ($2^N$ states for $N$ boolean flags) and implicit edge states that escape unit test coverage. During Staff/Principal review, verify state design against `[[concepts/state-machines]]`:
+Systems with unbounded or loosely typed state suffer from combinatorial explosion ($2^N$ states for $N$ boolean flags) and implicit edge states that escape unit test coverage. During Principal / Distinguished Engineer / Technical Fellow review, verify state design against `[[concepts/state-machines]]`:
 
 1. **Eliminate Boolean Flag Sprawl**:
    - Prohibit compound boolean flags (`is_loading`, `is_error`, `is_ready`, `has_data`, `is_retrying`) to represent mutually exclusive lifecycle phases.
@@ -120,7 +120,7 @@ Systems with unbounded or loosely typed state suffer from combinatorial explosio
 
 ## 8. The 10/10 Agentic Debugging Protocol
 
-When tests or verification checks fail during implementation, AI agents frequently fall into **"Shotgun Debugging"**—blindly editing files, tacking on boolean flags, or patching symptoms until tests pass. Staff-level verification enforces a strict 5-step investigative loop:
+When tests or verification checks fail during implementation, AI agents frequently fall into **"Shotgun Debugging"**—blindly editing files, tacking on boolean flags, or patching symptoms until tests pass. Principal / Distinguished Engineer / Technical Fellow verification enforces a strict 5-step investigative loop:
 
 1. **Locate & Reproduce**:
    - Pinpoint the exact origin. Write or isolate a minimal, hermetic reproduction test case first (TDD).

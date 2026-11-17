@@ -159,12 +159,12 @@ Audit all changed files through these eight tiers. Do not skip any tier.
 2. **No swallowed errors**:
    - Never write empty `except:` or `except Exception: pass` blocks without logging the traceback.
 
-### Tier 7. Staff/Principal critical code and architecture review
+### Tier 7. Principal / Distinguished Engineer / Technical Fellow critical code and architecture review
 
-Apply a rigorous staff/principal engineering audit to all changed code. Think counterfactually: **"Could this have been done better?"**, **"Is there a simpler, more robust way?"**, and **"How will this fail?"** See `[[concepts/staff-engineer-verification]]`.
+Apply a rigorous Principal / Distinguished Engineer / Technical Fellow engineering audit to all changed code. Think counterfactually: **"Could this have been done better?"**, **"Is there a simpler, more robust way?"**, and **"How will this fail?"** See `[[concepts/staff-engineer-verification]]`.
 
 1. **Mandatory Adversarial Subagent Audit**:
-   - To eliminate author bias and conversational sycophancy, the main agent MUST invoke an isolated `research` subagent via `invoke_subagent` on Antigravity or `delegate_task` on Hermes (`Role: "Staff Engineer Reviewer"`).
+   - To eliminate author bias and conversational sycophancy, the main agent MUST invoke an isolated `research` subagent via `invoke_subagent` on Antigravity or `delegate_task` on Hermes (`Role: "Principal / Distinguished Engineer / Technical Fellow Reviewer"`).
    - **Cold Context Mandate**: The prompt to the subagent must contain ONLY the 1-sentence task goal and the git diff (`git diff HEAD~1` or staged/working diff). The main agent is **strictly prohibited from providing justifications or rationalizations** to the reviewer.
    - **Adversarial Posture**: The subagent assumes the code contains flaws, anti-patterns, or fragility under load, auditing against `GEMINI.md` mandates, SOLID principles, trade idempotency, and scaling limits.
    - **Triage Protocol**:
@@ -209,9 +209,9 @@ Apply a rigorous staff/principal engineering audit to all changed code. Think co
 9. **The 10/10 Agentic Debugging & Cold Subagent Prompts**:
 
    #### A. Cold-Context Adversarial Reviewer Prompt (for `invoke_subagent` on Antigravity / `delegate_task` on Hermes)
-   When spawning the `research` subagent for Tier 7 staff review, pass strictly the 1-sentence goal and the diff inside this template:
+   When spawning the `research` subagent for Tier 7 Principal / Distinguished Engineer / Technical Fellow review, pass strictly the 1-sentence goal and the diff inside this template:
    ```markdown
-   You are an adversarial Staff Software Engineer performing a cold-context code audit.
+   You are an adversarial Principal / Distinguished Engineer / Technical Fellow performing a cold-context code audit.
    Assume the author has conversational sycophancy, patched symptoms, or introduced subtle edge-case bugs.
    
    ### TASK GOAL
@@ -226,6 +226,7 @@ Apply a rigorous staff/principal engineering audit to all changed code. Think co
    3. Invariants & Idempotency: Will re-running this mid-flight duplicate data or corrupt state? Are financial mutations CP-safe?
    4. Complexity & Smells: Does it exceed 10 decision branches (C901), introduce shotgun surgery, or leak abstraction boundaries?
    5. Performance & Leaks: Are there N+1 query loops, unindexed queries, unstripped vector embeddings, or unbounded table scans?
+   6. L8–L10 Systemic Architecture & Subtraction: Should this entire abstraction or table be deleted rather than optimized? Does it preserve cross-node replication coherence (Primary PostgreSQL vs MiniPC PostgREST replica) and hardware/compute blast-radius isolation?
    
    Deliver an uncompromising audit with concrete verdicts: PASS, WARN (Debt Incurred with counterfactual design), or FAIL (blocking defect).
    ```
@@ -276,7 +277,7 @@ Apply a rigorous staff/principal engineering audit to all changed code. Think co
 
 ## 3. Verification report format
 
-Conclude every verification run with an eight-tier status report and a mandatory Staff/Principal critique block:
+Conclude every verification run with an eight-tier status report and a mandatory Principal / Distinguished Engineer / Technical Fellow critique block:
 
 | Tier | Area | Result | Notes / Action Items |
 | :--- | :--- | :--- | :--- |
@@ -286,10 +287,10 @@ Conclude every verification run with an eight-tier status report and a mandatory
 | **Tier 4** | Domain, API & remote DB sanity | PASS / FAIL | Financial bounds, schedule guards, tool parity, migration & edge replica schema cache parity |
 | **Tier 5** | Architecture & UI/UX | PASS / FAIL | Zero frontend compute, design system, layout |
 | **Tier 6** | Observability | PASS / FAIL | logger.exception used, zero swallowed exceptions |
-| **Tier 7** | Staff/Principal critical review | PASS / WARN / FAIL | Subagent verdict, debt incurred, and action items |
+| **Tier 7** | Principal / Distinguished Engineer / Technical Fellow review | PASS / WARN / FAIL | Subagent verdict, debt incurred, and action items |
 | **Tier 8** | Wiki & docs synchronization | PASS / FAIL | Concepts/entities synced, wiki_lint clean, QMD embeddings updated |
 
-### Staff/Principal Engineer Critique
+### Principal / Distinguished Engineer / Technical Fellow Critique
 - **Subagent Verdict & Link**: PASS / WARN (Debt Incurred) / FAIL — [<label>](conversation://<conversation-id>)
 - **Tactical Defects Caught & Fixed**: <Concrete bugs, bad practices, or principle violations caught by the subagent and resolved during verification>
 - **Unresolved Structural Pushback & Fragilities**: <Where the implementation is still flimsy, leaky, or couples too many modules, plus the counterfactual design that would eliminate it>

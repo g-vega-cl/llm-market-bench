@@ -75,21 +75,22 @@ def test_verify_script_checks_migration_integrity():
 
 
 def test_verify_skill_mandates_tier_8_wiki_docs():
-    """Verify that SKILL.md and wiki entity explicitly mandate 8 tiers, with Tier 7 as Staff/Principal review and Tier 8 as Wiki synchronization."""
+    """Verify SKILL.md and wiki entity mandate 8 tiers (Tier 7 Principal/Distinguished/Fellow, Tier 8 Wiki)."""
     assert VERIFY_SKILL_MD.exists(), "SKILL.md must exist"
     skill_content = VERIFY_SKILL_MD.read_text()
     assert "Tier 7" in skill_content, "SKILL.md must have a dedicated Tier 7"
     assert "Tier 8" in skill_content, "SKILL.md must have a dedicated Tier 8"
     assert "eight tiers" in skill_content.lower() or "8 tiers" in skill_content.lower()
-    assert "staff/principal" in skill_content.lower()
+    assert "principal / distinguished engineer / technical fellow" in skill_content.lower()
     assert "mccabe" in skill_content.lower() or "c901" in skill_content.lower()
-    assert "staff/principal engineer critique" in skill_content.lower()
+    assert "principal / distinguished engineer / technical fellow critique" in skill_content.lower()
 
     assert VERIFY_ENTITY_MD.exists(), "wiki/entities/verify-skill.md must exist"
     entity_content = VERIFY_ENTITY_MD.read_text()
     assert "Tier 7" in entity_content
     assert "Tier 8" in entity_content
     assert "eight tiers" in entity_content.lower() or "8 tiers" in entity_content.lower()
+    assert "principal / distinguished engineer / technical fellow" in entity_content.lower()
     assert "[[concepts/staff-engineer-verification]]" in entity_content
 
 
@@ -163,6 +164,9 @@ def test_verify_skill_mandates_adversarial_subagent_and_critique_format():
     # Must mandate spawning an isolated research subagent for cold Tier 7 review
     assert "invoke_subagent" in skill_content or "subagent" in skill_content.lower()
     assert "adversarial" in skill_content.lower()
+    assert "Principal / Distinguished Engineer / Technical Fellow" in skill_content
+    assert "Staff Engineer Reviewer" not in skill_content
+    assert "Staff Software Engineer" not in skill_content
 
     # Must enforce the 4-part critique format
     assert "Subagent Verdict & Link" in skill_content
@@ -174,6 +178,14 @@ def test_verify_skill_mandates_adversarial_subagent_and_critique_format():
     entity_content = VERIFY_ENTITY_MD.read_text()
     assert "subagent" in entity_content.lower()
     assert "adversarial" in entity_content.lower()
+    assert "Principal / Distinguished Engineer / Technical Fellow" in entity_content
+    assert "Staff Engineer Reviewer" not in entity_content
+
+    concept_path = REPO_ROOT / "wiki" / "concepts" / "staff-engineer-verification.md"
+    assert concept_path.exists(), "wiki/concepts/staff-engineer-verification.md must exist"
+    concept_content = concept_path.read_text()
+    assert "Principal / Distinguished Engineer / Technical Fellow" in concept_content
+    assert "L5/L6" not in concept_content
 
 
 def test_verify_script_checks_exception_swallowing_and_shotgun_surgery():

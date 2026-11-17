@@ -1,7 +1,7 @@
 """Tests verifying the Instructor retry loop catches tool-mode mismatch errors
 and falls through to JSON repair instead of re-raising.
 
-Defense-in-depth for the MiniMax-M3 path: if any provider emits raw JSON text
+Defense-in-depth for the MiniMax-M3.1-Flash path: if any provider emits raw JSON text
 without tool_calls, instructor's TOOLS mode raises
 'No tool calls or function call found in response (mode: TOOLS)'. The retry
 loop must treat this as repairable (append a 'give me clean JSON' message)

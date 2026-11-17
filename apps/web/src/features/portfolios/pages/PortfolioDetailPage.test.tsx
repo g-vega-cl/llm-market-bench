@@ -56,7 +56,7 @@ describe('PortfolioDetailPage Daily Move', () => {
 
     const mockPortfolio = {
         id: 'sys-port-1',
-        owner_id: 'sys-daily-spy-deepseek-v4-flash',
+        owner_id: 'sys-daily-spy-deepseek-flash',
         total_equity: 10100,
         cash_balance: 10100,
         buying_power: 40400,

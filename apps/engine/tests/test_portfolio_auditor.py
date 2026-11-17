@@ -47,7 +47,7 @@ async def test_audit_clean_portfolio(mock_supabase):
     target_date = "2026-09-29"
     pred = {
         "id": "pred-1",
-        "model_name": "MiniMax-M3",
+        "model_name": "MiniMax-M3.1-Flash",
         "predicted_direction": "UP",
         "expected_return_pct": 0.15,
         "target_date": target_date,
@@ -73,13 +73,13 @@ async def test_audit_clean_portfolio(mock_supabase):
                 data=[
                     {
                         "id": "p-1",
-                        "owner_id": "sys-daily-spy-close-MiniMax-M3",
+                        "owner_id": "sys-daily-spy-close-MiniMax-M3.1-Flash",
                         "cash_balance": 10000.0,
                         "total_equity": 10000.0,
                     },
                     {
                         "id": "p-2",
-                        "owner_id": "sys-daily-spy-MiniMax-M3",
+                        "owner_id": "sys-daily-spy-MiniMax-M3.1-Flash",
                         "cash_balance": 10000.0,
                         "total_equity": 10000.0,
                     },
@@ -133,7 +133,7 @@ async def test_audit_detects_missing_daily_spy_trade(mock_supabase):
     target_date = "2026-09-29"
     pred = {
         "id": "pred-1",
-        "model_name": "MiniMax-M3",
+        "model_name": "MiniMax-M3.1-Flash",
         "predicted_direction": "UP",
         "expected_return_pct": 0.15,
         "target_date": target_date,
@@ -158,7 +158,7 @@ async def test_audit_detects_missing_daily_spy_trade(mock_supabase):
                 data=[
                     {
                         "id": "p-1",
-                        "owner_id": "sys-daily-spy-close-MiniMax-M3",
+                        "owner_id": "sys-daily-spy-close-MiniMax-M3.1-Flash",
                         "cash_balance": 10000.0,
                         "total_equity": 10000.0,
                     },
@@ -186,7 +186,7 @@ async def test_audit_detects_missing_daily_spy_trade(mock_supabase):
     assert len(report["anomalies"]) >= 1
     anomaly = report["anomalies"][0]
     assert anomaly["type"] == "MISSING_DAILY_SPY_TRADE"
-    assert anomaly["owner_id"] == "sys-daily-spy-close-MiniMax-M3"
+    assert anomaly["owner_id"] == "sys-daily-spy-close-MiniMax-M3.1-Flash"
     assert anomaly["date"] == target_date
 
 
@@ -198,7 +198,7 @@ async def test_audit_auto_heals_missing_daily_spy_trade(mock_supabase):
     target_date = "2026-09-29"
     pred = {
         "id": "pred-1",
-        "model_name": "MiniMax-M3",
+        "model_name": "MiniMax-M3.1-Flash",
         "predicted_direction": "UP",
         "expected_return_pct": 0.15,
         "target_date": target_date,
@@ -232,7 +232,7 @@ async def test_audit_auto_heals_missing_daily_spy_trade(mock_supabase):
                 data=[
                     {
                         "id": str(uuid4()),
-                        "owner_id": "sys-daily-spy-close-MiniMax-M3",
+                        "owner_id": "sys-daily-spy-close-MiniMax-M3.1-Flash",
                         "cash_balance": 10000.0,
                         "total_equity": 10000.0,
                     },
@@ -259,7 +259,7 @@ async def test_audit_auto_heals_missing_daily_spy_trade(mock_supabase):
     assert report["status"] == "healed"
     assert len(report["healed"]) >= 1
     healed = report["healed"][0]
-    assert healed["owner_id"] == "sys-daily-spy-close-MiniMax-M3"
+    assert healed["owner_id"] == "sys-daily-spy-close-MiniMax-M3.1-Flash"
     assert healed["date"] == target_date
     assert "BACKFILLED" in str(report["summary_table_markdown"])
 
@@ -323,7 +323,7 @@ async def test_audit_detects_invalid_entry_price_daily_spy(mock_supabase):
     target_date = "2026-10-02"
     pred = {
         "id": "pred-10-02",
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "predicted_direction": "UP",
         "expected_return_pct": 0.20,
         "target_date": target_date,
@@ -348,7 +348,7 @@ async def test_audit_detects_invalid_entry_price_daily_spy(mock_supabase):
                 data=[
                     {
                         "id": "p-1",
-                        "owner_id": "sys-daily-spy-close-deepseek-v4-flash",
+                        "owner_id": "sys-daily-spy-close-deepseek-flash",
                         "cash_balance": 10000.0,
                         "total_equity": 10000.0,
                     },
@@ -393,7 +393,7 @@ async def test_audit_detects_invalid_entry_price_daily_spy(mock_supabase):
     assert len(report["anomalies"]) == 1
     anomaly = report["anomalies"][0]
     assert anomaly["type"] == "INVALID_ENTRY_PRICE_DAILY_SPY"
-    assert anomaly["owner_id"] == "sys-daily-spy-close-deepseek-v4-flash"
+    assert anomaly["owner_id"] == "sys-daily-spy-close-deepseek-flash"
     assert "763.99" in anomaly["details"]
     assert "770.58" in anomaly["details"]
 
@@ -406,7 +406,7 @@ async def test_audit_auto_heals_invalid_entry_price_daily_spy(mock_supabase):
     target_date = "2026-10-02"
     pred = {
         "id": "pred-10-02",
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "predicted_direction": "UP",
         "expected_return_pct": 0.20,
         "target_date": target_date,
@@ -440,7 +440,7 @@ async def test_audit_auto_heals_invalid_entry_price_daily_spy(mock_supabase):
                 data=[
                     {
                         "id": str(uuid4()),
-                        "owner_id": "sys-daily-spy-close-deepseek-v4-flash",
+                        "owner_id": "sys-daily-spy-close-deepseek-flash",
                         "cash_balance": 10000.0,
                         "total_equity": 10000.0,
                     },

@@ -38,7 +38,7 @@ def test_renko_state_serialization():
 @pytest.mark.asyncio
 async def test_lin_agent_specialized_fmp_tools():
     """Verify LinAgent can fetch LIN-specific financial metrics via FMP provider."""
-    agent = LinAgent(model_name="deepseek-v4-flash")
+    agent = LinAgent(model_name="deepseek-flash")
 
     mock_provider = MagicMock()
     mock_provider.get_analyst_estimates = AsyncMock(return_value=[{"estimatedRevenueAvg": 35000000000}])
@@ -55,7 +55,7 @@ async def test_lin_agent_specialized_fmp_tools():
 @pytest.mark.asyncio
 async def test_lin_agent_query_llm_with_deepseek_and_tools():
     """Verify LinAgent queries DeepSeek with web_search enabled."""
-    agent = LinAgent(model_name="deepseek-v4-flash")
+    agent = LinAgent(model_name="deepseek-flash")
     state = RenkoState(
         trend_direction="BULLISH",
         last_brick_price=490.61,
@@ -242,7 +242,7 @@ async def test_lin_renko_flow_execution_mocked():
         mock_fmp_inst.get_earnings_history = AsyncMock(return_value=[{"epsSurprisePercent": 2.5}])
 
         mock_agent_inst = mock_agent_cls.return_value
-        mock_agent_inst.model_name = "deepseek-v4-flash"
+        mock_agent_inst.model_name = "deepseek-flash"
         mock_agent_inst.fetch_lin_fundamentals = AsyncMock(return_value={"roic": 0.165})
         mock_agent_inst.analyze = AsyncMock(
             return_value={

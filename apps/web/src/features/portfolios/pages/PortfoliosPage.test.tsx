@@ -182,13 +182,13 @@ describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
         expect(getSystemPortfolioSubtitle('sys-sector-ls-consensus')).toBe(
             'Consensus Sector Long/Short Dispersion',
         );
-        expect(getSystemPortfolioSubtitle('sys-daily-spy-deepseek-v4-flash')).toBe(
+        expect(getSystemPortfolioSubtitle('sys-daily-spy-deepseek-flash')).toBe(
             'Daily S&P 500 Intraday Trader (Profit Target Exit)',
         );
-        expect(getSystemPortfolioSubtitle('sys-daily-spy-close-deepseek-v4-flash')).toBe(
+        expect(getSystemPortfolioSubtitle('sys-daily-spy-close-deepseek-flash')).toBe(
             'Daily S&P 500 Close Trader (3:50 PM Exit)',
         );
-        expect(getSystemPortfolioSubtitle('sys-daily-tlt-close-gpt-5.6-luna')).toBe(
+        expect(getSystemPortfolioSubtitle('sys-daily-tlt-close-gpt-6-luna')).toBe(
             'Daily 20+ Year Treasury Bond Trader (3:50 PM Exit)',
         );
         expect(getSystemPortfolioSubtitle('sys-pead-drift')).toBe(

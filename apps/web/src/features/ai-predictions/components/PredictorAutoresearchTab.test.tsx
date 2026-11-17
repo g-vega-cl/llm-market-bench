@@ -30,7 +30,7 @@ Footer`,
                 selected_tools: ['get_historical_correlation'],
             },
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         },
         {
             id: 'exp-mm-1',
@@ -56,7 +56,7 @@ Footer`,
                 confidence: 0.78,
             },
             is_backtest: false,
-            track_id: 'MiniMax-M3',
+            track_id: 'MiniMax-M3.1-Flash',
         },
     ];
 
@@ -66,7 +66,7 @@ Footer`,
             prediction_date: '2026-07-10',
             target_date: '2026-07-17',
             timeframe: '7d',
-            model_name: 'deepseek-v4-flash',
+            model_name: 'deepseek-flash',
             prompt_tag: 'sector-ds-v1.0',
             predicted_sector: 'XLK',
             predicted_pair: ['GLD', 'XLU'],
@@ -93,7 +93,7 @@ Footer`,
         expect(screen.getAllByText('sector-ds-v1.0').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('86.4000')).toBeInTheDocument();
 
-        expect(screen.getAllByText('MiniMax-M3').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('MiniMax-M3.1-Flash').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('sector-mm-v1.0').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('79.2000')).toBeInTheDocument();
 
@@ -138,7 +138,7 @@ Footer`,
             />,
         );
 
-        expect(screen.getByText('MiniMax-M3 All-Time Baseline Score')).toBeInTheDocument();
+        expect(screen.getByText('MiniMax-M3.1-Flash All-Time Baseline Score')).toBeInTheDocument();
         expect(screen.getByText('79.2000')).toBeInTheDocument();
         expect(screen.getAllByText('From 0').length).toBeGreaterThanOrEqual(1);
     });

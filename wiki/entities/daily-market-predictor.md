@@ -10,8 +10,8 @@ The daily market predictor (`apps/engine/tasks/daily_predictor.py`) generates a 
 ## Model Arena (S&P 500)
 
 The daily predictor arena compares four distinct model architectures:
-1. **DeepSeek Flash** (`deepseek-v4-flash`) — Direct thinking/reasoning prompt with structured output via Instructor.
-2. **MiniMax** (`MiniMax-M3`) — High-context reasoning LLM with JSON format output.
+1. **DeepSeek Flash** (`deepseek-flash`) — Direct thinking/reasoning prompt with structured output via Instructor.
+2. **MiniMax** (`MiniMax-M3.1-Flash`) — High-context reasoning LLM with JSON format output.
 3. **Jev Baseline** (`~typesafe/jev-latest`) — Direct System One typed classification via OpenRouter Decisions API.
 4. **Jev Four-Regime Champion** (`jev-four-regime-champion`) — Evolved via Strata single-prompt ratchet tournament (Iteration 43 Champion, Score 54.34, Win Rate 72.73%, $p = 0.0262$). Promoted to replace deprecated `jev-local-autoresearched`. Uses a tailored **Curated Manifest** ("Box of Data") compiled by `pack_daily_context()`, symmetrical four-regime classification criteria (*Risk-On Expansion*, *Risk-Off Expansion*, *Balanced Pinning*, *Catalyst Shock*), and **Zero Abstention** (forces a binary directional prediction `UP` or `DOWN` on every session).
 
@@ -45,7 +45,7 @@ Daily predictions are gated mechanically through `apply_confidence_hold_gate`:
 The daily bond predictor (`apps/engine/tasks/bond_predictor.py`) implements a pure tool-first, pull-based architecture for fixed income (enforcing Principle 8: "Provide Tools, Don't Push Data"):
 - **Target Asset**: `TLT` (iShares 20+ Year Treasury Bond ETF, ~17y duration).
 - **Prompt Structure**: Initial prompt injects only lean temporal context (date, session, pre-market quote/overnight gap), omitting bulky context tables.
-- **Autonomous Tool Loop**: Reasoning models (`gpt-5.6-luna`, `deepseek-v4-flash`) pull data dynamically from a curated fixed-income toolbox (`get_treasury_yield_curve`, `get_today_economic_releases`, `get_yield_curve_regime`, `get_macro_options_sentiment`, `get_calendar_scenario_analysis`).
+- **Autonomous Tool Loop**: Reasoning models (`gpt-6-luna`, `deepseek-flash`) pull data dynamically from a curated fixed-income toolbox (`get_treasury_yield_curve`, `get_today_economic_releases`, `get_yield_curve_regime`, `get_macro_options_sentiment`, `get_calendar_scenario_analysis`).
 - **Jev Integration**: Single-turn Decisions API receives an automated lean tool bundle pre-compiled from the yield curve and economic calendar.
 - **Portfolios**: Feeds into systematic close-exit portfolios (`sys-daily-tlt-close-{model}`) executed via `apps/engine/execution/daily_bond_trading.py`.
 

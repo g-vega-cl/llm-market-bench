@@ -100,7 +100,7 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 ```text
   09:15 ET                   09:30 ET                     15:50 ET / Intraday Hit       16:15 ET
 [PRE-MARKET PREDICTED] ────▶ [MARKET OPEN ENTERED] ────▶ [POSITION LIQUIDATED] ────▶ [POSTMORTEM AUDITED]
- (prediction stored,         (MOO fill recorded,         (target hit exit OR         (GPT-5.6 audit runs,
+ (prediction stored,         (MOO fill recorded,         (target hit exit OR         (GPT-6 audit runs,
   no trade ID yet)            entry_trade_id bound)       3:50 PM close exit)         root cause classified)
 ```
 

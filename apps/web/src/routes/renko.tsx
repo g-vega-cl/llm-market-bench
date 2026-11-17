@@ -148,7 +148,7 @@ export function RenkoAgentPageView({
     fetchFn,
     benchmarkFetchFn,
 }: RenkoAgentPageViewProps) {
-    const [selectedModel] = useState('deepseek-v4-flash');
+    const [selectedModel] = useState('deepseek-flash');
 
     const { data } = useSuspenseQuery({
         ...portfolioQueries.detail({

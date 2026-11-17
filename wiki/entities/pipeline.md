@@ -36,11 +36,11 @@ Before LLM analysis, the engine validates market status and cleans up stale stat
 The first pass of LLM analysis extracts and clusters macroeconomic events.
 *   Asynchronous Chunk Batching: Splits newsletter content into parallel batches of 20 chunks.
 *   Semantic Grouping: Embeds and clusters events via pgvector cosine similarity (threshold `0.75`), protected by `1.2s` call-interval throttling and 4-attempt exponential backoff.
-*   Weighted Consensus: Promotes events based on cumulative model weight and voting (threshold `2.0`; weights explicit for all 6 models per `core/config.py:MODEL_WEIGHTS`, including `MiniMax-M3` — fixed 2026-08-27).
+*   Weighted Consensus: Promotes events based on cumulative model weight and voting (threshold `2.0`; weights explicit for all 6 models per `core/config.py:MODEL_WEIGHTS`, including `MiniMax-M3.1-Flash` — fixed 2026-08-27).
 *   Concurrent Group Promotion: Synthesizes and promotes qualifying event groups concurrently using `asyncio.Semaphore(3)`, dramatically accelerating consensus during heavy event volume without triggering provider rate limits.
 *   Temporal Deduplication: Discards duplicate events within a recency window — dedup now `0.90` via `MEMORY_DEDUP_THRESHOLD`, decoupled from grouping `0.75` (fix 2026-08-27 for ID-collision bug `4685e74f`/`b2174ca9`).
 *   Pre-Discovery Early Dedup: Checks for duplicates before launching `DiscoveryAgent`, skipping redundant asset searches and reusing vector embeddings (fix 2026-09-01).
-*   Two-Stage Adversarial Debate (`gpt-5.6-luna`): Stage 1 (Red-Team Challenger) stress-tests the event against counter-theses and pre-mortem failure modes; Stage 2 (Arbiter) synthesizes hedged scenarios, actionable FMP trading plans, and persists `metadata.debate`.
+*   Two-Stage Adversarial Debate (`gpt-6-luna`): Stage 1 (Red-Team Challenger) stress-tests the event against counter-theses and pre-mortem failure modes; Stage 2 (Arbiter) synthesizes hedged scenarios, actionable FMP trading plans, and persists `metadata.debate`.
 *   Relationship Analysis: Maps parent/child relationships in the event graph.
 
 ## Phase 4: Trading Decisions
@@ -91,7 +91,7 @@ The pipeline closes the loop by auditing historical results and updating system 
 *   Contrarian Agent: Checks crowded trades and issues counter-positioning.
 *   Cause & Effect Analysis: Audits retrospective price impact of AI trading signals.
 *   Market Feeling: Runs sentiment analysis after execution to capture the daily market vibe.
-*   Missed Gainers Post-Mortem: Audits top daily, weekly, and monthly market winners against internal predictions using `gpt-5.6-luna` with thinking, generating actionable lessons for missed breakouts (see [[entities/gainers-postmortem]]).
+*   Missed Gainers Post-Mortem: Audits top daily, weekly, and monthly market winners against internal predictions using `gpt-6-luna` with thinking, generating actionable lessons for missed breakouts (see [[entities/gainers-postmortem]]).
 *   Isolated Single-Stock Execution: Executes the [[entities/lin-renko-agent]] pipeline on its dedicated `$10,000` isolated ledger.
 
 ## Auto-Research Sub-Pipeline

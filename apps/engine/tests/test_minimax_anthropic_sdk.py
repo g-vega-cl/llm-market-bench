@@ -1,7 +1,7 @@
-"""Tests verifying MiniMax-M3 is wired through the Anthropic SDK
+"""Tests verifying MiniMax-M3.1-Flash is wired through the Anthropic SDK
 pointed at MiniMax's Anthropic-compatible base URL.
 
-These tests pin down the architectural decision: MiniMax-M3 uses the Anthropic
+These tests pin down the architectural decision: MiniMax-M3.1-Flash uses the Anthropic
 API format (via the Anthropic SDK), not the OpenAI-compatible format. The
 OpenAI-format MiniMaxClient (core/llm/minimax.py) is reserved for auxiliary
 flows (market_feeling, sector_predictor) that don't need tool calling.
@@ -131,7 +131,7 @@ async def test_minimax_parameters_and_system_message():
     ):
         await analysis_mod.analyze_with_provider(
             provider="minimax",
-            model_name="MiniMax-M3",
+            model_name="MiniMax-M3.1-Flash",
             chunks=[{"source_id": "s1", "content": "Test news"}],
             context="",
             portfolio_context="Cash: $10k",
@@ -186,7 +186,7 @@ async def test_minimax_retry_routes_to_anthropic_handler():
     ):
         await analysis_mod.analyze_with_provider(
             provider="minimax",
-            model_name="MiniMax-M3",
+            model_name="MiniMax-M3.1-Flash",
             chunks=[{"source_id": "s1", "content": "Test news"}],
             context="",
             portfolio_context="Cash: $10k",
@@ -208,7 +208,7 @@ async def test_minimax_system_prompt_nudge():
         provider="minimax",
         enable_web_search=False,
         market_data_block="DATA",
-        owner_id="MiniMax-M3",
+        owner_id="MiniMax-M3.1-Flash",
         portfolio_context="CASH",
         context="CONTEXT",
         news_content="NEWS",
@@ -280,7 +280,7 @@ async def test_minimax_history_flattening_to_single_user_message():
     ):
         await analysis_mod.analyze_with_provider(
             provider="minimax",
-            model_name="MiniMax-M3",
+            model_name="MiniMax-M3.1-Flash",
             chunks=[{"source_id": "s1", "content": "Test news"}],
             context="",
             portfolio_context="Cash: $10k",

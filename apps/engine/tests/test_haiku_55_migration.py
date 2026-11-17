@@ -175,7 +175,7 @@ async def test_haiku_55_resolves_to_track_claude_and_inherits_prompt():
     from core.llm.prompt_factory import PromptFactory
 
     with (
-        patch("core.config.AUTORESEARCH_TRACKS", {"track_claude": ["claude-haiku-5-5", "deepseek-v4-flash"]}),
+        patch("core.config.AUTORESEARCH_TRACKS", {"track_claude": ["claude-haiku-5-5", "deepseek-flash"]}),
         patch("autoresearch.prompt_store.get_active_prompt", new_callable=AsyncMock) as mock_get_prompt,
         patch("autoresearch.prompt_store.get_active_variant", new_callable=AsyncMock) as mock_get_variant,
     ):

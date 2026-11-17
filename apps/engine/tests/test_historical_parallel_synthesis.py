@@ -145,7 +145,7 @@ async def test_process_consensus_compiles_parallels_and_persists_structured_meta
             reasoning="Oil route chokepoint risks rising.",
             source_id="news_2",
             model_provider="openai",
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
             historical_parallel="1973 Oil Embargo",
         ),
     ]

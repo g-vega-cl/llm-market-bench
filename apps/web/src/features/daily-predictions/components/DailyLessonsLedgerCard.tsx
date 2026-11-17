@@ -113,7 +113,7 @@ export function DailyLessonsLedgerCard({ predictions = [] }: DailyLessonsLedgerC
                 <SectionHeading>Daily Causal Lessons & Post-Mortems</SectionHeading>
                 <p className="text-xs text-zinc-400 leading-relaxed m-0">
                     Durable causal rules and flawed assumptions diagnosed daily at 5:15 PM ET by
-                    GPT-5.6 Luna to feed weekly Sunday autoresearch prompt evolution.
+                    GPT-6 Luna to feed weekly Sunday autoresearch prompt evolution.
                 </p>
             </div>
 

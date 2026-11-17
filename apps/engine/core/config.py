@@ -235,7 +235,7 @@ VERIFIER_ENABLED_OWNER_IDS = set(_models.get("VERIFIER_ENABLED_OWNER_IDS", []))
 SKIP_VERIFIER_OWNER_IDS = set(
     _models.get(
         "SKIP_VERIFIER_OWNER_IDS",
-        ["gpt-5.6-luna", "gemini-3.5-flash-lite", "MiniMax-M3", "claude-haiku-5-5", "deepseek-v4-flash"],
+        ["gpt-6-luna", "gemini-3.5-flash-lite", "MiniMax-M3.1-Flash", "claude-haiku-5-5", "deepseek-flash"],
     )
 )
 

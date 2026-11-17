@@ -16,7 +16,7 @@ def pending_predictions():
             "id": "pred-1",
             "target_date": "2026-10-06",
             "ticker": "NVDA",
-            "model_name": "gpt-5.6-luna",
+            "model_name": "gpt-6-luna",
             "predicted_direction": "UP",
             "confidence": 80.0,
             "status": "pending",

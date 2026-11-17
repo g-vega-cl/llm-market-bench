@@ -316,8 +316,8 @@ describe('MemoryCard scenario rendering', () => {
                 counter_thesis: 'Grid queues will delay energization by 3+ years.',
                 pre_mortem: 'Capex stalled because local utilities refused hookups.',
                 key_risks: ['3-5 year grid queue', 'State regulatory friction'],
-                adversary_model: 'gpt-5.6-luna',
-                arbiter_model: 'gpt-5.6-luna',
+                adversary_model: 'gpt-6-luna',
+                arbiter_model: 'gpt-6-luna',
                 stress_tested: true,
             },
         };
@@ -332,7 +332,7 @@ describe('MemoryCard scenario rendering', () => {
 
         await waitFor(() => {
             expect(screen.getByText(/Adversarial Red-Team Stress-Test/i)).toBeInTheDocument();
-            expect(screen.getByText(/Challenger: gpt-5.6-luna/i)).toBeInTheDocument();
+            expect(screen.getByText(/Challenger: gpt-6-luna/i)).toBeInTheDocument();
             expect(
                 screen.getByText(/Grid queues will delay energization by 3\+ years./i),
             ).toBeInTheDocument();

@@ -450,7 +450,7 @@ async def test_evaluate_daily_predictions_default_skips_trade_backfill():
     pending_data = [
         {
             "id": "pred-default",
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "ticker": "SPY",
             "target_date": "2026-08-03",
             "predicted_direction": "UP",
@@ -482,7 +482,7 @@ async def test_evaluate_daily_predictions_routes_tlt_to_bond_close_trade():
     pending_data = [
         {
             "id": "pred-tlt-1",
-            "model_name": "gpt-5.6-luna",
+            "model_name": "gpt-6-luna",
             "ticker": "TLT",
             "target_date": "2026-10-07",
             "predicted_direction": "UP",

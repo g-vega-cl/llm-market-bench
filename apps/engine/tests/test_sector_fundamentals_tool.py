@@ -130,7 +130,7 @@ async def test_tool_dispatch_get_sector_fundamentals():
     )
 
     with patch("core.db.get_supabase_client", return_value=mock_db):
-        output = await execute_tool("get_sector_fundamentals", {}, "deepseek-v4-flash")
+        output = await execute_tool("get_sector_fundamentals", {}, "deepseek-flash")
 
     assert "S&P 500 Sector Fundamentals" in output
     assert "XLK" in output

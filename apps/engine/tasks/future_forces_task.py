@@ -3,7 +3,7 @@
 Handles:
 1. Bootstrapping the `sys-future-forces` portfolio if absent.
 2. Seeding/syncing baseline vetted multi-horizon forces into `public.future_forces`.
-3. Running the Sentinel Invalidation Audit with OpenAI Luna (gpt-5.6-luna).
+3. Running the Sentinel Invalidation Audit with OpenAI Luna (gpt-6-luna).
 4. Executing pending liquidations and monthly rebalancing strictly during
    regular market hours (09:30-16:00 ET) with Alpaca paper broker mirroring.
 """

@@ -2,7 +2,7 @@
 
 Executes tool-first, pull-based daily predictions on TLT (20+ Year Treasury Bond ETF):
 - Enforces GEMINI.md Principle 8: Lean temporal prompt + autonomous tool pulling.
-- Models: GPT-5.6 Luna (OpenAI) & DeepSeek-v4-Flash (DeepSeek) via multi-turn tool loops.
+- Models: GPT-6 Luna (OpenAI) & DeepSeek Flash (DeepSeek) via multi-turn tool loops.
 - Jev: Single-turn Decisions API via automated lean tool bundle context.
 - Idempotent persistence to Supabase daily_predictions table with ticker='TLT'.
 """
@@ -197,7 +197,7 @@ async def predict_bond_with_reasoning_model(
 
 
 async def run_daily_bond_prediction(ticker: str = "TLT", force: bool = False) -> list[dict[str, Any]]:
-    """Runs daily bond predictions pre-market across model arena (GPT-5.6 Luna, DeepSeek, Jev)."""
+    """Runs daily bond predictions pre-market across model arena (GPT-6 Luna, DeepSeek, Jev)."""
     from execution.market_data import MarketDataManager
 
     now_et = get_ny_now()

@@ -67,7 +67,7 @@ def _sample_experiments() -> list[dict]:
         {
             "variant_tag": "daily-pred-deepseek-w1",
             "prompt_name": "DAILY_PREDICTOR_PROMPT",
-            "track_id": "deepseek-v4-flash",
+            "track_id": "deepseek-flash",
             "parent_tag": "daily-seed-1",
             "status": "baseline",
             "experiment_type": "incremental",

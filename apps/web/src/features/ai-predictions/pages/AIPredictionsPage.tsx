@@ -162,7 +162,7 @@ function ArenaTabContent({
                     className="h-full flex flex-col justify-between gap-4"
                 >
                     <div className="flex justify-between items-start gap-2">
-                        <h2 className="text-sm font-bold text-boxel-ink">MiniMax-M3</h2>
+                        <h2 className="text-sm font-bold text-boxel-ink">MiniMax-M3.1-Flash</h2>
                         <Badge colorScheme="neutral" variant="soft" size="xs">
                             {miniMaxMetrics.evaluatedCount} Evaluated
                         </Badge>
@@ -226,7 +226,7 @@ function ArenaTabContent({
                     className="h-full flex flex-col justify-between gap-4"
                 >
                     <div className="flex justify-between items-start gap-2">
-                        <h2 className="text-sm font-bold text-boxel-ink">OpenAI GPT-5.6</h2>
+                        <h2 className="text-sm font-bold text-boxel-ink">OpenAI GPT-6</h2>
                         <Badge colorScheme="neutral" variant="soft" size="xs">
                             {openAiMetrics.evaluatedCount} Evaluated
                         </Badge>
@@ -471,7 +471,7 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                         AI Sector Predictions Arena
                     </h1>
                     <p className="text-boxel-muted text-xs font-normal">
-                        Multi-Model Arena: DeepSeek, MiniMax-M3, Gemini 3.5 & OpenAI GPT-5.6
+                        Multi-Model Arena: DeepSeek, MiniMax-M3.1-Flash, Gemini 3.5 & OpenAI GPT-6
                         predicting top-performing sectors and uncorrelated pairs.
                     </p>
                 </div>

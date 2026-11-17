@@ -129,7 +129,7 @@ async def run_lin_renko_flow() -> dict[str, Any]:
         engine.process_price(p, timestamp=ts)
 
     # 3. Query specialized LIN fundamental metrics via FMP tools
-    agent = LinAgent(model_name="deepseek-v4-flash")
+    agent = LinAgent(model_name="deepseek-flash")
     lin_metrics = await agent.fetch_lin_fundamentals(fmp)
 
     # 4. Construct context and execute analysis

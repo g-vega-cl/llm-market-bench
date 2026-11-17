@@ -20,7 +20,7 @@ async def test_case_insensitivity():
         "prediction_date": prediction_date.isoformat(),
         "target_date": target_date.isoformat(),
         "timeframe": "7d",
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "prompt_tag": "test-casing-tag",
         "predicted_sector": "xlk",  # lowercase
         "predicted_pair": ["xlk", "xlv"],  # lowercase
@@ -120,7 +120,7 @@ async def test_dynamic_reference_universe_isolation():
             "prediction_date": pred_date_a.isoformat(),
             "target_date": target_date.isoformat(),
             "timeframe": "7d",
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "prompt_tag": "tag-a",
             "predicted_sector": "XLK",
             "predicted_pair": ["XLK", "XLV"],
@@ -131,7 +131,7 @@ async def test_dynamic_reference_universe_isolation():
             "prediction_date": pred_date_b.isoformat(),
             "target_date": target_date.isoformat(),
             "timeframe": "14d",
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "prompt_tag": "tag-b",
             "predicted_sector": "XLF",
             "predicted_pair": ["XLF", "KRE"],  # KRE is non-standard, predicted only in week B
@@ -383,7 +383,7 @@ async def test_predictor_autoresearch_ratchet_success(mock_get_gemini):
     mock_client.table.side_effect = intercept_db
 
     with patch("tasks.predictor_autoresearch.get_supabase_client", return_value=mock_client):
-        await run_predictor_autoresearch(target_models=["deepseek-v4-flash"])
+        await run_predictor_autoresearch(target_models=["deepseek-flash"])
 
     # Assert metrics update on active-tag
     # Accuracy block 85.0, conviction neutral 50.0 -> 0.90 * 85.0 + 5.0 = 81.5
@@ -493,7 +493,7 @@ async def test_predictor_autoresearch_ratchet_revert(mock_get_gemini):
     mock_client.table.side_effect = intercept_db
 
     with patch("tasks.predictor_autoresearch.get_supabase_client", return_value=mock_client):
-        await run_predictor_autoresearch(target_models=["deepseek-v4-flash"])
+        await run_predictor_autoresearch(target_models=["deepseek-flash"])
 
     # Assert metrics update on active-tag
     # Accuracy block 70.0, conviction neutral 50.0 -> 0.90 * 70.0 + 5.0 = 68.0
@@ -601,7 +601,7 @@ async def test_predictor_autoresearch_always_inserts_active(mock_get_gemini):
     mock_client.table.side_effect = intercept_db
 
     with patch("tasks.predictor_autoresearch.get_supabase_client", return_value=mock_client):
-        await run_predictor_autoresearch(target_models=["deepseek-v4-flash"])
+        await run_predictor_autoresearch(target_models=["deepseek-flash"])
 
     # Assert that even though the content is identical, the new active variant is still inserted
     assert len(db_inserts) == 1

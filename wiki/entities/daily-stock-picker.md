@@ -17,9 +17,9 @@ Unlike static watchlists or unconstrained universe scans, candidate tickers are 
 ## 2. Multi-Model Arena & Deterministic Consensus
 
 Three distinct frontier models compete in parallel under independent prompt lineages:
-1. **DeepSeek Flash** (`deepseek-v4-flash`) — Instruct-based structured JSON extraction.
-2. **MiniMax** (`MiniMax-M3`) — High-context reasoning LLM with JSON format output.
-3. **GPT Luna** (`gpt-5.6-luna`) — OpenAI high-conviction decision model.
+1. **DeepSeek Flash** (`deepseek-flash`) — Instruct-based structured JSON extraction.
+2. **MiniMax** (`MiniMax-M3.1-Flash`) — High-context reasoning LLM with JSON format output.
+3. **GPT Luna** (`gpt-6-luna`) — OpenAI high-conviction decision model.
 
 ### Reciprocal Rank Fusion (RRF) with Leg Exclusivity
 
@@ -37,7 +37,7 @@ To generate the platform's official **Consensus Basket** without model hallucina
 To enforce [[concepts/zero-frontend-compute]] and CP-safe atomic transactions, data is persisted across two relational tables (`supabase/migrations/20261112000000_create_daily_stock_picks.sql`):
 
 * **Parent Basket** (`daily_stock_baskets`):
-  * `id` (UUID PK), `target_date`, `model_name` (`consensus`, `deepseek-v4-flash`, `MiniMax-M3`, `gpt-5.6-luna`).
+  * `id` (UUID PK), `target_date`, `model_name` (`consensus`, `deepseek-flash`, `MiniMax-M3.1-Flash`, `gpt-6-luna`).
   * Pre-materialized performance metrics: `directional_hit_rate`, `mean_long_return_pct`, `mean_short_return_pct`, `ls_spread_alpha_pct`, `excess_alpha_vs_spy_pct`, `benchmark_spy_return_pct`.
   * `status`: `pending` $\to$ `evaluated` or `cancelled`.
   * Unique constraint: `(target_date, model_name)`.
@@ -98,7 +98,7 @@ Enforcing Principle 14 (Workflow Consolidation):
 ## 7. Web Dashboard Presentation
 
 Surfaced as a first-class segmented tab in the Daily Predictions Arena (`apps/web/src/features/daily-predictions/components/DailyStockPicksTab.tsx`):
-* **Model Filter Buttons**: Instant toggle between `⭐ Consensus`, `DeepSeek Flash`, `MiniMax-M3`, and `GPT-5.6 Luna`.
+* **Model Filter Buttons**: Instant toggle between `⭐ Consensus`, `DeepSeek Flash`, `MiniMax-M3.1-Flash`, and `GPT-6 Luna`.
 * **Two-Column Pick Showcase**: 3 UP (Long) cards with rank badges and green borders; 3 DOWN (Short) cards with red borders.
 * **Performance Tiles**: Directional Hit Rate, Net L/S Spread Alpha, SPY Benchmark move, and Excess Alpha.
 * **Historical Baskets Table**: Complete audited ledger of past sessions with right-aligned tabular numbers and zero floating tooltips (Principle 11).
@@ -123,7 +123,7 @@ Only the newest basket of each track is rendered as a 3 UP / 3 DOWN card set, an
 | :--- | :--- | :--- |
 | `deepseek` | `get_deepseek_client()` | `max_retries=2`, schema-recovery handling; no `temperature` |
 | `minimax` | `get_minimax_client()` (Anthropic-format) | `max_tokens=32000`, system message hoisted to the `system` kwarg; no `temperature` |
-| `openai` | `get_openai_json_client()` (`Mode.JSON`, no tool injection) | `reasoning_effort="none"` — `gpt-5.6-luna` is a reasoning model that rejects function tools and any non-default temperature on `/v1/chat/completions` |
+| `openai` | `get_openai_json_client()` (`Mode.JSON`, no tool injection) | `reasoning_effort="none"` — `gpt-6-luna` is a reasoning model that rejects function tools and any non-default temperature on `/v1/chat/completions` |
 
 Re-implementing per-provider kwargs inline would fork the token ceiling and reasoning contract from every other extraction call site, so the arena deliberately owns only client selection. `close_client(client, provider)` requires the provider argument; every track closes in a `finally` block so a failed model does not leak its HTTP client.
 

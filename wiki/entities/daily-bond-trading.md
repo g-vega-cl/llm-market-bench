@@ -16,7 +16,7 @@ The shared helper `compute_daily_trade_execution` performs the execution math wi
 
 ## Portfolios & Owner IDs
 
-Each model gets its own systematic portfolio keyed by the owner prefix `SYS_DAILY_TLT_CLOSE_OWNER_PREFIX = "sys-daily-tlt-close-"`, e.g. `sys-daily-tlt-close-gpt-5.6-luna`, `sys-daily-tlt-close-deepseek-v4-flash`, `sys-daily-tlt-close-jev`. Entries allocate 100% of available portfolio cash.
+Each model gets its own systematic portfolio keyed by the owner prefix `SYS_DAILY_TLT_CLOSE_OWNER_PREFIX = "sys-daily-tlt-close-"`, e.g. `sys-daily-tlt-close-gpt-6-luna`, `sys-daily-tlt-close-deepseek-flash`, `sys-daily-tlt-close-jev`. Entries allocate 100% of available portfolio cash.
 
 ## Slippage
 

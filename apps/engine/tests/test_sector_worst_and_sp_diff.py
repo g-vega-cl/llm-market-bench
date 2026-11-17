@@ -122,7 +122,7 @@ async def test_run_evaluation_with_worst_sector_and_sp_diff():
         "prediction_date": prediction_date.isoformat(),
         "target_date": target_date.isoformat(),
         "timeframe": "7d",
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "prompt_tag": "test-tag",
         "predicted_sector": "XLK",
         "predicted_worst_sector": "XLE",

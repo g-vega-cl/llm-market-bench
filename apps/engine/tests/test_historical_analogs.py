@@ -20,7 +20,7 @@ from analysis.historical_analogs import (
 
 @pytest.mark.asyncio
 async def test_identify_historical_precedent_calls_instructor_with_thinking():
-    """Verify identify_historical_precedent invokes OpenAI gpt-5.6-luna with reasoning_effort='medium'."""
+    """Verify identify_historical_precedent invokes OpenAI gpt-6-luna with reasoning_effort='medium'."""
     mock_client = MagicMock()
     fake_precedent = HistoricalPrecedentCandidate(
         title="August 2024 Yen Carry Trade Unwind",
@@ -36,7 +36,7 @@ async def test_identify_historical_precedent_calls_instructor_with_thinking():
     result = await identify_historical_precedent(
         situation="Japan stocks plunging as yen strengthens sharply",
         client=mock_client,
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
     )
 
     assert result.title == "August 2024 Yen Carry Trade Unwind"
@@ -144,7 +144,7 @@ async def test_synthesize_analog_playbook_calls_instructor_with_thinking():
         tape=tape,
         horizon="1m",
         client=mock_client,
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
     )
 
     assert playbook.summary_takeaway.startswith("Carry unwind shock")
@@ -325,7 +325,7 @@ async def test_execute_research_historical_market_analog_tool_wrapper():
             situation="Gold surging past 3000",
             focus_assets=["GLD"],
             horizon="1m",
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
         )
 
         assert res == "Mocked report"
@@ -333,7 +333,7 @@ async def test_execute_research_historical_market_analog_tool_wrapper():
             situation="Gold surging past 3000",
             focus_assets=["GLD"],
             horizon="1m",
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
         )
 
 
@@ -350,7 +350,7 @@ async def test_handler_dispatch_research_historical_market_analog():
         res = await execute_tool(
             "research_historical_market_analog",
             {"situation": "Bitcoin breaking 100k", "focus_assets": ["BTCUSD"], "horizon": "1w"},
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
         )
 
         assert res == "Dispatched markdown"
@@ -358,7 +358,7 @@ async def test_handler_dispatch_research_historical_market_analog():
             situation="Bitcoin breaking 100k",
             focus_assets=["BTCUSD"],
             horizon="1w",
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
         )
 
 

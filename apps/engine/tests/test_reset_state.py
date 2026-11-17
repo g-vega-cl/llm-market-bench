@@ -15,7 +15,7 @@ async def test_reset_database_llm_only():
     # Mock portfolios
     mock_portfolios = [
         {"id": "uuid-llm-1", "owner_id": "claude-haiku-5-5"},
-        {"id": "uuid-llm-2", "owner_id": "gpt-5.6-luna"},
+        {"id": "uuid-llm-2", "owner_id": "gpt-6-luna"},
         {"id": "uuid-sys-1", "owner_id": "sys-sector-ls-consensus"},
     ]
     mock_supabase.table.return_value.select.return_value.execute.return_value = MagicMock(data=mock_portfolios)

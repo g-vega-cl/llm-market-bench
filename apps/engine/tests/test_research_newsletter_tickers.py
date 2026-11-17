@@ -312,7 +312,7 @@ async def test_research_single_target_invokes_json_client_with_reasoning(mock_su
         call_kwargs = mock_json_client.chat.completions.create.call_args.kwargs
         assert call_kwargs["response_model"] == CompanyResearchDossierOutput
         assert call_kwargs["reasoning_effort"] == "medium"
-        assert call_kwargs["model"] == "gpt-5.6-luna"
+        assert call_kwargs["model"] == "gpt-6-luna"
 
 
 @pytest.mark.asyncio

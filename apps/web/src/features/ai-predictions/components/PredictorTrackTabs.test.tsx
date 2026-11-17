@@ -21,7 +21,7 @@ describe('PredictorTrackTabs', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         },
         {
             id: 'exp-mm-1',
@@ -38,7 +38,7 @@ describe('PredictorTrackTabs', () => {
             parent_tag: null,
             research_output: { is_cold_start: true },
             is_backtest: false,
-            track_id: 'MiniMax-M3',
+            track_id: 'MiniMax-M3.1-Flash',
         },
     ];
 
@@ -55,9 +55,9 @@ describe('PredictorTrackTabs', () => {
 
         expect(screen.getByRole('button', { name: /All Models/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /DeepSeek Flash/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /MiniMax-M3/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /MiniMax-M3.1-Flash/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Gemini 3.5/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /OpenAI GPT-5.6/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /OpenAI GPT-6/i })).toBeInTheDocument();
     });
 
     it('triggers onSelectTrack callback when a track tab is clicked', () => {

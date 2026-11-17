@@ -9,7 +9,7 @@ describe('DailyPostMortemCard', () => {
         prediction_date: '2026-09-28',
         target_date: '2026-09-28',
         ticker: 'SPY',
-        model_name: 'deepseek-v4-flash',
+        model_name: 'deepseek-flash',
         prompt_variant_tag: 'daily-active-1',
         predicted_direction: 'UP',
         confidence: 75.0,
@@ -45,7 +45,7 @@ describe('DailyPostMortemCard', () => {
 
         render(<DailyPostMortemCard prediction={postMortemPrediction} />);
 
-        expect(screen.getByText('Post-Market Evaluation (GPT-5.6 Luna)')).toBeInTheDocument();
+        expect(screen.getByText('Post-Market Evaluation (GPT-6 Luna)')).toBeInTheDocument();
         expect(screen.getByText('ACCURATE CAPTURE')).toBeInTheDocument();
         expect(screen.getByText('PREDICTABLE PRE-MARKET')).toBeInTheDocument();
         expect(

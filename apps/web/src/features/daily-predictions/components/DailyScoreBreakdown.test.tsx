@@ -12,7 +12,7 @@ describe('DailyScoreBreakdown', () => {
     it('renders with enriched metrics and displays the formula substitution and 4 pillars', () => {
         const mockExperiment = {
             id: 'exp-1',
-            variant_tag: 'daily-pred-seeded-deepseek-v4-flash',
+            variant_tag: 'daily-pred-seeded-deepseek-flash',
             week_start: '2026-08-20',
             week_end: '2026-08-24',
             metrics: {
@@ -203,7 +203,7 @@ describe('DailyScoreBreakdown', () => {
     it('returns null and renders evaluation placeholder for new active prompt with no matching evaluated predictions', () => {
         const newActiveExperiment = {
             id: 'exp-new-active',
-            variant_tag: 'daily-pred-deepseek-v4-flash-new',
+            variant_tag: 'daily-pred-deepseek-flash-new',
             status: 'active',
             metrics: null,
         } as unknown as PromptExperiment;

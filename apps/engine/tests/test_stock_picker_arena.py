@@ -61,11 +61,13 @@ async def test_minimax_track_uses_shared_extraction_args():
         patch.object(arena, "get_minimax_client", return_value=minimax_client),
         patch.object(arena, "close_client", close_mock),
     ):
-        result = await arena.execute_model_picker({"name": "MiniMax-M3", "provider": "minimax"}, CANDIDATES, "briefing")
+        result = await arena.execute_model_picker(
+            {"name": "MiniMax-M3.1-Flash", "provider": "minimax"}, CANDIDATES, "briefing"
+        )
 
     assert len(result.picks_up) == 3
     create_kwargs = minimax_client.chat.completions.create.await_args.kwargs
-    assert create_kwargs["model"] == "MiniMax-M3"
+    assert create_kwargs["model"] == "MiniMax-M3.1-Flash"
     assert create_kwargs["max_tokens"] == 32000
     assert create_kwargs["system"] == "prompt"
     assert [m["role"] for m in create_kwargs["messages"]] == ["user"]
@@ -74,7 +76,7 @@ async def test_minimax_track_uses_shared_extraction_args():
 
 @pytest.mark.asyncio
 async def test_openai_track_uses_json_mode_client_with_extraction_effort():
-    """gpt-5.6-luna rejects tool-based extraction and non-default temperature."""
+    """gpt-6-luna rejects tool-based extraction and non-default temperature."""
     openai_client = _mock_client()
     close_mock = AsyncMock()
 
@@ -83,13 +85,11 @@ async def test_openai_track_uses_json_mode_client_with_extraction_effort():
         patch.object(arena, "get_openai_json_client", return_value=openai_client),
         patch.object(arena, "close_client", close_mock),
     ):
-        result = await arena.execute_model_picker(
-            {"name": "gpt-5.6-luna", "provider": "openai"}, CANDIDATES, "briefing"
-        )
+        result = await arena.execute_model_picker({"name": "gpt-6-luna", "provider": "openai"}, CANDIDATES, "briefing")
 
     assert len(result.picks_down) == 3
     create_kwargs = openai_client.chat.completions.create.await_args.kwargs
-    assert create_kwargs["model"] == "gpt-5.6-luna"
+    assert create_kwargs["model"] == "gpt-6-luna"
     assert create_kwargs["response_model"] is StockPickerOutput
     assert create_kwargs["reasoning_effort"] == "none"
     assert "temperature" not in create_kwargs
@@ -107,7 +107,7 @@ async def test_deepseek_track_closes_client_with_provider():
         patch.object(arena, "close_client", close_mock),
     ):
         result = await arena.execute_model_picker(
-            {"name": "deepseek-v4-flash", "provider": "deepseek"}, CANDIDATES, "briefing"
+            {"name": "deepseek-flash", "provider": "deepseek"}, CANDIDATES, "briefing"
         )
 
     assert len(result.picks_up) == 3
@@ -136,9 +136,7 @@ async def test_client_is_closed_even_when_inference_fails():
         patch.object(arena, "close_client", close_mock),
     ):
         with pytest.raises(RuntimeError, match="upstream 500"):
-            await arena.execute_model_picker(
-                {"name": "deepseek-v4-flash", "provider": "deepseek"}, CANDIDATES, "briefing"
-            )
+            await arena.execute_model_picker({"name": "deepseek-flash", "provider": "deepseek"}, CANDIDATES, "briefing")
 
     close_mock.assert_awaited_once_with(ds_client, "deepseek")
 
@@ -209,7 +207,7 @@ def test_session_skip_reason_skips_existing_consensus_without_force():
 def test_session_skip_reason_protects_evaluated_sessions_even_with_force():
     rows = [
         {"model_name": "consensus", "status": "evaluated"},
-        {"model_name": "gpt-5.6-luna", "status": "evaluated"},
+        {"model_name": "gpt-6-luna", "status": "evaluated"},
     ]
     assert arena.session_skip_reason(rows, force=True) == "already-evaluated"
     assert arena.session_skip_reason(rows, force=False) == "already-evaluated"

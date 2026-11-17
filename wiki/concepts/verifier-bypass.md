@@ -15,7 +15,7 @@ The second-step LLM Verifier was originally introduced to catch duplicate trades
 1. **Excessive Rejection Rate**: Across 500 calls in `llm_reasoning_logs`, the verifier rejected 59.0% of trades outright (`REJECTED_VERIFICATION`) and modified 22.4% (`ADJUSTED_ALLOCATION`), leaving only 18.6% approved unmodified. For Claude Haiku, the rejection rate exceeded 80%.
 2. **Allocation Floor Trap**: When the verifier returned `ADJUSTED_ALLOCATION` (typically reducing proposed position sizes by 50%), the resulting trade fell below the dynamic 10% equity floor ($1,000 minimum). In `decision_processor.py`, overwriting `qty` with `adjusted_quantity` after the initial floor clamp resulted in guaranteed `REJECTED_MARGIN` rejections on valid ETF allocations (such as XLV, XLE, and IEF).
 3. **Data Quality Sensitivity**: Verifier prompts depended on `audit_financial_valuation` DCF calculations. When FMP endpoints returned HTTP 402 tier limits, fallback calculations with mis-scaled share counts caused the verifier to reject valid trades on mega-cap equities.
-4. **Redundancy with Server-Side Guardrails**: Portfolios operating with the verifier bypassed (`gpt-5.6-luna`, `gemini-3.5-flash-lite`, `MiniMax-M3`) produced zero 48-hour duplicate trades across dozens of executions because deterministic server-side guards already enforce idempotency, market hours, market cap limits, 2% price drift limits, and cash capacity.
+4. **Redundancy with Server-Side Guardrails**: Portfolios operating with the verifier bypassed (`gpt-6-luna`, `gemini-3.5-flash-lite`, `MiniMax-M3.1-Flash`) produced zero 48-hour duplicate trades across dozens of executions because deterministic server-side guards already enforce idempotency, market hours, market cap limits, 2% price drift limits, and cash capacity.
 
 ## Configuration
 
@@ -25,11 +25,11 @@ All active benchmark models bypass the verification LLM step:
 {
   "VERIFIER_ENABLED_OWNER_IDS": [],
   "SKIP_VERIFIER_OWNER_IDS": [
-    "gpt-5.6-luna",
+    "gpt-6-luna",
     "gemini-3.5-flash-lite",
-    "MiniMax-M3",
+    "MiniMax-M3.1-Flash",
     "claude-haiku-5-5",
-    "deepseek-v4-flash"
+    "deepseek-flash"
   ]
 }
 ```
@@ -90,6 +90,6 @@ Single-stock intrinsic valuation (`audit_financial_valuation` DCF and peer multi
 ## Related
 
 - [[concepts/execution]]: Pre-market validation, cash-only capacity checks, trade settlement
-- [[concepts/minimax-portfolio]]: Simplified execution model for MiniMax-M3
+- [[concepts/minimax-portfolio]]: Simplified execution model for MiniMax-M3.1-Flash
 - [[entities/autoresearch]]: Multi-track prompt optimization
 - [[concepts/multi-track-autoresearch]]: Isolated prompt lineage per track

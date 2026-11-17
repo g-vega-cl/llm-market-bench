@@ -100,7 +100,7 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
 
     // Pre-calculated model leaderboard metrics
     const modelStats = useMemo(() => {
-        const models = ['gpt-5.6-luna', 'deepseek-chat', '~typesafe/jev-latest'];
+        const models = ['gpt-6-luna', 'deepseek-chat', '~typesafe/jev-latest'];
         return models.map((m) => {
             const modelPreds = predictions.filter((p) => p.model_name === m);
             const evaluated = modelPreds.filter(
@@ -200,9 +200,9 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                     </button>
                     <button
                         type="button"
-                        onClick={() => setSelectedModel('gpt-5.6-luna')}
+                        onClick={() => setSelectedModel('gpt-6-luna')}
                         className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors ${
-                            selectedModel === 'gpt-5.6-luna'
+                            selectedModel === 'gpt-6-luna'
                                 ? 'bg-zinc-700 text-white'
                                 : 'text-zinc-400 hover:text-white'
                         }`}

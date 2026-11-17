@@ -5,7 +5,7 @@ category: concept
 
 # Jev Decisions Model
 
-**Jev** (`~typesafe/jev-latest`, provider TypeSafe) is the fast *System One* probability classifier participating in the daily S&P market predictor arena. Unlike the generative predictors (DeepSeek Flash, MiniMax-M3) that emit free-form reasoning and are mutated as full strategy prompts, Jev classifies market state directly into `UP` / `DOWN` and returns calibrated probabilities through the **OpenRouter Decisions API**.
+**Jev** (`~typesafe/jev-latest`, provider TypeSafe) is the fast *System One* probability classifier participating in the daily S&P market predictor arena. Unlike the generative predictors (DeepSeek Flash, MiniMax-M3.1-Flash) that emit free-form reasoning and are mutated as full strategy prompts, Jev classifies market state directly into `UP` / `DOWN` and returns calibrated probabilities through the **OpenRouter Decisions API**.
 
 ## Why It Is Different
 
@@ -56,7 +56,7 @@ Because Jev is a direction-only classifier without a percentage target:
 ## Autoresearch Integration
 
 The daily predictor arena supports two distinct Jev optimization pathways:
-1. **Weekly Remote Ratchet (`~typesafe/jev-latest`)**: Runs in `apps/engine/tasks/daily_autoresearch.py` using `gpt-5.6-luna` to mutate symmetric criteria.
+1. **Weekly Remote Ratchet (`~typesafe/jev-latest`)**: Runs in `apps/engine/tasks/daily_autoresearch.py` using `gpt-6-luna` to mutate symmetric criteria.
 2. **Local Ground-Truth Ratchet (`jev-four-regime-champion`)**: Promoted from offline Strata prompt research (`apps/engine/local_autoresearch/single_prompt_ratchet.py`). Packs the Four-Regime State Classifier into symmetric criteria, evaluated against curated daily context.
 
 ## Frontend

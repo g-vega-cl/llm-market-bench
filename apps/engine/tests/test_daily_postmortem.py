@@ -17,7 +17,7 @@ def sample_prediction():
         "id": "pred-123",
         "target_date": "2026-09-24",
         "ticker": "SPY",
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "predicted_direction": "DOWN",
         "confidence": 70.0,
         "expected_return_pct": -0.45,
@@ -198,7 +198,7 @@ async def test_run_daily_postmortem_updates_db_and_memories(
         mem_kwargs = mock_add_mem.call_args[1]
         assert mem_kwargs["memory_type"] == "AUTORESEARCH_INSIGHT"
         assert mem_kwargs["metadata"]["scope"] == "daily_predictor"
-        assert mem_kwargs["metadata"]["track_id"] == "deepseek-v4-flash"
+        assert mem_kwargs["metadata"]["track_id"] == "deepseek-flash"
         assert mem_kwargs["metadata"]["postmortem_category"] == "CATALYST_INVERSION"
 
 
@@ -329,7 +329,7 @@ async def test_run_daily_postmortem_fetches_rth_bars_per_ticker_in_mixed_batch(
     tlt_pred = dict(sample_prediction)
     tlt_pred["id"] = "pred-tlt-1"
     tlt_pred["ticker"] = "TLT"
-    tlt_pred["model_name"] = "gpt-5.6-luna"
+    tlt_pred["model_name"] = "gpt-6-luna"
 
     mock_supabase = MagicMock()
     pred_query = MagicMock()

@@ -232,7 +232,7 @@ async def test_run_alpaca_audit_cli_wrapper():
         instance = MagicMock()
         instance.audit_model_portfolio = AsyncMock(
             return_value={
-                "model_name": "MiniMax-M3",
+                "model_name": "MiniMax-M3.1-Flash",
                 "portfolio_id": "p-1",
                 "supabase_equity": 10000.0,
                 "supabase_cash": 5000.0,
@@ -268,6 +268,6 @@ async def test_run_alpaca_audit_cli_wrapper():
         instance.render_terminal_report = MagicMock(return_value="AUDIT REPORT MOCK")
         MockReconcilerClass.return_value = instance
 
-        res = await run_alpaca_audit(model_name="MiniMax-M3", days=7, json_output=False)
-        assert res["model_name"] == "MiniMax-M3"
+        res = await run_alpaca_audit(model_name="MiniMax-M3.1-Flash", days=7, json_output=False)
+        assert res["model_name"] == "MiniMax-M3.1-Flash"
         instance.render_terminal_report.assert_called_once()

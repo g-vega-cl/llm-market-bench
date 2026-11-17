@@ -58,7 +58,7 @@ def test_calculate_stock_picker_hurdle_score_clamping():
 async def test_run_stock_picker_autoresearch_mutation_deployment():
     mock_supabase = MagicMock()
 
-    # Mock past 5 baskets for deepseek-v4-flash
+    # Mock past 5 baskets for deepseek-flash
     mock_baskets = [
         {
             "id": f"b-{i}",
@@ -96,7 +96,7 @@ async def test_run_stock_picker_autoresearch_mutation_deployment():
         patch("tasks.stock_picker_autoresearch.get_supabase_client", return_value=mock_supabase),
         patch("tasks.stock_picker_autoresearch.get_deepseek_client", return_value=mock_ds_client),
         patch("tasks.stock_picker_autoresearch.close_client", new_callable=AsyncMock),
-        patch("tasks.stock_picker_autoresearch.TARGET_TRACK_MODELS", ["deepseek-v4-flash"]),
+        patch("tasks.stock_picker_autoresearch.TARGET_TRACK_MODELS", ["deepseek-flash"]),
     ):
         await run_stock_picker_autoresearch(days=7, dry_run=False, cold_start=False)
 
@@ -106,7 +106,7 @@ async def test_run_stock_picker_autoresearch_mutation_deployment():
 
         variant_insert = insert_calls[0][0][0]
         assert variant_insert["prompt_name"] == "STOCK_PICKER_PROMPT"
-        assert variant_insert["track_id"] == "deepseek-v4-flash"
+        assert variant_insert["track_id"] == "deepseek-flash"
         assert variant_insert["status"] == "active"
         assert "Refined strategy prioritizing pricing power" in variant_insert["prompt_content"]
 

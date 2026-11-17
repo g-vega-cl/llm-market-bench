@@ -46,7 +46,7 @@ async def test_execute_daily_moo_entries_up_and_down(mock_supabase):
     target_date = "2026-09-29"
     pred_up = {
         "id": "pred-1",
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "predicted_direction": "UP",
         "expected_return_pct": 0.85,
         "target_date": target_date,
@@ -105,7 +105,7 @@ async def test_execute_daily_moo_entries_up_and_down(mock_supabase):
     assert len(result["entries"]) >= 2
 
     # Verify Alpaca market order was submitted ONLY for the UP prediction (both target and close portfolios)
-    # pred_up has sys-daily-spy-deepseek-v4-flash and sys-daily-spy-close-deepseek-v4-flash
+    # pred_up has sys-daily-spy-deepseek-flash and sys-daily-spy-close-deepseek-flash
     assert mock_market_order.call_count >= 1
     for call in mock_market_order.call_args_list:
         assert call.kwargs["ticker"] == "SPY"
@@ -121,13 +121,13 @@ async def test_place_daily_target_limit_orders(mock_supabase):
     target_date = "2026-09-29"
     portfolio_id = uuid4()
 
-    mock_portfolio_data = [{"id": str(portfolio_id), "owner_id": "sys-daily-spy-deepseek-v4-flash"}]
+    mock_portfolio_data = [{"id": str(portfolio_id), "owner_id": "sys-daily-spy-deepseek-flash"}]
     mock_positions_data = [
         {"portfolio_id": str(portfolio_id), "ticker": "SPY", "quantity": 20, "average_cost_basis": 500.0}
     ]
     mock_prediction_data = [
         {
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "predicted_direction": "UP",
             "expected_return_pct": 1.0,
             "target_date": target_date,
@@ -177,7 +177,7 @@ async def test_execute_daily_close_exits(mock_supabase):
     portfolio_id = uuid4()
 
     mock_portfolio_data = [
-        {"id": str(portfolio_id), "owner_id": "sys-daily-spy-close-deepseek-v4-flash", "cash_balance": 0.0}
+        {"id": str(portfolio_id), "owner_id": "sys-daily-spy-close-deepseek-flash", "cash_balance": 0.0}
     ]
     mock_positions_data = [
         {"portfolio_id": str(portfolio_id), "ticker": "SPY", "quantity": 20, "average_cost_basis": 500.0}
@@ -251,7 +251,7 @@ async def test_daily_close_exit_reconciles_open_price_from_beginning_of_day(mock
     mock_portfolio_data = [
         {
             "id": str(portfolio_id),
-            "owner_id": "sys-daily-spy-close-MiniMax-M3",
+            "owner_id": "sys-daily-spy-close-MiniMax-M3.1-Flash",
             "cash_balance": 10000.0 - (shares * prev_close),
             "total_equity": 10000.0,
         }
@@ -316,7 +316,7 @@ async def test_daily_close_exit_reconciles_open_price_from_beginning_of_day(mock
             t.execute.return_value = MagicMock(
                 data=[
                     {
-                        "model_name": "MiniMax-M3",
+                        "model_name": "MiniMax-M3.1-Flash",
                         "target_date": target_date,
                         "open_price": actual_open,
                         "close_price": actual_close,
@@ -467,7 +467,7 @@ async def test_execute_daily_moo_entries_filters_only_spy_predictions(mock_supab
     target_date = "2026-10-16"
     pred_spy = {
         "id": "pred-spy",
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "predicted_direction": "UP",
         "expected_return_pct": 0.50,
         "target_date": target_date,
@@ -475,7 +475,7 @@ async def test_execute_daily_moo_entries_filters_only_spy_predictions(mock_supab
     }
     pred_tlt = {
         "id": "pred-tlt",
-        "model_name": "gpt-5.6-luna",
+        "model_name": "gpt-6-luna",
         "predicted_direction": "DOWN",
         "expected_return_pct": -0.50,
         "target_date": target_date,

@@ -18,17 +18,17 @@ async def test_skip_verifier_owner_ids_config():
 
     # All active portfolios currently skip LLM verification
     assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is False
-    assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is False
-    assert config.is_verifier_enabled_for_owner("MiniMax-M3") is False
+    assert config.is_verifier_enabled_for_owner("deepseek-flash") is False
+    assert config.is_verifier_enabled_for_owner("MiniMax-M3.1-Flash") is False
     assert config.is_verifier_enabled_for_owner("gemini-3.5-flash-lite") is False
     assert config.is_verifier_enabled_for_owner("deepseek-v4-pro") is False
-    assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
+    assert config.is_verifier_enabled_for_owner("gpt-6-luna") is False
 
     assert "claude-haiku-5-5" in config.SKIP_VERIFIER_OWNER_IDS
-    assert "deepseek-v4-flash" in config.SKIP_VERIFIER_OWNER_IDS
-    assert "MiniMax-M3" in config.SKIP_VERIFIER_OWNER_IDS
+    assert "deepseek-flash" in config.SKIP_VERIFIER_OWNER_IDS
+    assert "MiniMax-M3.1-Flash" in config.SKIP_VERIFIER_OWNER_IDS
     assert "gemini-3.5-flash-lite" in config.SKIP_VERIFIER_OWNER_IDS
-    assert "gpt-5.6-luna" in config.SKIP_VERIFIER_OWNER_IDS
+    assert "gpt-6-luna" in config.SKIP_VERIFIER_OWNER_IDS
 
 
 @pytest.mark.asyncio
@@ -36,8 +36,8 @@ async def test_verifier_gating_helper_contract():
     """Verify is_verifier_enabled_for_owner correctly respects VERIFIER_ENABLED_OWNER_IDS and SKIP_VERIFIER_OWNER_IDS."""
     # When VERIFIER_ENABLED_OWNER_IDS is empty, all models in SKIP_VERIFIER_OWNER_IDS return False
     assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is False
-    assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is False
-    assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
+    assert config.is_verifier_enabled_for_owner("deepseek-flash") is False
+    assert config.is_verifier_enabled_for_owner("gpt-6-luna") is False
     assert config.is_verifier_enabled_for_owner("gemini-3.5-flash-lite") is False
     assert config.is_verifier_enabled_for_owner(None) is False
     assert config.is_verifier_enabled_for_owner("") is False
@@ -45,8 +45,8 @@ async def test_verifier_gating_helper_contract():
     # When VERIFIER_ENABLED_OWNER_IDS is explicitly set, it gates precisely
     with patch.object(config, "VERIFIER_ENABLED_OWNER_IDS", {"claude-haiku-5-5"}):
         assert config.is_verifier_enabled_for_owner("claude-haiku-5-5") is True
-        assert config.is_verifier_enabled_for_owner("deepseek-v4-flash") is False
-        assert config.is_verifier_enabled_for_owner("gpt-5.6-luna") is False
+        assert config.is_verifier_enabled_for_owner("deepseek-flash") is False
+        assert config.is_verifier_enabled_for_owner("gpt-6-luna") is False
 
 
 @pytest.mark.asyncio
@@ -240,9 +240,9 @@ async def test_runner_run_all_executes_all_tracks():
 async def test_track_models_config():
     """Verify AUTORESEARCH_TRACK_MODELS maps tracks to their respective meta-researcher models."""
     assert hasattr(config, "AUTORESEARCH_TRACK_MODELS")
-    assert config.AUTORESEARCH_TRACK_MODELS.get("track_default") == "deepseek-v4-flash"
-    assert config.AUTORESEARCH_TRACK_MODELS.get("track_claude") == "deepseek-v4-flash"
-    assert config.AUTORESEARCH_TRACK_MODELS.get("track_openai") == "MiniMax-M3"
+    assert config.AUTORESEARCH_TRACK_MODELS.get("track_default") == "deepseek-flash"
+    assert config.AUTORESEARCH_TRACK_MODELS.get("track_claude") == "deepseek-flash"
+    assert config.AUTORESEARCH_TRACK_MODELS.get("track_openai") == "MiniMax-M3.1-Flash"
 
 
 @pytest.mark.asyncio
@@ -267,25 +267,25 @@ async def test_run_research_uses_track_specific_model():
     mock_mm_client.chat.completions.create = mock_mm_completion
 
     def mock_get_client_and_provider(model_name: str):
-        if model_name == "MiniMax-M3":
+        if model_name == "MiniMax-M3.1-Flash":
             return mock_mm_client, "minimax"
         return mock_ds_client, "deepseek"
 
     with patch("autoresearch.researcher._get_client_and_provider_for_model", side_effect=mock_get_client_and_provider):
-        # 1. Test track_claude (should resolve to deepseek-v4-flash)
+        # 1. Test track_claude (should resolve to deepseek-flash)
         res_claude = await researcher.run_research(report="Report", track_id="track_claude")
         assert res_claude is not None
-        assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-v4-flash"
+        assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-flash"
 
-        # 2. Test track_openai (should resolve to MiniMax-M3)
+        # 2. Test track_openai (should resolve to MiniMax-M3.1-Flash)
         res_openai = await researcher.run_research(report="Report", track_id="track_openai")
         assert res_openai is not None
-        assert mock_mm_completion.call_args.kwargs.get("model") == "MiniMax-M3"
+        assert mock_mm_completion.call_args.kwargs.get("model") == "MiniMax-M3.1-Flash"
 
-        # 3. Test track_default (should resolve to deepseek-v4-flash)
+        # 3. Test track_default (should resolve to deepseek-flash)
         res_default = await researcher.run_research(report="Report", track_id="track_default")
         assert res_default is not None
-        assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-v4-flash"
+        assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-flash"
 
 
 @pytest.mark.asyncio

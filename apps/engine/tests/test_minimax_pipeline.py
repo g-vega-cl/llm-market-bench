@@ -1,4 +1,4 @@
-"""Tests for MiniMax-M3 portfolio pipeline.
+"""Tests for MiniMax-M3.1-Flash portfolio pipeline.
 
 Tests cover:
 1. The `minimax` provider branch in `analyze_with_provider` (using the Anthropic SDK).

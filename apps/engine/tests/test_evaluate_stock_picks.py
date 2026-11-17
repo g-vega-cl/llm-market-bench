@@ -155,7 +155,7 @@ async def test_evaluate_stock_picks_full_row_batch_upsert_and_cancelled_basket()
         {
             "id": "basket-2",
             "target_date": "2026-11-13",
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "status": "evaluated",
             "directional_hit_rate": 100.0,
             "ls_spread_alpha_pct": 2.5,
@@ -186,7 +186,7 @@ async def test_evaluate_stock_picks_full_row_batch_upsert_and_cancelled_basket()
             "id": "pick-3",
             "basket_id": "basket-2",
             "target_date": "2026-11-13",
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "ticker": "SUBCENT",
             "direction": "UP",
             "rank": 1,

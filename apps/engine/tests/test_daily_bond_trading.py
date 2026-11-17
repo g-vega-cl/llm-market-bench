@@ -26,8 +26,8 @@ async def test_execute_daily_bond_moo_entries():
     mock_supabase.table.return_value = mock_table
 
     mock_pred_data = [
-        {"model_name": "gpt-5.6-luna", "predicted_direction": "UP", "ticker": "TLT"},
-        {"model_name": "deepseek-v4-flash", "predicted_direction": "DOWN", "ticker": "TLT"},
+        {"model_name": "gpt-6-luna", "predicted_direction": "UP", "ticker": "TLT"},
+        {"model_name": "deepseek-flash", "predicted_direction": "DOWN", "ticker": "TLT"},
     ]
 
     # Mock daily_predictions table
@@ -72,10 +72,10 @@ async def test_execute_daily_bond_moo_entries():
         assert len(result["entries"]) == 2
         # Check first entry: UP -> BUY
         assert result["entries"][0]["signal"] == "BUY"
-        assert result["entries"][0]["owner_id"] == "sys-daily-tlt-close-gpt-5.6-luna"
+        assert result["entries"][0]["owner_id"] == "sys-daily-tlt-close-gpt-6-luna"
         # Check second entry: DOWN -> SHORT
         assert result["entries"][1]["signal"] == "SHORT"
-        assert result["entries"][1]["owner_id"] == "sys-daily-tlt-close-deepseek-v4-flash"
+        assert result["entries"][1]["owner_id"] == "sys-daily-tlt-close-deepseek-flash"
 
 
 @pytest.mark.asyncio
@@ -110,7 +110,7 @@ async def test_execute_system_daily_bond_close_trade():
     mock_portfolio.cash_balance = 10000.0
 
     pred = {
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "predicted_direction": "UP",
         "ticker": "TLT",
         "target_date": "2026-10-07",
@@ -132,7 +132,7 @@ async def test_execute_system_daily_bond_close_trade():
     ):
         res = await execute_system_daily_bond_close_trade(prediction=pred, intraday_data=intraday)
         assert res["status"] == "success"
-        assert res["owner_id"] == "sys-daily-tlt-close-deepseek-v4-flash"
+        assert res["owner_id"] == "sys-daily-tlt-close-deepseek-flash"
         # 92.80 vs 92.00 open on 100 shares -> positive PnL
         assert res["execution"]["realized_pnl"] > 0
         assert res["new_equity"] > 10000.0

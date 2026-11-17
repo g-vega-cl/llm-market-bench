@@ -30,7 +30,7 @@ describe('sector-tracks domain logic', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         },
         {
             id: 'exp-ds-2',
@@ -47,7 +47,7 @@ describe('sector-tracks domain logic', () => {
             parent_tag: 'sector-ds-v1.0',
             research_output: null,
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         },
         {
             id: 'exp-mm-1',
@@ -64,7 +64,7 @@ describe('sector-tracks domain logic', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'MiniMax-M3',
+            track_id: 'MiniMax-M3.1-Flash',
         },
         {
             id: 'exp-gemini-1',
@@ -98,7 +98,7 @@ describe('sector-tracks domain logic', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'gpt-5.6-luna',
+            track_id: 'gpt-6-luna',
         },
         {
             id: 'exp-legacy-1',
@@ -122,17 +122,17 @@ describe('sector-tracks domain logic', () => {
     it('matches model tracks accurately based on track_id and variant_tag', () => {
         const [ds, mm, gemini, gpt] = SECTOR_MODEL_TRACKS;
 
-        expect(ds.matches('deepseek-v4-flash', 'v1.0')).toBe(true);
+        expect(ds.matches('deepseek-flash', 'v1.0')).toBe(true);
         expect(ds.matches(null, 'sector-deepseek-v2.0')).toBe(true);
-        expect(ds.matches('MiniMax-M3', 'v1.0')).toBe(false);
+        expect(ds.matches('MiniMax-M3.1-Flash', 'v1.0')).toBe(false);
 
-        expect(mm.matches('MiniMax-M3', 'v1.0')).toBe(true);
+        expect(mm.matches('MiniMax-M3.1-Flash', 'v1.0')).toBe(true);
         expect(gemini.matches('gemini-3.5-flash-lite', 'v1.0')).toBe(true);
-        expect(gpt.matches('gpt-5.6-luna', 'v1.0')).toBe(true);
+        expect(gpt.matches('gpt-6-luna', 'v1.0')).toBe(true);
         expect(gpt.matches('openai/gpt-4o', 'v1.0')).toBe(true);
 
         expect(LEGACY_TRACK_CONFIG.matches('track_default', 'v1.0-legacy')).toBe(true);
-        expect(LEGACY_TRACK_CONFIG.matches('deepseek-v4-flash', 'v1.0')).toBe(false);
+        expect(LEGACY_TRACK_CONFIG.matches('deepseek-flash', 'v1.0')).toBe(false);
     });
 
     it('identifies available tracks dynamically including legacy when present', () => {
@@ -164,9 +164,9 @@ describe('sector-tracks domain logic', () => {
     it('filters predictions by model name corresponding to track', () => {
         const mockPredictions = [
             { id: '1', model_name: 'deepseek-flash' },
-            { id: '2', model_name: 'MiniMax-M3' },
+            { id: '2', model_name: 'MiniMax-M3.1-Flash' },
             { id: '3', model_name: 'gemini-3.5-flash-lite' },
-            { id: '4', model_name: 'gpt-5.6-luna' },
+            { id: '4', model_name: 'gpt-6-luna' },
         ] as unknown as SectorPrediction[];
 
         const dsPreds = filterPredictionsByTrack(mockPredictions, 'deepseek');

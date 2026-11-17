@@ -412,7 +412,7 @@ def test_compute_magnitude_postmortem_summary_with_luna_postmortems():
 
     summary = compute_magnitude_postmortem_summary(predictions)
     assert "CATALYST_INVERSION" in summary
-    assert "VERIFIED DAILY POST-MORTEMS & FAILURE DIAGNOSES (GPT-5.6 LUNA)" in summary
+    assert "VERIFIED DAILY POST-MORTEMS & FAILURE DIAGNOSES (GPT-6 LUNA)" in summary
     assert "Semiconductor momentum overrules bond yield breakout" in summary
     assert "Flawed assumption: Assumed yields would drag tech equities" in summary
 
@@ -522,7 +522,7 @@ async def test_run_daily_autoresearch_track_filters_out_backtest_predictions():
             "brier_score": 0.04,
             "target_date": "2026-08-30",
             "prompt_variant_tag": "daily-active-1",
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "status": "evaluated",
         },
         {
@@ -532,7 +532,7 @@ async def test_run_daily_autoresearch_track_filters_out_backtest_predictions():
             "brier_score": 0.64,
             "target_date": "2026-08-30",
             "prompt_variant_tag": "daily-pred-backtest-12345678",
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "status": "evaluated",
         },
     ]
@@ -544,7 +544,7 @@ async def test_run_daily_autoresearch_track_filters_out_backtest_predictions():
             "prompt_name": "DAILY_PREDICTOR_PROMPT",
             "prompt_content": "Active prompt content",
             "status": "active",
-            "track_id": "deepseek-v4-flash",
+            "track_id": "deepseek-flash",
         }
     ]
 
@@ -594,7 +594,7 @@ async def test_run_daily_autoresearch_track_filters_out_backtest_predictions():
         patch("memory.store.add_memory"),
     ):
         await run_daily_autoresearch_for_model(
-            model_name="deepseek-v4-flash",
+            model_name="deepseek-flash",
             client=mock_supabase,
             today=today,
             seven_days_ago=seven_days_ago,

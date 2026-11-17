@@ -1,3 +1,4 @@
+import { legacyModelLabel } from '~/config/model-aliases';
 import { MODELS } from '~/config/models';
 
 export const modelDisplayConfig: Record<
@@ -11,7 +12,7 @@ export const modelDisplayConfig: Record<
     }
 > = {
     [MODELS.OPENAI]: {
-        name: 'OpenAI (gpt-5.6-luna)',
+        name: 'OpenAI (gpt-6-luna)',
         color: 'text-emerald-400',
         bgColor: 'bg-emerald-500',
         emoji: '🟢',
@@ -32,14 +33,14 @@ export const modelDisplayConfig: Record<
         gradient: 'electric',
     },
     [MODELS.DEEPSEEK]: {
-        name: 'DeepSeek (v4-flash)',
+        name: 'DeepSeek (flash)',
         color: 'text-purple-400',
         bgColor: 'bg-purple-500',
         emoji: '🟣',
         gradient: 'ai',
     },
     [MODELS.MINIMAX]: {
-        name: 'MiniMax (M3)',
+        name: 'MiniMax (M3.1)',
         color: 'text-pink-400',
         bgColor: 'bg-pink-500',
         emoji: '🟡',
@@ -53,6 +54,16 @@ export function getModelDisplayInfo(ownerId: string | null | undefined) {
             name: 'Unknown',
             color: 'text-zinc-500',
             bgColor: 'bg-zinc-500',
+            emoji: '🤖',
+            gradient: 'electric' as const,
+        };
+    }
+    const legacy = legacyModelLabel(ownerId);
+    if (legacy) {
+        return {
+            name: legacy,
+            color: 'text-zinc-400',
+            bgColor: 'bg-zinc-600',
             emoji: '🤖',
             gradient: 'electric' as const,
         };

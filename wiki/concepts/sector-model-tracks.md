@@ -5,7 +5,7 @@ category: concept
 
 # Sector Model Tracks
 
-The Sector Predictor's prompt auto-research is not a single global loop — it runs an **independent Karpathy-style prompt evolution loop per LLM model**. Each model (DeepSeek Flash, MiniMax-M3, Gemini 3.5, OpenAI GPT-5.6) maintains its own ratchet baseline, active prompt variant, lineage history, and math audit. This isolation prevents a strong model's prompt mutations from being evaluated against another model's predictions, and lets each model's strategy evolve on its own trajectory.
+The Sector Predictor's prompt auto-research is not a single global loop — it runs an **independent Karpathy-style prompt evolution loop per LLM model**. Each model (DeepSeek Flash, MiniMax-M3.1-Flash, Gemini 3.5, OpenAI GPT-6) maintains its own ratchet baseline, active prompt variant, lineage history, and math audit. This isolation prevents a strong model's prompt mutations from being evaluated against another model's predictions, and lets each model's strategy evolve on its own trajectory.
 
 ## Track Definition
 

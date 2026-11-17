@@ -33,7 +33,7 @@ describe('PredictorModelOverviewGrid', () => {
         expect(screen.getByText('sector-ds-v1.4')).toBeInTheDocument();
         expect(screen.getByText('86.4000')).toBeInTheDocument();
 
-        expect(screen.getByText('MiniMax-M3')).toBeInTheDocument();
+        expect(screen.getByText('MiniMax-M3.1-Flash')).toBeInTheDocument();
         expect(screen.getByText('sector-mm-v1.1')).toBeInTheDocument();
         expect(screen.getByText('79.2000')).toBeInTheDocument();
         expect(screen.getByText('From 0')).toBeInTheDocument();

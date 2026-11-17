@@ -175,7 +175,7 @@ async def test_audit_internal_predictions_when_faded():
 
 @pytest.mark.asyncio
 async def test_diagnose_missed_gainer_uses_gpt_5_6_luna_with_thinking():
-    """Verify diagnose_missed_gainer calls gpt-5.6-luna with thinking (reasoning_effort='medium') via Mode.JSON."""
+    """Verify diagnose_missed_gainer calls gpt-6-luna with thinking (reasoning_effort='medium') via Mode.JSON."""
     gainer = GainerItem(
         symbol="AMD",
         name="Advanced Micro Devices",
@@ -214,7 +214,7 @@ async def test_diagnose_missed_gainer_uses_gpt_5_6_luna_with_thinking():
         assert res.missed_reason_category == "MOMENTUM_TIMIDITY"
 
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
-        assert call_kwargs["model"] == "gpt-5.6-luna"
+        assert call_kwargs["model"] == "gpt-6-luna"
         assert call_kwargs["reasoning_effort"] == "medium"
         assert call_kwargs["response_model"] == MissedGainerDiagnosis
 

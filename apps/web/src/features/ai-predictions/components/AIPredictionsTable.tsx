@@ -8,6 +8,7 @@ import {
     TableRow,
 } from '@llm-market-bench/ui-design-system';
 import { Fragment, useMemo, useState } from 'react';
+import { legacyModelLabel } from '~/config/model-aliases';
 import type { SectorPrediction } from '../api/fetch-predictions';
 
 interface AIPredictionsTableProps {
@@ -299,11 +300,13 @@ function EvaluationAuditDrawer({
 }
 
 function getModelDisplayName(modelName: string): string {
+    const legacy = legacyModelLabel(modelName);
+    if (legacy) return legacy;
     const lower = modelName.toLowerCase();
     if (lower.includes('deepseek')) return 'DeepSeek';
-    if (lower.includes('minimax')) return 'MiniMax-M3';
+    if (lower.includes('minimax')) return 'MiniMax-M3.1-Flash';
     if (lower.includes('gemini')) return 'Gemini 3.5';
-    if (lower.includes('gpt') || lower.includes('openai')) return 'GPT-5.6';
+    if (lower.includes('gpt') || lower.includes('openai')) return 'GPT-6';
     return modelName;
 }
 
@@ -548,7 +551,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                     >
                         <option value="all">All Models</option>
                         <option value="deepseek">DeepSeek Models</option>
-                        <option value="minimax">MiniMax-M3</option>
+                        <option value="minimax">MiniMax-M3.1-Flash</option>
                         <option value="gemini">Gemini Models</option>
                         <option value="openai">OpenAI Models</option>
                     </select>

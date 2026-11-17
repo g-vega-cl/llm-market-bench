@@ -198,7 +198,7 @@ When ready to wire Laya into the repository as a 4th contestant:
 3. **Arena & Systematic Trading**:
    - Participates in `sys-daily-spy-close-laya-typed-decisions` (close-exit portfolio trading directional bias with zero expected return target).
 4. **Autoresearch**:
-   - Independent criteria lineage evolved weekly by OpenAI Luna (`gpt-5.6-luna`), maintaining symmetric rules for `UP` and `DOWN`.
+   - Independent criteria lineage evolved weekly by OpenAI Luna (`gpt-6-luna`), maintaining symmetric rules for `UP` and `DOWN`.
 
 ---
 

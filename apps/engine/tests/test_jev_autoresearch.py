@@ -12,7 +12,7 @@ from core.llm.daily_predictor_prompts import (
 
 @pytest.mark.asyncio
 async def test_generate_new_jev_criteria_with_luna():
-    """Verify generate_new_jev_criteria calls OpenAI Luna (gpt-5.6-luna) and preserves frozen structure."""
+    """Verify generate_new_jev_criteria calls OpenAI Luna (gpt-6-luna) and preserves frozen structure."""
     from tasks.daily_autoresearch import JevMetaCriteriaResponse, generate_new_jev_criteria
 
     mock_openai = MagicMock()

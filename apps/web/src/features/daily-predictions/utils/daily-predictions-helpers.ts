@@ -25,18 +25,18 @@ export interface ModelConfig {
     matches: (modelName: string) => boolean;
 }
 
-const OPENAI_MODEL_ID = (modelsConfig as { OPENAI_MODEL?: string }).OPENAI_MODEL || 'gpt-5.6-luna';
+const OPENAI_MODEL_ID = (modelsConfig as { OPENAI_MODEL?: string }).OPENAI_MODEL || 'gpt-6-luna';
 
 export const SPY_PREDICTOR_MODELS: ModelConfig[] = [
     {
-        id: 'deepseek-v4-flash',
+        id: 'deepseek-flash',
         label: 'DeepSeek Flash',
         matches: (m: string) =>
             m.toLowerCase().includes('deepseek') || m.toLowerCase() === 'track_default',
     },
     {
-        id: 'MiniMax-M3',
-        label: 'MiniMax M3',
+        id: 'MiniMax-M3.1-Flash',
+        label: 'MiniMax M3.1',
         matches: (m: string) => m.toLowerCase().includes('minimax'),
     },
     {
@@ -84,14 +84,14 @@ export function parseCuratedManifest(
 export const BOND_PREDICTOR_MODELS: ModelConfig[] = [
     {
         id: OPENAI_MODEL_ID,
-        label: 'GPT-5.6 Luna',
+        label: 'GPT-6 Luna',
         matches: (m: string) =>
-            m.toLowerCase().includes('gpt-5.6') ||
+            m.toLowerCase().includes('gpt-6') ||
             m.toLowerCase().includes('luna') ||
             m.toLowerCase().includes('openai'),
     },
     {
-        id: 'deepseek-v4-flash',
+        id: 'deepseek-flash',
         label: 'DeepSeek Flash',
         matches: (m: string) => m.toLowerCase().includes('deepseek'),
     },

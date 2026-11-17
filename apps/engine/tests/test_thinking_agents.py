@@ -97,7 +97,7 @@ async def test_verification_enables_thinking_for_deepseek():
         ticker="NVDA",
         signal="BUY",
         model_provider="deepseek",
-        model_name="deepseek-v4-flash",
+        model_name="deepseek-flash",
         quantity=10,
         confidence=85,
         reasoning="Strong demand",
@@ -222,7 +222,7 @@ async def test_autoresearcher_enables_thinking_for_deepseek():
         await researcher.run_research(
             report="Performance Report",
             track_id="track_default",
-            model_name="deepseek-v4-flash",
+            model_name="deepseek-flash",
         )
 
     assert len(captured_kwargs) > 0, "Expected chat.completions.create in autoresearch"
@@ -244,7 +244,7 @@ async def test_tool_loop_suppresses_thinking_to_prevent_narration():
     messages = [{"role": "user", "content": "Fetch stock quote"}]
     await deepseek.run_tool_loop(
         raw_client=mock_ds_raw,
-        model_name="deepseek-v4-flash",
+        model_name="deepseek-flash",
         messages=messages,
         max_tool_steps=1,
     )
@@ -262,7 +262,7 @@ async def test_tool_loop_suppresses_thinking_to_prevent_narration():
     oa_messages = [{"role": "user", "content": "Fetch stock quote"}]
     await openai.run_tool_loop(
         raw_client=mock_oa_raw,
-        model_name="gpt-5.6-luna",
+        model_name="gpt-6-luna",
         messages=oa_messages,
         max_tool_steps=1,
     )

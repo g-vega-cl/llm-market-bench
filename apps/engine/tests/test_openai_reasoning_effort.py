@@ -35,7 +35,7 @@ async def test_openai_analysis_injects_reasoning_effort_none():
     ):
         await analysis.analyze_with_provider(
             provider="openai",
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
             chunks=[{"source_id": "src-1", "content": "Sample content"}],
             response_model=DummyResponse,
         )
@@ -97,7 +97,7 @@ async def test_openai_handler_tool_loop_injects_reasoning_effort_none():
     messages = [{"role": "user", "content": "analyze market"}]
     await handlers.openai.run_tool_loop(
         raw_client=raw_client,
-        model_name="gpt-5.6-luna",
+        model_name="gpt-6-luna",
         messages=messages,
         provider="openai",
     )
@@ -128,7 +128,7 @@ async def test_openai_verification_injects_reasoning_effort_none():
         ticker="AAPL",
         signal="BUY",
         model_provider="openai",
-        model_name="gpt-5.6-luna",
+        model_name="gpt-6-luna",
         quantity=10,
         confidence=85,
         reasoning="Strong trend",
@@ -187,7 +187,7 @@ async def test_openai_autoresearch_injects_reasoning_effort_none():
         result = await researcher.run_research(
             report="Performance report",
             track_id="track_openai",
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
         )
 
     assert result is not None

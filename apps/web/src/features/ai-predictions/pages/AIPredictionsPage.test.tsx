@@ -58,7 +58,7 @@ describe('AIPredictionsPage', () => {
             prediction_date: '2026-07-10T00:00:00Z',
             target_date: '2026-07-17T00:00:00Z',
             timeframe: '7d',
-            model_name: 'MiniMax-M3',
+            model_name: 'MiniMax-M3.1-Flash',
             prompt_tag: 'v1.0',
             predicted_sector: 'XLE',
             predicted_pair: ['TLT', 'XLV'],
@@ -96,7 +96,7 @@ describe('AIPredictionsPage', () => {
             prediction_date: '2026-07-10T00:00:00Z',
             target_date: '2026-07-17T00:00:00Z',
             timeframe: '7d',
-            model_name: 'gpt-5.6-luna',
+            model_name: 'gpt-6-luna',
             prompt_tag: 'v1.0',
             predicted_sector: 'XLV',
             predicted_pair: ['XLV', 'XBI'],
@@ -228,9 +228,9 @@ describe('AIPredictionsPage', () => {
         );
 
         expect(screen.getAllByText('DeepSeek Models').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('MiniMax-M3').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('MiniMax-M3.1-Flash').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Gemini 3.5').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('OpenAI GPT-5.6').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('OpenAI GPT-6').length).toBeGreaterThan(0);
     });
 
     it('renders full transparency suite in Prompt Auto-Research tab', () => {
@@ -381,7 +381,7 @@ Footer JSON schema`,
                 parent_tag: null,
                 research_output: null,
                 is_backtest: false,
-                track_id: 'deepseek-v4-flash',
+                track_id: 'deepseek-flash',
             },
             {
                 id: 'exp-mm-1',
@@ -398,7 +398,7 @@ Footer JSON schema`,
                 parent_tag: null,
                 research_output: null,
                 is_backtest: false,
-                track_id: 'MiniMax-M3',
+                track_id: 'MiniMax-M3.1-Flash',
             },
             {
                 id: 'exp-gemini-1',
@@ -432,7 +432,7 @@ Footer JSON schema`,
                 parent_tag: null,
                 research_output: null,
                 is_backtest: false,
-                track_id: 'gpt-5.6-luna',
+                track_id: 'gpt-6-luna',
             },
         ];
 
@@ -455,13 +455,13 @@ Footer JSON schema`,
         expect(screen.getByText('83.4000')).toBeInTheDocument(); // GPT
 
         // Click on MiniMax track tab to isolate MiniMax
-        const mmButtons = screen.getAllByRole('button', { name: /MiniMax-M3/i });
+        const mmButtons = screen.getAllByRole('button', { name: /MiniMax-M3.1-Flash/i });
         fireEvent.click(mmButtons[0]);
 
         // MiniMax isolated cards
-        expect(screen.getByText('MiniMax-M3 All-Time Baseline Score')).toBeInTheDocument();
+        expect(screen.getByText('MiniMax-M3.1-Flash All-Time Baseline Score')).toBeInTheDocument();
         expect(screen.getByText('78.2000')).toBeInTheDocument();
-        expect(screen.getByText('MiniMax-M3 Active Prompt')).toBeInTheDocument();
+        expect(screen.getByText('MiniMax-M3.1-Flash Active Prompt')).toBeInTheDocument();
         expect(screen.getAllByText('sector-mm-v1.0').length).toBeGreaterThanOrEqual(1);
 
         // History list shows only MiniMax experiments

@@ -17,7 +17,7 @@ The agent is implemented in `apps/engine/analysis/lin_agent.py` and `apps/engine
    - Enforces 2-brick reversal logic to confirm trend direction shifts.
 
 2. **Hyper-Focused LLM Synthesizer & Web Search Tools (`apps/engine/analysis/lin_agent.py`)**:
-   - Powered by **DeepSeek Flash (`deepseek-v4-flash`)**.
+   - Powered by **DeepSeek Flash (`deepseek-flash`)**.
    - Queries specialized LIN FMP fundamental tools: analyst consensus revenue estimates, ROIC (16.5%), Free Cash Flow yield (4.2%), and earnings surprises.
    - Accesses live `web_search` function tool loop to query real-time semiconductor fab gas demand catalysts and press releases.
    - Ingests ChemEng domain context: semiconductor fab gas demand (Taiwan/US fab expansions), industrial PMIs, and long-term take-or-pay contract backlogs ($4.20B).

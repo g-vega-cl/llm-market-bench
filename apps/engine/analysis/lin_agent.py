@@ -1,6 +1,6 @@
 """Linde plc (LIN) Hyper-Focused Single-Stock Agent.
 
-Uses DeepSeek Flash (deepseek-v4-flash) to evaluate LIN price action via Renko state
+Uses DeepSeek Flash (deepseek-flash) to evaluate LIN price action via Renko state
 and specialized Chemical Engineering / Industrial Gas sector context.
 """
 
@@ -29,7 +29,7 @@ class LinAgentContext:
 class LinAgent:
     """Hyper-focused single-stock LLM agent for Linde plc."""
 
-    def __init__(self, model_name: str = "deepseek-v4-flash"):
+    def __init__(self, model_name: str = "deepseek-flash"):
         self.symbol = "LIN"
         self.model_name = model_name
 

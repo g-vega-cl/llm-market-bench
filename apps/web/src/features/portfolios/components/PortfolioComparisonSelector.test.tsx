@@ -150,7 +150,7 @@ describe('PortfolioComparisonSelector', () => {
                 portfolioId: 'p-long',
                 ownerId: 'sys-smid-quality-compounder-extremely-long-portfolio-name',
             },
-            { portfolioId: 'p-3', ownerId: 'deepseek-v4-flash' },
+            { portfolioId: 'p-3', ownerId: 'deepseek-flash' },
             { portfolioId: 'p-4', ownerId: 'claude-3-5-sonnet' },
             { portfolioId: 'p-5', ownerId: 'gemini-3-5-pro' },
         ];

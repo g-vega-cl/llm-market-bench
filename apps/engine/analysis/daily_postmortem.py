@@ -1,7 +1,7 @@
 """Daily Predictor Post-Mortem Island.
 
 Audits intraday S&P 500 (SPY) daily predictions after market close using OpenAI Luna
-(gpt-5.6-luna). Grounded strictly between the morning prediction rationale, the verified
+(gpt-6-luna). Grounded strictly between the morning prediction rationale, the verified
 regular trading hours (RTH) price tape, and the evening Wall Street close briefing.
 Categorizes root causes into a closed taxonomy to feed weekly prompt autoresearch without hallucination.
 """
@@ -153,7 +153,7 @@ async def diagnose_daily_prediction(
     close_newsletter: dict | None = None,
     luna_client=None,
 ) -> DailyPredictionDiagnosis:
-    """Invokes GPT-5.6 Luna to diagnose the prediction outcome without hallucination."""
+    """Invokes GPT-6 Luna to diagnose the prediction outcome without hallucination."""
     client = luna_client or get_luna_client()
 
     ticker = prediction.get("ticker", "SPY")

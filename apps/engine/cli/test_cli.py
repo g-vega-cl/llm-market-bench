@@ -49,7 +49,7 @@ def test_parser_defaults_and_choices():
     assert args.force is False
     assert args.dry_run is False
     assert args.ticker == "SPY"
-    assert args.model == "MiniMax-M3"
+    assert args.model == "MiniMax-M3.1-Flash"
     assert args.days == 7
 
 

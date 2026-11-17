@@ -31,12 +31,12 @@ The RPC takes `time_window_days INT` as an input parameter (supporting `7`, `30`
 * **Verifier Approval Rate**: The percentage of decisions not rejected by the Verifier Agent:
   $$\text{Approval Rate} = \frac{\text{Approved Decisions}}{\text{Total Non-Error Decisions}}$$
   * *Approved* statuses: `VALIDATED`, `EXECUTED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_LIMIT_PRICE`.
-  * *Exception (MiniMax-M3)*: Since `MiniMax-M3` bypasses the verifier entirely, its verifier approval rate is ignored (`NULL`) and not compared on the UI.
+  * *Exception (MiniMax-M3.1-Flash)*: Since `MiniMax-M3.1-Flash` bypasses the verifier entirely, its verifier approval rate is ignored (`NULL`) and not compared on the UI.
 * **Average Confidence**: The arithmetic mean of self-reported `confidence` scores (0-100) on all decisions. Informational only — it earns no points.
 * **Conviction Score**: The normalised [[concepts/conviction-points]] term computed from evaluated `daily_predictions` rows over the window. Neutral 50.0 when a model has no scored predictions. Stated confidence earns nothing on its own; it only pays when it was calibrated against outcomes.
 * **Reasoning Quality Score**: Blended metric:
   $$\text{Reasoning Quality Score} = (0.7 \times \text{Approval Rate}) + (0.3 \times \text{Conviction Score})$$
-  * *Exception (MiniMax-M3)*: $\text{Reasoning Quality Score} = \text{Conviction Score}$ (100% of conviction).
+  * *Exception (MiniMax-M3.1-Flash)*: $\text{Reasoning Quality Score} = \text{Conviction Score}$ (100% of conviction).
 
 #### C. Consistency (20% of Composite Score)
 * **API Success Rate**: Percentage of attempts that did not experience API/provider errors:
@@ -48,7 +48,7 @@ The RPC takes `time_window_days INT` as an input parameter (supporting `7`, `30`
 #### D. Leaderboard Composite Score (0-100%)
 The final ranking placement is determined by:
 $$\text{Composite Score} = (0.5 \times \text{Performance Score}) + (0.3 \times \text{Reasoning Quality Score}) + (0.2 \times \text{Consistency Score})$$
-* *Note*: For `MiniMax-M3`, the `Reasoning Quality Score` used here is its `Conviction Score` (as verifier score is ignored).
+* *Note*: For `MiniMax-M3.1-Flash`, the `Reasoning Quality Score` used here is its `Conviction Score` (as verifier score is ignored).
 
 ---
 

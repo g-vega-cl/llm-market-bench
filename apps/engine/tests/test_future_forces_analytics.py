@@ -91,7 +91,7 @@ def test_check_deterministic_invalidation():
 
 @pytest.mark.asyncio
 async def test_evaluate_future_force_uses_luna_with_thinking():
-    """Verify evaluate_future_force calls gpt-5.6-luna with reasoning_effort='medium'."""
+    """Verify evaluate_future_force calls gpt-6-luna with reasoning_effort='medium'."""
     mock_client = MagicMock()
     mock_response = ForceEvaluationResult(
         passes_rubric=True,
@@ -117,19 +117,19 @@ async def test_evaluate_future_force_uses_luna_with_thinking():
     result = await evaluate_future_force(
         candidate=candidate,
         client=mock_client,
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
     )
 
     assert result.passes_rubric is True
     assert result.conviction_score == 5
     call_kwargs = mock_client.chat.completions.create.call_args[1]
-    assert call_kwargs["model"] == "gpt-5.6-luna"
+    assert call_kwargs["model"] == "gpt-6-luna"
     assert call_kwargs["reasoning_effort"] == "medium"
 
 
 @pytest.mark.asyncio
 async def test_audit_force_invalidation_sentinel():
-    """Verify audit_force_invalidation calls gpt-5.6-luna to assess breaking news against triggers."""
+    """Verify audit_force_invalidation calls gpt-6-luna to assess breaking news against triggers."""
     mock_client = MagicMock()
     mock_response = ForceAuditResult(
         is_invalidated=True,
@@ -155,11 +155,11 @@ async def test_audit_force_invalidation_sentinel():
         force_data=force_data,
         news_context=news,
         client=mock_client,
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
     )
 
     assert result.is_invalidated is True
     assert result.recommended_action == "LIQUIDATE_INVALIDATED"
     call_kwargs = mock_client.chat.completions.create.call_args[1]
-    assert call_kwargs["model"] == "gpt-5.6-luna"
+    assert call_kwargs["model"] == "gpt-6-luna"
     assert call_kwargs["reasoning_effort"] == "medium"

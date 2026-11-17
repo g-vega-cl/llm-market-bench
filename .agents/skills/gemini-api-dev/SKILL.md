@@ -12,7 +12,8 @@ description: Use this skill when writing code that calls the Gemini API for text
 
 ### Current Models (Use These)
 
-- `gemini-3.8-flash`: 1M tokens, fast, balanced performance for agentic and multimodal tasks
+- `gemini-4-hydrogen`: GA 2026-11-12, unified 1M input+output budget, agentic/coding frontier; `thinking_level` is `LOW|MEDIUM|HIGH|XHIGH` only (`MINIMAL`/`thinking_budget` are 400s) and sampling params are ignored (`$1.50`/`$7.50` per 1M)
+- `gemini-3.8-flash`: 1M tokens, fast, balanced performance for agentic and multimodal tasks (introductory `$0.75`/`$3.75` per 1M through 2026-12-31)
 - `gemini-3.5-flash-lite`: 1M tokens, fastest, lowest-cost 3.5 model for high-throughput execution
 - `gemini-3.1-pro-preview`: 1M tokens, complex reasoning, coding, research
 - `gemini-3.1-flash-lite`: cost-efficient, fastest performance for high-frequency, lightweight tasks

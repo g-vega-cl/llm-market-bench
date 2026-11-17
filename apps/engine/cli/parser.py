@@ -96,8 +96,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model",
         type=str,
-        default="MiniMax-M3",
-        help="Target model name for audit/tasks (default: MiniMax-M3)",
+        default="MiniMax-M3.1-Flash",
+        help="Target model name for audit/tasks (default: MiniMax-M3.1-Flash)",
     )
     parser.add_argument(
         "--days",

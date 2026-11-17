@@ -157,7 +157,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                         {initialPredictions.length}
                     </div>
                     <div className="text-xs font-normal text-boxel-muted">
-                        Model: DeepSeek Flash (`deepseek-v4-flash`)
+                        Model: DeepSeek Flash (`deepseek-flash`)
                     </div>
                 </Card>
 

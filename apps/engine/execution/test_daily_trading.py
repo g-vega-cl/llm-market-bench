@@ -129,7 +129,7 @@ async def test_execute_system_daily_close_trade_flow():
     """Verify execute_system_daily_close_trade creates sys-daily-spy-close-* portfolio."""
     pred = {
         "id": str(uuid4()),
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "target_date": "2026-09-18",
         "ticker": "SPY",
         "predicted_direction": "DOWN",
@@ -157,7 +157,7 @@ async def test_execute_system_daily_close_trade_flow():
                 data=[
                     {
                         "id": test_pid,
-                        "owner_id": "sys-daily-spy-close-deepseek-v4-flash",
+                        "owner_id": "sys-daily-spy-close-deepseek-flash",
                         "cash_balance": 10000.0,
                         "total_equity": 10000.0,
                     }
@@ -194,7 +194,7 @@ async def test_execute_system_daily_close_trade_flow():
         )
 
     assert res["status"] == "success"
-    assert res["owner_id"] == "sys-daily-spy-close-deepseek-v4-flash"
+    assert res["owner_id"] == "sys-daily-spy-close-deepseek-flash"
     assert len(inserted_trades) == 2
     entry_trade, exit_trade = inserted_trades[0], inserted_trades[1]
 
@@ -219,7 +219,7 @@ async def test_execute_system_daily_close_trade_idempotency():
     """Verify that re-running execute_system_daily_close_trade cleans up existing trades and reverts PnL."""
     pred = {
         "id": str(uuid4()),
-        "model_name": "MiniMax-M3",
+        "model_name": "MiniMax-M3.1-Flash",
         "target_date": "2026-09-18",
         "ticker": "SPY",
         "predicted_direction": "UP",
@@ -278,7 +278,7 @@ async def test_execute_system_daily_trade_target_flow():
     """Verify execute_system_daily_trade routes to sys-daily-spy-* and exits on target."""
     pred = {
         "id": str(uuid4()),
-        "model_name": "MiniMax-M3",
+        "model_name": "MiniMax-M3.1-Flash",
         "target_date": "2026-09-18",
         "ticker": "SPY",
         "predicted_direction": "UP",
@@ -321,7 +321,7 @@ async def test_execute_system_daily_trade_target_flow():
         res = await execute_system_daily_trade(pred, intraday)
 
     assert res["status"] == "success"
-    assert res["owner_id"] == "sys-daily-spy-MiniMax-M3"
+    assert res["owner_id"] == "sys-daily-spy-MiniMax-M3.1-Flash"
     assert res["execution"]["target_hit"] is True
     # Profit target exit: exit price = 760 * (1 + 0.004) = 763.04
     assert res["execution"]["exit_price"] == pytest.approx(763.04)
@@ -361,7 +361,7 @@ async def test_execute_system_daily_trade_skips_jev_and_zero_target():
     # 2. General model with 0.0% or None expected return
     zero_pred = {
         "id": str(uuid4()),
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "target_date": "2026-09-18",
         "ticker": "SPY",
         "predicted_direction": "DOWN",
@@ -385,7 +385,7 @@ async def test_execute_daily_spy_trade_hold_cleans_up_existing_same_day_trades()
     """
     hold_pred = {
         "id": str(uuid4()),
-        "model_name": "MiniMax-M3",
+        "model_name": "MiniMax-M3.1-Flash",
         "target_date": "2026-09-18",
         "ticker": "SPY",
         "predicted_direction": "HOLD",

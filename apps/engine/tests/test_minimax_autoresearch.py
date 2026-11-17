@@ -12,7 +12,7 @@ from core.llm.prompt_factory import PromptFactory
 
 @pytest.mark.asyncio
 async def test_minimax_autoresearch_active_prompt_loading():
-    """Verify that PromptFactory loads the active database prompt for MiniMax-M3
+    """Verify that PromptFactory loads the active database prompt for MiniMax-M3.1-Flash
 
     when it is configured in the auto-research experiment group. Also checks
     that the MiniMax-specific tool nudge is prepended.
@@ -34,7 +34,7 @@ async def test_minimax_autoresearch_active_prompt_loading():
     ):
         messages = await PromptFactory.build_analysis_messages(
             provider="minimax",
-            owner_id="MiniMax-M3",
+            owner_id="MiniMax-M3.1-Flash",
             news_content="Apple reports earnings.",
             portfolio_context="Cash: $10,000",
             current_day_info="Monday",

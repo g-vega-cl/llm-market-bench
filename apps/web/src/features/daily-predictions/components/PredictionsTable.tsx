@@ -89,7 +89,7 @@ function PredictionExpandedDetail({
                         </div>
                     </div>
 
-                    {/* Post-Market Post-Mortem & Causal Lessons (GPT-5.6 Luna) */}
+                    {/* Post-Market Post-Mortem & Causal Lessons (GPT-6 Luna) */}
                     <DailyPostMortemCard prediction={p} />
 
                     {/* Market Context Passed to Predictor */}

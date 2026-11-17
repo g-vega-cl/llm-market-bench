@@ -71,20 +71,20 @@ describe('StrategyExplainer', () => {
     });
 
     it('renders daily SPY target exit explainer', () => {
-        render(<StrategyExplainer ownerId="sys-daily-spy-deepseek-v4-flash" />);
+        render(<StrategyExplainer ownerId="sys-daily-spy-deepseek-flash" />);
         expect(screen.getByText('Daily S&P 500 Intraday Trader')).toBeInTheDocument();
         expect(screen.getByText(/Profit Target Exit/i)).toBeInTheDocument();
     });
 
     it('renders daily SPY 3:50 close exit explainer', () => {
-        render(<StrategyExplainer ownerId="sys-daily-spy-close-deepseek-v4-flash" />);
+        render(<StrategyExplainer ownerId="sys-daily-spy-close-deepseek-flash" />);
         expect(screen.getByText('Daily S&P 500 Close Trader (3:50 PM Exit)')).toBeInTheDocument();
         expect(screen.getByText(/3:50 PM Close Exit/i)).toBeInTheDocument();
         expect(screen.getByText(/0.02% Liquid Friction/i)).toBeInTheDocument();
     });
 
     it('renders daily TLT bond close exit explainer', () => {
-        render(<StrategyExplainer ownerId="sys-daily-tlt-close-gpt-5.6-luna" />);
+        render(<StrategyExplainer ownerId="sys-daily-tlt-close-gpt-6-luna" />);
         expect(
             screen.getByText('Daily 20+ Year Treasury Bond Trader (TLT Close Exit)'),
         ).toBeInTheDocument();

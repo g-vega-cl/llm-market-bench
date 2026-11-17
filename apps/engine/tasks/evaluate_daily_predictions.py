@@ -344,7 +344,7 @@ async def evaluate_daily_predictions(
             from analysis.daily_postmortem import run_daily_postmortem
 
             eval_target_date = target_date or (pending[0]["target_date"] if pending else None)
-            logger.info(f"Triggering daily post-mortem audit with GPT-5.6 Luna for {eval_target_date}...")
+            logger.info(f"Triggering daily post-mortem audit with GPT-6 Luna for {eval_target_date}...")
             await run_daily_postmortem(target_date=eval_target_date, force=force_recalc)
         except Exception as e:
             logger.exception(f"Failed to execute daily post-mortem for target date {target_date}: {e}")

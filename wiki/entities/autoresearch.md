@@ -36,8 +36,8 @@ The core portfolio auto-research pipeline is located in `apps/engine/autoresearc
 ## Track Isolation & Agency-Driven Tooling
 
 - **Strict Track Isolation**: Each model and track maintains independent prompt lineages and memory records:
-  - Daily Predictor: `deepseek-v4-flash`, `MiniMax-M3`, `~typesafe/jev-latest`.
-  - Sector Predictor: `deepseek-v4-flash`, `MiniMax-M3`, `gemini-3.5-flash-lite`, `gpt-5.6-luna`.
+  - Daily Predictor: `deepseek-flash`, `MiniMax-M3.1-Flash`, `~typesafe/jev-latest`.
+  - Sector Predictor: `deepseek-flash`, `MiniMax-M3.1-Flash`, `gemini-3.5-flash-lite`, `gpt-6-luna`.
   - Portfolio Trading: `track_default`, `track_claude`, `track_openai`.
 - No cross-track fallback or cross-pollination: prompt queries and memory lookups are always scoped strictly by `track_id` and `scope` (see [[concepts/multi-track-autoresearch]]).
 - **Autoresearch Memories (`AUTORESEARCH_INSIGHT`)**: During each optimization cycle, the meta-researcher synthesizes a succinct causal takeaway or hypothesis postmortem (`research_insight`).

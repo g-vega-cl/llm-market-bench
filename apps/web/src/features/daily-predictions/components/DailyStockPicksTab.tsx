@@ -8,9 +8,9 @@ export interface DailyStockPicksTabProps {
 
 const STOCK_MODELS = [
     { id: 'consensus', label: '⭐ Consensus' },
-    { id: 'deepseek-v4-flash', label: 'DeepSeek Flash' },
-    { id: 'MiniMax-M3', label: 'MiniMax-M3' },
-    { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna' },
+    { id: 'deepseek-flash', label: 'DeepSeek Flash' },
+    { id: 'MiniMax-M3.1-Flash', label: 'MiniMax-M3.1-Flash' },
+    { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
 ];
 
 function ModelFilterButtons({

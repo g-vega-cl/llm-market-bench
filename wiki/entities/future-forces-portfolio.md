@@ -22,7 +22,7 @@ Before evaluation, the task fetches live quotes for every candidate ticker **and
 Autonomous agents inspect and stress-test the strategy through two canonical pull tools:
 
 - `get_future_forces`: Deterministic query for active forces across horizons and archetypes.
-- `research_future_force`: Adversarial research tool using `gpt-5.6-luna` with thinking.
+- `research_future_force`: Adversarial research tool using `gpt-6-luna` with thinking.
 
 ## Related
 

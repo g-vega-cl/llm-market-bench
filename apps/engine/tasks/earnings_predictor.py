@@ -1,7 +1,7 @@
 """Day-1 Earnings Movement Predictor Arena Task.
 
 Dispatches earnings day-1 movement predictions (RTH Open-to-Close UP/DOWN)
-across GPT Luna (gpt-5.6-luna), DeepSeek Flash (deepseek-chat), and TypeSafe Jev (~typesafe/jev-latest).
+across GPT Luna (gpt-6-luna), DeepSeek Flash (deepseek-chat), and TypeSafe Jev (~typesafe/jev-latest).
 """
 
 from datetime import UTC, datetime, timedelta
@@ -71,7 +71,7 @@ Earnings Report Fundamentals:
 
 
 async def predict_with_luna(candidate: dict[str, Any], context: str) -> dict[str, Any]:
-    """Execute prediction using OpenAI Luna (gpt-5.6-luna) with reasoning."""
+    """Execute prediction using OpenAI Luna (gpt-6-luna) with reasoning."""
     client = get_openai_client()
     messages = [
         {"role": "system", "content": EARNINGS_PREDICTOR_PROMPT},
@@ -387,7 +387,7 @@ async def run_earnings_prediction(
         context = format_candidate_context(cand)
 
         models_to_run = [
-            ("gpt-5.6-luna", predict_with_luna(cand, context)),
+            ("gpt-6-luna", predict_with_luna(cand, context)),
             ("deepseek-chat", predict_with_deepseek(cand, context)),
             ("~typesafe/jev-latest", predict_with_jev(cand)),
         ]

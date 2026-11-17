@@ -45,7 +45,7 @@ const STRATEGY_CONFIGS: Record<string, ExplainerConfig> = {
             {
                 title: '🛑 Adversarial Luna Sentinel',
                 description:
-                    'Daily headline monitoring powered by OpenAI Luna (gpt-5.6-luna) with thinking. If explicit thesis invalidation criteria are satisfied, positions are flagged for immediate liquidation.',
+                    'Daily headline monitoring powered by OpenAI Luna (gpt-6-luna) with thinking. If explicit thesis invalidation criteria are satisfied, positions are flagged for immediate liquidation.',
             },
             {
                 title: '⚡ Live Market Hours & Alpaca Audit',

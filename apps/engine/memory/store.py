@@ -166,7 +166,7 @@ def retrieve_autoresearch_memories(track_id: str, scope: str | None = None, limi
     """Fetches active AUTORESEARCH_INSIGHT memories isolated to a specific model or track ID.
 
     Args:
-        track_id: The specific model track ID (e.g. 'deepseek-v4-flash', 'MiniMax-M3', 'track_claude').
+        track_id: The specific model track ID (e.g. 'deepseek-flash', 'MiniMax-M3.1-Flash', 'track_claude').
         scope: Optional scope discriminator ('daily_predictor', 'sector_predictor', 'portfolio_trading').
         limit: Max number of memories to return.
 

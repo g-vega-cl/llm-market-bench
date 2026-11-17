@@ -459,7 +459,7 @@ def compute_magnitude_postmortem_summary(
         )
 
     if luna_postmortems:
-        lines.append("\n#### VERIFIED DAILY POST-MORTEMS & FAILURE DIAGNOSES (GPT-5.6 LUNA):")
+        lines.append("\n#### VERIFIED DAILY POST-MORTEMS & FAILURE DIAGNOSES (GPT-6 LUNA):")
         lines.extend(luna_postmortems)
 
     lines.append("\n#### Magnitude Calibration Diagnosis:")
@@ -561,7 +561,7 @@ async def generate_new_daily_prompt(
 
     try:
         resp_awaitable = meta_researcher.chat.completions.create(
-            model="deepseek-v4-flash",
+            model="deepseek-flash",
             response_model=DailyMetaPromptResponse,
             messages=[{"role": "user", "content": meta_prompt}],
         )
@@ -597,7 +597,7 @@ async def generate_new_jev_criteria(
     openai_meta,
     cold_start: bool = False,
 ) -> tuple[str, str | None]:
-    """Generate mutated UP and DOWN criteria for Jev using OpenAI Luna (gpt-5.6-luna)."""
+    """Generate mutated UP and DOWN criteria for Jev using OpenAI Luna (gpt-6-luna)."""
     current_criteria = parse_jev_prompt_content(old_prompt_content)
 
     postmortem_context = (

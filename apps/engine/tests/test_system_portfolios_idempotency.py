@@ -21,7 +21,7 @@ async def test_execute_system_daily_trade_idempotent_replacement():
     mock_port.cash_balance = 10024.77  # Already credited with +$24.77 from first run
 
     prediction = {
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "target_date": "2026-09-01",
         "ticker": "SPY",
         "predicted_direction": "DOWN",

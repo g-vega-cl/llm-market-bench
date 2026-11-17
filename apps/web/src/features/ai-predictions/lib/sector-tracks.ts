@@ -37,7 +37,7 @@ export const SECTOR_MODEL_TRACKS: SectorTrackConfig[] = [
     },
     {
         id: 'minimax',
-        label: 'MiniMax-M3',
+        label: 'MiniMax-M3.1-Flash',
         shortLabel: 'MiniMax',
         badgeColorScheme: 'success',
         badgeClass: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
@@ -63,7 +63,7 @@ export const SECTOR_MODEL_TRACKS: SectorTrackConfig[] = [
     },
     {
         id: 'openai',
-        label: 'OpenAI GPT-5.6',
+        label: 'OpenAI GPT-6',
         shortLabel: 'OpenAI',
         badgeColorScheme: 'accent',
         badgeClass: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',

@@ -269,7 +269,7 @@ async def test_execute_model_daily_prediction_propagates_custom_min_confidence()
     assert "[HOLD - Gated from UP (60.0%)]" in gated_rationale
 
     # 2. Standard instructor model defaults to HOLD_CONFIDENCE_THRESHOLD (56.0%)
-    instructor_cfg = {"name": "deepseek-v4-flash", "type": "instructor", "provider": "openrouter"}
+    instructor_cfg = {"name": "deepseek-flash", "type": "instructor", "provider": "openrouter"}
     mock_instructor = AsyncMock(return_value=("UP", 55.0, 0.30, "Weak lean", []))
     with patch("tasks.daily_predictor._call_instructor_daily_model", mock_instructor):
         pred_dir, conf, exp_ret, rationale, catalysts, ctx, min_conf = await _execute_model_daily_prediction(

@@ -218,7 +218,7 @@ async def run_simulated_daily_prediction(
     t_sim: datetime,
     active_prompt: str,
     prompt_tag: str,
-    model_name: str = "deepseek-v4-flash",
+    model_name: str = "deepseek-flash",
     ticker: str = "SPY",
 ) -> dict | None:
     """Run daily prediction step at 09:15 AM ET for target_date using DeepSeek Flash."""
@@ -500,7 +500,7 @@ async def generate_new_daily_prompt_backtest(
 
     try:
         resp_awaitable = deepseek_client.chat.completions.create(
-            model="deepseek-v4-flash",
+            model="deepseek-flash",
             response_model=DailyMetaPromptResponse,
             messages=[{"role": "user", "content": meta_prompt}],
         )
@@ -533,7 +533,7 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
 
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").replace(tzinfo=UTC)
     logger.info(f"=== Starting S&P Daily Auto-Researcher Backtest ({start_date_str}, {weeks} week(s)) ===")
-    logger.info("Using model: deepseek-v4-flash for both Daily Predictor and Meta-Researcher.")
+    logger.info("Using model: deepseek-flash for both Daily Predictor and Meta-Researcher.")
 
     active_tag, active_prompt = await get_active_backtest_daily_prompt()
 
@@ -559,7 +559,7 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
                 t_sim=t_sim_am,
                 active_prompt=active_prompt,
                 prompt_tag=active_tag,
-                model_name="deepseek-v4-flash",
+                model_name="deepseek-flash",
                 ticker="SPY",
             )
 

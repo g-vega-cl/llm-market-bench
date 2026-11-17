@@ -10,7 +10,7 @@ describe('PredictionsTable', () => {
         prediction_date: '2026-08-03',
         target_date: '2026-08-03',
         ticker: 'SPY',
-        model_name: 'deepseek-v4-flash',
+        model_name: 'deepseek-flash',
         prompt_variant_tag: 'daily-active-1',
         predicted_direction: 'UP',
         confidence: 80.0,
@@ -44,7 +44,7 @@ describe('PredictionsTable', () => {
         parent_tag: null,
         research_output: null,
         is_backtest: false,
-        track_id: 'deepseek-v4-flash',
+        track_id: 'deepseek-flash',
         week_start: '2026-08-03',
         week_end: '2026-08-10',
     };

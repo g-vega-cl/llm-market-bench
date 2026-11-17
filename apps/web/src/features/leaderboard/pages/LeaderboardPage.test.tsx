@@ -31,7 +31,7 @@ vi.mock('@tanstack/react-start', () => ({
 
 const mockLeaderboardData: LLMLeaderboardRow[] = [
     {
-        model_name: 'deepseek-v4-flash',
+        model_name: 'deepseek-flash',
         total_equity: 10820,
         return_pct: 8.2,
         realized_pnl: 820,
@@ -48,7 +48,7 @@ const mockLeaderboardData: LLMLeaderboardRow[] = [
         composite_score: 89.5,
     },
     {
-        model_name: 'MiniMax-M3',
+        model_name: 'MiniMax-M3.1-Flash',
         total_equity: 10600,
         return_pct: 6.0,
         realized_pnl: 600,
@@ -65,7 +65,7 @@ const mockLeaderboardData: LLMLeaderboardRow[] = [
         composite_score: 85.0,
     },
     {
-        model_name: 'gpt-5.6-luna',
+        model_name: 'gpt-6-luna',
         total_equity: 10480,
         return_pct: 4.8,
         realized_pnl: 480,
@@ -96,9 +96,9 @@ describe('LeaderboardPage', () => {
         expect(screen.getByText('Place #3')).toBeDefined();
 
         // Should render model display names from config or fallback
-        expect(screen.getAllByText('DeepSeek (v4-flash)').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('MiniMax (M3)').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('OpenAI (gpt-5.6-luna)').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('DeepSeek (flash)').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('MiniMax (M3.1)').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('OpenAI (gpt-6-luna)').length).toBeGreaterThan(0);
 
         // Should render score percentages
         expect(screen.getAllByText('89.5%').length).toBeGreaterThan(0);
@@ -110,7 +110,7 @@ describe('LeaderboardPage', () => {
 
         // Should render accessible selection checkboxes for model comparison
         const checkbox = screen.getByRole('checkbox', {
-            name: /select deepseek \(v4-flash\) for comparison/i,
+            name: /select deepseek \(flash\) for comparison/i,
         });
         expect(checkbox).toBeInTheDocument();
     });

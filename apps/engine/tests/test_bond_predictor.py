@@ -26,7 +26,7 @@ def test_bond_toolbox_contains_curated_tools():
 
 
 def test_bond_predictor_models_lineup():
-    """Verify model lineup contains gpt-5.6-luna, deepseek-v4-flash, and jev."""
+    """Verify model lineup contains gpt-6-luna, deepseek-flash, and jev."""
     model_names = [m["name"] for m in BOND_PREDICTOR_MODELS]
     assert any("luna" in name.lower() or "5.6" in name.lower() for name in model_names)
     assert any("deepseek" in name.lower() for name in model_names)
@@ -155,7 +155,7 @@ async def test_predict_bond_with_reasoning_model_openai_reasoning_effort_none():
         patch("tasks.bond_predictor.close_client", new_callable=AsyncMock),
     ):
         res = await predict_bond_with_reasoning_model(
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
             provider="openai",
             user_prompt="Predict TLT",
         )

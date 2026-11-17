@@ -78,7 +78,7 @@ describe('fetchDailyStockBaskets', () => {
         basketsData = [
             basket('b-consensus-new', '2026-11-13', 'consensus'),
             basket('b-consensus-old', '2026-11-12', 'consensus'),
-            basket('b-minimax', '2026-11-13', 'MiniMax-M3'),
+            basket('b-minimax', '2026-11-13', 'MiniMax-M3.1-Flash'),
         ];
         picksData = [
             { id: 'p1', basket_id: 'b-consensus-new', rank: 1, ticker: 'AMD' },
@@ -116,9 +116,9 @@ describe('latestBasketIdsByModel', () => {
     it('keeps only the first (newest) basket per model in input order', () => {
         const ids = latestBasketIdsByModel([
             basket('b1', '2026-11-13', 'consensus'),
-            basket('b2', '2026-11-13', 'gpt-5.6-luna'),
+            basket('b2', '2026-11-13', 'gpt-6-luna'),
             basket('b3', '2026-11-12', 'consensus'),
-            basket('b4', '2026-11-11', 'gpt-5.6-luna'),
+            basket('b4', '2026-11-11', 'gpt-6-luna'),
         ] as never);
 
         expect(ids).toEqual(['b1', 'b2']);

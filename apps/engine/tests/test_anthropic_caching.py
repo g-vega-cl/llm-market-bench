@@ -94,7 +94,7 @@ async def test_run_tool_loop_minimax_does_not_apply_anthropic_cache_control():
 
     await anthropic.run_tool_loop(
         raw_client=mock_client,
-        model_name="MiniMax-M3",
+        model_name="MiniMax-M3.1-Flash",
         messages=messages,
         max_tool_steps=1,
     )

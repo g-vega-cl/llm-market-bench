@@ -21,7 +21,7 @@ describe('VariantSidebar', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         },
         {
             id: 'exp-2',
@@ -38,7 +38,7 @@ describe('VariantSidebar', () => {
             parent_tag: null,
             research_output: { is_cold_start: true },
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         },
     ];
 
@@ -95,7 +95,7 @@ describe('VariantSidebar', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         };
 
         const mockPredictions = [
@@ -104,7 +104,7 @@ describe('VariantSidebar', () => {
                 prediction_date: '2026-08-04',
                 target_date: '2026-08-04',
                 ticker: 'SPY',
-                model_name: 'deepseek-v4-flash',
+                model_name: 'deepseek-flash',
                 prompt_variant_tag: 'daily-pred-baseline',
                 status: 'evaluated',
                 predicted_direction: 'UP',

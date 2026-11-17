@@ -57,7 +57,7 @@ describe('AIPredictionsTable', () => {
             prediction_date: '2026-07-05T00:00:00Z',
             target_date: '2026-07-12T00:00:00Z',
             timeframe: '7d',
-            model_name: 'MiniMax-M3',
+            model_name: 'MiniMax-M3.1-Flash',
             prompt_tag: 'v1.0',
             predicted_sector: 'XLE',
             predicted_pair: ['TLT', 'XLV'],

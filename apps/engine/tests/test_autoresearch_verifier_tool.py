@@ -48,7 +48,7 @@ async def test_inspect_verifier_rules_tool_claude_track_payload():
             "signal": "BUY",
             "status": "REJECTED_VERIFICATION",
             "reasoning": "Breakout above 50-day moving average on robotaxi sentiment.",
-            "model_name": "deepseek-v4-flash",
+            "model_name": "deepseek-flash",
             "metadata": {"reason": "Stock moved >6% in last 24h; priced in per SOP check 1."},
             "created_at": "2026-09-02T11:00:00Z",
         },
@@ -116,7 +116,7 @@ async def test_base_execute_tool_dispatches_inspect_verifier_rules():
         res = await base.execute_tool(
             "inspect_verifier_rules_and_rejections",
             {"limit": 3, "ticker": "MSFT"},
-            model_name="deepseek-v4-flash",
+            model_name="deepseek-flash",
             track_id="track_claude",
         )
         assert res == "Mocked Verifier Tool Output"

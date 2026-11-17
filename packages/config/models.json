@@ -1,44 +1,44 @@
 {
-  "OPENAI_MODEL": "gpt-5.6-luna",
+  "OPENAI_MODEL": "gpt-6-luna",
   "ANTHROPIC_MODEL": "claude-haiku-5-5",
   "GEMINI_MODEL": "gemini-3.5-flash-lite",
   "GEMINI_EMBEDDING_MODEL": "gemini-embedding-001",
-  "DEEPSEEK_MODEL": "deepseek-v4-flash",
-  "DEEPSEEK_FLASH_MODEL": "deepseek-v4-flash",
-  "MINIMAX_MODEL": "MiniMax-M3",
+  "DEEPSEEK_MODEL": "deepseek-flash",
+  "DEEPSEEK_FLASH_MODEL": "deepseek-flash",
+  "MINIMAX_MODEL": "MiniMax-M3.1-Flash",
   "JEV_MODEL": "~typesafe/jev-latest",
   "LIVE_TRADER_OWNER_ID": "live-spy-trader",
   "AUTORESEARCH_EXPERIMENT_OWNER_IDS": [
     "gemini-3.5-flash-lite",
-    "MiniMax-M3",
+    "MiniMax-M3.1-Flash",
     "claude-haiku-5-5",
-    "deepseek-v4-flash"
+    "deepseek-flash"
   ],
   "AUTORESEARCH_TRACKS": {
     "track_default": [
       "gemini-3.5-flash-lite",
-      "MiniMax-M3"
+      "MiniMax-M3.1-Flash"
     ],
     "track_claude": [
       "claude-haiku-5-5",
-      "deepseek-v4-flash"
+      "deepseek-flash"
     ],
     "track_openai": [
-      "gpt-5.6-luna"
+      "gpt-6-luna"
     ]
   },
   "VERIFIER_ENABLED_OWNER_IDS": [],
   "SKIP_VERIFIER_OWNER_IDS": [
-    "gpt-5.6-luna",
+    "gpt-6-luna",
     "gemini-3.5-flash-lite",
-    "MiniMax-M3",
+    "MiniMax-M3.1-Flash",
     "claude-haiku-5-5",
-    "deepseek-v4-flash"
+    "deepseek-flash"
   ],
   "AUTORESEARCH_TRACK_MODELS": {
-    "track_default": "deepseek-v4-flash",
-    "track_claude": "deepseek-v4-flash",
-    "track_openai": "MiniMax-M3"
+    "track_default": "deepseek-flash",
+    "track_claude": "deepseek-flash",
+    "track_openai": "MiniMax-M3.1-Flash"
   }
 }
 

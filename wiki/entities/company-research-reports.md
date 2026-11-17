@@ -30,7 +30,7 @@ The Company Research system extracts individual stocks and sector benchmark ETFs
    - Every fetch is individually wrapped — a failing tool is logged at debug level and simply omitted, so one unavailable provider never aborts the dossier.
 
 4. **Deep-Dive Synthesis (OpenAI Luna with Thinking)** — `Mode.JSON` extraction:
-   - Invokes OpenAI `gpt-5.6-luna` (`OPENAI_MODEL`) using Instructor with `reasoning_effort="medium"` and `response_model=CompanyResearchDossierOutput`.
+   - Invokes OpenAI `gpt-6-luna` (`OPENAI_MODEL`) using Instructor with `reasoning_effort="medium"` and `response_model=CompanyResearchDossierOutput`.
    - The client is built by `get_openai_json_client` in `apps/engine/core/llm/clients.py`. That factory wraps `AsyncOpenAI` with `instructor.from_openai(..., mode=instructor.Mode.JSON)` so structured extraction is driven by JSON-schema guidance in the prompt rather than injected function tools. This is required because OpenAI's `/v1/chat/completions` API rejects `reasoning_effort != 'none'` whenever function tools are present in the request — `Mode.JSON` keeps the reasoning budget intact without triggering a `400 invalid_request_error`. See [[concepts/thinking-agents]].
    - **Conditional reasoning effort**: `research_single_target` only attaches `reasoning_effort="medium"` when the configured `OPENAI_MODEL` name contains a reasoning-model marker (`luna`, `o1`, or `o3`). For any other model the kwarg is omitted entirely, so standard chat models that reject the parameter are never sent it.
    - Produces structured output:

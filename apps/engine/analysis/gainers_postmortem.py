@@ -2,7 +2,7 @@
 
 Analyzes daily, weekly (5D), and monthly (1M) market gainers against
 Benchify internal prediction logs (decisions, trades, sector predictions).
-Invokes gpt-5.6-luna with thinking to diagnose root causes and record
+Invokes gpt-6-luna with thinking to diagnose root causes and record
 actionable lessons into long-term memory.
 """
 
@@ -279,7 +279,7 @@ async def diagnose_missed_gainer(
     headlines: list[str] | None = None,
     client=None,
 ) -> MissedGainerDiagnosis:
-    """Run gpt-5.6-luna with thinking to produce structured root cause diagnosis and lesson."""
+    """Run gpt-6-luna with thinking to produce structured root cause diagnosis and lesson."""
     cl = client or get_diagnosis_openai_client()
     news_text = "\n".join([f"- {h}" for h in (headlines or [])]) or "No specific headline available."
 

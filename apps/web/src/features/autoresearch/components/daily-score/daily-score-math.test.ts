@@ -18,11 +18,17 @@ describe('daily-score-math', () => {
             expect(getAgentDisplayName('gemini-3.5-flash-lite')).toBe('Gemini 3.5 Flash Lite');
             expect(getAgentDisplayName('gemini_3.1_flash_lite')).toBe('Gemini 3.1 Flash Lite');
             expect(getAgentDisplayName('deepseek-v4-pro')).toBe('DeepSeek V4 Pro');
-            expect(getAgentDisplayName('deepseek-v4-flash')).toBe('DeepSeek V4 Flash');
+            expect(getAgentDisplayName('deepseek-flash')).toBe('DeepSeek Flash');
             expect(getAgentDisplayName('claude-haiku-5-5')).toBe('Claude Haiku 5.5');
             expect(getAgentDisplayName('claude-haiku-4-5')).toBe('Claude Haiku 4.5');
-            expect(getAgentDisplayName('gpt-5.6-luna')).toBe('GPT 5.6 Luna');
-            expect(getAgentDisplayName('minimax-m3')).toBe('MiniMax-M3');
+            expect(getAgentDisplayName('gpt-6-luna')).toBe('GPT 6 Luna');
+            expect(getAgentDisplayName('MiniMax-M3.1-Flash')).toBe('MiniMax-M3.1-Flash');
+        });
+
+        it('labels retired ids as the model that actually ran, not the current one', () => {
+            expect(getAgentDisplayName('gpt-5.6-luna')).toBe('GPT-5.6 Luna');
+            expect(getAgentDisplayName('deepseek-v4-flash')).toBe('DeepSeek Flash');
+            expect(getAgentDisplayName('MiniMax-M3')).toBe('MiniMax M3');
         });
 
         it('returns fallback for unknown or empty IDs', () => {

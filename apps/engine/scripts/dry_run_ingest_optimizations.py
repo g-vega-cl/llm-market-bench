@@ -79,7 +79,7 @@ async def dry_run():
             impact="BULLISH",
             source_id="dry_run_src_1",
             model_provider="openai",
-            model_name="openai/gpt-5.6-luna",
+            model_name="openai/gpt-6-luna",
             confidence=90,
         ),
         MacroEvent(

@@ -28,14 +28,14 @@ The `render_terminal_report()` method produces a structured Unicode-box report w
 ## CLI Usage
 
 ```sh
-# Default audit for MiniMax-M3 over 7 days
+# Default audit for MiniMax-M3.1-Flash over 7 days
 python main.py audit-alpaca
 
 # Audit a specific model with custom lookback
 python main.py audit-alpaca --model claude-haiku-5-5 --days 30
 
 # JSON output for programmatic consumption
-python main.py audit-alpaca --model gpt-5.6-luna --days 14 --json
+python main.py audit-alpaca --model gpt-6-luna --days 14 --json
 ```
 
 ## Related

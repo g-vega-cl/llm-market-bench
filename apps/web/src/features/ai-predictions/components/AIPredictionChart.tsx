@@ -181,9 +181,9 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
         // Model Series Configurations
         const seriesConfig: { key: ModelKey; label: string; color: string }[] = [
             { key: 'deepseek', label: 'DeepSeek Flash', color: '#60a5fa' },
-            { key: 'minimax', label: 'MiniMax-M3', color: '#34d399' },
+            { key: 'minimax', label: 'MiniMax-M3.1-Flash', color: '#34d399' },
             { key: 'gemini', label: 'Gemini 3.5', color: '#f59e0b' },
-            { key: 'openai', label: 'OpenAI GPT-5.6', color: '#a855f7' },
+            { key: 'openai', label: 'OpenAI GPT-6', color: '#a855f7' },
         ];
 
         // Render lines and dots for each model series

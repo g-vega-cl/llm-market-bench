@@ -211,6 +211,6 @@ async def test_execute_get_intraday_movement_profile_tool():
         res2 = await execute_tool(
             "get_intraday_movement_profile",
             {"ticker": "SPY", "date": "2026-09-21", "include_hourly_tape": True},
-            model_name="deepseek-v4-flash",
+            model_name="deepseek-flash",
         )
         assert "MOCKED INTRADAY PROFILE" in res2

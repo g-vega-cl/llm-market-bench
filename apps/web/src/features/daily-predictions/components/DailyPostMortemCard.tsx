@@ -47,7 +47,7 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                        Post-Market Evaluation (GPT-5.6 Luna)
+                        Post-Market Evaluation (GPT-6 Luna)
                     </span>
                     {prediction.postmortem_evaluated_at && (
                         <span className="text-xs font-normal text-zinc-500 font-mono">

@@ -106,7 +106,7 @@ async def generate_embedding(text: str) -> list[float] | None:
 async def identify_historical_precedent(
     situation: str, client: Any | None = None, model: str | None = None
 ) -> HistoricalPrecedentCandidate:
-    """Invokes gpt-5.6-luna with thinking to identify the single best historical analog episode."""
+    """Invokes gpt-6-luna with thinking to identify the single best historical analog episode."""
     cl = client or get_openai_client()
     target_model = model or config.OPENAI_MODEL
 
@@ -192,7 +192,7 @@ async def synthesize_analog_playbook(
     client: Any | None = None,
     model: str | None = None,
 ) -> PlaybookSynthesis:
-    """Invokes gpt-5.6-luna with thinking to synthesize an actionable playbook based on real empirical price tape."""
+    """Invokes gpt-6-luna with thinking to synthesize an actionable playbook based on real empirical price tape."""
     cl = client or get_openai_client()
     target_model = model or config.OPENAI_MODEL
 

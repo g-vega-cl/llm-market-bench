@@ -18,7 +18,7 @@ describe('DailyPredictionsBacktestPage', () => {
             prediction_date: '2026-04-27',
             target_date: '2026-04-27',
             ticker: 'SPY',
-            model_name: 'deepseek-v4-flash',
+            model_name: 'deepseek-flash',
             prompt_variant_tag: 'daily-pred-backtest-base',
             predicted_direction: 'UP',
             confidence: 75.0,

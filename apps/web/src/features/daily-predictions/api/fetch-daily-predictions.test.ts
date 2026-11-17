@@ -35,17 +35,17 @@ describe('fetch-daily-predictions', () => {
             {
                 id: '1',
                 prompt_variant_tag: 'daily-pred-live-1',
-                model_name: 'deepseek-v4-flash',
+                model_name: 'deepseek-flash',
             },
             {
                 id: '2',
                 prompt_variant_tag: 'daily-pred-backtest-1234',
-                model_name: 'deepseek-v4-flash',
+                model_name: 'deepseek-flash',
             },
             {
                 id: '3',
                 prompt_variant_tag: null,
-                model_name: 'MiniMax-M3',
+                model_name: 'MiniMax-M3.1-Flash',
             },
         ];
         mockChain.order.mockResolvedValueOnce({ data: mockData, error: null });
@@ -67,7 +67,7 @@ describe('fetch-daily-predictions', () => {
             {
                 id: 'pred-postmortem-1',
                 prompt_variant_tag: 'daily-pred-live-1',
-                model_name: 'deepseek-v4-flash',
+                model_name: 'deepseek-flash',
                 status: 'evaluated',
                 postmortem_category: 'ACCURATE_CAPTURE',
                 postmortem_flawed_assumption: 'None',

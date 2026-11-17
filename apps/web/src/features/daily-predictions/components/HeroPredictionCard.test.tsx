@@ -9,7 +9,7 @@ describe('HeroPredictionCard', () => {
         prediction_date: '2026-08-03',
         target_date: '2026-08-03',
         ticker: 'SPY',
-        model_name: 'deepseek-v4-flash',
+        model_name: 'deepseek-flash',
         prompt_variant_tag: 'daily-active-1',
         predicted_direction: 'UP',
         confidence: 85.0,

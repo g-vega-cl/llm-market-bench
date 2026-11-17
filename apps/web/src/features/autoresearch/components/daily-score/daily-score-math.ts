@@ -1,3 +1,5 @@
+import { legacyModelLabel } from '~/config/model-aliases';
+
 export interface ActualReturns {
     [ownerId: string]: {
         startEquity: number;
@@ -58,15 +60,19 @@ export const DAY_MULTIPLIERS: Record<string, number> = {
 
 export function getAgentDisplayName(ownerId: string | null | undefined): string {
     if (!ownerId) return 'Unknown Agent';
+    // Retired ids still back historical rows — label them as what actually ran.
+    const legacy = legacyModelLabel(ownerId);
+    if (legacy) return legacy;
     const normalized = ownerId.toLowerCase().replace(/[\s_-]+/g, '-');
     if (normalized.includes('gemini-3.5-flash-lite')) return 'Gemini 3.5 Flash Lite';
     if (normalized.includes('gemini-3.1-flash-lite')) return 'Gemini 3.1 Flash Lite';
     if (normalized.includes('deepseek-v4-pro')) return 'DeepSeek V4 Pro';
-    if (normalized.includes('deepseek-v4-flash')) return 'DeepSeek V4 Flash';
+    if (normalized.includes('deepseek-flash')) return 'DeepSeek Flash';
     if (normalized.includes('claude-haiku-5-5')) return 'Claude Haiku 5.5';
     if (normalized.includes('claude-haiku-4-5')) return 'Claude Haiku 4.5';
-    if (normalized.includes('gpt-5.6-luna')) return 'GPT 5.6 Luna';
-    if (normalized.includes('minimax-m3') || normalized.includes('minimax')) return 'MiniMax-M3';
+    if (normalized.includes('gpt-6-luna')) return 'GPT 6 Luna';
+    if (normalized.includes('minimax-m3') || normalized.includes('minimax'))
+        return 'MiniMax-M3.1-Flash';
     return ownerId;
 }
 

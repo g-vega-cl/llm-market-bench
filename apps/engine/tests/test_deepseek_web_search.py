@@ -44,7 +44,7 @@ async def test_execute_tool_web_search_dispatch():
         res = await base.execute_tool(
             "web_search",
             {"query": "Linde fab demand"},
-            model_name="deepseek-v4-flash",
+            model_name="deepseek-flash",
         )
         mock_search.assert_awaited_once_with("Linde fab demand")
         assert "=== WEB SEARCH RESULTS ===" in res
@@ -93,7 +93,7 @@ async def test_deepseek_run_tool_loop_executes_web_search():
         mock_exec.return_value = "=== SEARCH RESULTS: Linde Q2 Beat ==="
         await deepseek.run_tool_loop(
             raw_client=raw_client,
-            model_name="deepseek-v4-flash",
+            model_name="deepseek-flash",
             messages=messages,
             enable_web_search=True,
         )
@@ -101,7 +101,7 @@ async def test_deepseek_run_tool_loop_executes_web_search():
         mock_exec.assert_awaited_once_with(
             "web_search",
             {"query": "Linde latest earnings"},
-            "deepseek-v4-flash",
+            "deepseek-flash",
         )
         assert len(messages) >= 3
         # Check tool message was appended

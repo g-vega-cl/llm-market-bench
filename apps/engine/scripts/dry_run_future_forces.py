@@ -2,7 +2,7 @@
 
 Verifies:
 1. get_future_forces tool returns vetted forces and respects filters.
-2. research_future_force tool invokes OpenAI Luna (gpt-5.6-luna) with thinking to stress-test a thesis.
+2. research_future_force tool invokes OpenAI Luna (gpt-6-luna) with thinking to stress-test a thesis.
 3. run_future_forces_task executes dry-run simulation of portfolio bootstrapping and rebalance order computation.
 """
 
@@ -37,9 +37,9 @@ async def main():
     print("✅ Step 1 passed: get_future_forces returned formatted active forces.")
 
     # -------------------------------------------------------------------------
-    # Step 2: Tool `research_future_force` with OpenAI Luna (gpt-5.6-luna)
+    # Step 2: Tool `research_future_force` with OpenAI Luna (gpt-6-luna)
     # -------------------------------------------------------------------------
-    print("\n[2/3] Testing research_future_force tool via OpenAI Luna (gpt-5.6-luna)...")
+    print("\n[2/3] Testing research_future_force tool via OpenAI Luna (gpt-6-luna)...")
     test_thesis = {
         "force_title": "AI Autonomous Code Security Crisis",
         "archetype": "secular_tollroad",
@@ -55,7 +55,7 @@ async def main():
         audit_report = await execute_tool(
             "research_future_force",
             test_thesis,
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
         )
         print("-" * 60)
         print(audit_report)

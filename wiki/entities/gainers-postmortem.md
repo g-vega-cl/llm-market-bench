@@ -9,7 +9,7 @@ Automated adversarial audit pipeline that discovers daily, weekly, and monthly m
 
 ## Overview
 
-While traditional post-analysis in [[entities/pipeline]] audits trades that the system already executed, the Missed Gainers Post-Mortem diagnoses opportunity cost and false negatives. It identifies stocks and sectors that produced substantial market gains across 1-day, 5-day (weekly), and 1-month horizons, then challenges OpenAI `gpt-5.6-luna` to diagnose the root cause of the blind spot.
+While traditional post-analysis in [[entities/pipeline]] audits trades that the system already executed, the Missed Gainers Post-Mortem diagnoses opportunity cost and false negatives. It identifies stocks and sectors that produced substantial market gains across 1-day, 5-day (weekly), and 1-month horizons, then challenges OpenAI `gpt-6-luna` to diagnose the root cause of the blind spot.
 
 The module is implemented as an isolated vertical slice island in `apps/engine/analysis/gainers_postmortem.py`.
 
@@ -34,7 +34,7 @@ A ticker is classified as missed if no model issued a `BUY` or if existing posit
 
 ## Adversarial LLM Diagnosis
 
-Diagnosis is performed exclusively by **`gpt-5.6-luna`** using Instructor with `mode=instructor.Mode.JSON` to enable active reasoning (`reasoning_effort="medium"`). Because no function tools are passed in the prompt payload, OpenAI's chat completions gateway cleanly executes reasoning tokens without 400 parameter errors.
+Diagnosis is performed exclusively by **`gpt-6-luna`** using Instructor with `mode=instructor.Mode.JSON` to enable active reasoning (`reasoning_effort="medium"`). Because no function tools are passed in the prompt payload, OpenAI's chat completions gateway cleanly executes reasoning tokens without 400 parameter errors.
 
 The model outputs a typed `MissedGainerDiagnosis` record classifying the root cause:
 

@@ -83,20 +83,20 @@ def test_lin_agent_prompt_construction():
         recent_news_summary="Semiconductor fab expansion in Arizona announced.",
     )
 
-    agent = LinAgent(model_name="deepseek-v4-flash")
+    agent = LinAgent(model_name="deepseek-flash")
     prompt = agent.build_prompt(renko_state, context)
 
     assert "Linde plc" in prompt
     assert "BULLISH" in prompt
     assert "454.0" in prompt
     assert "$4.20B" in prompt
-    assert agent.model_name == "deepseek-v4-flash"
+    assert agent.model_name == "deepseek-flash"
 
 
 @pytest.mark.asyncio
 async def test_lin_agent_execution_mocked():
     """Verify LIN agent executes analysis with mocked DeepSeek handler."""
-    agent = LinAgent(model_name="deepseek-v4-flash")
+    agent = LinAgent(model_name="deepseek-flash")
     renko_state = RenkoState(
         trend_direction="BULLISH",
         last_brick_price=454.0,

@@ -1,7 +1,7 @@
 """Future Forces & Forward Catalysts Analytics Engine.
 
 Synthesizes, evaluates, and audits multi-horizon (2 to 24 months) market forces
-across 7 canonical archetypes using OpenAI Luna (gpt-5.6-luna) with thinking:
+across 7 canonical archetypes using OpenAI Luna (gpt-6-luna) with thinking:
 1. Geopolitical & Chokepoints (Hormuz, Iran, Venezuela)
 2. Government Agendas & Priorities (Defense appropriations, Replicator, CHIPS)
 3. Sleeping Giants / Narrative Disconnects (Google valuation reconnection)
@@ -193,7 +193,7 @@ async def evaluate_future_force(
     client: Any | None = None,
     model: str | None = None,
 ) -> ForceEvaluationResult:
-    """Invokes gpt-5.6-luna with thinking to stress-test candidate force theses."""
+    """Invokes gpt-6-luna with thinking to stress-test candidate force theses."""
     cl = client or get_future_forces_openai_client()
     target_model = model or config.OPENAI_MODEL
 
@@ -238,7 +238,7 @@ async def audit_force_invalidation(
     client: Any | None = None,
     model: str | None = None,
 ) -> ForceAuditResult:
-    """Invokes gpt-5.6-luna with thinking to check if breaking news invalidates an active thesis."""
+    """Invokes gpt-6-luna with thinking to check if breaking news invalidates an active thesis."""
     # First check deterministic guardrails
     det_invalid, det_reason = check_deterministic_invalidation(force_data)
     if det_invalid:

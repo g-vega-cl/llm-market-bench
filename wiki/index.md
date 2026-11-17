@@ -19,7 +19,7 @@
 - [[entities/live-agent-trader]] — 24/7 autonomous SPY trader console with real-time SSE tape streaming, technicals, and audience queue
 - [[entities/secondary-minipc-edge]] — 24/7 dedicated MiniPC edge gateway, read-replica, reverse proxy, and live tape streaming host (deploy_secondary.sh automated deployment)
 - [[entities/reset-state]] — portfolio reset script (LLM-only by default, `--all` for system portfolios)
-- [[entities/daily-market-predictor]] — Daily S&P 500 predictor arena with four-model comparison including DeepSeek Flash, MiniMax-M3, Jev Baseline, and Jev Four-Regime Champion
+- [[entities/daily-market-predictor]] — Daily S&P 500 predictor arena with four-model comparison including DeepSeek Flash, MiniMax-M3.1-Flash, Jev Baseline, and Jev Four-Regime Champion
 - [[entities/free-llm-proxy]] — model-agnostic, OpenAI-compatible proxy pooling free-tier LLM inference with circuit-breaker failover
 - [[entities/rotate-secrets]] — utility that generates secure secrets and mints PostgREST JWTs for the archive DB stack
 - [[entities/compare-8k-vs-16k]] — head-to-head Strata ORCA benchmark of 8k vs 16k reasoning budgets on non-continuous sessions
@@ -29,7 +29,7 @@
 - [[entities/gemini-api-dev]] — reference skill for Gemini API development
 - [[entities/treasury-yield-curve-tool]] — no-arg tool returning live US Treasury benchmark yields, 1d bps changes, and curve spreads from FRED
 - [[entities/daily-bond-trading]] — systematic TLT close-exit execution into per-model sys-daily-tlt-close-{model} portfolios
-- [[entities/bond-predictor]] — daily fixed-income open-to-close predictor for TLT (tool-first arena: gpt-5.6-luna, deepseek-v4-flash, Jev)
+- [[entities/bond-predictor]] — daily fixed-income open-to-close predictor for TLT (tool-first arena: gpt-6-luna, deepseek-flash, Jev)
 - [[entities/earnings-predictor]] — Auto-indexed page
 - [[entities/verify-skill]] — six-tier post-coding verification protocol, runner script, and report format
 - [[entities/whale-holdings]] — Institutional 13F holdings and Schedule 13D/13G blockholder tracker exposed via the `get_whale_holdings` tool
@@ -44,10 +44,10 @@
 - [[entities/cli]] — CLI package: argparse schema, command dispatch map, and per-domain sub-command routers
 - [[entities/analysis-pipeline]] — vertical-slice package for prompt assembly, response parsing, and validation in the LLM analysis flow
 - [[entities/portfolio-auditor]] — health-check and auto-heal reconciliation island for systematic portfolios
-- [[entities/daily-postmortem]] — GPT-5.6 Luna post-close audit of daily SPY predictions with a closed root-cause taxonomy
+- [[entities/daily-postmortem]] — GPT-6 Luna post-close audit of daily SPY predictions with a closed root-cause taxonomy
 - [[entities/future-forces-portfolio]] — Auto-indexed page
 - [[entities/historical-analogs]] — Precedent-identification + empirical price-tape engine behind `research_historical_market_analog`
-- [[entities/gainers-postmortem]] — Adversarial missed gainers audit pipeline using GPT-5.6 Luna with thinking
+- [[entities/gainers-postmortem]] — Adversarial missed gainers audit pipeline using GPT-6 Luna with thinking
 - [[entities/sector-horizon-trading]] — Systematic 30-day and 90-day sector long/short horizon execution engine
 - [[entities/tool-audit]] — Non-blocking background tool execution audit logging to analytical archive database
 - [[entities/market-context-viewer]] — Collapsible pre-market context viewer and copy tool for daily prediction auditability
@@ -168,6 +168,7 @@
 - [[concepts/max-pain-pinning]] — options expiration pinning anomaly driven by market maker dynamic gamma hedging on 0DTE index contracts
 - [[concepts/short-position-display]] — how long and short legs are stored, synthesized on read, and displayed across engine tools and the web UI
 - [[concepts/sector-model-tracks]] — per-model prompt evolution tracks with independent ratchet baselines in the Sector Predictor autoresearch
+- [[concepts/model-registry]] — single-source-of-truth LLM slot registry, rename-as-identity semantics, API-surface gates, and the currency audit procedure
 - [[concepts/session-open-reconciliation]] — anchoring pre-market MOO entries to the official 9:30 AM session open price
 - [[concepts/dependency-resolver]] — `resolve_dep` test seam that keeps decomposed pipeline stages patchable via `main.<symbol>`
 - [[concepts/tool-domain-decomposition]] — decomposition of monolithic tools.py into domain modules with barrel re-exports, O(1) table dispatch, and mock-compat bridge
@@ -252,7 +253,7 @@
 - [[concepts/auto-research-prompt-improver]] — Weekly autonomous prompt iteration via meta-researcher LLM
 - [[concepts/tool-enforcement]] — 4-layer hallucination prevention system
 - [[concepts/rag-strategy]] — Tiered context injection and per-agent RAG
-- [[concepts/minimax-portfolio]] — Simplified execution model & ±0.5% market order buffer for MiniMax-M3
+- [[concepts/minimax-portfolio]] — Simplified execution model & ±0.5% market order buffer for MiniMax-M3.1-Flash
 - [[concepts/supabase-grant-convention]] — Explicit GRANTs required for PostgREST Data API access
 - [[concepts/supabase-redirect-whitelisting]] — Supabase OAuth redirect whitelisting rules and local dev proxy port configuration
 - [[concepts/performance-auditing-strategy]] — Cloud-native edge performance auditing with Netlify Lighthouse budgets

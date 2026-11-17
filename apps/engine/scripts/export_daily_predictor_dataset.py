@@ -179,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--all", action="store_true", help="Include all predictions (default for SFT is only winning predictions)"
     )
-    parser.add_argument("--model", type=str, default=None, help="Filter by model_name (e.g. deepseek-v4-flash)")
+    parser.add_argument("--model", type=str, default=None, help="Filter by model_name (e.g. deepseek-flash)")
     parser.add_argument(
         "--min-confidence", type=float, default=50.0, help="Minimum confidence threshold (default: 50.0)"
     )

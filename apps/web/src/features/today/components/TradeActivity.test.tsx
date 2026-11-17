@@ -89,7 +89,7 @@ describe('TradeActivity nested decision resolution', () => {
                     signal: 'BUY',
                     created_at: '2026-06-26T14:30:50Z',
                     reasoning: 'Nested decision reasoning for USO BUY',
-                    model_name: 'MiniMax-M3',
+                    model_name: 'MiniMax-M3.1-Flash',
                 },
             ],
         };

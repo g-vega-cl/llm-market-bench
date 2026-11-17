@@ -20,12 +20,12 @@ describe('daily-predictions-helpers', () => {
     it('defines PREDICTOR_MODELS with proper matching', () => {
         expect(PREDICTOR_MODELS).toHaveLength(4);
         const deepseek = PREDICTOR_MODELS[0];
-        expect(deepseek.matches('deepseek-v4-flash')).toBe(true);
+        expect(deepseek.matches('deepseek-flash')).toBe(true);
         expect(deepseek.matches('track_default')).toBe(true);
         expect(deepseek.matches('MiniMax')).toBe(false);
 
         const minimax = PREDICTOR_MODELS[1];
-        expect(minimax.matches('MiniMax-M3')).toBe(true);
+        expect(minimax.matches('MiniMax-M3.1-Flash')).toBe(true);
 
         const jev = PREDICTOR_MODELS[2];
         expect(jev.matches('~typesafe/jev-latest')).toBe(true);
@@ -40,17 +40,17 @@ describe('daily-predictions-helpers', () => {
     it('defines getPredictorModelsForTicker with SPY and TLT models', () => {
         const spyModels = getPredictorModelsForTicker('SPY');
         expect(spyModels).toHaveLength(4);
-        expect(spyModels[0].id).toBe('deepseek-v4-flash');
-        expect(spyModels[1].id).toBe('MiniMax-M3');
+        expect(spyModels[0].id).toBe('deepseek-flash');
+        expect(spyModels[1].id).toBe('MiniMax-M3.1-Flash');
         expect(spyModels[2].id).toBe('~typesafe/jev-latest');
         expect(spyModels[3].id).toBe('jev-four-regime-champion');
 
         const bondModels = getPredictorModelsForTicker('TLT');
         expect(bondModels).toHaveLength(3);
-        expect(bondModels[0].id).toBe('gpt-5.6-luna');
-        expect(bondModels[0].label).toBe('GPT-5.6 Luna');
-        expect(bondModels[0].matches('gpt-5.6-luna')).toBe(true);
-        expect(bondModels[1].id).toBe('deepseek-v4-flash');
+        expect(bondModels[0].id).toBe('gpt-6-luna');
+        expect(bondModels[0].label).toBe('GPT-6 Luna');
+        expect(bondModels[0].matches('gpt-6-luna')).toBe(true);
+        expect(bondModels[1].id).toBe('deepseek-flash');
         expect(bondModels[2].id).toBe('~typesafe/jev-latest');
     });
 

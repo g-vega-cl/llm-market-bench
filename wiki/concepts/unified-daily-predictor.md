@@ -15,20 +15,20 @@ The Daily Predictor page (`apps/web/src/features/daily-predictions/pages/DailyPr
 2. Resets the selected model to the first model configured for that ticker (skipped for the `PICKS` tab, which shares one basket filter row).
 3. Writes the choice to the URL via `history.replaceState` (`?ticker=TLT`, `?ticker=PICKS`), so the view is shareable and survives reloads.
 
-The `PredictorHeader` swaps its title and subtitle based on the ticker — "Daily S&P Market Predictor" (DeepSeek Flash & MiniMax) versus "Daily 20+ Year Treasury Bond Predictor" (GPT-5.6 Luna, DeepSeek Flash & Jev). The `PICKS` tab bypasses `PredictorHeader` and renders the `DailyStockPicksTab` component directly (see [[entities/daily-stock-picker]]).
+The `PredictorHeader` swaps its title and subtitle based on the ticker — "Daily S&P Market Predictor" (DeepSeek Flash & MiniMax) versus "Daily 20+ Year Treasury Bond Predictor" (GPT-6 Luna, DeepSeek Flash & Jev). The `PICKS` tab bypasses `PredictorHeader` and renders the `DailyStockPicksTab` component directly (see [[entities/daily-stock-picker]]).
 
 ## Per-Ticker Model Configuration
 
 `getPredictorModelsForTicker(ticker)` in `daily-predictions-helpers.ts` returns the model set for a given asset:
 
 - **SPY** (`SPY_PREDICTOR_MODELS`):
-  - `deepseek-v4-flash`
-  - `MiniMax-M3`
+  - `deepseek-flash`
+  - `MiniMax-M3.1-Flash`
   - `~typesafe/jev-latest`
   - `jev-four-regime-champion` ("Jev (Four-Regime Champion)")
-- **TLT** (`BOND_PREDICTOR_MODELS`): `gpt-5.6-luna` (default), `deepseek-v4-flash`, `~typesafe/jev-latest`
+- **TLT** (`BOND_PREDICTOR_MODELS`): `gpt-6-luna` (default), `deepseek-flash`, `~typesafe/jev-latest`
 
-The OpenAI model id is read from `@repo/config/models.json` (`OPENAI_MODEL`, falling back to `gpt-5.6-luna`). `PREDICTOR_MODELS` is retained as an alias for `SPY_PREDICTOR_MODELS` for backwards compatibility. `SupportedDailyTicker` is the union `'SPY' | 'TLT' | 'PICKS'`.
+The OpenAI model id is read from `@repo/config/models.json` (`OPENAI_MODEL`, falling back to `gpt-6-luna`). `PREDICTOR_MODELS` is retained as an alias for `SPY_PREDICTOR_MODELS` for backwards compatibility. `SupportedDailyTicker` is the union `'SPY' | 'TLT' | 'PICKS'`.
 
 ### Model Matching
 
@@ -44,7 +44,7 @@ For the `jev-four-regime-champion` model, the UI renders specialized visual comp
 
 Selecting the `PICKS` arena renders `DailyStockPicksTab` (`apps/web/src/features/daily-predictions/components/DailyStockPicksTab.tsx`) with the `DailyStockBasket[]` array loaded from `daily_stock_baskets` / `daily_stock_picks` (via `fetchDailyStockBaskets` in `fetch-stock-picks.ts`). The tab provides:
 
-- **Model filter buttons** — `⭐ Consensus`, `DeepSeek Flash`, `MiniMax-M3`, `GPT-5.6 Luna`; the persona filter matches `model_name` by substring (case-insensitive), and `consensus` matches exactly.
+- **Model filter buttons** — `⭐ Consensus`, `DeepSeek Flash`, `MiniMax-M3.1-Flash`, `GPT-6 Luna`; the persona filter matches `model_name` by substring (case-insensitive), and `consensus` matches exactly.
 - **Performance tiles** — Directional Hit Rate, Net L/S Spread Alpha, SPY Benchmark move, and Excess vs SPY Alpha (all pre-materialized by the engine).
 - **Two-column pick showcase** — three UP cards with rank badges and emerald borders, three DOWN cards with rose borders; each card shows the ticker, `confidence% Conviction` badge, ranking, two-line reasoning, and (when evaluated) open→close prices, stock return, and position PnL with a `HIT`/`MISS` badge.
 - **Historical basket table** — audited ledger with right-aligned tabular numbers and status badges (see [[entities/daily-stock-picker]]).

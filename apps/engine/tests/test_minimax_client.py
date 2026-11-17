@@ -357,7 +357,7 @@ class TestMiniMaxChatParsing:
 
         mock_response_data = {
             "choices": [],
-            "model": "MiniMax-M3",
+            "model": "MiniMax-M3.1-Flash",
         }
 
         mock_response = MagicMock()

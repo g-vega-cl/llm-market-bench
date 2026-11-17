@@ -1,6 +1,6 @@
 """LIN (Linde plc) Renko Dedicated Autoresearch Loop.
 
-Uses DeepSeek Flash (deepseek-v4-flash) to evaluate LIN Renko trading returns,
+Uses DeepSeek Flash (deepseek-flash) to evaluate LIN Renko trading returns,
 win rates, and brick reversal accuracy, continuously improving LIN prompt blocks.
 """
 
@@ -25,7 +25,7 @@ class LinRenkoResearchResult(BaseModel):
 async def run_lin_renko_autoresearch(
     historical_trades: list[dict[str, Any]],
     current_prompt: str,
-    model_name: str = "deepseek-v4-flash",
+    model_name: str = "deepseek-flash",
 ) -> LinRenkoResearchResult:
     """Evaluates LIN Renko trading returns and generates prompt improvements using DeepSeek Flash."""
     logger.info(f"Running LIN Renko Autoresearch with {model_name} on {len(historical_trades)} trade records...")

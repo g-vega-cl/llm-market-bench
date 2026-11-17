@@ -170,7 +170,7 @@ async def research_single_target(
         target_date=target_date,
     )
 
-    # 3. Prompt GPT-5.6 Luna with thinking (reasoning_effort="medium")
+    # 3. Prompt GPT-6 Luna with thinking (reasoning_effort="medium")
     price_str = f"${spot_price:.2f}" if spot_price is not None else "N/A"
     prompt = (
         f"Target: {mention.company_name} ({mention.ticker})\n"

@@ -9,7 +9,7 @@ Daily TLT live trading is the systematic, close-exit day-trading loop for the iS
 
 ## Loop
 
-1. **Predict** — pre-market, the [[entities/bond-predictor]] runs a tool-first arena (`gpt-5.6-luna`, `deepseek-v4-flash`, Jev) and writes `UP`/`DOWN` forecasts to `daily_predictions` (ticker `TLT`).
+1. **Predict** — pre-market, the [[entities/bond-predictor]] runs a tool-first arena (`gpt-6-luna`, `deepseek-flash`, Jev) and writes `UP`/`DOWN` forecasts to `daily_predictions` (ticker `TLT`).
 2. **Enter** — `daily-trade --ticker TLT --action entry` submits MOO entries into per-model `sys-daily-tlt-close-{model}` portfolios (long on `UP`, short on `DOWN`).
 3. **Exit** — at session close the position is liquidated via the bond close-exit path in [[entities/daily-bond-trading]], realizing open-to-close PnL.
 4. **Evaluate & audit** — bottom-up evaluation and the [[entities/portfolio-auditor]] reconcile each model's TLT trades for the session, with idempotent cleanup guarding against double-counting.

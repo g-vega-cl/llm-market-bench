@@ -64,8 +64,8 @@ async def synthesize_event(
 ) -> dict[str, Any]:
     """Synthesizes a unified event name, summary, and stress-tested scenarios via a 2-stage debate.
 
-    Stage 1: Adversarial Red-Team Challenger (gpt-5.6-luna) identifies counter-theses and failure modes.
-    Stage 2: Arbiter / Synthesizer (gpt-5.6-luna) crafts balanced scenarios and hedged trading plans.
+    Stage 1: Adversarial Red-Team Challenger (gpt-6-luna) identifies counter-theses and failure modes.
+    Stage 2: Arbiter / Synthesizer (gpt-6-luna) crafts balanced scenarios and hedged trading plans.
 
     Args:
         event_name: The raw representative event name.

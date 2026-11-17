@@ -1,4 +1,4 @@
-"""Unit tests for the 2-stage Adversarial Consensus Debate with gpt-5.6-luna."""
+"""Unit tests for the 2-stage Adversarial Consensus Debate with gpt-6-luna."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -111,8 +111,8 @@ async def test_synthesize_event_two_stage_debate():
         )
         assert debate["pre_mortem"] == "Utilities fail to deliver power in time, leading to capex cuts."
         assert "3-5 year grid queue" in debate["key_risks"]
-        assert debate["adversary_model"] == "gpt-5.6-luna"
-        assert debate["arbiter_model"] == "gpt-5.6-luna"
+        assert debate["adversary_model"] == "gpt-6-luna"
+        assert debate["arbiter_model"] == "gpt-6-luna"
 
 
 @pytest.mark.asyncio
@@ -126,7 +126,7 @@ async def test_process_consensus_persists_debate_metadata():
             reasoning="Hyperscalers need gigawatts of power.",
             source_id="news_1",
             model_provider="openai",
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
         ),
         MacroEvent(
             event_name="AI Power Crunch",
@@ -167,8 +167,8 @@ async def test_process_consensus_persists_debate_metadata():
             "counter_thesis": "Utility lead times are 4+ years.",
             "pre_mortem": "Capex stalls if utilities delay hookups.",
             "key_risks": ["Lead time delays", "Regulatory friction"],
-            "adversary_model": "gpt-5.6-luna",
-            "arbiter_model": "gpt-5.6-luna",
+            "adversary_model": "gpt-6-luna",
+            "arbiter_model": "gpt-6-luna",
             "stress_tested": True,
         },
     }
@@ -188,4 +188,4 @@ async def test_process_consensus_persists_debate_metadata():
         assert "metadata" in call_kwargs
         assert "debate" in call_kwargs["metadata"]
         assert call_kwargs["metadata"]["debate"]["stress_tested"] is True
-        assert call_kwargs["metadata"]["debate"]["adversary_model"] == "gpt-5.6-luna"
+        assert call_kwargs["metadata"]["debate"]["adversary_model"] == "gpt-6-luna"

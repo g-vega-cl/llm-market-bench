@@ -1,7 +1,7 @@
 """Weekly Autoresearch Task for Daily Stock Picker Arena (3 Up, 3 Down).
 
 Runs weekly on Sunday at 18:00 ET (0 22 * * SUN). Evaluates the rolling 5-session
-performance for each model track (DeepSeek Flash, MiniMax-M3, GPT Luna) against
+performance for each model track (DeepSeek Flash, MiniMax-M3.1-Flash, GPT Luna) against
 a normalized ratchet hurdle:
 Score = 0.50 * Directional Hit Rate + 0.40 * Normalized L/S Alpha + 0.10 * Conviction Norm.
 Executes independent 1-in-6 stochastic cold-starts, synthesizes prompt mutations,

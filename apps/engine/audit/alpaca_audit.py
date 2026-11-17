@@ -433,7 +433,7 @@ async def run_alpaca_audit(
     json_output: bool = False,
 ) -> dict:
     """CLI Entry point for Alpaca audit."""
-    target_model = model_name or "MiniMax-M3"
+    target_model = model_name or "MiniMax-M3.1-Flash"
     reconciler = AlpacaAuditReconciler()
     result = await reconciler.audit_model_portfolio(model_name=target_model, days=days)
 

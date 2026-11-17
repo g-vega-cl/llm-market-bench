@@ -27,7 +27,7 @@ describe('DailyPredictionsPage', () => {
             prediction_date: '2026-08-03',
             target_date: '2026-08-03',
             ticker: 'SPY',
-            model_name: 'deepseek-v4-flash',
+            model_name: 'deepseek-flash',
             prompt_variant_tag: 'daily-active-1',
             predicted_direction: 'UP',
             confidence: 80.0,
@@ -53,7 +53,7 @@ describe('DailyPredictionsPage', () => {
             prediction_date: '2026-08-03',
             target_date: '2026-08-03',
             ticker: 'SPY',
-            model_name: 'MiniMax-M3',
+            model_name: 'MiniMax-M3.1-Flash',
             prompt_variant_tag: 'daily-minimax-v1',
             predicted_direction: 'DOWN',
             confidence: 65.0,
@@ -118,7 +118,7 @@ describe('DailyPredictionsPage', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         },
         {
             id: 'exp-daily-2',
@@ -135,7 +135,7 @@ describe('DailyPredictionsPage', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'MiniMax-M3',
+            track_id: 'MiniMax-M3.1-Flash',
         },
         {
             id: 'exp-daily-3',
@@ -351,7 +351,7 @@ describe('DailyPredictionsPage', () => {
             {
                 id: 'exp-discarded-1',
                 prompt_name: 'DAILY_PREDICTOR_PROMPT',
-                variant_tag: 'daily-pred-deepseek-v4-flash-3c78dc15',
+                variant_tag: 'daily-pred-deepseek-flash-3c78dc15',
                 experiment_type: 'incremental',
                 prompt_content: 'Discarded strategy for deepseek.',
                 change_description: 'Failed ratchet score.',
@@ -363,12 +363,12 @@ describe('DailyPredictionsPage', () => {
                 parent_tag: 'daily-pred-f90bec3b',
                 research_output: null,
                 is_backtest: false,
-                track_id: 'deepseek-v4-flash',
+                track_id: 'deepseek-flash',
             },
             {
                 id: 'exp-deepseek-baseline',
                 prompt_name: 'DAILY_PREDICTOR_PROMPT',
-                variant_tag: 'daily-pred-seeded-deepseek-v4-flash',
+                variant_tag: 'daily-pred-seeded-deepseek-flash',
                 experiment_type: 'baseline',
                 prompt_content: 'Seeded baseline for deepseek.',
                 change_description: 'Initial baseline for deepseek.',
@@ -380,12 +380,12 @@ describe('DailyPredictionsPage', () => {
                 parent_tag: null,
                 research_output: null,
                 is_backtest: false,
-                track_id: 'deepseek-v4-flash',
+                track_id: 'deepseek-flash',
             },
             {
                 id: 'exp-minimax-old-active',
                 prompt_name: 'DAILY_PREDICTOR_PROMPT',
-                variant_tag: 'daily-pred-MiniMax-M3-2a91e57c',
+                variant_tag: 'daily-pred-MiniMax-M3.1-Flash-2a91e57c',
                 experiment_type: 'incremental',
                 prompt_content: 'Older active prompt for MiniMax.',
                 change_description: 'Older mutation for MiniMax.',
@@ -397,12 +397,12 @@ describe('DailyPredictionsPage', () => {
                 parent_tag: 'daily-pred-a79b3908',
                 research_output: null,
                 is_backtest: false,
-                track_id: 'MiniMax-M3',
+                track_id: 'MiniMax-M3.1-Flash',
             },
             {
                 id: 'exp-minimax-latest-active',
                 prompt_name: 'DAILY_PREDICTOR_PROMPT',
-                variant_tag: 'daily-pred-MiniMax-M3-8dd2e664',
+                variant_tag: 'daily-pred-MiniMax-M3.1-Flash-8dd2e664',
                 experiment_type: 'incremental',
                 prompt_content: 'Latest active prompt for MiniMax.',
                 change_description: 'Latest mutation for MiniMax.',
@@ -414,7 +414,7 @@ describe('DailyPredictionsPage', () => {
                 parent_tag: 'daily-pred-a79b3908',
                 research_output: null,
                 is_backtest: false,
-                track_id: 'MiniMax-M3',
+                track_id: 'MiniMax-M3.1-Flash',
             },
         ];
 
@@ -426,15 +426,17 @@ describe('DailyPredictionsPage', () => {
         );
 
         // On DeepSeek Flash tab, active prompt must be DeepSeek's baseline and NOT MiniMax
-        expect(screen.getByText('daily-pred-seeded-deepseek-v4-flash')).toBeInTheDocument();
-        expect(screen.queryByText('daily-pred-MiniMax-M3-8dd2e664')).not.toBeInTheDocument();
+        expect(screen.getByText('daily-pred-seeded-deepseek-flash')).toBeInTheDocument();
+        expect(
+            screen.queryByText('daily-pred-MiniMax-M3.1-Flash-8dd2e664'),
+        ).not.toBeInTheDocument();
 
         // Switch to MiniMax tab
         fireEvent.click(screen.getByRole('button', { name: /MiniMax M3/i }));
 
         // On MiniMax tab, latest active prompt is shown
-        expect(screen.getByText('daily-pred-MiniMax-M3-8dd2e664')).toBeInTheDocument();
-        expect(screen.queryByText('daily-pred-seeded-deepseek-v4-flash')).not.toBeInTheDocument();
+        expect(screen.getByText('daily-pred-MiniMax-M3.1-Flash-8dd2e664')).toBeInTheDocument();
+        expect(screen.queryByText('daily-pred-seeded-deepseek-flash')).not.toBeInTheDocument();
 
         // Switch to Autoresearch view on MiniMax tab
         fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
@@ -448,7 +450,7 @@ describe('DailyPredictionsPage', () => {
             {
                 id: 'exp-deepseek-enriched',
                 prompt_name: 'DAILY_PREDICTOR_PROMPT',
-                variant_tag: 'daily-pred-seeded-deepseek-v4-flash',
+                variant_tag: 'daily-pred-seeded-deepseek-flash',
                 experiment_type: 'baseline',
                 prompt_content: 'DeepSeek system prompt content.',
                 change_description: 'Evaluated seeded variant.',
@@ -469,7 +471,7 @@ describe('DailyPredictionsPage', () => {
                 parent_tag: null,
                 research_output: null,
                 is_backtest: false,
-                track_id: 'deepseek-v4-flash',
+                track_id: 'deepseek-flash',
             },
         ];
 
@@ -504,7 +506,7 @@ describe('DailyPredictionsPage', () => {
                 prediction_date: '2026-08-03',
                 target_date: '2026-08-03',
                 ticker: 'SPY',
-                model_name: 'deepseek-v4-flash',
+                model_name: 'deepseek-flash',
                 prompt_variant_tag: 'daily-pred-live-v1',
                 predicted_direction: 'UP',
                 confidence: 80.0,
@@ -530,7 +532,7 @@ describe('DailyPredictionsPage', () => {
                 prediction_date: '2026-05-01',
                 target_date: '2026-05-01',
                 ticker: 'SPY',
-                model_name: 'deepseek-v4-flash',
+                model_name: 'deepseek-flash',
                 prompt_variant_tag: 'daily-pred-backtest-12345678',
                 predicted_direction: 'DOWN',
                 confidence: 60.0,
@@ -597,7 +599,7 @@ You MUST return a valid JSON object.`,
                 selected_tools: ['get_calendar_scenario_analysis', 'get_macro_options_sentiment'],
             },
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         };
 
         const { container } = render(
@@ -631,7 +633,7 @@ You MUST return a valid JSON object.`,
         const pendingActiveExperiment: PromptExperiment = {
             id: 'exp-deepseek-pending',
             prompt_name: 'DAILY_PREDICTOR_PROMPT',
-            variant_tag: 'daily-pred-deepseek-v4-flash-new',
+            variant_tag: 'daily-pred-deepseek-flash-new',
             experiment_type: 'incremental',
             prompt_content: 'New prompt content.',
             change_description: 'Active mutation awaiting evaluation.',
@@ -640,10 +642,10 @@ You MUST return a valid JSON object.`,
             week_start: '2026-09-20',
             week_end: '2026-09-27',
             created_at: '2026-09-20T00:00:00Z',
-            parent_tag: 'daily-pred-deepseek-v4-flash-parent',
+            parent_tag: 'daily-pred-deepseek-flash-parent',
             research_output: null,
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         };
 
         render(
@@ -691,7 +693,7 @@ You MUST return a valid JSON object.`,
         fireEvent.click(expandButtons[0]);
 
         // Post-mortem card must be visible
-        expect(screen.getByText('Post-Market Evaluation (GPT-5.6 Luna)')).toBeInTheDocument();
+        expect(screen.getByText('Post-Market Evaluation (GPT-6 Luna)')).toBeInTheDocument();
         expect(screen.getByText('ACCURATE CAPTURE')).toBeInTheDocument();
         expect(screen.getByText('PREDICTABLE PRE-MARKET')).toBeInTheDocument();
         expect(
@@ -728,7 +730,7 @@ You MUST return a valid JSON object.`,
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: 'deepseek-v4-flash',
+            track_id: 'deepseek-flash',
         };
 
         render(
@@ -756,7 +758,7 @@ You MUST return a valid JSON object.`,
             prediction_date: '2026-10-08',
             target_date: '2026-10-08',
             ticker: 'SPY',
-            model_name: 'deepseek-v4-flash',
+            model_name: 'deepseek-flash',
             predicted_direction: 'UP',
             confidence: 75.0,
             open_price: 570.0,
@@ -776,7 +778,7 @@ You MUST return a valid JSON object.`,
             prediction_date: '2026-10-08',
             target_date: '2026-10-08',
             ticker: 'TLT',
-            model_name: 'gpt-5.6-luna',
+            model_name: 'gpt-6-luna',
             predicted_direction: 'DOWN',
             confidence: 82.0,
             open_price: 92.5,
@@ -796,7 +798,7 @@ You MUST return a valid JSON object.`,
             prediction_date: '2026-10-08',
             target_date: '2026-10-08',
             ticker: 'TLT',
-            model_name: 'deepseek-v4-flash',
+            model_name: 'deepseek-flash',
             predicted_direction: 'UP',
             confidence: 60.0,
             open_price: 92.5,
@@ -827,7 +829,7 @@ You MUST return a valid JSON object.`,
 
         // SPY models should be visible, and DeepSeek count should be 1 (only the SPY prediction)
         expect(screen.getByRole('button', { name: /DeepSeek Flash \(1\)/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /MiniMax M3 \(0\)/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /MiniMax M3\.1 \(0\)/i })).toBeInTheDocument();
 
         // Switch to TLT Asset
         fireEvent.click(screen.getByRole('button', { name: /20\+ Year Treasuries \(TLT\)/i }));
@@ -835,8 +837,8 @@ You MUST return a valid JSON object.`,
         // Heading must update to Treasury Bond Predictor
         expect(screen.getByText('Daily 20+ Year Treasury Bond Predictor')).toBeInTheDocument();
 
-        // Model tabs must update to TLT models with GPT-5.6 Luna as default
-        expect(screen.getByRole('button', { name: /GPT-5\.6 Luna \(1\)/i })).toBeInTheDocument();
+        // Model tabs must update to TLT models with GPT-6 Luna as default
+        expect(screen.getByRole('button', { name: /GPT-6 Luna \(1\)/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /DeepSeek Flash \(1\)/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Jev \(TypeSafe\) \(0\)/i })).toBeInTheDocument();
 
@@ -851,7 +853,7 @@ You MUST return a valid JSON object.`,
             prediction_date: '2026-10-08',
             target_date: '2026-10-08',
             ticker: 'TLT',
-            model_name: 'gpt-5.6-luna',
+            model_name: 'gpt-6-luna',
             predicted_direction: 'UP',
             confidence: 85.0,
             open_price: 92.0,
@@ -875,7 +877,7 @@ You MUST return a valid JSON object.`,
         );
 
         expect(screen.getByText('Daily 20+ Year Treasury Bond Predictor')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /GPT-5\.6 Luna \(1\)/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /GPT-6 Luna \(1\)/i })).toBeInTheDocument();
     });
 
     it('renders CuratedManifestCard under PredictionsTable to avoid layout shift when switching to Champion tab', () => {

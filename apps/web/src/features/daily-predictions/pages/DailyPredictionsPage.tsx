@@ -122,7 +122,7 @@ function PredictorHeader({ selectedTicker }: { selectedTicker: SupportedDailyTic
             </h1>
             <p className="text-xs font-normal text-boxel-muted m-0">
                 {isBond
-                    ? '9:15 AM ET Intraday (Open to Close) Directional Fixed Income Predictions on TLT powered by GPT-5.6 Luna, DeepSeek Flash & Jev.'
+                    ? '9:15 AM ET Intraday (Open to Close) Directional Fixed Income Predictions on TLT powered by GPT-6 Luna, DeepSeek Flash & Jev.'
                     : '9:15 AM ET Intraday (Open to Close) Directional AI Predictions powered by DeepSeek Flash & MiniMax.'}
             </p>
         </div>

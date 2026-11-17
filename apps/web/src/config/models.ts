@@ -1,7 +1,7 @@
 export const MODELS = {
-    OPENAI: 'gpt-5.6-luna',
+    OPENAI: 'gpt-6-luna',
     ANTHROPIC: 'claude-haiku-5-5',
     GEMINI: 'gemini-3.5-flash-lite',
-    DEEPSEEK: 'deepseek-v4-flash',
-    MINIMAX: 'MiniMax-M3',
+    DEEPSEEK: 'deepseek-flash',
+    MINIMAX: 'MiniMax-M3.1-Flash',
 } as const;

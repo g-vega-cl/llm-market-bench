@@ -183,7 +183,7 @@ def resolve_web_search_flag(provider: str, override_tools: list | None, enable_w
 
 
 def flatten_messages_for_minimax(messages: list) -> list:
-    """Flatten tool loop conversation history into a single user message for MiniMax-M3."""
+    """Flatten tool loop conversation history into a single user message for MiniMax."""
     system_msg = None
     first_user_msg = None
     history_blocks = []

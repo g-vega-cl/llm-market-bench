@@ -72,14 +72,14 @@ async def test_run_simulated_daily_prediction():
                 t_sim=t_sim,
                 active_prompt="Predict UP or DOWN.",
                 prompt_tag="test-tag-123",
-                model_name="deepseek-v4-flash",
+                model_name="deepseek-flash",
                 ticker="SPY",
             )
 
     assert pred is not None
     assert pred["predicted_direction"] == "UP"
     assert pred["confidence"] == 75.0
-    assert pred["model_name"] == "deepseek-v4-flash"
+    assert pred["model_name"] == "deepseek-flash"
 
     # Verify saved in SQLite DB
     conn = sqlite3.connect(backtest_module.DB_PATH)
@@ -109,7 +109,7 @@ async def test_evaluate_simulated_daily_prediction():
             id, prediction_date, target_date, ticker, model_name, prompt_variant_tag,
             predicted_direction, confidence, expected_return_pct, rationale, status, created_at
         ) VALUES (
-            'pred-1', '2026-04-27', '2026-04-27', 'SPY', 'deepseek-v4-flash', 'test-tag-123',
+            'pred-1', '2026-04-27', '2026-04-27', 'SPY', 'deepseek-flash', 'test-tag-123',
             'UP', 80.0, 0.5, 'Test reasoning', 'pending', datetime('now')
         )
         """
@@ -163,7 +163,7 @@ async def test_evaluate_simulated_daily_prediction_with_explicit_high_low():
             id, prediction_date, target_date, ticker, model_name, prompt_variant_tag,
             predicted_direction, confidence, expected_return_pct, rationale, status, created_at
         ) VALUES (
-            'pred-2', '2026-04-27', '2026-04-27', 'SPY', 'deepseek-v4-flash', 'test-tag-123',
+            'pred-2', '2026-04-27', '2026-04-27', 'SPY', 'deepseek-flash', 'test-tag-123',
             'DOWN', 70.0, -0.4, 'Test reasoning', 'pending', datetime('now')
         )
         """

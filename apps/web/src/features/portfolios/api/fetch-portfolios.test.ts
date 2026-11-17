@@ -186,7 +186,7 @@ test('fetchAllActivePortfolioPerformance does not restrict older portfolios when
 test('fetchAllActivePortfolioPerformance includes system portfolios starting with sys-', async () => {
     const mockPortfolios = [
         { id: 'old-id', owner_id: 'gemini-3.5-flash-lite', total_equity: 10000 },
-        { id: 'sys-id', owner_id: 'sys-daily-spy-deepseek-v4-flash', total_equity: 9815 },
+        { id: 'sys-id', owner_id: 'sys-daily-spy-deepseek-flash', total_equity: 9815 },
         { id: 'retired-id', owner_id: 'retired-model', total_equity: 5000 },
     ];
     const mockPerformance = [

@@ -19,7 +19,7 @@ def test_retrieve_autoresearch_memories_track_isolation():
             "created_at": "2026-09-10T12:00:00Z",
             "metadata": {
                 "scope": "daily_predictor",
-                "track_id": "deepseek-v4-flash",
+                "track_id": "deepseek-flash",
                 "is_baseline_beat": True,
             },
         },
@@ -32,7 +32,7 @@ def test_retrieve_autoresearch_memories_track_isolation():
             "created_at": "2026-09-10T12:00:00Z",
             "metadata": {
                 "scope": "daily_predictor",
-                "track_id": "MiniMax-M3",
+                "track_id": "MiniMax-M3.1-Flash",
                 "is_baseline_beat": True,
             },
         },
@@ -45,7 +45,7 @@ def test_retrieve_autoresearch_memories_track_isolation():
             "created_at": "2026-09-11T12:00:00Z",
             "metadata": {
                 "scope": "sector_predictor",
-                "track_id": "deepseek-v4-flash",
+                "track_id": "deepseek-flash",
                 "is_baseline_beat": True,
             },
         },
@@ -61,19 +61,19 @@ def test_retrieve_autoresearch_memories_track_isolation():
 
     with patch("memory.store.get_supabase_client", return_value=mock_client):
         # 1. DeepSeek Daily Predictor should only get Memory 1
-        res_deepseek_daily = retrieve_autoresearch_memories(track_id="deepseek-v4-flash", scope="daily_predictor")
+        res_deepseek_daily = retrieve_autoresearch_memories(track_id="deepseek-flash", scope="daily_predictor")
         assert "High VIX requires wider targets" in res_deepseek_daily
         assert "Gap downs mean revert intraday" not in res_deepseek_daily
         assert "Tech vs Energy rotation" not in res_deepseek_daily
 
         # 2. MiniMax Daily Predictor should only get Memory 2
-        res_minimax_daily = retrieve_autoresearch_memories(track_id="MiniMax-M3", scope="daily_predictor")
+        res_minimax_daily = retrieve_autoresearch_memories(track_id="MiniMax-M3.1-Flash", scope="daily_predictor")
         assert "Gap downs mean revert intraday" in res_minimax_daily
         assert "High VIX requires wider targets" not in res_minimax_daily
         assert "Tech vs Energy rotation" not in res_minimax_daily
 
         # 3. DeepSeek Sector Predictor should only get Memory 3
-        res_deepseek_sector = retrieve_autoresearch_memories(track_id="deepseek-v4-flash", scope="sector_predictor")
+        res_deepseek_sector = retrieve_autoresearch_memories(track_id="deepseek-flash", scope="sector_predictor")
         assert "Tech vs Energy rotation" in res_deepseek_sector
         assert "High VIX requires wider targets" not in res_deepseek_sector
         assert "Gap downs mean revert intraday" not in res_deepseek_sector

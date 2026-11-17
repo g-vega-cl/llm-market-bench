@@ -256,11 +256,11 @@ async def test_execute_system_sector_rebalance_flow():
 
 @pytest.mark.asyncio
 async def test_execute_system_daily_trade_flow():
-    mock_supabase = create_mock_supabase("sys-daily-spy-deepseek-v4-flash", 10000.0)
+    mock_supabase = create_mock_supabase("sys-daily-spy-deepseek-flash", 10000.0)
 
     prediction = {
         "id": str(uuid4()),
-        "model_name": "deepseek-v4-flash",
+        "model_name": "deepseek-flash",
         "ticker": "SPY",
         "target_date": "2026-08-18",
         "predicted_direction": "UP",
@@ -287,6 +287,6 @@ async def test_execute_system_daily_trade_flow():
         )
 
         assert res["status"] == "success"
-        assert res["owner_id"] == "sys-daily-spy-deepseek-v4-flash"
+        assert res["owner_id"] == "sys-daily-spy-deepseek-flash"
         assert res["execution"]["target_hit"] is True
         assert res["execution"]["realized_pnl"] > 0

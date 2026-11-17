@@ -168,7 +168,7 @@ async def test_run_earnings_prediction_end_to_end(sample_candidate):
         results = await run_earnings_prediction(target_date="2026-10-07", ticker="NVDA", force=True)
         assert len(results) == 3
         model_names = [r["model_name"] for r in results]
-        assert "gpt-5.6-luna" in model_names
+        assert "gpt-6-luna" in model_names
         assert "deepseek-chat" in model_names
         assert "~typesafe/jev-latest" in model_names
         assert mock_table.upsert.call_count == 3

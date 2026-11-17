@@ -235,12 +235,12 @@ async def test_run_daily_prediction_arena_success():
         assert isinstance(results, list)
         assert len(results) == 2
 
-        deepseek_res = next((r for r in results if r["model_name"] == "deepseek-v4-flash"), None)
+        deepseek_res = next((r for r in results if r["model_name"] == "deepseek-flash"), None)
         assert deepseek_res is not None
         assert deepseek_res["predicted_direction"] == "UP"
         assert deepseek_res["confidence"] == 75.0
 
-        minimax_res = next((r for r in results if r["model_name"] == "MiniMax-M3"), None)
+        minimax_res = next((r for r in results if r["model_name"] == "MiniMax-M3.1-Flash"), None)
         assert minimax_res is not None
         assert minimax_res["predicted_direction"] == "DOWN"
         assert minimax_res["confidence"] == 60.0
@@ -288,7 +288,7 @@ async def test_run_daily_prediction_partial_failure():
         results = await run_daily_prediction(ticker="SPY")
         assert isinstance(results, list)
         assert len(results) == 1
-        assert results[0]["model_name"] == "deepseek-v4-flash"
+        assert results[0]["model_name"] == "deepseek-flash"
         assert results[0]["predicted_direction"] == "UP"
 
 
@@ -557,14 +557,14 @@ async def test_fetch_active_daily_prompt_model_track_isolation():
         patch(
             "tasks.daily_predictor.seed_daily_predictor_prompt",
             new_callable=AsyncMock,
-            return_value=("daily-pred-seeded-deepseek-v4-flash", DAILY_PREDICTOR_PROMPT),
+            return_value=("daily-pred-seeded-deepseek-flash", DAILY_PREDICTOR_PROMPT),
         ) as mock_seed,
     ):
-        tag, content = await fetch_active_daily_prompt("deepseek-v4-flash")
+        tag, content = await fetch_active_daily_prompt("deepseek-flash")
         assert "minimax" not in tag.lower()
-        assert tag == "daily-pred-seeded-deepseek-v4-flash"
+        assert tag == "daily-pred-seeded-deepseek-flash"
         assert mock_seed.called
-        mock_seed.assert_called_once_with(model_name="deepseek-v4-flash")
+        mock_seed.assert_called_once_with(model_name="deepseek-flash")
 
 
 @pytest.mark.asyncio

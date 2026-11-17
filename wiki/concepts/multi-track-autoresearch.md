@@ -6,8 +6,8 @@ category: concept
 # Multi-Track Autoresearch
 
 Parallel isolated prompt optimization tracks across inference models and trading scopes:
-- **Daily Predictor**: Independent lineages for `deepseek-v4-flash`, `MiniMax-M3`, and `~typesafe/jev-latest` (with OpenAI Luna as Jev meta-researcher).
-- **Sector Predictor**: Independent lineages for all 4 models (`deepseek-v4-flash`, `MiniMax-M3`, `gemini-3.5-flash-lite`, `gpt-5.6-luna`).
+- **Daily Predictor**: Independent lineages for `deepseek-flash`, `MiniMax-M3.1-Flash`, and `~typesafe/jev-latest` (with OpenAI Luna as Jev meta-researcher).
+- **Sector Predictor**: Independent lineages for all 4 models (`deepseek-flash`, `MiniMax-M3.1-Flash`, `gemini-3.5-flash-lite`, `gpt-6-luna`).
 - **Portfolio Trading**: Independent tracks for `track_default`, `track_claude`, and `track_openai`.
 
 Each track maintains its own independent prompt lineage, baseline, ratchet score, and research memory store. Tracks never cross-pollinate or fall back to another track's prompts or takeaways.
@@ -41,6 +41,7 @@ After resolution, `calculate_buy_quantity` / `calculate_sell_quantity` are force
 
 ## Related
 
+- [[concepts/model-registry]] — the model strings these tracks are keyed by
 - [[entities/autoresearch]]
 - [[concepts/risk-adjusted-z-score]]
 - [[concepts/auto-research-prompt-improver]]

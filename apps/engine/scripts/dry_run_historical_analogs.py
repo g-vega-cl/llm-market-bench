@@ -1,6 +1,6 @@
 """Live end-to-end dry run verification script for research_historical_market_analog tool.
 
-Executes live tool call using real API keys (OpenAI gpt-5.6-luna + FMP market data)
+Executes live tool call using real API keys (OpenAI gpt-6-luna + FMP market data)
 and verifies that precedent identification, empirical tape extraction, 4-pillar playbook
 synthesis, and vector memory persistence function end-to-end.
 """
@@ -38,7 +38,7 @@ async def main():
                 "focus_assets": focus_assets,
                 "horizon": horizon,
             },
-            model_name="gpt-5.6-luna",
+            model_name="gpt-6-luna",
         )
 
         print("\n[2/2] Tool Execution Succeeded! Live Output:")

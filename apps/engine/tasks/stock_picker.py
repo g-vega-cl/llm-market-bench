@@ -1,7 +1,7 @@
 """Daily Stock Picker Task (3 Up, 3 Down).
 
 Screens morning candidate stocks from intelligence briefings, runs multi-model
-arena predictions (DeepSeek Flash, MiniMax-M3, GPT Luna), computes a deterministic
+arena predictions (DeepSeek Flash, MiniMax-M3.1-Flash, GPT Luna), computes a deterministic
 consensus basket via Reciprocal Rank Fusion, and persists to daily_stock_baskets/picks.
 """
 

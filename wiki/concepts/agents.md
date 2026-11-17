@@ -17,7 +17,7 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] and [[concept
 - **Role**: The core driver of trading decisions. It evaluates newsletter snaps, global macro indicators, and portfolio status to identify investable ideas. It runs 5 parallel instances (OpenAI, Anthropic, Gemini, DeepSeek, and MiniMax).
 - **Prompt Pair**: `CORE_ANALYSIS_SYSTEM_PROMPT` / `ANALYSIS_USER_PROMPT_TEMPLATE`
 - **Evolvable**: **Yes** (for OpenAI/Anthropic/Gemini/DeepSeek). This is the only system prompt managed by the [[entities/autoresearch]] engine, which iteratively mutates it to optimize risk-adjusted returns (the Karpathy Ratchet). Note: MiniMax is run under a fixed system prompt variant and is bypass-routed around direct prompt-evolution.
-- **Primary Tools**: `get_stock_quote`, `get_price_history`, `calculate_buy_quantity`, `calculate_sell_quantity`, `web_search`, `stock_screener`, `get_uncorrelated_assets`, `search_prediction_markets`, `get_prediction_market_odds`, `fetch_newsletter_content`, `search_past_memories`. (Note: MiniMax-M3 executes through the Anthropic SDK tool loop via `handlers/anthropic.run_tool_loop`, pointed at MiniMax's Anthropic-compatible endpoint).
+- **Primary Tools**: `get_stock_quote`, `get_price_history`, `calculate_buy_quantity`, `calculate_sell_quantity`, `web_search`, `stock_screener`, `get_uncorrelated_assets`, `search_prediction_markets`, `get_prediction_market_odds`, `fetch_newsletter_content`, `search_past_memories`. (Note: MiniMax-M3.1-Flash executes through the Anthropic SDK tool loop via `handlers/anthropic.run_tool_loop`, pointed at MiniMax's Anthropic-compatible endpoint).
 
 ### 2. Verifier Agent
 - **Role**: Operates as a double-check guardrail. It cross-examines proposed trade actions against past agent decisions, historical lessons learned, and empirical financial science.
@@ -29,7 +29,7 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] and [[concept
   - **Case-Insensitive Gates**: Safely bypasses mixed/lowercase `"HOLD"` signals without calling the backend LLM.
   - **Specialized Provider Mapping & Cost Optimization**: Dynamically routes verifications to the matching provider client while substituting lightweight models where appropriate (e.g. routing all `deepseek` trade verifications and `deepseek_reasoner` to `DEEPSEEK_FLASH_MODEL` to avoid high reasoning token costs).
   - **DeepSeek Thinking Mode**: Enables thinking mode (`extra_body={"thinking": {"type": "enabled"}}`) during final verification extraction to perform deep DCF and valuation audits, while suppressing thinking during tool execution to avoid hallucinated tool call narration.
-  - **OpenAI Reasoning Compatibility**: Sets `reasoning_effort="none"` on Instructor verification extraction calls to ensure OpenAI reasoning models (`gpt-5.6-luna`) cleanly execute function tools on `/v1/chat/completions`.
+  - **OpenAI Reasoning Compatibility**: Sets `reasoning_effort="none"` on Instructor verification extraction calls to ensure OpenAI reasoning models (`gpt-6-luna`) cleanly execute function tools on `/v1/chat/completions`.
   - **Transient Retry Resilience**: Performs up to 3 attempts with exponential backoff for transient HTTP errors (429, timeouts, bad gateways, connection drops) before falling back to fail-safe rejection.
 
 
@@ -80,12 +80,12 @@ All agent arenas and predictors across the system operate as thinking agents whi
 - **Gemini (`gemini-3.5-flash-lite`)**:
   - Uses `types.ThinkingConfig(thinking_level="high")` in `GenerateContentConfig`.
   - Native `types.Content` objects preserve thought parts and function call IDs across turns.
-- **DeepSeek (`deepseek-v4-flash`)**:
+- **DeepSeek (`deepseek-flash`)**:
   - Enables `extra_body={"thinking": {"type": "enabled"}}` during structured extraction and reasoning steps across all tasks.
   - Suppresses thinking during the tool execution loop so the model emits structured API `tool_calls` rather than narrating tool usage in thinking prose.
-- **OpenAI (`gpt-5.6-luna`)**:
+- **OpenAI (`gpt-6-luna`)**:
   - Sets `reasoning_effort="none"` during tool calling and extraction when function tool messages are in history, as required by OpenAI `/v1/chat/completions`.
-- **MiniMax (`MiniMax-M3`)**:
+- **MiniMax (`MiniMax-M3.1-Flash`)**:
   - Interfaces via Anthropic-compatible format with `Mode.ANTHROPIC_JSON` for reliable structured extraction.
 
 ---

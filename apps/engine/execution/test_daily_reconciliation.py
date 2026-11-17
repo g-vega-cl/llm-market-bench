@@ -76,7 +76,7 @@ async def test_reconcile_daily_open_trades_updates_trade_and_positions(mock_supa
     mock_portfolio_data = [
         {
             "id": str(portfolio_id),
-            "owner_id": "sys-daily-spy-MiniMax-M3",
+            "owner_id": "sys-daily-spy-MiniMax-M3.1-Flash",
             "cash_balance": 10000.0 - (shares * prev_close),
             "total_equity": 10000.0,
         }
@@ -131,7 +131,7 @@ async def test_reconcile_daily_open_trades_updates_trade_and_positions(mock_supa
             t.execute.return_value = MagicMock(
                 data=[
                     {
-                        "model_name": "MiniMax-M3",
+                        "model_name": "MiniMax-M3.1-Flash",
                         "target_date": target_date,
                         "open_price": actual_open,
                         "close_price": 769.50,

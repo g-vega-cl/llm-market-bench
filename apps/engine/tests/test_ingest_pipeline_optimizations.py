@@ -75,7 +75,7 @@ async def test_process_consensus_parallelizes_group_synthesis():
             impact="BULLISH",
             source_id="src1",
             model_provider="openai",
-            model_name="openai/gpt-5.6-luna",
+            model_name="openai/gpt-6-luna",
             confidence=85,
         ),
         MacroEvent(
@@ -93,7 +93,7 @@ async def test_process_consensus_parallelizes_group_synthesis():
             impact="BEARISH",
             source_id="src2",
             model_provider="openai",
-            model_name="openai/gpt-5.6-luna",
+            model_name="openai/gpt-6-luna",
             confidence=85,
         ),
         MacroEvent(
@@ -179,7 +179,7 @@ async def test_run_ingest_dry_run_bypasses_market_and_executes_no_trades():
         ticker="AAPL",
         signal="BUY",
         allocation_percentage=10,
-        model_name="openai/gpt-5.6-luna",
+        model_name="openai/gpt-6-luna",
         model_provider="openai",
         reasoning="Test dry run reasoning",
         confidence=85,

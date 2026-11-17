@@ -260,7 +260,7 @@ const mockHomeData: HomePageData = {
         confidence: 78,
         primaryConcern: 'FOMC Minutes volatility',
         secondaryConcern: 'Concentration in financials',
-        modelUsed: 'MiniMax-M3',
+        modelUsed: 'MiniMax-M3.1-Flash',
         lastAnalyzed: '12:00 PM ET',
     },
     barometer: {

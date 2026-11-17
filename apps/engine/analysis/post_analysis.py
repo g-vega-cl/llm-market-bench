@@ -34,7 +34,14 @@ class PostAnalysisResult(BaseModel):
 def _resolve_trade_context(trade: dict[str, Any]) -> tuple[str, str, str]:
     """Resolve (model_name, reasoning, strategy_reasoning) from a trade row."""
     decision_data = trade.get("decisions", [{}])[0] if trade.get("decisions") else {}
-    reasoning = decision_data.get("reasoning") or trade.get("reasoning") or "No reasoning found."
+    # Prefer the captured chain of thought (live trader) over the short thought summary,
+    # capped so one verbose turn cannot blow the Manager prompt budget.
+    reasoning_trace = (trade.get("reasoning_trace") or "").strip()
+    reasoning = (
+        reasoning_trace[:4000]
+        if reasoning_trace
+        else decision_data.get("reasoning") or trade.get("reasoning") or "No reasoning found."
+    )
 
     portfolio_owner = (trade.get("portfolios") or {}).get("owner_id")
     dec_model = decision_data.get("model_name")
@@ -88,7 +95,7 @@ async def perform_post_analysis(windows: list[int] = None):
             res = (
                 sb_client.table("trades")
                 .select(
-                    "id, ticker, quantity, price, signal, executed_at, reasoning, portfolio_id, "
+                    "id, ticker, quantity, price, signal, executed_at, reasoning, reasoning_trace, portfolio_id, "
                     "portfolios(owner_id), decisions(reasoning, model_name, metadata)"
                 )
                 .filter("executed_at", "gte", start_time)

@@ -167,7 +167,27 @@ def _extract_json_decision(raw_text: str | None) -> dict[str, Any]:
     }
 
 
-async def query_multi_tier_llm(
+MAX_REASONING_TRACE_CHARS = 16000
+
+
+def _extract_reasoning_tokens(data: dict[str, Any]) -> int | None:
+    """Pull the billed reasoning-token count out of an OpenAI-style usage block."""
+    usage = data.get("usage") or {}
+    details = usage.get("completion_tokens_details") or {}
+    raw = details.get("reasoning_tokens")
+    if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 0:
+        return raw
+    return None
+
+
+def truncate_reasoning_trace(trace: str | None, limit: int = MAX_REASONING_TRACE_CHARS) -> str:
+    """Cap a stored chain of thought so a runaway model cannot bloat a JSONB payload."""
+    if not trace:
+        return ""
+    return trace[:limit]
+
+
+async def query_multi_tier_llm_raw(
     messages: list[dict[str, str]],
     strata_url: str = DEFAULT_STRATA_URL,  # Kept for signature compatibility; bypassed for auto-go
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
@@ -180,8 +200,14 @@ async def query_multi_tier_llm(
     # default 90s) with room for one failover, or the caller hangs up mid-chain.
     fallback_timeout: float = 200.0,
     purpose: str | None = None,
-) -> str:
-    """Query free-llm-proxy directly using auto-go (bypassing local Strata)."""
+) -> dict[str, Any]:
+    """Query free-llm-proxy directly using auto-go and keep the whole message.
+
+    Returns ``{"content", "reasoning", "reasoning_tokens"}``. Reasoning models
+    return their chain of thought on ``message.reasoning`` (OpenRouter spelling),
+    which the proxy forwards untouched; this variant preserves it so the live
+    trader can persist why it traded instead of only the short thought summary.
+    """
     _ = (strata_url, reasoning_budget_tokens, strata_timeout)
     should_close = False
     if http_client is None:
@@ -206,24 +232,62 @@ async def query_multi_tier_llm(
             resp = await http_client.post(url_proxy, json=payload, headers=headers, timeout=fallback_timeout)
             if resp.status_code == 200:
                 data = resp.json()
-                return data["choices"][0]["message"]["content"]
+                choice_message = (data.get("choices") or [{}])[0].get("message") or {}
+                reasoning = choice_message.get("reasoning") or choice_message.get("reasoning_content") or ""
+                return {
+                    "content": str(choice_message.get("content") or ""),
+                    "reasoning": str(reasoning),
+                    "reasoning_tokens": _extract_reasoning_tokens(data),
+                }
             logger.warning(f"auto-go proxy returned status {resp.status_code}: {resp.text[:120]}")
         except Exception as e:
             logger.warning("auto-go proxy call failed: %r", e)
 
         # Default fallback decision
-        return json.dumps(
-            {
-                "action": "HOLD",
-                "conviction": 50,
-                "thought": "All LLM endpoints currently unavailable; holding neutral position.",
-                "memories_consulted": [],
-                "allocation_pct": 0,
-            }
-        )
+        return {
+            "content": json.dumps(
+                {
+                    "action": "HOLD",
+                    "conviction": 50,
+                    "thought": "All LLM endpoints currently unavailable; holding neutral position.",
+                    "memories_consulted": [],
+                    "allocation_pct": 0,
+                }
+            ),
+            "reasoning": "",
+            "reasoning_tokens": None,
+        }
     finally:
         if should_close:
             await http_client.aclose()
+
+
+async def query_multi_tier_llm(
+    messages: list[dict[str, str]],
+    strata_url: str = DEFAULT_STRATA_URL,  # Kept for signature compatibility; bypassed for auto-go
+    cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
+    fallback_api_key: str | None = None,
+    http_client: httpx.AsyncClient | None = None,
+    max_tokens: int = 32768,
+    reasoning_budget_tokens: int | None = 12288,  # Unused for auto-go; kept for caller compatibility
+    strata_timeout: float = 45.0,
+    fallback_timeout: float = 200.0,
+    purpose: str | None = None,
+) -> str:
+    """Query free-llm-proxy directly using auto-go and return only the content string."""
+    message = await query_multi_tier_llm_raw(
+        messages=messages,
+        strata_url=strata_url,
+        cheap_proxy_url=cheap_proxy_url,
+        fallback_api_key=fallback_api_key,
+        http_client=http_client,
+        max_tokens=max_tokens,
+        reasoning_budget_tokens=reasoning_budget_tokens,
+        strata_timeout=strata_timeout,
+        fallback_timeout=fallback_timeout,
+        purpose=purpose,
+    )
+    return str(message.get("content") or "")
 
 
 async def fetch_intraday_bars(
@@ -410,13 +474,16 @@ async def execute_intraday_agent_step(
         "Decide your action, conviction, and reasoning."
     )
 
-    raw_output = await query_multi_tier_llm(
+    llm_message = await query_multi_tier_llm_raw(
         messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
         strata_url=strata_url,
         cheap_proxy_url=cheap_proxy_url,
         http_client=http_client,
         purpose="live-spy-trader",
     )
+    raw_output = llm_message.get("content") or ""
+    reasoning_trace = truncate_reasoning_trace(llm_message.get("reasoning"))
+    reasoning_tokens = llm_message.get("reasoning_tokens")
     decision = _extract_json_decision(raw_output)
 
     # 6. Execute portfolio turn (20% cap on BUY, 100% liquidation on SELL, no-op on HOLD)
@@ -426,6 +493,7 @@ async def execute_intraday_agent_step(
         current_price=technicals.get("last_close") or 0.0,
         is_market_open=is_market_open,
         thought=decision.get("thought", ""),
+        reasoning_trace=reasoning_trace,
         alpaca_trading_client=alpaca_trading_client,
         ticker=ticker,
     )
@@ -449,6 +517,8 @@ async def execute_intraday_agent_step(
         "order_id": str(order_id) if order_id else None,
         "technicals": technicals,
         "memories_consulted": decision.get("memories_consulted", []),
+        "reasoning_trace": reasoning_trace,
+        "reasoning_tokens": reasoning_tokens,
         "news_count": len(news_items),
         "bars_count": len(bars),
         "bars": bars,
@@ -481,6 +551,8 @@ async def execute_intraday_agent_step(
         "action": decision.get("action", "HOLD"),
         "conviction": int(decision.get("conviction", 50)),
         "thought": decision.get("thought", ""),
+        "reasoning_trace": reasoning_trace,
+        "reasoning_tokens": reasoning_tokens,
         "order_id": str(order_id) if order_id else None,
         "technicals": technicals,
         "queue_item_id": None,

@@ -27,13 +27,13 @@ importance_score: int = Field(default=5, ge=1, le=10)
 
 The Manager prompt pair (`MANAGER_SYSTEM_PROMPT` / `MANAGER_USER_PROMPT_TEMPLATE` in `apps/engine/core/llm/prompts.py`) instructs the model to rate lesson significance on a 1–10 scale (1 = minor noise, 5 = normal outcome, 8–10 = severe blunder or critical systemic breakthrough) and to return it in the JSON object.
 
-**Model attribution (`_resolve_trade_context`)** — the trade query now selects `reasoning`, `portfolio_id`, and the joined `portfolios(owner_id)` alongside `decisions(reasoning, model_name, metadata)`. Resolution order:
+**Model attribution (`_resolve_trade_context`)** — the trade query now selects `reasoning`, `reasoning_trace`, `portfolio_id`, and the joined `portfolios(owner_id)` alongside `decisions(reasoning, model_name, metadata)`. Resolution order:
 
 1. `decisions[0].model_name` when present and not `"unknown"`.
 2. Otherwise the owning portfolio's `owner_id` (covers system/mechanical portfolios whose trades carry no decision row).
 3. Otherwise the literal `"system"`.
 
-Reasoning falls back from the decision row to `trades.reasoning` to `"No reasoning found."`, and `strategy_reasoning` comes from `decisions[0].metadata.strategy_reasoning` with the same trade-level fallback.
+Reasoning prefers the trade's captured `reasoning_trace` (the live trader's full chain of thought, `.strip()`-ed and truncated to 4000 chars so one verbose turn cannot blow the Manager prompt budget) and only falls back — when the trace is missing or whitespace-only — to the decision row, then `trades.reasoning`, then `"No reasoning found."`. `strategy_reasoning` comes from `decisions[0].metadata.strategy_reasoning` with the same trade-level fallback.
 
 **Score bounding (`_extract_importance_score`)** — the LLM-returned score is coerced with `max(1, min(10, int(raw)))`, defaulting to `5` on `None`, `ValueError`, or `TypeError`, so a malformed diagnosis can never write an out-of-range score.
 

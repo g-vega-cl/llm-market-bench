@@ -172,6 +172,7 @@ async def execute_intraday_portfolio_turn(
     current_price: float,
     is_market_open: bool,
     thought: str = "",
+    reasoning_trace: str = "",
     alpaca_trading_client: Any = None,
     ticker: str = "SPY",
     owner_id: str = LIVE_TRADER_OWNER_ID,
@@ -279,6 +280,7 @@ async def execute_intraday_portfolio_turn(
             "price": current_price,
             "total_cost": cost,
             "reasoning": thought,
+            "reasoning_trace": reasoning_trace,
         }
         res_trade = sb_client.table("trades").insert(trade_data).execute()
         if res_trade.data:
@@ -331,6 +333,7 @@ async def execute_intraday_portfolio_turn(
             "total_cost": proceeds,
             "realized_pnl": realized_pnl,
             "reasoning": thought,
+            "reasoning_trace": reasoning_trace,
         }
         res_trade = sb_client.table("trades").insert(trade_data).execute()
         if res_trade.data:

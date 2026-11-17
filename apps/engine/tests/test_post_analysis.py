@@ -246,6 +246,51 @@ async def test_post_analysis_resolves_model_from_portfolio_and_passes_importance
         assert call_kwargs["importance_score"] == 8
 
 
+def test_resolve_trade_context_prefers_trace_and_caps_it():
+    """The captured chain of thought outranks the summarized reasoning, capped at 4000 chars."""
+    from apps.engine.analysis.post_analysis import _resolve_trade_context
+
+    trace = "T" * 5000
+    trade = {
+        "reasoning": "short thought",
+        "reasoning_trace": trace,
+        "portfolios": {"owner_id": "live-spy-trader"},
+        "decisions": [{"reasoning": "decision text", "model_name": "auto-go", "metadata": {}}],
+    }
+
+    model_name, reasoning, _strategy = _resolve_trade_context(trade)
+
+    assert model_name == "auto-go"
+    assert reasoning == "T" * 4000
+    assert len(reasoning) == 4000
+
+
+def test_resolve_trade_context_falls_back_when_trace_is_missing_or_blank():
+    from apps.engine.analysis.post_analysis import _resolve_trade_context
+
+    base = {"portfolios": {"owner_id": "live-spy-trader"}}
+
+    # No trace column at all (historical rows, other portfolios) -> decision reasoning.
+    with_decision = {
+        **base,
+        "reasoning": "short thought",
+        "decisions": [{"reasoning": "decision text", "model_name": "auto-go", "metadata": {}}],
+    }
+    assert _resolve_trade_context(with_decision)[1] == "decision text"
+
+    # Whitespace-only trace must be treated as absent, not preferred.
+    blank_trace = {**with_decision, "reasoning_trace": "   \n  "}
+    assert _resolve_trade_context(blank_trace)[1] == "decision text"
+
+    # No decision row -> trade-level reasoning.
+    no_decision = {**base, "reasoning": "short thought", "decisions": []}
+    assert _resolve_trade_context(no_decision)[1] == "short thought"
+
+    # Nothing at all -> explicit sentinel.
+    empty = {**base, "decisions": []}
+    assert _resolve_trade_context(empty)[1] == "No reasoning found."
+
+
 if __name__ == "__main__":
     asyncio.run(test_post_analysis_skips_existing_memory())
     test_post_analysis_result_model()

@@ -15,6 +15,8 @@ from trading.live_intraday_agent import (
     fetch_active_candle,
     fetch_intraday_bars,
     query_multi_tier_llm,
+    query_multi_tier_llm_raw,
+    truncate_reasoning_trace,
 )
 
 
@@ -231,6 +233,146 @@ async def test_execute_intraday_agent_step_end_to_end_hermetic():
     assert result["portfolio"]["shares"] > 0
     assert mock_alpaca_trade.submit_order.called
     assert mock_sb.table.called
+
+
+@pytest.mark.asyncio
+async def test_query_multi_tier_llm_raw_preserves_reasoning_and_token_count():
+    mock_http = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps({"action": "HOLD", "conviction": 55, "thought": "Wait.", "allocation_pct": 0}),
+                    "reasoning": "RSI is mid-range and price is pinned to VWAP, so patience beats chasing.",
+                }
+            }
+        ],
+        "usage": {"completion_tokens_details": {"reasoning_tokens": 169}},
+    }
+    mock_http.post.return_value = mock_resp
+
+    message = await query_multi_tier_llm_raw(
+        messages=[{"role": "user", "content": "tape"}],
+        fallback_api_key="test-key",
+        http_client=mock_http,
+    )
+
+    assert json.loads(message["content"])["action"] == "HOLD"
+    assert message["reasoning"] == "RSI is mid-range and price is pinned to VWAP, so patience beats chasing."
+    assert message["reasoning_tokens"] == 169
+
+
+@pytest.mark.asyncio
+async def test_query_multi_tier_llm_raw_without_reasoning_field_is_empty():
+    mock_http = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"choices": [{"message": {"content": "plain content"}}]}
+    mock_http.post.return_value = mock_resp
+
+    message = await query_multi_tier_llm_raw(
+        messages=[{"role": "user", "content": "tape"}],
+        fallback_api_key="test-key",
+        http_client=mock_http,
+    )
+
+    assert message["content"] == "plain content"
+    assert message["reasoning"] == ""
+    assert message["reasoning_tokens"] is None
+    # The wrapper still hands plain callers the content string they expect.
+    wrapped = await query_multi_tier_llm(
+        messages=[{"role": "user", "content": "tape"}],
+        fallback_api_key="test-key",
+        http_client=mock_http,
+    )
+    assert wrapped == "plain content"
+
+
+def test_truncate_reasoning_trace_caps_and_tolerates_none():
+    assert truncate_reasoning_trace(None) == ""
+    assert truncate_reasoning_trace("abc") == "abc"
+    assert len(truncate_reasoning_trace("x" * 20000)) == 16000
+
+
+@pytest.mark.asyncio
+async def test_execute_intraday_agent_step_persists_reasoning_trace():
+    mock_alpaca_data = MagicMock()
+    mock_bar = MagicMock()
+    mock_bar.timestamp = MagicMock()
+    mock_bar.timestamp.isoformat.return_value = "2026-10-29T14:30:00Z"
+    mock_bar.open = 582.0
+    mock_bar.high = 582.5
+    mock_bar.low = 581.8
+    mock_bar.close = 582.3
+    mock_bar.volume = 5000.0
+    mock_alpaca_data.get_stock_bars.return_value = MagicMock(data={"SPY": [mock_bar] * 25})
+
+    mock_alpaca_trade = MagicMock()
+    mock_account = MagicMock()
+    mock_account.cash = "25000.00"
+    mock_alpaca_trade.get_account.return_value = mock_account
+    mock_alpaca_trade.submit_order.return_value = MagicMock(id="alpaca-ord-123", status="accepted")
+
+    mock_sb = MagicMock()
+    mock_table = MagicMock()
+    mock_table.select.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "mem-1", "content": "Lesson: Morning gap fill rejection"}]
+    )
+    mock_table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "row-001"}])
+    mock_sb.table.return_value = mock_table
+
+    trace = "VWAP reclaim with breadth expansion; risking half size into the print."
+    mock_http = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "action": "BUY",
+                            "conviction": 80,
+                            "thought": "Scaling in long.",
+                            "memories_consulted": ["mem-1"],
+                            "allocation_pct": 10,
+                        }
+                    ),
+                    "reasoning": trace,
+                }
+            }
+        ],
+        "usage": {"completion_tokens_details": {"reasoning_tokens": 412}},
+    }
+    mock_http.post.return_value = mock_resp
+
+    with patch("trading.live_intraday_agent.aggregate_intraday_news", new=AsyncMock(return_value=[])):
+        result = await execute_intraday_agent_step(
+            alpaca_data_client=mock_alpaca_data,
+            alpaca_trading_client=mock_alpaca_trade,
+            sb_client=mock_sb,
+            http_client=mock_http,
+            ticker="SPY",
+        )
+
+    assert result["reasoning_trace"] == trace
+    assert result["reasoning_tokens"] == 412
+
+    inserts = [call.args[0] for call in mock_table.insert.call_args_list if call.args]
+    trade_payloads = [p for p in inserts if p.get("signal") in ("BUY", "SELL")]
+    feeling_payloads = [p for p in inserts if "why_explanation" in p]
+
+    assert trade_payloads, "expected the fill to be written to trades"
+    assert trade_payloads[0]["reasoning_trace"] == trace
+    # The short thought stays the human-facing field.
+    assert trade_payloads[0]["reasoning"] == "Scaling in long."
+
+    assert feeling_payloads, "expected the turn to be written to market_feeling"
+    summary = feeling_payloads[0]["trades_summary"]
+    assert summary["reasoning_trace"] == trace
+    assert summary["reasoning_tokens"] == 412
 
 
 def test_extract_json_decision_clean_and_fallback():

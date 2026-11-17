@@ -5,7 +5,7 @@ category: entity
 
 # Free LLM Proxy
 
-A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint, with an opt-in paid OpenCode Go fallback tier. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, cloud output-token clamping, and full token usage logging.
+A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint, with an opt-in paid OpenCode Go fallback tier. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, cloud output-token clamping, a per-attempt cloud request wall-clock timeout, and full token usage logging.
 
 ## Architecture & Lifecycle
 
@@ -24,14 +24,14 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
        ┌─────────────────────────────────────────────────────────────┐
        │    Model Resolver    │ (free-auto, free-fast, free-reasoning,
        │  (discovery.py)      │  strata-auto, auto-strata, strata, or dynamic provider models)
-       └──────────┬───────────┘
+       └──────────┬─────────────────────────────────────────────────┘
                   │
                   ▼
        ┌─────────────────────────────────────────────────────────────┐
        │                      Router & Failover                      │
        │                                                             │
        │  Tier 1: [Groq] ⇄ [Gemini] ⇄ [Kilo Code] (Round-Robin)      │
-       │           │ 429 / 5xx / Timeout                             │
+       │           │ 429 / 5xx / Timeout / 504 wall-clock cap       │
        │           ▼ (Trip Circuit Breaker)                          │
        │  Tier 2: [OVHcloud] ⇄ [OpenRouter] ⇄ [NVIDIA NIM]          │
        │           │ all free candidates exhausted                   │
@@ -58,6 +58,8 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ### Cloud Output-Token Clamping (`apps/free_llm_proxy/server.py`)**: Before dispatch, requests routed to any non-Strata (cloud) provider have `max_tokens` and `max_completion_tokens` clamped down to `CLOUD_MAX_OUTPUT_TOKENS` (default `16384`), because cloud free-tier providers enforce a 16k output ceiling. Strata is exempt and preserves the caller's full budget (e.g. 131,072 tokens). Cloud routes also have the Strata-specific `reasoning_budget_tokens` key stripped from the payload, since cloud gateways (Gemini, OVHCloud) reject it with a 400.
 
+### Cloud Wall-Clock Dispatch Timeout (`_dispatch_with_timeout`, `apps/free_llm_proxy/server.py`)**: Every upstream attempt on a non-Strata route is wrapped in `asyncio.wait_for(..., timeout=CLOUD_REQUEST_TIMEOUT_SECONDS)` (default `45.0`s). A provider that accepts the connection but never finishes — a hung socket, a silently stalled stream, or an aggressively throttled gateway — is cancelled and converted into a synthetic `504` `timeout_error` response so the existing failover chain immediately advances to the next candidate instead of pinning the request for the full `httpx` read timeout. Strata and any non-positive timeout are exempt and dispatched unwrapped, preserving deep local reasoning runs that legitimately exceed the cloud cap. See the dedicated section below.
+
 ### Audit Database (`apps/free_llm_proxy/db.py`)**: Persists call traces, prompt tokens, completion tokens, latency, failover chains, caller attribution, and stream telemetry (`is_stream`, `usage_available`, `ttft_ms`, `duration_ms`, `stream_completed`) to a local SQLite database (`data/free_llm_proxy.db`). Captures "Who" (`client_ip` via Cloudflare `CF-Connecting-IP`, `X-Forwarded-For`, or socket host, and `user_agent`) and "Why" (`purpose` via `X-Purpose` / `X-Client-Id` and `prompt_preview` containing a 60-character snippet of the user prompt). Logs failed authentication attempts (status 401) with caller IP and user agent to monitor unauthorized probes. `get_metrics()` aggregates total/successful/unauthorized requests, success rate, token totals, average latency, per-provider stats, the 10 most recent calls, and the token-coverage fields `streaming_requests`, `usage_available_requests`, `zero_token_successes`, `token_coverage_pct`, `avg_stream_duration_ms`, `avg_ttft_ms`, and `incomplete_streams`. Additive migrations preserve existing rows, and indexes on `timestamp`, `status_code`, and `client_ip` keep metrics queries fast. Audit rows are retained indefinitely (no retention job).
 
 ### Streaming & SSE (`apps/free_llm_proxy/streaming.py`, `client.py`)**: Streams `text/event-stream` chunks directly to chat clients with pre-flight failover protection — the connection is probed first so an initial 429/5xx fails over before any chunk is yielded. The SSE bytes are never rewritten. `audited_sse_stream` parses only `data:` lines in a bounded buffer and logs the final `usage` object after the stream completes, errors, or the client disconnects; it never injects `stream_options` and never changes a provider payload. Strata, Groq, Kilo, and OpenRouter already emit usage in their default streaming responses; providers that omit it are marked `usage_available = 0` instead of silently claiming zero tokens. Strata may hold an SSE stream open with `: keep-alive` frames while processing a large prompt; the proxy forwards those frames unchanged, applies **no total duration cap**, records TTFT and total duration, and marks the row `stream_completed = 0` if the client disconnects first. Clients should use `stream: true` for long Strata prompts; if time-to-first-token can exceed 5–10 minutes, use an asynchronous job queue rather than a synchronous HTTP request.
@@ -65,6 +67,42 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 ### Unauthorized Spike Monitor (`apps/free_llm_proxy/security.py`)**: Keeps a rolling in-memory window of 401 attempts and emits one structured `security.401_spike` warning when the configured threshold is crossed. It is log-only (no external calls) and exposes `unauthorized_last_5m`, `unauthorized_window_seconds`, and `security_alert_active` in metrics.
 
 ### Connection Error Resilience (`apps/free_llm_proxy/client.py`)**: `execute_completion` wraps both the non-streaming `POST` and the streaming `build_request`/`send` probe in `try/except httpx.RequestError`. A connection refusal, DNS failure, or connect timeout is converted into a structured `503` response (`{"error": {"message": "Provider connection error: ...", "type": "connection_error"}}`) rather than propagating an unhandled exception. This lets the router cleanly fail over to the next candidate provider (e.g. `strata-auto` falling back to the auto pool when local Strata is offline). The default client uses `httpx.Timeout(60.0, connect=3.0)` so an unreachable provider is detected within 3 seconds.
+
+## Cloud Wall-Clock Request Timeout
+
+`httpx` read timeouts only catch a socket that goes quiet. A cloud provider can keep the connection warm, emit keep-alives or a slow trickle of bytes, and never deliver a usable completion — which pins a proxy request for the full read window while every other candidate sits idle. `_dispatch_with_timeout` bounds the *whole* attempt in wall-clock terms instead.
+
+### Behavior
+
+```python
+async def _dispatch_with_timeout(provider_id, provider_cfg, payload, stream):
+    timeout = config.CLOUD_REQUEST_TIMEOUT_SECONDS
+    if provider_id == "strata" or timeout <= 0:
+        return await execute_completion(provider_cfg=provider_cfg, payload=payload, stream=stream)
+    try:
+        return await asyncio.wait_for(
+            execute_completion(provider_cfg=provider_cfg, payload=payload, stream=stream),
+            timeout=timeout,
+        )
+    except TimeoutError:
+        return (504, {"error": {"message": f"Provider {provider_id} request timed out after {timeout:.1f}s.", "type": "timeout_error"}}, {})
+```
+
+- **Applies to every cloud attempt** — the primary dispatch plus each in-provider cascade step (Gemini, OpenRouter, NVIDIA NIM, Kilo Code) routes through `_dispatch_with_timeout`, so a hung fallback model is bounded exactly like the primary one.
+- **Returns `504`, not an exception** — the synthesized `504` `timeout_error` body flows through the normal status-code handling, so the router advances to the next candidate and the attempt is recorded in the audit `failover_chain` as `<provider> (HTTP 504)`.
+- **Strata is exempt** — local inference legitimately runs for minutes on deep reasoning prompts, so `provider_id == "strata"` bypasses the wrapper entirely and keeps its full budget with no total duration cap.
+- **Kill switch** — setting `CLOUD_REQUEST_TIMEOUT_SECONDS` to `0` (or any non-positive value) disables the cap for all providers, restoring the plain `execute_completion` path.
+
+### Configuration
+
+| Variable | Default | Meaning |
+| :--- | :--- | :--- |
+| `CLOUD_REQUEST_TIMEOUT_SECONDS` | `45.0` | Wall-clock cap applied to each non-Strata provider attempt; on expiry the attempt returns `504 timeout_error` and failover continues. `<= 0` disables the cap. |
+
+### Verification
+
+- `test_cloud_provider_timeout_triggers_504_failover` monkeypatches the timeout to `0.01`s, makes the first candidate (OpenRouter) sleep past it, and asserts the request still returns `200` from the second candidate (Kilo Code) with `openrouter (HTTP 504)` recorded in the audit `failover_chain`.
+- `test_strata_provider_exempt_from_cloud_wall_clock_timeout` sets the timeout to `0.001`s and proves a Strata attempt sleeping `0.015`s still returns its completion untouched.
 
 ## Dynamic Model Discovery & Anti-Hardcoding Philosophy
 
@@ -140,7 +178,7 @@ OpenCode Go (`opencode-go`) is a paid `$10/month` subscription, not a free-tier 
 - **Explicit targeting**: `opencode-go/<model>` (or bare `opencode-go`) moves the provider to the front of the chain for deliberate per-model use, with normal failover behind it.
 
 ### Resilient In-Provider Demand-Spike Cascades
-When an upstream endpoint returns temporary errors (503 high-demand spike, 404 deprecated function, or 429 rate limit), the proxy automatically cascades through alternative models on the *same* provider before tripping circuit breakers and moving to the next provider:
+When an upstream endpoint returns temporary errors (503 high-demand spike, 404 deprecated function, 429 rate limit, or a proxy-level 504 wall-clock timeout), the proxy automatically cascades through alternative models on the *same* provider before tripping circuit breakers and moving to the next provider:
 - **Google Gemini**: Cascades from `gemini-flash-latest` ➔ `gemini-3.8-flash` ➔ `gemini-3.6-flash` ➔ `gemini-3.5-flash`.
 - **OpenRouter**: Cascades from the primary model ➔ `openrouter/free` ➔ `nemotron-3-ultra-550b:free` ➔ `nemotron-3.5-super-vl:free`.
 - **NVIDIA NIM**: Cascades from the primary model ➔ `minimax-m3.1-flash` ➔ `nemotron-3.5-super-vl-120b` ➔ `nemotron-3-ultra-550b` ➔ `mistral-large`.
@@ -217,6 +255,7 @@ Environment variables (loaded strictly from `apps/free_llm_proxy/.env` to isolat
 | `STRATA_BASE_URL` | `http://localhost:8080/v1` | Local Strata OpenAI-compatible endpoint URL |
 | `ENABLE_STRATA` | `true` | Toggle inclusion of local Strata provider in proxy pool |
 | `CLOUD_MAX_OUTPUT_TOKENS` | `16384` | Output-token ceiling enforced on all non-Strata (cloud) routes; Strata is exempt |
+| `CLOUD_REQUEST_TIMEOUT_SECONDS` | `45.0` | Wall-clock cap on each non-Strata provider attempt; on expiry the attempt yields `504 timeout_error` and failover continues. Strata exempt; `<= 0` disables |
 | `CONNECTOR_ID` | hostname | Connector identity returned by `/health` and `/v1/metrics`; compose sets `workstation` / `secondary` |
 | `SECURITY_ALERT_401_THRESHOLD` | `20` | Unauthorized requests within the window required to emit one `security.401_spike` warning (`0` disables) |
 | `SECURITY_ALERT_WINDOW_SECONDS` | `300` | Rolling window for the log-only 401 spike monitor |
@@ -253,7 +292,7 @@ docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
 ./apps/engine/.venv/bin/python3 -m pytest apps/free_llm_proxy/tests/test_proxy.py -v
 ```
 
-The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, graceful `503` handling of `httpx.RequestError` connection failures, cloud output-token clamping (`test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` — including `reasoning_budget_tokens` preservation on Strata and stripping on cloud routes), unauthorized 401 audit logging (`test_unauthorized_call_is_logged_in_audit_db`), Gemini Pro→Flash coercion (`test_gemini_pro_model_is_coerced_to_free_flash`), and the `GEMINI_API_KEY_FREE` provider key (`test_gemini_uses_gemini_api_key_free`). OpenCode Go coverage verifies that `auto-go` places `opencode-go` last and excludes Strata, `auto-strata-go` includes both Strata and Go, `strata-auto-go` puts Strata first and Go last, every free alias stays Go-free even with a key configured, the provider disappears without `OPENCODE_GO_API_KEY`, alias/prefix resolution works against a discovered catalog, and an end-to-end `auto-go` request exhausts free providers before calling Go exactly once (`test_auto_go_end_to_end_falls_back_to_go`), including forwarding the client `x-opencode-session` and preserving the Go `User-Agent`. An end-to-end `strata-auto-go` request proves the full `Strata ➔ free pool ➔ Go` failover path (`test_strata_auto_go_end_to_end_fails_over_strata_then_free_then_go`). Additional regressions prove that a full free-pool cooldown still tries cooling free candidates before paid Go, paid routing fails closed if its `auto_aliases` allowlist disappears, malformed `tier` values do not crash the router, and paid dispatch is refused when the live catalog is unavailable. Session affinity derivation (client-header passthrough, sanitization of control characters and oversized IDs, stable multi-turn fallback, multimodal text extraction, caller-identity fallback) is covered by `apps/free_llm_proxy/tests/test_session.py`, and an autouse fixture resets the shared circuit breaker between tests. Stream telemetry in `apps/free_llm_proxy/tests/test_streaming.py`, `apps/free_llm_proxy/tests/test_streaming_integration.py`, and `apps/free_llm_proxy/tests/test_db_telemetry.py` verifies byte-for-byte SSE pass-through, usage parsing across chunk boundaries, malformed/oversized-frame resilience, callback failures, mid-stream errors, end-to-end Strata and cloud usage logging, the absence of any injected `stream_options`, legacy schema migration, and token-coverage metrics. Log-only 401 spike detection and connector-scoped metrics are covered by `apps/free_llm_proxy/tests/test_security.py`. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
+The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, graceful `503` handling of `httpx.RequestError` connection failures, cloud output-token clamping (`test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` — including `reasoning_budget_tokens` preservation on Strata and stripping on cloud routes), unauthorized 401 audit logging (`test_unauthorized_call_is_logged_in_audit_db`), Gemini Pro→Flash coercion (`test_gemini_pro_model_is_coerced_to_free_flash`), and the `GEMINI_API_KEY_FREE` provider key (`test_gemini_uses_gemini_api_key_free`). OpenCode Go coverage verifies that `auto-go` places `opencode-go` last and excludes Strata, `auto-strata-go` includes both Strata and Go, `strata-auto-go` puts Strata first and Go last, every free alias stays Go-free even with a key configured, the provider disappears without `OPENCODE_GO_API_KEY`, alias/prefix resolution works against a discovered catalog, and an end-to-end `auto-go` request exhausts free providers before calling Go exactly once (`test_auto_go_end_to_end_falls_back_to_go`), including forwarding the client `x-opencode-session` and preserving the Go `User-Agent`. An end-to-end `strata-auto-go` request proves the full `Strata ➔ free pool ➔ Go` failover path (`test_strata_auto_go_end_to_end_fails_over_strata_then_free_then_go`). Additional regressions prove that a full free-pool cooldown still tries cooling free candidates before paid Go, paid routing fails closed if its `auto_aliases` allowlist disappears, malformed `tier` values do not crash the router, and paid dispatch is refused when the live catalog is unavailable. Cloud wall-clock timeout coverage lives in `test_cloud_provider_timeout_triggers_504_failover` (a slow cloud candidate yields `504` and the request still succeeds via the next provider) and `test_strata_provider_exempt_from_cloud_wall_clock_timeout` (Strata is never cancelled by the cap). Session affinity derivation (client-header passthrough, sanitization of control characters and oversized IDs, stable multi-turn fallback, multimodal text extraction, caller-identity fallback) is covered by `apps/free_llm_proxy/tests/test_session.py`, and an autouse fixture resets the shared circuit breaker between tests. Stream telemetry in `apps/free_llm_proxy/tests/test_streaming.py`, `apps/free_llm_proxy/tests/test_streaming_integration.py`, and `apps/free_llm_proxy/tests/test_db_telemetry.py` verifies byte-for-byte SSE pass-through, usage parsing across chunk boundaries, malformed/oversized-frame resilience, callback failures, mid-stream errors, end-to-end Strata and cloud usage logging, the absence of any injected `stream_options`, legacy schema migration, and token-coverage metrics. Log-only 401 spike detection and connector-scoped metrics are covered by `apps/free_llm_proxy/tests/test_security.py`. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
 
 ## Pi Assistant Integration
 Pi (`/home/cv/.local/bin/pi`) integrates directly with Free LLM Proxy by configuring a custom OpenAI-compatible provider in `~/.pi/agent/models.json`:

@@ -1,5 +1,6 @@
 """FastAPI Server exposing OpenAI-compatible /v1 endpoints with dynamic failover."""
 
+import asyncio
 import secrets
 import time
 from typing import Any
@@ -30,6 +31,42 @@ unauthorized_monitor = UnauthorizedMonitor(
     window_seconds=config.SECURITY_ALERT_WINDOW_SECONDS,
     connector_id=config.CONNECTOR_ID,
 )
+
+
+async def _dispatch_with_timeout(
+    provider_id: str,
+    provider_cfg: dict[str, Any],
+    payload: dict[str, Any],
+    stream: bool,
+) -> tuple[int, Any, dict[str, str]]:
+    """Dispatch upstream completion with a wall-clock cap for non-Strata cloud routes."""
+    timeout = config.CLOUD_REQUEST_TIMEOUT_SECONDS
+    if provider_id == "strata" or timeout <= 0:
+        return await execute_completion(
+            provider_cfg=provider_cfg,
+            payload=payload,
+            stream=stream,
+        )
+    try:
+        return await asyncio.wait_for(
+            execute_completion(
+                provider_cfg=provider_cfg,
+                payload=payload,
+                stream=stream,
+            ),
+            timeout=timeout,
+        )
+    except TimeoutError:
+        return (
+            504,
+            {
+                "error": {
+                    "message": f"Provider {provider_id} request timed out after {timeout:.1f}s.",
+                    "type": "timeout_error",
+                }
+            },
+            {},
+        )
 
 
 def extract_prompt_preview(messages: list[Any], max_length: int = 60) -> str | None:
@@ -309,7 +346,8 @@ async def chat_completions(
                 if payload["max_completion_tokens"] > config.CLOUD_MAX_OUTPUT_TOKENS:
                     payload["max_completion_tokens"] = config.CLOUD_MAX_OUTPUT_TOKENS
 
-        status_code, body_or_gen, resp_headers = await execute_completion(
+        status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
+            provider_id=p_id,
             provider_cfg=dispatch_cfg,
             payload=payload,
             stream=req.stream,
@@ -329,7 +367,8 @@ async def chat_completions(
             ]
             for fallback_model in gemini_fallbacks:
                 payload["model"] = fallback_model
-                status_code, body_or_gen, resp_headers = await execute_completion(
+                status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
+                    provider_id=p_id,
                     provider_cfg=dispatch_cfg,
                     payload=payload,
                     stream=req.stream,
@@ -352,7 +391,8 @@ async def chat_completions(
             ]
             for fallback_model in or_fallbacks:
                 payload["model"] = fallback_model
-                status_code, body_or_gen, resp_headers = await execute_completion(
+                status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
+                    provider_id=p_id,
                     provider_cfg=dispatch_cfg,
                     payload=payload,
                     stream=req.stream,
@@ -375,7 +415,8 @@ async def chat_completions(
             ]
             for fallback_model in nvidia_fallbacks:
                 payload["model"] = fallback_model
-                status_code, body_or_gen, resp_headers = await execute_completion(
+                status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
+                    provider_id=p_id,
                     provider_cfg=dispatch_cfg,
                     payload=payload,
                     stream=req.stream,
@@ -397,7 +438,8 @@ async def chat_completions(
             ]
             for fallback_model in kilo_fallbacks:
                 payload["model"] = fallback_model
-                status_code, body_or_gen, resp_headers = await execute_completion(
+                status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
+                    provider_id=p_id,
                     provider_cfg=dispatch_cfg,
                     payload=payload,
                     stream=req.stream,

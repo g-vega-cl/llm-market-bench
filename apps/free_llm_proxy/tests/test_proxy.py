@@ -1562,3 +1562,146 @@ def test_explicit_paid_model_not_dispatched_when_catalog_unavailable(
 
     assert resp.status_code == 502
     assert "OpenCode Go" not in attempted
+
+
+def test_cloud_provider_timeout_triggers_504_failover(client, monkeypatch):
+    """Non-Strata cloud attempts exceeding CLOUD_REQUEST_TIMEOUT_SECONDS fail over with 504."""
+    import asyncio
+    from apps.free_llm_proxy.server import audit_db, circuit_breaker, config, router
+
+    monkeypatch.setattr(config, "CLOUD_REQUEST_TIMEOUT_SECONDS", 0.01, raising=False)
+    circuit_breaker.reset("openrouter")
+    circuit_breaker.reset("kilo")
+
+    chain = [
+        (
+            "openrouter",
+            {
+                "name": "OpenRouter",
+                "base_url": "https://openrouter.ai/api/v1",
+                "tier": 2,
+            },
+        ),
+        (
+            "kilo",
+            {
+                "name": "Kilo Code",
+                "base_url": "https://api.kilo.ai/api/gateway",
+                "tier": 1,
+            },
+        ),
+    ]
+    monkeypatch.setattr(router, "get_candidate_chain", lambda *a, **kw: chain)
+
+    attempted: list[str] = []
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        attempted.append(provider_cfg["name"])
+        if provider_cfg["name"] == "OpenRouter":
+            await asyncio.sleep(0.2)
+            return (
+                200,
+                {
+                    "id": "chatcmpl-too-slow",
+                    "object": "chat.completion",
+                    "created": 1700000000,
+                    "model": payload.get("model"),
+                    "choices": [
+                        {
+                            "index": 0,
+                            "message": {"role": "assistant", "content": "slow"},
+                        }
+                    ],
+                },
+                {},
+            )
+        return (
+            200,
+            {
+                "id": "chatcmpl-fast",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": payload.get("model"),
+                "choices": [
+                    {"index": 0, "message": {"role": "assistant", "content": "ok"}}
+                ],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                },
+            },
+            {},
+        )
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={"model": "auto-go", "messages": [{"role": "user", "content": "hi"}]},
+    )
+
+    assert resp.status_code == 200
+    assert attempted == ["OpenRouter", "Kilo Code"]
+    logs = audit_db.get_metrics()["recent_calls"]
+    assert any(
+        "openrouter (HTTP 504)" in (row.get("failover_chain") or "") for row in logs
+    )
+
+
+def test_strata_provider_exempt_from_cloud_wall_clock_timeout(client, monkeypatch):
+    """Local Strata must not be cancelled by CLOUD_REQUEST_TIMEOUT_SECONDS."""
+    import asyncio
+    from apps.free_llm_proxy.server import config, router
+
+    monkeypatch.setattr(config, "CLOUD_REQUEST_TIMEOUT_SECONDS", 0.001, raising=False)
+    chain = [
+        (
+            "strata",
+            {
+                "name": "Strata (Local)",
+                "base_url": "http://localhost:8080/v1",
+                "tier": 1,
+            },
+        ),
+    ]
+    monkeypatch.setattr(router, "get_candidate_chain", lambda *a, **kw: chain)
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        await asyncio.sleep(0.015)
+        return (
+            200,
+            {
+                "id": "chatcmpl-strata",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": payload.get("model"),
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "strata ok"},
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                },
+            },
+            {},
+        )
+
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={
+            "model": "strata",
+            "messages": [{"role": "user", "content": "deep prompt"}],
+        },
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["message"]["content"] == "strata ok"

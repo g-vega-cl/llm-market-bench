@@ -24,6 +24,9 @@ ENABLE_STRATA = os.environ.get("ENABLE_STRATA", "true").lower() not in {
     "no",
 }
 CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "16384"))
+CLOUD_REQUEST_TIMEOUT_SECONDS = float(
+    os.environ.get("CLOUD_REQUEST_TIMEOUT_SECONDS", "45.0")
+)
 CONNECTOR_ID = os.environ.get("CONNECTOR_ID") or socket.gethostname()
 SECURITY_ALERT_401_THRESHOLD = int(os.environ.get("SECURITY_ALERT_401_THRESHOLD", "20"))
 SECURITY_ALERT_WINDOW_SECONDS = int(

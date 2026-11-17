@@ -397,11 +397,13 @@ async def test_synthesize_recent_news_avoids_800_token_truncation():
     mock_sb.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
         data=[{"source": "Reuters", "headline": "Fed flags sticky inflation; semis await NVDA"}]
     )
-    mock_sb.table.return_value.select.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
-        data=[{"id": "feeling-1"}]
+    mock_sb.table.return_value.select.return_value.order.return_value.limit.return_value.execute.return_value = (
+        MagicMock(data=[{"id": "feeling-1"}])
     )
 
-    with patch("trading.runner.query_multi_tier_llm", new_callable=AsyncMock, return_value="Concise summary.") as mock_llm:
+    with patch(
+        "trading.runner.query_multi_tier_llm", new_callable=AsyncMock, return_value="Concise summary."
+    ) as mock_llm:
         result = await runner.synthesize_recent_news(sb_client=mock_sb)
 
     assert result == "Concise summary."

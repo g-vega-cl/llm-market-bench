@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 
 class PromptBlock(BaseModel):
@@ -162,6 +162,27 @@ class PushStrategy(BaseModel):
 
 _TRADE_LINE_RE = re.compile(r"(?<!not\s)\b(BUY|SELL|EXIT)\s+([A-Z]{1,5})\b")
 _VALID_ACTIONS = {"BUY", "SELL", "EXIT"}
+
+
+def is_valid_single_stage_graph(raw_graph: Any) -> bool:
+    """True only when ``raw_graph`` validates as a single-stage Push v2 strategy.
+
+    Shared by the scheduler (which skips invalid live recipes instead of queuing
+    them) and the showcase publisher (which must not pin a graph the worker would
+    reject). Accepts the stored JSON string form as well as a decoded dict.
+    """
+    if isinstance(raw_graph, str):
+        try:
+            raw_graph = json.loads(raw_graph)
+        except json.JSONDecodeError:
+            return False
+    if not isinstance(raw_graph, dict):
+        return False
+    try:
+        PushStrategy.model_validate(raw_graph)
+    except ValidationError:
+        return False
+    return True
 
 
 def _parse_json_signal_array(chunk: str) -> list[dict[str, str]]:

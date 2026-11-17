@@ -321,6 +321,38 @@ describe('saveRecipe', () => {
         expect(update?.payload).not.toHaveProperty('concurrency_config');
         expect(update?.filters).toMatchObject({ id: 'rec-1', user_id: 'user-1' });
     });
+
+    it('preserves the published flag on update when publication is not passed', async () => {
+        const { db, calls } = createMockDb({
+            'select:strategy_recipes': { data: { user_id: 'user-1' } },
+            'update:strategy_recipes': { data: recipeRow({ is_public: true }) },
+        });
+        mockAdminDb = db;
+
+        await saveRecipe({ ...STARTER_RECIPES[0], id: 'rec-1' }, 'user-1');
+
+        const update = calls.find((call) => call.op === 'update');
+        expect(update?.payload).not.toHaveProperty('is_public');
+    });
+
+    it('applies an explicit publication decision while new recipes default to private', async () => {
+        const { db, calls } = createMockDb({
+            'select:strategy_recipes': { data: { user_id: 'user-1' } },
+            'update:strategy_recipes': { data: recipeRow({ is_public: true }) },
+            'insert:strategy_recipes': { data: recipeRow() },
+        });
+        mockAdminDb = db;
+
+        await saveRecipe({ ...STARTER_RECIPES[0], id: 'rec-1' }, 'user-1', 'publish');
+        await saveRecipe({ ...STARTER_RECIPES[0], id: 'rec-1' }, 'user-1', 'unpublish');
+        await saveRecipe({ ...STARTER_RECIPES[0] }, 'user-1');
+
+        const updates = calls.filter((call) => call.op === 'update');
+        expect(updates[0]?.payload).toMatchObject({ is_public: true });
+        expect(updates[1]?.payload).toMatchObject({ is_public: false });
+        const insert = calls.find((call) => call.op === 'insert');
+        expect(insert?.payload).toMatchObject({ is_public: false });
+    });
 });
 
 describe('getRecipeJobStatus', () => {

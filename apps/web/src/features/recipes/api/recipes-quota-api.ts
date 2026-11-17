@@ -223,14 +223,114 @@ export async function fetchUserRecipes(userId: string): Promise<RecipeSummaryIte
     return (data || []) as RecipeSummaryItem[];
 }
 
+const SHOWCASE_PIN_ROW_ID = 1;
+
+interface ShowcasePinRow {
+    job_id: string | null;
+    recipe_id: string | null;
+    headline: string | null;
+    recipe_name: string | null;
+}
+
+const SHOWCASE_JOB_COLUMNS =
+    'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at';
+
+/** A silent read failure here is exactly the empty-page bug this path exists to fix. */
+function logShowcaseReadFailure(step: string, error: { message: string } | null): void {
+    if (error) console.error(`[recipes-demo] showcase ${step} read failed; degrading`, error);
+}
+
+async function fetchPinnedShowcaseBacktest(
+    db: ReturnType<typeof getDbAdminClient>,
+): Promise<RecipeRunDetail | null> {
+    // The pin table may not exist before its migration lands. A failed read must
+    // degrade to the is_public heuristic instead of breaking the public route.
+    const { data: pin, error: pinError } = await db
+        .from('recipe_showcase')
+        .select('job_id, recipe_id, headline, recipe_name')
+        .eq('id', SHOWCASE_PIN_ROW_ID)
+        .maybeSingle();
+    logShowcaseReadFailure('pin', pinError);
+
+    const pinned = pin as ShowcasePinRow | null;
+    if (!pinned?.job_id) return null;
+
+    const { data: jobRow, error: jobError } = await db
+        .from('recipe_execution_queue')
+        .select(SHOWCASE_JOB_COLUMNS)
+        .eq('id', pinned.job_id)
+        .maybeSingle();
+    logShowcaseReadFailure('pinned job', jobError);
+
+    const job = jobRow as RecipeJobRecord | null;
+    if (!job || job.mode !== 'backtest' || job.status !== 'completed' || !job.result_json) {
+        return null;
+    }
+
+    const recipeId = pinned.recipe_id || job.recipe_id || '';
+    const { data: recipeRow, error: recipeError } = recipeId
+        ? await db
+              .from('strategy_recipes')
+              .select('id, name, cadence')
+              .eq('id', recipeId)
+              .maybeSingle()
+        : { data: null, error: null };
+    logShowcaseReadFailure('pinned recipe', recipeError);
+
+    const recipe = recipeRow as {
+        id: string;
+        name: string;
+        cadence: RecipeRunDetail['recipeCadence'];
+    } | null;
+
+    return {
+        job,
+        // The pin freezes the name at publish time, so a later studio rename
+        // cannot restyle a run it did not produce.
+        recipeName:
+            pinned.headline || pinned.recipe_name || recipe?.name || 'Public Showcase Backtest',
+        recipeCadence: recipe?.cadence ?? '3h',
+        queuePosition: null,
+        globalActiveBacktests: 0,
+    };
+}
+
+/**
+ * Cheap cache probe for the SSR document middleware: is a showcase pinned?
+ *
+ * Costs one small round-trip and runs only on a cache miss, so it never appears
+ * on the hot path. A failed read must not cache the page (`false`), otherwise a
+ * transient PostgREST error would be frozen into the CDN for 72 hours.
+ */
+export async function hasPublishedShowcase(): Promise<boolean> {
+    const db = getDbAdminClient();
+    const { data, error } = await db
+        .from('recipe_showcase')
+        .select('job_id')
+        .eq('id', SHOWCASE_PIN_ROW_ID)
+        .maybeSingle();
+
+    if (error) {
+        console.error('[recipes-demo] showcase pin probe failed; not caching the page', error);
+        return false;
+    }
+
+    return Boolean((data as { job_id: string | null } | null)?.job_id);
+}
+
 export async function fetchPublicShowcaseBacktest(): Promise<RecipeRunDetail | null> {
     const db = getDbAdminClient();
-    const { data: pubRecipes } = await db
+
+    const pinned = await fetchPinnedShowcaseBacktest(db);
+    if (pinned) return pinned;
+
+    const { data: pubRecipes, error: recipesError } = await db
         .from('strategy_recipes')
         .select('id, name, cadence')
         .eq('is_public', true)
         .order('trial_count', { ascending: false })
         .limit(10);
+    logShowcaseReadFailure('public recipes', recipesError);
 
     const recipes = (pubRecipes || []) as Array<{
         id: string;
@@ -240,11 +340,9 @@ export async function fetchPublicShowcaseBacktest(): Promise<RecipeRunDetail | n
     if (recipes.length === 0) return null;
 
     const recipeMap = new Map(recipes.map((r) => [r.id, r]));
-    const { data: jobs } = await db
+    const { data: jobs, error: jobsError } = await db
         .from('recipe_execution_queue')
-        .select(
-            'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at',
-        )
+        .select(SHOWCASE_JOB_COLUMNS)
         .in(
             'recipe_id',
             recipes.map((r) => r.id),
@@ -253,6 +351,7 @@ export async function fetchPublicShowcaseBacktest(): Promise<RecipeRunDetail | n
         .eq('status', 'completed')
         .order('completed_at', { ascending: false })
         .limit(5);
+    logShowcaseReadFailure('public runs', jobsError);
 
     const picked = ((jobs || []) as RecipeJobRecord[]).find((j) => Boolean(j.result_json));
     if (!picked) return null;

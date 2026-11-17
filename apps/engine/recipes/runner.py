@@ -10,15 +10,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
-
 from core.config import logger
 from core.db import get_supabase_client
 from core.time_utils import EASTERN_TZ
 from recipes.intraday_bars import TRADING_SLOTS_ET, snapshot_live_intraday_bars
 from recipes.news_corpus import sync_live_news_to_corpus
 from recipes.portfolio_engine import DEFAULT_CONCURRENCY_CONFIG
-from recipes.push_schema import PushStrategy
+from recipes.push_schema import is_valid_single_stage_graph
 from recipes.worker import async_process_next_recipe_job, process_next_recipe_job
 
 ANONYMOUS_USER_ID = "00000000-0000-0000-0000-000000000000"
@@ -101,18 +99,7 @@ def _is_valid_single_stage_graph(raw_graph: Any) -> bool:
     validation is skipped here instead of being queued, which would otherwise leave
     a failed queue row behind on every hourly cycle.
     """
-    if isinstance(raw_graph, str):
-        try:
-            raw_graph = json.loads(raw_graph)
-        except json.JSONDecodeError:
-            return False
-    if not isinstance(raw_graph, dict):
-        return False
-    try:
-        PushStrategy.model_validate(raw_graph)
-    except ValidationError:
-        return False
-    return True
+    return is_valid_single_stage_graph(raw_graph)
 
 
 def _canonical_slot_utc(slot_key: str) -> datetime:

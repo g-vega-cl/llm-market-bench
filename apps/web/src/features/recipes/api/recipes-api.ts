@@ -33,10 +33,16 @@ export async function fetchPublicRecipes(): Promise<StrategyRecipeRecord[]> {
     return (data || []) as StrategyRecipeRecord[];
 }
 
+/**
+ * Publication intent, resolved once below. `'preserve'` is the studio's default:
+ * an ordinary save must never change whether a recipe is publicly visible.
+ */
+export type RecipePublication = 'preserve' | 'publish' | 'unpublish';
+
 export async function saveRecipe(
     recipe: PushStrategy,
     userId: string,
-    isPublic = false,
+    publication: RecipePublication = 'preserve',
 ): Promise<StrategyRecipeRecord> {
     assertSingleLlmStage(recipe);
     assertNoPrevOutputPlaceholder(recipe);
@@ -67,9 +73,15 @@ export async function saveRecipe(
         description: sanitizedRecipe.description || '',
         cadence: sanitizedRecipe.cadence,
         graph_json: sanitizedRecipe,
-        is_public: isPublic,
         updated_at: new Date().toISOString(),
     };
+
+    // Only an explicit decision may change publication state, so a published
+    // showcase recipe is never silently unpublished by editing it in the studio.
+    const writePayload =
+        publication === 'preserve'
+            ? basePayload
+            : { ...basePayload, is_public: publication === 'publish' };
 
     if (recipe.id) {
         const existing = await db
@@ -90,7 +102,7 @@ export async function saveRecipe(
         // slot/sizing limits set on the recipe row are preserved across graph edits.
         const { data, error } = await db
             .from('strategy_recipes')
-            .update(basePayload)
+            .update(writePayload)
             .eq('id', recipe.id)
             .eq('user_id', userId)
             .select('*')
@@ -103,7 +115,8 @@ export async function saveRecipe(
     const { data, error } = await db
         .from('strategy_recipes')
         .insert({
-            ...basePayload,
+            ...writePayload,
+            is_public: publication === 'publish',
             concurrency_config: {
                 max_open_trades: 4,
                 max_equity_pct_per_trade: 25.0,
@@ -118,8 +131,10 @@ export async function saveRecipe(
 }
 
 export const saveRecipeFn = createServerFn({ method: 'POST' })
-    .validator((d: { recipe: PushStrategy; isPublic?: boolean }) => d)
-    .handler(async ({ data: { recipe, isPublic = false } }) => {
+    // Publication is an editorial act performed by the showcase publisher CLI,
+    // never a client-controlled field: the browser may not flip `is_public`.
+    .validator((d: { recipe: PushStrategy }) => d)
+    .handler(async ({ data: { recipe } }) => {
         // The user is resolved inside the handler on purpose: the TanStack
         // import-protection plugin only allows the server-only auth import when
         // every use of it sits inside a server-function callback.
@@ -130,7 +145,7 @@ export const saveRecipeFn = createServerFn({ method: 'POST' })
         if (!user?.id) {
             throw new Error('Unauthorized: please sign in to save recipes');
         }
-        return saveRecipe(recipe, user.id, isPublic);
+        return saveRecipe(recipe, user.id);
     });
 
 export async function getRecipeJobStatus(jobId: string, userId: string): Promise<RecipeJobRecord> {

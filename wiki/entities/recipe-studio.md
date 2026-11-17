@@ -129,6 +129,47 @@ Clicking **Backtest (Random 2W)** saves the recipe, enqueues a `backtest` job, a
 
 A `live_turn` job opened on this route renders an `Incompatible Job Mode` error card instead of backtest telemetry.
 
+## Public Showcase Pin (`/recipes-demo`)
+
+`/recipes-demo` is a public read-only walkthrough of one published backtest (`RecipeBacktestPage` with `readOnlyShowcase`, which hides `Re-run`/`Cancel` and swaps `Edit in Studio` for `Sign In Free to Build & Run`). `fetchPublicShowcaseBacktest` resolves what it renders in two steps:
+
+1. **Pin first** — `public.recipe_showcase` holds a single row (`id = 1`) with `job_id` (nullable, `ON DELETE SET NULL`), `recipe_id`, `headline`, `recipe_name`, and `published_at` (`supabase/migrations/20261117000000_create_recipe_showcase.sql`). The row is service-role only (RLS + `REVOKE` from `anon`/`authenticated`) because the page reads it through `getDbAdminClient`. The pinned job must be `mode = 'backtest'`, `status = 'completed'`, and carry `result_json`; `headline` overrides the recipe name as the page title and `recipe_name` is frozen at publish time, so a later studio rename cannot restyle a run it did not produce. `published_at` is rewritten on every publish. A `NULL` `job_id` (a future queue-retention prune) degrades to the heuristic instead of deleting the pin.
+2. **Fallback heuristic** — if the pin is missing, stale, or unreadable, the original path still applies: public recipes (`is_public = true`, newest `completed_at` first, top 5) and the newest completed backtest with `result_json`. A pre-migration database therefore degrades to the sign-in card instead of erroring. Every read in this path destructures `error` and logs (`[recipes-demo] showcase <step> read failed; degrading`) — a silent `PGRST205` or revoked grant must not masquerade as "nothing published yet".
+
+Why the pin exists: the heuristic alone never produced a showcase, because the only `is_public` rows are the seeded starter templates (`seed_starter_recipes`, `user_id = ANONYMOUS_USER_ID`) that never accrue backtest jobs, while every user-cloned recipe is saved private. Publishing is therefore an explicit editorial act:
+
+```sh
+# validate against the live run without writing
+python3 -m recipes.publish_showcase --job <job-id> --dry-run
+
+# pin it (also sets strategy_recipes.is_public = true on the owning recipe)
+python3 -m recipes.publish_showcase --job <job-id> --headline "Trump & Chips News Momentum — 2-week point-in-time run"
+```
+
+`apps/engine/recipes/publish_showcase.py` fails closed with `ShowcasePublishError`:
+
+- the job must be a completed backtest carrying the full `30` `day_steps` (`days_completed` alone is not evidence — the public timeline renders the slot array);
+- the recipe graph must validate through `push_schema.is_valid_single_stage_graph` (the same validator the scheduler uses);
+- a recipe edited more than `GRAPH_EDIT_GRACE` (10 minutes) after the run completed is refused, since the queue does not snapshot the graph — the grace exists because the worker bumps `trial_count`/`updated_at` seconds after a run settles;
+- `_build_client` requires `ARCHIVE_DB_URL` + `ARCHIVE_DB_SERVICE_ROLE_KEY` and refuses any host that is not the archive database (or localhost), so a pin can never be written to a database the site does not read.
+
+Write order matters: the pin upsert runs **before** `is_public` is flipped, and the flag is read back afterwards. A failed pin therefore never leaves a public recipe with no pin for the fallback heuristic to serve, and a 0-row recipe update is reported instead of silently "succeeding". Publishing deliberately does not touch `strategy_recipes.updated_at` — publication is not a content edit, and bumping it would trip the graph-drift guard on the next re-publish.
+
+`saveRecipe` takes an explicit `publication: 'preserve' | 'publish' | 'unpublish'` (default `'preserve'`) and only writes `is_public` when it is not `'preserve'`, so an ordinary studio save cannot silently unpublish a pinned showcase. `saveRecipeFn` no longer accepts `isPublic` from the browser at all — publication is CLI-only.
+
+After publishing, verify with `curl -s https://www.benchify.dev/recipes-demo | grep -c "No public showcase"` (expect `0`) and confirm the rendered window/slots match the job's `result_json`.
+
+### Caching (`apps/web/src/lib/showcase-cache.ts`)
+
+A published showcase changes only when someone publishes again, so the document is served from the shared CDN cache instead of running SSR (and its `~1 MB` `result_json` read) for every visitor:
+
+- `cache-control: public, max-age=0, s-maxage=259200, must-revalidate` — browsers revalidate, shared caches keep it for 72 hours.
+- `netlify-cdn-cache-control: public, s-maxage=259200` — Netlify's edge honours this on function responses.
+- The headers are applied in `start.ts` `requestMiddleware` (not `netlify.toml`, whose header rules do not cover function-backed paths). Only a `200` on exactly `/recipes-demo` is touched.
+- `hasPublishedShowcase()` probes the pin (one small read, only on a cache miss). No pin, a read error, or a non-200 response all yield `cache-control: no-store`, so the empty state and error pages are never frozen behind the 72-hour entry.
+
+There is deliberately no purge API and no token: after a publish the page can lag up to 72h. A re-deploy, or clearing the CDN cache, publishes immediately — `publish_showcase` prints that reminder. Verify caching with two `curl -I https://www.benchify.dev/recipes-demo` calls: the second should show a climbing `age` and `cache-status: "Netlify Edge"; fwd=hit`.
+
 ## Studio Recent Backtests
 
 `/recipes` loads `fetchRecentBacktestJobsFn()` alongside the optional `?recipeId=` recipe and passes the results to `RecentBacktestsStrip`, which renders a `Recent Backtests:` trough of up to five `voxel-btn` links to `/recipes/backtest/$jobId`. Each link is labeled with the short job id and either the net return (`+1.80%`) or `<STATUS> (<progress>%)`.
@@ -185,7 +226,7 @@ To bring multi-stage back, drop the `{{prev_output}}` rejection, relax the schem
 The Studio runs against the archive DB (`strategy_recipes` is publicly readable only for templates and public recipes while `recipe_execution_queue`, `recipe_user_quotas`, and `recipe_alerts_inbox` are service-role only). Server functions sit behind `/_authed` routes and fail closed (`Unauthorized`) when `user?.id` is absent (`ANONYMOUS_USER_ID` removed from user endpoints):
 
 - **`api/recipes-api.ts`** — recipe persistence and job lifecycle: `saveRecipe` / `saveRecipeFn`, `enqueueRecipeJob` / `enqueueRecipeJobFn` (enforcing `assertQuotaAllowsJob` and dispatching `auto-go` / `strata-auto-go` via `free-llm-proxy`), `getRecipeJobStatus` / `getRecipeJobStatusFn`, `fetchRecipeRunDetail` / `fetchRecipeRunDetailFn` (including `queuePosition` and `globalActiveBacktests` for pending backtests), `fetchRecipeById` / `fetchRecipeByIdFn`, `fetchRecentBacktestJobs` / `fetchRecentBacktestJobsFn`, and `fetchPublicRecipes`.
-- **`api/recipes-quota-api.ts`** — starter beta quotas (`1` concurrent backtest, `2` backtests/24h, `3` live turns/24h, `1` active `is_live` recipe, global queue cap `20`), `recipe_user_quotas` DB overrides, `cancelRecipeJob`, `toggleLiveSchedule`, `fetchUserRecipes`, and `fetchPublicShowcaseBacktest` (read-only `/recipes-demo` preview).
+- **`api/recipes-quota-api.ts`** — starter beta quotas (`1` concurrent backtest, `2` backtests/24h, `3` live turns/24h, `1` active `is_live` recipe, global queue cap `20`), `recipe_user_quotas` DB overrides, `cancelRecipeJob`, `toggleLiveSchedule`, `fetchUserRecipes`, and `fetchPublicShowcaseBacktest` (read-only `/recipes-demo` preview: `recipe_showcase` pin first, `is_public` heuristic fallback).
 - **`api/recipes-studio-api.ts`** — alerts (`fetchRecipeAlerts`, `markAlertRead`), waitlist pledges (`submitWaitlistPledge`), `fetchLivePortfolioAndRuns` (hydrating `paper_cash`, `paper_positions` with latest mark prices from live runs/`recipe_intraday_bars`, `paper_trades`, and the last 10 `live_turn` jobs for `LiveRunsBlock`), and `previewStrategyPrompt` (via `prompt-builder.ts`).
 - `RecipeJobStatus` includes `'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'`.
 

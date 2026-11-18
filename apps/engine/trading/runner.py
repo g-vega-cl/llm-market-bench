@@ -376,6 +376,20 @@ def _is_price_refresh_window(now_dt: datetime | None = None) -> bool:
     return 570 <= now_dt.hour * 60 + now_dt.minute <= 965
 
 
+def _is_hooks_window(now_dt: datetime | None = None) -> bool:
+    """Weekday 09:30–16:05 ET: the strategy hooks need the closing print too.
+
+    The regular session ends at 16:00, but close-print strategies (daily stock
+    pick portfolios) exit on the official closing price, which only exists after
+    the bell. One extra tick is enough.
+    """
+    if now_dt is None:
+        now_dt = datetime.now(ZoneInfo("America/New_York"))
+    if now_dt.weekday() >= 5:
+        return False
+    return 570 <= now_dt.hour * 60 + now_dt.minute <= 965
+
+
 async def run_systematic_hooks_loop(interval_seconds: int = 300, strategy_lock: asyncio.Lock | None = None) -> None:
     """Run every time-gated systematic strategy hook while the market is open.
 
@@ -390,7 +404,7 @@ async def run_systematic_hooks_loop(interval_seconds: int = 300, strategy_lock: 
     while True:
         try:
             now_et = datetime.now(ZoneInfo("America/New_York"))
-            if is_market_session_active(now_et):
+            if _is_hooks_window(now_et):
                 async with lock:
                     await run_systematic_strategy_hooks(now_et)
         except Exception:

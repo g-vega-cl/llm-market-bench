@@ -64,6 +64,27 @@ async def initialize_with_retry(owner: str) -> Portfolio:
     return p
 
 
+async def _run_picks_portfolio_hook(now_et: datetime, dry_run: bool = False) -> None:
+    """Open daily stock pick legs at the open and close them on the closing print.
+
+    Entry window 09:31-10:00 ET; exit window 16:00-16:05 ET (the hooks loop reaches
+    16:05 via ``trading.runner._is_hooks_window``). A late basket is never filled on
+    a stale open print: past 10:00 the session is skipped.
+    """
+    from execution.stock_picks_trading import run_picks_trade
+
+    if now_et.weekday() >= 5:
+        return
+
+    minutes_et = now_et.hour * 60 + now_et.minute
+    if 571 <= minutes_et <= 600:
+        logger.info("Picks entry window (09:31-10:00 ET) — opening daily stock pick legs...")
+        await run_picks_trade(action="entry", dry_run=dry_run)
+    elif 960 <= minutes_et <= 965:
+        logger.info("Picks close-print window (16:00-16:05 ET) — closing daily stock pick legs...")
+        await run_picks_trade(action="exit", dry_run=dry_run)
+
+
 async def run_systematic_strategy_hooks(now_et: datetime, dry_run: bool = False) -> None:
     """Executes systematic strategy triggers (Sector exits, Max Pain, PEAD) based on ET market hours.
 
@@ -121,6 +142,12 @@ async def run_systematic_strategy_hooks(now_et: datetime, dry_run: bool = False)
     except Exception:
         logger.exception("Sentiment fader strategy hook in update_prices failed")
 
+    # 5. Daily Stock Picker Arena portfolios (sys-picks-*)
+    try:
+        await _run_picks_portfolio_hook(now_et, dry_run)
+    except Exception:
+        logger.exception("Daily picks portfolio hook in update_prices failed")
+
 
 async def _fetch_portfolio_owners(sb_client: Any) -> list[str]:
     def fetch_portfolios():
@@ -160,7 +187,7 @@ async def _collect_portfolios_and_tickers(
         try:
             p = await initialize_with_retry(owner)
             all_tickers.update(p.positions.keys())
-            if owner.startswith("sys-sector-ls-") and p.id:
+            if owner.startswith(("sys-sector-ls-", "sys-picks-")) and p.id:
                 try:
                     short_res = (
                         sb_client.table("trades")

@@ -22,6 +22,7 @@ Used in portfolio detail pages to explain the rationale behind each system portf
 - `sys-daily-spy-close-target` — Daily SPY Close Price Target
 - `sys-daily-spy-target` — Daily SPY Open-to-Close Target
 - `sys-sentiment-fader` — Contrarian Options Sentiment Fader Strategy (🌊, `Put/Call Ratio Exhaustion` badge, 4 pillars: academic principle, panic entry trigger P/C ≥ 1.30, euphoria exit P/C ≤ 0.60, and risk controls with 1.5% stop loss / 3-day horizon / 1 bps friction)
+- `sys-picks-{model}` — Daily 3 Up / 3 Down Stock Picks (🎯, `Model Baskets · Long/Short` badge, 3 pillars: six-leg basket, gross 100% / net 0, close-print exit). Matched by the `sys-picks-` owner prefix so every track — `sys-picks-consensus`, `sys-picks-deepseek-flash`, `sys-picks-MiniMax-M3.1-Flash`, `sys-picks-gpt-6-luna` — renders the same explainer. See [[entities/daily-stock-picker]] and [[concepts/system-portfolios]] §13.
 
 See `StrategyExplainerConfig` definitions in the component source for the full list.
 
@@ -38,5 +39,6 @@ Each explainer renders:
 - [[entities/frontier-tech-portfolio]] — System portfolio using this explainer
 - [[entities/sector-trading]] — Sector L/S system portfolio
 - [[entities/sentiment-fader]] — Contrarian options sentiment fader system portfolio
+- [[entities/daily-stock-picker]] — Daily 3 UP / 3 DOWN stock pick system portfolios
 - [[concepts/system-portfolios]] — Mechanical and rule-based systematic trading strategies
 - [[concepts/zero-frontend-compute]] — All heavy computation pre-materialized; this component is pure presentational

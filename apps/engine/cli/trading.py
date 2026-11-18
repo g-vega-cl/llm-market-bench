@@ -20,6 +20,19 @@ def handle_sector_trade(args: argparse.Namespace) -> None:
     )
 
 
+def handle_picks_trade(args: argparse.Namespace) -> None:
+    """Execute daily stock pick portfolio entry, exit, or status check."""
+    from execution.stock_picks_trading import run_picks_trade
+
+    asyncio.run(
+        run_picks_trade(
+            action=args.action,
+            target_date=args.target_date,
+            dry_run=args.dry_run,
+        )
+    )
+
+
 def handle_daily_trade(args: argparse.Namespace) -> None:
     """Execute daily systematic MOO entries, target orders, or close exits (SPY, TLT, or all)."""
     from execution.daily_trading import (

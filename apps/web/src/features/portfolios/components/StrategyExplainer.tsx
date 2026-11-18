@@ -477,6 +477,34 @@ const DAILY_SPY_CLOSE_CONFIG: ExplainerConfig = {
     ],
 };
 
+const DAILY_PICKS_CONFIG: ExplainerConfig = {
+    emoji: '🎯',
+    title: 'Daily 3 Up / 3 Down Stock Picks',
+    badgeText: 'Model Baskets · Long/Short',
+    badgeColorScheme: 'accent',
+    subtitle:
+        'One mechanical long/short portfolio per Daily Stock Picker track — DeepSeek Flash, MiniMax M3.1 Flash, GPT-6 Luna and the RRF consensus basket.',
+    borderColor: 'border-emerald-500/20',
+    bgColor: 'bg-emerald-950/10',
+    pillars: [
+        {
+            title: '🎯 Six-Leg Basket',
+            description:
+                'Each session the arena emits exactly 3 UP and 3 DOWN picks; the portfolio buys the three longs and shorts the three predicted losers at the official RTH open print.',
+        },
+        {
+            title: '⚖️ Gross 100%, Net 0',
+            description:
+                '50% of equity is allocated long and 50% short with equal weight per leg (16.67% notional each), keeping the book market-neutral and free of leverage.',
+        },
+        {
+            title: '⏱️ Close-Print Exit',
+            description:
+                'Legs are liquidated at the official closing print with 5 bps slippage per side, so portfolio PnL and the arena attributed L/S spread alpha share one price basis.',
+        },
+    ],
+};
+
 const DAILY_TLT_CLOSE_CONFIG: ExplainerConfig = {
     emoji: '🏛️',
     title: 'Daily 20+ Year Treasury Bond Trader (TLT Close Exit)',
@@ -551,11 +579,13 @@ export function StrategyExplainer({ ownerId }: StrategyExplainerProps) {
         STRATEGY_CONFIGS[ownerId] ??
         (ownerId.startsWith('sys-daily-tlt-close-')
             ? DAILY_TLT_CLOSE_CONFIG
-            : ownerId.startsWith('sys-daily-spy-close-')
-              ? DAILY_SPY_CLOSE_CONFIG
-              : ownerId.startsWith('sys-daily-spy-')
-                ? DAILY_SPY_CONFIG
-                : null);
+            : ownerId.startsWith('sys-picks-')
+              ? DAILY_PICKS_CONFIG
+              : ownerId.startsWith('sys-daily-spy-close-')
+                ? DAILY_SPY_CLOSE_CONFIG
+                : ownerId.startsWith('sys-daily-spy-')
+                  ? DAILY_SPY_CONFIG
+                  : null);
 
     if (!config) {
         return null;

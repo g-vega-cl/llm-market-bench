@@ -28,6 +28,7 @@ from core.config import (
     COMMAND_HISTORICAL_ANALOG,
     COMMAND_INGEST,
     COMMAND_LIN_RENKO,
+    COMMAND_PICKS_TRADE,
     COMMAND_POST_ANALYSIS,
     COMMAND_RESEARCH_COMPANY,
     COMMAND_SECTOR_TRADE,
@@ -75,6 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
             COMMAND_GAINERS_POSTMORTEM,
             COMMAND_HISTORICAL_ANALOG,
             COMMAND_DAILY_TRADE,
+            COMMAND_PICKS_TRADE,
             COMMAND_AUDIT_PORTFOLIOS,
         ],
         help="Action to perform",
@@ -137,9 +139,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Action for sector trade (entry, exit, status)",
     )
     parser.add_argument("--start-date", type=str, default="2026-04-27", help="Backtest start date (YYYY-MM-DD)")
-    parser.add_argument(
-        "--target-date", type=str, default=None, help="Target date for daily predictor evaluation (YYYY-MM-DD)"
-    )
+    parser.add_argument("--target-date", type=str, default=None, help="Target date for daily predictor evaluation")
     parser.add_argument("--weeks", type=int, default=1, help="Number of backtest weeks")
     parser.add_argument(
         "--mode",

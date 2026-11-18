@@ -39,6 +39,7 @@ from cli.trading import (
     handle_daily_trade,
     handle_frontier_tech,
     handle_future_forces,
+    handle_picks_trade,
     handle_sector_trade,
 )
 from core.config import (
@@ -67,6 +68,7 @@ from core.config import (
     COMMAND_HISTORICAL_ANALOG,
     COMMAND_INGEST,
     COMMAND_LIN_RENKO,
+    COMMAND_PICKS_TRADE,
     COMMAND_POST_ANALYSIS,
     COMMAND_RESEARCH_COMPANY,
     COMMAND_SECTOR_TRADE,
@@ -106,6 +108,7 @@ DISPATCH_MAP: dict[str, Callable[[argparse.Namespace], None]] = {
     COMMAND_FUTURE_FORCES: handle_future_forces,
     COMMAND_SECTOR_TRADE: handle_sector_trade,
     COMMAND_DAILY_TRADE: handle_daily_trade,
+    COMMAND_PICKS_TRADE: handle_picks_trade,
     COMMAND_GAINERS_POSTMORTEM: handle_gainers_postmortem,
     COMMAND_HISTORICAL_ANALOG: handle_historical_analog,
     COMMAND_AUDIT_PORTFOLIOS: handle_audit_portfolios,

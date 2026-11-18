@@ -191,6 +191,12 @@ describe('PortfoliosPage 3-Block Voxel Layout & Card Heights', () => {
         expect(getSystemPortfolioSubtitle('sys-daily-tlt-close-gpt-6-luna')).toBe(
             'Daily 20+ Year Treasury Bond Trader (3:50 PM Exit)',
         );
+        expect(getSystemPortfolioSubtitle('sys-picks-consensus')).toBe(
+            'Daily 3 Up / 3 Down Stock Picks (RTH Open → Close)',
+        );
+        expect(getSystemPortfolioSubtitle('sys-picks-MiniMax-M3.1-Flash')).toBe(
+            'Daily 3 Up / 3 Down Stock Picks (RTH Open → Close)',
+        );
         expect(getSystemPortfolioSubtitle('sys-pead-drift')).toBe(
             'Post-Earnings Drift Systematic Momentum (SUE + Jev)',
         );

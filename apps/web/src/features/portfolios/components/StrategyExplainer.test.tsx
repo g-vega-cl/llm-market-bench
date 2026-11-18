@@ -32,6 +32,20 @@ describe('StrategyExplainer', () => {
         expect(screen.getByText(/Conflict Netting/i)).toBeInTheDocument();
     });
 
+    it('renders daily stock pick explainer for every sys-picks- track', () => {
+        for (const ownerId of [
+            'sys-picks-consensus',
+            'sys-picks-deepseek-flash',
+            'sys-picks-MiniMax-M3.1-Flash',
+            'sys-picks-gpt-6-luna',
+        ]) {
+            const { unmount } = render(<StrategyExplainer ownerId={ownerId} />);
+            expect(screen.getByText('Daily 3 Up / 3 Down Stock Picks')).toBeInTheDocument();
+            expect(screen.getByText(/Gross 100%, Net 0/i)).toBeInTheDocument();
+            unmount();
+        }
+    });
+
     it('renders 30d sector long short explainer for sys-sector-ls-30d', () => {
         render(<StrategyExplainer ownerId="sys-sector-ls-30d" />);
         expect(screen.getByText('30-Day Sector Long/Short Consensus Strategy')).toBeInTheDocument();

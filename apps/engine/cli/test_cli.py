@@ -379,3 +379,21 @@ def test_run_cli_entry_point():
     with patch("cli.ingest.run_weekend_ingest", new_callable=AsyncMock) as mock_run:
         run_cli(["weekend-ingest"])
         mock_run.assert_awaited_once()
+
+
+def test_parser_accepts_picks_trade():
+    """picks-trade is a first-class CLI command."""
+    parser = build_parser()
+    args = parser.parse_args(["picks-trade", "--action", "status", "--dry-run"])
+    assert args.command == "picks-trade"
+    assert args.action == "status"
+    assert args.dry_run is True
+
+
+def test_handle_picks_trade_dispatches():
+    """handle_picks_trade forwards action, date, and dry-run to the runner."""
+    from cli.trading import handle_picks_trade
+
+    with patch("execution.stock_picks_trading.run_picks_trade", new_callable=AsyncMock) as mock_run:
+        handle_picks_trade(argparse.Namespace(action="exit", target_date="2026-11-19", dry_run=True))
+        mock_run.assert_awaited_once_with(action="exit", target_date="2026-11-19", dry_run=True)

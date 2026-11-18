@@ -130,16 +130,28 @@ Currently archived: the retired model ids (`gpt-5.6-luna`, `deepseek-v4-flash`, 
 - **Holding Horizon & Exits**: Up to 3 trading sessions. Exits on Put/Call volume ratio $\le 0.60$ (call complacency take-profit) or 1.5% adverse stop loss.
 - **Trigger**: Intraday evaluation during regular market hours via `apps/engine/scripts/update_prices.py` and `apps/engine/tasks/sentiment_fader_task.py`. Detailed documentation in [[entities/sentiment-fader]] and [[concepts/options-sentiment-fading]].
 
+### 13. Daily Stock Picker Long/Short Portfolios (`sys-picks-{model}`)
+- **Signal**: The Daily Stock Picker Arena's per-model baskets — 3 UP and 3 DOWN picks per session — in `daily_stock_baskets` / `daily_stock_picks` (see [[entities/daily-stock-picker]]).
+- **Portfolios**: One mechanical portfolio per track, including the RRF consensus basket: `sys-picks-deepseek-flash`, `sys-picks-MiniMax-M3.1-Flash`, `sys-picks-gpt-6-luna`, `sys-picks-consensus`. Owner ids preserve the model name verbatim.
+- **Inception**: `SYS_PICKS_START_DATE = 2026-11-19`. Earlier baskets are skipped: no retroactive equity, and pre-inception rows carry retired model ids that do not map to these owners.
+- **Position Sizing**: Gross 100%, net 0. 50% of equity long, 50% short, equal weight per leg (16.67% notional each), 5 bps slippage per side. A basket missing a side deploys full equity to the side it has. Legs whose allocation rounds below one share are skipped and logged, never renormalized.
+- **Price Basis**: Entry at the session's official RTH open print (09:31–10:00 ET window, hard cutoff — a late basket is skipped, not priced on a stale open), exit at the official closing print (16:00–16:05 ET). This is the same basis `tasks/evaluate_stock_picks.py` grades picks on, so portfolio PnL and the Picks tab L/S alpha reconcile.
+- **Ledger**: Long legs write a `BUY` trade plus a `portfolio_positions` row; short legs write only `SHORT`/`COVER` rows in `trades`. `trades.decision_id` carries the originating basket id for audit linkage. Exit writes `portfolio_performance` keyed `(portfolio_id, date)`.
+- **Execution**: `apps/engine/execution/stock_picks_trading.py`, triggered by the MiniPC daemon's `run_systematic_strategy_hooks` hook (`_run_picks_portfolio_hook`); the hooks loop window is widened to 16:05 ET by `trading.runner._is_hooks_window` so the closing print is reachable. `main.py picks-trade --action entry|exit|status` runs the same slice manually. Long legs mirror to Alpaca paper; mirror failures log and never block DB truth.
+- **Audit**: `audit/portfolio_auditor.py` flags `unliquidated_picks_legs` and, in `--fix`, liquidates stale legs at the official close print.
+- **Marks**: `_collect_portfolios_and_tickers` in `apps/engine/scripts/update_prices.py` loads open `SHORT` trades for `sys-picks-` owners so intraday equity includes the short book.
+
 ## LLM & Autoresearch Inspection Tool (`get_system_portfolios`)
 
 Mechanical system portfolios serve as objective control baselines for autonomous trading agents and prompt autoresearchers. The `get_system_portfolios` tool exposes current holdings, entry prices, unrealized PnL, trailing returns, and underlying quantitative regime signals:
 
-- **Parameters**: `category` (`'all'`, `'mean_reversion'`, `'momentum'`, `'sector_ls'`, `'daily_spy'`, `'thematic'`), `include_positions` (boolean), `lookback_days` (default 7).
+- **Parameters**: `category` (`'all'`, `'mean_reversion'`, `'momentum'`, `'sector_ls'`, `'daily_spy'`, `'daily_picks'`, `'thematic'`), `include_positions` (boolean), `lookback_days` (default 7).
 - **Signals exposed**:
   - `mean_reversion`: Trailing 7-day oversold bounce candidates from `sys-sector-mean-reversion`.
   - `momentum`: Trailing 20-day trend leaders from `sys-sector-naive-momentum` and uncorrelated momentum pairs from `sys-sector-uncorr-*`.
   - `sector_ls`: Systematic multi-horizon consensus long/short baskets (`sys-sector-ls-*`).
   - `daily_spy`: Systematic intraday SPY target-exit and session-close results.
+  - `daily_picks`: Daily Stock Picker 3 UP / 3 DOWN long-short baskets per model track and consensus.
   - `thematic`: Forward secular force and frontier technology holdings.
 - **Agency integration**: Available in `packages/config/tools.json` for trading agents to call dynamically, and via `query_system_portfolios_audit()` in `apps/engine/autoresearch/tools.py` for meta-researchers to benchmark prompt mutations against mechanical controls.
 

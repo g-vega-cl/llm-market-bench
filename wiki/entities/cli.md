@@ -37,13 +37,14 @@ Handlers import their heavy dependencies lazily (inside the function body) so th
 
 ## Daily Stock Picker Commands
 
-The Daily Stock Picker Arena (3 Up, 3 Down) exposes three commands. See [[entities/daily-stock-picker]].
+The Daily Stock Picker Arena (3 Up, 3 Down) exposes four commands. See [[entities/daily-stock-picker]].
 
 | Command | Handler | Target |
 | :--- | :--- | :--- |
 | `stock-picker` (`COMMAND_STOCK_PICKER`) | `handle_stock_picker` → `tasks.stock_picker.run_daily_stock_picker(target_date=..., force=...)` | Morning multi-model arena that persists per-model and consensus baskets |
 | `evaluate-stock-picks` (`COMMAND_EVALUATE_STOCK_PICKS`) | `handle_evaluate_stock_picks` → `tasks.evaluate_stock_picks.evaluate_stock_picks(target_date=..., force_recalc=...)` | Post-close RTH Open/Close evaluation of baskets and picks |
 | `stock-picker-autoresearch` (`COMMAND_STOCK_PICKER_AUTORESEARCH`) | `handle_stock_picker_autoresearch` → `tasks.stock_picker_autoresearch.run_stock_picker_autoresearch(days=..., dry_run=..., cold_start=...)` | Weekly per-track prompt ratchet (Sunday 18:00 ET) |
+| `picks-trade` (`COMMAND_PICKS_TRADE`) | `handle_picks_trade` → `execution.stock_picks_trading.run_picks_trade(action=..., target_date=..., dry_run=...)` | `sys-picks-*` long/short portfolio entry, close-print exit, or status |
 
 The autoresearch handler accepts `--cold-start` (forcing a clean-sheet mutation), `--days` (rolling lookback window, default `7`), and the shared `--dry-run` flag.
 
@@ -51,6 +52,7 @@ The autoresearch handler accepts `--cold-start` (forcing a clean-sheet mutation)
 ./apps/engine/.venv/bin/python3 apps/engine/main.py stock-picker [--target-date YYYY-MM-DD] [--force]
 ./apps/engine/.venv/bin/python3 apps/engine/main.py evaluate-stock-picks [--target-date YYYY-MM-DD] [--force]
 ./apps/engine/.venv/bin/python3 apps/engine/main.py stock-picker-autoresearch [--days 7] [--cold-start] [--dry-run]
+./apps/engine/.venv/bin/python3 apps/engine/main.py picks-trade --action entry|exit|status [--target-date YYYY-MM-DD] [--dry-run]
 ```
 
 ## Audit and Reconciliation Commands
@@ -65,7 +67,7 @@ The autoresearch handler accepts `--cold-start` (forcing a clean-sheet mutation)
 
 - Each router file is kept under 200 LOC, enforced by `apps/engine/tests/test_cli_decomposition.py`.
 - `DISPATCH_MAP` completeness against all `COMMAND_*` constants is asserted by the same test suite.
-- The `--action` flag is shared across `sector-trade` and `daily-trade`; `daily-trade` routes `entry`/`open`, `target-orders`, and `exit`/`close` to distinct execution functions.
+- The `--action` flag is shared across `sector-trade`, `daily-trade`, and `picks-trade`; `daily-trade` routes `entry`/`open`, `target-orders`, and `exit`/`close` to distinct execution functions, while `picks-trade` routes `entry`/`open`, `exit`/`close`, and `status`.
 
 ## Related
 

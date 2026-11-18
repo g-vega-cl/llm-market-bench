@@ -5,15 +5,16 @@ category: entity
 
 # Portfolio Auditor
 
-The Portfolio Auditor (`apps/engine/audit/portfolio_auditor.py`) is a health-check and reconciliation island for the systematic portfolios. It detects missing executions, stale positions, and desynced metrics across the Daily SPY and weekly Sector Strategy portfolios, and — in auto-heal mode — reconstructs missing trades from canonical historical session prints. It is the safety net that keeps the systematic portfolios consistent with the predictions they are supposed to be trading.
+The Portfolio Auditor (`apps/engine/audit/portfolio_auditor.py`) is a health-check and reconciliation island for the systematic portfolios. It detects missing executions, stale positions, and desynced metrics across the Daily SPY, weekly Sector Strategy, Daily Options Max Pain, and Daily Stock Picker portfolios, and — in auto-heal mode — reconstructs missing trades from canonical historical session prints. It is the safety net that keeps the systematic portfolios consistent with the predictions they are supposed to be trading.
 
 ## What It Audits
 
-The auditor walks a window of trading sessions (default 5, weekdays only) and checks two families of portfolios:
+The auditor walks a window of trading sessions (default 5, weekdays only) and checks four families of portfolios:
 
 - **Daily SPY portfolios** (`sys-daily-spy-*` and `sys-daily-spy-close-*`) — for every `daily_predictions` row on a given date, the matching system portfolio must contain both an entry and an exit trade (2 trades). Fewer than 2 trades is flagged as `MISSING_DAILY_SPY_TRADE`. The close-owner portfolio is always expected; the intraday owner is only expected when the model is not `jev` and the predicted magnitude is non-zero. When trades are present and entry prices are valid, the auditor additionally verifies that the recorded `portfolio_performance` equity for the date matches cumulative equity (prior closing equity + session realized PnL), flagging drift as `DESYNCED_EQUITY_DAILY_SPY`.
 - **Weekly Sector portfolios** (`sys-sector-ls-consensus`, `sys-sector-mean-reversion`, `sys-sector-naive-momentum`, `sys-sector-uncorr-20d`, `sys-sector-uncorr-7d`) — these hold positions from Monday 9:35 AM ET through Friday 15:30 ET and must be flat outside that window. Holding positions when the market should be flat is flagged as `UNLIQUIDATED_WEEKLY_SECTOR_POSITION`; holding zero positions mid-week is flagged as `MISSING_WEEKLY_SECTOR_ENTRY`.
 - **Daily Options Max Pain portfolio** (`sys-max-pain`, see [[entities/max-pain-pinning]]) — 0DTE index positions must be flat after 16:00 ET (or whenever held from a prior trading day). Any remaining open position is flagged as `UNLIQUIDATED_MAX_PAIN_POSITION` and auto-healed in `--fix` mode via `reconcile_unliquidated_max_pain_positions` (`apps/engine/execution/max_pain.py`), which checks the day's RTH high against the verified Alpaca Max Pain strike and backfills the `SELL` at the target strike (if touched intraday) or at the RTH close price.
+- **Daily Stock Picker portfolios** (`sys-picks-*`, see [[entities/daily-stock-picker]] and [[concepts/system-portfolios]] §13) — `_audit_picks_portfolios` walks every `PICKS_MODEL_TRACKS` owner (`sys-picks-deepseek-flash`, `sys-picks-MiniMax-M3.1-Flash`, `sys-picks-gpt-6-luna`, `sys-picks-consensus`) and looks for `BUY`/`SHORT` trades still carrying `realized_pnl IS NULL`. A leg whose session has already closed — a prior trading day, or today once 16:05 ET has passed — is flagged as `unliquidated_picks_legs`. In `--fix` mode the auditor resolves each stale session's official close print via `fetch_intraday_prices` and calls `execute_picks_exits` (`apps/engine/execution/stock_picks_trading.py`) to liquidate the legs at that close print, recording the healed equity.
 
 ## Anomaly Types
 
@@ -26,10 +27,13 @@ The auditor walks a window of trading sessions (default 5, weekdays only) and ch
 | `UNLIQUIDATED_WEEKLY_SECTOR_POSITION` | A weekly sector portfolio holds open positions during a period it should be flat (Friday post-close, weekend, or Monday pre-open). |
 | `MISSING_WEEKLY_SECTOR_ENTRY` | A weekly sector portfolio has zero positions mid-week, indicating a missed Monday rebalance. |
 | `UNLIQUIDATED_MAX_PAIN_POSITION` | `sys-max-pain` holds an unliquidated 0DTE position after the 16:00 ET close (or from a prior session) and is auto-healed at target strike (if RTH high touched Max Pain) or RTH close. |
+| `unliquidated_picks_legs` | A `sys-picks-*` portfolio still holds `BUY`/`SHORT` legs with `realized_pnl IS NULL` after that session's close print (prior trading day, or today past 16:05 ET), auto-healed by liquidating at the official close print. |
 
 ## Auto-Heal Mode
 
 When run with `--fix` (`auto_heal=True`), the auditor reconstructs missing Daily SPY executions, replaces trades with invalid entry prices using session OHLC prints stored on the prediction (`open_price`, `high_price`, `low_price`, `close_price`) and standard model slippage, and reconciles `UNCLOSED_SHORT_DAILY_SPY` anomalies by computing and mutating `realized_pnl` / `realized_pnl_pct` on the unclosed entry `SHORT` trade. When auto-healing desynced entry prices, the auditor resets portfolio cash to prior-day closing equity from `portfolio_performance`, removes stale trades and positions, and re-executes chronologically to preserve accurate compounded returns. Reconstructed trades are written with `alpaca_status = "BACKFILLED"` so they are transparently distinguishable from live Alpaca executions. See [[concepts/backfilled-trades]] and [[concepts/short-position-display]].
+
+For `unliquidated_picks_legs`, auto-heal fetches the stale session's official close print per ticker (`fetch_intraday_prices(..., force_refresh=True)`) and delegates to `execute_picks_exits(session_date, price_map)`, which writes the `SELL`/`COVER` rows, closes the entry legs' `realized_pnl`, deletes the long `portfolio_positions` rows, and upserts the session's `portfolio_performance` snapshot. A ticker whose close price cannot be resolved is logged via `logger.exception` and left out of the price map rather than priced at a fabricated value.
 
 When no prior `portfolio_performance` history exists (the portfolio's first session), the auditor anchors the starting equity to `INITIAL_PORTFOLIO_CASH` ($10,000) rather than the portfolio's current `cash_balance`, so a dirty or already-drifted cash figure cannot compound into the healed equity.
 
@@ -64,5 +68,6 @@ The audit returns a structured report with `status` (`clean`, `healed`, or `anom
 - [[concepts/short-position-display]]
 - [[concepts/backfilled-trades]]
 - [[entities/daily-market-predictor]]
+- [[entities/daily-stock-picker]]
 - [[entities/sector-trading]]
 - [[entities/daily-postmortem]]

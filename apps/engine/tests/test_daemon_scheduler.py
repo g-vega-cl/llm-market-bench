@@ -33,7 +33,7 @@ async def test_hooks_loop_runs_hook_once_during_session():
         calls.append(now_et)
 
     with (
-        patch("trading.runner.is_market_session_active", return_value=True),
+        patch("trading.runner._is_hooks_window", return_value=True),
         patch("scripts.update_prices.run_systematic_strategy_hooks", new=fake_hook),
         patch("trading.runner.asyncio.sleep", new=_stop_after_first_tick),
     ):
@@ -52,7 +52,7 @@ async def test_hooks_loop_skips_hook_when_market_closed():
         calls.append(now_et)
 
     with (
-        patch("trading.runner.is_market_session_active", return_value=False),
+        patch("trading.runner._is_hooks_window", return_value=False),
         patch("scripts.update_prices.run_systematic_strategy_hooks", new=fake_hook),
         patch("trading.runner.asyncio.sleep", new=_stop_after_first_tick),
     ):
@@ -94,3 +94,14 @@ async def test_market_data_loop_skips_outside_window():
 
     marks.assert_not_awaited()
     history.assert_not_awaited()
+
+
+def test_hooks_window_reaches_closing_print():
+    """The hooks loop must tick once after 16:00 so close-print exits can run."""
+    from trading.runner import _is_hooks_window
+
+    assert _is_hooks_window(datetime(2026, 11, 19, 9, 29, tzinfo=ET)) is False
+    assert _is_hooks_window(datetime(2026, 11, 19, 9, 30, tzinfo=ET)) is True
+    assert _is_hooks_window(datetime(2026, 11, 19, 16, 4, tzinfo=ET)) is True
+    assert _is_hooks_window(datetime(2026, 11, 19, 16, 6, tzinfo=ET)) is False
+    assert _is_hooks_window(datetime(2026, 11, 21, 11, 0, tzinfo=ET)) is False  # Saturday

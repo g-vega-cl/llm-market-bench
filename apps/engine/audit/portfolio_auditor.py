@@ -472,6 +472,96 @@ async def _audit_max_pain_portfolio(
     return anomalies, healed, flagged
 
 
+async def _audit_picks_portfolios(
+    client: Any,
+    port_by_owner: dict[str, Any],
+    now_ny: datetime,
+    auto_heal: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Flag and liquidate daily stock pick legs left open past their session close."""
+    from execution.stock_picks_trading import PICKS_MODEL_TRACKS, execute_picks_exits, picks_owner_id
+    from tasks.evaluate_daily_predictions import fetch_intraday_prices
+
+    anomalies: list[dict[str, Any]] = []
+    healed: list[dict[str, Any]] = []
+    flagged: list[dict[str, Any]] = []
+
+    today = now_ny.date().isoformat()
+    after_close = now_ny.hour * 60 + now_ny.minute >= 965  # 16:05 ET
+
+    for model_name in PICKS_MODEL_TRACKS:
+        owner_id = picks_owner_id(model_name)
+        portfolio = port_by_owner.get(owner_id)
+        if not portfolio:
+            continue
+
+        open_trades = (
+            client.table("trades")
+            .select("id, ticker, signal, executed_at")
+            .eq("portfolio_id", str(portfolio["id"]))
+            .is_("realized_pnl", "null")
+            .execute()
+            .data
+            or []
+        )
+        entries = [t for t in open_trades if t.get("signal") in ("BUY", "SHORT")]
+        if not entries:
+            continue
+
+        stale_dates = sorted(
+            {
+                str(t.get("executed_at", ""))[:10]
+                for t in entries
+                if str(t.get("executed_at", ""))[:10] < today
+                or (str(t.get("executed_at", ""))[:10] == today and after_close)
+            }
+        )
+
+        for session_date in stale_dates:
+            anomaly = {
+                "date": session_date,
+                "owner_id": owner_id,
+                "type": "unliquidated_picks_legs",
+                "details": f"{len(entries)} leg(s) still open after the {session_date} session close",
+            }
+            anomalies.append(anomaly)
+            if not auto_heal:
+                flagged.append(anomaly)
+                continue
+
+            tickers = {
+                t["ticker"] for t in entries if str(t.get("executed_at", ""))[:10] == session_date
+            }
+            price_map: dict[str, float] = {}
+            for ticker in tickers:
+                try:
+                    _, _, _, close_p = await fetch_intraday_prices(ticker, session_date, force_refresh=True)
+                except Exception:
+                    logger.exception(f"Could not fetch close price for {ticker} on {session_date}")
+                    close_p = None
+                if close_p and close_p > 0:
+                    price_map[ticker] = float(close_p)
+
+            result = await execute_picks_exits(
+                session_date,
+                price_map,
+                get_supabase_client_fn=lambda: client,
+            )
+            healed.append(
+                {
+                    "date": session_date,
+                    "owner_id": owner_id,
+                    "details": f"Liquidated {len(price_map)} leg(s) at the official close print",
+                    "new_equity": (result.get("portfolios", {}).get(owner_id, {}) or {}).get("equity"),
+                }
+            )
+            logger.warning(
+                f"Auto-healed {owner_id} for {session_date}: liquidated {len(price_map)} stale picks leg(s)"
+            )
+
+    return anomalies, healed, flagged
+
+
 async def audit_system_portfolios(
     target_date: str | None = None,
     lookback_days: int = 5,
@@ -554,6 +644,11 @@ async def audit_system_portfolios(
     anomalies.extend(mp_anom)
     healed.extend(mp_heal)
     flagged_for_review.extend(mp_flag)
+
+    pk_anom, pk_heal, pk_flag = await _audit_picks_portfolios(client, port_by_owner, now_ny, auto_heal)
+    anomalies.extend(pk_anom)
+    healed.extend(pk_heal)
+    flagged_for_review.extend(pk_flag)
 
     status = "clean"
     if anomalies and auto_heal and len(healed) == len(anomalies):

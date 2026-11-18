@@ -66,6 +66,9 @@ export function getSystemPortfolioSubtitle(ownerId: string): string | undefined 
     if (ownerId.startsWith('sys-daily-spy-')) {
         return 'Daily S&P 500 Intraday Trader (Profit Target Exit)';
     }
+    if (ownerId.startsWith('sys-picks-')) {
+        return 'Daily 3 Up / 3 Down Stock Picks (RTH Open → Close)';
+    }
     return undefined;
 }
 

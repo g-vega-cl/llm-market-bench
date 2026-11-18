@@ -898,3 +898,78 @@ async def test_audit_detects_and_heals_desynced_performance_equity(mock_supabase
     # 10025.51 - 3.64 = 10021.87
     assert healed["new_equity"] == 10021.87
     assert any(u.get("total_equity") == 10021.87 for u in performance_updates)
+
+
+class TestPicksPortfolioAudit:
+    """Daily stock pick legs must never survive their session close."""
+
+    @staticmethod
+    def _client(rows):
+        client = MagicMock()
+
+        def _table(name):
+            table = MagicMock()
+            table.select.return_value = table
+            table.eq.return_value = table
+            table.is_.return_value = table
+            table.execute.return_value = MagicMock(data=rows if name == "trades" else [])
+            return table
+
+        client.table.side_effect = _table
+        return client
+
+    @pytest.mark.asyncio
+    async def test_flags_unliquidated_picks_legs(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from audit.portfolio_auditor import _audit_picks_portfolios
+
+        now_ny = datetime(2026, 11, 19, 18, 0, tzinfo=ZoneInfo("America/New_York"))
+        rows = [
+            {"id": "t1", "ticker": "NVDA", "signal": "BUY", "executed_at": "2026-11-19T14:30:00Z"},
+            {"id": "t2", "ticker": "GLD", "signal": "SHORT", "executed_at": "2026-11-19T14:30:00Z"},
+        ]
+        portfolios = {"sys-picks-consensus": {"id": "pf-1", "owner_id": "sys-picks-consensus"}}
+
+        anomalies, healed, flagged = await _audit_picks_portfolios(
+            self._client(rows), portfolios, now_ny, auto_heal=False
+        )
+
+        assert len(anomalies) == 1
+        assert anomalies[0]["type"] == "unliquidated_picks_legs"
+        assert anomalies[0]["owner_id"] == "sys-picks-consensus"
+        assert anomalies[0]["date"] == "2026-11-19"
+        assert healed == []
+        assert flagged == anomalies
+
+    @pytest.mark.asyncio
+    async def test_heals_unliquidated_picks_legs(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from audit.portfolio_auditor import _audit_picks_portfolios
+
+        now_ny = datetime(2026, 11, 19, 18, 0, tzinfo=ZoneInfo("America/New_York"))
+        rows = [{"id": "t1", "ticker": "NVDA", "signal": "BUY", "executed_at": "2026-11-19T14:30:00Z"}]
+        portfolios = {"sys-picks-consensus": {"id": "pf-1", "owner_id": "sys-picks-consensus"}}
+        client = self._client(rows)
+
+        async def _prices(ticker, session_date, force_refresh=False):
+            return (100.0, 102.0, 99.0, 101.0)
+
+        async def _exit(session_date, price_map, **_kwargs):
+            return {"status": "success", "portfolios": {"sys-picks-consensus": {"equity": 10042.0}}}
+
+        with (
+            patch("tasks.evaluate_daily_predictions.fetch_intraday_prices", side_effect=_prices),
+            patch("execution.stock_picks_trading.execute_picks_exits", side_effect=_exit) as mock_exit,
+        ):
+            anomalies, healed, flagged = await _audit_picks_portfolios(client, portfolios, now_ny, auto_heal=True)
+
+        assert len(anomalies) == 1
+        assert len(healed) == 1
+        assert healed[0]["new_equity"] == 10042.0
+        assert flagged == []
+        mock_exit.assert_awaited_once()
+        assert mock_exit.await_args.args[1] == {"NVDA": 101.0}

@@ -149,8 +149,20 @@ Both the pick and basket write paths merge the graded fields onto the *original*
 
 Regression coverage lives in `apps/engine/tests/test_stock_picker_arena.py` and `apps/engine/tests/test_evaluate_stock_picks.py` (hermetic: mocked clients, no network, no sleeps). The evaluation suite's `test_evaluate_stock_picks_full_row_batch_upsert_and_cancelled_basket` asserts uniform keys, `on_conflict="id"`, NOT NULL preservation, sub-cent-open cancellation, and that a cancelled basket clears all six performance metrics.
 
+## 10. System Portfolio Execution (`sys-picks-*`)
+
+Each basket is also paper-executed as a mechanical long/short portfolio by `apps/engine/execution/stock_picks_trading.py`, so the arena's picks produce an equity curve rather than only a grading ledger:
+
+* **Portfolios**: `sys-picks-deepseek-flash`, `sys-picks-MiniMax-M3.1-Flash`, `sys-picks-gpt-6-luna`, and `sys-picks-consensus` (id = `sys-picks-` + the basket's `model_name`, case preserved). Inception `SYS_PICKS_START_DATE = 2026-11-19`; earlier sessions are never backfilled.
+* **Sizing**: 50% long / 50% short of equity, equal weight per leg (16.67% notional), 5 bps slippage per side, gross 100% / net 0.
+* **Prices**: entry at the official RTH open print (09:31–10:00 ET window, hard cutoff) and exit at the official closing print (16:00–16:05 ET) — the same basis `evaluate_stock_picks.py` grades on, so portfolio PnL and `ls_spread_alpha_pct` reconcile.
+* **Ledger**: longs write `BUY` + `portfolio_positions`; shorts write `SHORT`/`COVER` only. `trades.decision_id` = originating basket id. Exits write `portfolio_performance` `(portfolio_id, date)`.
+* **Trigger**: MiniPC daemon `run_systematic_strategy_hooks` → `_run_picks_portfolio_hook` (hooks window widened to 16:05 ET), and manually `main.py picks-trade --action entry|exit|status`.
+* **Audit**: `portfolio_auditor.py` flags `unliquidated_picks_legs` and liquidates stale legs in `--fix`. See [[concepts/system-portfolios]] §13.
+
 ## Related
 
+- [[concepts/system-portfolios]] — mechanical strategies, including the `sys-picks-*` portfolios
 - [[entities/daily-market-predictor]] — the SPY and TLT directional arenas
 - [[entities/autoresearch]] — the platform auto-research framework
 - [[concepts/multi-track-autoresearch]] — parallel isolated model lineages

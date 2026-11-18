@@ -22,6 +22,7 @@ on:
           - 'daily-autoresearch'
           - 'daily-postmortem'
           - 'daily-trade'
+          - 'picks-trade'
 
 
 jobs:
@@ -75,7 +76,8 @@ jobs:
             steps.cmd.outputs.command == 'evaluate-daily-predictions' ||
             steps.cmd.outputs.command == 'daily-autoresearch' ||
             steps.cmd.outputs.command == 'daily-postmortem' ||
-            steps.cmd.outputs.command == 'daily-trade'
+            steps.cmd.outputs.command == 'daily-trade' ||
+            steps.cmd.outputs.command == 'picks-trade'
           )
         env:
           SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}

@@ -69,6 +69,8 @@ def _matches_category(owner_id: str, category: str) -> bool:
 
     if cat == "daily_spy" and owner_id.startswith("sys-daily-spy"):
         return True
+    if cat == "daily_picks" and owner_id.startswith("sys-picks-"):
+        return True
     if cat == "sector_ls" and owner_id.startswith("sys-sector-ls"):
         return True
     if cat == "momentum" and ("mom" in owner_id or "uncorr" in owner_id):
@@ -231,7 +233,7 @@ async def execute_get_system_portfolios_tool(
     """Inspect mechanical system portfolios (mean reversion, momentum, sector L/S, daily SPY).
 
     Args:
-        category: 'all', 'mean_reversion', 'momentum', 'sector_ls', 'daily_spy', or 'thematic'.
+        category: 'all', 'mean_reversion', 'momentum', 'sector_ls', 'daily_spy', 'daily_picks', or 'thematic'.
         include_positions: Whether to list active stock/ETF holdings, prices, and unrealized PnL.
         lookback_days: Trailing window in days to compute portfolio return and equity drift.
 

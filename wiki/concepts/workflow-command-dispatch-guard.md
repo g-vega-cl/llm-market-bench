@@ -9,7 +9,7 @@ category: concept
 
 ## The Guard
 
-The step only runs when the resolved command is one of five values:
+The step only runs when the resolved command is one of six values:
 
 ```yaml
 - name: Run Daily Predictor Command
@@ -19,7 +19,8 @@ The step only runs when the resolved command is one of five values:
       steps.cmd.outputs.command == 'evaluate-daily-predictions' ||
       steps.cmd.outputs.command == 'daily-autoresearch' ||
       steps.cmd.outputs.command == 'daily-postmortem' ||
-      steps.cmd.outputs.command == 'daily-trade'
+      steps.cmd.outputs.command == 'daily-trade' ||
+      steps.cmd.outputs.command == 'picks-trade'
     )
 ```
 
@@ -28,6 +29,7 @@ The step only runs when the resolved command is one of five values:
 - `daily-autoresearch` — weekly prompt ratchet for the daily predictor.
 - `daily-postmortem` — post-close diagnosis and memory feedback (see [[entities/daily-postmortem]]).
 - `daily-trade` — systematic SPY/TLT entry and exit legs (see [[concepts/daily-spy-live-trading]] and [[entities/daily-bond-trading]]).
+- `picks-trade` — the `sys-picks-*` Daily Stock Picker long/short legs (`main.py picks-trade --action entry|exit|status`, see [[entities/daily-stock-picker]] and [[concepts/system-portfolios]] §13).
 
 Every other dispatched action is handled exclusively by its own named step, so it is never executed twice.
 
@@ -51,4 +53,5 @@ An action that is **not** in the allow-list evaluates the guard to `false`, so t
 - [[entities/daily-market-predictor]] — the `daily-predictor` and `evaluate-daily-predictions` commands
 - [[entities/daily-postmortem]] — the `daily-postmortem` command
 - [[concepts/daily-spy-live-trading]] — the `daily-trade` command
+- [[entities/daily-stock-picker]] — the `picks-trade` command and `sys-picks-*` portfolios
 - [[concepts/workflow-consolidation]] — the principle of consolidating many jobs into one workflow

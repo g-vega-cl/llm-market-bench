@@ -299,3 +299,84 @@ class TestSystematicStrategyHooks:
             mock_max_pain.assert_awaited_with(action="entry", dry_run=False)
             mock_pead.assert_awaited_once_with(dry_run=False)
             mock_fader.assert_awaited_once_with(dry_run=False)
+
+    @pytest.mark.asyncio
+    async def test_hooks_run_picks_entry_in_morning_window(self):
+        """Daily stock pick portfolios open at 09:31-10:00 ET."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
+        entry_time = datetime(2026, 11, 19, 9, 40, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
+            patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock),
+            patch("tasks.sentiment_fader_task.run_sentiment_fader_task", new_callable=AsyncMock),
+            patch("execution.stock_picks_trading.run_picks_trade", new_callable=AsyncMock) as mock_picks,
+        ):
+            await run_systematic_strategy_hooks(entry_time)
+            mock_picks.assert_awaited_once_with(action="entry", dry_run=False)
+
+    @pytest.mark.asyncio
+    async def test_hooks_run_picks_exit_in_close_print_window(self):
+        """Daily stock pick portfolios close at 16:00-16:05 ET, after the closing print."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
+        exit_time = datetime(2026, 11, 19, 16, 2, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
+            patch("execution.sector_horizon_trading.execute_horizon_sector_exits", new_callable=AsyncMock),
+            patch("execution.stock_picks_trading.run_picks_trade", new_callable=AsyncMock) as mock_picks,
+        ):
+            await run_systematic_strategy_hooks(exit_time)
+            mock_picks.assert_awaited_once_with(action="exit", dry_run=False)
+
+    @pytest.mark.asyncio
+    async def test_hooks_skip_picks_outside_windows(self):
+        """Mid-session and after-cutoff ticks never touch the picks portfolios."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
+        mid_session = datetime(2026, 11, 19, 12, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+        late_morning = datetime(2026, 11, 19, 10, 5, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
+            patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock),
+            patch("tasks.sentiment_fader_task.run_sentiment_fader_task", new_callable=AsyncMock),
+            patch("execution.stock_picks_trading.run_picks_trade", new_callable=AsyncMock) as mock_picks,
+        ):
+            await run_systematic_strategy_hooks(mid_session)
+            await run_systematic_strategy_hooks(late_morning)
+            mock_picks.assert_not_awaited()
+
+
+class TestPicksShortBook:
+    """The marks loop must mark open SHORT legs of sys-picks-* portfolios."""
+
+    @pytest.mark.asyncio
+    async def test_collect_portfolios_includes_picks_shorts(self):
+        from scripts.update_prices import _collect_portfolios_and_tickers
+
+        class _Port:
+            def __init__(self, owner, pid):
+                self.owner_id = owner
+                self.id = pid
+                self.positions = {}
+
+        async def _fake_init(owner):
+            return _Port(owner, "pf-picks")
+
+        client = MagicMock()
+        rows = [{"ticker": "GLD", "price": 371.0, "quantity": 16}]
+
+        def _table(name):
+            table = MagicMock()
+            if name == "trades":
+                table.select.return_value.eq.return_value.eq.return_value.is_.return_value.execute.return_value.data = rows
+            return table
+
+        client.table.side_effect = _table
+
+        with patch("scripts.update_prices.initialize_with_retry", side_effect=_fake_init):
+            portfolios, tickers, shorts = await _collect_portfolios_and_tickers(["sys-picks-consensus"], client)
+
+        assert [p.owner_id for p in portfolios] == ["sys-picks-consensus"]
+        assert "GLD" in tickers
+        assert shorts["pf-picks"] == rows

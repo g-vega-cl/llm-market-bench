@@ -1,6 +1,7 @@
 """FastAPI Server exposing OpenAI-compatible /v1 endpoints with dynamic failover."""
 
 import asyncio
+import logging
 import secrets
 import time
 from typing import Any
@@ -17,9 +18,16 @@ from apps.free_llm_proxy.models import ChatCompletionRequest
 from apps.free_llm_proxy.router import Router, estimate_prompt_tokens
 from apps.free_llm_proxy.security import UnauthorizedMonitor
 from apps.free_llm_proxy.session import SESSION_HEADER, derive_session_id
-from apps.free_llm_proxy.streaming import audited_sse_stream
+from apps.free_llm_proxy.streaming import (
+    audited_sse_stream,
+    close_stream_source,
+    prefixed_stream,
+    prime_sse_stream,
+)
 
 app = FastAPI(title="Free LLM Proxy", version="1.0.0")
+
+logger = logging.getLogger("free_llm_proxy.server")
 
 # Shared state singletons
 audit_db = AuditDB(db_path=config.DB_PATH)
@@ -541,12 +549,49 @@ async def chat_completions(
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
 
         if status_code == 200:
-            circuit_breaker.record_success(p_id)
+            # A streaming call is only a success once the stream itself finishes:
+            # resetting here would erase the truncation strikes that record_stream_failure
+            # accrues while the body is being relayed.
+            if not req.stream:
+                circuit_breaker.record_success(p_id)
 
             if req.stream:
+                primed: list[Any] = []
+                upstream: Any | None = None
+                produced = False
+                try:
+                    primed, upstream, produced = await prime_sse_stream(body_or_gen)
+                except asyncio.CancelledError:
+                    # The caller hung up while we held the head of the stream.
+                    await close_stream_source(body_or_gen)
+                    raise
+                except Exception:  # noqa: BLE001
+                    await close_stream_source(body_or_gen)
+                    logger.exception("Provider %s died before the first token", p_id)
+
+                if not produced:
+                    await close_stream_source(body_or_gen)
+                    circuit_breaker.record_stream_failure(p_id)
+                    failover_log.append(f"{p_id} (stream ended before first token)")
+                    last_error = {
+                        "error": {
+                            "message": (
+                                f"{p_id} closed the stream before the first token"
+                            ),
+                            "type": "stream_truncated",
+                        }
+                    }
+                    continue
 
                 def _log_stream(result: dict[str, Any]) -> None:
                     usage = result.get("usage") or {}
+                    truncated = bool(result.get("truncated"))
+                    if truncated:
+                        circuit_breaker.record_stream_failure(p_id)
+                    elif not result.get("cancelled"):
+                        # A caller hanging up mid-stream says nothing about the
+                        # provider, so it must not clear (or add) strikes.
+                        circuit_breaker.record_success(p_id)
                     audit_db.log_call(
                         requested_model=req.model,
                         routed_provider=p_id,
@@ -571,7 +616,7 @@ async def chat_completions(
 
                 return StreamingResponse(
                     audited_sse_stream(
-                        body_or_gen,
+                        prefixed_stream(primed, upstream),
                         _log_stream,
                         started_at=start_time,
                     ),

@@ -19,6 +19,7 @@ def test_stream_usage_logged_without_changing_api(client, monkeypatch):
     async def mock_execute(provider_cfg, payload, stream=False):
         async def chunks():
             yield b'data: {"choices": [{"delta": {"content": "Hello"}}]}\n\n'
+            yield b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
             yield b'data: {"choices": [], "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18}}\n\n'
             yield b"data: [DONE]\n\n"
 
@@ -68,6 +69,7 @@ def test_stream_without_usage_marks_usage_unavailable(client, monkeypatch):
     async def mock_execute(provider_cfg, payload, stream=False):
         async def chunks():
             yield b'data: {"choices": [{"delta": {"content": "Hello"}}]}\n\n'
+            yield b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
             yield b"data: [DONE]\n\n"
 
         return 200, chunks(), {}

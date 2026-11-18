@@ -227,7 +227,7 @@ class AuditDB:
                    prompt_tokens, completion_tokens, total_tokens, latency_ms,
                    status_code, failover_chain, client_ip, user_agent, purpose,
                    prompt_preview, is_stream, usage_available, ttft_ms, duration_ms,
-                   stream_completed
+                   stream_completed, error_message
             FROM call_logs
             ORDER BY timestamp DESC
             LIMIT 10

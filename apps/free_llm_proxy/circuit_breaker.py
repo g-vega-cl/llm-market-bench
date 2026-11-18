@@ -34,6 +34,12 @@ class CircuitBreaker:
         remaining = cooldown_until - time.time()
         return max(0.0, round(remaining, 1))
 
+    def _strike(self, provider_id: str) -> None:
+        """Counts one transient failure and cools the provider on the second."""
+        self._failures[provider_id] = self._failures.get(provider_id, 0) + 1
+        if self._failures[provider_id] >= 2:
+            self._cooldowns[provider_id] = time.time() + self.default_cooldown
+
     def record_failure(
         self,
         provider_id: str,
@@ -72,9 +78,18 @@ class CircuitBreaker:
             self._cooldowns[provider_id] = now + self.default_cooldown
 
         elif status_code >= 500:
-            # Trip cooldown if 2 consecutive 5xx errors occur
             if self._failures[provider_id] >= 2:
                 self._cooldowns[provider_id] = now + self.default_cooldown
+
+    def record_stream_failure(self, provider_id: str) -> None:
+        """Records a stream that died mid-flight (truncated relay or pre-token EOF).
+
+        A truncated stream is a transient provider fault like a 5xx: two in a row
+        cool the provider, so a flaky endpoint stops being handed every Nth
+        request instead of silently burning turns. One strike is tolerated because
+        free gateways drop connections under load without being unhealthy.
+        """
+        self._strike(provider_id)
 
     def record_success(self, provider_id: str) -> None:
         """Resets consecutive failure count on successful completion."""

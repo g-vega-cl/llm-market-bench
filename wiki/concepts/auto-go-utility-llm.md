@@ -10,7 +10,7 @@ The engine routes nearly every non-trading "utility" LLM call — newsletter de-
 
 Utility flows are high-volume, low-stakes, and structurally similar: they take a chunk of text, ask a model for a structured Pydantic object, and persist the result. Giving each one its own hardcoded provider and model (`GEMINI_MODEL`, `DEEPSEEK_FLASH_MODEL`, …) coupled the engine to whichever vendor happened to be cheap that quarter, and duplicated per-provider SDK quirks (forced tool_choice, empty content, thinking-block preservation) across a dozen call sites.
 
-`auto-go` — the free-llm-proxy alias that exhausts the free provider pool before ever falling back to the paid OpenCode Go tier (see [[entities/free-llm-proxy]]) — collapses all of that into one HTTP endpoint. Provider churn (Groq, Gemini, OVHcloud, OpenRouter, NVIDIA NIM, local Strata) is absorbed by the proxy's dynamic catalog discovery and circuit breaker, so the engine no longer needs a code change when a free-tier checkpoint is retired.
+`auto-go` — the free-llm-proxy alias that exhausts the free provider pool before ever falling back to the paid OpenCode Go tier (see [[entities/free-llm-proxy]]) — collapses all of that into one HTTP endpoint. Provider churn (Groq, Gemini, OpenRouter, NVIDIA NIM, local Strata) is absorbed by the proxy's dynamic catalog discovery and circuit breaker, so the engine no longer needs a code change when a free-tier checkpoint is retired.
 
 ## Configuration
 

@@ -10,10 +10,10 @@ A high-performance, model-agnostic OpenAI-compatible proxy that unifies free LLM
 - **Dynamic Model-Agnostic Discovery**: Queries live provider `/v1/models` catalogs. No broken model strings when providers release or retire checkpoints.
 - **Smart Tiered Failover**:
   - **Tier 1 (High Performance)**: Groq (ultra-fast 120B/27B), Gemini (Flash Latest / 3.x Flash), Kilo Code (no key needed).
-  - **Tier 2 (Fallback Pool)**: OVHcloud (anonymous EU), OpenRouter (17 `:free` models), NVIDIA NIM.
+  - **Tier 2 (Fallback Pool)**: OpenRouter (17 `:free` models), NVIDIA NIM.
 - **Zero Hardcoded Model IDs**: Relies on dynamic runtime `/models` discovery, official dynamic provider aliases (`gemini-flash-latest`, `openrouter/free`), and virtual model aliases (`free-auto`, `strata-auto`) to insulate clients from model obsolescence.
-- **Circuit Breaker**: On HTTP 429 (rate limit) or 5xx downtime, automatically cools down the provider and retries next candidate seamlessly.
-- **Streaming & SSE**: Full pass-through token streaming (`stream: true`) with pre-flight failover protection. SSE bytes are never rewritten; the final `usage` chunk is parsed for telemetry after the stream completes.
+- **Circuit Breaker**: On HTTP 429 (rate limit), 5xx downtime, or two consecutive truncated streams, automatically cools down the provider and retries next candidate seamlessly.
+- **Streaming & SSE**: Full pass-through token streaming (`stream: true`) with pre-flight failover protection. Bytes are forwarded unchanged, but every response is guaranteed to end with a chunk carrying a non-null `finish_reason` plus `data: [DONE]`, so a provider that dies early cannot leave a strict client staring at a bare EOF. The final `usage` chunk is parsed for telemetry after the stream completes.
 - **Reasoning Token Preservation**: Preserves `reasoning` and thinking blocks for thinking models (`gpt-oss-120b`, `flint`, `beam`).
 - **Local SQLite Audit DB**: Records every call, latency, token count, failover trace, stream usage availability, time-to-first-token, stream duration, and completion status to `data/free_llm_proxy.db`. Additive migrations preserve existing rows; indexes keep metrics queries fast. Audit rows are retained indefinitely.
 - **Zero New Dependencies**: Built entirely with existing repository packages (`fastapi`, `uvicorn`, `httpx`, `pydantic`, `sqlite3`).
@@ -35,7 +35,7 @@ OPENROUTER_API_KEY=...
 OPENCODE_GO_API_KEY=oc_sk_...
 ```
 
-*Note: The proxy automatically activates whichever providers have keys configured in `.env`. Kilo Code and OVHcloud work out of the box with zero keys! OpenCode Go is a paid subscription and is only reachable through the `auto-go` / `auto-strata-go` aliases or explicit `opencode-go/<model>` targeting; it never participates in the free aliases.*
+*Note: The proxy automatically activates whichever providers have keys configured in `.env`. Kilo Code works out of the box with zero keys! OpenCode Go is a paid subscription and is only reachable through the `auto-go` / `auto-strata-go` aliases or explicit `opencode-go/<model>` targeting; it never participates in the free aliases.*
 
 ### 2. Start the Server (Docker or Local)
 
@@ -139,23 +139,68 @@ Thinking controls are **only forwarded to providers that declare support** in
 
 - `gemini`, `groq` → `reasoning_effort` (`low`/`medium`/`high`)
 - `openrouter` → `reasoning` object; a caller's `reasoning_effort` is normalized into `{"effort": "..."}`
-- `ovhcloud`, `nvidia`, `kilo`, `opencode-go` → nothing (these gateways 400 on unknown fields, and a 400 cools a healthy provider for 60s)
+- `nvidia`, `kilo`, `opencode-go` → nothing (these gateways 400 on unknown fields, and a 400 cools a healthy provider for 60s)
 - Strata keeps its native `reasoning_budget_tokens`
 
 A Strata-style `reasoning_budget_tokens` sent to a cloud provider is translated
 into an effort band (`>8192` → high, `>4096` → medium, else low) rather than
 silently deleted, unless the caller also sent an explicit `reasoning_effort`.
 
-### Streaming Usage Telemetry
+### Streaming Usage Telemetry & Terminal-Chunk Guarantee
 
-The proxy treats streaming as observation-only:
+The proxy forwards provider frames unchanged but refuses to end a response on a
+bare EOF:
 
-- It **never injects `stream_options`** and **never rewrites SSE bytes**. The client receives the provider's original `data:` frames and `[DONE]` marker.
-- It parses only `data:` lines in a bounded buffer and logs the final `usage` object after the stream ends or the client disconnects.
-- Strata, Groq, Kilo, and OpenRouter emit `usage` in their default streaming responses. OVHcloud may omit it; those rows are marked `usage_available = 0` rather than silently claiming zero cost.
+- **Pre-flight priming.** For `stream: true`, the first chunks are read before the
+  `200` is committed. If the provider closes (or raises) before the first content
+  delta arrives, the candidate is treated as dead: it is closed, recorded in the
+  `failover_chain` as `(stream ended before first token)`, and the next candidate
+  is tried. The client never sees a half-open provider.
+- **Terminal-chunk synthesis.** Once headers are out, a stream that stops early
+  cannot be failed over — so it is completed instead. If no chunk carried a
+  `finish_reason`, the proxy appends
+  `{"choices":[{"index":0,"delta":{},"finish_reason":"length"}],"x_proxy_truncated":"upstream_eof"}`
+  followed by `data: [DONE]`. `length` is the standard OpenAI signal for incomplete
+  output, which is what a truncation is, and `x_proxy_truncated` lets a caller tell a
+  provider death from a real `max_tokens` cut; strict clients (pi, the OpenAI SDKs)
+  otherwise raise `Stream ended without finish_reason`.
+- **Exactly one terminator.** The relay is event-framed (LF, CRLF and CR boundaries) and
+  terminality is decided from parsed `data:` payloads over whole events, never from byte
+  patterns. A `[DONE]` split across TCP chunks, spelled `data:[DONE]`, quoted inside model
+  prose, batched in the same event as content, duplicated, or arriving early is normalised
+  into exactly one terminating `[DONE]` with nothing after it; a stream that carried
+  `finish_reason` but omitted `[DONE]` gets it appended. A well-formed stream is
+  byte-identical.
+`x_proxy_truncated` values: `upstream_eof` (provider closed), `upstream_error` (provider raised), `degraded` (event too large to frame).
+- **Explicit degradation.** If an event grows past `MAX_PARSE_BUFFER_BYTES` (1 MB) the
+  relay falls back to raw pass-through and records the stream as truncated with
+  `stream degraded: SSE event exceeded N bytes` — never as a clean success.
+- **Honest telemetry.** A synthesized end is logged as `stream_completed = 0` with
+  `error_message` = `stream truncated: upstream ended without a finish_reason chunk`,
+  so it shows up in `incomplete_streams` and `recent_calls[*].error_message`.
+- **Two-strike cooldown.** Each truncation calls `CircuitBreaker.record_stream_failure`;
+  two consecutive ones cool the provider for `DEFAULT_COOLDOWN_SECONDS`. A client that
+  hangs up mid-stream is neutral (neither a strike nor a success), and dispatch-time
+  success resets are skipped for streaming calls so a flaky provider cannot reset its
+  own strikes before its body is drained.
+- It **never injects `stream_options`** and never re-frames a stream that already
+  terminates; the final `usage` object is parsed from a bounded buffer after the
+  stream ends or the client disconnects.
+- Strata, Groq, Kilo, and OpenRouter emit `usage` in their default streaming
+  responses; providers that omit it are marked `usage_available = 0` rather than
+  silently claiming zero cost.
 - `/v1/metrics` exposes `streaming_requests`, `usage_available_requests`, `zero_token_successes`, `token_coverage_pct`, `avg_stream_duration_ms`, `avg_ttft_ms`, and `incomplete_streams`.
 - Metrics are **per connector**. The public hostname load-balances between the workstation and MiniPC connectors, so `/v1/metrics` describes whichever connector served the request. Use `connector_id` and `scope: "connector"` to identify it.
 - A log-only `security.401_spike` warning fires when unauthorized requests exceed `SECURITY_ALERT_401_THRESHOLD` within `SECURITY_ALERT_WINDOW_SECONDS`. No external alert service is called.
+
+### Retired providers
+
+- **OVHcloud AI Endpoints** (`oai.endpoints.kepler.ai.cloud.ovh.net`) was removed from
+  `providers.json`. Measured against pi's `auto-go` traffic it truncated 25 of 79
+  streams (32%) — a single role delta, then EOF with no usage and no terminal chunk —
+  and its anonymous public endpoint only serves roughly 16k-token prompts while pi
+  sends 100k–230k-token contexts. The audit fingerprint for a truncation is a `200`
+  streaming row with `usage_available = 0` and `duration_ms == ttft_ms`.
 
 **Long Strata prompts:** Strata may hold an SSE stream open with `: keep-alive` frames while it processes a large prompt. The proxy forwards those frames unchanged and applies **no total duration cap**; it records time-to-first-token and total stream duration, and marks the row `stream_completed = 0` if the client disconnects first. Clients should use `stream: true` for long Strata prompts. If time-to-first-token can exceed 5–10 minutes, use an asynchronous job queue rather than holding a synchronous HTTP request; no timeout value fixes a 100-minute prefill.
 

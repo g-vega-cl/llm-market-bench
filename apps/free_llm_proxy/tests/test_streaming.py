@@ -8,6 +8,9 @@ import pytest
 
 from apps.free_llm_proxy.streaming import audited_sse_stream
 
+FINISH = b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
+DONE = b"data: [DONE]\n\n"
+
 
 async def _collect(source, started_at=None, **kwargs):
     captured: list[dict] = []
@@ -30,7 +33,8 @@ async def test_stream_usage_captured_and_bytes_unchanged():
     chunks = [
         b'data: {"choices": [{"delta": {"content": "Hello"}}]}\n\n',
         b'data: {"choices": [], "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18}}\n\n',
-        b"data: [DONE]\n\n",
+        FINISH,
+        DONE,
     ]
 
     async def source():
@@ -50,11 +54,12 @@ async def test_stream_usage_captured_and_bytes_unchanged():
 
 @pytest.mark.asyncio
 async def test_stream_usage_parsed_across_chunk_boundaries():
-    """An SSE line split across TCP chunks is still parsed."""
+    """An SSE event split across TCP chunks is still parsed."""
     chunks = [
         b'data: {"choices": [], "usage": {"prompt_tokens": 5,',
         b'"completion_tokens": 3, "total_tokens": 8}}\n\n',
-        b"data: [DONE]\n\n",
+        FINISH,
+        DONE,
     ]
 
     async def source():
@@ -63,7 +68,7 @@ async def test_stream_usage_parsed_across_chunk_boundaries():
 
     out, result = await _collect(source())
 
-    assert out == chunks
+    assert b"".join(out) == b"".join(chunks)
     assert result["usage"]["total_tokens"] == 8
     assert result["completed"] is True
 
@@ -75,7 +80,8 @@ async def test_malformed_sse_does_not_break_stream():
         b"event: ping\n\n",
         b"data: not-json\n\n",
         b'data: {"choices": [{"delta": {"content": "OK"}}]}\n\n',
-        b"data: [DONE]\n\n",
+        FINISH,
+        DONE,
     ]
 
     async def source():
@@ -91,7 +97,7 @@ async def test_malformed_sse_does_not_break_stream():
 
 @pytest.mark.asyncio
 async def test_stream_error_is_reported_without_hiding_chunks():
-    """A provider mid-stream failure is logged as incomplete, not as success."""
+    """A provider mid-stream failure keeps every chunk and closes the stream."""
     chunks = [b'data: {"choices": [{"delta": {"content": "partial"}}]}\n\n']
     captured: list[dict] = []
 
@@ -103,20 +109,20 @@ async def test_stream_error_is_reported_without_hiding_chunks():
     def on_complete(result):
         captured.append(result)
 
-    received = []
-    with pytest.raises(RuntimeError, match="provider dropped"):
-        async for chunk in audited_sse_stream(source(), on_complete):
-            received.append(chunk)
+    received = [chunk async for chunk in audited_sse_stream(source(), on_complete)]
 
-    assert received == chunks
+    assert received[: len(chunks)] == chunks
+    assert b'"finish_reason":"length"' in received[-2]
+    assert received[-1] == DONE
     assert captured[0]["completed"] is False
+    assert captured[0]["truncated"] is True
     assert "RuntimeError" in captured[0]["error"]
 
 
 @pytest.mark.asyncio
 async def test_telemetry_callback_failure_does_not_break_stream():
     """A failing audit callback must never break the client stream."""
-    chunks = [b"data: [DONE]\n\n"]
+    chunks = [FINISH, DONE]
 
     async def source():
         for chunk in chunks:
@@ -131,11 +137,12 @@ async def test_telemetry_callback_failure_does_not_break_stream():
 
 @pytest.mark.asyncio
 async def test_stream_parse_buffer_is_bounded(monkeypatch):
-    """Oversized SSE lines stop parsing but still pass through unchanged."""
+    """An event that never terminates stops parsing but still passes through."""
     monkeypatch.setattr("apps.free_llm_proxy.streaming.MAX_PARSE_BUFFER_BYTES", 16)
     chunks = [
-        b"data: " + b"x" * 100 + b"\n\n",
-        b"data: [DONE]\n\n",
+        b"data: " + b"x" * 100,
+        b"\n\n",
+        DONE,
     ]
 
     async def source():
@@ -144,5 +151,12 @@ async def test_stream_parse_buffer_is_bounded(monkeypatch):
 
     out, result = await _collect(source())
 
-    assert out == chunks
+    relayed = b"".join(out)
+    assert relayed.startswith(chunks[0] + chunks[1])  # unparseable bytes still relayed
+    done_lines = [
+        line for line in relayed.split(b"\n") if line.strip() == b"data: [DONE]"
+    ]
+    assert done_lines == [b"data: [DONE]"]
     assert result["usage"] is None
+    assert result["truncated"] is True
+    assert "degraded" in (result["error"] or "").lower()

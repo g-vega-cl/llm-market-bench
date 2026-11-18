@@ -12,10 +12,6 @@ You do **not** need to register or configure keys for these; they are active in 
   * Website: [app.kilo.ai](https://app.kilo.ai/profile)
   * Free quota: **200 requests/hour**
   * Auto-routing model: `kilo-auto/free`
-* **OVHcloud AI Endpoints**:
-  * Website: [ovhcloud.com AI Endpoints](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/)
-  * Free quota: **2 requests/minute per IP** (EU hosted open-weights)
-  * Models: `gpt-oss-120b`, `gpt-oss-20b`, `Meta-Llama-3_3-70B-Instruct`, `Qwen3.8-27B`
 
 ---
 

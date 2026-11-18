@@ -98,6 +98,8 @@ async def execute_completion(
                 req = client.build_request("POST", url, headers=headers, json=payload)
                 resp = await client.send(req, stream=True)
             except httpx.TimeoutException as exc:
+                if should_close:
+                    await client.aclose()
                 return (
                     504,
                     {
@@ -109,6 +111,8 @@ async def execute_completion(
                     {},
                 )
             except httpx.RequestError as exc:
+                if should_close:
+                    await client.aclose()
                 return (
                     503,
                     {
@@ -130,6 +134,8 @@ async def execute_completion(
                         "error": {"message": resp.text, "status_code": resp.status_code}
                     }
                 await resp.aclose()
+                if should_close:
+                    await client.aclose()
                 return resp.status_code, err_body, resp_headers
 
             async def sse_generator() -> AsyncGenerator[bytes, None]:

@@ -91,16 +91,14 @@ def test_clamp_uses_gemini_declared_ceiling(client, monkeypatch):
 
 def test_clamp_honours_lower_provider_ceiling(client, monkeypatch):
     """A provider with a modest ceiling still clamps down, never up."""
-    install_chain(monkeypatch, [("ovhcloud", provider_cfg("ovhcloud"))])
-    install_catalog(monkeypatch, {"ovhcloud": ["gpt-oss-120b"]})
+    install_chain(monkeypatch, [("nvidia", provider_cfg("nvidia"))])
+    install_catalog(monkeypatch, {"nvidia": ["nvidia/nemotron-3-ultra-550b-a55b"]})
     dispatched = capture(monkeypatch)
 
-    resp = post(client, "ovhcloud/gpt-oss-120b", max_tokens=131072)
+    resp = post(client, "nvidia/nemotron-3-ultra-550b-a55b", max_tokens=131072)
 
     assert resp.status_code == 200
-    assert (
-        dispatched[0][1]["max_tokens"] == provider_cfg("ovhcloud")["max_output_tokens"]
-    )
+    assert dispatched[0][1]["max_tokens"] == provider_cfg("nvidia")["max_output_tokens"]
 
 
 def test_clamp_falls_back_to_global_when_undeclared(client, monkeypatch):
@@ -168,13 +166,13 @@ def test_reasoning_effort_reaches_gemini(client, monkeypatch):
 
 def test_reasoning_effort_stripped_for_undeclared_provider(client, monkeypatch):
     """Gateways that 400 on unknown fields must never receive reasoning_effort."""
-    install_chain(monkeypatch, [("ovhcloud", provider_cfg("ovhcloud"))])
-    install_catalog(monkeypatch, {"ovhcloud": ["gpt-oss-120b"]})
+    install_chain(monkeypatch, [("nvidia", provider_cfg("nvidia"))])
+    install_catalog(monkeypatch, {"nvidia": ["nvidia/nemotron-3-ultra-550b-a55b"]})
     dispatched = capture(monkeypatch)
 
     resp = post(
         client,
-        "ovhcloud/gpt-oss-120b",
+        "nvidia/nemotron-3-ultra-550b-a55b",
         reasoning_effort="high",
         reasoning={"effort": "high"},
     )

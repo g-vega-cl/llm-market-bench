@@ -24,9 +24,9 @@ export function BacktestAutoresearchPage({ initialData, fetchFn }: BacktestAutor
     );
 
     return (
-        <div className="min-h-screen bg-zinc-50 bg-zinc-950">
+        <div className="min-h-screen bg-voxel-canvas">
             {/* Page Header */}
-            <div className="bg-white bg-zinc-900 border-b border-zinc-200 border-zinc-800 py-12">
+            <div className="bg-voxel-surface border-b border-voxel-bevel-hi py-12">
                 <PageLayout>
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -89,7 +89,7 @@ export function BacktestAutoresearchPage({ initialData, fetchFn }: BacktestAutor
                             <div className="space-y-6">
                                 <div className="flex items-center space-x-4 px-2">
                                     <SectionHeading>Run Details</SectionHeading>
-                                    <div className="h-px flex-1 bg-zinc-200 bg-zinc-800" />
+                                    <div className="h-px flex-1 bg-voxel-bevel-hi" />
                                     <span className="text-sm font-mono text-indigo-500 bg-indigo-500/10 px-2.5 py-0.5 rounded border border-indigo-500/20">
                                         {selectedExperiment.variant_tag}
                                     </span>

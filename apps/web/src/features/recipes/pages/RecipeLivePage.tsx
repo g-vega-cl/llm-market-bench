@@ -112,7 +112,7 @@ export function RecipeLivePage({ recipeId, initialData }: RecipeLivePageProps) {
     return (
         <PageLayout>
             <div className="flex flex-col gap-6">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-4">
                     <div className="flex items-center gap-3">
                         <Link
                             to="/recipes"

@@ -28,7 +28,7 @@ function getLineStyle(added?: boolean, removed?: boolean) {
     }
     return {
         prefix: '  ',
-        classes: 'text-zinc-400 text-zinc-500 px-2 py-0.5 opacity-60',
+        classes: 'text-voxel-muted px-2 py-0.5 opacity-60',
     };
 }
 
@@ -82,7 +82,7 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1">
                     <SectionHeading>Prompt Changes</SectionHeading>
-                    <p className="text-xs text-zinc-500 text-zinc-400">
+                    <p className="text-xs text-voxel-muted">
                         Comparing{' '}
                         <span className="font-mono text-emerald-500">
                             v{parentExperiment.variant_tag}
@@ -111,11 +111,11 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
             <div className="relative group min-w-0">
                 <div className="relative font-mono text-xs font-normal leading-relaxed max-h-[400px] overflow-y-auto overflow-x-auto bg-voxel-canvas border border-voxel-bevel-hi rounded-none p-4 md:p-6 flex flex-col gap-[2px] min-w-0">
                     {!hasChanges ? (
-                        <div className="text-center text-zinc-500 text-zinc-400 py-8 text-sm">
+                        <div className="text-center text-voxel-muted py-8 text-sm">
                             ✨ No prompt text changes detected between these variants.
                         </div>
                     ) : showChangesOnly && filteredChanges.length === 0 ? (
-                        <div className="text-center text-zinc-500 text-zinc-400 py-8 text-sm">
+                        <div className="text-center text-voxel-muted py-8 text-sm">
                             No added or removed lines to show.
                         </div>
                     ) : (

@@ -19,7 +19,7 @@ export const agentConfig: Record<
     },
     [MODELS.ANTHROPIC]: {
         name: 'Claude',
-        color: 'text-amber-600',
+        color: 'text-accent',
         bgColor: 'bg-amber-600',
         emoji: '🟠',
     },
@@ -45,10 +45,10 @@ export const agentConfig: Record<
 
 export function getAgentInfo(ownerId: string | null | undefined) {
     if (!ownerId)
-        return { name: 'Unknown', color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' };
+        return { name: 'Unknown', color: 'text-voxel-muted', bgColor: 'bg-zinc-500', emoji: '⚪' };
     const normalized = ownerId.toLowerCase().trim();
     if (!normalized)
-        return { name: 'Unknown', color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' };
+        return { name: 'Unknown', color: 'text-voxel-muted', bgColor: 'bg-zinc-500', emoji: '⚪' };
     // Exact match
     const exact = agentConfig[normalized];
     if (exact) return exact;
@@ -63,5 +63,5 @@ export function getAgentInfo(ownerId: string | null | undefined) {
     if (normalized.includes('claude') || normalized.includes('haiku')) {
         return agentConfig[MODELS.ANTHROPIC];
     }
-    return { name: 'Unknown', color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' };
+    return { name: 'Unknown', color: 'text-voxel-muted', bgColor: 'bg-zinc-500', emoji: '⚪' };
 }

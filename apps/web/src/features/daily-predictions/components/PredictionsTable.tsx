@@ -34,15 +34,15 @@ function PredictionExpandedDetail({
     matchingExp?: PromptExperiment;
 }) {
     return (
-        <TableRow className="bg-zinc-50 bg-zinc-950/60 border-b border-zinc-200 border-zinc-800">
+        <TableRow className="bg-voxel-trough border-b border-voxel-bevel-hi">
             <TableCell colSpan={11} className="p-6">
                 <div className="flex flex-col gap-4">
                     {/* Rationale & Catalysts */}
                     <div>
-                        <div className="text-sm font-bold text-zinc-500 text-zinc-400 mb-1.5 uppercase tracking-wider">
+                        <div className="text-sm font-bold text-voxel-muted mb-1.5 uppercase tracking-wider">
                             Prediction Rationale & Catalysts
                         </div>
-                        <p className="text-sm text-zinc-800 text-zinc-200 mb-2.5 leading-relaxed">
+                        <p className="text-sm text-voxel-ink mb-2.5 leading-relaxed">
                             {p.rationale || 'No detailed rationale recorded for this prediction.'}
                         </p>
                         {p.catalysts && p.catalysts.length > 0 && (
@@ -57,7 +57,7 @@ function PredictionExpandedDetail({
                     </div>
 
                     {/* Price & Intraday Metrics */}
-                    <div className="flex gap-5 text-xs text-zinc-500 text-zinc-400 flex-wrap">
+                    <div className="flex gap-5 text-xs text-voxel-muted flex-wrap">
                         <div>
                             <strong>Expected Return:</strong>{' '}
                             {p.expected_return_pct !== null
@@ -98,14 +98,14 @@ function PredictionExpandedDetail({
                     {/* System Prompt Used */}
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-zinc-500 text-zinc-400">
+                            <span className="text-sm font-bold text-voxel-muted">
                                 SYSTEM PROMPT VARIANT:
                             </span>
                             <Badge colorScheme="info" variant="soft" size="xs">
                                 {p.prompt_variant_tag || 'baseline'}
                             </Badge>
                         </div>
-                        <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-white bg-zinc-900 p-3.5 rounded-none border border-zinc-200 border-zinc-800 text-zinc-700 text-zinc-300 m-0">
+                        <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-voxel-surface p-3.5 rounded-none border border-voxel-bevel-hi text-voxel-ink m-0">
                             {matchingExp?.prompt_content ||
                                 'Standard baseline system prompt active during prediction.'}
                         </pre>
@@ -184,15 +184,15 @@ function PredictionTableRowItem({
 }: PredictionRowProps) {
     const dirClass =
         p.predicted_direction === 'UP'
-            ? 'text-emerald-600'
+            ? 'text-success'
             : p.predicted_direction === 'HOLD'
-              ? 'text-amber-500'
-              : 'text-rose-600';
+              ? 'text-accent'
+              : 'text-danger';
 
     return (
         <>
-            <TableRow className="border-b border-zinc-100 border-zinc-800/60">
-                <TableCell className="font-bold text-sm text-zinc-900 text-zinc-100 font-mono">
+            <TableRow className="border-b border-voxel-bevel-lo">
+                <TableCell className="font-bold text-sm text-voxel-ink font-mono">
                     {p.target_date}
                 </TableCell>
                 <TableCell>{p.ticker}</TableCell>
@@ -215,9 +215,9 @@ function PredictionTableRowItem({
                 <TableCell>
                     <Button
                         variant="outline"
+                        colorScheme="neutral"
                         size="sm"
                         onClick={onToggleExpand}
-                        className="text-sm font-bold rounded-none"
                     >
                         {isExpanded ? 'Hide Details' : 'View Details & Prompt'}
                     </Button>
@@ -232,7 +232,7 @@ export function PredictionsTable({ predictions, experiments }: PredictionsTableP
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
-        <Table containerClassName="rounded-none border border-zinc-200 border-zinc-800">
+        <Table containerClassName="rounded-none border border-voxel-bevel-hi">
             <TableHeader>
                 <TableRow>
                     <TableHead>Date</TableHead>
@@ -268,10 +268,7 @@ export function PredictionsTable({ predictions, experiments }: PredictionsTableP
 
                 {predictions.length === 0 && (
                     <TableRow>
-                        <TableCell
-                            colSpan={11}
-                            className="p-6 text-center text-zinc-400 text-zinc-500"
-                        >
+                        <TableCell colSpan={11} className="p-6 text-center text-voxel-muted">
                             No daily predictions logged yet. Run `python main.py --daily-predictor`
                             to generate one.
                         </TableCell>

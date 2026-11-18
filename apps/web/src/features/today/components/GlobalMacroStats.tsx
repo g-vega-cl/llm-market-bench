@@ -45,10 +45,10 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
 
     return (
         <section className="flex flex-col gap-6 animate-slide-up">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 border-zinc-800/80 pb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-6">
                 <div>
                     <SectionHeading>Global Macro Regime</SectionHeading>
-                    <p className="text-xs font-normal text-zinc-500 text-zinc-400 mt-1.5 leading-relaxed">
+                    <p className="text-xs font-normal text-voxel-muted mt-1.5 leading-relaxed">
                         Dynamic standard deviations, current price shifts, and volatility regime
                         signals.
                     </p>
@@ -65,7 +65,7 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
                     )}
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-electric-blue-500/10 border border-electric-blue-500/20 rounded-none">
                         <span className="live-dot" />
-                        <span className="text-sm font-bold text-electric-blue-600 text-electric-blue-400 uppercase tracking-wider font-mono">
+                        <span className="text-sm font-bold text-info uppercase tracking-wider font-mono">
                             Calculated Live
                         </span>
                     </div>
@@ -73,8 +73,8 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
             </div>
 
             {/* Category Navigation Tabs */}
-            <div className="flex justify-center border-b border-zinc-200 border-zinc-800/80 pb-4 overflow-x-auto scrollbar-none">
-                <div className="flex gap-1.5 p-1.5 bg-zinc-100/80 bg-zinc-900/65  rounded-none border border-zinc-200/50 border-zinc-800/80 max-w-full">
+            <div className="flex justify-center border-b border-voxel-bevel-hi pb-4 overflow-x-auto scrollbar-none">
+                <div className="flex gap-1.5 p-1.5 bg-voxel-trough rounded-none border border-voxel-bevel-hi max-w-full">
                     {CATEGORIES.map((cat) => (
                         <Button
                             key={cat}
@@ -91,17 +91,17 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
 
             {/* Bonds & Treasury Yields Explanatory Banner */}
             {activeTab === 'Bonds & Treasury Yields' && (
-                <div className="p-4 bg-zinc-50 bg-zinc-900/40 border border-zinc-200 border-zinc-800/80 rounded-none flex gap-3.5 items-start animate-scale-in text-xs font-normal text-zinc-600 text-zinc-300 leading-relaxed shadow-inner">
+                <div className="p-4 bg-voxel-trough border border-voxel-bevel-hi rounded-none flex gap-3.5 items-start animate-scale-in text-xs font-normal text-voxel-ink leading-relaxed shadow-inner">
                     <span className="text-lg animate-pulse">💡</span>
                     <div>
-                        <span className="font-bold text-zinc-900 text-voxel-trough uppercase tracking-wider block mb-1">
+                        <span className="font-bold text-voxel-ink uppercase tracking-wider block mb-1">
                             Bond Prices vs Treasury Yields (Inverse Rule)
                         </span>
                         The S&P 500 benchmark model tracks bond ETFs (`IEF` and `TLT`) directly.
                         Because bond prices move
                         <strong className="text-electric-blue-500 font-bold"> inversely </strong> to
                         market interest yields:
-                        <ul className="list-disc list-inside mt-2 flex flex-col gap-1 text-xs text-zinc-500 text-zinc-400">
+                        <ul className="list-disc list-inside mt-2 flex flex-col gap-1 text-xs text-voxel-muted">
                             <li>
                                 If{' '}
                                 <strong className="text-alert-red-500">
@@ -231,7 +231,7 @@ function RegimeBadge({ flag }: { flag: 'Normal' | '❗ UNUSUAL' | '⚠️ HIGHLY
 function getBarColor(flag: string): string {
     switch (flag) {
         case '⚠️ HIGHLY UNUSUAL':
-            return 'bg-alert-red-500 glow-red';
+            return 'bg-alert-red-500 glow-alert';
         case '❗ UNUSUAL':
             return 'bg-amber-500';
         default:

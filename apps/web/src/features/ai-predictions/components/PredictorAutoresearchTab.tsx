@@ -118,11 +118,9 @@ function PredictorExperimentRow({
         >
             {showModelBadge && (
                 <TableCell>
-                    <span
-                        className={`inline-block px-2 py-0.5 text-xs font-normal rounded-none ${trackInfo.badgeClass}`}
-                    >
+                    <Badge variant="soft" colorScheme={trackInfo.colorScheme} size="xs">
                         {trackInfo.label}
-                    </span>
+                    </Badge>
                 </TableCell>
             )}
             <TableCell className="font-mono text-voxel-ink font-normal text-xs break-all max-w-[120px]">
@@ -178,13 +176,13 @@ function PredictorTrackHeaderCards({
                     <h2 className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         {trackConfig?.label ?? 'Model'} All-Time Baseline Score
                     </h2>
-                    <span
-                        className={`px-2 py-0.5 text-xs font-normal rounded-none ${
-                            trackConfig?.badgeClass ?? ''
-                        }`}
+                    <Badge
+                        variant="soft"
+                        colorScheme={trackConfig?.badgeColorScheme ?? 'neutral'}
+                        size="xs"
                     >
                         {trackConfig?.shortLabel}
-                    </span>
+                    </Badge>
                 </div>
                 <div className="text-sm font-bold text-emerald-400 font-mono">{baselineScore}</div>
                 <p className="text-voxel-muted text-xs font-normal">
@@ -197,13 +195,13 @@ function PredictorTrackHeaderCards({
                     <h2 className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         {trackConfig?.label ?? 'Model'} Active Prompt
                     </h2>
-                    <span
-                        className={`px-2 py-0.5 text-xs font-normal rounded-none ${
-                            trackConfig?.badgeClass ?? ''
-                        }`}
+                    <Badge
+                        variant="soft"
+                        colorScheme={trackConfig?.badgeColorScheme ?? 'neutral'}
+                        size="xs"
                     >
                         {trackConfig?.shortLabel}
-                    </span>
+                    </Badge>
                 </div>
                 <div className="text-sm font-bold text-accent font-mono">{activeVariant}</div>
                 <p className="text-voxel-muted text-xs font-normal">
@@ -290,7 +288,7 @@ function PredictorExperimentDetailsPane({
 }) {
     if (!selectedExperiment) {
         return (
-            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-slate-800 rounded-none text-slate-500 text-xs font-normal shadow-sm">
+            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-voxel-bevel-hi rounded-none text-voxel-muted text-xs font-normal shadow-sm">
                 Select an experiment to view details
             </div>
         );
@@ -310,11 +308,11 @@ function PredictorExperimentDetailsPane({
     return (
         <div className="space-y-6">
             <div className="flex items-center space-x-4 px-2">
-                <SectionHeading className="text-slate-200">Experiment Details</SectionHeading>
-                <div className="h-px flex-1 bg-slate-800" />
-                <span className={`px-2 py-0.5 text-sm font-bold rounded ${trkInfo.badgeClass}`}>
+                <SectionHeading className="text-voxel-ink">Experiment Details</SectionHeading>
+                <div className="h-px flex-1 bg-voxel-bevel-hi" />
+                <Badge variant="soft" colorScheme={trkInfo.colorScheme} size="sm">
                     {trkInfo.label}
-                </span>
+                </Badge>
                 <span className="text-sm font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                     {selectedExperiment.variant_tag}
                 </span>

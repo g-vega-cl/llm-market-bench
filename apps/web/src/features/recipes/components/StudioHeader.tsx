@@ -25,7 +25,7 @@ export function StudioHeader({
     return (
         <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-                <h1 className="font-display text-sm font-bold text-foreground">
+                <h1 className="font-display text-sm font-bold text-voxel-ink">
                     Strategy Builder MVP
                 </h1>
                 <Badge variant="soft" size="sm">
@@ -41,7 +41,7 @@ export function StudioHeader({
                 errorMessage={saveError}
                 disabled={disabled}
             />
-            <p className="text-xs font-normal text-muted-foreground">
+            <p className="text-xs font-normal text-voxel-muted">
                 Compose Prompt, News, Memories, Technicals, and Output Format blocks into a single
                 Long-Only LLM call (runs 3x/day ET at 09:30, 12:30, 15:30).
             </p>

@@ -67,7 +67,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                     <section>
                         <SubHeading
                             rightElement={
-                                <span className="text-sm font-normal text-zinc-500">
+                                <span className="text-sm font-normal text-voxel-muted">
                                     ({dbAudits.length} findings)
                                 </span>
                             }
@@ -75,7 +75,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                             Database Audits
                         </SubHeading>
                         {dbAudits.length === 0 ? (
-                            <p className="text-zinc-500 italic">No database anomalies found.</p>
+                            <p className="text-voxel-muted italic">No database anomalies found.</p>
                         ) : (
                             <div className="space-y-4">
                                 {dbAudits.map((audit) => (
@@ -88,7 +88,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                     <section>
                         <SubHeading
                             rightElement={
-                                <span className="text-sm font-normal text-zinc-500">
+                                <span className="text-sm font-normal text-voxel-muted">
                                     ({logAudits.length} findings)
                                 </span>
                             }
@@ -96,7 +96,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                             System Log Analysis
                         </SubHeading>
                         {logAudits.length === 0 ? (
-                            <p className="text-zinc-500 italic">No system log issues found.</p>
+                            <p className="text-voxel-muted italic">No system log issues found.</p>
                         ) : (
                             <div className="space-y-4">
                                 {logAudits.map((audit) => (
@@ -122,7 +122,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                     )}
 
                     {!hasNextPage && allAudits.length > 0 && (
-                        <div className="text-center py-4 text-zinc-500 text-xs uppercase tracking-widest">
+                        <div className="text-center py-4 text-voxel-muted text-xs uppercase tracking-widest">
                             • End of audit findings •
                         </div>
                     )}

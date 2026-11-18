@@ -7,8 +7,8 @@ interface RecipeBacktestResultsProps {
     isLoading?: boolean;
 }
 
-const TABLE_HEAD_CLASS = 'border-b border-border bg-voxel-canvas text-muted-foreground';
-const SECTION_LABEL_CLASS = 'text-sm font-bold uppercase tracking-wider text-muted-foreground';
+const TABLE_HEAD_CLASS = 'border-b border-voxel-bevel-hi bg-voxel-canvas text-voxel-muted';
+const SECTION_LABEL_CLASS = 'text-sm font-bold uppercase tracking-wider text-voxel-muted';
 
 function signedPct(value: number): string {
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
@@ -34,7 +34,7 @@ function StatePanel({
             className={`flex flex-col items-center justify-center ${borderClass} bg-voxel-canvas p-8 rounded-none`}
         >
             <span className={titleClass}>{title}</span>
-            <span className="text-xs font-normal text-muted-foreground">{detail}</span>
+            <span className="text-xs font-normal text-voxel-muted">{detail}</span>
         </div>
     );
 }
@@ -42,15 +42,15 @@ function StatePanel({
 function StatCard({
     label,
     value,
-    valueClass = 'text-foreground',
+    valueClass = 'text-voxel-ink',
 }: {
     label: string;
     value: string | number | undefined;
     valueClass?: string;
 }) {
     return (
-        <div className="flex flex-col gap-1 border border-border bg-voxel-canvas p-3 rounded-none">
-            <span className="text-xs font-normal text-muted-foreground">{label}</span>
+        <div className="flex flex-col gap-1 border border-voxel-bevel-hi bg-voxel-canvas p-3 rounded-none">
+            <span className="text-xs font-normal text-voxel-muted">{label}</span>
             <span className={`font-mono text-sm font-bold tabular-nums ${valueClass}`}>
                 {value}
             </span>
@@ -70,12 +70,10 @@ function PnlModeButton({
     return (
         <Button
             type="button"
+            variant={active ? 'solid' : 'outline'}
+            colorScheme={active ? 'accent' : 'neutral'}
+            size="sm"
             onClick={onClick}
-            className={`px-2 py-1 text-sm font-bold rounded-none ${
-                active
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-voxel-canvas text-muted-foreground'
-            }`}
         >
             {label}
         </Button>
@@ -89,11 +87,11 @@ function SkippedSignalsTable({ skipped }: { skipped: SkippedTradeRecord[] }) {
                 <span className={SECTION_LABEL_CLASS}>
                     Counterfactual Skipped Signals ({skipped.length})
                 </span>
-                <span className="text-xs font-normal text-muted-foreground">
+                <span className="text-xs font-normal text-voxel-muted">
                     Signals blocked by technical filters or LLM classification
                 </span>
             </div>
-            <div className="max-h-48 overflow-y-auto border border-border rounded-none">
+            <div className="max-h-48 overflow-y-auto border border-voxel-bevel-hi rounded-none">
                 <table className="w-full text-left text-xs font-normal">
                     <thead className={TABLE_HEAD_CLASS}>
                         <tr>
@@ -102,13 +100,13 @@ function SkippedSignalsTable({ skipped }: { skipped: SkippedTradeRecord[] }) {
                             <th className="p-2 font-bold">Reason & Catalyst</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
+                    <tbody className="divide-y divide-voxel-bevel-lo">
                         {skipped.slice(0, 15).map((s) => (
                             <tr
                                 key={`${s.time}-${s.skip_type}-${s.reason.slice(0, 15)}`}
                                 className="hover:bg-voxel-canvas"
                             >
-                                <td className="p-2 font-mono text-muted-foreground whitespace-nowrap">
+                                <td className="p-2 font-mono text-voxel-muted whitespace-nowrap">
                                     {s.time.replace('T', ' ').slice(0, 16)}
                                 </td>
                                 <td className="p-2">
@@ -116,11 +114,9 @@ function SkippedSignalsTable({ skipped }: { skipped: SkippedTradeRecord[] }) {
                                         {s.skip_type}
                                     </Badge>
                                 </td>
-                                <td className="p-2 text-muted-foreground">
+                                <td className="p-2 text-voxel-muted">
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-foreground">
-                                            {s.reason}
-                                        </span>
+                                        <span className="font-bold text-voxel-ink">{s.reason}</span>
                                         {s.headline && (
                                             <span className="italic">Catalyst: {s.headline}</span>
                                         )}
@@ -139,7 +135,7 @@ function ExecutedTradesTable({ trades }: { trades: CompletedTradeRecord[] }) {
     return (
         <div className="flex flex-col gap-2">
             <span className={SECTION_LABEL_CLASS}>Executed Trades ({trades.length})</span>
-            <div className="max-h-60 overflow-y-auto border border-border rounded-none">
+            <div className="max-h-60 overflow-y-auto border border-voxel-bevel-hi rounded-none">
                 <table className="w-full text-left text-xs font-normal">
                     <thead className={TABLE_HEAD_CLASS}>
                         <tr>
@@ -151,7 +147,7 @@ function ExecutedTradesTable({ trades }: { trades: CompletedTradeRecord[] }) {
                             <th className="p-2 font-bold text-right">Net P&L</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
+                    <tbody className="divide-y divide-voxel-bevel-lo">
                         {trades.map((t) => (
                             <tr
                                 key={`${t.entry_time}-${t.ticker}-${t.exit_time}-${t.entry_price}`}
@@ -165,15 +161,13 @@ function ExecutedTradesTable({ trades }: { trades: CompletedTradeRecord[] }) {
                                         {t.action} {t.ticker}
                                     </Badge>
                                 </td>
-                                <td className="p-2 font-mono text-right tabular-nums text-foreground">
+                                <td className="p-2 font-mono text-right tabular-nums text-voxel-ink">
                                     ${t.entry_price.toFixed(2)}
                                 </td>
-                                <td className="p-2 font-mono text-right tabular-nums text-foreground">
+                                <td className="p-2 font-mono text-right tabular-nums text-voxel-ink">
                                     ${t.exit_price.toFixed(2)}
                                 </td>
-                                <td className="p-2 font-mono text-muted-foreground">
-                                    {t.exit_reason}
-                                </td>
+                                <td className="p-2 font-mono text-voxel-muted">{t.exit_reason}</td>
                                 <td
                                     className={`p-2 font-mono text-right tabular-nums font-bold ${pnlColor(t.return_pct_net)}`}
                                 >
@@ -201,8 +195,8 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
             <StatePanel
                 title="Executing Timeline Simulation..."
                 detail="Stepping through intraday candles & news catalysts"
-                titleClass="font-display text-sm font-bold text-foreground"
-                borderClass="border border-border"
+                titleClass="font-display text-sm font-bold text-voxel-ink"
+                borderClass="border border-voxel-bevel-hi"
             />
         );
     }
@@ -214,8 +208,8 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
                 detail={
                     'Configure your blocks above and click "Run Simulation" to evaluate strategy performance.'
                 }
-                titleClass="text-sm font-bold text-muted-foreground"
-                borderClass="border border-dashed border-border"
+                titleClass="text-sm font-bold text-voxel-muted"
+                borderClass="border border-dashed border-voxel-bevel-hi"
             />
         );
     }
@@ -225,10 +219,10 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
     const skipped = results.skipped_trades ?? [];
 
     return (
-        <div className="flex flex-col gap-4 border border-border bg-voxel-surface p-4 rounded-none voxel-card">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+        <div className="flex flex-col gap-4 border border-voxel-bevel-hi bg-voxel-surface p-4 rounded-none voxel-card">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-voxel-bevel-hi pb-3">
                 <div className="flex items-center gap-2">
-                    <span className="font-display text-sm font-bold text-foreground">
+                    <span className="font-display text-sm font-bold text-voxel-ink">
                         Simulation Telemetry
                     </span>
                     <Badge colorScheme={returnPct >= 0 ? 'success' : 'danger'} size="sm">
@@ -236,7 +230,7 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-normal text-muted-foreground">P&L Model:</span>
+                    <span className="text-xs font-normal text-voxel-muted">P&L Model:</span>
                     <PnlModeButton
                         active={!useNetPnL}
                         label="Midpoint (Zero-Cost)"

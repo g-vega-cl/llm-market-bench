@@ -171,7 +171,7 @@ export function PortfolioDetailPage({
                             <Card
                                 variant="outlined"
                                 padding="md"
-                                className="text-center text-zinc-500"
+                                className="text-center text-voxel-muted"
                             >
                                 No performance history available yet. Performance is recorded daily.
                             </Card>

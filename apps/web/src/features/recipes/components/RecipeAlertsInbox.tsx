@@ -9,10 +9,10 @@ interface RecipeAlertsInboxProps {
 
 export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsInboxProps) {
     return (
-        <div className="flex flex-col gap-4 border border-border bg-voxel-surface p-4 rounded-none voxel-card">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+        <div className="flex flex-col gap-4 border border-voxel-bevel-hi bg-voxel-surface p-4 rounded-none voxel-card">
+            <div className="flex items-center justify-between border-b border-voxel-bevel-hi pb-3">
                 <div className="flex items-center gap-2">
-                    <span className="font-display text-sm font-bold text-foreground">
+                    <span className="font-display text-sm font-bold text-voxel-ink">
                         Trade Signals Inbox
                     </span>
                     <Badge variant="soft" size="sm">
@@ -22,8 +22,10 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                 {onClose && (
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         onClick={onClose}
-                        className="text-sm font-bold text-muted-foreground hover:text-foreground"
                     >
                         ✕
                     </Button>
@@ -32,10 +34,10 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
 
             {alerts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-6 text-center">
-                    <span className="text-sm font-bold text-muted-foreground">
+                    <span className="text-sm font-bold text-voxel-muted">
                         No Live Trade Signals Yet
                     </span>
-                    <span className="text-xs font-normal text-muted-foreground">
+                    <span className="text-xs font-normal text-voxel-muted">
                         When your live recipes match news catalysts and technical gates, trade
                         signals appear here in real time.
                     </span>
@@ -47,8 +49,8 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                             key={alert.id}
                             className={`flex flex-col gap-2 border p-3 rounded-none ${
                                 alert.is_read
-                                    ? 'border-border bg-voxel-canvas text-muted-foreground'
-                                    : 'border-primary/50 bg-voxel-surface text-foreground voxel-card'
+                                    ? 'border-voxel-bevel-hi bg-voxel-canvas text-voxel-muted'
+                                    : 'border-accent/50 bg-voxel-surface text-voxel-ink voxel-card'
                             }`}
                         >
                             <div className="flex items-center justify-between">
@@ -66,18 +68,19 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                                         {alert.action} {alert.ticker}
                                     </Badge>
                                     <span className="text-sm font-bold">{alert.recipe_name}</span>
-                                    <span className="font-mono text-xs text-muted-foreground">
+                                    <span className="font-mono text-xs text-voxel-muted">
                                         ({alert.timeframe})
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="font-mono text-xs text-muted-foreground">
+                                    <span className="font-mono text-xs text-voxel-muted">
                                         {alert.created_at.replace('T', ' ').slice(0, 16)}
                                     </span>
                                     {!alert.is_read && onMarkRead && (
                                         <Button
                                             size="sm"
                                             variant="outline"
+                                            colorScheme="neutral"
                                             onClick={() => onMarkRead(alert.id)}
                                         >
                                             Mark Read
@@ -89,14 +92,14 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                             <div className="flex flex-wrap items-center gap-4 text-xs">
                                 <span>
                                     Entry:{' '}
-                                    <b className="font-mono tabular-nums text-foreground">
+                                    <b className="font-mono tabular-nums text-voxel-ink">
                                         ${alert.entry_price.toFixed(2)}
                                     </b>
                                 </span>
                                 {alert.target_price && (
                                     <span>
                                         Target:{' '}
-                                        <b className="font-mono tabular-nums text-emerald-400">
+                                        <b className="font-mono tabular-nums text-success">
                                             ${alert.target_price.toFixed(2)}
                                         </b>
                                     </span>
@@ -104,14 +107,14 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                                 {alert.stop_loss && (
                                     <span>
                                         Stop:{' '}
-                                        <b className="font-mono tabular-nums text-red-400">
+                                        <b className="font-mono tabular-nums text-danger">
                                             ${alert.stop_loss.toFixed(2)}
                                         </b>
                                     </span>
                                 )}
                             </div>
 
-                            <div className="voxel-trough p-2 font-mono text-xs text-muted-foreground">
+                            <div className="voxel-trough p-2 font-mono text-xs text-voxel-muted">
                                 {alert.reason}
                             </div>
                         </div>

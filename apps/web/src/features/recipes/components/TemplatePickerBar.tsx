@@ -24,12 +24,13 @@ export function TemplatePickerBar({
     return (
         <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold text-muted-foreground">Templates:</span>
+                <span className="text-sm font-bold text-voxel-muted">Templates:</span>
                 {templates.map((template, index) => (
                     <Button
                         key={template.name}
                         size="sm"
                         variant={activeIndex === index ? 'solid' : 'outline'}
+                        colorScheme={activeIndex === index ? 'accent' : 'neutral'}
                         onClick={() => onSelect(index)}
                         disabled={disabled}
                     >
@@ -40,7 +41,7 @@ export function TemplatePickerBar({
             {active?.description && (
                 <p
                     data-testid="template-description"
-                    className="text-xs font-normal text-muted-foreground"
+                    className="text-xs font-normal text-voxel-muted"
                 >
                     {active.description}
                 </p>

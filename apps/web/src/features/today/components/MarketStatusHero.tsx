@@ -70,7 +70,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
                 <div className="lg:col-span-2 flex flex-col gap-6 animate-slide-up">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
-                        <h1 className="text-sm font-bold text-voxel-trough uppercase tracking-wider text-display drop-shadow-lg m-0">
+                        <h1 className="text-sm font-bold text-voxel-ink uppercase tracking-wider text-display drop-shadow-lg m-0">
                             TODAY
                         </h1>
                         <Badge variant="soft" colorScheme="neutral">
@@ -78,7 +78,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         </Badge>
                     </div>
 
-                    <p className="text-xs font-normal text-electric-blue-100 leading-relaxed max-w-2xl drop-shadow m-0">
+                    <p className="text-xs font-normal text-voxel-ink leading-relaxed max-w-2xl drop-shadow m-0">
                         Six AI agents. One virtual market. Real-time benchmark of machine cognition
                         vs. the S&P 500.
                     </p>
@@ -101,7 +101,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         className="rounded-none shadow-sm flex flex-col gap-4"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
+                            <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                                 Market Status
                             </span>
                             <Badge
@@ -120,10 +120,10 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                             </Badge>
                         </div>
 
-                        <div className="text-sm font-bold font-mono text-voxel-trough text-display drop-shadow">
+                        <div className="text-sm font-bold font-mono text-voxel-ink text-display drop-shadow">
                             {isMarketOpen ? 'Trading Live' : 'After Hours'}
                         </div>
-                        <p className="text-xs font-normal text-electric-blue-200 leading-relaxed">
+                        <p className="text-xs font-normal text-voxel-muted leading-relaxed">
                             {isMarketOpen
                                 ? 'AI agents are actively analyzing and executing trades'
                                 : 'Next session at 09:30 ET'}
@@ -186,59 +186,59 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         )}
 
                         {fallbackSentiment.why && (
-                            <p className="text-xs font-normal text-electric-blue-100 leading-relaxed italic">
+                            <p className="text-xs font-normal text-voxel-ink leading-relaxed italic">
                                 "{fallbackSentiment.why}"
                             </p>
                         )}
 
                         {fallbackSentiment.primaryConcern && (
                             <div className="flex flex-wrap gap-2">
-                                <span className="text-sm font-bold text-electric-blue-300 uppercase tracking-wider">
+                                <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                                     Concern:
                                 </span>
-                                <span className="text-xs font-normal px-2 py-1 bg-white/5 rounded-none text-electric-blue-100 border border-white/10">
+                                <span className="text-xs font-normal px-2 py-1 bg-voxel-trough rounded-none text-voxel-ink border border-voxel-bevel-hi">
                                     {fallbackSentiment.primaryConcern}
                                 </span>
                             </div>
                         )}
 
                         {totalTrades > 0 && (
-                            <div className="flex gap-4 pt-4 border-t border-white/10">
-                                <div className="flex-1 text-center p-3 rounded-none bg-white/5  border border-white/10 hover:bg-white/10 transition-all duration-300 flex flex-col gap-1">
-                                    <div className="text-sm font-bold font-mono text-neon-green-400 drop-shadow">
+                            <div className="flex gap-4 pt-4 border-t border-voxel-bevel-hi">
+                                <div className="flex-1 text-center p-3 rounded-none bg-voxel-trough border border-voxel-bevel-hi hover:bg-voxel-elevated transition-all duration-300 flex flex-col gap-1">
+                                    <div className="text-sm font-bold font-mono text-success drop-shadow">
                                         {buyCount}
                                     </div>
-                                    <div className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
+                                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                                         Buys
                                     </div>
                                 </div>
-                                <div className="flex-1 text-center p-3 rounded-none bg-white/5  border border-white/10 hover:bg-white/10 transition-all duration-300 flex flex-col gap-1">
-                                    <div className="text-sm font-bold font-mono text-alert-red-400 drop-shadow">
+                                <div className="flex-1 text-center p-3 rounded-none bg-voxel-trough border border-voxel-bevel-hi hover:bg-voxel-elevated transition-all duration-300 flex flex-col gap-1">
+                                    <div className="text-sm font-bold font-mono text-danger drop-shadow">
                                         {sellCount}
                                     </div>
-                                    <div className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
+                                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                                         Sells
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-                            <span className="text-xs font-normal text-electric-blue-300">
+                        <div className="flex items-center gap-2 pt-3 border-t border-voxel-bevel-hi">
+                            <span className="text-xs font-normal text-voxel-muted">
                                 {marketFeeling?.formattedTime
                                     ? `Last analyzed: ${marketFeeling.formattedTime}`
                                     : 'Waiting for analysis...'}
                             </span>
                             {marketFeeling?.model_used && (
-                                <span className="text-xs font-normal text-electric-blue-400/50">
+                                <span className="text-xs font-normal text-voxel-muted">
                                     • {marketFeeling.model_used}
                                 </span>
                             )}
                         </div>
-                        <div className="pt-3 border-t border-white/10">
+                        <div className="pt-3 border-t border-voxel-bevel-hi">
                             <a
                                 href="/market-overview"
-                                className="text-sm font-bold text-electric-blue-200 hover:text-voxel-trough transition-colors flex items-center gap-1 underline underline-offset-2"
+                                className="text-sm font-bold text-voxel-muted hover:text-voxel-ink transition-colors flex items-center gap-1 underline underline-offset-2"
                             >
                                 View full market analysis
                                 <svg
@@ -266,13 +266,13 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
 
 function StatBadge({ icon, label, value }: { icon: string; label: string; value: number }) {
     return (
-        <div className="group flex items-center gap-3 px-4 py-2.5 bg-white/10  rounded-none border border-white/20 transition-all duration-300 shadow-sm cursor-default">
+        <div className="group flex items-center gap-3 px-4 py-2.5 bg-voxel-surface rounded-none border border-voxel-bevel-hi transition-all duration-300 shadow-sm cursor-default">
             <span className="text-lg">{icon}</span>
             <div className="flex flex-col gap-0.5">
-                <div className="text-sm font-bold font-mono text-voxel-trough drop-shadow">
+                <div className="text-sm font-bold font-mono text-voxel-ink drop-shadow">
                     {value}
                 </div>
-                <div className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
+                <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                     {label}
                 </div>
             </div>

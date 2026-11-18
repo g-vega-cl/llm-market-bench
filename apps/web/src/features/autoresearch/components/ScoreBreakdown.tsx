@@ -8,10 +8,10 @@ interface ScoreBreakdownProps {
 
 function ActiveExperimentPlaceholder() {
     return (
-        <Card className="p-8 space-y-4 bg-gradient-to-br from-white to-zinc-50 from-zinc-900 to-zinc-950 border-zinc-200 border-zinc-800 animate-fade-in">
+        <Card className="p-8 space-y-4 bg-voxel-surface border-voxel-bevel-hi animate-fade-in">
             <div className="space-y-2">
                 <SectionHeading>Score Breakdown</SectionHeading>
-                <p className="text-zinc-500 text-zinc-400 text-sm leading-relaxed">
+                <p className="text-voxel-muted text-sm leading-relaxed">
                     This experiment variant is currently active. Performance metrics and the
                     risk-adjusted scoring breakdown will be computed automatically at the close of
                     the trading week.

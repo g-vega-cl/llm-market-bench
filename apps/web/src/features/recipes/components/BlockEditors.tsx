@@ -65,7 +65,7 @@ function KeywordsInput({
                     onChange(parseKeywordsInput(nextRaw));
                 }}
                 placeholder={placeholder}
-                className="border border-border bg-voxel-surface p-2 text-sm font-bold text-foreground rounded-none"
+                className="border border-voxel-bevel-hi bg-voxel-surface p-2 text-sm font-bold text-voxel-ink rounded-none"
             />
         </label>
     );
@@ -85,7 +85,7 @@ export function PromptBlockEditor({
             value={block.text}
             onChange={(e) => onUpdate(e.target.value)}
             placeholder="Write instructions for the LLM..."
-            className="w-full border border-border bg-voxel-surface p-2 text-xs font-normal text-foreground rounded-none"
+            className="w-full border border-voxel-bevel-hi bg-voxel-surface p-2 text-xs font-normal text-voxel-ink rounded-none"
         />
     );
 }
@@ -102,12 +102,12 @@ export function NewsBlockEditor({
             <KeywordsInput
                 key={block.id}
                 label="Contains Keywords (comma-separated)"
-                className="flex flex-1 basis-64 min-w-0 flex-col gap-1 text-xs font-normal text-muted-foreground"
+                className="flex flex-1 basis-64 min-w-0 flex-col gap-1 text-xs font-normal text-voxel-muted"
                 keywords={block.contains}
                 placeholder="Trump, chips, tariff"
                 onChange={(contains) => onUpdate({ contains })}
             />
-            <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+            <label className="flex flex-col gap-1 text-xs font-normal text-voxel-muted">
                 <span>Recency (Hours)</span>
                 <input
                     type="number"
@@ -116,7 +116,7 @@ export function NewsBlockEditor({
                     onChange={(e) =>
                         onUpdate({ recency_hours: Math.max(1, Number(e.target.value) || 48) })
                     }
-                    className="border border-border bg-voxel-surface p-2 text-sm font-bold text-foreground rounded-none"
+                    className="border border-voxel-bevel-hi bg-voxel-surface p-2 text-sm font-bold text-voxel-ink rounded-none"
                 />
             </label>
         </div>
@@ -135,12 +135,12 @@ export function MemoriesBlockEditor({
             <KeywordsInput
                 key={block.id}
                 label="Contains Keywords"
-                className="flex flex-1 basis-56 min-w-0 flex-col gap-1 text-xs font-normal text-muted-foreground"
+                className="flex flex-1 basis-56 min-w-0 flex-col gap-1 text-xs font-normal text-voxel-muted"
                 keywords={block.contains}
                 placeholder="FOMC, tariff"
                 onChange={(contains) => onUpdate({ contains })}
             />
-            <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+            <label className="flex flex-col gap-1 text-xs font-normal text-voxel-muted">
                 <span>Recency (Hours)</span>
                 <input
                     type="number"
@@ -149,15 +149,15 @@ export function MemoriesBlockEditor({
                     onChange={(e) =>
                         onUpdate({ recency_hours: Math.max(1, Number(e.target.value) || 168) })
                     }
-                    className="border border-border bg-voxel-surface p-2 text-sm font-bold text-foreground rounded-none"
+                    className="border border-voxel-bevel-hi bg-voxel-surface p-2 text-sm font-bold text-voxel-ink rounded-none"
                 />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+            <label className="flex flex-col gap-1 text-xs font-normal text-voxel-muted">
                 <span>Category</span>
                 <select
                     value={block.category}
                     onChange={(e) => onUpdate({ category: e.target.value })}
-                    className="border border-border bg-voxel-surface p-2 text-sm font-bold text-foreground rounded-none"
+                    className="border border-voxel-bevel-hi bg-voxel-surface p-2 text-sm font-bold text-voxel-ink rounded-none"
                 >
                     {MEMORY_CATEGORIES.map((c) => (
                         <option key={c} value={c}>
@@ -166,7 +166,7 @@ export function MemoriesBlockEditor({
                     ))}
                 </select>
             </label>
-            <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+            <label className="flex flex-col gap-1 text-xs font-normal text-voxel-muted">
                 <span>Min Importance (1-10)</span>
                 <input
                     type="number"
@@ -178,7 +178,7 @@ export function MemoriesBlockEditor({
                             min_importance: Math.min(10, Math.max(1, Number(e.target.value) || 1)),
                         })
                     }
-                    className="border border-border bg-voxel-surface p-2 text-sm font-bold text-foreground rounded-none"
+                    className="border border-voxel-bevel-hi bg-voxel-surface p-2 text-sm font-bold text-voxel-ink rounded-none"
                 />
             </label>
         </div>
@@ -214,19 +214,19 @@ export function TechnicalsBlockEditor({
 
     return (
         <div className="flex flex-col gap-2">
-            <span className="text-xs font-normal text-muted-foreground">
+            <span className="text-xs font-normal text-voxel-muted">
                 Company Technical & Fundamental Criteria (injected as prompt instructions)
             </span>
             {block.rules.map((rule) => (
                 <div
                     key={rule.id}
-                    className="flex flex-wrap items-center gap-2 border border-border bg-voxel-surface p-2 rounded-none"
+                    className="flex flex-wrap items-center gap-2 border border-voxel-bevel-hi bg-voxel-surface p-2 rounded-none"
                 >
                     <select
                         aria-label="Technical Metric"
                         value={rule.metric}
                         onChange={(e) => updateRule(rule.id, { metric: e.target.value })}
-                        className="border border-border bg-voxel-canvas p-1 text-sm font-bold text-foreground rounded-none"
+                        className="border border-voxel-bevel-hi bg-voxel-canvas p-1 text-sm font-bold text-voxel-ink rounded-none"
                     >
                         {TECHNICAL_METRICS.map((m) => (
                             <option key={m} value={m}>
@@ -242,7 +242,7 @@ export function TechnicalsBlockEditor({
                                 operator: e.target.value as TechnicalsRule['operator'],
                             })
                         }
-                        className="border border-border bg-voxel-canvas p-1 text-sm font-bold text-foreground rounded-none"
+                        className="border border-voxel-bevel-hi bg-voxel-canvas p-1 text-sm font-bold text-voxel-ink rounded-none"
                     >
                         <option value=">">&gt;</option>
                         <option value="<">&lt;</option>
@@ -256,9 +256,14 @@ export function TechnicalsBlockEditor({
                         value={rule.target}
                         onChange={(e) => updateRule(rule.id, { target: e.target.value })}
                         placeholder="Target"
-                        className="flex-1 basis-32 min-w-0 border border-border bg-voxel-canvas p-1 text-sm font-bold text-foreground rounded-none"
+                        className="flex-1 basis-32 min-w-0 border border-voxel-bevel-hi bg-voxel-canvas p-1 text-sm font-bold text-voxel-ink rounded-none"
                     />
-                    <Button size="sm" variant="outline" onClick={() => removeRule(rule.id)}>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        colorScheme="neutral"
+                        onClick={() => removeRule(rule.id)}
+                    >
                         ✕
                     </Button>
                 </div>

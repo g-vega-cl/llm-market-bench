@@ -15,7 +15,7 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
                 <div className="text-sm font-bold uppercase tracking-wider text-slate-400">
                     Market Context (Model Input)
                 </div>
-                <div className="p-3 bg-slate-900/50 border border-slate-800 rounded-none text-xs font-normal text-slate-500 italic">
+                <div className="p-3 bg-voxel-trough border border-voxel-bevel-hi rounded-none text-xs font-normal text-voxel-muted italic">
                     Market context was not captured for predictions recorded prior to September 23,
                     2026.
                 </div>
@@ -51,16 +51,17 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
                     <Button
                         size="sm"
                         variant="outline"
+                        colorScheme="neutral"
                         onClick={() => setIsOpen((prev) => !prev)}
-                        className="text-sm font-bold text-slate-400 hover:text-slate-200 rounded-none"
                     >
                         {isOpen ? 'Collapse Context' : 'Expand Context'}
                     </Button>
                     <Button
                         size="sm"
                         variant="solid"
+                        colorScheme="accent"
                         onClick={handleCopy}
-                        className="text-sm font-bold font-mono rounded-none"
+                        className="font-mono"
                     >
                         {copied ? 'Copied!' : 'Copy Context'}
                     </Button>
@@ -74,12 +75,15 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
             ) : (
                 <Button
                     type="button"
+                    variant="outline"
+                    colorScheme="neutral"
+                    size="sm"
                     onClick={() => setIsOpen(true)}
-                    className="w-full text-left p-3 bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 rounded-none text-xs font-mono text-slate-400 cursor-pointer transition-colors line-clamp-3 select-none flex flex-col gap-1"
+                    className="w-full text-left p-3 text-xs font-mono line-clamp-3 select-none flex flex-col items-start gap-1"
                     title="Click to expand full market context"
                 >
                     <span>{context.slice(0, 300)}...</span>
-                    <span className="text-xs font-normal text-slate-500 font-sans italic">
+                    <span className="text-xs font-normal text-voxel-muted font-sans italic">
                         Click to view complete pre-market briefing and options data.
                     </span>
                 </Button>

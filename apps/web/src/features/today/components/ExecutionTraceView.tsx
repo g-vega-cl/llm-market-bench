@@ -37,10 +37,10 @@ export function ExecutionTraceView({ trace }: ExecutionTraceViewProps) {
                 </span>
             </div>
 
-            <div className="bg-zinc-50 bg-zinc-950/50 p-4 rounded-none border border-zinc-100 border-zinc-900 flex flex-col gap-3 text-xs">
+            <div className="bg-voxel-trough p-4 rounded-none border border-voxel-bevel-hi flex flex-col gap-3 text-xs">
                 {hasTools && (
                     <div>
-                        <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">
+                        <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider block mb-1.5">
                             Tools Executed
                         </span>
                         <div className="flex flex-wrap gap-1.5">
@@ -64,13 +64,13 @@ export function ExecutionTraceView({ trace }: ExecutionTraceViewProps) {
 
                 {hasNewsletters && (
                     <div>
-                        <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">
+                        <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider block mb-1.5">
                             Active Ingest Context ({trace.newsletters?.length} Newsletters)
                         </span>
-                        <ul className="flex flex-col gap-1 text-zinc-600 text-zinc-400 font-normal">
+                        <ul className="flex flex-col gap-1 text-voxel-muted font-normal">
                             {trace.newsletters?.map((n) => (
                                 <li key={n.source_id} className="truncate">
-                                    <span className="font-bold text-zinc-800 text-zinc-200">
+                                    <span className="font-bold text-voxel-ink">
                                         {n.sender || 'Newsletter'}:
                                     </span>{' '}
                                     {n.subject || n.source_id}

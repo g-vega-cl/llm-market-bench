@@ -90,7 +90,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
             <div className="min-h-screen">
                 <PageLayout maxWidth="md">
                     <div className="text-center py-12 flex flex-col items-center gap-4">
-                        <p className="text-zinc-500 text-xs font-normal">Event not found</p>
+                        <p className="text-voxel-muted text-xs font-normal">Event not found</p>
                         <Link to="/memories">
                             <Button variant="solid" colorScheme="neutral" size="sm">
                                 Back to Memories
@@ -112,15 +112,15 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
     return (
         <div className="min-h-screen">
             {/* Header */}
-            <div className="border-b border-zinc-200 border-zinc-800 bg-white bg-zinc-950">
+            <div className="border-b border-voxel-bevel-hi bg-voxel-surface">
                 <PageLayout maxWidth="md" className="py-6 flex flex-col gap-4">
                     <div className="flex items-center gap-3">
                         <Link
                             to="/memories"
-                            className="p-1.5 rounded-none hover:bg-zinc-100 hover:bg-zinc-800 transition-colors"
+                            className="p-1.5 rounded-none hover:bg-voxel-elevated transition-colors"
                         >
                             <svg
-                                className="w-4 h-4 text-zinc-500"
+                                className="w-4 h-4 text-voxel-muted"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -137,7 +137,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                         <SectionHeading>Thought Journey & Event Chain</SectionHeading>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-zinc-600 text-zinc-400 text-xs font-normal m-0">
+                        <p className="text-voxel-muted text-xs font-normal m-0">
                             Tracing how this catalyst evolved through model reasoning, debate
                             stress-tests, and market resolutions.
                         </p>
@@ -178,9 +178,9 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                 {/* Directional Connector from Previous Step */}
                                 {index > 0 && (
                                     <div className="flex flex-col items-center py-3 relative">
-                                        <div className="w-px h-6 bg-zinc-300 bg-zinc-700" />
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-zinc-100 bg-zinc-800 border border-zinc-200 border-zinc-700 rounded-none shadow-sm z-10">
-                                            <span className="text-sm font-bold text-zinc-400">
+                                        <div className="w-px h-6 bg-voxel-bevel-hi" />
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-voxel-trough border border-voxel-bevel-hi rounded-none shadow-sm z-10">
+                                            <span className="text-sm font-bold text-voxel-muted">
                                                 ↓
                                             </span>
                                             <Badge
@@ -192,11 +192,11 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                             >
                                                 {memory.relationship_type || 'UPDATE'}
                                             </Badge>
-                                            <span className="text-xs font-mono text-zinc-500 text-zinc-400">
+                                            <span className="text-xs font-mono text-voxel-muted">
                                                 {memory.elapsedFromPreceding || '+later'}
                                             </span>
                                         </div>
-                                        <div className="w-px h-6 bg-zinc-300 bg-zinc-700" />
+                                        <div className="w-px h-6 bg-voxel-bevel-hi" />
                                     </div>
                                 )}
 
@@ -205,14 +205,14 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                     id={memory.id}
                                     className={`relative border rounded-none p-5 transition-all shadow-sm ${
                                         isSelected
-                                            ? 'border-zinc-900 border-zinc-100 bg-zinc-50 bg-zinc-900/90 ring-1 ring-zinc-900/10 ring-zinc-100/20'
-                                            : 'border-zinc-200 border-zinc-800 bg-white bg-zinc-950 hover:border-zinc-300 hover:border-zinc-700'
+                                            ? 'border-accent bg-voxel-elevated ring-1 ring-accent/30'
+                                            : 'border-voxel-bevel-hi bg-voxel-surface hover:border-voxel-muted'
                                     }`}
                                 >
                                     {/* Top Metadata Header */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-100 border-zinc-800/80">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-voxel-bevel-lo">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="px-2 py-0.5 bg-zinc-900 bg-zinc-100 text-voxel-trough text-zinc-900 text-sm font-bold font-mono uppercase">
+                                            <span className="px-2 py-0.5 bg-accent text-voxel-trough text-sm font-bold font-mono uppercase">
                                                 {isRoot
                                                     ? 'STEP 1 • CATALYST ORIGIN'
                                                     : isFinal
@@ -262,11 +262,11 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                         </div>
 
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-xs text-zinc-500 font-mono">
+                                            <span className="text-xs text-voxel-muted font-mono">
                                                 {memory.formattedDate || 'Pending'}
                                             </span>
                                             {memory.elapsedFromRoot && !isRoot && (
-                                                <span className="text-sm font-bold font-mono text-emerald-600 text-emerald-400">
+                                                <span className="text-sm font-bold font-mono text-success">
                                                     ({memory.elapsedFromRoot})
                                                 </span>
                                             )}
@@ -275,19 +275,19 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
 
                                     {/* Selected Focus Banner */}
                                     {isSelected && (
-                                        <div className="mt-3 p-2 bg-emerald-500/10 border-l-2 border-emerald-500 text-sm font-bold text-emerald-700 text-emerald-300">
+                                        <div className="mt-3 p-2 bg-emerald-500/10 border-l-2 border-emerald-500 text-sm font-bold text-success">
                                             ← You selected this event
                                         </div>
                                     )}
 
                                     {/* Memory Content Text */}
-                                    <p className="mt-4 text-xs font-normal text-zinc-800 text-zinc-200 leading-relaxed font-sans">
+                                    <p className="mt-4 text-xs font-normal text-voxel-ink leading-relaxed font-sans">
                                         {memory.content}
                                     </p>
 
                                     {/* The Model Process Section */}
                                     {(models.length > 0 || debate || scenarios.length > 0) && (
-                                        <div className="mt-4 pt-3 border-t border-zinc-100 border-zinc-800/80 flex flex-col gap-3">
+                                        <div className="mt-4 pt-3 border-t border-voxel-bevel-lo flex flex-col gap-3">
                                             {/* Models Involved */}
                                             {models.length > 0 && (
                                                 <div className="flex items-center gap-2 flex-wrap">
@@ -311,23 +311,23 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                             {debate && (
                                                 <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-none flex flex-col gap-2">
                                                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                        <span className="text-sm font-bold text-amber-600 text-amber-400 uppercase tracking-wide">
+                                                        <span className="text-sm font-bold text-accent uppercase tracking-wide">
                                                             🛡️ Red-Team Stress-Test
                                                         </span>
                                                         {debate.adversary_model && (
-                                                            <span className="text-xs font-mono text-zinc-400">
+                                                            <span className="text-xs font-mono text-voxel-muted">
                                                                 Challenger: {debate.adversary_model}
                                                             </span>
                                                         )}
                                                     </div>
                                                     {debate.counter_thesis && (
-                                                        <p className="text-xs font-normal text-zinc-700 text-zinc-300 leading-relaxed m-0">
+                                                        <p className="text-xs font-normal text-voxel-ink leading-relaxed m-0">
                                                             <b>Counter-Thesis:</b>{' '}
                                                             {debate.counter_thesis}
                                                         </p>
                                                     )}
                                                     {debate.pre_mortem && (
-                                                        <p className="text-xs font-normal text-rose-600 text-rose-400 font-mono m-0">
+                                                        <p className="text-xs font-normal text-danger font-mono m-0">
                                                             <b>Pre-Mortem Failure Mode:</b>{' '}
                                                             {debate.pre_mortem}
                                                         </p>
@@ -335,10 +335,10 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                     {Array.isArray(debate.key_risks) &&
                                                         debate.key_risks.length > 0 && (
                                                             <div className="flex flex-col gap-0.5">
-                                                                <span className="text-sm font-bold text-zinc-400 uppercase">
+                                                                <span className="text-sm font-bold text-voxel-muted uppercase">
                                                                     Key Risks:
                                                                 </span>
-                                                                <ul className="list-disc list-inside text-xs font-normal text-zinc-600 text-zinc-400">
+                                                                <ul className="list-disc list-inside text-xs font-normal text-voxel-muted">
                                                                     {debate.key_risks.map(
                                                                         (
                                                                             risk: string,
@@ -366,10 +366,10 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                             (sc: ChainScenario, sIdx: number) => (
                                                                 <div
                                                                     key={sIdx}
-                                                                    className="p-2.5 bg-zinc-50 bg-zinc-900 border border-zinc-200 border-zinc-800 rounded-none flex flex-col gap-1"
+                                                                    className="p-2.5 bg-voxel-trough border border-voxel-bevel-hi rounded-none flex flex-col gap-1"
                                                                 >
                                                                     <div className="flex items-center justify-between gap-2">
-                                                                        <span className="text-sm font-bold text-zinc-900 text-zinc-100">
+                                                                        <span className="text-sm font-bold text-voxel-ink">
                                                                             {sc.header ||
                                                                                 sc.cleanHeader ||
                                                                                 `Scenario ${sIdx + 1}`}
@@ -385,7 +385,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                                         )}
                                                                     </div>
                                                                     {sc.outcome && (
-                                                                        <p className="text-xs font-normal text-zinc-600 text-zinc-400 line-clamp-2 m-0">
+                                                                        <p className="text-xs font-normal text-voxel-muted line-clamp-2 m-0">
                                                                             {sc.outcome}
                                                                         </p>
                                                                     )}

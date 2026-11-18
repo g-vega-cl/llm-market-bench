@@ -95,7 +95,7 @@ export function PromptBlocksCard({
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1">
                     <SectionHeading>Modular Reasoning & Discipline Blocks</SectionHeading>
-                    <p className="text-xs text-zinc-500 text-zinc-400">
+                    <p className="text-xs text-voxel-muted">
                         Structured trading disciplines dynamically toggled by the meta-researcher to
                         enforce risk control.
                     </p>

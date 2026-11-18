@@ -43,7 +43,7 @@ function DossierHeader({
                 >
                     ← Back to Companies Directory
                 </Link>
-                <span className="text-xs font-normal text-zinc-500">
+                <span className="text-xs font-normal text-voxel-muted">
                     Featured in {mentionCount} briefing{mentionCount === 1 ? '' : 's'}
                 </span>
             </div>
@@ -170,12 +170,10 @@ function HistoricalTimeline({
             <div className="flex flex-wrap gap-2">
                 <Button
                     type="button"
+                    size="sm"
+                    variant={activeId === latestReport.id ? 'solid' : 'outline'}
+                    colorScheme={activeId === latestReport.id ? 'accent' : 'neutral'}
                     onClick={() => onSelect(latestReport.id)}
-                    className={`px-3 py-1.5 text-sm font-bold rounded-none border transition-colors ${
-                        activeId === latestReport.id
-                            ? 'bg-electric-blue-500/20 text-electric-blue-400 border-electric-blue-500'
-                            : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                    }`}
                 >
                     Latest: {latestReport.formatted_date} ({latestReport.session.toUpperCase()}) •{' '}
                     {latestReport.verdict}
@@ -184,12 +182,10 @@ function HistoricalTimeline({
                     <Button
                         key={past.id}
                         type="button"
+                        size="sm"
+                        variant={activeId === past.id ? 'solid' : 'outline'}
+                        colorScheme={activeId === past.id ? 'accent' : 'neutral'}
                         onClick={() => onSelect(past.id)}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-none border transition-colors ${
-                            activeId === past.id
-                                ? 'bg-electric-blue-500/20 text-electric-blue-400 border-electric-blue-500'
-                                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                        }`}
                     >
                         {past.formatted_date} ({past.session.toUpperCase()}) • {past.verdict}
                     </Button>

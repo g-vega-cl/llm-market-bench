@@ -50,7 +50,7 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
                         Post-Market Evaluation (GPT-6 Luna)
                     </span>
                     {prediction.postmortem_evaluated_at && (
-                        <span className="text-xs font-normal text-zinc-500 font-mono">
+                        <span className="text-xs font-normal text-voxel-muted font-mono">
                             {formatEasternTime(prediction.postmortem_evaluated_at)}
                         </span>
                     )}

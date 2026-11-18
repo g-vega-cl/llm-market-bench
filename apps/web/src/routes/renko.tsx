@@ -245,10 +245,10 @@ export function RenkoAgentPageView({
                             return (
                                 <div key={brick.id} className="relative flex-none w-7 h-full">
                                     <div
-                                        className={`absolute w-full rounded-none border flex items-center justify-center text-sm font-bold text-voxel-trough shadow ${
+                                        className={`absolute w-full rounded-none border flex items-center justify-center text-sm font-bold shadow ${
                                             brick.direction === 'UP'
-                                                ? 'bg-emerald-600 border-emerald-500'
-                                                : 'bg-rose-600 border-rose-500'
+                                                ? 'bg-success border-success text-voxel-trough'
+                                                : 'bg-danger border-danger text-voxel-trough'
                                         }`}
                                         style={{
                                             bottom: `${bottomPct}%`,

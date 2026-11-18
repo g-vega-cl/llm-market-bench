@@ -142,10 +142,10 @@ export function MemoriesList({
                     </div>
 
                     {/* Controls Sub-Bar: Date Presets, High Impact, Sort Select */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 border-t border-zinc-200/50 border-white/5">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 border-t border-voxel-bevel-lo">
                         {/* Date Presets */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-bold uppercase tracking-wider text-zinc-400 text-zinc-500">
+                            <span className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                                 Date:
                             </span>
                             {DATE_PRESETS.map((dp) => (
@@ -153,9 +153,8 @@ export function MemoriesList({
                                     key={dp.id}
                                     size="sm"
                                     variant={datePreset === dp.id ? 'solid' : 'outline'}
-                                    colorScheme="neutral"
+                                    colorScheme={datePreset === dp.id ? 'accent' : 'neutral'}
                                     onClick={() => onDatePresetChange?.(dp.id)}
-                                    className="rounded-none text-sm font-bold"
                                 >
                                     {dp.label}
                                 </Button>
@@ -206,7 +205,7 @@ export function MemoriesList({
 
                 {memories.length === 0 && (
                     <div className="flex justify-center items-center py-12">
-                        <p className="text-zinc-500 text-sm">
+                        <p className="text-voxel-muted text-sm">
                             {isLoading ? 'Loading memories…' : 'No memories found in this category'}
                         </p>
                     </div>

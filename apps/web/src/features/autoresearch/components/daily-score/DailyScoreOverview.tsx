@@ -12,10 +12,7 @@ interface DailyScoreOverviewProps {
 function StatusBadges({ isActive, isPending }: { isActive: boolean; isPending: boolean }) {
     if (!isActive) {
         return (
-            <Badge
-                variant="soft"
-                className="text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-none"
-            >
+            <Badge variant="soft" colorScheme="neutral" className="rounded-none">
                 COMPLETED WEEK
             </Badge>
         );
@@ -159,7 +156,7 @@ export function DailyScoreOverview({
                     label="Daily Risk Penalty"
                     value={
                         isPending ? (
-                            <span className="text-zinc-500 font-mono text-sm">0.00%</span>
+                            <span className="text-voxel-muted font-mono text-sm">0.00%</span>
                         ) : (
                             <span className="text-rose-400 font-mono">
                                 -{dailyDrawdownPenalty.toFixed(4)}%

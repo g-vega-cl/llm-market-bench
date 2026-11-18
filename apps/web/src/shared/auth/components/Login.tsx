@@ -78,7 +78,6 @@ export function Login({ redirectPath }: { redirectPath?: string } = {}) {
                                 <Button
                                     variant="outline"
                                     colorScheme="info"
-                                    className="text-blue-500"
                                     onClick={(e) => {
                                         const form = (e.target as HTMLButtonElement).form;
                                         if (!form) return;

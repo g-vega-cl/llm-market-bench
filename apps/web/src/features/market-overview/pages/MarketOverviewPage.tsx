@@ -76,13 +76,13 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50 bg-zinc-950">
+        <div className="min-h-screen bg-voxel-canvas">
             <MarketOverviewHero marketFeeling={data.marketFeeling} />
 
             <PageLayout className="space-y-16 pb-24">
                 {/* Modern Premium Sub-Navigation Tabs */}
                 <div className="flex justify-center animate-slide-up">
-                    <div className="flex gap-1.5 p-1.5 bg-white/50 bg-zinc-900/50  rounded-none border border-zinc-200/60 border-zinc-800/80 shadow-md">
+                    <div className="flex gap-1.5 p-1.5 bg-voxel-surface rounded-none border border-voxel-bevel-hi shadow-md">
                         <Button
                             variant={activeTab === 'current' ? 'solid' : 'outline'}
                             colorScheme={activeTab === 'current' ? 'accent' : 'neutral'}
@@ -107,7 +107,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                         <div className="space-y-16 animate-slide-up">
                             {/* Timeframe Selector Button Group */}
                             <div className="flex flex-col items-center gap-4">
-                                <div className="flex gap-1 p-1 bg-white/80 bg-zinc-900/80 rounded-none border border-zinc-200/50 border-zinc-800/80 shadow-sm">
+                                <div className="flex gap-1 p-1 bg-voxel-surface rounded-none border border-voxel-bevel-hi shadow-sm">
                                     {(['7d', '30d', '60d', '90d'] as const).map((tf) => (
                                         <Button
                                             key={tf}
@@ -121,7 +121,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                                     ))}
                                 </div>
                                 {timeframe === '7d' && (
-                                    <div className="max-w-3xl p-4 bg-amber-500/10 border border-amber-500/20 rounded-none flex items-start gap-3 text-amber-600 text-amber-400 animate-slide-up">
+                                    <div className="max-w-3xl p-4 bg-amber-500/10 border border-amber-500/20 rounded-none flex items-start gap-3 text-accent animate-slide-up">
                                         <span className="text-lg">⚠️</span>
                                         <div className="text-left text-xs leading-relaxed">
                                             <span className="font-bold block mb-0.5">
@@ -225,7 +225,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div className="flex flex-col gap-6 animate-slide-up">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
-                        <h1 className="text-sm font-bold text-voxel-trough uppercase tracking-wider text-display drop-shadow-lg m-0">
+                        <h1 className="text-sm font-bold text-voxel-ink uppercase tracking-wider text-display drop-shadow-lg m-0">
                             MARKET OVERVIEW
                         </h1>
                         <Badge variant="soft" colorScheme="neutral">
@@ -239,7 +239,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         </Badge>
                     </div>
 
-                    <p className="text-xs font-normal text-electric-blue-100 leading-relaxed max-w-2xl drop-shadow m-0">
+                    <p className="text-xs font-normal text-voxel-ink leading-relaxed max-w-2xl drop-shadow m-0">
                         Real-time correlation matrix, uncorrelated asset pairs, and macro sentiment
                         analysis. Updated weekly on Sundays.
                     </p>
@@ -259,7 +259,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         </Badge>
                         <Link
                             to="/"
-                            className="text-sm font-bold text-electric-blue-200 hover:text-voxel-trough transition-colors underline underline-offset-2"
+                            className="text-sm font-bold text-voxel-muted hover:text-voxel-ink transition-colors underline underline-offset-2"
                         >
                             View AI Trading Activity →
                         </Link>
@@ -273,7 +273,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         className="rounded-none shadow-sm flex flex-col gap-3"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
+                            <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                                 How I'm Feeling
                             </span>
                             <div className="flex items-center gap-2">
@@ -328,30 +328,30 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                             )}
 
                         {marketFeeling?.why_explanation && (
-                            <p className="text-xs font-normal text-electric-blue-100 leading-relaxed italic m-0">
+                            <p className="text-xs font-normal text-voxel-ink leading-relaxed italic m-0">
                                 "{marketFeeling.why_explanation}"
                             </p>
                         )}
 
                         {marketFeeling?.primary_concern && (
                             <div className="flex flex-wrap gap-2 items-center">
-                                <span className="text-xs font-normal text-electric-blue-300 uppercase tracking-wider">
+                                <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                     Primary Concern:
                                 </span>
-                                <span className="text-xs px-2 py-1 bg-white/5 rounded-none text-electric-blue-100 border border-white/10 font-normal">
+                                <span className="text-xs px-2 py-1 bg-voxel-trough rounded-none text-voxel-ink border border-voxel-bevel-hi font-normal">
                                     {marketFeeling.primary_concern}
                                 </span>
                             </div>
                         )}
 
-                        <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-                            <span className="text-xs font-normal text-electric-blue-300">
+                        <div className="flex items-center gap-2 pt-3 border-t border-voxel-bevel-hi">
+                            <span className="text-xs font-normal text-voxel-muted">
                                 {marketFeeling?.created_at
                                     ? `Last analyzed: ${formatEasternTime(marketFeeling.created_at)}`
                                     : 'Waiting for analysis...'}
                             </span>
                             {marketFeeling?.model_used && (
-                                <span className="text-xs font-normal text-electric-blue-400/50">
+                                <span className="text-xs font-normal text-voxel-muted">
                                     • {marketFeeling.model_used}
                                 </span>
                             )}

@@ -71,8 +71,8 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
     };
 
     return (
-        <div className="flex flex-col gap-4 border border-border bg-voxel-surface p-4 rounded-none">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+        <div className="flex flex-col gap-4 border border-voxel-bevel-hi bg-voxel-surface p-4 rounded-none">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-voxel-bevel-hi pb-3">
                 <Badge variant="soft" size="sm">
                     LLM Call
                 </Badge>
@@ -80,6 +80,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                     <Button
                         size="sm"
                         variant="outline"
+                        colorScheme="neutral"
                         onClick={() =>
                             onChange({ ...stage, blocks: [...stage.blocks, createBlock('prompt')] })
                         }
@@ -89,6 +90,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                     <Button
                         size="sm"
                         variant="outline"
+                        colorScheme="neutral"
                         onClick={() =>
                             onChange({ ...stage, blocks: [...stage.blocks, createBlock('news')] })
                         }
@@ -98,6 +100,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                     <Button
                         size="sm"
                         variant="outline"
+                        colorScheme="neutral"
                         onClick={() =>
                             onChange({
                                 ...stage,
@@ -110,6 +113,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                     <Button
                         size="sm"
                         variant="outline"
+                        colorScheme="neutral"
                         onClick={() =>
                             onChange({
                                 ...stage,
@@ -122,6 +126,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                     <Button
                         size="sm"
                         variant="outline"
+                        colorScheme="neutral"
                         disabled={hasOutputFormat}
                         onClick={() =>
                             onChange({
@@ -139,7 +144,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                 {stage.blocks.map((block, bIdx) => (
                     <div
                         key={block.id}
-                        className="flex flex-col gap-2 border border-border bg-voxel-canvas p-3 rounded-none"
+                        className="flex flex-col gap-2 border border-voxel-bevel-hi bg-voxel-canvas p-3 rounded-none"
                     >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <Badge variant="soft" size="sm">
@@ -150,6 +155,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                                     <Button
                                         size="sm"
                                         variant="outline"
+                                        colorScheme="neutral"
                                         onClick={() => moveBlock(bIdx, -1)}
                                         disabled={bIdx === 0}
                                     >
@@ -158,6 +164,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                                     <Button
                                         size="sm"
                                         variant="outline"
+                                        colorScheme="neutral"
                                         onClick={() => moveBlock(bIdx, 1)}
                                         disabled={bIdx === stage.blocks.length - 1}
                                     >
@@ -166,6 +173,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                                     <Button
                                         size="sm"
                                         variant="outline"
+                                        colorScheme="neutral"
                                         onClick={() => removeBlock(block.id)}
                                     >
                                         Delete

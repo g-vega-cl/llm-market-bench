@@ -47,13 +47,13 @@ export function TradesTable({ trades }: TradesTableProps) {
                             className="cursor-pointer group"
                             onClick={() => setExpandedId(expandedId === trade.id ? null : trade.id)}
                         >
-                            <TableCell className="text-zinc-500 text-zinc-400 text-sm whitespace-nowrap">
+                            <TableCell className="text-voxel-muted text-sm whitespace-nowrap">
                                 {trade.executed_at ? (
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-zinc-900 text-zinc-100">
+                                        <span className="font-bold text-voxel-ink">
                                             {formatEasternShortDateWithYear(trade.executed_at)}
                                         </span>
-                                        <span className="text-xs text-zinc-400 text-zinc-500 font-mono">
+                                        <span className="text-xs text-voxel-muted font-mono">
                                             {formatEasternExactTime(trade.executed_at)}
                                         </span>
                                     </div>
@@ -61,7 +61,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                     '-'
                                 )}
                             </TableCell>
-                            <TableCell className="font-bold text-zinc-900 text-zinc-100">
+                            <TableCell className="font-bold text-voxel-ink">
                                 <div className="flex items-center gap-2">
                                     <span
                                         className={`transition-transform duration-200 ${expandedId === trade.id ? 'rotate-90' : ''}`}
@@ -141,23 +141,20 @@ export function TradesTable({ trades }: TradesTableProps) {
                                         </a>
                                     )
                                 ) : (
-                                    <span className="text-zinc-300 text-zinc-700">—</span>
+                                    <span className="text-voxel-muted">—</span>
                                 )}
                             </TableCell>
-                            <TableCell align="right" className="text-zinc-700 text-zinc-300">
+                            <TableCell align="right" className="text-voxel-ink">
                                 {trade.quantity}
                             </TableCell>
-                            <TableCell align="right" className="text-zinc-700 text-zinc-300">
+                            <TableCell align="right" className="text-voxel-ink">
                                 $
                                 {Number(trade.price).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}
                             </TableCell>
-                            <TableCell
-                                align="right"
-                                className="text-zinc-900 text-zinc-100 font-bold"
-                            >
+                            <TableCell align="right" className="text-voxel-ink font-bold">
                                 $
                                 {Number(trade.total_cost).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
@@ -168,7 +165,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                 {trade.realized_pnl !== null && trade.realized_pnl !== undefined ? (
                                     <div className="flex flex-col items-end">
                                         <span
-                                            className={`font-bold ${trade.realized_pnl >= 0 ? 'text-emerald-600 text-emerald-500' : 'text-rose-600 text-rose-500'}`}
+                                            className={`font-bold ${trade.realized_pnl >= 0 ? 'text-success' : 'text-danger'}`}
                                         >
                                             {trade.realized_pnl >= 0 ? '+' : ''}$
                                             {Math.abs(trade.realized_pnl).toLocaleString('en-US', {
@@ -188,12 +185,12 @@ export function TradesTable({ trades }: TradesTableProps) {
                                         </Badge>
                                     </div>
                                 ) : (
-                                    <span className="text-zinc-300 text-zinc-700">—</span>
+                                    <span className="text-voxel-muted">—</span>
                                 )}
                             </TableCell>
                         </TableRow>
                         {expandedId === trade.id && (
-                            <TableRow isHoverable={false} className="bg-zinc-50/30 bg-zinc-950/30">
+                            <TableRow isHoverable={false} className="bg-voxel-trough">
                                 <TableCell colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
                                     <div className="flex flex-col gap-4">
                                         <div className="flex flex-wrap items-center gap-4 text-xs border-b border-zinc-800 pb-3">
@@ -206,7 +203,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                         variant="soft"
                                                         colorScheme="neutral"
                                                         size="sm"
-                                                        className="font-mono text-zinc-200"
+                                                        className="font-mono"
                                                     >
                                                         {formatEasternDateTimeWithYear(
                                                             trade.executed_at,
@@ -247,19 +244,19 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                         variant="soft"
                                                         colorScheme="neutral"
                                                         size="sm"
-                                                        className="font-mono text-zinc-300"
+                                                        className="font-mono"
                                                     >
                                                         {trade.alpaca_order_id}
                                                     </Badge>
                                                 </div>
                                             )}
                                         </div>
-                                        <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 text-zinc-100 uppercase tracking-tight">
+                                        <h4 className="flex items-center gap-2 text-sm font-bold text-voxel-ink uppercase tracking-tight">
                                             <span className="w-1.5 h-1.5 rounded-none bg-blue-500 animate-pulse" />
                                             Thinking Process
                                         </h4>
-                                        <div className="bg-white bg-zinc-950 border border-zinc-200 border-zinc-800 rounded-none p-4 sm:p-6 shadow-sm">
-                                            <p className="text-zinc-600 text-zinc-400 leading-relaxed whitespace-pre-wrap text-xs font-normal">
+                                        <div className="bg-voxel-surface border border-voxel-bevel-hi rounded-none p-4 sm:p-6 shadow-sm">
+                                            <p className="text-voxel-muted leading-relaxed whitespace-pre-wrap text-xs font-normal">
                                                 {trade.reasoning}
                                             </p>
                                         </div>
@@ -274,7 +271,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                 ))}
                 {(!trades || trades.length === 0) && (
                     <TableRow isHoverable={false}>
-                        <TableCell colSpan={8} className="py-12 text-center text-zinc-500">
+                        <TableCell colSpan={8} className="py-12 text-center text-voxel-muted">
                             No recent trades found for this agent.
                         </TableCell>
                     </TableRow>

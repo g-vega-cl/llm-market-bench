@@ -37,12 +37,10 @@ export function PredictorTrackTabs({
             {/* "All Models" Tab */}
             <Button
                 type="button"
+                variant={isAllActive ? 'solid' : 'outline'}
+                colorScheme={isAllActive ? 'accent' : 'neutral'}
                 onClick={() => onSelectTrack('all')}
-                className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
-                    isAllActive
-                        ? 'bg-accent text-accent-ink border border-accent shadow-sm'
-                        : 'bg-voxel-surface text-voxel-muted hover:text-voxel-ink hover:bg-voxel-elevated border border-voxel-bevel-hi'
-                }`}
+                className="whitespace-nowrap"
             >
                 <span>All Models</span>
                 <Badge
@@ -64,12 +62,10 @@ export function PredictorTrackTabs({
                     <Button
                         key={trk.id}
                         type="button"
+                        variant={isActive ? 'solid' : 'outline'}
+                        colorScheme={isActive ? 'accent' : 'neutral'}
                         onClick={() => onSelectTrack(trk.id)}
-                        className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
-                            isActive
-                                ? 'bg-accent text-accent-ink border border-accent shadow-sm'
-                                : 'bg-voxel-surface text-voxel-muted hover:text-voxel-ink hover:bg-voxel-elevated border border-voxel-bevel-hi'
-                        }`}
+                        className="whitespace-nowrap"
                     >
                         <span>{trk.label}</span>
                         {isCold && (

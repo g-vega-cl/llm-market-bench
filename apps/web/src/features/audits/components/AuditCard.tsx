@@ -32,11 +32,11 @@ export function AuditCard({ audit }: AuditCardProps) {
                         <Badge variant="soft" size="sm">
                             {audit.severity}
                         </Badge>
-                        <span className="text-xs text-zinc-500 uppercase tracking-wider">
+                        <span className="text-xs text-voxel-muted uppercase tracking-wider">
                             {typeLabels[audit.audit_type] || audit.audit_type}
                         </span>
                         {audit.created_at && (
-                            <span className="text-xs text-zinc-600">
+                            <span className="text-xs text-voxel-muted">
                                 {new Date(audit.created_at).toLocaleDateString('en-US', {
                                     timeZone: 'America/New_York',
                                     year: 'numeric',
@@ -46,17 +46,19 @@ export function AuditCard({ audit }: AuditCardProps) {
                             </span>
                         )}
                     </div>
-                    <h3 className="text-sm font-bold text-zinc-200 mb-2">{audit.title}</h3>
-                    <p className="text-zinc-400 text-xs font-normal">{audit.description}</p>
+                    <h3 className="text-sm font-bold text-voxel-ink mb-2">{audit.title}</h3>
+                    <p className="text-voxel-muted text-xs font-normal">{audit.description}</p>
                 </div>
             </div>
 
             {audit.suggestion && (
-                <div className="mt-4 pt-4 border-t border-zinc-700">
+                <div className="mt-4 pt-4 border-t border-voxel-bevel-hi">
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         onClick={() => setExpanded(!expanded)}
-                        className="text-sm font-bold text-zinc-400 hover:text-zinc-200 transition-colors"
                     >
                         {expanded ? 'Hide suggestion' : 'Show suggestion'}
                     </Button>

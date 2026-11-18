@@ -295,8 +295,10 @@ export function DailyAuditLedger({
                     </div>
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         onClick={onClose}
-                        className="text-voxel-ink hover:text-voxel-trough text-sm font-bold px-3 py-1 bg-voxel-trough border border-voxel-bevel-hi rounded-none voxel-btn transition cursor-pointer"
                     >
                         Close
                     </Button>

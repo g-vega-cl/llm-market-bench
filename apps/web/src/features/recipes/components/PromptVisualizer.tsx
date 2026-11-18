@@ -17,10 +17,10 @@ export function PromptVisualizer({
     const promptText = buildStagePromptPreview(stage, hydratedMap);
 
     return (
-        <div className="flex flex-col gap-2 border border-border bg-voxel-surface p-4 rounded-none">
+        <div className="flex flex-col gap-2 border border-voxel-bevel-hi bg-voxel-surface p-4 rounded-none">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-foreground">Prompt Visualizer</span>
+                    <span className="text-sm font-bold text-voxel-ink">Prompt Visualizer</span>
                     <Badge variant="soft" size="sm">
                         {previewState.status === 'hydrated'
                             ? 'Live DB Hydrated'
@@ -30,6 +30,7 @@ export function PromptVisualizer({
                 <Button
                     size="sm"
                     variant="outline"
+                    colorScheme="neutral"
                     onClick={onPreviewLiveData}
                     disabled={previewState.status === 'loading'}
                 >
@@ -43,7 +44,7 @@ export function PromptVisualizer({
                 </div>
             )}
 
-            <pre className="voxel-trough border border-border bg-voxel-canvas p-3 text-xs font-mono font-normal text-foreground whitespace-pre-wrap break-words rounded-none">
+            <pre className="voxel-trough border border-voxel-bevel-hi bg-voxel-canvas p-3 text-xs font-mono font-normal text-voxel-ink whitespace-pre-wrap break-words rounded-none">
                 {promptText}
             </pre>
         </div>

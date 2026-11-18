@@ -152,8 +152,9 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                                         </span>
                                     </div>
                                     <Badge
-                                        variant="solid"
-                                        className="bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase"
+                                        variant="soft"
+                                        colorScheme="warning"
+                                        className="uppercase"
                                     >
                                         Frozen / System Managed
                                     </Badge>
@@ -180,8 +181,9 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                                         </span>
                                     </div>
                                     <Badge
-                                        variant="solid"
-                                        className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase"
+                                        variant="soft"
+                                        colorScheme="success"
+                                        className="uppercase"
                                     >
                                         Mutable / Evolved by Autoresearch
                                     </Badge>
@@ -208,8 +210,9 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                                         </span>
                                     </div>
                                     <Badge
-                                        variant="solid"
-                                        className="bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase"
+                                        variant="soft"
+                                        colorScheme="warning"
+                                        className="uppercase"
                                     >
                                         Frozen / System Managed
                                     </Badge>

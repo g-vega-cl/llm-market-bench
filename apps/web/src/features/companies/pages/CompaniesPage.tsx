@@ -71,12 +71,11 @@ export function CompaniesPage({ initialCompanies }: CompaniesPageProps) {
                             <Button
                                 key={filter}
                                 type="button"
+                                size="sm"
+                                variant={verdictFilter === filter ? 'solid' : 'outline'}
+                                colorScheme={verdictFilter === filter ? 'accent' : 'neutral'}
                                 onClick={() => setVerdictFilter(filter)}
-                                className={`px-3 py-1.5 text-sm font-bold uppercase transition-colors rounded-none ${
-                                    verdictFilter === filter
-                                        ? 'bg-electric-blue-500/20 text-electric-blue-400 border-2 border-electric-blue-500'
-                                        : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-200'
-                                }`}
+                                className="uppercase"
                             >
                                 {filter}
                             </Button>
@@ -150,7 +149,7 @@ export function CompaniesPage({ initialCompanies }: CompaniesPageProps) {
                                         </div>
 
                                         {/* Bottom Meta Row */}
-                                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/80 pt-3 text-sm font-normal text-zinc-500">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-voxel-bevel-hi pt-3 text-sm font-normal text-voxel-muted">
                                             <span>
                                                 {c.spot_price_at_report !== null
                                                     ? `$${c.spot_price_at_report.toFixed(2)}`

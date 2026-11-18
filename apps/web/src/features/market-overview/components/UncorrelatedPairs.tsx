@@ -66,10 +66,10 @@ export function UncorrelatedPairs({
     }, [correlationData, maxCorrelation, minReturn, method, sortBy]);
 
     const getCorrelationColor = (corr: number | null): string => {
-        if (corr === null) return 'text-zinc-400';
-        if (Math.abs(corr) < 0.1) return 'text-blue-500 font-bold';
-        if (Math.abs(corr) < 0.3) return 'text-blue-400';
-        return 'text-zinc-600 text-zinc-400';
+        if (corr === null) return 'text-voxel-muted';
+        if (Math.abs(corr) < 0.1) return 'text-info font-bold';
+        if (Math.abs(corr) < 0.3) return 'text-info';
+        return 'text-voxel-muted';
     };
 
     const getReturnColor = (ret: number | null): string => {
@@ -89,12 +89,12 @@ export function UncorrelatedPairs({
                 padding="none"
                 className="overflow-hidden rounded-none shadow-sm"
             >
-                <div className="p-6 border-b border-zinc-200 border-zinc-800">
+                <div className="p-6 border-b border-voxel-bevel-hi">
                     <div className="flex flex-wrap items-center gap-6">
                         <div className="flex items-center gap-3">
                             <label
                                 htmlFor="max-corr-slider"
-                                className="text-sm font-bold uppercase tracking-wider text-zinc-500"
+                                className="text-sm font-bold uppercase tracking-wider text-voxel-muted"
                             >
                                 Max Correlation:
                             </label>
@@ -116,7 +116,7 @@ export function UncorrelatedPairs({
                         <div className="flex items-center gap-3">
                             <label
                                 htmlFor="min-return-slider"
-                                className="text-sm font-bold uppercase tracking-wider text-zinc-500"
+                                className="text-sm font-bold uppercase tracking-wider text-voxel-muted"
                             >
                                 Min {timeframe.toUpperCase()} Return:
                             </label>
@@ -134,12 +134,12 @@ export function UncorrelatedPairs({
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                            <span className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                                 Method:
                             </span>
                             <Button
                                 size="sm"
-                                variant={method === 'pearson' ? 'solid' : 'solid'}
+                                variant={method === 'pearson' ? 'solid' : 'outline'}
                                 colorScheme={method === 'pearson' ? 'accent' : 'neutral'}
                                 onClick={() => setMethod('pearson')}
                             >
@@ -147,7 +147,7 @@ export function UncorrelatedPairs({
                             </Button>
                             <Button
                                 size="sm"
-                                variant={method === 'spearman' ? 'solid' : 'solid'}
+                                variant={method === 'spearman' ? 'solid' : 'outline'}
                                 colorScheme={method === 'spearman' ? 'accent' : 'neutral'}
                                 onClick={() => setMethod('spearman')}
                             >
@@ -156,12 +156,12 @@ export function UncorrelatedPairs({
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                            <span className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                                 Sort by:
                             </span>
                             <Button
                                 size="sm"
-                                variant={sortBy === 'correlation' ? 'solid' : 'solid'}
+                                variant={sortBy === 'correlation' ? 'solid' : 'outline'}
                                 colorScheme={sortBy === 'correlation' ? 'accent' : 'neutral'}
                                 onClick={() => setSortBy('correlation')}
                             >
@@ -169,7 +169,7 @@ export function UncorrelatedPairs({
                             </Button>
                             <Button
                                 size="sm"
-                                variant={sortBy === 'return' ? 'solid' : 'solid'}
+                                variant={sortBy === 'return' ? 'solid' : 'outline'}
                                 colorScheme={sortBy === 'return' ? 'accent' : 'neutral'}
                                 onClick={() => setSortBy('return')}
                             >
@@ -181,10 +181,10 @@ export function UncorrelatedPairs({
 
                 {filteredPairs.length === 0 ? (
                     <div className="p-12 text-center">
-                        <p className="text-sm font-bold text-zinc-500">
+                        <p className="text-sm font-bold text-voxel-muted">
                             No pairs match the current filters.
                         </p>
-                        <p className="text-xs font-normal text-zinc-400 mt-2">
+                        <p className="text-xs font-normal text-voxel-muted mt-2">
                             Try increasing the max correlation threshold.
                         </p>
                     </div>
@@ -205,16 +205,16 @@ export function UncorrelatedPairs({
                             {filteredPairs.slice(0, 50).map((pair, idx) => (
                                 <TableRow
                                     key={`${pair.ticker_a}-${pair.ticker_b}`}
-                                    className={idx === 0 ? 'bg-blue-50 bg-blue-900/10' : ''}
+                                    className={idx === 0 ? 'bg-blue-950/20' : ''}
                                 >
                                     <TableCell className="whitespace-nowrap">
                                         <div className="flex flex-col gap-1">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-mono font-bold text-zinc-800 text-zinc-100">
+                                                <span className="font-mono font-bold text-voxel-ink">
                                                     {pair.ticker_a}
                                                 </span>
-                                                <span className="text-zinc-400">/</span>
-                                                <span className="font-mono font-bold text-zinc-800 text-zinc-100">
+                                                <span className="text-voxel-muted">/</span>
+                                                <span className="font-mono font-bold text-voxel-ink">
                                                     {pair.ticker_b}
                                                 </span>
                                                 {idx === 0 && (
@@ -227,7 +227,7 @@ export function UncorrelatedPairs({
                                                     </Badge>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs font-normal text-zinc-500 text-zinc-400 max-w-[200px] sm:max-w-[300px] truncate">
+                                            <div className="flex items-center gap-2 text-xs font-normal text-voxel-muted max-w-[200px] sm:max-w-[300px] truncate">
                                                 <span className="truncate">
                                                     {etfDescriptions[pair.ticker_a] ||
                                                         pair.ticker_a}
@@ -292,15 +292,15 @@ export function UncorrelatedPairs({
                 )}
 
                 {filteredPairs.length > 50 && (
-                    <div className="p-4 border-t border-zinc-200 border-zinc-800 text-center text-xs font-normal text-zinc-500">
+                    <div className="p-4 border-t border-voxel-bevel-hi text-center text-xs font-normal text-voxel-muted">
                         Showing top 50 of {filteredPairs.length} pairs
                     </div>
                 )}
             </Card>
 
-            <div className="p-4 bg-zinc-100 bg-zinc-800/50 rounded-none flex flex-col gap-2">
-                <h3 className="text-sm font-bold text-zinc-700 text-zinc-300">💡 Strategy Note</h3>
-                <p className="text-xs font-normal text-zinc-600 text-zinc-400">
+            <div className="p-4 bg-voxel-trough border border-voxel-bevel-hi rounded-none flex flex-col gap-2">
+                <h3 className="text-sm font-bold text-voxel-ink">💡 Strategy Note</h3>
+                <p className="text-xs font-normal text-voxel-muted">
                     The most uncorrelated pair with positive returns is highlighted in blue. This
                     combination of assets would have provided diversification benefits during the{' '}
                     {displayWindowName} window while still generating positive returns. The XLK/XLE

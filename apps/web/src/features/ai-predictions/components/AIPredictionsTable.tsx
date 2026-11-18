@@ -200,7 +200,7 @@ function PerformanceValuesCell({ pred, viewMode }: { pred: SectorPrediction; vie
 
 function AlphaValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode: ViewMode }) {
     if (pred.status === 'pending') {
-        return <span className="text-xs text-slate-500 italic">--</span>;
+        return <span className="text-xs text-voxel-muted italic">--</span>;
     }
 
     const secAlpha = getSectorAlpha(pred);
@@ -404,18 +404,18 @@ function AIPredictionTableRow({
                             {pred.sector_percentile_score.toFixed(1)}
                         </Badge>
                     ) : (
-                        <span className="text-xs text-slate-500">--</span>
+                        <span className="text-xs text-voxel-muted">--</span>
                     )}
                 </TableCell>
 
                 {/* Brier Score */}
                 <TableCell className="py-3 text-center whitespace-nowrap">
                     {pred.brier_score != null ? (
-                        <span className="text-xs font-mono text-slate-300">
+                        <span className="text-xs font-mono text-voxel-ink">
                             {pred.brier_score.toFixed(4)}
                         </span>
                     ) : (
-                        <span className="text-xs text-slate-500">--</span>
+                        <span className="text-xs text-voxel-muted">--</span>
                     )}
                 </TableCell>
             </TableRow>
@@ -520,13 +520,16 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                             placeholder="Search tickers, models, reasoning..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-none text-voxel-trough placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors shadow-sm font-normal"
+                            className="w-full px-3 py-1.5 text-xs bg-voxel-trough border border-voxel-bevel-hi rounded-none text-voxel-ink placeholder:text-voxel-muted focus:outline-none focus:border-accent transition-colors shadow-sm font-normal"
                         />
                         {searchQuery && (
                             <Button
                                 type="button"
+                                variant="outline"
+                                colorScheme="neutral"
+                                size="sm"
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-2 top-1.5 text-xs text-slate-400 hover:text-voxel-trough"
+                                className="absolute right-1 top-1 px-1.5 py-0.5 text-xs"
                             >
                                 ✕
                             </Button>
@@ -590,37 +593,31 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                 </div>
 
                 {/* Target View Switcher */}
-                <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi self-end lg:self-auto">
+                <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi gap-1 self-end lg:self-auto">
                     <Button
                         type="button"
+                        size="sm"
+                        variant={viewMode === 'dual' ? 'solid' : 'outline'}
+                        colorScheme={viewMode === 'dual' ? 'accent' : 'neutral'}
                         onClick={() => setViewMode('dual')}
-                        className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
-                            viewMode === 'dual'
-                                ? 'bg-accent text-accent-ink shadow-sm'
-                                : 'text-voxel-muted hover:text-voxel-ink'
-                        }`}
                     >
                         Dual Target
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={viewMode === 'sector' ? 'solid' : 'outline'}
+                        colorScheme={viewMode === 'sector' ? 'accent' : 'neutral'}
                         onClick={() => setViewMode('sector')}
-                        className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
-                            viewMode === 'sector'
-                                ? 'bg-accent text-accent-ink shadow-sm'
-                                : 'text-voxel-muted hover:text-voxel-ink'
-                        }`}
                     >
                         Single Sector
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={viewMode === 'pair' ? 'solid' : 'outline'}
+                        colorScheme={viewMode === 'pair' ? 'accent' : 'neutral'}
                         onClick={() => setViewMode('pair')}
-                        className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
-                            viewMode === 'pair'
-                                ? 'bg-accent text-accent-ink shadow-sm'
-                                : 'text-voxel-muted hover:text-voxel-ink'
-                        }`}
                     >
                         Sector Pair
                     </Button>

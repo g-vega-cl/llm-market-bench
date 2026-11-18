@@ -122,25 +122,27 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                                     {force.thesis}
                                 </p>
 
-                                <div className="text-xs font-normal text-zinc-500 bg-zinc-950/50 p-2.5 rounded-none border border-zinc-800/60 flex flex-col gap-1.5">
+                                <div className="text-xs font-normal text-voxel-muted bg-voxel-trough p-2.5 rounded-none border border-voxel-bevel-hi flex flex-col gap-1.5">
                                     <div>
-                                        <span className="font-bold text-zinc-400">Milestone: </span>
+                                        <span className="font-bold text-voxel-ink">
+                                            Milestone:{' '}
+                                        </span>
                                         {force.catalyst_event}
                                     </div>
                                     <div>
-                                        <span className="font-bold text-rose-400">
+                                        <span className="font-bold text-danger">
                                             Invalidation Trigger:{' '}
                                         </span>
-                                        <span className="text-zinc-400">
+                                        <span className="text-voxel-muted">
                                             {force.invalidation_triggers}
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+                            <div className="pt-3 border-t border-voxel-bevel-hi flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-zinc-500">Tickers:</span>
+                                    <span className="text-voxel-muted">Tickers:</span>
                                     {Array.isArray(force.tickers) &&
                                         force.tickers.map((t) => (
                                             <span

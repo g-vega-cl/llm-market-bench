@@ -5,7 +5,7 @@ import { agentConfig, getAgentInfo } from './agent-info';
 describe('getAgentInfo', () => {
     const unknownAgent = {
         name: 'Unknown',
-        color: 'text-zinc-500',
+        color: 'text-voxel-muted',
         bgColor: 'bg-zinc-500',
         emoji: '⚪',
     };

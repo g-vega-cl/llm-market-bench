@@ -358,7 +358,7 @@ export function MemoriesPage({
     return (
         <div className="min-h-screen">
             {/* Header */}
-            <div className="border-b border-zinc-200 border-white/10">
+            <div className="border-b border-voxel-bevel-hi">
                 <PageLayout maxWidth="md" className="py-8 flex flex-col gap-2">
                     <SectionHeading>AI Memories</SectionHeading>
                     <p className="text-voxel-muted text-sm font-normal m-0">
@@ -378,9 +378,9 @@ export function MemoriesPage({
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search memories (e.g., energy deal Trump, S&P 500 drop)..."
-                            className="w-full bg-zinc-55 bg-zinc-900 border border-zinc-200 border-white/10 rounded-none px-4 py-2.5 pl-10 pr-10 text-sm text-zinc-905 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-400 focus:ring-white/20 transition-all font-sans"
+                            className="w-full bg-voxel-trough border border-voxel-bevel-hi rounded-none px-4 py-2.5 pl-10 pr-10 text-sm text-voxel-ink placeholder-voxel-muted focus:outline-none focus:ring-1 focus:ring-accent transition-all font-sans"
                         />
-                        <span className="absolute left-3.5 top-3.5 text-zinc-400 text-zinc-500">
+                        <span className="absolute left-3.5 top-3.5 text-voxel-muted">
                             <svg
                                 className="w-4 h-4"
                                 fill="none"
@@ -399,8 +399,11 @@ export function MemoriesPage({
                         {searchQuery && (
                             <Button
                                 type="button"
+                                variant="outline"
+                                colorScheme="neutral"
+                                size="sm"
                                 onClick={handleSearchClear}
-                                className="absolute right-3.5 top-3.5 text-zinc-400 text-zinc-500 hover:text-zinc-600 hover:text-zinc-300"
+                                className="absolute right-2 top-1.5"
                             >
                                 <svg
                                     className="w-4 h-4"
@@ -432,20 +435,20 @@ export function MemoriesPage({
                 </form>
 
                 {activeSearchQuery && (
-                    <div className="mb-6 flex items-center justify-between text-sm text-zinc-600 text-zinc-400 bg-zinc-50 bg-zinc-900/40 border border-zinc-200 border-white/5 rounded-none px-4 py-2.5">
+                    <div className="mb-6 flex items-center justify-between text-sm text-voxel-muted bg-voxel-trough border border-voxel-bevel-hi rounded-none px-4 py-2.5">
                         <div>
                             Showing matches for{' '}
-                            <span className="font-bold text-zinc-900 text-zinc-250">
-                                "{activeSearchQuery}"
-                            </span>
-                            <span className="ml-1 text-xs text-zinc-400">
+                            <span className="font-bold text-voxel-ink">"{activeSearchQuery}"</span>
+                            <span className="ml-1 text-xs text-voxel-muted">
                                 ({filteredMemories.length} results)
                             </span>
                         </div>
                         <Button
                             type="button"
+                            variant="outline"
+                            colorScheme="neutral"
+                            size="sm"
                             onClick={handleSearchClear}
-                            className="text-sm text-blue-500 hover:text-blue-600 hover:text-blue-400 font-bold cursor-pointer"
                         >
                             Reset Search
                         </Button>
@@ -482,7 +485,7 @@ export function MemoriesPage({
 
                 {/* No More Data Indicator */}
                 {!canLoadMore && displayedMemories.length > 0 && (
-                    <div className="mt-8 text-center text-sm text-zinc-500">End of memories</div>
+                    <div className="mt-8 text-center text-sm text-voxel-muted">End of memories</div>
                 )}
             </PageLayout>
         </div>

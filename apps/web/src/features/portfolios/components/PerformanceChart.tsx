@@ -445,23 +445,23 @@ export function PerformanceChart({
     const displayData = tooltipData || getLatestWithBenchmark();
 
     return (
-        <div className="w-full bg-white border border-zinc-200 rounded-none p-4 shadow-sm overflow-hidden flex flex-col gap-4">
+        <div className="w-full bg-voxel-surface border border-voxel-bevel-hi rounded-none p-4 shadow-sm overflow-hidden flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-                <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                     {showPercentage && hasBenchmark ? 'Performance vs Benchmark' : 'Equity Curve'}
                 </h3>
                 <div className="flex flex-wrap items-center gap-2 min-w-0">
                     {pendingBenchmark ? (
-                        <span className="text-xs font-normal text-zinc-400 whitespace-nowrap">
+                        <span className="text-xs font-normal text-voxel-muted whitespace-nowrap">
                             Loading {pendingBenchmark}...
                         </span>
                     ) : benchmarkError ? (
-                        <span className="text-xs font-normal text-red-500 whitespace-nowrap">
+                        <span className="text-xs font-normal text-danger whitespace-nowrap">
                             {benchmarkError}
                         </span>
                     ) : (
                         hasBenchmark && (
-                            <span className="text-xs font-normal text-zinc-400 whitespace-nowrap">
+                            <span className="text-xs font-normal text-voxel-muted whitespace-nowrap">
                                 Normalized to percentage returns
                             </span>
                         )
@@ -469,10 +469,10 @@ export function PerformanceChart({
                 </div>
             </div>
             {displayData && (
-                <div className="p-3 bg-zinc-50 rounded-none border border-zinc-100 flex flex-col gap-1">
-                    <div className="text-xs font-normal text-zinc-500">{displayData.date}</div>
+                <div className="p-3 bg-voxel-trough rounded-none border border-voxel-bevel-hi flex flex-col gap-1">
+                    <div className="text-xs font-normal text-voxel-muted">{displayData.date}</div>
                     <div className="flex items-baseline gap-3">
-                        <span className="text-sm font-bold font-mono text-sky-600">
+                        <span className="text-sm font-bold font-mono text-info">
                             {showPercentage && hasBenchmark
                                 ? `${displayData.equity > 0 ? '+' : ''}${displayData.equity.toFixed(2)}%`
                                 : `$${displayData.equity.toLocaleString('en-US', {
@@ -482,8 +482,8 @@ export function PerformanceChart({
                         </span>
                     </div>
                     {displayData.benchmarkValue !== undefined && (
-                        <div className="pt-2 border-t border-zinc-200">
-                            <div className="text-sm font-bold text-amber-600">
+                        <div className="pt-2 border-t border-voxel-bevel-hi">
+                            <div className="text-sm font-bold text-accent">
                                 {
                                     BENCHMARK_OPTIONS.find((b) => b.ticker === selectedBenchmark)
                                         ?.label
@@ -495,7 +495,7 @@ export function PerformanceChart({
                             </div>
                             {displayData.outperformance !== undefined && (
                                 <div
-                                    className={`text-xs mt-1 ${displayData.outperformance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+                                    className={`text-xs mt-1 ${displayData.outperformance >= 0 ? 'text-success' : 'text-danger'}`}
                                 >
                                     {displayData.outperformance >= 0 ? '+' : ''}
                                     {displayData.outperformance.toFixed(2)}% outperformance

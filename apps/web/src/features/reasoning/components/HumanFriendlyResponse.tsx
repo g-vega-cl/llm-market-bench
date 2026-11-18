@@ -45,9 +45,9 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
                     <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap m-0">
                         Output Schema
                     </h4>
-                    <div className="h-px flex-1 bg-gradient-to-r from-gray-200 from-gray-800 to-transparent min-w-[20px]" />
+                    <div className="h-px flex-1 bg-gradient-to-r from-voxel-bevel-hi to-transparent min-w-[20px]" />
                 </div>
-                <div className="flex gap-1 p-1 bg-zinc-100 bg-zinc-900 rounded-none border border-zinc-200 border-zinc-800 shadow-inner overflow-x-auto">
+                <div className="flex gap-1 p-1 bg-voxel-trough rounded-none border border-voxel-bevel-hi shadow-inner overflow-x-auto">
                     {displayedKeys.map((key) => (
                         <Button
                             key={key}
@@ -99,7 +99,7 @@ function ResponseDataView({ value, label }: { value: unknown; label: string }) {
                     <DataCard key={i} item={item} />
                 ))}
                 {value.length === 0 && (
-                    <p className="text-gray-500 italic text-xs font-normal m-0">Empty list.</p>
+                    <p className="text-voxel-muted italic text-xs font-normal m-0">Empty list.</p>
                 )}
             </div>
         );
@@ -113,18 +113,18 @@ function ResponseDataView({ value, label }: { value: unknown; label: string }) {
 
     return (
         <div
-            className={`p-4 rounded-none border bg-white bg-gray-900/40 border-gray-200 border-gray-800 shadow-sm flex flex-col gap-2 ${
+            className={`p-4 rounded-none border bg-voxel-surface border-voxel-bevel-hi shadow-sm flex flex-col gap-2 ${
                 isLongText ? 'col-span-full' : ''
             }`}
         >
-            <h5 className="text-sm font-bold uppercase tracking-wider text-gray-400 m-0">
+            <h5 className="text-sm font-bold uppercase tracking-wider text-voxel-muted m-0">
                 {label.replace(/_/g, ' ')}
             </h5>
             <div
                 className={`text-xs ${
                     isLongText
-                        ? 'leading-relaxed text-gray-700 text-gray-300 font-normal'
-                        : 'font-bold text-gray-900 text-voxel-trough'
+                        ? 'leading-relaxed text-voxel-ink font-normal'
+                        : 'font-bold text-voxel-ink'
                 }`}
             >
                 {String(value)}

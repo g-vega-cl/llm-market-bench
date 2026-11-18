@@ -72,15 +72,15 @@ export function FrontierThemeCards({ themes, positions }: FrontierThemeCardsProp
                                     {theme.thesis}
                                 </p>
 
-                                <div className="text-xs font-normal text-zinc-500 bg-zinc-950/50 p-2.5 rounded-none border border-zinc-800/60">
-                                    <span className="font-bold text-zinc-400">Catalysts: </span>
+                                <div className="text-xs font-normal text-voxel-muted bg-voxel-trough p-2.5 rounded-none border border-voxel-bevel-hi">
+                                    <span className="font-bold text-voxel-ink">Catalysts: </span>
                                     {theme.catalysts}
                                 </div>
                             </div>
 
-                            <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+                            <div className="pt-3 border-t border-voxel-bevel-hi flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-zinc-500">Pure Plays:</span>
+                                    <span className="text-voxel-muted">Pure Plays:</span>
                                     {Array.isArray(theme.tickers) &&
                                         theme.tickers.map((t) => (
                                             <span

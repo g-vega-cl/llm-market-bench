@@ -132,7 +132,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                     <TableHead align="right">Price</TableHead>
                     <TableHead
                         align="right"
-                        className="cursor-pointer hover:bg-zinc-100 hover:bg-zinc-800 transition-colors select-none"
+                        className="cursor-pointer hover:bg-voxel-elevated transition-colors select-none"
                         onClick={() => handleSort('invested')}
                         title="Click to sort by invested amount"
                     >
@@ -140,7 +140,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                     </TableHead>
                     <TableHead
                         align="right"
-                        className="cursor-pointer hover:bg-zinc-100 hover:bg-zinc-800 transition-colors select-none"
+                        className="cursor-pointer hover:bg-voxel-elevated transition-colors select-none"
                         onClick={() => handleSort('portfolio_pct')}
                         title="Click to sort by portfolio percentage"
                     >
@@ -148,7 +148,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                     </TableHead>
                     <TableHead
                         align="right"
-                        className="cursor-pointer hover:bg-zinc-100 hover:bg-zinc-800 transition-colors select-none"
+                        className="cursor-pointer hover:bg-voxel-elevated transition-colors select-none"
                         onClick={() => handleSort('pnl_usd')}
                         title="Click to sort by profit/loss in USD"
                     >
@@ -156,7 +156,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                     </TableHead>
                     <TableHead
                         align="right"
-                        className="cursor-pointer hover:bg-zinc-100 hover:bg-zinc-800 transition-colors select-none"
+                        className="cursor-pointer hover:bg-voxel-elevated transition-colors select-none"
                         onClick={() => handleSort('pnl_pct')}
                         title="Click to sort by profit/loss percentage"
                     >
@@ -174,7 +174,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             }
                             data-testid={`position-row-${pos.ticker}`}
                         >
-                            <TableCell className="font-bold text-zinc-900 text-zinc-100">
+                            <TableCell className="font-bold text-voxel-ink">
                                 <div className="flex items-center gap-2">
                                     <span
                                         className={`transition-transform duration-200 ${expandedTicker === pos.ticker ? 'rotate-90' : ''}`}
@@ -213,17 +213,17 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                         )}
                                 </div>
                             </TableCell>
-                            <TableCell align="right" className="text-zinc-700 text-zinc-300">
+                            <TableCell align="right" className="text-voxel-ink">
                                 {pos.quantity}
                             </TableCell>
-                            <TableCell align="right" className="text-zinc-700 text-zinc-300">
+                            <TableCell align="right" className="text-voxel-ink">
                                 $
                                 {Number(pos.average_cost_basis).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}
                             </TableCell>
-                            <TableCell align="right" className="text-zinc-700 text-zinc-300">
+                            <TableCell align="right" className="text-voxel-ink">
                                 $
                                 {Number(pos.current_price || pos.average_cost_basis).toLocaleString(
                                     'en-US',
@@ -233,7 +233,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                     },
                                 )}
                             </TableCell>
-                            <TableCell align="right" className="text-zinc-700 text-zinc-300">
+                            <TableCell align="right" className="text-voxel-ink">
                                 $
                                 {Math.abs(
                                     (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0),
@@ -242,7 +242,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                     maximumFractionDigits: 2,
                                 })}
                             </TableCell>
-                            <TableCell align="right" className="text-zinc-700 text-zinc-300">
+                            <TableCell align="right" className="text-voxel-ink">
                                 {totalInvestedCash
                                     ? `${(
                                           (Math.abs(
@@ -255,7 +255,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             </TableCell>
                             <TableCell
                                 align="right"
-                                className={`font-bold ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-emerald-600 text-emerald-500' : 'text-rose-600 text-rose-500'}`}
+                                className={`font-bold ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-success' : 'text-danger'}`}
                             >
                                 {Number(pos.unrealized_pnl_usd) >= 0 ? '+' : ''}$
                                 {Number(pos.unrealized_pnl_usd).toLocaleString('en-US', {
@@ -265,7 +265,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             </TableCell>
                             <TableCell
                                 align="right"
-                                className={`font-bold ${Number(pos.unrealized_pnl_pct) >= 0 ? 'text-emerald-600 text-emerald-500' : 'text-rose-600 text-rose-500'}`}
+                                className={`font-bold ${Number(pos.unrealized_pnl_pct) >= 0 ? 'text-success' : 'text-danger'}`}
                             >
                                 {Number(pos.unrealized_pnl_pct) >= 0 ? '+' : ''}
                                 {Number(pos.unrealized_pnl_pct).toFixed(2)}%
@@ -274,7 +274,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                         {expandedTicker === pos.ticker && (
                             <TableRow
                                 isHoverable={false}
-                                className="bg-zinc-50/30 bg-zinc-950/30"
+                                className="bg-voxel-trough"
                                 data-testid={`reasoning-row-${pos.ticker}`}
                             >
                                 <TableCell colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
@@ -293,7 +293,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                                         variant="soft"
                                                         colorScheme="neutral"
                                                         size="sm"
-                                                        className="font-mono text-zinc-200"
+                                                        className="font-mono"
                                                     >
                                                         {formatEasternDateTimeWithYear(
                                                             tickerToTradeMap.get(
@@ -310,12 +310,12 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                                     </Badge>
                                                 </div>
                                             )}
-                                        <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 text-zinc-100 uppercase tracking-tight">
+                                        <h4 className="flex items-center gap-2 text-sm font-bold text-voxel-ink uppercase tracking-tight">
                                             <span className="w-1.5 h-1.5 rounded-none bg-blue-500 animate-pulse" />
                                             Thinking Process
                                         </h4>
-                                        <div className="bg-white bg-zinc-950 border border-zinc-200 border-zinc-800 rounded-none p-4 sm:p-6 shadow-sm">
-                                            <p className="text-zinc-600 text-zinc-400 leading-relaxed whitespace-pre-wrap text-xs font-normal">
+                                        <div className="bg-voxel-surface border border-voxel-bevel-hi rounded-none p-4 sm:p-6 shadow-sm">
+                                            <p className="text-voxel-muted leading-relaxed whitespace-pre-wrap text-xs font-normal">
                                                 {pos.reasoning}
                                             </p>
                                         </div>
@@ -327,7 +327,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                 ))}
                 {(!positions || positions.length === 0) && (
                     <TableRow isHoverable={false}>
-                        <TableCell colSpan={8} className="py-12 text-center text-zinc-500">
+                        <TableCell colSpan={8} className="py-12 text-center text-voxel-muted">
                             No active positions in this portfolio.
                         </TableCell>
                     </TableRow>

@@ -33,10 +33,10 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="flex w-full max-w-lg flex-col gap-4 border border-border bg-voxel-surface p-6 rounded-none voxel-card">
-                <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex w-full max-w-lg flex-col gap-4 border border-voxel-bevel-hi bg-voxel-surface p-6 rounded-none voxel-card">
+                <div className="flex items-center justify-between border-b border-voxel-bevel-hi pb-3">
                     <div className="flex items-center gap-2">
-                        <span className="font-display text-sm font-bold text-foreground">
+                        <span className="font-display text-sm font-bold text-voxel-ink">
                             Early Supporter Pledge
                         </span>
                         <Badge variant="soft" size="sm">
@@ -45,8 +45,10 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
                     </div>
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         onClick={onClose}
-                        className="text-sm font-bold text-muted-foreground hover:text-foreground"
                     >
                         ✕
                     </Button>
@@ -54,10 +56,10 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
 
                 {isSubmitted ? (
                     <div className="flex flex-col items-center gap-3 py-6 text-center">
-                        <span className="font-display text-sm font-bold text-emerald-400">
+                        <span className="font-display text-sm font-bold text-success">
                             Pledge Received!
                         </span>
-                        <p className="text-xs font-normal text-muted-foreground">
+                        <p className="text-xs font-normal text-voxel-muted">
                             Thank you for backing independent AI strategy research. We have recorded
                             your interest and will notify you when dedicated GPU clusters open.
                         </p>
@@ -67,14 +69,14 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                        <div className="voxel-trough p-3 text-xs font-normal text-muted-foreground">
-                            <b className="text-foreground">100% Free Tier:</b> Strategy recipes and
+                        <div className="voxel-trough p-3 text-xs font-normal text-voxel-muted">
+                            <b className="text-voxel-ink">100% Free Tier:</b> Strategy recipes and
                             backtests currently run at no cost on our local GPU queue
                             (`auto-strata`). Paid compute tiers and dedicated high-frequency slots
                             are on our roadmap.
                         </div>
 
-                        <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+                        <label className="flex flex-col gap-1 text-xs font-normal text-voxel-muted">
                             <span>Your Email Address</span>
                             <input
                                 type="email"
@@ -82,16 +84,16 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="name@domain.com"
-                                className="border border-border bg-voxel-canvas p-2 text-sm font-bold text-foreground rounded-none focus:outline-none"
+                                className="border border-voxel-bevel-hi bg-voxel-canvas p-2 text-sm font-bold text-voxel-ink rounded-none focus:outline-none"
                             />
                         </label>
 
-                        <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+                        <label className="flex flex-col gap-1 text-xs font-normal text-voxel-muted">
                             <span>Intended Supporter Tier</span>
                             <select
                                 value={tier}
                                 onChange={(e) => setTier(e.target.value)}
-                                className="border border-border bg-voxel-canvas p-2 text-sm font-bold text-foreground rounded-none"
+                                className="border border-voxel-bevel-hi bg-voxel-canvas p-2 text-sm font-bold text-voxel-ink rounded-none"
                             >
                                 <option value="supporter">
                                     Pro Researcher ($19/mo - Priority GPU queue & 5-minute ticks)
@@ -104,18 +106,18 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
                             </select>
                         </label>
 
-                        <label className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+                        <label className="flex flex-col gap-1 text-xs font-normal text-voxel-muted">
                             <span>What strategies or data would you like to see?</span>
                             <textarea
                                 rows={3}
                                 value={feedback}
                                 onChange={(e) => setFeedback(e.target.value)}
                                 placeholder="e.g. Options flow block, Level 2 book pressure, Polymarket prediction markets..."
-                                className="border border-border bg-voxel-canvas p-2 text-xs font-normal text-foreground rounded-none"
+                                className="border border-voxel-bevel-hi bg-voxel-canvas p-2 text-xs font-normal text-voxel-ink rounded-none"
                             />
                         </label>
 
-                        <div className="flex justify-end gap-2 border-t border-border pt-3">
+                        <div className="flex justify-end gap-2 border-t border-voxel-bevel-hi pt-3">
                             <Button variant="outline" size="sm" type="button" onClick={onClose}>
                                 Cancel
                             </Button>

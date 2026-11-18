@@ -33,7 +33,7 @@ export function SubHeading({
             >
                 {children}
             </h2>
-            {withDivider && <div className="flex-1 border-t border-zinc-200 border-zinc-800" />}
+            {withDivider && <div className="flex-1 border-t border-voxel-bevel-hi" />}
             {rightElement}
         </div>
     );

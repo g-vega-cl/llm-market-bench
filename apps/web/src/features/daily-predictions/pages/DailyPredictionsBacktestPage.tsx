@@ -235,12 +235,10 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                         <Button
                                             type="button"
                                             key={exp.id}
+                                            variant="outline"
+                                            colorScheme={isSelected ? 'accent' : 'neutral'}
                                             onClick={() => setSelectedExpId(exp.id)}
-                                            className={`w-full text-left cursor-pointer min-w-0 p-3 rounded-none transition-colors border-2 ${
-                                                isSelected
-                                                    ? 'voxel-card bg-voxel-elevated border-accent text-accent'
-                                                    : 'voxel-trough border-voxel-bevel-hi text-voxel-ink hover:bg-voxel-surface'
-                                            }`}
+                                            className="w-full text-left min-w-0 p-3 flex flex-col items-start gap-1"
                                         >
                                             <div className="text-sm font-bold break-all">
                                                 {exp.variant_tag}

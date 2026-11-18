@@ -403,8 +403,11 @@ function ScoringGuideCollapsible({
         <div className="border-t border-voxel-bevel-hi pt-3">
             <Button
                 type="button"
+                variant="outline"
+                colorScheme="neutral"
+                size="sm"
                 onClick={onToggle}
-                className="voxel-btn bg-voxel-surface text-voxel-ink hover:text-accent px-3 py-1 text-sm font-bold inline-flex items-center gap-1 cursor-pointer"
+                className="voxel-btn inline-flex items-center gap-1"
             >
                 <span>{showGuide ? '▲ Hide' : '▼ View'} Scoring Formula & Weights Guide</span>
             </Button>

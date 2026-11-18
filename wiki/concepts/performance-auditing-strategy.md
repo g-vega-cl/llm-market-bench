@@ -125,7 +125,7 @@ Never call `new Date()`, `Date.now()`, or dynamic relative time calculations wit
 #### Rule 3: Explicitly Normalize ICU Whitespace Characters
 Different Javascript environments implement ICU standards differently when formatting dates and times with `.toLocaleTimeString()` or `.toLocaleDateString()` under the `en-US` locale:
 *   **Node.js (Server)**: Formats times using a standard space character (`U+0020`, char code `32`) before `AM`/`PM` (e.g., `10:45 AM`).
-*   **Modern Browser (Client)**: Formats times using a **Narrow Non-Breaking Space** (`U+202F`, char code `8239`) before `AM`/`PM` (e.g., `10:45 AM`).
+*   **Modern Browser (Client)**: Formats times using a **Narrow Non-Breaking Space** (`U+202F`, char code `8239`) before `AM`/`PM` (e.g., `10:45 AM`).
 To prevent this hidden whitespace mismatch from triggering instant text node hydration failures, formatters must explicitly normalize all whitespace characters using our utility: `str.replace(/\s+/g, ' ')`. Any component rendering dates/times dynamically on the client side must wrap the output in `normalizeWhitespace` (imported from `~/utils/date`) to scrub narrow non-breaking spaces and ensure absolute server-client consistency.
 
 #### Rule 4: Enforce Explicit Timezones for Formatter Output
@@ -192,7 +192,7 @@ Passing explicit `--urls` scopes the audit to the 26 core application routes and
 
 ### Core Web Vitals & Accessibility Guardrails
 - **Semantic Main Landmark**: `apps/web/src/routes/__root.tsx` wraps page outlets in `<main id="main-content">` so every route satisfies `[landmark-one-main]`.
-- **High-Contrast Accent Ink**: `apps/web/src/styles/app.css` defines `--color-accent-ink: #101713;` under `@theme inline` so `bg-accent text-accent-ink` buttons achieve an 11.2:1 AAA contrast ratio.
+- **High-Contrast Solid Accent Fill**: solid Cheddar Gold surfaces (`bg-accent`) pair with `text-voxel-trough` (`#101713`) rather than white, achieving an 11.2:1 AAA contrast ratio. `apps/web/src/test/contrast-audit.test.tsx` enforces this site-wide: it fails the build on any unbacked `text-voxel-trough` / `text-accent-ink`, any dark `-500`..`-950` text shade, any legacy light background (`bg-white`, `bg-zinc-50/100/200`, …), any undefined shadcn/typo token, any duplicate stripped-`dark:` color class, and any `bg-*`/`text-*` override passed to `Button` or `Badge` via `className` (see [[entities/design-system]]).
 - **Zero Layout Shift (CLS)**:
   - `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` renders a static comparison chart container with intrinsic padding (`py-48`) while client comparison queries resolve, preventing layout shifts on the portfolio cards below.
   - `apps/web/src/routes/memories/chain/$memoryId.tsx` loads the full event chain directly inside the SSR route loader, avoiding client-side timeline expansion shifts.
@@ -267,4 +267,4 @@ If a deployment is absolutely critical and blocked by a minor score variance or 
 - [[entities/web-app]]
 - [[sources/web-deployment-source]]
 - [[concepts/rendering-strategies]]
-
+- [[entities/design-system]]

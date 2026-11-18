@@ -301,9 +301,12 @@ export function SPYCandlestickChart({
                     </div>
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         aria-label="Close trade details"
                         onClick={() => setSelectedTrade(null)}
-                        className="voxel-btn text-xs px-2 py-0.5 text-voxel-muted hover:text-voxel-ink cursor-pointer"
+                        className="text-xs px-2 py-0.5 cursor-pointer"
                     >
                         ✕
                     </Button>

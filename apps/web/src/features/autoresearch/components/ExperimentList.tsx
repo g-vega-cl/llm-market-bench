@@ -75,7 +75,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                         <TableRow
                             key={exp.id}
                             onClick={() => onSelect(exp)}
-                            className={isSelected ? 'bg-zinc-100 bg-zinc-800' : 'cursor-pointer'}
+                            className={isSelected ? 'bg-voxel-elevated' : 'cursor-pointer'}
                         >
                             <TableCell className="font-mono font-normal">
                                 <div className="flex items-center gap-2">
@@ -131,7 +131,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                             >
                                 {score}
                             </TableCell>
-                            <TableCell className="text-zinc-500 text-sm">
+                            <TableCell className="text-voxel-muted text-sm">
                                 {formatStableDate(exp.week_start)} -{' '}
                                 {formatStableDate(exp.week_end)}
                             </TableCell>

@@ -11,7 +11,7 @@ export function ChatPage({ user, initialPrompt }: ChatPageProps) {
         <PageLayout>
             <HeroBackground gradient="ai">
                 <div className="text-center max-w-3xl mx-auto space-y-4">
-                    <h1 className="text-sm font-bold text-voxel-trough uppercase tracking-wider">
+                    <h1 className="text-sm font-bold text-voxel-ink uppercase tracking-wider">
                         Investment Chat Gateway
                     </h1>
                     <p className="text-xs font-normal text-zinc-200">

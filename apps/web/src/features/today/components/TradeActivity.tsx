@@ -176,10 +176,10 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                             <div
                                 key={idx}
                                 onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                                className={`group flex flex-col p-6 border rounded-none bg-white bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 ${
+                                className={`group flex flex-col p-6 border rounded-none bg-voxel-surface shadow-sm cursor-pointer transition-all duration-300 ${
                                     item.type === 'REJECTION'
-                                        ? 'border-rose-200 border-rose-900/50 hover:border-rose-500/50 hover:shadow-rose-500/10'
-                                        : 'border-zinc-200 border-zinc-800 hover:border-neon-green-500/50 hover:shadow-neon-green-500/10'
+                                        ? 'border-rose-900/50 hover:border-rose-500/50 hover:shadow-rose-500/10'
+                                        : 'border-voxel-bevel-hi hover:border-neon-green-500/50 hover:shadow-neon-green-500/10'
                                 } ${
                                     isExpanded
                                         ? item.type === 'REJECTION'
@@ -195,9 +195,9 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                         className={`w-12 h-12 rounded-none voxel-card flex items-center justify-center font-bold text-sm transition-all duration-300 ${
                                             item.type === 'TRADE'
                                                 ? item.signal === 'BUY'
-                                                    ? 'bg-success text-zinc-950'
+                                                    ? 'bg-success text-voxel-trough'
                                                     : 'bg-danger text-voxel-trough'
-                                                : 'bg-warning text-zinc-950'
+                                                : 'bg-warning text-voxel-trough'
                                         }`}
                                     >
                                         {item.type === 'TRADE' ? item.signal : 'REJ'}
@@ -289,8 +289,8 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             <p
                                                 className={`text-xs font-normal ${
                                                     item.type === 'REJECTION'
-                                                        ? 'text-rose-600 text-rose-400 font-bold'
-                                                        : 'text-zinc-500 text-zinc-400'
+                                                        ? 'text-danger font-bold'
+                                                        : 'text-voxel-muted'
                                                 }`}
                                             >
                                                 {item.type === 'TRADE'
@@ -382,8 +382,8 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                     })}
                 </div>
             ) : (
-                <div className="text-center py-12 bg-zinc-50 bg-zinc-900/50 rounded-none border border-dashed border-zinc-200 border-zinc-800">
-                    <p className="text-xs font-normal text-zinc-500 text-zinc-300">
+                <div className="text-center py-12 bg-voxel-trough rounded-none border border-dashed border-voxel-bevel-hi">
+                    <p className="text-xs font-normal text-voxel-muted">
                         No {filter === 'ALL' ? 'activity' : filter.toLowerCase()} found
                     </p>
                 </div>

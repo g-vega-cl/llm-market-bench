@@ -37,9 +37,9 @@ function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
 
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-voxel-trough">{item.ticker}</TableCell>
+            <TableCell className="font-bold text-voxel-ink">{item.ticker}</TableCell>
             <TableCell className="text-zinc-300">
-                <Badge variant="soft" className="text-xs border-zinc-700 text-zinc-300">
+                <Badge variant="soft" colorScheme="neutral" size="xs">
                     {item.sector}
                 </Badge>
             </TableCell>
@@ -66,22 +66,22 @@ function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
             </TableCell>
             <TableCell className="text-center">
                 {item.is_sloan_accrual_clean ? (
-                    <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs">
+                    <Badge variant="soft" colorScheme="success" size="xs">
                         Clean Cash
                     </Badge>
                 ) : (
-                    <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs">
+                    <Badge variant="soft" colorScheme="warning" size="xs">
                         High Accrual
                     </Badge>
                 )}
             </TableCell>
             <TableCell className="text-center">
                 {item.is_top_decile_sue ? (
-                    <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs">
+                    <Badge variant="soft" colorScheme="success" size="xs">
                         Top Decile
                     </Badge>
                 ) : (
-                    <span className="text-xs text-zinc-500">Standard</span>
+                    <span className="text-xs text-voxel-muted">Standard</span>
                 )}
             </TableCell>
         </TableRow>
@@ -91,15 +91,15 @@ function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
 function BellwetherTableRow({ b }: { b: SectorBellwetherSignal }) {
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-voxel-trough">{b.sector}</TableCell>
+            <TableCell className="font-bold text-voxel-ink">{b.sector}</TableCell>
             <TableCell className="font-mono text-zinc-200">{b.ticker}</TableCell>
             <TableCell className="text-zinc-300 text-xs">
                 {b.classification === 'EARLY_BELLWETHER' ? (
-                    <Badge className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs">
+                    <Badge variant="soft" colorScheme="info" size="xs">
                         Early Bellwether
                     </Badge>
                 ) : (
-                    <span className="text-zinc-500">Downstream Peer</span>
+                    <span className="text-voxel-muted">Downstream Peer</span>
                 )}
             </TableCell>
             <TableCell className="text-right font-mono text-zinc-400">
@@ -108,18 +108,22 @@ function BellwetherTableRow({ b }: { b: SectorBellwetherSignal }) {
             <TableCell className="text-zinc-400 text-xs">{b.report_date || 'Upcoming'}</TableCell>
             <TableCell className="text-center">
                 {b.is_reported ? (
-                    <Badge className="bg-emerald-500/10 text-emerald-400 text-xs">Reported</Badge>
+                    <Badge variant="soft" colorScheme="success" size="xs">
+                        Reported
+                    </Badge>
                 ) : (
-                    <Badge className="bg-zinc-800 text-zinc-400 text-xs">Awaiting</Badge>
+                    <Badge variant="soft" colorScheme="neutral" size="xs">
+                        Awaiting
+                    </Badge>
                 )}
             </TableCell>
             <TableCell className="text-center">
                 {b.is_active_bellwether_signal ? (
-                    <Badge className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs">
+                    <Badge variant="soft" colorScheme="accent" size="xs">
                         Active Signal (14d)
                     </Badge>
                 ) : (
-                    <span className="text-xs text-zinc-600">-</span>
+                    <span className="text-xs text-voxel-muted">-</span>
                 )}
             </TableCell>
         </TableRow>
@@ -134,7 +138,7 @@ function RevisionTableRow({ item }: { item: EarningsAlphaSnapshot }) {
 
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-voxel-trough">{item.ticker}</TableCell>
+            <TableCell className="font-bold text-voxel-ink">{item.ticker}</TableCell>
             <TableCell className="text-zinc-300 text-xs">{item.sector}</TableCell>
             <TableCell className="text-zinc-200 text-xs font-normal">
                 {item.analyst_consensus || 'Unknown'}
@@ -216,10 +220,10 @@ export function EarningsAuditPage({
                 {/* Header */}
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h1 className="text-sm font-bold uppercase tracking-wider text-voxel-trough">
+                        <h1 className="text-sm font-bold uppercase tracking-wider text-voxel-ink">
                             Earnings Alpha & PEAD Audit
                         </h1>
-                        <p className="text-xs font-normal text-zinc-400">
+                        <p className="text-xs font-normal text-voxel-muted">
                             Empirical earnings surprise momentum, Standardized Unexpected Earnings
                             (SUE), Sloan accruals, and sector bellwether diffusion.
                         </p>
@@ -289,48 +293,40 @@ export function EarningsAuditPage({
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+                <div className="flex flex-wrap items-center gap-2 border-b border-voxel-bevel-hi pb-2">
                     <Button
                         type="button"
+                        size="sm"
+                        variant={activeTab === 'pead' ? 'solid' : 'outline'}
+                        colorScheme={activeTab === 'pead' ? 'success' : 'neutral'}
                         onClick={() => setActiveTab('pead')}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
-                            activeTab === 'pead'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         PEAD & SUE Leaderboard
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={activeTab === 'bellwethers' ? 'solid' : 'outline'}
+                        colorScheme={activeTab === 'bellwethers' ? 'info' : 'neutral'}
                         onClick={() => setActiveTab('bellwethers')}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
-                            activeTab === 'bellwethers'
-                                ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         Sector Bellwether Radar
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={activeTab === 'revisions' ? 'solid' : 'outline'}
+                        colorScheme={activeTab === 'revisions' ? 'info' : 'neutral'}
                         onClick={() => setActiveTab('revisions')}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
-                            activeTab === 'revisions'
-                                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         Analyst Revision Momentum
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={activeTab === 'arena' ? 'solid' : 'outline'}
+                        colorScheme={activeTab === 'arena' ? 'accent' : 'neutral'}
                         onClick={() => setActiveTab('arena')}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
-                            activeTab === 'arena'
-                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         Day-1 Movement Arena
                     </Button>
@@ -344,7 +340,7 @@ export function EarningsAuditPage({
                                 placeholder="Search ticker or sector..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="bg-zinc-900/50 border-zinc-800 text-voxel-trough placeholder:text-zinc-500 rounded-none text-xs font-normal"
+                                className="text-xs font-normal"
                             />
                         </div>
                         <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -352,12 +348,11 @@ export function EarningsAuditPage({
                                 <Button
                                     key={sec}
                                     type="button"
+                                    size="sm"
+                                    variant={selectedSector === sec ? 'solid' : 'outline'}
+                                    colorScheme={selectedSector === sec ? 'accent' : 'neutral'}
                                     onClick={() => setSelectedSector(sec)}
-                                    className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors whitespace-nowrap ${
-                                        selectedSector === sec
-                                            ? 'bg-zinc-700 text-voxel-trough'
-                                            : 'bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-                                    }`}
+                                    className="whitespace-nowrap"
                                 >
                                     {sec}
                                 </Button>
@@ -400,7 +395,7 @@ export function EarningsAuditPage({
                                     <TableRow>
                                         <TableCell
                                             colSpan={9}
-                                            className="text-center text-zinc-500 py-8"
+                                            className="text-center text-voxel-muted py-8"
                                         >
                                             No earnings snapshots match your filters.
                                         </TableCell>
@@ -441,7 +436,7 @@ export function EarningsAuditPage({
                                     <TableRow>
                                         <TableCell
                                             colSpan={7}
-                                            className="text-center text-zinc-500 py-8"
+                                            className="text-center text-voxel-muted py-8"
                                         >
                                             No sector bellwethers loaded yet.
                                         </TableCell>

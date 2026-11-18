@@ -16,7 +16,6 @@ export interface SectorTrackConfig {
     label: string;
     shortLabel: string;
     badgeColorScheme: 'accent' | 'neutral' | 'success' | 'warning' | 'info';
-    badgeClass: string;
     matches: (trackId?: string | null, variantTag?: string | null) => boolean;
     matchesPrediction: (modelName: string) => boolean;
 }
@@ -27,7 +26,6 @@ export const SECTOR_MODEL_TRACKS: SectorTrackConfig[] = [
         label: 'DeepSeek Flash',
         shortLabel: 'DeepSeek',
         badgeColorScheme: 'info',
-        badgeClass: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
         matches: (trackId, variantTag) => {
             const t = (trackId || '').toLowerCase();
             const v = (variantTag || '').toLowerCase();
@@ -40,7 +38,6 @@ export const SECTOR_MODEL_TRACKS: SectorTrackConfig[] = [
         label: 'MiniMax-M3.1-Flash',
         shortLabel: 'MiniMax',
         badgeColorScheme: 'success',
-        badgeClass: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
         matches: (trackId, variantTag) => {
             const t = (trackId || '').toLowerCase();
             const v = (variantTag || '').toLowerCase();
@@ -53,7 +50,6 @@ export const SECTOR_MODEL_TRACKS: SectorTrackConfig[] = [
         label: 'Gemini 3.5',
         shortLabel: 'Gemini',
         badgeColorScheme: 'warning',
-        badgeClass: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
         matches: (trackId, variantTag) => {
             const t = (trackId || '').toLowerCase();
             const v = (variantTag || '').toLowerCase();
@@ -66,7 +62,6 @@ export const SECTOR_MODEL_TRACKS: SectorTrackConfig[] = [
         label: 'OpenAI GPT-6',
         shortLabel: 'OpenAI',
         badgeColorScheme: 'accent',
-        badgeClass: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
         matches: (trackId, variantTag) => {
             const t = (trackId || '').toLowerCase();
             const v = (variantTag || '').toLowerCase();
@@ -89,7 +84,6 @@ export const LEGACY_TRACK_CONFIG: SectorTrackConfig = {
     label: 'Legacy / Default',
     shortLabel: 'Legacy',
     badgeColorScheme: 'neutral',
-    badgeClass: 'bg-slate-500/20 text-slate-400 border border-slate-500/30',
     matches: (trackId, variantTag) => {
         // Matches if it DOES NOT match any of the 4 standard model tracks
         return !SECTOR_MODEL_TRACKS.some((trk) => trk.matches(trackId, variantTag));
@@ -153,14 +147,12 @@ export function findTrackActiveVariant(experiments: PromptExperiment[]): string 
 
 export function getExperimentTrackInfo(exp: PromptExperiment): {
     label: string;
-    badgeClass: string;
     colorScheme: 'accent' | 'neutral' | 'success' | 'warning' | 'info';
 } {
     for (const track of SECTOR_MODEL_TRACKS) {
         if (track.matches(exp.track_id, exp.variant_tag)) {
             return {
                 label: track.shortLabel,
-                badgeClass: track.badgeClass,
                 colorScheme: track.badgeColorScheme,
             };
         }
@@ -168,7 +160,6 @@ export function getExperimentTrackInfo(exp: PromptExperiment): {
 
     return {
         label: exp.track_id ? exp.track_id.replace(/^track_/, '') : 'Legacy',
-        badgeClass: LEGACY_TRACK_CONFIG.badgeClass,
         colorScheme: LEGACY_TRACK_CONFIG.badgeColorScheme,
     };
 }

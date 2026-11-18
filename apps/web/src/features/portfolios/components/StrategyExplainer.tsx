@@ -510,39 +510,35 @@ function ExplainerCard({ config }: { config: ExplainerConfig }) {
         <Card
             variant="default"
             padding="md"
-            className={`border rounded-none shadow-sm ${config.borderColor} ${config.bgColor}`}
+            className={`border rounded-none shadow-sm ${config.borderColor}`}
         >
             <div className="flex items-center gap-2.5">
                 <span className="text-lg">{config.emoji}</span>
                 <div>
-                    <h3 className="text-sm font-bold text-zinc-900 text-voxel-trough flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-voxel-ink flex items-center gap-2">
                         {config.title}
                         <Badge variant="soft" size="xs" colorScheme={config.badgeColorScheme}>
                             {config.badgeText}
                         </Badge>
                     </h3>
-                    <p className="text-xs font-normal text-zinc-500 text-zinc-400">
-                        {config.subtitle}
-                    </p>
+                    <p className="text-xs font-normal text-voxel-muted">{config.subtitle}</p>
                 </div>
             </div>
 
             <div
-                className={`pt-4 border-t border-zinc-200/20 border-zinc-800 grid ${
+                className={`pt-4 border-t border-voxel-bevel-hi grid ${
                     config.gridColsClass ?? 'grid-cols-1 md:grid-cols-3'
                 } gap-4 text-xs font-normal`}
             >
                 {config.pillars.map((p) => (
                     <div
                         key={p.title}
-                        className="flex flex-col gap-1.5 p-3 rounded-none bg-zinc-100/50 bg-zinc-900/50"
+                        className="flex flex-col gap-1.5 p-3 rounded-none bg-voxel-trough"
                     >
-                        <span className="font-bold text-zinc-700 text-zinc-200 flex items-center gap-1.5">
+                        <span className="font-bold text-voxel-ink flex items-center gap-1.5">
                             {p.title}
                         </span>
-                        <div className="text-zinc-600 text-zinc-400 leading-relaxed">
-                            {p.description}
-                        </div>
+                        <div className="text-voxel-muted leading-relaxed">{p.description}</div>
                     </div>
                 ))}
             </div>

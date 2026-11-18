@@ -147,7 +147,7 @@ function HowItWorks() {
         <div className="flex flex-col min-h-screen px-4 md:px-8 py-8 text-slate-100">
             <div className="flex flex-col w-full gap-12">
                 <div className="text-center flex flex-col gap-4">
-                    <h1 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
+                    <h1 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink">
                         How Benchify Works
                     </h1>
                     <p className="text-xs font-normal text-slate-400 max-w-2xl mx-auto">
@@ -173,7 +173,7 @@ function HowItWorks() {
                             MiniMax {MODELS.MINIMAX}
                         </span>
                     </div>
-                    <p className="text-xs font-normal text-slate-500">
+                    <p className="text-xs font-normal text-voxel-muted">
                         Tripled trigger multiple times daily during US market hours
                     </p>
                 </div>
@@ -211,7 +211,7 @@ function HowItWorks() {
                                                 </span>
                                             )}
                                         </div>
-                                        <h3 className="text-sm font-bold text-voxel-trough">
+                                        <h3 className="text-sm font-bold text-voxel-ink">
                                             {item.title}
                                         </h3>
                                         <p className="text-xs font-normal text-slate-400">
@@ -281,7 +281,7 @@ function HowItWorks() {
                 <ThoughtProcessFlow />
 
                 <div className="text-center flex flex-col gap-4 items-center">
-                    <h2 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
+                    <h2 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink">
                         See the Results
                     </h2>
                     <p className="text-xs font-normal text-slate-400 max-w-md">

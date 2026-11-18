@@ -32,10 +32,10 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
 
     return (
         <TableRow key={pred.id} className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-voxel-trough">{pred.ticker}</TableCell>
+            <TableCell className="font-bold text-voxel-ink">{pred.ticker}</TableCell>
             <TableCell className="text-xs text-zinc-400">{pred.target_date}</TableCell>
             <TableCell className="text-xs text-zinc-400">
-                <Badge variant="soft" className="border-zinc-700 text-zinc-400">
+                <Badge variant="soft" colorScheme="neutral" size="sm">
                     {pred.report_timing}
                 </Badge>
             </TableCell>
@@ -44,11 +44,9 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
             </TableCell>
             <TableCell className="text-center">
                 <Badge
-                    className={
-                        pred.predicted_direction === 'UP'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                    }
+                    variant="soft"
+                    colorScheme={pred.predicted_direction === 'UP' ? 'success' : 'danger'}
+                    size="sm"
                 >
                     {pred.predicted_direction}
                 </Badge>
@@ -68,7 +66,7 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
                         ? returnPct >= 0
                             ? 'text-emerald-400'
                             : 'text-rose-400'
-                        : 'text-zinc-500'
+                        : 'text-voxel-muted'
                 }`}
             >
                 {returnPct !== null ? `${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%` : '—'}
@@ -76,16 +74,16 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
             <TableCell className="text-center">
                 {pred.status === 'evaluated' ? (
                     pred.is_correct ? (
-                        <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        <Badge variant="soft" colorScheme="success" size="sm">
                             HIT
                         </Badge>
                     ) : (
-                        <Badge className="bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                        <Badge variant="soft" colorScheme="danger" size="sm">
                             MISS
                         </Badge>
                     )
                 ) : (
-                    <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Badge variant="soft" colorScheme="warning" size="sm">
                         PENDING
                     </Badge>
                 )}
@@ -136,10 +134,10 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
         <div className="flex flex-col gap-6">
             {/* Header info */}
             <div>
-                <h2 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
+                <h2 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink">
                     Day-1 Earnings Movement Arena
                 </h2>
-                <p className="text-xs font-normal text-zinc-400">
+                <p className="text-xs font-normal text-voxel-muted">
                     Benchmarking LLMs on Regular Trading Hours (09:30 Open to 16:00 Close)
                     continuation versus fade reactions.
                 </p>
@@ -153,13 +151,10 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                         className="p-4 bg-zinc-900/60 border-zinc-800 rounded-none shadow-sm flex flex-col justify-between gap-3"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-voxel-trough">
+                            <span className="text-sm font-bold text-voxel-ink">
                                 {stat.displayName}
                             </span>
-                            <Badge
-                                variant="soft"
-                                className="text-sm font-bold border-zinc-700 text-zinc-400 rounded-none"
-                            >
+                            <Badge variant="soft" colorScheme="neutral" size="sm">
                                 {stat.total} Predictions
                             </Badge>
                         </div>
@@ -187,86 +182,74 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
 
             {/* Filters Bar */}
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-none bg-zinc-900/40 p-3 border border-zinc-800 shadow-sm">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-zinc-400">Model:</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-voxel-muted">Model:</span>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={selectedModel === 'ALL' ? 'solid' : 'outline'}
+                        colorScheme={selectedModel === 'ALL' ? 'accent' : 'neutral'}
                         onClick={() => setSelectedModel('ALL')}
-                        className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors ${
-                            selectedModel === 'ALL'
-                                ? 'bg-zinc-700 text-voxel-trough'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         All
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={selectedModel === 'gpt-6-luna' ? 'solid' : 'outline'}
+                        colorScheme={selectedModel === 'gpt-6-luna' ? 'accent' : 'neutral'}
                         onClick={() => setSelectedModel('gpt-6-luna')}
-                        className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors ${
-                            selectedModel === 'gpt-6-luna'
-                                ? 'bg-zinc-700 text-voxel-trough'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         GPT Luna
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={selectedModel === 'deepseek-chat' ? 'solid' : 'outline'}
+                        colorScheme={selectedModel === 'deepseek-chat' ? 'accent' : 'neutral'}
                         onClick={() => setSelectedModel('deepseek-chat')}
-                        className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors ${
-                            selectedModel === 'deepseek-chat'
-                                ? 'bg-zinc-700 text-voxel-trough'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         DeepSeek
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={selectedModel === '~typesafe/jev-latest' ? 'solid' : 'outline'}
+                        colorScheme={
+                            selectedModel === '~typesafe/jev-latest' ? 'accent' : 'neutral'
+                        }
                         onClick={() => setSelectedModel('~typesafe/jev-latest')}
-                        className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors ${
-                            selectedModel === '~typesafe/jev-latest'
-                                ? 'bg-zinc-700 text-voxel-trough'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         TypeSafe Jev
                     </Button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-zinc-400">Direction:</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-voxel-muted">Direction:</span>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={selectedDir === 'ALL' ? 'solid' : 'outline'}
+                        colorScheme={selectedDir === 'ALL' ? 'accent' : 'neutral'}
                         onClick={() => setSelectedDir('ALL')}
-                        className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors ${
-                            selectedDir === 'ALL'
-                                ? 'bg-zinc-700 text-voxel-trough'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         All
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={selectedDir === 'UP' ? 'solid' : 'outline'}
+                        colorScheme={selectedDir === 'UP' ? 'success' : 'neutral'}
                         onClick={() => setSelectedDir('UP')}
-                        className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors ${
-                            selectedDir === 'UP'
-                                ? 'bg-emerald-500/20 text-emerald-300'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         UP
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        variant={selectedDir === 'DOWN' ? 'solid' : 'outline'}
+                        colorScheme={selectedDir === 'DOWN' ? 'danger' : 'neutral'}
                         onClick={() => setSelectedDir('DOWN')}
-                        className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors ${
-                            selectedDir === 'DOWN'
-                                ? 'bg-rose-500/20 text-rose-300'
-                                : 'text-zinc-400 hover:text-voxel-trough'
-                        }`}
                     >
                         DOWN
                     </Button>
@@ -293,7 +276,10 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                     <TableBody>
                         {filteredPredictions.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={10} className="py-8 text-center text-zinc-500">
+                                <TableCell
+                                    colSpan={10}
+                                    className="py-8 text-center text-voxel-muted"
+                                >
                                     No earnings predictions found matching filters.
                                 </TableCell>
                             </TableRow>

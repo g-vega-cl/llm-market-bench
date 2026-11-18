@@ -66,7 +66,7 @@ export function LeaderboardTable({
     const sortedModels = sortLeaderboardModels(models, sortField, sortOrder);
 
     const renderSortIndicator = (field: SortField) => {
-        if (sortField !== field) return <span className="text-zinc-600 pl-1">↕</span>;
+        if (sortField !== field) return <span className="text-voxel-muted pl-1">↕</span>;
         return sortOrder === 'asc' ? (
             <span className="text-accent pl-1">▲</span>
         ) : (
@@ -76,38 +76,38 @@ export function LeaderboardTable({
 
     return (
         <div className="space-y-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <Table containerClassName="border-white/10 bg-zinc-950/40 ">
-                <TableHeader className="bg-white/5 border-b border-white/10">
+            <Table containerClassName="border-voxel-bevel-hi bg-voxel-trough">
+                <TableHeader className="bg-voxel-surface border-b border-voxel-bevel-hi">
                     <TableRow isHoverable={false}>
                         <TableHead className="w-12 text-center">Compare</TableHead>
                         <TableHead className="w-16">Rank</TableHead>
                         <TableHead className="min-w-[180px]">Model</TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-voxel-trough"
+                            className="cursor-pointer select-none hover:text-voxel-ink"
                             onClick={() => handleSort('composite_score')}
                         >
                             Score {renderSortIndicator('composite_score')}
                         </TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-voxel-trough"
+                            className="cursor-pointer select-none hover:text-voxel-ink"
                             onClick={() => handleSort('return_pct')}
                         >
                             Return {renderSortIndicator('return_pct')}
                         </TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-voxel-trough"
+                            className="cursor-pointer select-none hover:text-voxel-ink"
                             onClick={() => handleSort('win_rate')}
                         >
                             Win Rate {renderSortIndicator('win_rate')}
                         </TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-voxel-trough"
+                            className="cursor-pointer select-none hover:text-voxel-ink"
                             onClick={() => handleSort('verifier_approval_rate')}
                         >
                             Approval {renderSortIndicator('verifier_approval_rate')}
                         </TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-voxel-trough"
+                            className="cursor-pointer select-none hover:text-voxel-ink"
                             onClick={() => handleSort('consistency_score')}
                         >
                             Consistency {renderSortIndicator('consistency_score')}
@@ -135,7 +135,7 @@ export function LeaderboardTable({
                 </TableBody>
             </Table>
             {selectedModels.length < 2 && (
-                <p className="text-xs font-normal text-zinc-500 font-mono text-right italic">
+                <p className="text-xs font-normal text-voxel-muted font-mono text-right italic">
                     Select up to 2 models to run side-by-side comparative diagnostics.
                 </p>
             )}
@@ -170,7 +170,7 @@ function LeaderboardTableRow({
 
     return (
         <TableRow
-            className={`transition-colors border-b border-white/5 ${isSelected ? 'bg-white/5' : ''}`}
+            className={`transition-colors border-b border-voxel-bevel-lo ${isSelected ? 'bg-voxel-elevated' : ''}`}
         >
             <TableCell className="text-center">
                 <input
@@ -192,7 +192,7 @@ function LeaderboardTableRow({
                     <span className="text-sm font-bold shrink-0">{info.emoji}</span>
                     <div className="truncate">
                         <div className="font-bold text-zinc-100 text-sm truncate">{info.name}</div>
-                        <div className="text-xs font-normal text-zinc-500 font-mono tracking-wider truncate">
+                        <div className="text-xs font-normal text-voxel-muted font-mono tracking-wider truncate">
                             {model.model_name}
                         </div>
                     </div>

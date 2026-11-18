@@ -94,7 +94,7 @@ export function PortfolioComparisonSelector({
                             colorScheme="neutral"
                             size="sm"
                             onClick={onReset}
-                            className="text-xs py-1 px-2.5 h-auto text-voxel-muted hover:text-voxel-ink"
+                            className="text-xs py-1 px-2.5 h-auto"
                         >
                             Reset to Top 5
                         </Button>
@@ -153,9 +153,12 @@ export function PortfolioComparisonSelector({
                                     )}
                                     <Button
                                         type="button"
+                                        variant="outline"
+                                        colorScheme="neutral"
+                                        size="sm"
                                         onClick={() => onRemove(portfolioId)}
                                         aria-label={`Remove ${ownerName} from comparison`}
-                                        className="text-voxel-muted hover:text-danger rounded-none p-0.5 hover:bg-voxel-elevated transition-colors focus:outline-none focus:ring-1 focus:ring-danger shrink-0"
+                                        className="p-0.5 shrink-0"
                                     >
                                         <svg
                                             className="w-3 h-3"

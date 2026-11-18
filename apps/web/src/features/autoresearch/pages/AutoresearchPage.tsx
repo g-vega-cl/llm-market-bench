@@ -39,8 +39,8 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50 bg-zinc-950">
-            <div className="bg-white bg-zinc-900 border-b border-zinc-200 border-zinc-800 py-12">
+        <div className="min-h-screen bg-voxel-canvas">
+            <div className="bg-voxel-surface border-b border-voxel-bevel-hi py-12">
                 <PageLayout>
                     <div className="flex flex-col gap-2">
                         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -94,7 +94,7 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
                             <div className="space-y-6">
                                 <div className="flex items-center space-x-4 px-2">
                                     <SectionHeading>Experiment Details</SectionHeading>
-                                    <div className="h-px flex-1 bg-zinc-200 bg-zinc-800" />
+                                    <div className="h-px flex-1 bg-voxel-bevel-hi" />
                                     <span className="text-sm font-mono text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">
                                         {selectedExperiment.variant_tag}
                                     </span>

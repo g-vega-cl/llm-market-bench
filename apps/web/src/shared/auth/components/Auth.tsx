@@ -65,7 +65,7 @@ export function Auth({
     return (
         <div className="fixed inset-0 bg-black/80 flex items-start justify-center p-8 ">
             <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-none shadow-sm flex flex-col gap-6 max-w-md w-full">
-                <h1 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
+                <h1 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink">
                     {actionText}
                 </h1>
                 {isRecipesGate && (

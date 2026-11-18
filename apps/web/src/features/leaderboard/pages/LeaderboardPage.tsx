@@ -75,17 +75,16 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                     </div>
 
                     {/* Timeframe selector */}
-                    <div className="flex bg-white/5 p-1 rounded-none border border-white/10 shrink-0 self-start md:self-auto shadow-sm">
+                    <div className="flex bg-voxel-trough p-1 rounded-none border border-voxel-bevel-hi shrink-0 self-start md:self-auto shadow-sm gap-1">
                         {timeframes.map((tf) => (
                             <Button
                                 key={tf.label}
                                 type="button"
+                                size="sm"
+                                variant={timeframe === tf.value ? 'solid' : 'outline'}
+                                colorScheme={timeframe === tf.value ? 'accent' : 'neutral'}
                                 onClick={() => setTimeframe(tf.value)}
-                                className={`px-4 py-1.5 text-sm font-mono font-bold rounded-none transition-all ${
-                                    timeframe === tf.value
-                                        ? 'bg-accent text-zinc-950 shadow-sm'
-                                        : 'text-zinc-400 hover:text-voxel-trough'
-                                }`}
+                                className="font-mono"
                             >
                                 {tf.label}
                             </Button>
@@ -114,7 +113,7 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                                 <h2 className="font-heading text-sm font-bold text-zinc-100 uppercase tracking-wider">
                                     All Running Models{' '}
                                     {isFetching && (
-                                        <span className="text-xs text-zinc-500 font-mono normal-case">
+                                        <span className="text-xs text-voxel-muted font-mono normal-case">
                                             (updating...)
                                         </span>
                                     )}

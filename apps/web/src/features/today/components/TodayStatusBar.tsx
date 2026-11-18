@@ -133,11 +133,11 @@ function AnalysisTimestamp({
 }) {
     return (
         <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-normal text-zinc-500 text-zinc-500 font-mono tabular-nums">
+            <span className="text-xs font-normal text-voxel-muted font-mono tabular-nums">
                 {formattedTime ? `Last analyzed: ${formattedTime}` : 'Waiting for analysis...'}
             </span>
             {modelUsed && (
-                <span className="text-xs font-normal text-zinc-600 text-zinc-600 font-mono">
+                <span className="text-xs font-normal text-voxel-muted font-mono">
                     • {modelUsed}
                 </span>
             )}
@@ -167,15 +167,15 @@ export function TodayStatusBar({ data }: TodayStatusBarProps) {
     };
 
     return (
-        <div className="sticky top-[57px] z-40 border-b border-zinc-200 border-zinc-800 bg-white/85 bg-zinc-950/85  px-4 md:px-8 py-2">
+        <div className="sticky top-[57px] z-40 border-b border-voxel-bevel-hi bg-voxel-canvas/95 px-4 md:px-8 py-2">
             <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide whitespace-nowrap min-h-[40px]">
                 {/* Label + date */}
                 <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-bold uppercase tracking-wider text-zinc-900 text-zinc-100 font-mono">
+                    <span className="text-sm font-bold uppercase tracking-wider text-voxel-ink font-mono">
                         TODAY
                     </span>
-                    <span className="text-zinc-300 text-zinc-700">•</span>
-                    <span className="text-sm font-bold text-zinc-500 text-zinc-400 uppercase tracking-wider tabular-nums">
+                    <span className="text-voxel-muted">•</span>
+                    <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider tabular-nums">
                         {todayDateString}
                     </span>
                 </div>
@@ -222,14 +222,14 @@ export function TodayStatusBar({ data }: TodayStatusBarProps) {
 }
 
 function Divider() {
-    return <span className="text-zinc-300 text-zinc-700 shrink-0">|</span>;
+    return <span className="text-voxel-muted shrink-0">|</span>;
 }
 
 function StatChip({ label, value, color }: { label: string; value: number; color: string }) {
     return (
         <div className="flex items-center gap-1">
             <span className={`text-sm font-bold font-mono tabular-nums ${color}`}>{value}</span>
-            <span className="text-sm font-bold text-zinc-500 text-zinc-500 uppercase tracking-wider">
+            <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                 {label}
             </span>
         </div>

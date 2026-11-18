@@ -9,22 +9,25 @@ interface CheckpointCardProps {
     onSelect: () => void;
 }
 
-function getCardClass(cp: Checkpoint, idx: number, isActive: boolean, isSelected: boolean): string {
+function getCheckpointStyle(
+    cp: Checkpoint,
+    idx: number,
+    isActive: boolean,
+    isSelected: boolean,
+): { colorScheme: 'neutral' | 'warning' | 'success' | 'danger'; extra: string } {
     if (cp.isFuture) {
-        return 'bg-zinc-950/20 border-zinc-900/50 opacity-40 select-none cursor-not-allowed';
+        return { colorScheme: 'neutral', extra: 'opacity-40 select-none' };
     }
     if (cp.isInProgress) {
-        return 'bg-amber-950/20 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.1)] cursor-pointer hover:border-amber-400/60';
+        return { colorScheme: 'warning', extra: 'cursor-pointer' };
     }
-    if (isSelected) {
-        return cp.score >= 0
-            ? 'bg-emerald-950/20 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer'
-            : 'bg-rose-950/20 border-rose-500/60 shadow-[0_0_12px_rgba(239,68,68,0.15)] cursor-pointer';
+    if (isSelected || (idx === 4 && isActive)) {
+        return {
+            colorScheme: cp.score >= 0 || (idx === 4 && isActive) ? 'success' : 'danger',
+            extra: 'cursor-pointer',
+        };
     }
-    if (idx === 4 && isActive) {
-        return 'bg-zinc-800/40 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.05)] cursor-pointer hover:border-zinc-700';
-    }
-    return 'bg-zinc-950/40 border-zinc-850 hover:border-zinc-700 cursor-pointer hover:bg-zinc-900/20';
+    return { colorScheme: 'neutral', extra: 'cursor-pointer' };
 }
 
 function CheckpointBody({ cp }: { cp: Checkpoint }) {
@@ -64,13 +67,15 @@ function CheckpointBody({ cp }: { cp: Checkpoint }) {
 }
 
 export function CheckpointCard({ cp, idx, isActive, isSelected, onSelect }: CheckpointCardProps) {
-    const cardClass = getCardClass(cp, idx, isActive, isSelected);
+    const { colorScheme, extra } = getCheckpointStyle(cp, idx, isActive, isSelected);
     return (
         <Button
             type="button"
+            variant="outline"
+            colorScheme={colorScheme}
             disabled={cp.isFuture}
             onClick={onSelect}
-            className={`p-3 rounded-none h-full border transition-all duration-300 w-full text-left flex flex-col justify-between ${cardClass}`}
+            className={`p-3 h-full w-full text-left flex flex-col justify-between ${extra}`}
         >
             <div className="flex items-center justify-between gap-1 w-full">
                 <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">

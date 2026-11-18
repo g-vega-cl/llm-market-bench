@@ -77,7 +77,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 bg-zinc-950 text-zinc-900 text-zinc-100">
+        <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
             <PageLayout>
                 <header className="flex flex-col gap-2">
                     <SectionHeading>LLM Research Audit Trail</SectionHeading>
@@ -91,7 +91,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                 {/* Filters Row (Tabs + Model Dropdown) */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-                        <div className="flex gap-2 p-1.5 bg-zinc-100 bg-zinc-900/50 rounded-none w-fit border border-zinc-200 border-zinc-800  min-w-max">
+                        <div className="flex gap-2 p-1.5 bg-voxel-trough rounded-none w-fit border border-voxel-bevel-hi min-w-max">
                             {categories.map((cat) => (
                                 <Button
                                     key={cat}
@@ -166,33 +166,33 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                                 }}
                                 className={`p-4 rounded-none border transition-all cursor-pointer group flex flex-col gap-2 ${
                                     selectedLogId === log.id
-                                        ? 'border-accent bg-accent-light bg-accent-dark/20 shadow-sm ring-1 ring-accent/50'
-                                        : 'border-zinc-200 border-zinc-800 bg-white bg-zinc-900/40 hover:border-zinc-300 hover:border-zinc-700 shadow-sm'
+                                        ? 'border-accent bg-voxel-elevated shadow-sm ring-1 ring-accent/50'
+                                        : 'border-voxel-bevel-hi bg-voxel-surface hover:border-voxel-muted shadow-sm'
                                 }`}
                             >
                                 <div className="flex justify-between items-start">
                                     <Badge variant="soft" size="sm" colorScheme="neutral">
                                         {log.task_type}
                                     </Badge>
-                                    <span className="text-xs font-normal text-zinc-400 font-mono italic">
+                                    <span className="text-xs font-normal text-voxel-muted font-mono italic">
                                         {log.created_at
                                             ? formatEasternShortTime(log.created_at)
                                             : '-'}
                                     </span>
                                 </div>
-                                <h3 className="font-bold text-zinc-800 text-zinc-100 text-sm leading-tight group-hover:text-accent transition-colors m-0">
+                                <h3 className="font-bold text-voxel-ink text-sm leading-tight group-hover:text-accent transition-colors m-0">
                                     {log.metadata?.ticker || 'Global Analysis'}
                                 </h3>
                                 <div className="flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 rounded-none bg-accent shrink-0" />
-                                    <p className="text-xs font-normal text-zinc-500 text-zinc-400 tracking-wider uppercase m-0">
+                                    <p className="text-xs font-normal text-voxel-muted tracking-wider uppercase m-0">
                                         {log.model_provider} • {log.model_name}
                                     </p>
                                 </div>
                             </div>
                         ))}
                         {(!filteredLogs || filteredLogs.length === 0) && !isFetching && (
-                            <div className="text-center py-8 p-6 border-2 border-dashed border-zinc-200 border-zinc-800 rounded-none text-zinc-400 italic text-xs font-normal">
+                            <div className="text-center py-8 p-6 border-2 border-dashed border-voxel-bevel-hi rounded-none text-voxel-muted italic text-xs font-normal">
                                 No logs found for this category.
                             </div>
                         )}
@@ -216,7 +216,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                         )}
 
                         {!hasNextPage && filteredLogs && filteredLogs.length > 0 && (
-                            <div className="text-center py-3 text-zinc-400 text-zinc-500 text-sm font-bold uppercase tracking-wider">
+                            <div className="text-center py-3 text-voxel-muted text-sm font-bold uppercase tracking-wider">
                                 • End of reasoning traces •
                             </div>
                         )}
@@ -228,10 +228,10 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                     <div
                         className={`${
                             selectedLog ? 'block' : 'hidden lg:block'
-                        } lg:col-span-8 bg-white bg-zinc-900/60 rounded-none border border-zinc-200 border-zinc-800 p-6 shadow-sm relative overflow-hidden max-h-[80vh] md:h-[75vh] flex flex-col gap-6`}
+                        } lg:col-span-8 bg-voxel-surface rounded-none border border-voxel-bevel-hi p-6 shadow-sm relative overflow-hidden max-h-[80vh] md:h-[75vh] flex flex-col gap-6`}
                     >
                         {!selectedLog ? (
-                            <div className="h-full flex flex-col items-center justify-center text-zinc-400 gap-4">
+                            <div className="h-full flex flex-col items-center justify-center text-voxel-muted gap-4">
                                 <Skeleton variant="card" lines={3} className="w-full max-w-md" />
                                 <p className="italic font-normal text-xs text-center px-4 m-0">
                                     Select a reasoning trace to inspect the thinking process.
@@ -239,10 +239,10 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                             </div>
                         ) : (
                             <>
-                                <div className="flex justify-between items-start pb-4 border-b border-zinc-100 border-zinc-800/50 sticky top-0 bg-white bg-zinc-900/60 z-10 -mx-6 px-6 pt-0">
+                                <div className="flex justify-between items-start pb-4 border-b border-voxel-bevel-hi sticky top-0 bg-voxel-surface z-10 -mx-6 px-6 pt-0">
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-3 flex-wrap">
-                                            <h2 className="text-sm font-bold text-zinc-900 text-voxel-trough tracking-tight m-0">
+                                            <h2 className="text-sm font-bold text-voxel-ink tracking-tight m-0">
                                                 {selectedLog.metadata?.ticker ||
                                                     selectedLog.task_type}
                                             </h2>
@@ -250,7 +250,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                                                 Audit Mode
                                             </Badge>
                                         </div>
-                                        <p className="text-xs font-normal text-zinc-400 font-mono tracking-wider bg-zinc-100 bg-zinc-800/50 px-2 py-0.5 rounded-none w-fit m-0">
+                                        <p className="text-xs font-normal text-voxel-muted font-mono tracking-wider bg-voxel-trough px-2 py-0.5 rounded-none w-fit m-0">
                                             UUID: {selectedLog.id} •{' '}
                                             {selectedLog.created_at
                                                 ? formatEasternDateTime(selectedLog.created_at)

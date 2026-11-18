@@ -33,10 +33,10 @@ export function HumanFriendlyPrompt({
                     <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap m-0">
                         Cognitive Flow
                     </h4>
-                    <div className="h-px flex-1 bg-gradient-to-r from-gray-200 from-gray-800 to-transparent min-w-[20px]" />
+                    <div className="h-px flex-1 bg-gradient-to-r from-voxel-bevel-hi to-transparent min-w-[20px]" />
                 </div>
                 {shouldShowTabs && (
-                    <div className="flex gap-1 p-1 bg-zinc-100 bg-zinc-900 rounded-none border border-zinc-200 border-zinc-800 shadow-inner overflow-x-auto">
+                    <div className="flex gap-1 p-1 bg-voxel-trough rounded-none border border-voxel-bevel-hi shadow-inner overflow-x-auto">
                         {roles.map((role) => (
                             <Button
                                 key={role}
@@ -44,7 +44,6 @@ export function HumanFriendlyPrompt({
                                 variant={activeRole === role ? 'solid' : 'outline'}
                                 colorScheme={activeRole === role ? 'accent' : 'neutral'}
                                 onClick={() => setActiveRole(role)}
-                                className="rounded-none text-sm font-bold"
                             >
                                 {role}
                             </Button>
@@ -69,12 +68,12 @@ export function HumanFriendlyPrompt({
                             key={idx}
                             className={`p-4 rounded-none border transition-all flex flex-col gap-2 ${
                                 isSystem
-                                    ? 'bg-gray-50/50 bg-gray-800/20 border-gray-200 border-gray-700/50'
+                                    ? 'bg-voxel-trough border-voxel-bevel-hi'
                                     : isAssistant
-                                      ? 'bg-blue-50/30 bg-blue-600/5 border-blue-100 border-blue-500/20 shadow-sm'
+                                      ? 'bg-blue-950/20 border-blue-500/30 shadow-sm'
                                       : isTool
-                                        ? 'bg-emerald-50/30 bg-emerald-600/5 border-emerald-100 border-emerald-500/20'
-                                        : 'bg-white bg-gray-900/40 border-gray-200 border-gray-800 shadow-sm'
+                                        ? 'bg-emerald-950/20 border-emerald-500/30'
+                                        : 'bg-voxel-surface border-voxel-bevel-hi shadow-sm'
                             }`}
                         >
                             <div className="flex items-center gap-2">
@@ -88,7 +87,7 @@ export function HumanFriendlyPrompt({
                                     {msg.role}
                                 </Badge>
                             </div>
-                            <div className="text-xs font-normal font-mono leading-relaxed text-gray-700 text-gray-300 whitespace-pre-wrap break-words selection:bg-blue-500/30 overflow-x-hidden">
+                            <div className="text-xs font-normal font-mono leading-relaxed text-voxel-ink whitespace-pre-wrap break-words selection:bg-blue-500/30 overflow-x-hidden">
                                 <FormattedContent content={msg.content || msg.parts || msg} />
                             </div>
                         </div>

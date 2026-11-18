@@ -217,7 +217,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
     }, [memories, onSelect]);
 
     return (
-        <div className="relative border border-zinc-200 border-zinc-800 rounded-none bg-white bg-zinc-900 overflow-hidden h-[600px] mb-6">
+        <div className="relative border border-voxel-bevel-hi rounded-none bg-voxel-surface overflow-hidden h-[600px] mb-6">
             <div
                 ref={containerRef}
                 className="relative w-full h-full cursor-grab active:cursor-grabbing"
@@ -225,14 +225,14 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
 
             {/* Hover Tooltip */}
             {hoveredNode && (
-                <div className="absolute top-4 right-4 p-4 bg-white bg-zinc-900 shadow-lg rounded-none border border-zinc-200 border-zinc-800 max-w-sm pointer-events-none z-10 flex flex-col gap-2">
-                    <div className="text-sm font-bold text-zinc-500 uppercase tracking-wider">
+                <div className="absolute top-4 right-4 p-4 bg-voxel-elevated shadow-lg rounded-none border border-voxel-bevel-hi max-w-sm pointer-events-none z-10 flex flex-col gap-2">
+                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         {hoveredNode.metadata?.type?.replace('_', ' ')}
                     </div>
-                    <div className="text-xs font-normal text-zinc-800 text-zinc-200 leading-relaxed">
+                    <div className="text-xs font-normal text-voxel-ink leading-relaxed">
                         {hoveredNode.content}
                     </div>
-                    <div className="text-xs font-normal text-zinc-400 border-t border-zinc-200 border-zinc-800 pt-2 font-mono">
+                    <div className="text-xs font-normal text-voxel-muted border-t border-voxel-bevel-lo pt-2 font-mono">
                         {hoveredNode.created_at
                             ? formatEasternDateTime(hoveredNode.created_at)
                             : '-'}
@@ -241,32 +241,26 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             )}
 
             {/* Legend */}
-            <div className="absolute bottom-4 left-4 flex flex-wrap gap-4 bg-white/95 bg-zinc-900/95 p-3 rounded-none border border-zinc-200 border-zinc-800 z-10">
+            <div className="absolute bottom-4 left-4 flex flex-wrap gap-4 bg-voxel-surface/95 p-3 rounded-none border border-voxel-bevel-hi z-10">
                 <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-none bg-blue-500"></div>
-                    <span className="text-xs font-normal text-zinc-600 text-zinc-400">Update</span>
+                    <span className="text-xs font-normal text-voxel-muted">Update</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-none bg-emerald-500"></div>
-                    <span className="text-xs font-normal text-zinc-600 text-zinc-400">
-                        Resolution
-                    </span>
+                    <span className="text-xs font-normal text-voxel-muted">Resolution</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-none bg-rose-500"></div>
-                    <span className="text-xs font-normal text-zinc-600 text-zinc-400">
-                        Reversal
-                    </span>
+                    <span className="text-xs font-normal text-voxel-muted">Reversal</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-none bg-zinc-400"></div>
-                    <span className="text-xs font-normal text-zinc-600 text-zinc-400">
-                        Resolved
-                    </span>
+                    <span className="text-xs font-normal text-voxel-muted">Resolved</span>
                 </div>
             </div>
 
-            <div className="absolute top-4 right-4 text-xs font-normal text-zinc-400 bg-white/95 bg-zinc-900/95 px-2 py-1 rounded-none border border-zinc-200 border-zinc-800 z-10">
+            <div className="absolute top-4 right-4 text-xs font-normal text-voxel-muted bg-voxel-surface/95 px-2 py-1 rounded-none border border-voxel-bevel-hi z-10">
                 Scroll to zoom • Drag to pan
             </div>
         </div>

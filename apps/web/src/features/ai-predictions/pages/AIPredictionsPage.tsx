@@ -256,25 +256,23 @@ function ArenaTabContent({
             <div className="bg-slate-800/50 border border-slate-700 rounded-none p-6  shadow-sm">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div>
-                        <h3 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
+                        <h3 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink">
                             Historical Accuracy Trend
                         </h3>
-                        <p className="text-xs font-normal text-slate-400">
+                        <p className="text-xs font-normal text-voxel-muted">
                             Model percentile scores evaluated against benchmark market ETF returns
                             over time.
                         </p>
                     </div>
-                    <div className="flex bg-slate-900/60 p-1 rounded-none border border-slate-700 shadow-sm">
+                    <div className="flex bg-voxel-trough p-1 rounded-none border border-voxel-bevel-hi gap-1 shadow-sm">
                         {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
                             <Button
                                 key={tf}
                                 type="button"
+                                size="sm"
+                                variant={timeframeFilter === tf ? 'solid' : 'outline'}
+                                colorScheme={timeframeFilter === tf ? 'accent' : 'neutral'}
                                 onClick={() => setTimeframeFilter(tf)}
-                                className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
-                                    timeframeFilter === tf
-                                        ? 'bg-voxel-elevated text-voxel-ink shadow-sm'
-                                        : 'text-voxel-muted hover:text-voxel-ink'
-                                }`}
                             >
                                 {tf.toUpperCase()}
                             </Button>
@@ -303,26 +301,24 @@ function ArenaTabContent({
 
                     {/* View Switcher: Table vs Detailed Cards */}
                     <div className="flex items-center gap-3">
-                        <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi">
+                        <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi gap-1">
                             <Button
                                 type="button"
+                                size="sm"
+                                variant={feedViewMode === 'table' ? 'solid' : 'outline'}
+                                colorScheme={feedViewMode === 'table' ? 'accent' : 'neutral'}
                                 onClick={() => setFeedViewMode('table')}
-                                className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors flex items-center gap-1.5 ${
-                                    feedViewMode === 'table'
-                                        ? 'bg-accent text-accent-ink shadow-sm'
-                                        : 'text-voxel-muted hover:text-voxel-ink'
-                                }`}
+                                className="flex items-center gap-1.5"
                             >
                                 <span>📊 Data Table</span>
                             </Button>
                             <Button
                                 type="button"
+                                size="sm"
+                                variant={feedViewMode === 'cards' ? 'solid' : 'outline'}
+                                colorScheme={feedViewMode === 'cards' ? 'accent' : 'neutral'}
                                 onClick={() => setFeedViewMode('cards')}
-                                className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors flex items-center gap-1.5 ${
-                                    feedViewMode === 'cards'
-                                        ? 'bg-accent text-accent-ink shadow-sm'
-                                        : 'text-voxel-muted hover:text-voxel-ink'
-                                }`}
+                                className="flex items-center gap-1.5"
                             >
                                 <span>🎴 Feed Cards</span>
                             </Button>
@@ -336,54 +332,46 @@ function ArenaTabContent({
                     <div className="flex flex-col gap-6">
                         <div className="flex flex-wrap items-center gap-3 bg-voxel-trough p-3 rounded-none border border-voxel-bevel-hi">
                             {/* Status Segmented Filter */}
-                            <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi">
+                            <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi gap-1">
                                 <Button
                                     type="button"
+                                    size="sm"
+                                    variant={statusFilter === 'all' ? 'solid' : 'outline'}
+                                    colorScheme={statusFilter === 'all' ? 'accent' : 'neutral'}
                                     onClick={() => setStatusFilter('all')}
-                                    className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
-                                        statusFilter === 'all'
-                                            ? 'bg-voxel-elevated text-voxel-ink shadow-sm'
-                                            : 'text-voxel-muted hover:text-voxel-ink'
-                                    }`}
                                 >
                                     All Forecasts ({data.length})
                                 </Button>
                                 <Button
                                     type="button"
+                                    size="sm"
+                                    variant={statusFilter === 'active' ? 'solid' : 'outline'}
+                                    colorScheme={statusFilter === 'active' ? 'accent' : 'neutral'}
                                     onClick={() => setStatusFilter('active')}
-                                    className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
-                                        statusFilter === 'active'
-                                            ? 'bg-accent text-accent-ink shadow-sm'
-                                            : 'text-voxel-muted hover:text-voxel-ink'
-                                    }`}
                                 >
                                     🔮 Active ({pendingPredictions.length})
                                 </Button>
                                 <Button
                                     type="button"
+                                    size="sm"
+                                    variant={statusFilter === 'past' ? 'solid' : 'outline'}
+                                    colorScheme={statusFilter === 'past' ? 'success' : 'neutral'}
                                     onClick={() => setStatusFilter('past')}
-                                    className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
-                                        statusFilter === 'past'
-                                            ? 'bg-emerald-600/80 text-voxel-trough shadow-sm'
-                                            : 'text-voxel-muted hover:text-voxel-ink'
-                                    }`}
                                 >
                                     🎯 Past Outcomes ({evaluatedPredictions.length})
                                 </Button>
                             </div>
 
                             {/* Timeframe Segmented Filter */}
-                            <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi">
+                            <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi gap-1">
                                 {(['all', '7d', '30d', '60d', '90d'] as const).map((tf) => (
                                     <Button
                                         key={tf}
                                         type="button"
+                                        size="sm"
+                                        variant={timeframeFilter === tf ? 'solid' : 'outline'}
+                                        colorScheme={timeframeFilter === tf ? 'accent' : 'neutral'}
                                         onClick={() => setTimeframeFilter(tf)}
-                                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
-                                            timeframeFilter === tf
-                                                ? 'bg-voxel-elevated text-voxel-ink shadow-sm'
-                                                : 'text-voxel-muted hover:text-voxel-ink'
-                                        }`}
                                     >
                                         {tf.toUpperCase()}
                                     </Button>
@@ -477,35 +465,33 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                 </div>
                 <Button
                     type="button"
+                    variant="outline"
+                    colorScheme="neutral"
                     onClick={handleRefresh}
                     disabled={loading}
-                    className="voxel-btn px-4 py-2 bg-voxel-surface hover:bg-voxel-elevated border border-voxel-bevel-hi text-voxel-ink rounded-none transition-colors flex items-center gap-2 text-sm font-bold"
+                    className="flex items-center gap-2"
                 >
                     {loading ? 'Refreshing...' : 'Refresh Data'}
                 </Button>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-voxel-bevel-hi">
+            <div className="flex border-b border-voxel-bevel-hi gap-2 pb-2">
                 <Button
                     type="button"
+                    size="sm"
+                    variant={activeTab === 'arena' ? 'solid' : 'outline'}
+                    colorScheme={activeTab === 'arena' ? 'accent' : 'neutral'}
                     onClick={() => setActiveTab('arena')}
-                    className={`py-3 px-6 font-bold border-b-2 text-sm transition-all duration-200 ${
-                        activeTab === 'arena'
-                            ? 'border-accent text-accent'
-                            : 'border-transparent text-voxel-muted hover:text-voxel-ink'
-                    }`}
                 >
                     Arena Dashboard
                 </Button>
                 <Button
                     type="button"
+                    size="sm"
+                    variant={activeTab === 'autoresearch' ? 'solid' : 'outline'}
+                    colorScheme={activeTab === 'autoresearch' ? 'accent' : 'neutral'}
                     onClick={() => setActiveTab('autoresearch')}
-                    className={`py-3 px-6 font-bold border-b-2 text-sm transition-all duration-200 ${
-                        activeTab === 'autoresearch'
-                            ? 'border-accent text-accent'
-                            : 'border-transparent text-voxel-muted hover:text-voxel-ink'
-                    }`}
                 >
                     Prompt Auto-Research
                 </Button>

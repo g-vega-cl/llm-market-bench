@@ -338,8 +338,11 @@ export function SectorScoreBreakdown({
             <div className="border-t border-slate-800/80 pt-4">
                 <Button
                     type="button"
+                    variant="outline"
+                    colorScheme="neutral"
+                    size="sm"
                     onClick={() => setShowGuide(!showGuide)}
-                    className="text-sm text-voxel-muted hover:text-voxel-ink font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 cursor-pointer"
                 >
                     <span>{showGuide ? '▼' : '▶'}</span>
                     <span>How Sector Ratchet Scoring Works</span>

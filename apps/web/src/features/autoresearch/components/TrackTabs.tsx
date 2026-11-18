@@ -37,7 +37,7 @@ export function TrackTabs({ experiments, activeTrack, onSelectTrack }: TrackTabs
     }, {});
 
     return (
-        <div className="flex items-center space-x-2 border-b border-zinc-200 border-zinc-800 pb-2 overflow-x-auto">
+        <div className="flex items-center space-x-2 border-b border-voxel-bevel-hi pb-2 overflow-x-auto">
             {availableTracks.map((tid) => {
                 const isActive = activeTrack === tid;
                 const count = counts[tid] || 0;
@@ -47,12 +47,11 @@ export function TrackTabs({ experiments, activeTrack, onSelectTrack }: TrackTabs
                     <Button
                         key={tid}
                         type="button"
+                        variant={isActive ? 'solid' : 'outline'}
+                        colorScheme={isActive ? 'accent' : 'neutral'}
+                        size="sm"
                         onClick={() => onSelectTrack(tid)}
-                        className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
-                            isActive
-                                ? 'bg-accent text-accent-ink border border-accent'
-                                : 'bg-voxel-surface text-voxel-muted hover:text-voxel-ink hover:bg-voxel-elevated border border-voxel-bevel-hi'
-                        }`}
+                        className="voxel-btn inline-flex items-center gap-2 whitespace-nowrap"
                     >
                         <span>{formatTrackLabel(tid)}</span>
                         {isCold && (

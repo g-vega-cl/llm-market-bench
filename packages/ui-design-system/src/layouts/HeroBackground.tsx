@@ -23,10 +23,10 @@ const gradientMap: Record<string, string> = {
 };
 
 const overlayMap: Record<string, string> = {
-    electric: 'from-electric-blue-600/90 via-deep-purple-600/80 to-electric-blue-800/90',
-    success: 'from-neon-green-600/90 via-emerald-600/80 to-neon-green-800/90',
-    catalyst: 'from-cyber-yellow-600/90 via-amber-600/80 to-cyber-yellow-800/90',
-    ai: 'from-deep-purple-600/90 via-electric-blue-600/80 to-deep-purple-800/90',
+    electric: 'from-voxel-elevated/95 via-voxel-surface/95 to-voxel-canvas/95',
+    success: 'from-success-dark/95 via-voxel-surface/95 to-voxel-canvas/95',
+    catalyst: 'from-warning-dark/95 via-voxel-surface/95 to-voxel-canvas/95',
+    ai: 'from-info-dark/95 via-voxel-surface/95 to-voxel-canvas/95',
 };
 
 const orbColorMap: Record<string, { orb1: string; orb2: string }> = {

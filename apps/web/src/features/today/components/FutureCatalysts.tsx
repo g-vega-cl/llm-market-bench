@@ -49,8 +49,8 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <SectionHeading>Horizon Watch: Pending Events</SectionHeading>
 
-                <div className="flex items-center gap-2 px-4 py-2 bg-cyber-yellow-50 bg-cyber-yellow-950/20 border border-cyber-yellow-200 border-cyber-yellow-900/30 rounded-none shadow-sm">
-                    <span className="text-sm font-bold text-cyber-yellow-600 text-cyber-yellow-400 uppercase tracking-wider">
+                <div className="flex items-center gap-2 px-4 py-2 bg-voxel-trough border border-voxel-bevel-hi rounded-none shadow-sm">
+                    <span className="text-sm font-bold text-accent uppercase tracking-wider">
                         📅 {visibleEvents.length} Catalyst{visibleEvents.length !== 1 ? 's' : ''}
                     </span>
                 </div>
@@ -75,7 +75,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                             >
                                 {/* Timeline Dot */}
                                 <div
-                                    className={`absolute left-6 top-6 w-4 h-4 rounded-none border-2 border-white border-zinc-950 shadow-sm bg-gradient-to-br ${getImportanceColor(importanceScore)} z-10 transition-all duration-300`}
+                                    className={`absolute left-6 top-6 w-4 h-4 rounded-none border-2 border-voxel-canvas shadow-sm bg-gradient-to-br ${getImportanceColor(importanceScore)} z-10 transition-all duration-300`}
                                 />
 
                                 {/* Card */}
@@ -115,7 +115,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                             {/* Event Time if available */}
                                             {event.metadata?.event_time &&
                                                 event.metadata.event_time !== 'N/A' && (
-                                                    <div className="flex items-center gap-1.5 text-xs font-normal text-zinc-500 text-zinc-400">
+                                                    <div className="flex items-center gap-1.5 text-xs font-normal text-voxel-muted">
                                                         <span>🕐</span>
                                                         <span className="font-mono tabular-nums">
                                                             {event.metadata.event_time}
@@ -127,12 +127,12 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                         {/* Date Display */}
                                         {event.formattedTargetMonthDay && (
                                             <div className="text-right">
-                                                <div className="text-sm font-bold font-mono text-zinc-900 text-voxel-trough">
+                                                <div className="text-sm font-bold font-mono text-voxel-ink">
                                                     {normalizeWhitespace(
                                                         event.formattedTargetMonthDay,
                                                     )}
                                                 </div>
-                                                <div className="text-xs font-normal text-zinc-400 font-mono uppercase tracking-wider">
+                                                <div className="text-xs font-normal text-voxel-muted font-mono uppercase tracking-wider">
                                                     {normalizeWhitespace(
                                                         event.formattedTargetYear || '',
                                                     )}
@@ -142,20 +142,20 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                     </div>
 
                                     {/* Content */}
-                                    <p className="text-sm font-bold text-zinc-800 text-zinc-200 leading-relaxed">
+                                    <p className="text-sm font-bold text-voxel-ink leading-relaxed">
                                         {event.content}
                                     </p>
 
                                     {/* Scenario Analysis */}
                                     {event.metadata?.scenario_analysis && (
-                                        <div className="pt-4 border-t border-zinc-100 border-zinc-800 flex flex-col gap-3">
+                                        <div className="pt-4 border-t border-voxel-bevel-lo flex flex-col gap-3">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">🔮</span>
-                                                <h4 className="text-sm font-bold text-cyber-yellow-600 text-cyber-yellow-400 uppercase tracking-wider">
+                                                <h4 className="text-sm font-bold text-accent uppercase tracking-wider">
                                                     Scenarios & Trading Plans
                                                 </h4>
                                             </div>
-                                            <div className="bg-gradient-to-br from-cyber-yellow-50/50 via-amber-50/30 to-transparent from-cyber-yellow-950/10 via-amber-950/5 p-4 rounded-none border border-cyber-yellow-100 border-cyber-yellow-900/30">
+                                            <div className="bg-voxel-trough p-4 rounded-none border border-voxel-bevel-hi">
                                                 <div className="flex flex-col gap-1">
                                                     {parseScenarioPercentages(
                                                         event.metadata.scenario_analysis,
@@ -174,7 +174,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                                     {line.percentage}
                                                                 </Badge>
                                                             )}
-                                                            <span className="text-xs font-normal text-zinc-700 text-zinc-300 leading-relaxed">
+                                                            <span className="text-xs font-normal text-voxel-ink leading-relaxed">
                                                                 {line.text}
                                                             </span>
                                                         </div>
@@ -192,7 +192,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                     (ticker: string, i: number) => (
                                                         <span
                                                             key={i}
-                                                            className="px-3 py-1.5 bg-zinc-100 bg-zinc-800 text-zinc-700 text-zinc-300 text-sm font-bold rounded-none uppercase tracking-wider border border-zinc-200 border-zinc-700 hover:border-cyber-yellow-500 hover:text-cyber-yellow-600 hover:text-cyber-yellow-400 transition-all duration-300 cursor-default"
+                                                            className="px-3 py-1.5 bg-voxel-trough text-voxel-ink text-sm font-bold rounded-none uppercase tracking-wider border border-voxel-bevel-hi hover:border-accent hover:text-accent transition-all duration-300 cursor-default"
                                                         >
                                                             {ticker}
                                                         </span>

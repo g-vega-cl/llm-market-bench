@@ -134,9 +134,12 @@ function ConsoleHeaderRibbon({
                 {onRefresh && (
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         onClick={onRefresh}
                         disabled={isPolling}
-                        className="voxel-btn text-xs font-normal font-mono uppercase px-2.5 py-1 text-voxel-ink hover:text-accent disabled:opacity-50 flex items-center gap-1"
+                        className="text-xs font-normal font-mono uppercase px-2.5 py-1 flex items-center gap-1"
                         title="Refresh intraday tape from server"
                     >
                         <span>{isPolling ? 'Refreshing...' : 'Refresh Tape'}</span>

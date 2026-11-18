@@ -118,18 +118,20 @@ export function PromoteMemoryModal({
                             🧠
                         </div>
                         <div>
-                            <h3 className="font-bold text-voxel-trough text-sm">
+                            <h3 className="font-bold text-voxel-ink text-sm">
                                 Promote Insight to Private Memory
                             </h3>
-                            <p className="text-xs font-normal text-zinc-400">
+                            <p className="text-xs font-normal text-voxel-muted">
                                 Strictly isolated in your personal research vault
                             </p>
                         </div>
                     </div>
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         onClick={onClose}
-                        className="rounded-none p-1 text-zinc-400 hover:bg-zinc-800 hover:text-voxel-trough transition-colors"
                     >
                         ✕
                     </Button>
@@ -157,7 +159,7 @@ export function PromoteMemoryModal({
                                 value={ticker}
                                 onChange={(e) => setTicker(e.target.value.toUpperCase())}
                                 placeholder="e.g. NVO, NVDA"
-                                className="w-full rounded-none border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-xs text-zinc-100 font-mono placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
+                                className="w-full rounded-none border border-voxel-bevel-hi bg-voxel-trough px-3 py-2 text-xs text-voxel-ink font-mono placeholder:text-voxel-muted focus:border-cyan-500 focus:outline-none"
                             />
                         </div>
 
@@ -192,7 +194,7 @@ export function PromoteMemoryModal({
                             onChange={(e) => setThesis(e.target.value)}
                             required
                             placeholder="State the core catalyst, mechanism, and actionable conclusion..."
-                            className="w-full rounded-none border border-zinc-800 bg-zinc-900/80 p-3 text-xs font-normal leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none resize-y"
+                            className="w-full rounded-none border border-voxel-bevel-hi bg-voxel-trough p-3 text-xs font-normal leading-relaxed text-voxel-ink placeholder:text-voxel-muted focus:border-cyan-500 focus:outline-none resize-y"
                         />
                     </div>
 
@@ -216,8 +218,11 @@ export function PromoteMemoryModal({
                                     <span>{tag}</span>
                                     <Button
                                         type="button"
+                                        variant="outline"
+                                        colorScheme="danger"
+                                        size="sm"
                                         onClick={() => handleRemoveTag(tag)}
-                                        className="hover:text-red-400 ml-0.5"
+                                        className="ml-0.5 px-1 py-0"
                                     >
                                         ×
                                     </Button>
@@ -232,7 +237,7 @@ export function PromoteMemoryModal({
                                 onChange={(e) => setTagInput(e.target.value)}
                                 onKeyDown={handleAddTag}
                                 placeholder="Add a tag..."
-                                className="flex-1 rounded-none border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
+                                className="flex-1 rounded-none border border-voxel-bevel-hi bg-voxel-trough px-3 py-1.5 text-xs text-voxel-ink placeholder:text-voxel-muted focus:border-cyan-500 focus:outline-none"
                             />
                             <Button
                                 type="button"
@@ -258,7 +263,7 @@ export function PromoteMemoryModal({
                                 value={customInstruction}
                                 onChange={(e) => setCustomInstruction(e.target.value)}
                                 placeholder="e.g. Focus on supply bottleneck timing..."
-                                className="flex-1 rounded-none border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
+                                className="flex-1 rounded-none border border-voxel-bevel-hi bg-voxel-trough px-3 py-1.5 text-xs text-voxel-ink placeholder:text-voxel-muted focus:border-cyan-500 focus:outline-none"
                             />
                             <Button
                                 type="button"

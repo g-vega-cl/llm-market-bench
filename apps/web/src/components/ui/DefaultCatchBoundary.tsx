@@ -197,14 +197,14 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
                 {isRoot ? (
                     <Link
                         to="/"
-                        className="px-2.5 py-1 bg-zinc-700 rounded-none text-voxel-trough uppercase font-bold text-sm shadow-sm"
+                        className="px-2.5 py-1 bg-voxel-surface hover:bg-voxel-elevated border border-voxel-bevel-hi rounded-none text-voxel-ink uppercase font-bold text-sm shadow-sm"
                     >
                         Home
                     </Link>
                 ) : (
                     <Link
                         to="/"
-                        className="px-2.5 py-1 bg-zinc-700 rounded-none text-voxel-trough uppercase font-bold text-sm shadow-sm"
+                        className="px-2.5 py-1 bg-voxel-surface hover:bg-voxel-elevated border border-voxel-bevel-hi rounded-none text-voxel-ink uppercase font-bold text-sm shadow-sm"
                         onClick={(e) => {
                             e.preventDefault();
                             window.history.back();

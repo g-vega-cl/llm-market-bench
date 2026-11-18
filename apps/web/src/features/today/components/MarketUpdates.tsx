@@ -38,9 +38,9 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
             <div className="flex items-center justify-between">
                 <SectionHeading>Live Market Pulse</SectionHeading>
 
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 bg-amber-950/20 border border-amber-200 border-amber-900/30 rounded-none">
+                <div className="flex items-center gap-2 px-4 py-2 bg-voxel-trough border border-voxel-bevel-hi rounded-none">
                     <div className="live-dot" />
-                    <span className="text-sm font-bold text-amber-600 text-amber-400 uppercase tracking-wider">
+                    <span className="text-sm font-bold text-accent uppercase tracking-wider">
                         Real-time
                     </span>
                 </div>
@@ -73,7 +73,7 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                                 </div>
 
                                 {/* Price */}
-                                <div className="text-sm font-bold font-mono text-zinc-900 text-voxel-trough">
+                                <div className="text-sm font-bold font-mono text-voxel-ink">
                                     ${Number(update.price).toFixed(2)}
                                 </div>
 

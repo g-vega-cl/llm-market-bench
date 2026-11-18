@@ -13,11 +13,13 @@ Tracks are defined in `apps/web/src/features/ai-predictions/lib/sector-tracks.ts
 
 - `id` — one of `all`, `deepseek`, `minimax`, `gemini`, `openai`, `legacy`
 - `label` / `shortLabel` — display names (e.g. `DeepSeek Flash` / `DeepSeek`)
-- `badgeColorScheme` / `badgeClass` — Tailwind badge styling
+- `badgeColorScheme` — the design-system `Badge` color scheme (`accent` | `neutral` | `success` | `warning` | `info`) used to render the track badge. Track badges are rendered through the `Badge` primitive (`variant="soft"`, `size="xs"`) rather than hand-rolled `className` color strings, so the palette stays inside the Voxel token set (see [[entities/design-system]]).
 - `matches(trackId, variantTag)` — case-insensitive substring match against an experiment's `track_id` and `variant_tag`
 - `matchesPrediction(modelName)` — substring match against a prediction's `model_name`
 
 Matching is deliberately fuzzy: an experiment belongs to a track if either its `track_id` or its `variant_tag` contains the model keyword (e.g. `deepseek`, `minimax`, `gemini`, `gpt`/`openai`).
+
+`getExperimentTrackInfo(exp)` resolves an experiment to `{ label, colorScheme }` — the short track label plus the `badgeColorScheme` of the matching track (falling back to `LEGACY_TRACK_CONFIG`'s neutral scheme). Consumers pass `colorScheme` straight into `Badge`; there is no per-track Tailwind class string to keep in sync.
 
 ## Legacy / Default Track
 
@@ -34,9 +36,9 @@ Matching is deliberately fuzzy: an experiment belongs to a track if either its `
 
 The Prompt Auto-Research tab (`PredictorAutoresearchTab`) is driven entirely by the active track:
 
-- `PredictorTrackTabs` — horizontal selector with an **All Models** tab plus one tab per available track, each showing an experiment count and a `From 0` cold-start badge.
+- `PredictorTrackTabs` — horizontal selector with an **All Models** tab plus one tab per available track, each showing an experiment count and a `From 0` cold-start badge. Tabs are `Button` primitives with `variant={isActive ? 'solid' : 'outline'}` and `colorScheme={isActive ? 'accent' : 'neutral'}`.
 - `PredictorModelOverviewGrid` — when **All Models** is active, renders a 4-card grid showing each model's active variant, ratchet baseline score, experiment count, and status side-by-side.
-- `PredictorTrackHeaderCards` — when a single track is selected, shows that model's all-time baseline score and active prompt.
+- `PredictorTrackHeaderCards` — when a single track is selected, shows that model's all-time baseline score and active prompt, each headed by a soft `Badge` carrying the track's `badgeColorScheme`.
 - The experiment history table and details pane (score breakdown, research rationale, cognitive toolbox, prompt blocks, prompt diff, segmented prompt inspector) are filtered strictly to the selected track's experiments and predictions.
 
 Selecting a track resets the selected experiment to the first experiment in that track.
@@ -47,3 +49,4 @@ Selecting a track resets the selected experiment to the first experiment in that
 - [[concepts/multi-track-autoresearch]] — the general multi-track autoresearch pattern
 - [[concepts/auto-research-prompt-improver]] — the underlying prompt evolution loop
 - [[concepts/prompt-experiment-lifecycle]] — experiment statuses and lineage
+- [[entities/design-system]] — the `Badge` primitive and Voxel color-scheme tokens the track badges use

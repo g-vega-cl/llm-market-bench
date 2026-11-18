@@ -42,8 +42,11 @@ function ToolTracesView({
         <div className="mt-1.5 max-w-[90%] md:max-w-[85%] pl-1">
             <Button
                 type="button"
+                variant="outline"
+                colorScheme="info"
+                size="sm"
                 onClick={onToggle}
-                className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/40 border border-cyan-800/40 rounded-none px-2.5 py-1"
+                className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1"
             >
                 <span>⚡</span>
                 <span>
@@ -91,8 +94,11 @@ function SuggestedQuestionsView({
                     <Button
                         key={question}
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         onClick={() => onSelect(question)}
-                        className="text-left rounded-none border border-cyan-900/50 bg-cyan-950/20 hover:bg-cyan-900/40 hover:border-cyan-500/60 p-2.5 text-xs font-normal text-zinc-200 hover:text-cyan-100 transition-all shadow-sm flex items-start gap-2 group"
+                        className="text-left justify-start p-2.5 text-xs font-normal shadow-sm flex items-start gap-2 group"
                     >
                         <span className="text-cyan-400 shrink-0 font-mono text-sm group-hover:translate-x-0.5 transition-transform">
                             ↳
@@ -158,9 +164,12 @@ function MessageBubble({
                     ) : (
                         <Button
                             type="button"
+                            variant="outline"
+                            colorScheme="neutral"
+                            size="sm"
                             onClick={onPromoteMemory}
                             disabled={isDistilling}
-                            className="flex items-center gap-1.5 text-xs font-normal text-zinc-400 hover:text-cyan-300 transition-colors bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-cyan-800/60 rounded-none px-2.5 py-1"
+                            className="flex items-center gap-1.5 text-xs font-normal px-2.5 py-1"
                         >
                             <span>{isDistilling ? '⏳' : '🧠'}</span>
                             <span>
@@ -352,7 +361,7 @@ export function ChatInterface({
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-bold text-voxel-trough tracking-tight">
+                            <h2 className="text-sm font-bold text-voxel-ink tracking-tight">
                                 Investment Chat Gateway
                             </h2>
                             <Badge variant="soft" size="sm" colorScheme="accent">
@@ -396,8 +405,8 @@ export function ChatInterface({
                     </div>
                 </div>
 
-                <div className="pt-4 border-t border-zinc-800/80 flex items-center justify-between">
-                    <span className="text-xs font-normal text-zinc-500">
+                <div className="pt-4 border-t border-voxel-bevel-hi flex items-center justify-between">
+                    <span className="text-xs font-normal text-voxel-muted">
                         {user ? `Signed in as ${user.email} (Access restricted)` : 'Not signed in'}
                     </span>
                     <Link to="/login">
@@ -423,7 +432,7 @@ export function ChatInterface({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-4 py-3 rounded-none">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-none bg-gradient-to-tr from-cyan-500 to-blue-600 font-bold text-voxel-trough text-sm shadow-sm">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-none bg-voxel-elevated border border-voxel-bevel-hi font-bold text-voxel-ink text-sm shadow-sm">
                         🤖
                     </div>
                     <div>
@@ -448,16 +457,17 @@ export function ChatInterface({
                         colorScheme="neutral"
                         onClick={handleClearHistory}
                         title="Clear conversation history"
-                        className="text-sm text-zinc-400 hover:text-zinc-200"
                     >
                         Clear
                     </Button>
                     {onClose && (
                         <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
+                            colorScheme="neutral"
                             aria-label="Close chat"
                             onClick={onClose}
-                            className="rounded-none p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
                         >
                             ✕
                         </Button>
@@ -509,8 +519,8 @@ export function ChatInterface({
 
                 {/* Prompt Suggestions (if only greeting is present) */}
                 {messages.length <= 1 && (
-                    <div className="mt-4 flex flex-col gap-2 pt-2 border-t border-zinc-800/60">
-                        <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                    <div className="mt-4 flex flex-col gap-2 pt-2 border-t border-voxel-bevel-hi">
+                        <p className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                             Suggested Inquiries:
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -518,8 +528,11 @@ export function ChatInterface({
                                 <Button
                                     key={prompt}
                                     type="button"
+                                    variant="outline"
+                                    colorScheme="neutral"
+                                    size="sm"
                                     onClick={() => handleChipClick(prompt)}
-                                    className="text-left rounded-none border border-zinc-800 bg-zinc-900/40 p-2.5 text-xs font-normal text-zinc-300 hover:border-cyan-500/50 hover:bg-cyan-950/20 hover:text-cyan-200 transition-all shadow-sm"
+                                    className="text-left justify-start p-2.5 text-xs font-normal shadow-sm"
                                 >
                                     💡 {prompt}
                                 </Button>
@@ -537,42 +550,51 @@ export function ChatInterface({
                 className="border-t border-zinc-800 bg-zinc-900/80 p-3 rounded-none flex flex-col gap-2"
             >
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-sm font-bold text-zinc-500 uppercase tracking-wider">
+                    <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         Attach DB Context:
                     </span>
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="info"
+                        size="sm"
                         onClick={() =>
                             setInput(
                                 (prev) =>
                                     `${prev ? `${prev} ` : ''}Please check the latest daily market briefing and market feeling.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-none text-sm font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 text-sm font-mono font-bold"
                     >
                         📰 + Briefing
                     </Button>
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="info"
+                        size="sm"
                         onClick={() =>
                             setInput(
                                 (prev) =>
                                     `${prev ? `${prev} ` : ''}Please search our memories for recent market lessons and causal scenarios.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-none text-sm font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 text-sm font-mono font-bold"
                     >
                         🧠 + Memories
                     </Button>
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="info"
+                        size="sm"
                         onClick={() =>
                             setInput(
                                 (prev) =>
                                     `${prev ? `${prev} ` : ''}Please query our recent trade decisions and portfolio leaderboard.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-none text-sm font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 text-sm font-mono font-bold"
                     >
                         📊 + Portfolio Trades
                     </Button>

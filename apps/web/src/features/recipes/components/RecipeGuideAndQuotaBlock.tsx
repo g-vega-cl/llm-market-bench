@@ -245,7 +245,11 @@ export function SavedRecipesStrip({
                             >
                                 <span className="truncate min-w-0">{item.name}</span>
                                 {item.is_live && (
-                                    <Badge variant="soft" colorScheme="success" size="xs">
+                                    <Badge
+                                        variant={isActive ? 'solid' : 'soft'}
+                                        colorScheme={isActive ? 'neutral' : 'success'}
+                                        size="xs"
+                                    >
                                         LIVE 3x/d
                                     </Badge>
                                 )}

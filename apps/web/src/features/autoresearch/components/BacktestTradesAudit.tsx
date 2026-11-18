@@ -81,8 +81,11 @@ function BacktestTradeRow({
                 {trade.reasoning ? (
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="accent"
+                        size="sm"
                         onClick={onToggleExpand}
-                        className="text-xs font-normal font-sans text-accent hover:underline"
+                        className="text-xs font-normal font-sans"
                     >
                         {isExpanded ? 'Hide' : 'View Thesis'}
                     </Button>
@@ -134,12 +137,10 @@ export function BacktestTradesAudit({ experiment }: BacktestTradesAuditProps) {
                             <Button
                                 key={filter}
                                 type="button"
+                                variant={selectedSignalFilter === filter ? 'solid' : 'outline'}
+                                colorScheme={selectedSignalFilter === filter ? 'accent' : 'neutral'}
+                                size="sm"
                                 onClick={() => setSelectedSignalFilter(filter)}
-                                className={`px-3 py-1 text-sm font-bold rounded-none transition-all ${
-                                    selectedSignalFilter === filter
-                                        ? 'bg-accent text-accent-ink shadow-sm'
-                                        : 'text-voxel-muted hover:text-voxel-ink'
-                                }`}
                             >
                                 {filter}
                             </Button>

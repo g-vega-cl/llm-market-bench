@@ -21,14 +21,14 @@ export function CognitiveToolboxCard({
 
     if (activeTools.length === 0) {
         return (
-            <Card className="p-6 space-y-3 bg-zinc-50/50 bg-zinc-900/30 border-zinc-200 border-zinc-800">
+            <Card className="p-6 space-y-3 bg-voxel-surface border-voxel-bevel-hi">
                 <div className="flex items-center justify-between">
                     <SectionHeading>{title}</SectionHeading>
                     <Badge variant="soft" size="sm">
                         0 Tools
                     </Badge>
                 </div>
-                <p className="text-xs text-zinc-500 italic">{emptyFallbackText}</p>
+                <p className="text-xs text-voxel-muted italic">{emptyFallbackText}</p>
             </Card>
         );
     }
@@ -55,7 +55,7 @@ export function CognitiveToolboxCard({
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1">
                     <SectionHeading>{title}</SectionHeading>
-                    <p className="text-xs text-zinc-500 text-zinc-400">{subtitle}</p>
+                    <p className="text-xs text-voxel-muted">{subtitle}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Badge variant="soft">

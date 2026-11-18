@@ -7,7 +7,7 @@ export function CauseAndEffectCard({ entry }: { entry: CauseAndEffectEntry }) {
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-none p-6 shadow-sm hover:border-blue-900/50 transition-all group">
             <div className="flex flex-col md:flex-row md:items-start gap-6">
                 <div className="flex-1 flex flex-col gap-4">
-                    <div className="flex items-center gap-4 text-sm uppercase tracking-wider font-bold text-zinc-500">
+                    <div className="flex items-center gap-4 text-sm uppercase tracking-wider font-bold text-voxel-muted">
                         <span>
                             {new Date(created_at).toLocaleDateString('en-US', {
                                 timeZone: 'America/New_York',
@@ -39,7 +39,7 @@ export function CauseAndEffectCard({ entry }: { entry: CauseAndEffectEntry }) {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <div className="text-sm uppercase tracking-wider font-bold text-zinc-500">
+                        <div className="text-sm uppercase tracking-wider font-bold text-voxel-muted">
                             Causal Analysis
                         </div>
                         <div className="text-xs font-normal text-zinc-400 leading-relaxed whitespace-pre-wrap">

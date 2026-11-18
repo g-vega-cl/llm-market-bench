@@ -324,11 +324,11 @@ export function DataAuditBlock({ auditData }: { auditData: EvaluationAuditData }
                 )}
 
                 {sector && (
-                    <div className="flex justify-between items-center bg-slate-950/60 px-2.5 py-1.5 rounded border border-slate-850 font-mono">
-                        <span className="text-slate-400 font-sans">
+                    <div className="flex justify-between items-center bg-voxel-trough px-2.5 py-1.5 rounded-none border border-voxel-bevel-hi font-mono">
+                        <span className="text-voxel-muted font-sans">
                             Best Sector ({sector.ticker}):
                         </span>
-                        <span className="text-slate-200">
+                        <span className="text-voxel-ink">
                             {formatPrice(sector.start_price)} ➔ {formatPrice(sector.end_price)}{' '}
                             <span
                                 className={
@@ -342,11 +342,11 @@ export function DataAuditBlock({ auditData }: { auditData: EvaluationAuditData }
                 )}
 
                 {auditData.worst_sector && (
-                    <div className="flex justify-between items-center bg-slate-950/60 px-2.5 py-1.5 rounded border border-slate-850 font-mono">
+                    <div className="flex justify-between items-center bg-voxel-trough px-2.5 py-1.5 rounded-none border border-voxel-bevel-hi font-mono">
                         <span className="text-rose-400 font-sans">
                             Worst Sector ({auditData.worst_sector.ticker}):
                         </span>
-                        <span className="text-slate-200">
+                        <span className="text-voxel-ink">
                             {formatPrice(auditData.worst_sector.start_price)} ➔{' '}
                             {formatPrice(auditData.worst_sector.end_price)}{' '}
                             <span
@@ -365,12 +365,12 @@ export function DataAuditBlock({ auditData }: { auditData: EvaluationAuditData }
                 {pairs.map((item: EvaluationAuditItem) => (
                     <div
                         key={item.ticker}
-                        className="flex justify-between items-center bg-slate-950/60 px-2.5 py-1.5 rounded border border-slate-850 font-mono"
+                        className="flex justify-between items-center bg-voxel-trough px-2.5 py-1.5 rounded-none border border-voxel-bevel-hi font-mono"
                     >
-                        <span className="text-slate-400 font-sans">
+                        <span className="text-voxel-muted font-sans">
                             Pair Asset ({item.ticker}):
                         </span>
-                        <span className="text-slate-200">
+                        <span className="text-voxel-ink">
                             {formatPrice(item.start_price)} ➔ {formatPrice(item.end_price)}{' '}
                             <span
                                 className={

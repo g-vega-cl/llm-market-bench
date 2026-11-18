@@ -171,7 +171,7 @@ export function ConsoleQueueCard({
                     <div>
                         <a
                             href="/signup"
-                            className="voxel-btn inline-block bg-accent text-accent-ink px-3 py-1.5 text-sm font-bold uppercase tracking-wider hover:opacity-90"
+                            className="voxel-btn inline-block bg-accent text-voxel-trough px-3 py-1.5 text-sm font-bold uppercase tracking-wider hover:opacity-90"
                         >
                             Sign In to Queue
                         </a>
@@ -184,8 +184,11 @@ export function ConsoleQueueCard({
                     </div>
                     <Button
                         type="button"
+                        variant="outline"
+                        colorScheme="neutral"
+                        size="sm"
                         onClick={() => setSubmittedMessage(null)}
-                        className="text-xs font-normal font-mono text-voxel-muted hover:text-voxel-ink text-left underline"
+                        className="text-xs font-normal font-mono text-left underline self-start"
                     >
                         Submit another hypothesis
                     </Button>
@@ -203,8 +206,11 @@ export function ConsoleQueueCard({
                         />
                         <Button
                             type="submit"
+                            variant="solid"
+                            colorScheme="accent"
+                            size="sm"
                             disabled={isSubmitting || !userQuestion.trim()}
-                            className="voxel-btn bg-accent text-accent-ink px-3 py-1.5 text-sm font-bold uppercase tracking-wider hover:opacity-90 disabled:opacity-50 self-end"
+                            className="uppercase tracking-wider self-end"
                         >
                             {isSubmitting ? 'Queuing...' : 'Queue'}
                         </Button>

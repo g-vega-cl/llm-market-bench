@@ -52,7 +52,7 @@ export function getModelDisplayInfo(ownerId: string | null | undefined) {
     if (!ownerId) {
         return {
             name: 'Unknown',
-            color: 'text-zinc-500',
+            color: 'text-voxel-muted',
             bgColor: 'bg-zinc-500',
             emoji: '🤖',
             gradient: 'electric' as const,

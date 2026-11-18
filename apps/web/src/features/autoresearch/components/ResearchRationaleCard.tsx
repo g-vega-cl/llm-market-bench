@@ -55,10 +55,15 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
                 {/* Change Summary */}
                 <div className="space-y-2">
                     <SubHeading>Change Summary</SubHeading>
-                    <p className="text-zinc-600 text-zinc-400 italic text-sm break-words">
+                    <p className="text-voxel-muted italic text-sm break-words">
                         "{experiment.change_description || 'No description provided.'}"
                     </p>
-                    <Badge variant={experiment.experiment_type === 'baseline' ? 'solid' : 'soft'}>
+                    <Badge
+                        variant={experiment.experiment_type === 'baseline' ? 'solid' : 'soft'}
+                        colorScheme={
+                            experiment.experiment_type === 'baseline' ? 'accent' : 'neutral'
+                        }
+                    >
                         {experiment.experiment_type}
                     </Badge>
                 </div>
@@ -67,7 +72,7 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
                 {hypothesis && (
                     <div className="flex flex-col gap-2">
                         <SubHeading>Hypothesis</SubHeading>
-                        <div className="p-4 bg-zinc-50 bg-zinc-900 rounded-none text-xs font-normal text-zinc-700 text-zinc-300 border border-zinc-200 border-zinc-800 break-words">
+                        <div className="p-4 bg-voxel-trough rounded-none text-xs font-normal text-voxel-ink border border-voxel-bevel-hi break-words">
                             {hypothesis}
                         </div>
                     </div>
@@ -77,7 +82,7 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
                 {reasoning && (
                     <div className="flex flex-col gap-2">
                         <SubHeading>Meta-Researcher Analytical Reasoning</SubHeading>
-                        <div className="whitespace-pre-wrap break-words text-xs font-normal text-zinc-600 text-zinc-400 leading-relaxed bg-zinc-50 bg-zinc-900/50 p-4 rounded-none border border-zinc-200 border-zinc-800 font-sans">
+                        <div className="whitespace-pre-wrap break-words text-xs font-normal text-voxel-muted leading-relaxed bg-voxel-trough p-4 rounded-none border border-voxel-bevel-hi font-sans">
                             {reasoning}
                         </div>
                     </div>
@@ -88,13 +93,11 @@ export function ResearchRationaleCard({ experiment }: ResearchRationaleCardProps
                     <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-none flex flex-col gap-2 break-words">
                         <div className="flex items-center gap-2">
                             <span className="text-emerald-500 text-sm">💾</span>
-                            <span className="text-sm font-bold uppercase tracking-wider text-emerald-600 text-emerald-400">
+                            <span className="text-sm font-bold uppercase tracking-wider text-success">
                                 Durable Memory Saved for this Track
                             </span>
                         </div>
-                        <p className="text-xs font-normal text-zinc-700 text-zinc-300 italic">
-                            "{insight}"
-                        </p>
+                        <p className="text-xs font-normal text-voxel-ink italic">"{insight}"</p>
                     </div>
                 )}
             </div>

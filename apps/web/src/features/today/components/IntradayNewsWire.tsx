@@ -27,7 +27,7 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
                     <p className="text-sm font-bold text-zinc-300">
                         No breaking catalysts detected yet today
                     </p>
-                    <p className="text-xs font-normal text-zinc-500 max-w-md leading-relaxed">
+                    <p className="text-xs font-normal text-voxel-muted max-w-md leading-relaxed">
                         TypeSafe Jev actively screens live macro releases, Fed speeches, and
                         breaking headlines for material market impact.
                     </p>
@@ -76,7 +76,7 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
                             ? 'No breaking catalysts detected yet today'
                             : 'No filtered noise headlines recorded yet today'}
                     </p>
-                    <p className="text-xs font-normal text-zinc-500 max-w-md leading-relaxed">
+                    <p className="text-xs font-normal text-voxel-muted max-w-md leading-relaxed">
                         {activeTab === 'catalysts'
                             ? 'TypeSafe Jev actively screens live macro releases, Fed speeches, and breaking headlines for material market impact.'
                             : 'Headlines rejected by Jev as routine corporate PR or low-impact chatter appear here.'}
@@ -100,11 +100,11 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
                                     {/* Header: Timestamp, Source & Jev Badge */}
                                     <div className="flex items-center justify-between gap-2 flex-wrap">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-xs font-normal text-zinc-400 font-mono tabular-nums whitespace-nowrap">
+                                            <span className="text-xs font-normal text-voxel-muted font-mono tabular-nums whitespace-nowrap">
                                                 {item.formattedTime} ET
                                             </span>
-                                            <span className="text-zinc-600 text-xs">•</span>
-                                            <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                                            <span className="text-voxel-muted text-xs">•</span>
+                                            <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider whitespace-nowrap">
                                                 {item.source}
                                             </span>
                                         </div>

@@ -59,7 +59,7 @@ export function HeroPredictionCard({ prediction }: HeroPredictionCardProps) {
                             colorScheme="neutral"
                             variant="soft"
                             size="xs"
-                            className="text-voxel-ink bg-voxel-trough border border-voxel-bevel-hi"
+                            className="border border-voxel-bevel-hi"
                         >
                             {cat}
                         </Badge>

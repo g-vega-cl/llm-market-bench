@@ -27,25 +27,22 @@ export function SegmentedPromptInspector({ promptContent }: SegmentedPromptInspe
                 <div className="flex flex-col gap-2 min-w-0">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-zinc-900 text-zinc-100">
+                            <span className="text-sm font-bold text-voxel-ink">
                                 🔒 1. Trader Identity & Market Context
                             </span>
-                            <span className="text-xs font-normal text-zinc-500 text-zinc-400 font-mono">
+                            <span className="text-xs font-normal text-voxel-muted font-mono">
                                 (Header)
                             </span>
                         </div>
-                        <Badge
-                            variant="solid"
-                            className="bg-amber-500/10 text-amber-600 text-amber-400 border border-amber-500/20 text-sm font-bold uppercase"
-                        >
+                        <Badge variant="soft" colorScheme="warning" className="uppercase">
                             Frozen / System Managed
                         </Badge>
                     </div>
-                    <p className="text-xs font-normal text-zinc-500 text-zinc-400 m-0">
+                    <p className="text-xs font-normal text-voxel-muted m-0">
                         Unchangeable system framing (trader identity and the market context provided
                         to the model). Autoresearch cannot edit this.
                     </p>
-                    <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-none overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words m-0">
+                    <pre className="p-4 bg-voxel-trough text-voxel-muted rounded-none overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words m-0">
                         {header}
                     </pre>
                 </div>
@@ -54,25 +51,22 @@ export function SegmentedPromptInspector({ promptContent }: SegmentedPromptInspe
             <div className="flex flex-col gap-2 min-w-0">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-zinc-900 text-zinc-100">
+                        <span className="text-sm font-bold text-voxel-ink">
                             ⚡ 2. Intraday Trading Strategy & Analysis Rules
                         </span>
-                        <span className="text-xs font-normal text-emerald-500 font-mono">
+                        <span className="text-xs font-normal text-success font-mono">
                             (Evolved Target)
                         </span>
                     </div>
-                    <Badge
-                        variant="solid"
-                        className="bg-emerald-500/10 text-emerald-600 text-emerald-400 border border-emerald-500/20 text-sm font-bold uppercase"
-                    >
+                    <Badge variant="soft" colorScheme="success" className="uppercase">
                         Mutable / Evolved by Autoresearch
                     </Badge>
                 </div>
-                <p className="text-xs font-normal text-zinc-500 text-zinc-400 m-0">
+                <p className="text-xs font-normal text-voxel-muted m-0">
                     Analytical heuristics, technical levels, and catalyst transmission rules. This
                     section is iteratively tested and optimized by daily autoresearch.
                 </p>
-                <pre className="p-4 bg-zinc-950 text-zinc-200 rounded-none overflow-x-auto text-xs font-mono leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words m-0">
+                <pre className="p-4 bg-voxel-canvas text-voxel-ink rounded-none overflow-x-auto text-xs font-mono leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words m-0">
                     {mutable}
                 </pre>
             </div>
@@ -81,25 +75,22 @@ export function SegmentedPromptInspector({ promptContent }: SegmentedPromptInspe
                 <div className="flex flex-col gap-2 min-w-0">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-zinc-900 text-zinc-100">
+                            <span className="text-sm font-bold text-voxel-ink">
                                 🔒 3. Risk Rules & Output JSON Schema
                             </span>
-                            <span className="text-xs font-normal text-zinc-500 text-zinc-400 font-mono">
+                            <span className="text-xs font-normal text-voxel-muted font-mono">
                                 (Footer)
                             </span>
                         </div>
-                        <Badge
-                            variant="solid"
-                            className="bg-amber-500/10 text-amber-600 text-amber-400 border border-amber-500/20 text-sm font-bold uppercase"
-                        >
+                        <Badge variant="soft" colorScheme="warning" className="uppercase">
                             Frozen / System Managed
                         </Badge>
                     </div>
-                    <p className="text-xs font-normal text-zinc-500 text-zinc-400 m-0">
+                    <p className="text-xs font-normal text-voxel-muted m-0">
                         Mandatory structured JSON output schema and format constraints. Autoresearch
                         cannot edit this.
                     </p>
-                    <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-none overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words m-0">
+                    <pre className="p-4 bg-voxel-trough text-voxel-muted rounded-none overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words m-0">
                         {footer}
                     </pre>
                 </div>

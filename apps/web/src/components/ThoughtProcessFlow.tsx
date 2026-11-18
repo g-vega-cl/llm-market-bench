@@ -22,7 +22,7 @@ export function ThoughtProcessFlow() {
             details: (
                 <div className="space-y-4">
                     <div>
-                        <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">
+                        <span className="text-xs font-mono text-voxel-muted uppercase tracking-widest">
                             Raw Input (Gmail)
                         </span>
                         <div className="mt-1 p-3 rounded bg-slate-900/80 border border-slate-700 text-xs font-mono text-slate-400 overflow-x-auto">
@@ -147,15 +147,15 @@ export function ThoughtProcessFlow() {
                             <span className="text-emerald-400 font-bold text-sm">
                                 TRADE EXECUTED
                             </span>
-                            <span className="text-xs font-mono text-slate-500">ID: tr_8a92f2</span>
+                            <span className="text-xs font-mono text-voxel-muted">
+                                ID: tr_8a92f2
+                            </span>
                         </div>
-                        <div className="text-sm font-bold font-mono text-voxel-trough">
-                            BUY TSLA
-                        </div>
-                        <div className="text-xs font-normal text-slate-400">
+                        <div className="text-sm font-bold font-mono text-voxel-ink">BUY TSLA</div>
+                        <div className="text-xs font-normal text-voxel-muted">
                             40 shares @ $248.50 | Total: $9,940.00
                         </div>
-                        <div className="pt-3 border-t border-slate-700/50 text-xs font-normal text-slate-500 italic">
+                        <div className="pt-3 border-t border-voxel-bevel-hi text-xs font-normal text-voxel-muted italic">
                             Attribution Locked: Decision reasoning linked to Trade ID.
                         </div>
                     </div>
@@ -170,7 +170,7 @@ export function ThoughtProcessFlow() {
 
             <div className="max-w-4xl mx-auto flex flex-col gap-8">
                 <div className="text-center flex flex-col gap-2">
-                    <h2 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
+                    <h2 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink">
                         Deep Dive: Follow a Single Thought
                     </h2>
                     <p className="text-slate-400 text-xs font-normal">
@@ -194,7 +194,7 @@ export function ThoughtProcessFlow() {
                                 {step.icon}
                             </span>
                             <span
-                                className={`text-sm font-bold uppercase tracking-widest text-center ${activeStep === idx ? 'text-blue-400' : 'text-slate-500'}`}
+                                className={`text-sm font-bold uppercase tracking-widest text-center ${activeStep === idx ? '' : 'text-voxel-muted'}`}
                             >
                                 Step {idx + 1}
                             </span>
@@ -216,7 +216,7 @@ export function ThoughtProcessFlow() {
                                 <span className="text-blue-500 font-mono text-sm font-bold uppercase tracking-widest block">
                                     {step.title}
                                 </span>
-                                <h3 className="text-sm font-bold text-voxel-trough leading-tight">
+                                <h3 className="text-sm font-bold text-voxel-ink leading-tight">
                                     {step.description}
                                 </h3>
                                 <div className="hidden md:flex flex-wrap gap-2 mt-auto">

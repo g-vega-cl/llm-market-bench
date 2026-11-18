@@ -31,9 +31,11 @@ export function ChatWidget({ user }: ChatWidgetProps) {
             {/* Floating Trigger Button */}
             <Button
                 type="button"
+                variant="solid"
+                colorScheme="neutral"
                 aria-label="Chat"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 rounded-none border border-cyan-500/40 bg-gradient-to-r from-zinc-950 via-slate-900 to-zinc-950 px-4 py-2.5 font-bold text-sm text-cyan-300 shadow-sm  transition-all duration-300 hover:border-cyan-400 active:scale-95"
+                className="flex items-center gap-2 rounded-none border border-info px-4 py-2.5 font-bold text-sm shadow-sm transition-all duration-300"
             >
                 <span className="text-sm font-bold">💬</span>
                 <span>{isOpen ? 'Close Assistant' : 'Chat Assistant'}</span>

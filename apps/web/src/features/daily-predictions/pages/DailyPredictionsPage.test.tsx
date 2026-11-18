@@ -1008,4 +1008,63 @@ describe('DailyPredictionsPage — 3 UP / 3 DOWN tab data wiring', () => {
 
         expect(screen.getByText(/No active stock picks found/i)).toBeInTheDocument();
     });
+
+    it('switches to Autoresearch & Prompt History on the PICKS tab and renders stock picker experiments', () => {
+        const stockExperiments = [
+            {
+                id: 'stock-exp-1',
+                variant_tag: 'stock-v4a1f2e-deepseek-flash',
+                prompt_name: 'STOCK_PICKER_PROMPT',
+                prompt_content:
+                    'You are an elite quantitative equity analyst.\n=== MISSION & RULES ===\nRules.\n\n=== LONG/SHORT RELATIVE SELECTION STRATEGY ===\nPrioritize pricing power and float yields.\n\n=== REQUIRED OUTPUT FORMAT ===\nReturn JSON.',
+                track_id: 'deepseek-flash',
+                status: 'active',
+                experiment_type: 'incremental',
+                parent_tag: 'stock-baseline-deepseek-flash',
+                week_start: '2026-11-15',
+                week_end: '2026-11-22',
+                change_description:
+                    'Autoresearch mutation for deepseek-flash from weekly score 63.0000',
+                metrics: {
+                    hurdle_score: 63.0,
+                    hit_rate_pct: 60.0,
+                    ls_spread_alpha_pct: 2.0,
+                    conviction_norm: 50.0,
+                    sample_baskets: 5,
+                },
+                research_output: {
+                    research_insight:
+                        'High net interest margins outperform speculative beta in elevated yield regimes.',
+                    is_cold_start: false,
+                },
+                is_backtest: false,
+                created_at: '2026-11-15T22:00:00Z',
+            },
+        ];
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={[]}
+                experiments={[]}
+                initialTicker="PICKS"
+                initialBaskets={[basket] as never}
+                initialStockExperiments={stockExperiments as never}
+            />,
+        );
+
+        const autoresearchBtn = screen.getByRole('button', {
+            name: /Autoresearch & Prompt History/i,
+        });
+        fireEvent.click(autoresearchBtn);
+
+        expect(screen.getAllByText('stock-v4a1f2e-deepseek-flash').length).toBeGreaterThanOrEqual(
+            1,
+        );
+        expect(
+            screen.getByText(/High net interest margins outperform speculative beta/i),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/Prioritize pricing power and float yields/i)).toBeInTheDocument();
+        expect(screen.getByText(/Normalized Ratchet Hurdle Score Audit/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/63\.00/).length).toBeGreaterThanOrEqual(1);
+    });
 });

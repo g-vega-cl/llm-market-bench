@@ -17,6 +17,7 @@ from tasks.stock_picker_autoresearch import (
     StockPickerMetaPromptResponse,
     calculate_stock_picker_hurdle_score,
     run_stock_picker_autoresearch,
+    sanitize_mutated_stock_strategy,
 )
 
 
@@ -108,9 +109,95 @@ async def test_run_stock_picker_autoresearch_mutation_deployment():
         assert variant_insert["prompt_name"] == "STOCK_PICKER_PROMPT"
         assert variant_insert["track_id"] == "deepseek-flash"
         assert variant_insert["status"] == "active"
+        assert variant_insert["parent_tag"] == "active-v1"
+        assert variant_insert["experiment_type"] == "incremental"
+        assert "week_start" in variant_insert and variant_insert["week_start"]
+        assert "week_end" in variant_insert and variant_insert["week_end"]
+        assert "change_description" in variant_insert
+        assert "description" not in variant_insert
+        assert variant_insert["research_output"]["research_insight"].startswith("High net interest margins")
+        assert variant_insert["research_output"]["is_cold_start"] is False
         assert "Refined strategy prioritizing pricing power" in variant_insert["prompt_content"]
 
         # Verify durable research insight memory was saved
         memory_insert = insert_calls[1][0][0]
         assert memory_insert["memory_type"] == "AUTORESEARCH_INSIGHT"
         assert "High net interest margins" in memory_insert["content"]
+
+
+def test_sanitize_mutated_stock_strategy_strips_fences_and_preserves_header():
+    raw_fenced = "```markdown\n1. UP PICKS: Focus on margin expansion.\n2. DOWN PICKS: Short overleveraged beta.\n```"
+    cleaned = sanitize_mutated_stock_strategy(raw_fenced)
+    assert cleaned.startswith("=== LONG/SHORT RELATIVE SELECTION STRATEGY ===")
+    assert "```" not in cleaned
+    assert "Focus on margin expansion" in cleaned
+
+
+@pytest.mark.asyncio
+async def test_run_stock_picker_autoresearch_ratchet_reversion_on_baseline_miss():
+    mock_supabase = MagicMock()
+
+    # Low-performing week (hit rate 20%, alpha -2%) -> score ~ 27.0
+    mock_baskets = [
+        {
+            "id": f"b-{i}",
+            "target_date": f"2026-11-0{i}",
+            "directional_hit_rate": 20.0,
+            "ls_spread_alpha_pct": -2.0,
+        }
+        for i in range(1, 6)
+    ]
+    mock_picks = [{"confidence": 80.0, "is_hit": False} for _ in range(30)]
+
+    mock_supabase.table().select().eq().eq().gte().execute.return_value = MagicMock(data=mock_baskets)
+    mock_supabase.table().select().in_().eq().execute.return_value = MagicMock(data=mock_picks)
+
+    active_prompt = STOCK_PICKER_CONSTRAINTS_HEADER + STOCK_PICKER_MUTABLE_STRATEGIES + STOCK_PICKER_CONSTRAINTS_FOOTER
+    baseline_prompt = (
+        STOCK_PICKER_CONSTRAINTS_HEADER
+        + "=== LONG/SHORT RELATIVE SELECTION STRATEGY ===\nProven baseline strategy."
+        + STOCK_PICKER_CONSTRAINTS_FOOTER
+    )
+    mock_supabase.table().select().eq().eq().eq().order().limit().execute.return_value = MagicMock(
+        data=[{"variant_tag": "active-losing-v2", "prompt_content": active_prompt}]
+    )
+
+    # Distinct prior baseline with high hurdle_score (80.0) so select_baseline_candidate returns a (ceiling, variant) tuple
+    mock_supabase.table().select().eq().eq().execute.return_value = MagicMock(
+        data=[
+            {
+                "variant_tag": "base-winner-v1",
+                "status": "baseline",
+                "prompt_content": baseline_prompt,
+                "metrics": {"hurdle_score": 80.0, "sample_baskets": 5},
+            },
+            {
+                "variant_tag": "active-losing-v2",
+                "status": "active",
+                "prompt_content": active_prompt,
+                "metrics": {},
+            },
+        ]
+    )
+
+    mock_meta_response = StockPickerMetaPromptResponse(
+        new_strategy="Refined strategy without header.",
+        research_insight="Revert from high-beta traps.",
+    )
+    mock_ds_client = MagicMock()
+    mock_ds_client.chat.completions.create = AsyncMock(return_value=mock_meta_response)
+
+    with (
+        patch("tasks.stock_picker_autoresearch.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.stock_picker_autoresearch.get_deepseek_client", return_value=mock_ds_client),
+        patch("tasks.stock_picker_autoresearch.close_client", new_callable=AsyncMock),
+        patch("tasks.stock_picker_autoresearch.TARGET_TRACK_MODELS", ["deepseek-flash"]),
+    ):
+        await run_stock_picker_autoresearch(days=7, dry_run=False, cold_start=False)
+
+        insert_calls = mock_supabase.table().insert.call_args_list
+        variant_insert = insert_calls[0][0][0]
+        # Reverted parent_tag to the winning baseline instead of chaining off the losing variant
+        assert variant_insert["parent_tag"] == "base-winner-v1"
+        assert "=== LONG/SHORT RELATIVE SELECTION STRATEGY ===" in variant_insert["prompt_content"]
+        assert variant_insert["research_output"]["hypothesis"] is None

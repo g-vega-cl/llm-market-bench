@@ -84,6 +84,31 @@ $$
 \text{Score} = 0.50 \times \text{Hit Rate} + 0.40 \times \text{Alpha}_{\text{norm}} + 0.10 \times \text{Conviction}_{\text{norm}}
 $$
 
+### Baseline Selection & Ratchet Reversion
+
+Before selection, every stored variant is normalized so legacy rows participate in the shared guard: `metrics.score` is backfilled from `metrics.hurdle_score`, and `metrics.predictions_evaluated` from `metrics.sample_baskets`.
+
+`select_baseline_candidate(normalized_variants, parent_tag, min_sample=1, min_traded=0)` returns a `(ceiling, variant)` tuple. The stock picker deliberately uses a **1-basket minimum** (a single graded session is enough to set the ceiling) rather than the 5-prediction guard used by the daily SPY and sector loops, because a track only produces one basket per session.
+
+* **Beat the ceiling** — the active variant is promoted to `status = 'baseline'` and every other `active`/`baseline` variant on that track is demoted to `saved`.
+* **Miss the ceiling** — the active variant is marked `status = 'discarded'`, and both `parent_tag` and `current_prompt` are reverted to the winning baseline variant, so the next mutation chains off the proven baseline instead of compounding on a losing variant. The reversion happens *before* the mutation call, so the meta-researcher is prompted with the baseline strategy rather than the discarded one.
+
+The weekly metrics bundle written to `prompt_experiments.metrics` carries both `score` and `hurdle_score` (identical values), plus `hit_rate_pct`, `ls_spread_alpha_pct`, `conviction_norm`, `sample_baskets`, and `predictions_evaluated`.
+
+### Mutation Sanitization
+
+`sanitize_mutated_stock_strategy(raw_strategy)` guards the mutable section before it is wrapped in the frozen header/footer:
+
+1. Strips a leading/trailing markdown code fence (```` ``` ````) if the model wrapped its answer.
+2. If the `=== LONG/SHORT RELATIVE SELECTION STRATEGY ===` header is present, the mutable section is re-extracted through `split_stock_picker_prompt`.
+3. Otherwise the header is prepended, so the stored prompt always splits cleanly in the UI.
+
+### Experiment Record
+
+New variants are inserted with `week_start` / `week_end` (a 7-day window), `experiment_type` (`radical` on a stochastic cold start, otherwise `incremental`), `parent_tag`, `change_description`, and a `research_output` payload carrying `research_insight`, `hypothesis`, `research_reasoning`, `confidence` (`0.85` when the baseline was beaten, else `0.50`), `is_cold_start`, `weekly_score`, and `is_baseline_beat`. The meta-prompt response schema (`StockPickerMetaPromptResponse`) now requests `hypothesis` and `research_reasoning` alongside `new_strategy` and `research_insight`.
+
+Baseline seeding is an idempotent `upsert` on `variant_tag` (writing `week_start`, `week_end`, `experiment_type = 'baseline'`, and `change_description`), so a re-run can never duplicate the seed row.
+
 * **1-in-6 Stochastic Cold Start**: Independently rolled per model track (`random.randint(1, 6) == 1`). If triggered, prompt mutations reset "from 0" using default strategy rules (see [[concepts/stochastic-cold-start]]).
 * **Prompt Section Splitting**: Frozen headers and JSON schema footers are strictly preserved via `split_stock_picker_prompt`, mutating only the analytical strategy body.
 * **Promotion & Memory**: Variants that beat the baseline are promoted to `status = 'baseline'`, demoting prior active variants to `saved`. High-conviction takeaways are stored in `memories` with `memory_type = 'AUTORESEARCH_INSIGHT'`.
@@ -98,16 +123,34 @@ Enforcing Principle 14 (Workflow Consolidation):
 ## 7. Web Dashboard Presentation
 
 Surfaced as a first-class segmented tab in the Daily Predictions Arena (`apps/web/src/features/daily-predictions/components/DailyStockPicksTab.tsx`):
-* **Model Filter Buttons**: Instant toggle between `⭐ Consensus`, `DeepSeek Flash`, `MiniMax-M3.1-Flash`, and `GPT-6 Luna`.
-* **Two-Column Pick Showcase**: 3 UP (Long) cards with rank badges and green borders; 3 DOWN (Short) cards with red borders.
-* **Performance Tiles**: Directional Hit Rate, Net L/S Spread Alpha, SPY Benchmark move, and Excess Alpha.
+* **Model Filter Buttons**: Instant toggle between `⭐ Consensus`, `DeepSeek Flash`, `MiniMax-M3.1-Flash`, and `GPT-6 Luna`, driven by `STOCK_PICKER_TRACK_MODELS` in `daily-predictions-helpers.ts` (each entry carries an `id`, a `label`, and a `matches(trackId)` predicate).
+* **View Mode Toggle (`Picks Log` | `Autoresearch & Prompt History`)**: A `voxel-trough` segmented control switches between the daily picks showcase and the stock picker prompt evolution arena. The autoresearch button carries the live experiment count (`Autoresearch & Prompt History (N)`).
+* **Two-Column Pick Showcase**: 3 UP (Long) cards with rank badges and green borders; 3 DOWN (Short) cards with red borders, laid out in an `items-stretch` fluid grid (`repeat(auto-fit, minmax(min(100%, 20rem), 1fr))`).
+* **Performance Tiles**: Directional Hit Rate, Net L/S Spread Alpha, SPY Benchmark move, and Excess Alpha, in a `repeat(auto-fit, minmax(min(100%, 13rem), 1fr))` `items-stretch` grid.
 * **Historical Baskets Table**: Complete audited ledger of past sessions with right-aligned tabular numbers and zero floating tooltips (Principle 11).
+* **Autoresearch & Hurdle Score Audit** (`StockPickerAutoresearchPanel.tsx`):
+  - **Consensus banner** — when the `⭐ Consensus` filter is active, an in-flow `voxel-trough` banner explains that the consensus basket is an RRF aggregate of three independent autoresearch tracks and that an underlying track must be selected to inspect its mutations.
+  - **Track cards** — one card per `STOCK_PICKER_TRACK_MODELS` entry showing the variant count, the active `variant_tag` (or `Unseeded baseline`), and the display score in points (or `Pending`). Clicking a card switches the selected model track.
+  - **Milestones** — `AutoresearchMilestoneCards` for the selected track.
+  - **Lineage sidebar** — `VariantSidebar` listing every variant of the track, with the active runtime tag pinned in the header.
+  - **Selected variant detail** — `SelectedVariantHeader`, `StockPickerScoreBreakdown`, `ResearchRationaleCard`, `PromptChanges` (diffed against the parent variant), and the triple-band `SegmentedPromptInspector` (`=== LONG/SHORT RELATIVE SELECTION STRATEGY ===` split via `apps/web/src/features/autoresearch/utils/promptSections.ts`).
+  - **Empty state** — a track with no recorded experiments renders an in-flow notice naming the Sunday 6:00 PM ET (10:00 PM UTC) cadence.
+
+### Track, Parent & Score Resolution
+
+Three resolution rules keep the panel coherent when data is sparse or legacy:
+
+- **Active track** — `StockPickerAutoresearchPanel` resolves the active track config from `selectedModel` by id; when that id is not one of `STOCK_PICKER_TRACK_MODELS` it falls back to the first track whose `matches()` accepts any experiment's `track_id`, then to the first track. Experiments with no `track_id` are included in every track's filtered list (`e.track_id ? activeTrackCfg.matches(e.track_id) : true`), so legacy untagged rows never vanish from the lineage.
+- **Parent for the diff** — `PromptChanges` diffs against `selectedExperiment.parent_tag` when that variant exists in the track; otherwise it falls back to the next-older experiment in the newest-first list (`trackExperiments[selectedIdx + 1]`), so a variant whose parent was pruned still renders a meaningful diff.
+- **Score** — `StockPickerScoreBreakdown` reads `metrics.hurdle_score` first and falls back to `metrics.score`; when neither is a number it renders the `Pending Evaluation` notice describing the rolling 5-session window and the Sunday 6:00 PM ET cadence.
+
+* **Normalized Ratchet Hurdle Score Audit** (`StockPickerScoreBreakdown.tsx`): renders the formula substitution bar (`Score = 0.50 * Hit_Rate + 0.40 * clamp(50 + LS_Alpha * 10, 0, 100) + 0.10 * Conviction_Norm`), a `Sessions Evaluated` badge, a solid `Hurdle Score: N` badge (success at ≥ 50, danger below), and three weighted pillar tiles (Directional Hit Rate 50%, L/S Spread Alpha 40% with its normalized value, Conviction Calibration 10%). When no score is stored it renders a `Pending Evaluation` notice describing the rolling 5-session window. `clampNormalizedAlpha(lsAlphaPct)` is exported for direct testing.
 
 ### Where To Read The Picks
 
 `https://www.benchify.dev/daily-predictions?ticker=PICKS` opens the 3 UP / 3 DOWN tab directly (the `PICKS` value is accepted by the route's `validateSearch` in `apps/web/src/routes/daily-predictions/index.tsx`). Without the query param the page lands on SPY and the tab must be clicked.
 
-The route loader delegates to `loadDailyPredictionsPageData()` (`apps/web/src/features/daily-predictions/api/load-daily-predictions-page-data.ts`), which fetches predictions, prompt experiments, and `fetchDailyStockBaskets()` in one `Promise.all`. The baskets payload is what the tab renders — a loader that omits it leaves the tab permanently on its empty state ("No active stock picks found for selected model track"), which is exactly how the surface silently broke before the aggregator existed.
+The route loader delegates to `loadDailyPredictionsPageData()` (`apps/web/src/features/daily-predictions/api/load-daily-predictions-page-data.ts`), which fetches predictions, daily predictor experiments, `fetchDailyStockBaskets()`, and `fetchStockPickerExperiments()` (`STOCK_PICKER_PROMPT` rows from `prompt_experiments` with `is_backtest = false`, via `apps/web/src/features/daily-predictions/api/fetch-daily-predictions.ts`) in one `Promise.allSettled`. The baskets payload is what the picks view renders — a loader that omits it leaves the tab permanently on its empty state ("No active stock picks found for selected model track"), which is exactly how the surface silently broke before the aggregator existed. The `stockExperiments` payload feeds the autoresearch view and degrades to an empty list (logged, never thrown) if the query fails.
 
 ### Bounded Pick Scan (Newest Basket Per Track)
 
@@ -171,4 +214,5 @@ Each basket is also paper-executed as a mechanical long/short portfolio by `apps
 - [[entities/cli]] — CLI commands `stock-picker`, `evaluate-stock-picks`, `stock-picker-autoresearch`
 - [[entities/database]] — `daily_stock_baskets` and `daily_stock_picks` tables
 - [[concepts/prompt-section-splitting]] — frozen header/mutable strategy/frozen footer prompt structure
+- [[concepts/experiment-display-score]] — `hurdle_score` fallback used by the track cards
 - [[concepts/state-machines]] — `pending` → `evaluated` | `cancelled` lifecycle registry

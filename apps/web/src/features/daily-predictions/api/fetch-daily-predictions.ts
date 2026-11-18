@@ -68,6 +68,23 @@ export async function fetchDailyPredictorExperiments(): Promise<PromptExperiment
     return (data || []) as PromptExperiment[];
 }
 
+export async function fetchStockPickerExperiments(): Promise<PromptExperiment[]> {
+    const db = getDbServerClient();
+
+    const { data, error } = await db
+        .from('prompt_experiments')
+        .select('*')
+        .eq('prompt_name', 'STOCK_PICKER_PROMPT')
+        .eq('is_backtest', false)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return (data || []) as PromptExperiment[];
+}
+
 export async function fetchDailyPredictorBacktestExperiments(): Promise<PromptExperiment[]> {
     const db = getDbServerClient();
 

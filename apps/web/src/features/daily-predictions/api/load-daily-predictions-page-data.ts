@@ -3,6 +3,7 @@ import {
     type DailyPrediction,
     fetchDailyPredictions,
     fetchDailyPredictorExperiments,
+    fetchStockPickerExperiments,
 } from './fetch-daily-predictions';
 import { type DailyStockBasket, fetchDailyStockBaskets } from './fetch-stock-picks';
 
@@ -10,6 +11,7 @@ export interface DailyPredictionsPageData {
     predictions: DailyPrediction[];
     experiments: PromptExperiment[];
     baskets: DailyStockBasket[];
+    stockExperiments: PromptExperiment[];
 }
 
 /**
@@ -22,10 +24,11 @@ export interface DailyPredictionsPageData {
  * schema cache on the edge replica).
  */
 export async function loadDailyPredictionsPageData(): Promise<DailyPredictionsPageData> {
-    const [predictions, experiments, baskets] = await Promise.allSettled([
+    const [predictions, experiments, baskets, stockExperiments] = await Promise.allSettled([
         fetchDailyPredictions(),
         fetchDailyPredictorExperiments(),
         fetchDailyStockBaskets(),
+        fetchStockPickerExperiments(),
     ]);
 
     if (predictions.status === 'rejected') {
@@ -40,10 +43,17 @@ export async function loadDailyPredictionsPageData(): Promise<DailyPredictionsPa
             baskets.reason,
         );
     }
+    if (stockExperiments.status === 'rejected') {
+        console.error(
+            '[daily-predictions] stock picker experiments unavailable; degrading to empty list',
+            stockExperiments.reason,
+        );
+    }
 
     return {
         predictions: predictions.value,
         experiments: experiments.value,
         baskets: baskets.status === 'fulfilled' ? baskets.value : [],
+        stockExperiments: stockExperiments.status === 'fulfilled' ? stockExperiments.value : [],
     };
 }

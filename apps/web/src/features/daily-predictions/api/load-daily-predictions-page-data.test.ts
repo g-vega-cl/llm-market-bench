@@ -5,10 +5,12 @@ import type { DailyStockBasket } from './fetch-stock-picks';
 const mockFetchDailyPredictions = vi.fn();
 const mockFetchDailyPredictorExperiments = vi.fn();
 const mockFetchDailyStockBaskets = vi.fn();
+const mockFetchStockPickerExperiments = vi.fn();
 
 vi.mock('./fetch-daily-predictions', () => ({
     fetchDailyPredictions: () => mockFetchDailyPredictions(),
     fetchDailyPredictorExperiments: () => mockFetchDailyPredictorExperiments(),
+    fetchStockPickerExperiments: () => mockFetchStockPickerExperiments(),
 }));
 
 vi.mock('./fetch-stock-picks', () => ({
@@ -33,18 +35,22 @@ const mockBasket = {
 describe('loadDailyPredictionsPageData', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockFetchStockPickerExperiments.mockResolvedValue([]);
     });
 
     it('returns predictions, experiments and stock pick baskets in one payload', async () => {
+        const mockStockExp = [{ id: 'stock-exp-1', prompt_name: 'STOCK_PICKER_PROMPT' }];
         mockFetchDailyPredictions.mockResolvedValue([mockPrediction]);
         mockFetchDailyPredictorExperiments.mockResolvedValue([]);
         mockFetchDailyStockBaskets.mockResolvedValue([mockBasket]);
+        mockFetchStockPickerExperiments.mockResolvedValue(mockStockExp);
 
         const data = await loadDailyPredictionsPageData();
 
         expect(data.predictions).toEqual([mockPrediction]);
         expect(data.experiments).toEqual([]);
         expect(data.baskets).toEqual([mockBasket]);
+        expect(data.stockExperiments).toEqual(mockStockExp);
     });
 
     it('fetches stock pick baskets so the 3 UP / 3 DOWN tab is populated', async () => {

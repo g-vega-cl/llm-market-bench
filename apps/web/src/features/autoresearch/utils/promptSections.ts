@@ -83,6 +83,7 @@ export function splitPromptSections(promptText: string): SplitPromptResult {
         '=== CALENDAR & SEASONAL',
         '=== SOPHISTICATED TRADING LOGIC',
         '=== ANALYTICAL STRATEGY INSTRUCTIONS ===',
+        '=== LONG/SHORT RELATIVE SELECTION STRATEGY ===',
         '=== INSTRUCTIONS ===',
     ];
 

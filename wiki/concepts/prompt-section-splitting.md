@@ -35,6 +35,18 @@ The SPY daily predictor prompt uses a narrower frozen scope than the portfolio p
 
 The split finds the *last* `AVAILABLE MARKET CONTEXT` block and treats everything after it as mutable. This keeps duplicated headers out and also keeps legacy stored prompts (whose header once embedded the mandate) intact: the mandate simply becomes mutable text on the next autoresearch pass, with no database migration. The same rule is mirrored in `splitPromptSections` for the UI, and the researcher meta-prompts (`daily_autoresearch.py`, `strata_client.py`) no longer describe symmetry or zero-mean rules as frozen or mandatory, in line with the project's tool-first, agency-driven principle (prompt evolution belongs to the Autoresearcher).
 
+### Stock Picker Split (`split_stock_picker_prompt`)
+
+The Daily Stock Picker Arena (3 UP / 3 DOWN) uses the same three-band sandwich, keyed on its own markers:
+
+- **Header (Frozen)**: `STOCK_PICKER_CONSTRAINTS_HEADER` — the analyst identity and `=== MISSION & RULES ===` block.
+- **Mutable Strategy (Evolvable)**: everything from `=== LONG/SHORT RELATIVE SELECTION STRATEGY ===` up to the footer. This is the only section the weekly stock-picker meta-researcher mutates.
+- **Footer (Frozen)**: `STOCK_PICKER_CONSTRAINTS_FOOTER` — the `=== REQUIRED OUTPUT FORMAT ===` JSON schema (3 UP + 3 DOWN with `confidence`).
+
+`=== LONG/SHORT RELATIVE SELECTION STRATEGY ===` is registered in the mutable-marker list of `splitPromptSections`, so the web `SegmentedPromptInspector` and `PromptChanges` diff render the stock picker prompt with the same frozen/mutable/frozen bands as the portfolio and daily predictor prompts.
+
+Because the model may return its mutation wrapped in a markdown code fence or without the header, the engine normalizes it through `sanitize_mutated_stock_strategy` (`apps/engine/tasks/stock_picker_autoresearch.py`) before wrapping: fences are stripped, and if the header is present the mutable section is re-extracted via `split_stock_picker_prompt`, otherwise the header is prepended. A stored stock-picker prompt therefore always splits cleanly.
+
 ### Fallback Behavior
 
 If the standard section markers are not found (e.g., for custom or legacy prompts), the utility gracefully falls back to displaying the entire prompt as a single, un-split block.
@@ -56,4 +68,5 @@ The `ExperimentDetails` component in the autoresearch arena uses this utility to
 
 - [[entities/autoresearch-arena]]
 - [[entities/autoresearch]]
+- [[entities/daily-stock-picker]]
 - [[concepts/auto-research-prompt-improver]]

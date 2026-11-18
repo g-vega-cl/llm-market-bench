@@ -41,6 +41,14 @@ class StockPickerMetaPromptResponse(BaseModel):
         ...,
         description="The complete modified strategy and analytical reasoning instructions text for long/short stock picking",
     )
+    hypothesis: str | None = Field(
+        default=None,
+        description="Concise testable hypothesis explaining why this strategy mutation should improve directional hit rate and L/S alpha.",
+    )
+    research_reasoning: str | None = Field(
+        default=None,
+        description="Analytical diagnosis of recent 5-session performance driving the prompt adjustment.",
+    )
     research_insight: str | None = Field(
         default=None,
         description=(
@@ -48,6 +56,26 @@ class StockPickerMetaPromptResponse(BaseModel):
             "to preserve in long-term memory for this model track."
         ),
     )
+
+
+def sanitize_mutated_stock_strategy(raw_strategy: str) -> str:
+    """Strip markdown code fences and guarantee the mutable section header is preserved."""
+    cleaned = raw_strategy.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        lines = lines[1:]
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+
+    header_marker = "=== LONG/SHORT RELATIVE SELECTION STRATEGY ==="
+    if header_marker in cleaned:
+        _, extracted, _ = split_stock_picker_prompt(
+            STOCK_PICKER_CONSTRAINTS_HEADER + cleaned + STOCK_PICKER_CONSTRAINTS_FOOTER
+        )
+        return extracted.strip()
+
+    return f"{header_marker}\n{cleaned}".strip()
 
 
 def calculate_stock_picker_hurdle_score(
@@ -93,18 +121,24 @@ async def _resolve_active_stock_prompt(client: Any, model_name: str) -> tuple[st
     if base_res.data:
         return base_res.data[0]["variant_tag"], base_res.data[0]["prompt_content"]
 
-    # Seed initial baseline
+    # Seed initial baseline (idempotent upsert on variant_tag)
+    today = datetime.now(UTC).date()
+    week_end = today + timedelta(days=7)
     tag = f"stock-baseline-{model_name.lower().replace('/', '-').replace('~', '')}"
     full_prompt = STOCK_PICKER_CONSTRAINTS_HEADER + STOCK_PICKER_MUTABLE_STRATEGIES + STOCK_PICKER_CONSTRAINTS_FOOTER
-    client.table("prompt_experiments").insert(
+    client.table("prompt_experiments").upsert(
         {
             "variant_tag": tag,
             "prompt_name": "STOCK_PICKER_PROMPT",
             "prompt_content": full_prompt,
             "track_id": model_name,
+            "week_start": today.isoformat(),
+            "week_end": week_end.isoformat(),
             "status": "baseline",
-            "description": f"Initial seeded baseline for {model_name} stock picker track.",
-        }
+            "experiment_type": "baseline",
+            "change_description": f"Initial seeded baseline for {model_name} stock picker track.",
+        },
+        on_conflict="variant_tag",
     ).execute()
     return tag, full_prompt
 
@@ -170,30 +204,51 @@ async def _optimize_stock_track(
         .data
         or []
     )
-    baseline_cand = select_baseline_candidate(all_variants, parent_tag)
-    baseline_score = float(baseline_cand.get("metrics", {}).get("hurdle_score", 0.0)) if baseline_cand else 0.0
+    normalized_variants: list[dict[str, Any]] = []
+    for variant in all_variants:
+        metrics = dict(variant.get("metrics") or {})
+        if "score" not in metrics and isinstance(metrics.get("hurdle_score"), (int, float)):
+            metrics["score"] = metrics["hurdle_score"]
+        if "predictions_evaluated" not in metrics and isinstance(metrics.get("sample_baskets"), (int, float)):
+            metrics["predictions_evaluated"] = metrics["sample_baskets"]
+        normalized_variants.append({**variant, "metrics": metrics})
+
+    best_baseline = select_baseline_candidate(normalized_variants, parent_tag, min_sample=1, min_traded=0)
+    baseline_score = float(best_baseline[0]) if best_baseline is not None else 0.0
+    baseline_variant = best_baseline[1] if best_baseline is not None else None
 
     is_baseline_beat = weekly_score >= baseline_score
 
     weekly_metrics = {
+        "score": weekly_score,
         "hurdle_score": weekly_score,
         "hit_rate_pct": avg_hit_rate,
         "ls_spread_alpha_pct": avg_ls_alpha,
         "conviction_norm": conviction_norm,
         "sample_baskets": len(baskets),
+        "predictions_evaluated": len(baskets),
     }
 
     if not dry_run:
         client.table("prompt_experiments").update({"metrics": weekly_metrics}).eq("variant_tag", parent_tag).execute()
 
-    if is_baseline_beat and not dry_run:
+    if is_baseline_beat:
+        if not dry_run:
+            logger.info(
+                f"STOCK PICKER RATCHET ({model_name}): Weekly score {weekly_score:.4f} beat baseline {baseline_score:.4f}! Promoting {parent_tag} to baseline."
+            )
+            client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
+            client.table("prompt_experiments").update({"status": "saved"}).in_("status", ["active", "baseline"]).eq(
+                "prompt_name", "STOCK_PICKER_PROMPT"
+            ).eq("track_id", model_name).neq("variant_tag", parent_tag).execute()
+    elif baseline_variant is not None:
         logger.info(
-            f"STOCK PICKER RATCHET ({model_name}): Weekly score {weekly_score:.4f} beat baseline {baseline_score:.4f}! Promoting {parent_tag} to baseline."
+            f"STOCK PICKER RATCHET ({model_name}): Weekly score {weekly_score:.4f} below baseline {baseline_score:.4f}. Discarding {parent_tag} and reverting to {baseline_variant.get('variant_tag')}."
         )
-        client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
-        client.table("prompt_experiments").update({"status": "saved"}).in_("status", ["active", "baseline"]).eq(
-            "prompt_name", "STOCK_PICKER_PROMPT"
-        ).eq("track_id", model_name).neq("variant_tag", parent_tag).execute()
+        if not dry_run:
+            client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
+        parent_tag = baseline_variant.get("variant_tag") or parent_tag
+        current_prompt = baseline_variant.get("prompt_content") or current_prompt
 
     # 3. Stochastic 1-in-6 Cold Start Dice
     is_cold_start = (random.randint(1, 6) == 1) if force_cold_start is None else force_cold_start
@@ -230,7 +285,8 @@ async def _optimize_stock_track(
     finally:
         await close_client(ds_client)
 
-    new_full_prompt = header + meta_res.new_strategy.strip() + footer
+    clean_strategy = sanitize_mutated_stock_strategy(meta_res.new_strategy)
+    new_full_prompt = header + clean_strategy + footer
     new_tag = f"stock-v{uuid.uuid4().hex[:6]}-{model_name.lower().replace('/', '-').replace('~', '')}"
 
     if dry_run:
@@ -242,14 +298,32 @@ async def _optimize_stock_track(
         "track_id", model_name
     ).eq("status", "active").execute()
 
+    today = datetime.now(UTC).date()
+    week_end = today + timedelta(days=7)
+    exp_type = "radical" if is_cold_start else "incremental"
+    research_output = {
+        "research_insight": meta_res.research_insight,
+        "hypothesis": meta_res.hypothesis,
+        "research_reasoning": meta_res.research_reasoning,
+        "confidence": 0.85 if is_baseline_beat else 0.50,
+        "is_cold_start": is_cold_start,
+        "weekly_score": weekly_score,
+        "is_baseline_beat": is_baseline_beat,
+    }
+
     client.table("prompt_experiments").insert(
         {
             "variant_tag": new_tag,
             "prompt_name": "STOCK_PICKER_PROMPT",
             "prompt_content": new_full_prompt,
             "track_id": model_name,
+            "week_start": today.isoformat(),
+            "week_end": week_end.isoformat(),
             "status": "active",
-            "description": f"Autoresearch mutation for {model_name} from weekly score {weekly_score:.4f} (ColdStart={is_cold_start})",
+            "experiment_type": exp_type,
+            "parent_tag": parent_tag,
+            "change_description": f"Autoresearch mutation for {model_name} from weekly score {weekly_score:.4f} (ColdStart={is_cold_start})",
+            "research_output": research_output,
         }
     ).execute()
 

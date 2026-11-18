@@ -1,16 +1,18 @@
+import type { PromptExperiment } from '@llm-market-bench/database';
 import { Badge, Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
 import type { DailyStockBasket, DailyStockPick } from '../api/fetch-stock-picks';
+import { STOCK_PICKER_TRACK_MODELS } from '../utils/daily-predictions-helpers';
+import { StockPickerAutoresearchPanel } from './StockPickerAutoresearchPanel';
 
 export interface DailyStockPicksTabProps {
     baskets: DailyStockBasket[];
+    stockExperiments?: PromptExperiment[];
 }
 
 const STOCK_MODELS = [
     { id: 'consensus', label: '⭐ Consensus' },
-    { id: 'deepseek-flash', label: 'DeepSeek Flash' },
-    { id: 'MiniMax-M3.1-Flash', label: 'MiniMax-M3.1-Flash' },
-    { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
+    ...STOCK_PICKER_TRACK_MODELS.map((m) => ({ id: m.id, label: m.label })),
 ];
 
 function ModelFilterButtons({
@@ -46,21 +48,21 @@ function BasketMetricsOverview({ basket }: { basket: DailyStockBasket }) {
     if (basket.status !== 'evaluated') return null;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="p-4 rounded-none border border-voxel-bevel-hi bg-voxel-trough">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-4 items-stretch">
+            <Card className="p-4 rounded-none border border-voxel-bevel-hi bg-voxel-trough flex flex-col gap-1">
                 <span className="text-xs uppercase tracking-wider text-voxel-muted font-mono">
                     Directional Hit Rate
                 </span>
-                <div className="text-sm font-bold font-mono tabular-nums text-success mt-1">
+                <div className="text-sm font-bold font-mono tabular-nums text-success">
                     {basket.directional_hit_rate != null ? `${basket.directional_hit_rate}%` : '—'}
                 </div>
             </Card>
-            <Card className="p-4 rounded-none border border-voxel-bevel-hi bg-voxel-trough">
+            <Card className="p-4 rounded-none border border-voxel-bevel-hi bg-voxel-trough flex flex-col gap-1">
                 <span className="text-xs uppercase tracking-wider text-voxel-muted font-mono">
                     Net L/S Spread Alpha
                 </span>
                 <div
-                    className={`text-sm font-bold font-mono tabular-nums mt-1 ${
+                    className={`text-sm font-bold font-mono tabular-nums ${
                         (basket.ls_spread_alpha_pct || 0) >= 0 ? 'text-success' : 'text-danger'
                     }`}
                 >
@@ -69,22 +71,22 @@ function BasketMetricsOverview({ basket }: { basket: DailyStockBasket }) {
                         : '—'}
                 </div>
             </Card>
-            <Card className="p-4 rounded-none border border-voxel-bevel-hi bg-voxel-trough">
+            <Card className="p-4 rounded-none border border-voxel-bevel-hi bg-voxel-trough flex flex-col gap-1">
                 <span className="text-xs uppercase tracking-wider text-voxel-muted font-mono">
                     SPY Benchmark Move
                 </span>
-                <div className="text-sm font-bold font-mono tabular-nums text-voxel-ink mt-1">
+                <div className="text-sm font-bold font-mono tabular-nums text-voxel-ink">
                     {basket.benchmark_spy_return_pct != null
                         ? `${basket.benchmark_spy_return_pct > 0 ? '+' : ''}${basket.benchmark_spy_return_pct}%`
                         : '—'}
                 </div>
             </Card>
-            <Card className="p-4 rounded-none border border-voxel-bevel-hi bg-voxel-trough">
+            <Card className="p-4 rounded-none border border-voxel-bevel-hi bg-voxel-trough flex flex-col gap-1">
                 <span className="text-xs uppercase tracking-wider text-voxel-muted font-mono">
                     Excess vs SPY Alpha
                 </span>
                 <div
-                    className={`text-sm font-bold font-mono tabular-nums mt-1 ${
+                    className={`text-sm font-bold font-mono tabular-nums ${
                         (basket.excess_alpha_vs_spy_pct || 0) >= 0 ? 'text-success' : 'text-danger'
                     }`}
                 >
@@ -139,8 +141,9 @@ function HistoricalBasketRow({ basket: b }: { basket: DailyStockBasket }) {
     );
 }
 
-export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
+export function DailyStockPicksTab({ baskets, stockExperiments = [] }: DailyStockPicksTabProps) {
     const [selectedModel, setSelectedModel] = useState<string>('consensus');
+    const [viewMode, setViewMode] = useState<'picks' | 'autoresearch'>('picks');
 
     const filteredBaskets = useMemo(() => {
         return baskets.filter((b) => {
@@ -154,7 +157,7 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
     const picksDown = (latestBasket?.picks || []).filter((p) => p.direction === 'DOWN');
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-4">
                 <ModelFilterButtons
                     selectedModel={selectedModel}
@@ -178,73 +181,104 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
                 )}
             </div>
 
-            {latestBasket && <BasketMetricsOverview basket={latestBasket} />}
+            <div className="inline-flex flex-wrap bg-voxel-trough p-1 rounded-none gap-1 border border-voxel-bevel-hi self-start">
+                <Button
+                    type="button"
+                    variant={viewMode === 'picks' ? 'solid' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('picks')}
+                >
+                    Picks Log
+                </Button>
+                <Button
+                    type="button"
+                    variant={viewMode === 'autoresearch' ? 'solid' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('autoresearch')}
+                >
+                    Autoresearch & Prompt History ({stockExperiments.length})
+                </Button>
+            </div>
 
-            {latestBasket ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="p-5 rounded-none border-t-4 border-t-emerald-600 border-x border-b border-voxel-bevel-hi bg-voxel-surface">
-                        <div className="flex items-center justify-between border-b border-voxel-bevel-hi pb-3 mb-4">
-                            <span className="font-bold text-sm uppercase tracking-wider text-success flex items-center gap-2">
-                                <span>🟢</span> 3 Stocks To Go UP (Long)
-                            </span>
-                            <Badge variant="soft" colorScheme="success">
-                                Long Basket
-                            </Badge>
-                        </div>
-                        <div className="flex flex-col gap-4">
-                            {picksUp.map((pick) => (
-                                <PickCard key={pick.id} pick={pick} />
-                            ))}
-                        </div>
-                    </Card>
-
-                    <Card className="p-5 rounded-none border-t-4 border-t-rose-600 border-x border-b border-voxel-bevel-hi bg-voxel-surface">
-                        <div className="flex items-center justify-between border-b border-voxel-bevel-hi pb-3 mb-4">
-                            <span className="font-bold text-sm uppercase tracking-wider text-danger flex items-center gap-2">
-                                <span>🔴</span> 3 Stocks To Go DOWN (Short)
-                            </span>
-                            <Badge variant="soft" colorScheme="danger">
-                                Short Basket
-                            </Badge>
-                        </div>
-                        <div className="flex flex-col gap-4">
-                            {picksDown.map((pick) => (
-                                <PickCard key={pick.id} pick={pick} />
-                            ))}
-                        </div>
-                    </Card>
-                </div>
+            {viewMode === 'autoresearch' ? (
+                <StockPickerAutoresearchPanel
+                    experiments={stockExperiments}
+                    selectedModel={selectedModel}
+                    onSelectModel={setSelectedModel}
+                />
             ) : (
-                <Card className="p-8 text-center text-voxel-muted rounded-none border border-voxel-bevel-hi font-mono text-sm">
-                    No active stock picks found for selected model track.
-                </Card>
-            )}
+                <>
+                    {latestBasket && <BasketMetricsOverview basket={latestBasket} />}
 
-            {filteredBaskets.length > 0 && (
-                <div className="flex flex-col gap-3 mt-4">
-                    <SectionHeading>Historical Basket Performance & Alpha Log</SectionHeading>
-                    <div className="overflow-x-auto border border-voxel-bevel-hi">
-                        <table className="w-full text-left text-sm border-collapse">
-                            <thead>
-                                <tr className="border-b border-voxel-bevel-hi bg-voxel-trough text-voxel-muted font-mono text-xs uppercase">
-                                    <th className="p-3">Date</th>
-                                    <th className="p-3">Model</th>
-                                    <th className="p-3">Status</th>
-                                    <th className="p-3 text-right">Hit Rate</th>
-                                    <th className="p-3 text-right">Mean Long</th>
-                                    <th className="p-3 text-right">Mean Short</th>
-                                    <th className="p-3 text-right">L/S Alpha</th>
-                                    <th className="p-3 text-right">SPY Move</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-voxel-bevel-lo font-mono text-xs">
-                                {filteredBaskets.map((b) => (
-                                    <HistoricalBasketRow key={b.id} basket={b} />
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                    {latestBasket ? (
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6 items-stretch">
+                            <Card className="p-5 rounded-none border-t-4 border-t-emerald-600 border-x border-b border-voxel-bevel-hi bg-voxel-surface flex flex-col gap-4">
+                                <div className="flex items-center justify-between border-b border-voxel-bevel-hi pb-3">
+                                    <span className="font-bold text-sm uppercase tracking-wider text-success flex items-center gap-2">
+                                        <span>🟢</span> 3 Stocks To Go UP (Long)
+                                    </span>
+                                    <Badge variant="soft" colorScheme="success">
+                                        Long Basket
+                                    </Badge>
+                                </div>
+                                <div className="flex flex-col gap-4">
+                                    {picksUp.map((pick) => (
+                                        <PickCard key={pick.id} pick={pick} />
+                                    ))}
+                                </div>
+                            </Card>
+
+                            <Card className="p-5 rounded-none border-t-4 border-t-rose-600 border-x border-b border-voxel-bevel-hi bg-voxel-surface flex flex-col gap-4">
+                                <div className="flex items-center justify-between border-b border-voxel-bevel-hi pb-3">
+                                    <span className="font-bold text-sm uppercase tracking-wider text-danger flex items-center gap-2">
+                                        <span>🔴</span> 3 Stocks To Go DOWN (Short)
+                                    </span>
+                                    <Badge variant="soft" colorScheme="danger">
+                                        Short Basket
+                                    </Badge>
+                                </div>
+                                <div className="flex flex-col gap-4">
+                                    {picksDown.map((pick) => (
+                                        <PickCard key={pick.id} pick={pick} />
+                                    ))}
+                                </div>
+                            </Card>
+                        </div>
+                    ) : (
+                        <Card className="p-8 text-center text-voxel-muted rounded-none border border-voxel-bevel-hi font-mono text-sm">
+                            No active stock picks found for selected model track.
+                        </Card>
+                    )}
+
+                    {filteredBaskets.length > 0 && (
+                        <div className="flex flex-col gap-4">
+                            <SectionHeading>
+                                Historical Basket Performance & Alpha Log
+                            </SectionHeading>
+                            <div className="overflow-x-auto border border-voxel-bevel-hi">
+                                <table className="w-full text-left text-sm border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-voxel-bevel-hi bg-voxel-trough text-voxel-muted font-mono text-xs uppercase">
+                                            <th className="p-3">Date</th>
+                                            <th className="p-3">Model</th>
+                                            <th className="p-3">Status</th>
+                                            <th className="p-3 text-right">Hit Rate</th>
+                                            <th className="p-3 text-right">Mean Long</th>
+                                            <th className="p-3 text-right">Mean Short</th>
+                                            <th className="p-3 text-right">L/S Alpha</th>
+                                            <th className="p-3 text-right">SPY Move</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-voxel-bevel-lo font-mono text-xs">
+                                        {filteredBaskets.map((b) => (
+                                            <HistoricalBasketRow key={b.id} basket={b} />
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

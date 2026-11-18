@@ -82,6 +82,27 @@ export const BOND_PREDICTOR_MODELS: ModelConfig[] = [
     },
 ];
 
+export const STOCK_PICKER_TRACK_MODELS: ModelConfig[] = [
+    {
+        id: 'deepseek-flash',
+        label: 'DeepSeek Flash',
+        matches: (m: string) => m.toLowerCase().includes('deepseek'),
+    },
+    {
+        id: 'MiniMax-M3.1-Flash',
+        label: 'MiniMax-M3.1-Flash',
+        matches: (m: string) => m.toLowerCase().includes('minimax'),
+    },
+    {
+        id: OPENAI_MODEL_ID,
+        label: 'GPT-6 Luna',
+        matches: (m: string) =>
+            m.toLowerCase().includes('gpt-6') ||
+            m.toLowerCase().includes('luna') ||
+            m.toLowerCase().includes('openai'),
+    },
+];
+
 export const PREDICTOR_MODELS: ModelConfig[] = SPY_PREDICTOR_MODELS;
 
 export function getPredictorModelsForTicker(ticker: SupportedDailyTicker): ModelConfig[] {
@@ -174,6 +195,9 @@ export function getExperimentDisplayScore(
 ): number | null {
     if (typeof exp.metrics?.score === 'number') {
         return Number(exp.metrics.score);
+    }
+    if (typeof exp.metrics?.hurdle_score === 'number') {
+        return Number(exp.metrics.hurdle_score);
     }
     if (predictions && predictions.length > 0) {
         const resolved = resolveRatchetMetrics(exp, predictions);

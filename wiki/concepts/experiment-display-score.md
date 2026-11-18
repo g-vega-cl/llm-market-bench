@@ -9,12 +9,13 @@ The **experiment display score** is the single resolution rule the daily-predict
 
 ## Resolution Order
 
-`getExperimentDisplayScore(exp, predictions)` in `apps/web/src/features/daily-predictions/utils/daily-predictions-helpers.ts` resolves in two steps:
+`getExperimentDisplayScore(exp, predictions)` in `apps/web/src/features/daily-predictions/utils/daily-predictions-helpers.ts` resolves in three steps:
 
 1. **Stored metrics** — if `exp.metrics.score` is a number, return it. This is the authoritative value written by the engine.
-2. **Ratchet fallback** — if `predictions` are supplied and non-empty, call `resolveRatchetMetrics(exp, predictions)` (exported from `DailyScoreBreakdown`) and return its `score` when numeric.
+2. **Hurdle fallback** — if `exp.metrics.hurdle_score` is a number, return it. The Daily Stock Picker Arena stores its normalized ratchet hurdle under `hurdle_score` (and mirrors it into `score` on the next write), so a stock-picker variant that predates the `score` key still displays its real value instead of `Pending`.
+3. **Ratchet fallback** — if `predictions` are supplied and non-empty, call `resolveRatchetMetrics(exp, predictions)` (exported from `DailyScoreBreakdown`) and return its `score` when numeric.
 
-If neither yields a number, the helper returns `null`, and callers render `Pending`.
+If none of the three yields a number, the helper returns `null`, and callers render `Pending`.
 
 ## Why the Fallback Lives in the UI
 
@@ -27,6 +28,7 @@ Every surface that shows an experiment score routes through this helper, so they
 - `VariantSidebar` / `VariantSidebarItem` — the variant list score badge
 - `SelectedVariantHeader` — the `Score:` field in the selected-variant header
 - `AutoresearchMilestoneCards` — via `computeExperimentMilestones(experiments, predictions)`, which uses the helper for the active prompt, the best baseline, and the parent experiment when computing the delta
+- `StockPickerAutoresearchPanel` — the per-track cards render `getExperimentDisplayScore(trackActive)` as `N pts` (or `Pending` when the track has no scored variant yet)
 
 Because the fallback needs prediction rows, `predictions` is threaded as an optional prop from `DailyPredictionsPage` down through `AutoresearchMilestoneCards`, `AutoresearchHistoryArena`, `VariantSidebar`, and `SelectedVariantHeader`. Omitting it degrades gracefully to the stored-metrics-only behavior.
 
@@ -42,4 +44,5 @@ Experiments created before per-track routing carry `track_id = 'track_default'`.
 - [[entities/daily-score-breakdown]] — the component that owns `resolveRatchetMetrics` and ratchet score computation
 - [[entities/autoresearch-arena]] — the arena UI that consumes the display score
 - [[entities/daily-predictor-backtest-arena]] — backtest counterpart of the same arena
+- [[entities/daily-stock-picker]] — the arena whose variants store `hurdle_score`
 - [[entities/autoresearch]] — the experiment lifecycle these scores rank

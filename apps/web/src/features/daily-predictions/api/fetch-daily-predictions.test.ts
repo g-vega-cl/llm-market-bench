@@ -5,6 +5,7 @@ import {
     fetchDailyPredictorBacktestExperiments,
     fetchDailyPredictorBacktestPredictions,
     fetchDailyPredictorExperiments,
+    fetchStockPickerExperiments,
 } from './fetch-daily-predictions';
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -122,6 +123,20 @@ describe('fetch-daily-predictions', () => {
         expect(mockChain.from).toHaveBeenCalledWith('prompt_experiments');
         expect(mockChain.eq).toHaveBeenCalledWith('prompt_name', 'DAILY_PREDICTOR_PROMPT');
         expect(mockChain.eq).toHaveBeenCalledWith('is_backtest', true);
+        expect(result).toEqual(mockExperiments);
+    });
+
+    it('fetchStockPickerExperiments queries non-backtest STOCK_PICKER_PROMPT experiments', async () => {
+        const mockExperiments = [
+            { id: 'stock-exp-1', prompt_name: 'STOCK_PICKER_PROMPT', is_backtest: false },
+        ];
+        mockChain.order.mockResolvedValueOnce({ data: mockExperiments, error: null });
+
+        const result = await fetchStockPickerExperiments();
+
+        expect(mockChain.from).toHaveBeenCalledWith('prompt_experiments');
+        expect(mockChain.eq).toHaveBeenCalledWith('prompt_name', 'STOCK_PICKER_PROMPT');
+        expect(mockChain.eq).toHaveBeenCalledWith('is_backtest', false);
         expect(result).toEqual(mockExperiments);
     });
 });

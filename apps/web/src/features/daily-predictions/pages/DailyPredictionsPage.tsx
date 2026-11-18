@@ -29,10 +29,12 @@ export interface DailyPredictionsPageProps {
     experiments: PromptExperiment[];
     initialTicker?: SupportedDailyTicker;
     initialBaskets?: DailyStockBasket[];
+    initialStockExperiments?: PromptExperiment[];
     refreshFn?: () => Promise<{
         predictions: DailyPrediction[];
         experiments: PromptExperiment[];
         baskets?: DailyStockBasket[];
+        stockExperiments?: PromptExperiment[];
     }>;
 }
 
@@ -255,10 +257,12 @@ export function DailyPredictionsPage({
     experiments,
     initialTicker = 'SPY',
     initialBaskets = [],
+    initialStockExperiments = [],
 }: DailyPredictionsPageProps) {
-    const [predictions] = useState<DailyPrediction[]>(initialPredictions);
-    const [promptExperiments] = useState<PromptExperiment[]>(experiments);
-    const [stockBaskets] = useState<DailyStockBasket[]>(initialBaskets);
+    const predictions = initialPredictions;
+    const promptExperiments = experiments;
+    const stockBaskets = initialBaskets;
+    const stockExperiments = initialStockExperiments;
     const [selectedTicker, setSelectedTicker] = useState<SupportedDailyTicker>(
         initialTicker === 'TLT' ? 'TLT' : initialTicker === 'PICKS' ? 'PICKS' : 'SPY',
     );
@@ -323,7 +327,7 @@ export function DailyPredictionsPage({
             />
 
             {selectedTicker === 'PICKS' ? (
-                <DailyStockPicksTab baskets={stockBaskets} />
+                <DailyStockPicksTab baskets={stockBaskets} stockExperiments={stockExperiments} />
             ) : (
                 <LegacyPredictionsView
                     selectedTicker={selectedTicker}

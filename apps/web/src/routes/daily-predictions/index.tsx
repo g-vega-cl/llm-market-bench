@@ -28,6 +28,7 @@ function RouteComponent() {
             initialPredictions={initialData.predictions}
             experiments={initialData.experiments}
             initialBaskets={initialData.baskets}
+            initialStockExperiments={initialData.stockExperiments}
             initialTicker={ticker || 'SPY'}
             refreshFn={async () => {
                 const res = await getPredictionsFn();

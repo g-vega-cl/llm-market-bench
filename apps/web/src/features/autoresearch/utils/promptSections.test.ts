@@ -186,4 +186,23 @@ Return JSON.`;
             '=== RECENT-TAPE ACCOUNTABILITY & CATALYST TRANSMISSION FILTER ===',
         );
     });
+
+    it('correctly splits STOCK_PICKER_PROMPT (3 Up, 3 Down)', () => {
+        const prompt = `You are an elite quantitative equity analyst and long/short portfolio manager.
+=== MISSION & RULES ===
+1. Select 3 UP and 3 DOWN stocks.
+
+=== LONG/SHORT RELATIVE SELECTION STRATEGY ===
+1. UP PICKS (RELATIVE STRENGTH & CATALYST DRIVERS):
+- Identify assets with positive expectation gaps.
+
+=== REQUIRED OUTPUT FORMAT ===
+You MUST return a valid JSON object.`;
+
+        const result = splitPromptSections(prompt);
+        expect(result.isSplit).toBe(true);
+        expect(result.header).toContain('=== MISSION & RULES ===');
+        expect(result.mutable).toContain('=== LONG/SHORT RELATIVE SELECTION STRATEGY ===');
+        expect(result.footer).toContain('=== REQUIRED OUTPUT FORMAT ===');
+    });
 });

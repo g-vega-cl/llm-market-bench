@@ -1,4 +1,4 @@
-import { Badge, Button, PageLayout } from '@llm-market-bench/ui-design-system';
+import { PageLayout } from '@llm-market-bench/ui-design-system';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
@@ -20,9 +20,10 @@ import {
     SavedRecipesStrip,
     StudioAlertSlot,
 } from '../components/RecipeGuideAndQuotaBlock';
-import { RecipeNameField } from '../components/RecipeNameField';
 import { StageBuilder } from '../components/StageBuilder';
 import { StudioActionBar } from '../components/StudioActionBar';
+import { StudioHeader } from '../components/StudioHeader';
+import { TemplatePickerBar } from '../components/TemplatePickerBar';
 import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
 import { STARTER_RECIPES } from '../starter-templates';
 import type {
@@ -48,6 +49,7 @@ import {
     upsertSavedRecipeSummary,
 } from '../utils/live-studio-helpers';
 import { RecipeSaveError, useRecipeDraft } from '../utils/use-recipe-draft';
+import { useStrategyRemoval } from '../utils/use-strategy-removal';
 
 interface RecipeStudioPageProps {
     initialStrategy?: PushStrategy | null;
@@ -80,6 +82,18 @@ export function RecipeStudioPage({
     const [liveState, setLiveState] = useState<LivePortfolioAndRuns | null>(initialLiveState);
     const [quotaStatus, setQuotaStatus] = useState<RecipeUserQuotaStatus | null>(initialQuota);
     const [userRecipes, setUserRecipes] = useState<RecipeSummaryItem[]>(initialUserRecipes);
+    const removal = useStrategyRemoval((item) => {
+        setUserRecipes((prev) => prev.filter((r) => r.id !== item.id));
+        if (strategy.id === item.id) {
+            // The removed row must not stay open in the editor, otherwise the
+            // next Run Live / Backtest persist would act on a hidden strategy.
+            draft.resetTo(STARTER_RECIPES[0]);
+            setActiveTemplateIdx(0);
+            setLiveState(null);
+            setExecution({ status: 'idle' });
+            setPreview({ status: 'template' });
+        }
+    });
     const [isTogglingLive, setIsTogglingLive] = useState(false);
 
     const [alerts, setAlerts] = useState<RecipeAlert[]>([]);
@@ -137,11 +151,16 @@ export function RecipeStudioPage({
         if (refreshed) setLiveState(refreshed);
     };
 
-    const persistActiveStrategy = async (): Promise<StrategyRecipeRecord> => {
+    const persistActiveStrategy = async (
+        options: { restore?: boolean } = {},
+    ): Promise<StrategyRecipeRecord> => {
         // One in-flight save at a time: run/schedule callers share the promise,
         // so a recipe can never be inserted twice from a duplicate click.
         const saved = await draft.save(
-            (recipe) => saveRecipeFn({ data: { recipe } }) as Promise<StrategyRecipeRecord>,
+            (recipe) =>
+                saveRecipeFn({
+                    data: { recipe, restore: options.restore ?? false },
+                }) as Promise<StrategyRecipeRecord>,
         );
         setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved));
         return saved;
@@ -150,7 +169,9 @@ export function RecipeStudioPage({
     const handleSaveRecipe = async () => {
         if (isBusy || !draft.isDirty) return;
         try {
-            await persistActiveStrategy();
+            // The header button is the only explicit restore: it is what brings a
+            // strategy removed from My Strategies back into the list.
+            await persistActiveStrategy({ restore: true });
         } catch {
             // Draft state surfaces the message inline next to the field.
         }
@@ -281,30 +302,15 @@ export function RecipeStudioPage({
         <PageLayout>
             <div className="flex flex-col gap-6">
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                            <h1 className="font-display text-sm font-bold text-foreground">
-                                Strategy Builder MVP
-                            </h1>
-                            <Badge variant="soft" size="sm">
-                                5-Block Push v2
-                            </Badge>
-                        </div>
-                        <RecipeNameField
-                            value={strategy.name}
-                            onChange={draft.setName}
-                            onSave={handleSaveRecipe}
-                            isDirty={draft.isDirty}
-                            saveState={draft.saveState}
-                            errorMessage={draft.saveError}
-                            disabled={isBusy}
-                        />
-                        <p className="text-xs font-normal text-muted-foreground">
-                            Compose Prompt, News, Memories, Technicals, and Output Format blocks
-                            into a single Long-Only LLM call (runs 3x/day ET at 09:30, 12:30,
-                            15:30).
-                        </p>
-                    </div>
+                    <StudioHeader
+                        name={strategy.name}
+                        onNameChange={draft.setName}
+                        onSave={handleSaveRecipe}
+                        isDirty={draft.isDirty}
+                        saveState={draft.saveState}
+                        saveError={draft.saveError}
+                        disabled={isBusy}
+                    />
 
                     <StudioActionBar
                         isBusy={isBusy}
@@ -330,26 +336,22 @@ export function RecipeStudioPage({
 
                 <RecipeGuideAndQuotaBlock quotaStatus={quotaStatus} />
 
-                <SavedRecipesStrip recipes={userRecipes} activeRecipeId={strategy.id} />
+                <SavedRecipesStrip
+                    recipes={userRecipes}
+                    activeRecipeId={strategy.id}
+                    onRemove={removal.remove}
+                    removingId={removal.removingId}
+                    errorMessage={removal.errorMessage}
+                />
 
                 <RecentBacktestsStrip recentBacktests={recentBacktests} />
 
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-bold text-muted-foreground">Templates:</span>
-                        {STARTER_RECIPES.map((tmpl, idx) => (
-                            <Button
-                                key={tmpl.name}
-                                size="sm"
-                                variant={activeTemplateIdx === idx ? 'solid' : 'outline'}
-                                onClick={() => handleSelectTemplate(idx)}
-                                disabled={isBusy}
-                            >
-                                {tmpl.name}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+                <TemplatePickerBar
+                    templates={STARTER_RECIPES}
+                    activeIndex={activeTemplateIdx}
+                    disabled={isBusy}
+                    onSelect={handleSelectTemplate}
+                />
 
                 <div className="flex flex-col gap-4">
                     <StageBuilder stage={strategy.stages[0]} onChange={handleStageChange} />

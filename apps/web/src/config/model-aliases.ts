@@ -14,6 +14,9 @@ const LEGACY_MODEL_LABELS: Readonly<Record<string, string>> = {
     'gpt-5.6-luna': 'GPT-5.6 Luna',
     'deepseek-v4-flash': 'DeepSeek Flash',
     'minimax-m3': 'MiniMax M3',
+    // Claude Haiku 4.5 is retired; 5.5 (`MODELS.ANTHROPIC`) is the live slot.
+    // Stored rows keep the id they ran under, so label them as 4.5.
+    'claude-haiku-4-5': 'Claude Haiku 4.5',
 };
 
 /** Returns the historical display label for a retired model id, if any. */

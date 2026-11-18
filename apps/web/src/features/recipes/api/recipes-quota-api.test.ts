@@ -5,6 +5,7 @@ import {
     cancelRecipeJob,
     fetchPublicShowcaseBacktest,
     fetchRecipeQuotaStatus,
+    fetchUserRecipes,
     hasPublishedShowcase,
     toggleLiveSchedule,
 } from './recipes-quota-api';
@@ -46,7 +47,11 @@ function resolveMaybeSingle(
 }
 
 function filterMockRows(rows: Array<Record<string, unknown>>, filters: Record<string, unknown>) {
-    return rows.filter((row) => {
+    // `archived_at IS NULL` is applied first so the remaining predicate keeps
+    // its original complexity budget.
+    const visible =
+        filters['is:archived_at'] === null ? rows.filter((row) => !row.archived_at) : rows;
+    return visible.filter((row) => {
         if (filters.user_id && row.user_id !== filters.user_id) return false;
         if (filters.mode && row.mode !== filters.mode) return false;
         if (Array.isArray(filters.status) && !filters.status.includes(row.status)) return false;
@@ -90,6 +95,10 @@ function createQuotaMockDb({
                 },
                 neq: (col: string, val: unknown) => {
                     state.filters[`neq:${col}`] = val;
+                    return chain;
+                },
+                is: (col: string, val: unknown) => {
+                    state.filters[`is:${col}`] = val;
                     return chain;
                 },
                 in: (col: string, vals: unknown[]) => {
@@ -287,6 +296,23 @@ describe('recipes-quota-api', () => {
         );
     });
 
+    it('refuses to schedule a strategy the owner removed from My Strategies', async () => {
+        mockAdminDb = createQuotaMockDb({
+            singleRecipe: {
+                id: 'rec-archived',
+                user_id: 'user-1',
+                is_live: false,
+                archived_at: '2026-11-17T14:00:00.000Z',
+                graph_json: STARTER_RECIPES[0],
+            },
+            recipeRows: [],
+        }).db;
+
+        await expect(toggleLiveSchedule('rec-archived', true, 'user-1')).rejects.toThrow(
+            'removed from My Strategies',
+        );
+    });
+
     it('cancels an owned pending or processing job and records cancelled_at', async () => {
         const { db, calls } = createQuotaMockDb({
             updateResult: { data: { id: 'job-1', status: 'cancelled' }, error: null },
@@ -297,6 +323,37 @@ describe('recipes-quota-api', () => {
         expect(res).toEqual({ id: 'job-1', status: 'cancelled' });
         const updateCall = calls.find((c) => c.op === 'update');
         expect(updateCall?.payload).toMatchObject({ status: 'cancelled' });
+    });
+
+    it('hides archived strategies from My Strategies without removing the row', async () => {
+        const rows = [
+            {
+                id: 'rec-visible',
+                user_id: 'user-1',
+                name: 'Visible Strategy',
+                cadence: '3h',
+                is_live: false,
+                trial_count: 2,
+                updated_at: '2026-11-17T12:00:00.000Z',
+            },
+            {
+                id: 'rec-hidden',
+                user_id: 'user-1',
+                name: 'Removed Strategy',
+                cadence: '3h',
+                is_live: false,
+                trial_count: 5,
+                updated_at: '2026-11-17T13:00:00.000Z',
+                archived_at: '2026-11-17T14:00:00.000Z',
+            },
+        ];
+        mockAdminDb = createQuotaMockDb({ recipeRows: rows }).db;
+
+        const list = await fetchUserRecipes('user-1');
+
+        expect(list.map((r) => r.id)).toEqual(['rec-visible']);
+        // The archived row still exists in the table: hiding is not deletion.
+        expect(rows).toHaveLength(2);
     });
 });
 

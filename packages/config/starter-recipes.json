@@ -2,7 +2,7 @@
   {
     "version": "2.0-push",
     "name": "Trump & Chips News Momentum",
-    "description": "Single-stage push prompt combining chip-tariff news, relevant market memories, and technical screening criteria.",
+    "description": "News-driven momentum: chip-tariff headlines, tariff memories, and P/E plus RSI screens resolved in one LLM call.",
     "cadence": "3h",
     "stages": [
       {
@@ -39,6 +39,194 @@
             "rules": [
               { "id": "rule-pe", "metric": "P/E", "operator": "<", "target": "45" },
               { "id": "rule-rsi", "metric": "RSI", "operator": "<", "target": "70" }
+            ]
+          },
+          {
+            "id": "blk-format-1",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Claude Agent Portfolio Mirror",
+    "description": "Mirrors our live Claude agent portfolio: tool-first research, thesis review of open positions, long-only 4 x 25% sizing.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_stock_quote",
+          "get_price_history",
+          "get_ticker_news",
+          "get_key_metrics",
+          "get_technical_indicators",
+          "search_past_memories"
+        ],
+        "blocks": [
+          {
+            "id": "blk-prompt-1",
+            "type": "prompt",
+            "text": "Run the same research loop our live agent portfolios run before each 09:30, 12:30, and 15:30 ET slot. First read the injected news and memories and name the specific catalyst plus every ticker it transmits to. Then call the tools before deciding: get_stock_quote and get_price_history to check whether the move is already priced in, get_ticker_news for the specific headline, get_key_metrics and get_technical_indicators to confirm the thesis is not a broken company. Trace the chain of events from catalyst to earnings. For every open position in [Current Portfolio State], state whether the original thesis is intact, broken, or already realized - if it is broken or realized, EXIT instead of holding by inertia. Prefer adding to intact winners over averaging into losers, and never re-buy a name on the same sentiment you already acted on in the last 48 hours. Only BUY a name when you can state the profit mechanism in one sentence."
+          },
+          {
+            "id": "blk-news-1",
+            "type": "news",
+            "contains": ["earnings", "guidance", "acquisition", "AI", "Fed"],
+            "recency_hours": 48
+          },
+          {
+            "id": "blk-mem-1",
+            "type": "memories",
+            "contains": ["earnings", "guidance", "position"],
+            "recency_hours": 336,
+            "category": "ALL",
+            "min_importance": 4
+          },
+          {
+            "id": "blk-tech-1",
+            "type": "technicals",
+            "rules": [
+              { "id": "rule-rsi", "metric": "RSI", "operator": "<", "target": "75" },
+              { "id": "rule-vwap", "metric": "Price vs VWAP", "operator": ">", "target": "0" },
+              { "id": "rule-rvol", "metric": "RVOL", "operator": ">", "target": "1.2" }
+            ]
+          },
+          {
+            "id": "blk-format-1",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Quality Value Screener",
+    "description": "Fundamentals only, no news block: P/E, free cash flow, and trend screens prove the technicals block can drive decisions on its own.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": ["get_key_metrics", "get_technical_indicators", "get_price_history"],
+        "blocks": [
+          {
+            "id": "blk-prompt-1",
+            "type": "prompt",
+            "text": "This strategy deliberately ignores the news stream. Screen only on company quality and valuation: profitable, cash-generative businesses trading at a reasonable multiple with positive momentum. Use get_key_metrics to verify P/E and free cash flow yourself, and get_technical_indicators to confirm MACD is positive and price sits above VWAP. If nothing clears every rule, return an empty array - a HOLD is a valid output, not a failure."
+          },
+          {
+            "id": "blk-tech-1",
+            "type": "technicals",
+            "rules": [
+              { "id": "rule-pe", "metric": "P/E", "operator": "<", "target": "28" },
+              { "id": "rule-fcf", "metric": "FCF", "operator": ">", "target": "0" },
+              { "id": "rule-macd", "metric": "MACD", "operator": ">", "target": "0" },
+              { "id": "rule-52w", "metric": "price_52w_pct", "operator": "<", "target": "90" }
+            ]
+          },
+          {
+            "id": "blk-format-1",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Contrarian Sentiment Fader",
+    "description": "Mean reversion against crowd extremes: market-feeling barometer plus oversold RSI, buying fear and exiting into euphoria.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_market_feeling",
+          "get_stock_quote",
+          "get_technical_indicators",
+          "get_price_history",
+          "search_past_memories"
+        ],
+        "blocks": [
+          {
+            "id": "blk-prompt-1",
+            "type": "prompt",
+            "text": "Trade against crowd exhaustion, not with it. Call get_market_feeling first and read the barometer: when sentiment is stretched bearish, look for liquid names that sold off on no company-specific bad news; when sentiment is euphoric, EXIT positions that are already profitable instead of adding. Use get_price_history to check the selloff is an overreaction - orderly, low relative volume - rather than a structural break, and get_technical_indicators to confirm RSI is oversold while price has stopped making lower lows. Use search_past_memories for how similar panic episodes resolved. If the setup is ambiguous, HOLD."
+          },
+          {
+            "id": "blk-news-1",
+            "type": "news",
+            "contains": ["selloff", "downgrade", "fear", "recession"],
+            "recency_hours": 72
+          },
+          {
+            "id": "blk-mem-1",
+            "type": "memories",
+            "contains": ["selloff", "panic", "reversal"],
+            "recency_hours": 336,
+            "category": "POST_MORTEM",
+            "min_importance": 4
+          },
+          {
+            "id": "blk-tech-1",
+            "type": "technicals",
+            "rules": [
+              { "id": "rule-rsi", "metric": "RSI", "operator": "<", "target": "35" },
+              { "id": "rule-vwap", "metric": "Price vs VWAP", "operator": "<", "target": "0" }
+            ]
+          },
+          {
+            "id": "blk-format-1",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Earnings Catalyst Hunter",
+    "description": "Event-driven: earnings-surprise streaks plus per-ticker news, trading the post-print drift instead of the headline spike.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_earnings_history",
+          "get_ticker_news",
+          "get_stock_quote",
+          "get_price_history",
+          "get_key_metrics"
+        ],
+        "blocks": [
+          {
+            "id": "blk-prompt-1",
+            "type": "prompt",
+            "text": "Trade the drift after the print, never the print itself. For every ticker in the injected headlines, call get_earnings_history to measure the last four quarters of EPS surprise direction and get_ticker_news for what management actually guided. A name qualifies only when the surprise streak is consistent and guidance moved in the same direction as the headline. Use get_stock_quote and get_price_history to confirm the market has not already priced the beat in - skip names up more than 8% on the print. Size to hold through the next two sessions and EXIT once the drift stalls or the next print approaches."
+          },
+          {
+            "id": "blk-news-1",
+            "type": "news",
+            "contains": ["earnings", "EPS", "beats", "misses", "guidance"],
+            "recency_hours": 72
+          },
+          {
+            "id": "blk-mem-1",
+            "type": "memories",
+            "contains": ["earnings", "guidance", "surprise"],
+            "recency_hours": 504,
+            "category": "CALENDAR_EVENT",
+            "min_importance": 3
+          },
+          {
+            "id": "blk-tech-1",
+            "type": "technicals",
+            "rules": [
+              { "id": "rule-rvol", "metric": "RVOL", "operator": ">", "target": "1.5" },
+              { "id": "rule-macd", "metric": "MACD", "operator": ">", "target": "0" }
             ]
           },
           {

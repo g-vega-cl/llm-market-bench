@@ -109,11 +109,16 @@ def _canonical_slot_utc(slot_key: str) -> datetime:
 
 
 def enqueue_live_recipes(sb_client: Any, *, slot_start_utc: datetime | None = None) -> int:
-    """Enqueue live_turn jobs for active Push v2 is_live recipes without an open or same-slot job."""
+    """Enqueue live_turn jobs for active Push v2 is_live recipes without an open or same-slot job.
+
+    Recipes the owner removed from My Strategies keep their rows (archived_at is
+    set) but must never be turned over again, so the query requires NULL there.
+    """
     live_res = (
         sb_client.table("strategy_recipes")
         .select("id, user_id, name, graph_json")
         .eq("is_live", True)
+        .is_("archived_at", "null")
         .limit(500)
         .execute()
     )

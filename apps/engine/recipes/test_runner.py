@@ -61,7 +61,7 @@ def test_enqueue_live_recipes_skips_if_already_pending():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_chain = recipes_tbl.select.return_value.eq.return_value.limit.return_value
+    recipes_chain = recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value
     recipes_chain.execute.return_value.data = [
         {"id": "rec-legacy", "user_id": "u0", "name": "Legacy DAG", "graph_json": {"nodes": [], "edges": []}},
         {"id": "rec-1", "user_id": "u1", "name": "Live 1", "graph_json": {"stages": [{"id": "s1"}]}},
@@ -82,6 +82,38 @@ def test_enqueue_live_recipes_skips_if_already_pending():
     assert inserted_batch[0]["priority"] == 1
 
 
+def test_enqueue_live_recipes_excludes_archived_recipes():
+    """A removed strategy keeps is_live rows only if the DB filter is missing."""
+    sb = MagicMock()
+    recipes_tbl = MagicMock()
+    queue_tbl = MagicMock()
+
+    def _router(name: str):
+        if name == "strategy_recipes":
+            return recipes_tbl
+        if name == "recipe_execution_queue":
+            return queue_tbl
+        return MagicMock()
+
+    sb.table.side_effect = _router
+    recipes_chain = recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value
+    recipes_chain.execute.return_value.data = []
+
+    assert enqueue_live_recipes(sb) == 0
+    recipes_tbl.select.return_value.eq.assert_called_once_with("is_live", True)
+    recipes_tbl.select.return_value.eq.return_value.is_.assert_called_once_with("archived_at", "null")
+    queue_tbl.insert.assert_not_called()
+
+
+def test_load_starter_recipes_are_all_valid_single_stage_graphs():
+    """Every seeded template must pass the same validator the worker enforces."""
+    templates = load_starter_recipes()
+    assert len(templates) == 5
+    assert len({tmpl["name"] for tmpl in templates}) == 5
+    for tmpl in templates:
+        PushStrategy.model_validate(tmpl)
+
+
 def test_enqueue_live_recipes_skips_multi_stage_recipes():
     sb = MagicMock()
     recipes_tbl = MagicMock()
@@ -95,7 +127,7 @@ def test_enqueue_live_recipes_skips_multi_stage_recipes():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_chain = recipes_tbl.select.return_value.eq.return_value.limit.return_value
+    recipes_chain = recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value
     recipes_chain.execute.return_value.data = [
         {
             "id": "rec-two-calls",
@@ -123,7 +155,7 @@ def test_enqueue_live_recipes_skips_graph_that_fails_strategy_validation():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_chain = recipes_tbl.select.return_value.eq.return_value.limit.return_value
+    recipes_chain = recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value
     recipes_chain.execute.return_value.data = [
         {
             "id": "rec-broken",
@@ -197,7 +229,7 @@ async def test_run_hourly_cycle_drains_real_worker_without_nested_event_loop_cra
         ),
         MagicMock(data=[]),
     ]
-    recipes_tbl.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+    recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value.execute.return_value.data = []
     recipes_tbl.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
         "id": "r-1",
         "name": "Live Chip Momentum",
@@ -258,7 +290,7 @@ def test_enqueue_live_recipes_dedups_already_enqueued_in_same_slot():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_tbl.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+    recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value.execute.return_value.data = [
         {"id": "rec-1", "user_id": "u1", "name": "Live 1", "graph_json": {"stages": [{"id": "s1"}]}},
         {"id": "rec-2", "user_id": "u2", "name": "Live 2", "graph_json": {"stages": [{"id": "s1"}]}},
     ]

@@ -214,7 +214,11 @@ describe('RecipeStudioPage > draft and explicit save', () => {
 
         await waitFor(() => {
             expect(saveRecipeFn).toHaveBeenCalledWith({
-                data: { recipe: expect.objectContaining({ name: 'Semis Rotation' }) },
+                data: {
+                    recipe: expect.objectContaining({ name: 'Semis Rotation' }),
+                    // The explicit Save button is the restore path.
+                    restore: true,
+                },
             });
         });
         expect(enqueueRecipeJobFn).not.toHaveBeenCalled();
@@ -247,7 +251,10 @@ describe('RecipeStudioPage > draft and explicit save', () => {
 
         await waitFor(() => {
             expect(saveRecipeFn).toHaveBeenCalledWith({
-                data: { recipe: expect.objectContaining({ name: '  Small-Cap Rotation  ' }) },
+                data: {
+                    recipe: expect.objectContaining({ name: '  Small-Cap Rotation  ' }),
+                    restore: false,
+                },
             });
         });
         await waitFor(() => {

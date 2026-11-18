@@ -175,6 +175,15 @@ def test_publish_showcase_rejects_a_multi_stage_recipe():
     showcase_tbl.upsert.assert_not_called()
 
 
+def test_publish_showcase_rejects_a_recipe_removed_from_my_strategies():
+    sb, _recipes_tbl, showcase_tbl = _fake_sb(_job(), _recipe(archived_at="2026-11-17T14:00:00.000Z"))
+
+    with pytest.raises(ShowcasePublishError, match="removed from My Strategies"):
+        publish_showcase(sb, "job-1")
+
+    showcase_tbl.upsert.assert_not_called()
+
+
 def test_publish_showcase_dry_run_writes_nothing():
     sb, recipes_tbl, showcase_tbl = _fake_sb(_job(), _recipe())
 

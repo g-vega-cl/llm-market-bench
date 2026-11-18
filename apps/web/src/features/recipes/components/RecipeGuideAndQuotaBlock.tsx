@@ -209,38 +209,69 @@ export function BacktestMethodologyBlock() {
 export function SavedRecipesStrip({
     recipes,
     activeRecipeId,
+    onRemove,
+    removingId,
+    errorMessage,
 }: {
     recipes: RecipeSummaryItem[];
     activeRecipeId?: string;
+    onRemove?: (recipe: RecipeSummaryItem) => void;
+    /** Strategy currently being removed: only that control renders a pending state. */
+    removingId?: string | null;
+    errorMessage?: string | null;
 }) {
     if (recipes.length === 0) return null;
     return (
-        <div className="flex flex-wrap items-center gap-2 voxel-trough bg-voxel-trough p-3">
+        <div className="flex flex-col gap-2 voxel-trough bg-voxel-trough p-3 min-w-0">
             <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                 My Strategies:
             </span>
-            {recipes.slice(0, 6).map((item) => {
-                const isActive = activeRecipeId === item.id;
-                return (
-                    <Link
-                        key={item.id}
-                        to="/recipes"
-                        search={{ recipeId: item.id }}
-                        className={`voxel-btn inline-flex items-center gap-2 px-2 py-1 text-xs font-normal border rounded-none max-w-full min-w-0 ${
-                            isActive
-                                ? 'border-accent bg-accent text-voxel-trough'
-                                : 'border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated'
-                        }`}
-                    >
-                        <span className="truncate min-w-0">{item.name}</span>
-                        {item.is_live && (
-                            <Badge variant="soft" colorScheme="success" size="xs">
-                                LIVE 3x/d
-                            </Badge>
-                        )}
-                    </Link>
-                );
-            })}
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+                {recipes.map((item) => {
+                    const isActive = activeRecipeId === item.id;
+                    return (
+                        <div
+                            key={item.id}
+                            className="inline-flex items-center gap-1 min-w-0 max-w-full"
+                        >
+                            <Link
+                                to="/recipes"
+                                search={{ recipeId: item.id }}
+                                className={`voxel-btn inline-flex items-center gap-2 px-2 py-1 text-xs font-normal border rounded-none max-w-full min-w-0 ${
+                                    isActive
+                                        ? 'border-accent bg-accent text-voxel-trough'
+                                        : 'border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated'
+                                }`}
+                            >
+                                <span className="truncate min-w-0">{item.name}</span>
+                                {item.is_live && (
+                                    <Badge variant="soft" colorScheme="success" size="xs">
+                                        LIVE 3x/d
+                                    </Badge>
+                                )}
+                            </Link>
+                            {onRemove && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    colorScheme="danger"
+                                    aria-label={`Remove ${item.name} from My Strategies`}
+                                    isLoading={removingId === item.id}
+                                    disabled={Boolean(removingId)}
+                                    onClick={() => onRemove(item)}
+                                >
+                                    Remove
+                                </Button>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+            {errorMessage && (
+                <span role="alert" className="text-xs font-normal text-danger">
+                    {errorMessage}
+                </span>
+            )}
         </div>
     );
 }

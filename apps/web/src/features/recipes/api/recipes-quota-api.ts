@@ -167,7 +167,7 @@ export async function toggleLiveSchedule(
     const db = getDbAdminClient();
     const { data: existing, error: fetchErr } = await db
         .from('strategy_recipes')
-        .select('id, user_id, is_live, graph_json')
+        .select('id, user_id, is_live, archived_at, graph_json')
         .eq('id', recipeId)
         .single();
 
@@ -178,11 +178,17 @@ export async function toggleLiveSchedule(
         id: string;
         user_id: string;
         is_live: boolean;
+        archived_at?: string | null;
         graph_json: Parameters<typeof assertSingleLlmStage>[0] &
             Parameters<typeof assertNoPrevOutputPlaceholder>[0];
     };
     if (row.user_id !== userId) {
         throw new Error('Unauthorized: cannot modify live schedule for another user');
+    }
+    if (row.archived_at) {
+        throw new Error(
+            'This strategy was removed from My Strategies. Save it to restore before scheduling it live.',
+        );
     }
 
     if (isLive) {
@@ -216,6 +222,8 @@ export async function fetchUserRecipes(userId: string): Promise<RecipeSummaryIte
         .from('strategy_recipes')
         .select('id, name, cadence, is_live, trial_count, updated_at')
         .eq('user_id', userId)
+        // Removed strategies stay in the database; they are only hidden here.
+        .is('archived_at', null)
         .order('updated_at', { ascending: false })
         .limit(20);
 
@@ -328,6 +336,8 @@ export async function fetchPublicShowcaseBacktest(): Promise<RecipeRunDetail | n
         .from('strategy_recipes')
         .select('id, name, cadence')
         .eq('is_public', true)
+        // A removed strategy must never fall through to the public showcase.
+        .is('archived_at', null)
         .order('trial_count', { ascending: false })
         .limit(10);
     logShowcaseReadFailure('public recipes', recipesError);

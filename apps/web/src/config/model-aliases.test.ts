@@ -6,6 +6,13 @@ describe('model-aliases', () => {
         expect(legacyModelLabel('gpt-5.6-luna')).toBe('GPT-5.6 Luna');
         expect(legacyModelLabel('deepseek-v4-flash')).toBe('DeepSeek Flash');
         expect(legacyModelLabel('MiniMax-M3')).toBe('MiniMax M3');
+        // Retired after the 5.5 swap; historical rows keep the 4.5 id.
+        expect(legacyModelLabel('claude-haiku-4-5')).toBe('Claude Haiku 4.5');
+    });
+
+    it('treats the live Claude slot as current, not retired', () => {
+        expect(isLegacyModelId('claude-haiku-5-5')).toBe(false);
+        expect(legacyModelLabel('claude-haiku-5-5')).toBeUndefined();
     });
 
     it('is case and whitespace tolerant', () => {

@@ -96,6 +96,14 @@ def validate_showcase_job(
     if not is_valid_single_stage_graph(recipe.get("graph_json")):
         raise ShowcasePublishError(f"Recipe {recipe.get('id')} graph is not a single-stage Push v2 strategy")
 
+    # A strategy the owner removed from My Strategies must not become the public
+    # showcase: the recipe row still exists, so nothing else would stop this.
+    if recipe.get("archived_at"):
+        raise ShowcasePublishError(
+            f"Recipe {recipe.get('id')} was removed from My Strategies; "
+            "restore it in the studio before publishing its run"
+        )
+
     return {
         "job_id": str(job.get("id")),
         "recipe_id": str(recipe.get("id")),

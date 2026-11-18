@@ -5,10 +5,7 @@ import {
     assertNoPrevOutputPlaceholder,
     assertSingleLlmStage,
     enqueueRecipeJob,
-    fetchRecentBacktestJobs,
     fetchRecipeById,
-    fetchRecipeRunDetail,
-    getRecipeJobStatus,
     saveRecipe,
 } from './recipes-api';
 
@@ -353,24 +350,53 @@ describe('saveRecipe', () => {
         const insert = calls.find((call) => call.op === 'insert');
         expect(insert?.payload).toMatchObject({ is_public: false });
     });
-});
 
-describe('getRecipeJobStatus', () => {
-    it('reads the queue with the service-role client, scoped to the caller', async () => {
+    it('leaves archived_at untouched on an ordinary save', async () => {
         const { db, calls } = createMockDb({
-            'select:recipe_execution_queue': { data: { id: 'job-1', status: 'completed' } },
+            'select:strategy_recipes': { data: { user_id: 'user-1' } },
+            'update:strategy_recipes': { data: recipeRow() },
         });
-        mockServerDb = db;
+        mockAdminDb = db;
 
-        const result = await getRecipeJobStatus('job-1', 'user-1');
+        await saveRecipe({ ...STARTER_RECIPES[0], id: 'rec-1' }, 'user-1');
 
-        expect(mockGetDbServerClient).toHaveBeenCalledWith({ useServiceRole: true });
-        expect(calls[0]?.filters).toMatchObject({ id: 'job-1', user_id: 'user-1' });
-        expect(result).toMatchObject({ status: 'completed' });
+        const update = calls.find((call) => call.op === 'update');
+        // An automatic persist before Run Live / Backtest must never resurrect
+        // a strategy the owner removed from My Strategies.
+        expect(update?.payload).not.toHaveProperty('archived_at');
+    });
+
+    it('clears archived_at only when the caller explicitly restores', async () => {
+        const { db, calls } = createMockDb({
+            'select:strategy_recipes': { data: { user_id: 'user-1' } },
+            'update:strategy_recipes': { data: recipeRow() },
+        });
+        mockAdminDb = db;
+
+        await saveRecipe({ ...STARTER_RECIPES[0], id: 'rec-1' }, 'user-1', 'preserve', {
+            restore: true,
+        });
+
+        const update = calls.find((call) => call.op === 'update');
+        expect(update?.payload).toMatchObject({ archived_at: null });
     });
 });
 
 describe('enqueueRecipeJob', () => {
+    it('refuses to run a strategy the owner removed from My Strategies', async () => {
+        const { db, calls } = createMockDb({
+            'select:strategy_recipes': {
+                data: recipeRow({ archived_at: '2026-11-17T14:00:00.000Z' }),
+            },
+        });
+        mockAdminDb = db;
+
+        await expect(enqueueRecipeJob('rec-1', 'backtest', 'user-1')).rejects.toThrow(
+            'removed from My Strategies',
+        );
+        expect(calls.some((call) => call.op === 'insert')).toBe(false);
+    });
+
     it('rejects a recipe the caller neither owns nor may see', async () => {
         const { db, calls } = createMockDb({
             'select:strategy_recipes': { data: recipeRow({ user_id: 'someone-else' }) },
@@ -425,36 +451,6 @@ describe('enqueueRecipeJob', () => {
     });
 });
 
-describe('fetchRecipeRunDetail', () => {
-    it('loads the user-scoped job and attaches recipe metadata', async () => {
-        const { db, calls } = createMockDb({
-            'select:recipe_execution_queue': {
-                data: {
-                    id: 'job-99',
-                    recipe_id: 'rec-1',
-                    mode: 'backtest',
-                    status: 'processing',
-                    progress_pct: 36,
-                    result_json: { days_completed: 3, total_days: 10 },
-                    error_message: null,
-                },
-            },
-            'select:strategy_recipes': {
-                data: { id: 'rec-1', name: 'Chip Tariff Momentum', cadence: '1d' },
-            },
-        });
-        mockServerDb = db;
-
-        const detail = await fetchRecipeRunDetail('job-99', 'user-1');
-
-        expect(calls[0]?.filters).toMatchObject({ id: 'job-99', user_id: 'user-1' });
-        expect(detail.job.status).toBe('processing');
-        expect(detail.job.progress_pct).toBe(36);
-        expect(detail.recipeName).toBe('Chip Tariff Momentum');
-        expect(detail.recipeCadence).toBe('1d');
-    });
-});
-
 describe('fetchRecipeById', () => {
     it('preserves recipe id when owned by the caller', async () => {
         const { db } = createMockDb({
@@ -501,72 +497,5 @@ describe('fetchRecipeById', () => {
         mockServerDb = db;
 
         await expect(fetchRecipeById('rec-priv', 'user-1')).rejects.toThrow('Unauthorized');
-    });
-});
-
-describe('fetchRecentBacktestJobs', () => {
-    it('queries backtest runs scoped to the requesting user', async () => {
-        const { db, calls } = createMockDb({
-            'select:recipe_execution_queue': {
-                data: [
-                    {
-                        id: 'job-1',
-                        recipe_id: 'rec-1',
-                        mode: 'backtest',
-                        status: 'completed',
-                        progress_pct: 100,
-                    },
-                ],
-            },
-        });
-        mockServerDb = db;
-
-        const jobs = await fetchRecentBacktestJobs('user-1', 5);
-        expect(calls[0]?.filters).toMatchObject({ user_id: 'user-1', mode: 'backtest' });
-        expect(jobs).toHaveLength(1);
-        expect(jobs[0]?.id).toBe('job-1');
-    });
-
-    it('computes queue position for pending backtest runs in fetchRecipeRunDetail', async () => {
-        const { db } = createMockDb({
-            'select:recipe_execution_queue': (call) => {
-                if (call.filters.id === 'job-wait') {
-                    return {
-                        data: {
-                            id: 'job-wait',
-                            recipe_id: 'rec-1',
-                            mode: 'backtest',
-                            status: 'pending',
-                            progress_pct: 0,
-                            created_at: '2026-11-16T10:05:00+00:00',
-                            result_json: null,
-                            error_message: null,
-                        },
-                    };
-                }
-                return {
-                    data: [
-                        {
-                            id: 'job-active',
-                            status: 'processing',
-                            created_at: '2026-11-16T10:00:00+00:00',
-                        },
-                        {
-                            id: 'job-wait',
-                            status: 'pending',
-                            created_at: '2026-11-16T10:05:00+00:00',
-                        },
-                    ],
-                };
-            },
-            'select:strategy_recipes': {
-                data: { id: 'rec-1', name: 'Chip Momentum', cadence: '3h' },
-            },
-        });
-        mockServerDb = db;
-
-        const detail = await fetchRecipeRunDetail('job-wait', 'user-1');
-        expect(detail.queuePosition).toBe(2);
-        expect(detail.globalActiveBacktests).toBe(1);
     });
 });

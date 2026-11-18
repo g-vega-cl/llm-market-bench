@@ -76,9 +76,17 @@ class TestMinimaxAnalysisProvider:
         mock_client.chat.completions.create = AsyncMock(return_value=decisions_resp)
         mock_factory = MagicMock(return_value=mock_client)
 
+        # MiniMax extraction runs on the OpenAI-compatible endpoint, not Instructor.
+        fake_minimax = MagicMock()
+        fake_minimax.chat = AsyncMock(
+            return_value={"content": decisions_resp.model_dump_json(), "finish_reason": "stop"}
+        )
+        fake_minimax.close = AsyncMock()
+
         with (
             patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
-            patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock),
+            patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock),
+            patch("core.llm.minimax.MiniMaxClient", return_value=fake_minimax),
         ):
             result = await analyze_with_provider(
                 provider="minimax",
@@ -105,9 +113,14 @@ class TestMinimaxAnalysisProvider:
         mock_client.chat.completions.create = AsyncMock(side_effect=Exception("validation error"))
         mock_factory = MagicMock(return_value=mock_client)
 
+        fake_minimax = MagicMock()
+        fake_minimax.chat = AsyncMock(return_value={"content": "not json at all", "finish_reason": "stop"})
+        fake_minimax.close = AsyncMock()
+
         with (
             patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
-            patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock),
+            patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock),
+            patch("core.llm.minimax.MiniMaxClient", return_value=fake_minimax),
         ):
             result = await analyze_with_provider(
                 provider="minimax",
@@ -131,6 +144,16 @@ class TestMinimaxAnalysisProvider:
 
         mock_instructor_client = MagicMock()
         mock_instructor_client.client = MagicMock()  # raw client
+        mock_instructor_client.chat.completions.create = AsyncMock()
+
+        fake_minimax = MagicMock()
+        fake_minimax.chat = AsyncMock(
+            return_value={
+                "content": '{"decisions": [], "macro_events": []}',
+                "finish_reason": "stop",
+            }
+        )
+        fake_minimax.close = AsyncMock()
 
         # Mock the factory to return our mock instructor client
         with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
@@ -140,14 +163,8 @@ class TestMinimaxAnalysisProvider:
             with (
                 patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()) as mock_anthropic_loop,
                 patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop,
+                patch("core.llm.minimax.MiniMaxClient", return_value=fake_minimax),
             ):
-                # Also mock the final Instructor extraction call to return a DecisionsResponse
-                from core.models import DecisionsResponse
-
-                mock_instructor_client.chat.completions.create = AsyncMock(
-                    return_value=DecisionsResponse(decisions=[], macro_events=[])
-                )
-
                 await analyze_with_provider(
                     provider="minimax",
                     model_name=MINIMAX_MODEL,

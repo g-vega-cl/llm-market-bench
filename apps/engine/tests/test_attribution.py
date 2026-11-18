@@ -269,3 +269,29 @@ async def test_get_active_ledger_xml_async_client():
     assert "<CURRENT_PORTFOLIO_LEDGER>" in xml
     assert '<POSITION ticker="AAPL"' in xml
     assert "<REASONING>Strong quarterly report</REASONING>" in xml
+
+
+def test_save_decision_null_embedding_when_embedding_fails(mock_supabase, mock_get_embedding):
+    """A failed embedding must persist NULL, never an empty vector.
+
+    pgvector rejects `[]` for a `vector` column with SQLSTATE 22000
+    ("vector must have at least 1 dimension"), which silently discarded every
+    decision during the Gemini prepay-credit outage on 2026-11-16/17.
+    """
+    mock_get_embedding.return_value = []
+
+    decision = DecisionObject(
+        signal="HOLD",
+        confidence=70,
+        reasoning="Semantic embedding backend is down",
+        ticker="SPY",
+        source_id="news_999",
+        model_provider="anthropic",
+        model_name="claude-haiku-5-5",
+    )
+
+    save_decision(mock_supabase, decision)
+
+    args, _ = mock_supabase.table().upsert.call_args
+    payload = args[0]
+    assert payload["embedding"] is None, "empty embedding must be stored as NULL so the decision survives"

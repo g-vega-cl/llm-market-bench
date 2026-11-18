@@ -106,7 +106,9 @@ def test_prepare_messages_for_instructor():
 
     cleaned = deepseek.prepare_messages_for_instructor(messages)
 
-    assert len(cleaned) == 4
+    # The tool-only assistant turn carries no prose and is dropped so the model
+    # cannot continue it; every other turn survives.
+    assert len(cleaned) == 3
     # User message untouched
     assert cleaned[0]["role"] == "user"
     assert cleaned[0]["content"] == "Perform research."
@@ -116,16 +118,14 @@ def test_prepare_messages_for_instructor():
     assert cleaned[1]["content"] == "Here is the result."
     assert cleaned[1]["reasoning_content"] is None
 
-    # Assistant tool message: tool_calls must be flattened into content and set to None
-    assert cleaned[2]["role"] == "assistant"
-    assert cleaned[2]["content"] == '\n[Tool Call: test_tool({"param": "val"})]'
-    assert cleaned[2]["tool_calls"] is None
-    assert cleaned[2]["reasoning_content"] is None
+    # No synthetic tool-call marker may survive anywhere in the prompt
+    for msg in cleaned:
+        assert "[Tool Call:" not in (msg.get("content") or "")
 
     # Tool response message: role converted to user, content formatted as [Tool Result: ...], tool_call_id removed
-    assert cleaned[3]["role"] == "user"
-    assert cleaned[3]["content"] == "[Tool Result: Tool return value]"
-    assert "tool_call_id" not in cleaned[3]
+    assert cleaned[2]["role"] == "user"
+    assert cleaned[2]["content"] == "[Tool Result: Tool return value]"
+    assert "tool_call_id" not in cleaned[2]
 
 
 def test_has_valid_content():

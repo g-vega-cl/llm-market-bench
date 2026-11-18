@@ -91,19 +91,30 @@ async def test_consolidated_call_counts():
         mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000 cash")
         mock_portfolio_class.return_value = mock_portfolio
 
+        fake_minimax = MagicMock()
+        fake_minimax.chat = AsyncMock(
+            return_value={"content": '{"decisions": [], "macro_events": []}', "finish_reason": "stop"}
+        )
+        fake_minimax.close = AsyncMock()
+
         mock_market_data = MagicMock()
         mock_market_data.get_quote = AsyncMock(return_value=None)
         mock_market_data.get_quotes = AsyncMock(return_value={})
         mock_market_data.get_history = AsyncMock(return_value=[])
         mock_market_data_class.return_value = mock_market_data
 
-        await analyze_chunks(chunks)
+        with patch("core.llm.minimax.MiniMaxClient", return_value=fake_minimax):
+            await analyze_chunks(chunks)
 
         # OpenAI SDK: openai + deepseek only (minimax moved to Anthropic SDK) - 2 passes per model + 1 newsletter summary call
         assert mock_wrapped_openai.chat.completions.create.call_count == 5
 
-        # Anthropic SDK: anthropic + minimax (minimax uses Anthropic-compatible endpoint) - 2 passes per model
-        assert mock_wrapped_anthropic.chat.completions.create.call_count == 4
+        # Anthropic SDK extraction: anthropic only - 2 passes (minimax extraction now
+        # runs on its OpenAI-compatible endpoint and no longer uses Instructor).
+        assert mock_wrapped_anthropic.chat.completions.create.call_count == 2
+
+        # MiniMax extraction goes through the OpenAI-compatible endpoint - 2 passes
+        assert fake_minimax.chat.await_count == 2
 
         assert mock_wrapped_gemini.chat.completions.create.call_count == 2
 

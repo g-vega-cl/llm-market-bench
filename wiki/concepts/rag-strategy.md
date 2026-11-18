@@ -26,6 +26,22 @@ Targeted per-trade RAG via `retrieve_for_decision()`:
 - Content sanitized (HTML stripped) before prompt injection
 - Items ranked by importance × similarity, capped at token budget
 
+### Embedding Outage Resilience
+
+`save_decision` in `apps/engine/attribution/service.py` coerces a failed embedding to
+`NULL` rather than an empty list:
+
+```python
+embedding = (get_embedding(decision.reasoning) if decision.reasoning else None) or None
+```
+
+pgvector rejects `[]` for a `vector` column with SQLSTATE 22000 ("vector must have at
+least 1 dimension"), which silently discarded every decision during the Gemini
+prepay-credit outage on 2026-11-16/17. With the coercion the decision row persists with
+`embedding = NULL` and can be backfilled later; `match_decisions` simply will not return
+it until then. Losing a decision row is worse than losing its retrievability — the row
+is the audit record, the embedding is only the retrieval key.
+
 ## Tier 3: Contrarian Path
 
 Batch pgvector search via `retrieve_context_batch()` for non-time-critical deep
@@ -46,3 +62,4 @@ analysis.
 - [[entities/database]]
 - [[concepts/memory-feedback]]
 - [[concepts/reasoning]]
+- [[entities/analysis-pipeline]] — the extraction stage that produces the embedded decisions

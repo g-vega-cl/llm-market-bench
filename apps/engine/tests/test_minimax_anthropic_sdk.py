@@ -1,10 +1,10 @@
-"""Tests verifying MiniMax-M3.1-Flash is wired through the Anthropic SDK
-pointed at MiniMax's Anthropic-compatible base URL.
+"""Tests verifying how MiniMax-M3.1-Flash is wired into the analysis pipeline.
 
-These tests pin down the architectural decision: MiniMax-M3.1-Flash uses the Anthropic
-API format (via the Anthropic SDK), not the OpenAI-compatible format. The
-OpenAI-format MiniMaxClient (core/llm/minimax.py) is reserved for auxiliary
-flows (market_feeling, sector_predictor) that don't need tool calling.
+Architectural decision: the *tool loop* uses the Anthropic SDK pointed at
+MiniMax's Anthropic-compatible base URL (native tool_use blocks), while the *final
+structured extraction* runs on the OpenAI-compatible endpoint
+(`core/llm/minimax.py`). The Anthropic route returns MiniMax's native
+`<tool_call>` syntax for extraction prompts, which cannot be parsed as JSON.
 """
 
 import os
@@ -21,6 +21,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 def mock_active_prompt():
     with patch("autoresearch.prompt_store.get_active_prompt", return_value=None):
         yield
+
+
+def _mock_minimax_client(payload: str = '{"decisions": [], "macro_events": []}') -> MagicMock:
+    """Build a fake OpenAI-endpoint MiniMax client returning a fixed payload."""
+    client = MagicMock()
+    client.chat = AsyncMock(return_value={"content": payload, "finish_reason": "stop"})
+    client.close = AsyncMock()
+    return client
 
 
 def test_get_minimax_client_uses_anthropic_sdk():
@@ -92,6 +100,7 @@ def test_analyze_with_provider_minimax_dispatches_to_anthropic_handler():
         patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
         patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()) as mock_anthro_loop,
         patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop,
+        patch("core.llm.minimax.MiniMaxClient", return_value=_mock_minimax_client()),
     ):
         import asyncio
 
@@ -114,20 +123,20 @@ def test_analyze_with_provider_minimax_dispatches_to_anthropic_handler():
 
 
 @pytest.mark.asyncio
-async def test_minimax_parameters_and_system_message():
-    """Verify that provider='minimax' correctly passes max_tokens and system message to the Anthropic client."""
+async def test_minimax_extraction_uses_openai_endpoint():
+    """Extraction must run on the OpenAI-compatible endpoint with model, system and token budget."""
     from core.llm import analysis as analysis_mod
-    from core.models import DecisionsResponse
 
-    decisions_resp = DecisionsResponse(decisions=[], macro_events=[])
+    fake_minimax = _mock_minimax_client()
     mock_client = MagicMock()
     mock_client.client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(return_value=decisions_resp)
+    mock_client.chat.completions.create = AsyncMock(side_effect=AssertionError("Instructor must not be used"))
     mock_factory = MagicMock(return_value=mock_client)
 
     with (
         patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
         patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()),
+        patch("core.llm.minimax.MiniMaxClient", return_value=fake_minimax),
     ):
         await analysis_mod.analyze_with_provider(
             provider="minimax",
@@ -140,13 +149,13 @@ async def test_minimax_parameters_and_system_message():
             macro_context="",
         )
 
-        assert mock_client.chat.completions.create.called
-        kwargs = mock_client.chat.completions.create.call_args.kwargs
-
-        assert "max_tokens" in kwargs
-        assert kwargs["max_tokens"] == 32000
-        assert "system" in kwargs
-        assert kwargs["system"] is not None
+    kwargs = fake_minimax.chat.call_args.kwargs
+    assert kwargs["model"] == "MiniMax-M3.1-Flash"
+    assert kwargs["max_completion_tokens"] == 8192
+    messages = kwargs["messages"]
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"]
+    assert messages[1]["role"] == "user"
 
 
 @pytest.mark.asyncio
@@ -174,15 +183,23 @@ async def test_minimax_retry_routes_to_anthropic_handler():
 
     mock_client = MagicMock()
     mock_client.client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(
-        side_effect=[decisions_resp_with_buy, DecisionsResponse(decisions=[], macro_events=[])]
-    )
+    mock_client.chat.completions.create = AsyncMock()
     mock_factory = MagicMock(return_value=mock_client)
+
+    fake_minimax = MagicMock()
+    fake_minimax.chat = AsyncMock(
+        side_effect=[
+            {"content": decisions_resp_with_buy.model_dump_json(), "finish_reason": "stop"},
+            {"content": '{"decisions": [], "macro_events": []}', "finish_reason": "stop"},
+        ]
+    )
+    fake_minimax.close = AsyncMock()
 
     with (
         patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
         patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()) as mock_anthro_loop,
         patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop,
+        patch("core.llm.minimax.MiniMaxClient", return_value=fake_minimax),
     ):
         await analysis_mod.analyze_with_provider(
             provider="minimax",
@@ -253,6 +270,7 @@ async def test_minimax_history_flattening_to_single_user_message():
     mock_client.client = MagicMock()
     mock_client.chat.completions.create = AsyncMock(return_value=decisions_resp)
     mock_factory = MagicMock(return_value=mock_client)
+    fake_minimax = _mock_minimax_client()
 
     async def mock_run_tool_loop(client, model, messages, **kwargs):
         messages.append(
@@ -277,6 +295,7 @@ async def test_minimax_history_flattening_to_single_user_message():
     with (
         patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
         patch("core.llm.handlers.anthropic.run_tool_loop", new=mock_run_tool_loop),
+        patch("core.llm.minimax.MiniMaxClient", return_value=fake_minimax),
     ):
         await analysis_mod.analyze_with_provider(
             provider="minimax",
@@ -289,16 +308,17 @@ async def test_minimax_history_flattening_to_single_user_message():
             macro_context="",
         )
 
-        assert mock_client.chat.completions.create.called
-        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert fake_minimax.chat.called
+        call_kwargs = fake_minimax.chat.call_args.kwargs
+        flat_messages = call_kwargs["messages"]
 
         # Verify that system prompt is extracted correctly
-        assert "=== SYSTEM PROTOCOL: MANDATORY TOOL USE FOR MINIMAX ===" in call_kwargs["system"]
+        assert flat_messages[0]["role"] == "system"
+        assert "=== SYSTEM PROTOCOL: MANDATORY TOOL USE FOR MINIMAX ===" in flat_messages[0]["content"]
 
-        # Verify messages list is flattened to exactly 1 user message
-        flat_messages = call_kwargs["messages"]
-        assert len(flat_messages) == 1
-        user_msg = flat_messages[0]
+        # Verify messages collapse to system + exactly 1 user message
+        assert len(flat_messages) == 2
+        user_msg = flat_messages[1]
         assert user_msg["role"] == "user"
 
         # Verify natural language representation of tool use and tool result is present

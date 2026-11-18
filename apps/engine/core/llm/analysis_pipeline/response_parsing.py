@@ -12,6 +12,94 @@ from core.models import DecisionsResponse
 
 logger = logging.getLogger("engine")
 
+# MiniMax M3.1 emits native tool syntax (`]<]minimax[>[<tool_call>...`) and
+# `think` blocks when it continues a tool conversation, and its full flattened
+# tool history reliably triggers that continuation instead of JSON.
+MINIMAX_HISTORY_TAIL_CHARS = 6000
+_MINIMAX_TOOL_BLOCK_RE = re.compile(r"<tool_call\b.*?</tool_call\s*>", re.DOTALL | re.IGNORECASE)
+_MINIMAX_INVOKE_BLOCK_RE = re.compile(r"<invoke\b.*?</invoke\s*>", re.DOTALL | re.IGNORECASE)
+_MINIMAX_MARKER_RE = re.compile(r"\[<\]minimax\[>\[?|<\]minimax\[>\[?")
+_MINIMAX_THINK_RE = re.compile(r"<think\b.*?(?:</think\s*>|$)", re.DOTALL | re.IGNORECASE)
+_MINIMAX_TAG_RE = re.compile(r"</?(?:tool_call|invoke|ticker|content|parameter)\b[^>]*>", re.IGNORECASE)
+
+
+def sanitize_minimax_content(text: str) -> str:
+    """Strips MiniMax native tool/thinking syntax so only candidate JSON remains."""
+    text = text or ""
+    text = _MINIMAX_THINK_RE.sub("", text)
+    text = _MINIMAX_TOOL_BLOCK_RE.sub("", text)
+    text = _MINIMAX_INVOKE_BLOCK_RE.sub("", text)
+    text = _MINIMAX_MARKER_RE.sub("\n", text)
+    text = _MINIMAX_TAG_RE.sub("", text)
+    return text.strip()
+
+
+async def extract_with_minimax_openai(
+    *,
+    messages: list,
+    model_name: str,
+    response_model: Any,
+    schema_hint: str,
+) -> Any:
+    """Extracts structured decisions through MiniMax's OpenAI-compatible endpoint.
+
+    The Anthropic-compatible endpoint returns MiniMax's native tool syntax for
+    extraction prompts (`No text content in response` -> `JSON extraction
+    malformed-input work limit exceeded`), so extraction runs on the documented
+    OpenAI-format endpoint instead and is parsed locally.
+    """
+    from core.llm.minimax import MiniMaxClient
+
+    system_prompt = ""
+    user_content = ""
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        content = msg.get("content") or ""
+        if isinstance(content, list):
+            content = "".join(str(part.get("text", "")) for part in content if isinstance(part, dict))
+        if msg.get("role") == "system":
+            system_prompt = str(content)
+        elif msg.get("role") == "user":
+            user_content = str(content)
+
+    if len(user_content) > MINIMAX_HISTORY_TAIL_CHARS:
+        user_content = user_content[-MINIMAX_HISTORY_TAIL_CHARS:]
+
+    instruction = (
+        "Based on the evaluation and tool results above, extract and structure the final trade decisions. "
+        "Do NOT continue the tool conversation. Do NOT emit tool-call syntax. "
+        "Respond with ONLY the raw JSON object matching this schema exactly:\n"
+        f"{schema_hint}"
+    )
+
+    client = MiniMaxClient()
+    try:
+        result = await client.chat(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"{user_content}\n\n{instruction}"},
+            ],
+            model=model_name,
+            max_completion_tokens=8192,
+        )
+    finally:
+        await client.close()
+
+    sanitized = sanitize_minimax_content(result.get("content") or "")
+    parsed = try_parse_response(sanitized, response_model)
+    if parsed is None:
+        logger.error(
+            "[minimax/%s] Failed to parse extraction output (%d chars): %s",
+            model_name,
+            len(sanitized),
+            sanitized[:500],
+        )
+        return [create_fallback_model(response_model)]
+
+    logger.debug("[minimax/%s] OpenAI-endpoint extraction produced a valid payload", model_name)
+    return [parsed]
+
 
 def repair_json_string(json_str: str) -> str:
     """Attempt to repair a malformed JSON string by extracting and unescaping valid JSON."""
@@ -141,6 +229,14 @@ async def extract_structured_response(
     is_retryable_error: Any = None,
 ) -> Any:
     """Execute Instructor structured extraction with retry and JSON repair for validation errors."""
+    if provider == "minimax":
+        return await extract_with_minimax_openai(
+            messages=messages,
+            model_name=model_name,
+            response_model=response_model,
+            schema_hint=schema_hint,
+        )
+
     wrapper = None
     last_error = None
 

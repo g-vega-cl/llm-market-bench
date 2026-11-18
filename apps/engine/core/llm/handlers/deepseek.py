@@ -2,12 +2,18 @@
 
 import json
 import logging
+import re
 
 from core.llm import tools
 from core.llm.handlers import base
 from core.llm.handlers.openai import DEFAULT_OPENAI_TOOLS
 
 logger = logging.getLogger("engine")
+
+# Synthetic markers that used to be injected into assistant turns. DeepSeek
+# imitates this exact syntax in its extraction response instead of emitting
+# JSON, so any such span must never reach the prompt (see wiki/concepts/model-anomalies).
+_TOOL_CALL_MARKER_RE = re.compile(r"\[Tool Call:.*?\]", re.DOTALL)
 
 
 def _build_deepseek_tool_list(enable_web_search: bool = False, override_tools: list | None = None) -> list:
@@ -137,16 +143,18 @@ def prepare_messages_for_instructor(messages: list) -> list:
             # Create a copy to avoid mutating original
             cleaned_msg = msg.copy()
 
-            # 1. Flatten assistant tool calls into content
+            # 1. Drop the raw tool_calls payload (API gateway 400 risk) and make
+            #    sure no `[Tool Call: ...]` text survives in assistant turns.
             if cleaned_msg.get("tool_calls"):
-                tcs_text = ""
-                for tc in cleaned_msg["tool_calls"]:
-                    func = tc.get("function", {})
-                    tcs_text += f"\n[Tool Call: {func.get('name')}({func.get('arguments')})]"
-                cleaned_msg["content"] = (cleaned_msg.get("content") or "") + tcs_text
                 cleaned_msg["tool_calls"] = None
+            content = cleaned_msg.get("content")
+            if isinstance(content, str):
+                content = _TOOL_CALL_MARKER_RE.sub("", content).strip()
+            elif content is None:
+                content = ""
+            cleaned_msg["content"] = content
 
-            # 2. Convert tool messages to user messages
+            # 2. Convert tool messages to user messages (results are the evidence)
             if cleaned_msg.get("role") == "tool":
                 cleaned_msg["role"] = "user"
                 cleaned_msg["content"] = f"[Tool Result: {cleaned_msg.get('content')}]"
@@ -155,9 +163,11 @@ def prepare_messages_for_instructor(messages: list) -> list:
             # Clear reasoning_content since we flattened all tool calls
             cleaned_msg["reasoning_content"] = None
 
-            # Ensure content is not just whitespace
-            if cleaned_msg.get("content") and cleaned_msg["content"].strip() == "":
-                cleaned_msg["content"] = ""
+            # 3. An assistant turn that held nothing but tool calls has no prose
+            #    left; keeping it empty invites the model to continue that turn.
+            if cleaned_msg.get("role") == "assistant" and not content:
+                continue
+
             cleaned.append(cleaned_msg)
         else:
             # For non-dict messages, pass through
@@ -174,8 +184,6 @@ def has_valid_content(messages: list) -> bool:
     Returns:
         True if the last assistant message has non-empty, non-tool-call content.
     """
-    import re
-
     for msg in reversed(messages):
         if isinstance(msg, dict) and msg.get("role") == "assistant":
             content = msg.get("content", "")

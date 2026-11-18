@@ -19,7 +19,7 @@ monolithic patch surface.
 | Module | Responsibility |
 | :--- | :--- |
 | `prompt_assembly.py` | News formatting, held-ticker / `$SYMB` extraction, experiment-tool resolution, web-search flags, provider message shaping, schema hints, extraction args, message orchestration |
-| `response_parsing.py` | JSON repair, multi-strategy parsing, fallback model creation, Instructor extraction with retry, multi-block aggregation |
+| `response_parsing.py` | JSON repair, multi-strategy parsing, fallback model creation, Instructor extraction with retry, MiniMax OpenAI-endpoint extraction (`extract_with_minimax_openai` / `sanitize_minimax_content`), multi-block aggregation |
 | `validation.py` | History tool scanning, hard tool enforcement, portfolio ownership validation, attribution trace attachment |
 
 ## Orchestrator Flow
@@ -41,7 +41,10 @@ monolithic patch surface.
    `prepare_messages_for_provider`, args built with `build_provider_extraction_args`,
    and `response_parsing.extract_structured_response` runs Instructor with up to 3
    attempts plus JSON-repair recovery on validation errors. Results are aggregated by
-   `aggregate_response_blocks`.
+   `aggregate_response_blocks`. Two providers take a dedicated path (see
+   [Provider-Specific Extraction Contracts](#provider-specific-extraction-contracts)):
+   DeepSeek gets an appended JSON-only instruction turn, and MiniMax bypasses
+   Instructor entirely for its OpenAI-compatible endpoint.
 5. **Retry on missing tools** — `validation.detect_missing_tool_decisions` finds BUY/SELL
    decisions lacking their mandatory quantity tool call; `build_tool_correction_message`
    injects a correction prompt and the tool loop is re-run once before re-extraction.
@@ -53,6 +56,73 @@ monolithic patch surface.
    with a `REJECTED_OWNERSHIP` reasoning.
 8. **Attribution trace** — `validation.attach_attribution_trace` binds an execution
    trace to the surviving decisions for factual logging.
+
+## Provider-Specific Extraction Contracts
+
+Extraction is not one uniform Instructor call. Each provider has a contract that
+keeps the final turn a pure JSON turn, because a model that continues the tool
+conversation returns prose or native tool syntax instead of a parseable payload —
+which surfaces downstream as `decisions: []` even though the model never declined
+to trade.
+
+### DeepSeek — JSON-only final turn
+
+`build_provider_extraction_args` appends an explicit user turn when
+`provider == "deepseek"`:
+
+```text
+Based on the preceding evaluation and tool results, extract and structure the final
+ trade decisions. Do NOT call any tools. Do NOT output tool-call syntax.
+Respond with ONLY the raw JSON object matching this schema exactly:
+<schema hint>
+```
+
+Without it, DeepSeek continues the tool conversation (imitating the flattened
+history) and never emits JSON. The generic "append a user turn when the last message
+is `assistant`/`model`" branch now applies only to `gemini` and `anthropic`.
+
+### DeepSeek — no synthetic tool-call markers
+
+`prepare_messages_for_instructor` in `core/llm/handlers/deepseek.py` no longer
+flattens `tool_calls` into `[Tool Call: name(args)]` text. It:
+
+- drops the raw `tool_calls` payload (API gateway 400 `missing field tool_call_id` risk),
+- strips any `[Tool Call: ...]` span from assistant content via `_TOOL_CALL_MARKER_RE`
+  (DeepSeek copies that exact syntax verbatim, with `<｜｜DSML｜｜>` separators, instead of
+  emitting JSON),
+- converts `tool` messages to `user` messages prefixed `[Tool Result: ...]` so the
+  evidence survives,
+- and drops an assistant turn that has no prose left after flattening — an empty
+  assistant turn invites the model to continue it.
+
+`has_valid_content` continues to ignore assistant turns that are empty or
+marker-only, scanning earlier turns for real prose.
+
+### MiniMax — OpenAI-compatible extraction
+
+`extract_structured_response` short-circuits to `extract_with_minimax_openai` when
+`provider == "minimax"`. The Anthropic-compatible endpoint returns MiniMax's native
+`]<]minimax[>[<tool_call>` syntax for extraction prompts (`No text content in response`
+→ `JSON extraction malformed-input work limit exceeded`), so extraction runs on
+`MiniMaxClient.chat` (the OpenAI-format endpoint) instead of Instructor:
+
+- **Payload** — the system prompt plus a single user message holding the last
+  `MINIMAX_HISTORY_TAIL_CHARS` (6000) characters of the flattened history, followed by
+  an explicit *do not continue the tool conversation / do not emit tool-call syntax /
+  return ONLY the raw JSON object matching this schema* instruction.
+- **Budget** — `max_completion_tokens=8192`.
+- **Sanitization** — `sanitize_minimax_content` strips `think` blocks (including
+  unclosed ones), `<tool_call>` / `<invoke>` blocks, `]<]minimax[>` markers, and stray
+  `tool_call` / `invoke` / `ticker` / `content` / `parameter` tags before
+  `try_parse_response`.
+- **Failure** — a parse failure logs the sanitized head (first 500 chars) and returns
+  `[create_fallback_model(response_model)]` rather than raising.
+- **Cleanup** — the client is always closed in a `finally` block.
+
+The MiniMax *tool loop* still runs through the Anthropic SDK
+(`handlers/anthropic.run_tool_loop`) against MiniMax's Anthropic-compatible base URL;
+only the extraction step moved. See [[concepts/thinking-agents]] and
+[[concepts/model-anomalies]].
 
 ## Backward Compatibility
 
@@ -68,3 +138,5 @@ mock targets resolve unchanged.
 - [[concepts/tool-enforcement]] — the hard enforcement step in stage 6
 - [[entities/tool-registry]] — where the canonical tool definitions come from
 - [[concepts/rag-strategy]] — how targeted context reaches the analysis agents
+- [[concepts/thinking-agents]] — per-provider thinking/extraction mode allocation
+- [[concepts/model-anomalies]] — the DeepSeek and MiniMax failure modes these contracts resolve

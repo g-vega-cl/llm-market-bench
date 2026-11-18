@@ -330,7 +330,22 @@ def build_provider_extraction_args(
             final_args["cache_control"] = {"type": "ephemeral"}
             final_args.update(get_anthropic_thinking_kwargs(model_name, budget_tokens=2048, effort="medium"))
 
-    if provider in ("gemini", "anthropic", "deepseek") and final_args["messages"]:
+    if provider == "deepseek":
+        # Extraction must be a pure JSON turn. Without this, DeepSeek continues
+        # the tool conversation (imitating flattened history) and never emits JSON.
+        final_args["messages"].append(
+            {
+                "role": "user",
+                "content": (
+                    "Based on the preceding evaluation and tool results, extract and structure the final "
+                    "trade decisions. Do NOT call any tools. Do NOT output tool-call syntax. "
+                    "Respond with ONLY the raw JSON object matching this schema exactly:\n"
+                    f"{build_schema_hint(response_model)}"
+                ),
+            }
+        )
+
+    if provider in ("gemini", "anthropic") and final_args["messages"]:
         last_msg = final_args["messages"][-1]
         last_role = last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
         if last_role in ("model", "assistant") or (provider == "anthropic" and last_role != "user"):

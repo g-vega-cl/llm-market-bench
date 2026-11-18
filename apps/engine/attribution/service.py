@@ -43,6 +43,11 @@ def save_decision(
     Raises:
         Exception: If the upsert or update operation fails.
     """
+    # An embeddings outage must never lose the decision: pgvector rejects `[]`
+    # with SQLSTATE 22000 ("vector must have at least 1 dimension"), so coerce a
+    # failed embedding to NULL and let the row persist for later backfill.
+    embedding = (get_embedding(decision.reasoning) if decision.reasoning else None) or None
+
     payload = {
         "source_id": decision.source_id,
         "ticker": decision.ticker,
@@ -62,7 +67,7 @@ def save_decision(
             "injected_market_price": getattr(decision, "injected_market_price", None),
         },
         "trade_id": trade_id,
-        "embedding": get_embedding(decision.reasoning) if decision.reasoning else None,
+        "embedding": embedding,
     }
 
     try:

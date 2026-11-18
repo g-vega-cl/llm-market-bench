@@ -19,10 +19,10 @@ export function NewsletterFeed({
     if (!newsletters.length && !newsSummary) {
         return (
             <section className="flex flex-col gap-4 h-full animate-slide-up">
-                <SectionHeading gradient="electric">Daily Intelligence Briefing</SectionHeading>
+                <SectionHeading>Daily Intelligence Briefing</SectionHeading>
                 <div className="voxel-trough rounded-none flex flex-col items-center justify-center py-12 text-center gap-2">
-                    <span className="text-xl">📭</span>
-                    <p className="text-xs font-normal text-boxel-muted">
+                    <span className="text-lg">📭</span>
+                    <p className="text-xs font-normal text-voxel-muted">
                         No briefings ingested yet today
                     </p>
                 </div>
@@ -33,7 +33,7 @@ export function NewsletterFeed({
     return (
         <section className="flex flex-col gap-4 h-full animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <SectionHeading gradient="electric">Daily Intelligence Briefing</SectionHeading>
+                <SectionHeading>Daily Intelligence Briefing</SectionHeading>
 
                 {newsletters.length > 0 && (
                     <Badge colorScheme="accent" variant="soft" size="xs">
@@ -44,7 +44,7 @@ export function NewsletterFeed({
 
             {newsSummary && (
                 <Card padding="md" className="voxel-card flex flex-col gap-2">
-                    <div className="flex items-center justify-between gap-2 border-b border-boxel-bevel-hi/60 pb-1.5">
+                    <div className="flex items-center justify-between gap-2 border-b border-voxel-bevel-hi/60 pb-1.5">
                         <div className="flex items-center gap-1.5">
                             <span className="text-sm">🤖</span>
                             <span className="text-xs font-normal uppercase tracking-wider text-accent font-bold">
@@ -52,18 +52,18 @@ export function NewsletterFeed({
                             </span>
                         </div>
                         {(newsSummaryDate || newsSummaryTime) && (
-                            <span className="text-xs font-normal text-boxel-muted font-mono">
+                            <span className="text-xs font-normal text-voxel-muted font-mono">
                                 {newsSummaryDate}
                                 {newsSummaryDate && newsSummaryTime ? ' • ' : ''}
                                 {newsSummaryTime}
                             </span>
                         )}
                     </div>
-                    <p className="text-xs font-normal text-boxel-ink leading-relaxed italic">
+                    <p className="text-xs font-normal text-voxel-ink leading-relaxed italic">
                         "{parseInlineMarkdown(newsSummary)}"
                     </p>
 
-                    <div className="mt-2 pt-2 border-t border-boxel-bevel-hi/60 flex items-center justify-between">
+                    <div className="mt-2 pt-2 border-t border-voxel-bevel-hi/60 flex items-center justify-between">
                         <Link
                             to="/generated-newsletters"
                             className="text-sm font-bold text-accent hover:underline uppercase tracking-wider"
@@ -95,7 +95,7 @@ export function NewsletterFeed({
                                     >
                                         {formatSender(news.sender)}
                                     </Badge>
-                                    <span className="text-xs font-normal text-boxel-muted font-mono shrink-0">
+                                    <span className="text-xs font-normal text-voxel-muted font-mono shrink-0">
                                         {news.formattedTime
                                             ? `${news.formattedTime} ET`
                                             : 'Unknown Time'}
@@ -103,16 +103,16 @@ export function NewsletterFeed({
                                 </div>
 
                                 {/* Content */}
-                                <h3 className="text-sm font-bold text-boxel-ink line-clamp-2 leading-snug">
+                                <h3 className="text-sm font-bold text-voxel-ink line-clamp-2 leading-snug">
                                     {news.subject}
                                 </h3>
-                                <p className="text-xs font-normal text-boxel-muted line-clamp-4 leading-relaxed">
+                                <p className="text-xs font-normal text-voxel-muted line-clamp-4 leading-relaxed">
                                     {news.content}
                                 </p>
                             </div>
 
                             {/* Footer */}
-                            <div className="mt-auto pt-2 border-t border-boxel-bevel-hi flex items-center justify-between text-xs font-normal font-mono text-boxel-muted">
+                            <div className="mt-auto pt-2 border-t border-voxel-bevel-hi flex items-center justify-between text-xs font-normal font-mono text-voxel-muted">
                                 <span>
                                     {(news.content?.length || 0).toLocaleString('en-US')} chars
                                 </span>
@@ -125,8 +125,8 @@ export function NewsletterFeed({
                 </div>
             ) : (
                 <div className="voxel-trough rounded-none flex flex-col items-center justify-center py-12 text-center gap-2">
-                    <span className="text-xl">📭</span>
-                    <p className="text-xs font-normal text-boxel-muted">
+                    <span className="text-lg">📭</span>
+                    <p className="text-xs font-normal text-voxel-muted">
                         No individual briefings ingested yet today
                     </p>
                 </div>

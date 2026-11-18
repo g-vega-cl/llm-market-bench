@@ -33,8 +33,8 @@ export function StatPill({
             type="button"
             onClick={onClick}
             className={cn(
-                'voxel-btn rounded-none flex items-center gap-2 px-3 py-1.5 bg-boxel-surface transition-all duration-150 cursor-pointer',
-                isActive ? 'border-accent bg-boxel-elevated' : 'hover:bg-boxel-elevated',
+                'voxel-btn rounded-none flex items-center gap-2 px-3 py-1.5 bg-voxel-surface transition-all duration-150 cursor-pointer',
+                isActive ? 'border-accent bg-voxel-elevated' : 'hover:bg-voxel-elevated',
                 className,
             )}
         >
@@ -42,7 +42,7 @@ export function StatPill({
             <span
                 className={cn(
                     'text-xs font-normal uppercase tracking-wider',
-                    isActive ? 'text-boxel-ink' : 'text-boxel-muted',
+                    isActive ? 'text-voxel-ink' : 'text-voxel-muted',
                 )}
             >
                 {label}
@@ -50,7 +50,7 @@ export function StatPill({
             <span
                 className={cn(
                     'text-sm font-bold tabular-nums',
-                    isActive ? 'text-accent' : 'text-boxel-ink',
+                    isActive ? 'text-accent' : 'text-voxel-ink',
                 )}
             >
                 {value}

@@ -143,7 +143,7 @@ describe('PortfolioComparisonSelector', () => {
         expect(onReset).toHaveBeenCalledTimes(1);
     });
 
-    it('renders all portfolio chips in an equal-sized CSS grid with ellipsis truncation and Boxel tokens (zero dark: classes)', () => {
+    it('renders all portfolio chips in an equal-sized CSS grid with ellipsis truncation and Voxel tokens (zero dark: classes)', () => {
         const variedPortfolios = [
             { portfolioId: 'p-short', ownerId: 'ai' },
             {

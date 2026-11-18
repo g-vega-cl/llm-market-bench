@@ -49,7 +49,7 @@ interface PortfolioDetailPageProps {
 function PortfolioLastUpdatedText({ timestamp }: { timestamp?: string | null }) {
     if (!timestamp) return null;
     return (
-        <p className="text-xs text-boxel-muted font-mono">
+        <p className="text-xs text-voxel-muted font-mono">
             Last updated: {formatEasternDateTime(timestamp)}
         </p>
     );
@@ -109,21 +109,19 @@ export function PortfolioDetailPage({
     }
 
     return (
-        <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+        <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
             <PageLayout className="px-4 py-8 flex flex-col gap-8" withPadding={false}>
-                <header className="flex flex-wrap items-end justify-between gap-6 pb-4 border-b-2 border-boxel-bevel-hi">
+                <header className="flex flex-wrap items-end justify-between gap-6 pb-4 border-b-2 border-voxel-bevel-hi">
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-3">
-                            <SectionHeading gradient="electric">
-                                {portfolio.owner_id.replace(/-/g, ' ')}
-                            </SectionHeading>
+                            <SectionHeading>{portfolio.owner_id.replace(/-/g, ' ')}</SectionHeading>
                             {!hasVerifier(portfolio.owner_id) && (
                                 <Badge variant="soft" size="sm" colorScheme="warning">
                                     No Verifier
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-boxel-muted text-xs font-normal">
+                        <p className="text-voxel-muted text-xs font-normal">
                             Portfolio analysis and performance timeline.
                         </p>
                         <PortfolioLastUpdatedText timestamp={portfolio.last_updated_at} />
@@ -192,14 +190,14 @@ export function PortfolioDetailPage({
 
                     {/* Positions Table */}
                     <section className="flex flex-col gap-4">
-                        <SectionHeading gradient="electric">Current Positions</SectionHeading>
+                        <SectionHeading>Current Positions</SectionHeading>
                         <PositionsTable positions={positions} themes={themes} trades={trades} />
                     </section>
 
                     {/* Recent Trades Table */}
                     <section className="flex flex-col gap-4">
                         <div className="flex items-center justify-between">
-                            <SectionHeading gradient="success">Recent Trades</SectionHeading>
+                            <SectionHeading>Recent Trades</SectionHeading>
                             <Badge variant="soft" size="sm" colorScheme="neutral">
                                 Audit Trail
                             </Badge>

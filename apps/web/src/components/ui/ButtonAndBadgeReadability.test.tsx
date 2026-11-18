@@ -2,62 +2,47 @@ import { Badge, Button, Card, ConfidenceBar } from '@llm-market-bench/ui-design-
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-describe('Button, Badge, Card, and ConfidenceBar Boxel Compliance', () => {
-    it('verifies neutral ghost Button uses high-contrast classes', () => {
+describe('Button, Badge, Card, and ConfidenceBar Voxel Compliance', () => {
+    it('verifies solid neutral Button uses voxel elevation classes', () => {
         const { container } = render(
-            <Button colorScheme="neutral" variant="ghost">
-                Test Ghost
+            <Button colorScheme="neutral" variant="solid">
+                Test Solid
             </Button>,
         );
         const button = container.querySelector('button');
         expect(button).toBeInTheDocument();
-        expect(button?.className).toContain('text-zinc-900');
-        expect(button?.className).toContain('dark:text-zinc-100');
-        expect(button?.className).toContain('hover:bg-zinc-100');
-        expect(button?.className).toContain('dark:hover:bg-zinc-800');
+        expect(button?.className).toContain('bg-voxel-elevated');
+        expect(button?.className).toContain('text-voxel-ink');
+        expect(button?.className).toContain('hover:bg-voxel-surface');
+        expect(button?.className).not.toContain('dark:');
     });
 
-    it('verifies neutral outline Button uses high-contrast border and text classes', () => {
+    it('verifies outline neutral Button uses a voxel bevel border and ink text', () => {
         const { container } = render(
             <Button colorScheme="neutral" variant="outline">
                 Test Outline
             </Button>,
         );
         const button = container.querySelector('button');
-        expect(button?.className).toContain('border-zinc-300');
-        expect(button?.className).toContain('dark:border-zinc-700');
-        expect(button?.className).toContain('text-zinc-900');
-        expect(button?.className).toContain('dark:text-zinc-100');
+        expect(button?.className).toContain('border-voxel-bevel-hi');
+        expect(button?.className).toContain('text-voxel-ink');
+        expect(button?.className).not.toContain('dark:');
     });
 
-    it('verifies neutral soft Button uses high-contrast background and text classes', () => {
-        const { container } = render(
-            <Button colorScheme="neutral" variant="soft">
-                Test Soft
-            </Button>,
-        );
-        const button = container.querySelector('button');
-        expect(button?.className).toContain('bg-zinc-100');
-        expect(button?.className).toContain('dark:bg-zinc-800');
-        expect(button?.className).toContain('text-zinc-900');
-        expect(button?.className).toContain('dark:text-zinc-100');
-    });
-
-    it('verifies neutral soft Badge uses high-contrast text zinc-600 and dark:zinc-400', () => {
+    it('verifies soft neutral Badge uses voxel surface and muted text', () => {
         const { container } = render(
             <Badge colorScheme="neutral" variant="soft">
                 Normal
             </Badge>,
         );
         const badge = container.querySelector('span');
-        expect(badge?.className).toContain('text-zinc-600');
-        expect(badge?.className).toContain('dark:text-zinc-400');
-        expect(badge?.className).toContain('bg-zinc-100');
-        expect(badge?.className).toContain('dark:bg-zinc-800/40');
+        expect(badge?.className).toContain('bg-voxel-surface');
+        expect(badge?.className).toContain('text-voxel-muted');
+        expect(badge?.className).not.toContain('dark:');
     });
 
-    it('verifies Card defaults to sharp boxel geometry (rounded-none and voxel-card)', () => {
-        const { container } = render(<Card>Boxel Block</Card>);
+    it('verifies Card defaults to sharp voxel geometry (rounded-none and voxel-card)', () => {
+        const { container } = render(<Card>Voxel Block</Card>);
         const card = container.firstElementChild;
         expect(card?.className).toContain('rounded-none');
         expect(card?.className).toContain('voxel-card');

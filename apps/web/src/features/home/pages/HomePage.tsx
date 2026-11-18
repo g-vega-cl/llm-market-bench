@@ -48,17 +48,17 @@ function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][num
     };
 
     return (
-        <tr className="hover:bg-boxel-elevated transition-colors">
+        <tr className="hover:bg-voxel-elevated transition-colors">
             <td className="px-4 py-3">
                 <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-bold text-boxel-ink tracking-tight">
+                    <span className="text-sm font-bold text-voxel-ink tracking-tight">
                         {portfolio.name}
                     </span>
-                    <div className="flex items-center gap-2 text-xs font-mono text-boxel-muted">
+                    <div className="flex items-center gap-2 text-xs font-mono text-voxel-muted">
                         <span className="flex items-center gap-1">
                             <span
                                 className={`h-2 w-2 rounded-none ${
-                                    portfolio.isActive ? 'bg-success' : 'bg-boxel-muted'
+                                    portfolio.isActive ? 'bg-success' : 'bg-voxel-muted'
                                 }`}
                             />
                             {portfolio.isActive ? 'Active' : 'Inactive'}
@@ -75,7 +75,7 @@ function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][num
                     </div>
                 </div>
             </td>
-            <td className="px-4 py-3 text-right font-mono text-sm font-bold text-boxel-ink align-middle">
+            <td className="px-4 py-3 text-right font-mono text-sm font-bold text-voxel-ink align-middle">
                 {formatMoney(portfolio.totalEquity)}
             </td>
             <td className="px-4 py-3 text-right font-mono text-sm align-middle">
@@ -113,7 +113,7 @@ function SPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
             </span>
             <div className="flex items-center gap-4 font-mono">
                 <div className="flex items-center gap-1.5">
-                    <span className="text-boxel-muted">Today</span>
+                    <span className="text-voxel-muted">Today</span>
                     <span
                         className={
                             spToday >= 0 ? 'text-success font-bold' : 'text-danger font-bold'
@@ -123,9 +123,9 @@ function SPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
                         {spToday}%
                     </span>
                 </div>
-                <span className="text-boxel-bevel-hi">|</span>
+                <span className="text-voxel-bevel-hi">|</span>
                 <div className="flex items-center gap-1.5">
-                    <span className="text-boxel-muted">Week</span>
+                    <span className="text-voxel-muted">Week</span>
                     <span
                         className={spWeek >= 0 ? 'text-success font-bold' : 'text-danger font-bold'}
                     >
@@ -153,11 +153,11 @@ function PortfoliosBlock({
             padding="md"
             className="flex-1 basis-96 min-w-0 flex flex-col gap-4"
         >
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-boxel-bevel-hi">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-voxel-bevel-hi">
                 <SectionHeading className="text-lg">Active Agent Portfolios</SectionHeading>
                 <Link
                     to="/portfolios"
-                    className="voxel-btn bg-boxel-elevated text-boxel-ink hover:text-accent px-3 py-1 text-sm font-bold uppercase tracking-wider"
+                    className="voxel-btn bg-voxel-elevated text-voxel-ink hover:text-accent px-3 py-1 text-sm font-bold uppercase tracking-wider"
                 >
                     All Portfolios →
                 </Link>
@@ -168,7 +168,7 @@ function PortfoliosBlock({
             <div className="voxel-trough overflow-x-auto flex-1">
                 <table className="w-full border-collapse text-left">
                     <thead>
-                        <tr className="border-b-2 border-boxel-bevel-hi bg-boxel-surface text-boxel-muted">
+                        <tr className="border-b-2 border-voxel-bevel-hi bg-voxel-surface text-voxel-muted">
                             <th className="px-4 py-2.5 text-sm font-bold uppercase tracking-wider">
                                 Model
                             </th>
@@ -180,7 +180,7 @@ function PortfoliosBlock({
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-boxel-bevel-hi/40">
+                    <tbody className="divide-y divide-voxel-bevel-hi/40">
                         {llmPortfolios.map((portfolio) => (
                             <PortfolioRow key={portfolio.name} portfolio={portfolio} />
                         ))}
@@ -215,14 +215,14 @@ export function HomePage({ data }: { data: HomePageData }) {
         data.isMarketOpen !== undefined ? data.isMarketOpen : isRegularMarketHours();
 
     return (
-        <div className="min-h-screen w-full bg-boxel-canvas text-boxel-ink overflow-x-hidden">
+        <div className="min-h-screen w-full bg-voxel-canvas text-voxel-ink overflow-x-hidden">
             <PageLayout maxWidth="xl" className="flex flex-col gap-6">
-                <header className="pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
+                <header className="pb-4 border-b-2 border-voxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
                     <div className="flex flex-col gap-1">
-                        <h1 className="text-lg font-bold tracking-tight text-boxel-ink uppercase">
+                        <h1 className="text-sm font-bold tracking-tight text-voxel-ink uppercase">
                             Market Overview
                         </h1>
-                        <p className="text-xs font-normal text-boxel-muted font-mono">
+                        <p className="text-xs font-normal text-voxel-muted font-mono">
                             LIVE AUTONOMOUS LLM BENCHMARK • 24/7 TRADER &amp; SESSION LEADERBOARD
                         </p>
                     </div>

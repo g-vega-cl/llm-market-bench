@@ -26,13 +26,13 @@ Benchify separates hydrated transitions from cold client fetches so neither caus
 | `variant` | `'text' \| 'block' \| 'card'` | Single text line(s), a rectangular block, or a multi-line card slot |
 | `lines` | number (default `3`) | Placeholder line count for `text` / `card` variants |
 
-Every variant renders `aria-hidden="true"` with `data-slot="skeleton"` (and `data-slot="skeleton-line"` per line), `rounded-none`, `bg-boxel-trough` / `bg-boxel-elevated`, and `animate-pulse motion-reduce:animate-none`. Line widths cycle through `w-2/3`, `w-full`, `w-4/5`, `w-5/6` so a card placeholder reads as prose rather than a solid bar. The legacy `.skeleton` shimmer CSS class in `apps/web/src/styles/app.css` has been deleted — there is exactly one skeleton implementation.
+Every variant renders `aria-hidden="true"` with `data-slot="skeleton"` (and `data-slot="skeleton-line"` per line), `rounded-none`, `bg-voxel-trough` / `bg-voxel-elevated`, and `animate-pulse motion-reduce:animate-none`. Line widths cycle through `w-2/3`, `w-full`, `w-4/5`, `w-5/6` so a card placeholder reads as prose rather than a solid bar. The legacy `.skeleton` shimmer CSS class in `apps/web/src/styles/app.css` has been deleted — there is exactly one skeleton implementation.
 
 ### Skeleton Discipline (Avoiding Height-Mismatch Whiplash)
 
 To prevent the classic skeleton failure mode (arbitrary heights snapping when data resolves):
 
-- Build placeholders with `Skeleton` (`rounded-none`, `bg-boxel-trough` / `bg-boxel-elevated`, `motion-reduce:animate-none`, `aria-hidden="true"`).
+- Build placeholders with `Skeleton` (`rounded-none`, `bg-voxel-trough` / `bg-voxel-elevated`, `motion-reduce:animate-none`, `aria-hidden="true"`).
 - Mirror the exact fluid CSS Grid tracks (`repeat(auto-fit, minmax(min(100%, 18rem), 1fr))`) and approximate card/line counts of the target feed.
 - Wrap the placeholder region in `aria-busy="true"` (and `role="status"` with an `aria-label` when the region is a named loading state) so assistive technology announces the pending load without a spinner.
 

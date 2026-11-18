@@ -21,7 +21,7 @@ export function CognitiveToolboxCard({
 
     if (activeTools.length === 0) {
         return (
-            <Card className="p-6 space-y-3 bg-zinc-50/50 dark:bg-zinc-900/30 border-zinc-200 dark:border-zinc-800">
+            <Card className="p-6 space-y-3 bg-zinc-50/50 bg-zinc-900/30 border-zinc-200 border-zinc-800">
                 <div className="flex items-center justify-between">
                     <SectionHeading>{title}</SectionHeading>
                     <Badge variant="soft" size="sm">
@@ -55,10 +55,10 @@ export function CognitiveToolboxCard({
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1">
                     <SectionHeading>{title}</SectionHeading>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</p>
+                    <p className="text-xs text-zinc-500 text-zinc-400">{subtitle}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Badge variant="outline">
+                    <Badge variant="soft">
                         {activeTools.length} / {allToolboxTools.length} Tools Enabled
                     </Badge>
                 </div>
@@ -66,8 +66,8 @@ export function CognitiveToolboxCard({
 
             {/* Tool Delta (Pivot Highlights) */}
             {hasDelta && (
-                <div className="p-4 bg-boxel-canvas rounded-none border border-boxel-bevel-hi flex flex-col gap-3">
-                    <h4 className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                <div className="p-4 bg-voxel-canvas rounded-none border border-voxel-bevel-hi flex flex-col gap-3">
+                    <h4 className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         Cognitive Tool Evolution (Pivot Delta)
                     </h4>
                     <div className="flex flex-wrap gap-2">
@@ -109,14 +109,14 @@ export function CognitiveToolboxCard({
                             key={tool.name}
                             className={`p-4 rounded-none h-full border transition-all duration-200 flex flex-col justify-between gap-2 min-w-0 overflow-hidden ${
                                 isEnabled
-                                    ? 'bg-boxel-trough border-boxel-bevel-hi'
-                                    : 'bg-boxel-canvas/40 border-boxel-bevel-lo opacity-40'
+                                    ? 'bg-voxel-trough border-voxel-bevel-hi'
+                                    : 'bg-voxel-canvas/40 border-voxel-bevel-lo opacity-40'
                             } ${isNewAddition ? 'ring-1 ring-emerald-500/30 border-emerald-500/30' : ''}`}
                         >
                             <div className="flex flex-col gap-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
                                     <span
-                                        className={`font-mono text-xs font-normal break-all ${isEnabled ? 'text-boxel-ink' : 'text-boxel-muted line-through'}`}
+                                        className={`font-mono text-xs font-normal break-all ${isEnabled ? 'text-voxel-ink' : 'text-voxel-muted line-through'}`}
                                     >
                                         {tool.name}
                                     </span>
@@ -124,18 +124,18 @@ export function CognitiveToolboxCard({
                                         <span className="text-emerald-400 text-xs font-normal flex items-center gap-1 shrink-0">
                                             ✓{' '}
                                             {isNewAddition && (
-                                                <span className="text-xs bg-emerald-500 text-boxel-trough px-1 py-0.5 rounded-none font-sans font-normal uppercase animate-pulse">
+                                                <span className="text-xs bg-emerald-500 text-voxel-trough px-1 py-0.5 rounded-none font-sans font-normal uppercase animate-pulse">
                                                     new
                                                 </span>
                                             )}
                                         </span>
                                     ) : (
-                                        <span className="text-boxel-muted text-xs font-normal shrink-0">
+                                        <span className="text-voxel-muted text-xs font-normal shrink-0">
                                             ✗
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-xs font-normal text-boxel-muted leading-normal break-words">
+                                <p className="text-xs font-normal text-voxel-muted leading-normal break-words">
                                     {tool.desc}
                                 </p>
                             </div>

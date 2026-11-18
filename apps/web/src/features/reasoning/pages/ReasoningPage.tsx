@@ -77,11 +77,11 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+        <div className="min-h-screen bg-zinc-50 bg-zinc-950 text-zinc-900 text-zinc-100">
             <PageLayout>
                 <header className="flex flex-col gap-2">
-                    <SectionHeading gradient="electric">LLM Research Audit Trail</SectionHeading>
-                    <p className="text-boxel-muted text-xs font-normal max-w-3xl leading-relaxed m-0">
+                    <SectionHeading>LLM Research Audit Trail</SectionHeading>
+                    <p className="text-voxel-muted text-xs font-normal max-w-3xl leading-relaxed m-0">
                         The ultimate source of truth for agent cognition. Every tool call, every
                         prompt, and every internal "thought" trace is captured here for deep
                         research and auditing.
@@ -91,11 +91,11 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                 {/* Filters Row (Tabs + Model Dropdown) */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-                        <div className="flex gap-2 p-1.5 bg-zinc-100 dark:bg-zinc-900/50 rounded-none w-fit border border-zinc-200 dark:border-zinc-800 backdrop-blur-xl min-w-max">
+                        <div className="flex gap-2 p-1.5 bg-zinc-100 bg-zinc-900/50 rounded-none w-fit border border-zinc-200 border-zinc-800  min-w-max">
                             {categories.map((cat) => (
                                 <Button
                                     key={cat}
-                                    variant={activeTab === cat ? 'solid' : 'ghost'}
+                                    variant={activeTab === cat ? 'solid' : 'outline'}
                                     size="sm"
                                     colorScheme={activeTab === cat ? 'accent' : 'neutral'}
                                     onClick={() => {
@@ -135,7 +135,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                     {selectedLog && (
                         <div className="lg:hidden mb-4">
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="md"
                                 colorScheme="neutral"
                                 onClick={() => setSelectedLogId(null)}
@@ -166,17 +166,12 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                                 }}
                                 className={`p-4 rounded-none border transition-all cursor-pointer group flex flex-col gap-2 ${
                                     selectedLogId === log.id
-                                        ? 'border-accent bg-accent-light dark:bg-accent-dark/20 shadow-sm ring-1 ring-accent/50'
-                                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm'
+                                        ? 'border-accent bg-accent-light bg-accent-dark/20 shadow-sm ring-1 ring-accent/50'
+                                        : 'border-zinc-200 border-zinc-800 bg-white bg-zinc-900/40 hover:border-zinc-300 hover:border-zinc-700 shadow-sm'
                                 }`}
                             >
                                 <div className="flex justify-between items-start">
-                                    <Badge
-                                        variant="soft"
-                                        size="sm"
-                                        colorScheme="neutral"
-                                        radius="none"
-                                    >
+                                    <Badge variant="soft" size="sm" colorScheme="neutral">
                                         {log.task_type}
                                     </Badge>
                                     <span className="text-xs font-normal text-zinc-400 font-mono italic">
@@ -185,19 +180,19 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                                             : '-'}
                                     </span>
                                 </div>
-                                <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm leading-tight group-hover:text-accent transition-colors m-0">
+                                <h3 className="font-bold text-zinc-800 text-zinc-100 text-sm leading-tight group-hover:text-accent transition-colors m-0">
                                     {log.metadata?.ticker || 'Global Analysis'}
                                 </h3>
                                 <div className="flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 rounded-none bg-accent shrink-0" />
-                                    <p className="text-xs font-normal text-zinc-500 dark:text-zinc-400 tracking-wider uppercase m-0">
+                                    <p className="text-xs font-normal text-zinc-500 text-zinc-400 tracking-wider uppercase m-0">
                                         {log.model_provider} • {log.model_name}
                                     </p>
                                 </div>
                             </div>
                         ))}
                         {(!filteredLogs || filteredLogs.length === 0) && !isFetching && (
-                            <div className="text-center py-8 p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-none text-zinc-400 italic text-xs font-normal">
+                            <div className="text-center py-8 p-6 border-2 border-dashed border-zinc-200 border-zinc-800 rounded-none text-zinc-400 italic text-xs font-normal">
                                 No logs found for this category.
                             </div>
                         )}
@@ -206,9 +201,8 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                             <div className="pt-3 pb-1">
                                 <Button
                                     variant="solid"
-                                    size="lg"
+                                    size="md"
                                     colorScheme="accent"
-                                    gradient
                                     onClick={() => {
                                         fetchNextPage();
                                         posthog.capture('reasoning_load_more_clicked');
@@ -222,7 +216,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                         )}
 
                         {!hasNextPage && filteredLogs && filteredLogs.length > 0 && (
-                            <div className="text-center py-3 text-zinc-400 dark:text-zinc-500 text-xs font-bold uppercase tracking-wider">
+                            <div className="text-center py-3 text-zinc-400 text-zinc-500 text-sm font-bold uppercase tracking-wider">
                                 • End of reasoning traces •
                             </div>
                         )}
@@ -234,7 +228,7 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                     <div
                         className={`${
                             selectedLog ? 'block' : 'hidden lg:block'
-                        } lg:col-span-8 bg-white dark:bg-zinc-900/60 rounded-none border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm relative overflow-hidden max-h-[80vh] md:h-[75vh] flex flex-col gap-6`}
+                        } lg:col-span-8 bg-white bg-zinc-900/60 rounded-none border border-zinc-200 border-zinc-800 p-6 shadow-sm relative overflow-hidden max-h-[80vh] md:h-[75vh] flex flex-col gap-6`}
                     >
                         {!selectedLog ? (
                             <div className="h-full flex flex-col items-center justify-center text-zinc-400 gap-4">
@@ -245,23 +239,18 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                             </div>
                         ) : (
                             <>
-                                <div className="flex justify-between items-start pb-4 border-b border-zinc-100 dark:border-zinc-800/50 sticky top-0 bg-white dark:bg-zinc-900/60 z-10 -mx-6 px-6 pt-0">
+                                <div className="flex justify-between items-start pb-4 border-b border-zinc-100 border-zinc-800/50 sticky top-0 bg-white bg-zinc-900/60 z-10 -mx-6 px-6 pt-0">
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-3 flex-wrap">
-                                            <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight m-0">
+                                            <h2 className="text-sm font-bold text-zinc-900 text-voxel-trough tracking-tight m-0">
                                                 {selectedLog.metadata?.ticker ||
                                                     selectedLog.task_type}
                                             </h2>
-                                            <Badge
-                                                variant="soft"
-                                                size="sm"
-                                                colorScheme="accent"
-                                                radius="none"
-                                            >
+                                            <Badge variant="soft" size="sm" colorScheme="accent">
                                                 Audit Mode
                                             </Badge>
                                         </div>
-                                        <p className="text-xs font-normal text-zinc-400 font-mono tracking-wider bg-zinc-100 dark:bg-zinc-800/50 px-2 py-0.5 rounded-none w-fit m-0">
+                                        <p className="text-xs font-normal text-zinc-400 font-mono tracking-wider bg-zinc-100 bg-zinc-800/50 px-2 py-0.5 rounded-none w-fit m-0">
                                             UUID: {selectedLog.id} •{' '}
                                             {selectedLog.created_at
                                                 ? formatEasternDateTime(selectedLog.created_at)

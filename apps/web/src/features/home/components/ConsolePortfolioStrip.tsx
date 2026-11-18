@@ -34,7 +34,7 @@ function computeMetrics(portfolio: LiveTraderPortfolioSummary): ComputedMetrics 
     const posPct = totalEquity > 0 ? (marketValue / totalEquity) * 100 : 0;
     const pnlPct = costBasis > 0 && shares > 0 ? (unrealizedPnl / (shares * costBasis)) * 100 : 0;
 
-    let pnlColor = 'text-boxel-muted';
+    let pnlColor = 'text-voxel-muted';
     if (unrealizedPnl > 0) pnlColor = 'text-success';
     else if (unrealizedPnl < 0) pnlColor = 'text-danger';
 
@@ -54,42 +54,42 @@ export function ConsolePortfolioStrip({ portfolio }: ConsolePortfolioStripProps)
             data-testid="console-portfolio-strip"
             className="voxel-trough p-3 flex flex-col gap-2 font-mono text-xs"
         >
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-boxel-bevel-hi/50 pb-1.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-voxel-bevel-hi/50 pb-1.5">
                 <span className="text-sm font-bold uppercase tracking-wider text-accent">
                     Live Desk Portfolio
                 </span>
-                <span className="text-boxel-muted">Target: 20% SPY Cap</span>
+                <span className="text-voxel-muted">Target: 20% SPY Cap</span>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <div className="flex items-center gap-1.5">
-                    <span className="text-boxel-muted">EQUITY:</span>
-                    <span className="font-bold text-boxel-ink text-sm">
+                    <span className="text-voxel-muted">EQUITY:</span>
+                    <span className="font-bold text-voxel-ink text-sm">
                         {formatMoney(totalEquity)}
                     </span>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    <span className="text-boxel-muted">CASH:</span>
-                    <span className="text-boxel-ink">
+                    <span className="text-voxel-muted">CASH:</span>
+                    <span className="text-voxel-ink">
                         {formatMoney(cash)} ({cashPct.toFixed(1)}%)
                     </span>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    <span className="text-boxel-muted">POSITION:</span>
+                    <span className="text-voxel-muted">POSITION:</span>
                     {shares > 0 ? (
-                        <span className="font-bold text-boxel-ink">
+                        <span className="font-bold text-voxel-ink">
                             {shares} SPY ({posPct.toFixed(1)}% alloc)
                         </span>
                     ) : (
-                        <span className="text-boxel-muted">0 SPY (100% Cash)</span>
+                        <span className="text-voxel-muted">0 SPY (100% Cash)</span>
                     )}
                 </div>
 
                 {shares > 0 && (
                     <div className="flex items-center gap-1.5">
-                        <span className="text-boxel-muted">P&amp;L:</span>
+                        <span className="text-voxel-muted">P&amp;L:</span>
                         <span className={`font-bold ${pnlColor}`}>
                             {unrealizedPnl >= 0 ? '+' : ''}
                             {formatMoney(unrealizedPnl)} ({pnlPct >= 0 ? '+' : ''}

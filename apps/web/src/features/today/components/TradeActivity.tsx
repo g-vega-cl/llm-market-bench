@@ -120,7 +120,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
     return (
         <section className="flex flex-col gap-6 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <SectionHeading gradient="success">Market Execution & Guardrails</SectionHeading>
+                <SectionHeading>Market Execution & Guardrails</SectionHeading>
 
                 {/* Activity Stats */}
                 <div className="flex flex-wrap items-center gap-3">
@@ -176,10 +176,10 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                             <div
                                 key={idx}
                                 onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                                className={`group flex flex-col p-6 border rounded-none bg-white dark:bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 ${
+                                className={`group flex flex-col p-6 border rounded-none bg-white bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 ${
                                     item.type === 'REJECTION'
-                                        ? 'border-rose-200 dark:border-rose-900/50 hover:border-rose-500/50 hover:shadow-rose-500/10'
-                                        : 'border-zinc-200 dark:border-zinc-800 hover:border-neon-green-500/50 hover:shadow-neon-green-500/10'
+                                        ? 'border-rose-200 border-rose-900/50 hover:border-rose-500/50 hover:shadow-rose-500/10'
+                                        : 'border-zinc-200 border-zinc-800 hover:border-neon-green-500/50 hover:shadow-neon-green-500/10'
                                 } ${
                                     isExpanded
                                         ? item.type === 'REJECTION'
@@ -196,7 +196,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             item.type === 'TRADE'
                                                 ? item.signal === 'BUY'
                                                     ? 'bg-success text-zinc-950'
-                                                    : 'bg-danger text-white'
+                                                    : 'bg-danger text-voxel-trough'
                                                 : 'bg-warning text-zinc-950'
                                         }`}
                                     >
@@ -207,7 +207,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center mb-1">
                                             <div className="flex items-center gap-3 flex-wrap">
-                                                <span className="font-bold text-boxel-ink text-lg uppercase tracking-tight text-display">
+                                                <span className="font-bold text-voxel-ink text-sm uppercase tracking-tight text-display">
                                                     {item.ticker}
                                                 </span>
                                                 {item.type === 'TRADE' && (
@@ -216,7 +216,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                             <span className="text-sm">
                                                                 {agentInfo.emoji}
                                                             </span>
-                                                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                                            <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                                                 {agentInfo.name}
                                                             </span>
                                                         </div>
@@ -251,7 +251,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                             <span className="text-sm">
                                                                 {agentInfo.emoji}
                                                             </span>
-                                                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                                            <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                                                 {agentInfo.name}
                                                             </span>
                                                         </div>
@@ -259,7 +259,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-xs font-normal text-boxel-muted font-mono uppercase tracking-wider tabular-nums">
+                                                <span className="text-xs font-normal text-voxel-muted font-mono uppercase tracking-wider tabular-nums">
                                                     {item.formattedTime
                                                         ? `${item.formattedTime} ET`
                                                         : 'Pending'}
@@ -289,8 +289,8 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             <p
                                                 className={`text-xs font-normal ${
                                                     item.type === 'REJECTION'
-                                                        ? 'text-rose-600 dark:text-rose-400 font-bold'
-                                                        : 'text-zinc-500 dark:text-zinc-400'
+                                                        ? 'text-rose-600 text-rose-400 font-bold'
+                                                        : 'text-zinc-500 text-zinc-400'
                                                 }`}
                                             >
                                                 {item.type === 'TRADE'
@@ -298,7 +298,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                     : (item.status || '').replace(/_/g, ' ')}
                                             </p>
                                             {item.type === 'TRADE' && item.portfolios?.owner_id && (
-                                                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                                <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                                     {item.portfolios.owner_id.replace(/-/g, ' ')}
                                                 </span>
                                             )}
@@ -308,7 +308,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
 
                                 {/* Expanded Content */}
                                 {isExpanded && (
-                                    <div className="mt-4 pt-4 border-t border-boxel-bevel-hi animate-slide-up space-y-3">
+                                    <div className="mt-4 pt-4 border-t border-voxel-bevel-hi animate-slide-up space-y-3">
                                         {item.type === 'REJECTION' && (
                                             <div className="space-y-1.5">
                                                 <div className="flex items-center gap-1.5">
@@ -329,12 +329,12 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                         <div className="space-y-1.5">
                                             <div className="flex items-center gap-1.5">
                                                 <div className="w-1.5 h-1.5 bg-accent rounded-none" />
-                                                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                                <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                                     Thought Process & Reasoning
                                                 </span>
                                             </div>
                                             <div className="voxel-trough p-3 rounded-none">
-                                                <p className="text-xs font-normal text-boxel-ink leading-relaxed whitespace-pre-wrap">
+                                                <p className="text-xs font-normal text-voxel-ink leading-relaxed whitespace-pre-wrap">
                                                     {item.reasoning}
                                                 </p>
                                             </div>
@@ -382,8 +382,8 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                     })}
                 </div>
             ) : (
-                <div className="text-center py-12 bg-zinc-50 dark:bg-zinc-900/50 rounded-none border border-dashed border-zinc-200 dark:border-zinc-800">
-                    <p className="text-xs font-normal text-zinc-500 dark:text-zinc-300">
+                <div className="text-center py-12 bg-zinc-50 bg-zinc-900/50 rounded-none border border-dashed border-zinc-200 border-zinc-800">
+                    <p className="text-xs font-normal text-zinc-500 text-zinc-300">
                         No {filter === 'ALL' ? 'activity' : filter.toLowerCase()} found
                     </p>
                 </div>

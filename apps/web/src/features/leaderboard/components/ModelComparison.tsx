@@ -112,8 +112,8 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
     return (
         <section className="space-y-6 animate-scale-in">
             <div className="flex justify-between items-center">
-                <SectionHeading gradient="electric">Comparative Diagnostics</SectionHeading>
-                <Button variant="glass" onClick={onClear} className="text-xs">
+                <SectionHeading>Comparative Diagnostics</SectionHeading>
+                <Button variant="outline" onClick={onClear} className="text-xs">
                     Clear Selection
                 </Button>
             </div>
@@ -122,20 +122,19 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                 {/* Model A Card */}
                 <Card
                     variant="default"
-                    radius="none"
                     padding="md"
                     className="h-full flex flex-col justify-between gap-4"
                 >
-                    <div className="flex items-center gap-3 border-b border-boxel-bevel-hi pb-3">
-                        <span className="text-lg font-bold">{infoA.emoji}</span>
+                    <div className="flex items-center gap-3 border-b border-voxel-bevel-hi pb-3">
+                        <span className="text-sm font-bold">{infoA.emoji}</span>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h3 className="text-sm font-bold text-boxel-ink">{infoA.name}</h3>
-                                <Badge colorScheme="neutral" variant="soft" size="xs" radius="none">
+                                <h3 className="text-sm font-bold text-voxel-ink">{infoA.name}</h3>
+                                <Badge colorScheme="neutral" variant="soft" size="xs">
                                     Model A
                                 </Badge>
                             </div>
-                            <span className="text-xs font-normal text-boxel-muted font-mono tracking-wider">
+                            <span className="text-xs font-normal text-voxel-muted font-mono tracking-wider">
                                 {modelA.model_name}
                             </span>
                         </div>
@@ -159,12 +158,12 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                                     key={m.label}
                                     className={`voxel-trough rounded-none flex justify-between items-center p-2.5 transition-all ${isWin ? 'border-success/40' : isLoss ? 'opacity-80' : ''}`}
                                 >
-                                    <span className="text-xs font-normal text-boxel-muted font-mono uppercase tracking-wider">
+                                    <span className="text-xs font-normal text-voxel-muted font-mono uppercase tracking-wider">
                                         {m.label}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <span
-                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-boxel-muted' : 'text-boxel-ink'}`}
+                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-voxel-muted' : 'text-voxel-ink'}`}
                                         >
                                             {m.formattedA}
                                         </span>
@@ -183,20 +182,19 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                 {/* Model B Card */}
                 <Card
                     variant="default"
-                    radius="none"
                     padding="md"
                     className="h-full flex flex-col justify-between gap-4"
                 >
-                    <div className="flex items-center gap-3 border-b border-boxel-bevel-hi pb-3">
-                        <span className="text-lg font-bold">{infoB.emoji}</span>
+                    <div className="flex items-center gap-3 border-b border-voxel-bevel-hi pb-3">
+                        <span className="text-sm font-bold">{infoB.emoji}</span>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h3 className="text-sm font-bold text-boxel-ink">{infoB.name}</h3>
-                                <Badge colorScheme="neutral" variant="soft" size="xs" radius="none">
+                                <h3 className="text-sm font-bold text-voxel-ink">{infoB.name}</h3>
+                                <Badge colorScheme="neutral" variant="soft" size="xs">
                                     Model B
                                 </Badge>
                             </div>
-                            <span className="text-xs font-normal text-boxel-muted font-mono tracking-wider">
+                            <span className="text-xs font-normal text-voxel-muted font-mono tracking-wider">
                                 {modelB.model_name}
                             </span>
                         </div>
@@ -220,12 +218,12 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                                     key={m.label}
                                     className={`voxel-trough rounded-none flex justify-between items-center p-2.5 transition-all ${isWin ? 'border-success/40' : isLoss ? 'opacity-80' : ''}`}
                                 >
-                                    <span className="text-xs font-normal text-boxel-muted font-mono uppercase tracking-wider">
+                                    <span className="text-xs font-normal text-voxel-muted font-mono uppercase tracking-wider">
                                         {m.label}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <span
-                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-boxel-muted' : 'text-boxel-ink'}`}
+                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-voxel-muted' : 'text-voxel-ink'}`}
                                         >
                                             {m.formattedB}
                                         </span>

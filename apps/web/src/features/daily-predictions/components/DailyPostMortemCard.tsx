@@ -46,7 +46,7 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
         <div className="flex flex-col gap-3 p-4 rounded-none bg-zinc-900/60 border border-zinc-800">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                    <span className="text-sm font-bold uppercase tracking-wider text-zinc-300">
                         Post-Market Evaluation (GPT-6 Luna)
                     </span>
                     {prediction.postmortem_evaluated_at && (
@@ -58,17 +58,16 @@ export function DailyPostMortemCard({ prediction }: DailyPostMortemCardProps) {
 
                 <div className="flex flex-wrap items-center gap-2">
                     {category && (
-                        <Badge variant="solid" colorScheme={categoryScheme} size="sm" radius="none">
+                        <Badge variant="solid" colorScheme={categoryScheme} size="sm">
                             {category.replace(/_/g, ' ')}
                         </Badge>
                     )}
                     {prediction.was_predictable !== null &&
                         prediction.was_predictable !== undefined && (
                             <Badge
-                                variant={prediction.was_predictable ? 'outline' : 'soft'}
+                                variant={prediction.was_predictable ? 'soft' : 'soft'}
                                 colorScheme={prediction.was_predictable ? 'accent' : 'neutral'}
                                 size="sm"
-                                radius="none"
                             >
                                 {prediction.was_predictable
                                     ? 'PREDICTABLE PRE-MARKET'

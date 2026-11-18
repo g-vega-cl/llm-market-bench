@@ -12,14 +12,14 @@ export function NotFound({ children }: { children?: React.ReactNode }) {
                     type="button"
                     colorScheme="success"
                     size="sm"
-                    className="uppercase font-bold text-xs"
+                    className="uppercase font-bold text-sm"
                     onClick={() => window.history.back()}
                 >
                     Go back
                 </Button>
                 <Link
                     to="/"
-                    className="bg-accent text-white px-2.5 py-1 rounded-none uppercase font-bold text-xs shadow-sm"
+                    className="bg-accent text-voxel-trough px-2.5 py-1 rounded-none uppercase font-bold text-sm shadow-sm"
                 >
                     Start Over
                 </Link>

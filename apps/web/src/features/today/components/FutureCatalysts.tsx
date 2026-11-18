@@ -47,10 +47,10 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
     return (
         <section className="flex flex-col gap-6 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <SectionHeading gradient="catalyst">Horizon Watch: Pending Events</SectionHeading>
+                <SectionHeading>Horizon Watch: Pending Events</SectionHeading>
 
-                <div className="flex items-center gap-2 px-4 py-2 bg-cyber-yellow-50 dark:bg-cyber-yellow-950/20 border border-cyber-yellow-200 dark:border-cyber-yellow-900/30 rounded-none shadow-sm">
-                    <span className="text-xs font-bold text-cyber-yellow-600 dark:text-cyber-yellow-400 uppercase tracking-wider">
+                <div className="flex items-center gap-2 px-4 py-2 bg-cyber-yellow-50 bg-cyber-yellow-950/20 border border-cyber-yellow-200 border-cyber-yellow-900/30 rounded-none shadow-sm">
+                    <span className="text-sm font-bold text-cyber-yellow-600 text-cyber-yellow-400 uppercase tracking-wider">
                         📅 {visibleEvents.length} Catalyst{visibleEvents.length !== 1 ? 's' : ''}
                     </span>
                 </div>
@@ -75,13 +75,13 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                             >
                                 {/* Timeline Dot */}
                                 <div
-                                    className={`absolute left-6 top-6 w-4 h-4 rounded-none border-2 border-white dark:border-zinc-950 shadow-sm bg-gradient-to-br ${getImportanceColor(importanceScore)} z-10 transition-all duration-300`}
+                                    className={`absolute left-6 top-6 w-4 h-4 rounded-none border-2 border-white border-zinc-950 shadow-sm bg-gradient-to-br ${getImportanceColor(importanceScore)} z-10 transition-all duration-300`}
                                 />
 
                                 {/* Card */}
                                 <Card
                                     isHoverable
-                                    className="border-l-4 hover:shadow-cyber-yellow-500/10 rounded-none shadow-sm flex flex-col gap-4"
+                                    className="border-l-2 hover:shadow-cyber-yellow-500/10 rounded-none shadow-sm flex flex-col gap-4"
                                     style={{
                                         borderLeftColor:
                                             importanceScore >= 8 ? '#ef4444' : '#eab308',
@@ -97,17 +97,15 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                         variant="soft"
                                                         colorScheme="neutral"
                                                         size="xs"
-                                                        radius="none"
                                                     >
                                                         {dateNote}
                                                     </Badge>
                                                 )}
                                                 <Badge
-                                                    severity={
-                                                        importanceScore >= 8 ? 'high' : 'medium'
+                                                    colorScheme={
+                                                        importanceScore >= 8 ? 'warning' : 'info'
                                                     }
                                                     variant="soft"
-                                                    radius="none"
                                                     size="sm"
                                                 >
                                                     {getImportanceLabel(importanceScore)}
@@ -117,7 +115,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                             {/* Event Time if available */}
                                             {event.metadata?.event_time &&
                                                 event.metadata.event_time !== 'N/A' && (
-                                                    <div className="flex items-center gap-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                                                    <div className="flex items-center gap-1.5 text-xs font-normal text-zinc-500 text-zinc-400">
                                                         <span>🕐</span>
                                                         <span className="font-mono tabular-nums">
                                                             {event.metadata.event_time}
@@ -129,7 +127,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                         {/* Date Display */}
                                         {event.formattedTargetMonthDay && (
                                             <div className="text-right">
-                                                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-white">
+                                                <div className="text-sm font-bold font-mono text-zinc-900 text-voxel-trough">
                                                     {normalizeWhitespace(
                                                         event.formattedTargetMonthDay,
                                                     )}
@@ -144,20 +142,20 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                     </div>
 
                                     {/* Content */}
-                                    <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                    <p className="text-sm font-bold text-zinc-800 text-zinc-200 leading-relaxed">
                                         {event.content}
                                     </p>
 
                                     {/* Scenario Analysis */}
                                     {event.metadata?.scenario_analysis && (
-                                        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-3">
+                                        <div className="pt-4 border-t border-zinc-100 border-zinc-800 flex flex-col gap-3">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">🔮</span>
-                                                <h4 className="text-xs font-bold text-cyber-yellow-600 dark:text-cyber-yellow-400 uppercase tracking-wider">
+                                                <h4 className="text-sm font-bold text-cyber-yellow-600 text-cyber-yellow-400 uppercase tracking-wider">
                                                     Scenarios & Trading Plans
                                                 </h4>
                                             </div>
-                                            <div className="bg-gradient-to-br from-cyber-yellow-50/50 via-amber-50/30 to-transparent dark:from-cyber-yellow-950/10 dark:via-amber-950/5 p-4 rounded-none border border-cyber-yellow-100 dark:border-cyber-yellow-900/30">
+                                            <div className="bg-gradient-to-br from-cyber-yellow-50/50 via-amber-50/30 to-transparent from-cyber-yellow-950/10 via-amber-950/5 p-4 rounded-none border border-cyber-yellow-100 border-cyber-yellow-900/30">
                                                 <div className="flex flex-col gap-1">
                                                     {parseScenarioPercentages(
                                                         event.metadata.scenario_analysis,
@@ -171,13 +169,12 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                                     size="xs"
                                                                     variant="soft"
                                                                     colorScheme="warning"
-                                                                    radius="none"
                                                                     className="tabular-nums mt-0.5"
                                                                 >
                                                                     {line.percentage}
                                                                 </Badge>
                                                             )}
-                                                            <span className="text-xs font-normal text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                                            <span className="text-xs font-normal text-zinc-700 text-zinc-300 leading-relaxed">
                                                                 {line.text}
                                                             </span>
                                                         </div>
@@ -195,7 +192,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                     (ticker: string, i: number) => (
                                                         <span
                                                             key={i}
-                                                            className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-bold rounded-none uppercase tracking-wider border border-zinc-200 dark:border-zinc-700 hover:border-cyber-yellow-500 hover:text-cyber-yellow-600 dark:hover:text-cyber-yellow-400 transition-all duration-300 cursor-default"
+                                                            className="px-3 py-1.5 bg-zinc-100 bg-zinc-800 text-zinc-700 text-zinc-300 text-sm font-bold rounded-none uppercase tracking-wider border border-zinc-200 border-zinc-700 hover:border-cyber-yellow-500 hover:text-cyber-yellow-600 hover:text-cyber-yellow-400 transition-all duration-300 cursor-default"
                                                         >
                                                             {ticker}
                                                         </span>

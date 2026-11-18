@@ -38,7 +38,7 @@ function RunSelectorBar({
     if (!hasLatestInline && recentLiveRuns.length === 0) return null;
     return (
         <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-normal text-boxel-muted">Recent Live Turns:</span>
+            <span className="text-xs font-normal text-voxel-muted">Recent Live Turns:</span>
             {hasLatestInline && (
                 <Button
                     size="sm"
@@ -102,10 +102,10 @@ export function LiveRunsBlock({ portfolio, recentLiveRuns, latestInlineRun }: Li
 
             {hasRuns && (
                 <Card padding="md" className="flex flex-col gap-4 min-w-0">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
                         <div className="flex flex-col gap-1 min-w-0">
-                            <SectionHeading gradient="catalyst">Live Run Traces</SectionHeading>
-                            <span className="text-xs font-normal text-boxel-muted">
+                            <SectionHeading>Live Run Traces</SectionHeading>
+                            <span className="text-xs font-normal text-voxel-muted">
                                 Runs independently on clvg.uk auto-go against your isolated $10,000
                                 live paper ledger (on-demand or scheduled 3x/day ET at 09:30, 12:30,
                                 15:30).
@@ -113,7 +113,7 @@ export function LiveRunsBlock({ portfolio, recentLiveRuns, latestInlineRun }: Li
                         </div>
                         {activeRun && (
                             <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="outline" size="xs">
+                                <Badge variant="soft" size="xs">
                                     {activeRun.slot_label || activeRun.as_of_utc.slice(0, 16)}
                                 </Badge>
                                 <Badge variant="soft" colorScheme="accent" size="xs">
@@ -136,13 +136,13 @@ export function LiveRunsBlock({ portfolio, recentLiveRuns, latestInlineRun }: Li
                             {activeRun.stages.map((st) => (
                                 <div
                                     key={st.stage_id}
-                                    className="voxel-trough bg-boxel-trough p-4 flex flex-col gap-3 min-w-0"
+                                    className="voxel-trough bg-voxel-trough p-4 flex flex-col gap-3 min-w-0"
                                 >
-                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-boxel-bevel-lo pb-2">
-                                        <span className="text-sm font-bold text-boxel-ink">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-voxel-bevel-lo pb-2">
+                                        <span className="text-sm font-bold text-voxel-ink">
                                             LLM Call
                                         </span>
-                                        <span className="text-xs font-normal font-mono text-boxel-muted">
+                                        <span className="text-xs font-normal font-mono text-voxel-muted">
                                             {activeRun.signals.length > 0
                                                 ? activeRun.signals
                                                       .map((s) => `${s.action} ${s.ticker}`)
@@ -160,8 +160,8 @@ export function LiveRunsBlock({ portfolio, recentLiveRuns, latestInlineRun }: Li
                             ))}
                         </div>
                     ) : (
-                        <div className="voxel-trough bg-boxel-trough p-4">
-                            <span className="text-xs font-normal text-boxel-muted">
+                        <div className="voxel-trough bg-voxel-trough p-4">
+                            <span className="text-xs font-normal text-voxel-muted">
                                 Selected live job has no trace output yet (status:{' '}
                                 {activeJob?.status ?? 'pending'}).
                             </span>

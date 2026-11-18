@@ -56,7 +56,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
         <div className="min-h-screen">
             <PageLayout>
                 <header className="mb-12">
-                    <SectionHeading gradient="ai">System Audits</SectionHeading>
+                    <SectionHeading>System Audits</SectionHeading>
                     <p className="text-zinc-400 text-lg leading-relaxed mt-2">
                         Database integrity checks, code error monitoring, and continuous improvement
                         suggestions. Updated weekly.
@@ -110,7 +110,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                         <div className="pt-4 pb-2">
                             <Button
                                 variant="solid"
-                                size="lg"
+                                size="md"
                                 colorScheme="neutral"
                                 onClick={() => fetchNextPage()}
                                 isLoading={isFetchingNextPage}

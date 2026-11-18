@@ -147,7 +147,7 @@ function EmptyStateView({
             />
 
             {hasFutureEvents && (
-                <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 animate-slide-up animate-stagger-2">
+                <div className="pt-6 border-t border-zinc-200 border-zinc-800 animate-slide-up animate-stagger-2">
                     <Suspense fallback={null}>
                         <FutureCatalysts events={futureEvents as Memory[]} />
                     </Suspense>

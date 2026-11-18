@@ -19,17 +19,17 @@ export function MetricTile({ icon, label, value, className }: MetricTileProps) {
     return (
         <div
             className={cn(
-                'voxel-trough rounded-none p-3 hover:bg-boxel-elevated transition-colors flex flex-col justify-between gap-1',
+                'voxel-trough rounded-none p-3 hover:bg-voxel-elevated transition-colors flex flex-col justify-between gap-1',
                 className,
             )}
         >
             <div className="flex items-center gap-1.5">
                 {icon && <span className="text-sm">{icon}</span>}
-                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                     {label}
                 </span>
             </div>
-            <div className="text-sm font-bold text-boxel-ink text-display tabular-nums">
+            <div className="text-sm font-bold text-voxel-ink text-display tabular-nums">
                 {value}
             </div>
         </div>

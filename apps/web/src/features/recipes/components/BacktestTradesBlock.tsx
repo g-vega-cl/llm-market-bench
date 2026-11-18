@@ -43,7 +43,7 @@ function TradeRow({ trade }: { trade: BacktestResultData['trades'][number] }) {
             <TableCell numeric>${trade.entry_price.toFixed(2)}</TableCell>
             <TableCell numeric>${trade.exit_price.toFixed(2)}</TableCell>
             <TableCell>
-                <Badge variant="outline" size="xs">
+                <Badge variant="soft" size="xs">
                     {trade.exit_reason || 'EXIT'}
                 </Badge>
             </TableCell>
@@ -107,17 +107,17 @@ export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
 
     return (
         <Card padding="md" className="flex flex-col gap-4 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
-                <SectionHeading gradient="catalyst">Executed Trades ({totalShown})</SectionHeading>
-                <span className="text-xs font-normal text-boxel-muted">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
+                <SectionHeading>Executed Trades ({totalShown})</SectionHeading>
+                <span className="text-xs font-normal text-voxel-muted">
                     {openPositions.length} open • {trades.length} closed • {skipped.length} skipped
                     signals
                 </span>
             </div>
 
             {totalShown === 0 ? (
-                <div className="voxel-trough bg-boxel-trough p-4">
-                    <span className="text-xs font-normal text-boxel-muted">
+                <div className="voxel-trough bg-voxel-trough p-4">
+                    <span className="text-xs font-normal text-voxel-muted">
                         No trades executed yet — open buys and closed positions appear here as
                         signals execute.
                     </span>
@@ -158,7 +158,7 @@ export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
 
             {skipped.length > 0 && (
                 <div className="flex flex-col gap-2 min-w-0">
-                    <span className="text-sm font-bold text-boxel-ink">
+                    <span className="text-sm font-bold text-voxel-ink">
                         Counterfactual Skipped Signals (
                         {skipped.length > 20 ? `Showing 20 of ${skipped.length}` : skipped.length})
                     </span>
@@ -180,7 +180,7 @@ export function BacktestTradesBlock({ results }: BacktestTradesBlockProps) {
                                     return (
                                         <TableRow key={`${baseKey}#${count}`} isInactive>
                                             <TableCell>
-                                                <Badge variant="outline" size="xs">
+                                                <Badge variant="soft" size="xs">
                                                     {s.skip_type}
                                                 </Badge>
                                             </TableCell>

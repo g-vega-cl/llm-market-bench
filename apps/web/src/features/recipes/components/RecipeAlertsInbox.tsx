@@ -9,24 +9,24 @@ interface RecipeAlertsInboxProps {
 
 export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsInboxProps) {
     return (
-        <div className="flex flex-col gap-4 border border-border bg-boxel-surface p-4 rounded-none voxel-card">
+        <div className="flex flex-col gap-4 border border-border bg-voxel-surface p-4 rounded-none voxel-card">
             <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2">
-                    <span className="font-display text-lg font-bold text-foreground">
+                    <span className="font-display text-sm font-bold text-foreground">
                         Trade Signals Inbox
                     </span>
-                    <Badge variant="outline" size="sm">
+                    <Badge variant="soft" size="sm">
                         {alerts.filter((a) => !a.is_read).length} Unread
                     </Badge>
                 </div>
                 {onClose && (
-                    <button
+                    <Button
                         type="button"
                         onClick={onClose}
-                        className="text-xs font-bold text-muted-foreground hover:text-foreground"
+                        className="text-sm font-bold text-muted-foreground hover:text-foreground"
                     >
                         ✕
-                    </button>
+                    </Button>
                 )}
             </div>
 
@@ -47,8 +47,8 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                             key={alert.id}
                             className={`flex flex-col gap-2 border p-3 rounded-none ${
                                 alert.is_read
-                                    ? 'border-border bg-boxel-canvas text-muted-foreground'
-                                    : 'border-primary/50 bg-boxel-surface text-foreground voxel-card'
+                                    ? 'border-border bg-voxel-canvas text-muted-foreground'
+                                    : 'border-primary/50 bg-voxel-surface text-foreground voxel-card'
                             }`}
                         >
                             <div className="flex items-center justify-between">
@@ -65,7 +65,7 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                                     >
                                         {alert.action} {alert.ticker}
                                     </Badge>
-                                    <span className="text-xs font-bold">{alert.recipe_name}</span>
+                                    <span className="text-sm font-bold">{alert.recipe_name}</span>
                                     <span className="font-mono text-xs text-muted-foreground">
                                         ({alert.timeframe})
                                     </span>
@@ -77,7 +77,7 @@ export function RecipeAlertsInbox({ alerts, onMarkRead, onClose }: RecipeAlertsI
                                     {!alert.is_read && onMarkRead && (
                                         <Button
                                             size="sm"
-                                            variant="ghost"
+                                            variant="outline"
                                             onClick={() => onMarkRead(alert.id)}
                                         >
                                             Mark Read

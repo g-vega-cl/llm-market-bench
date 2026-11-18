@@ -10,13 +10,13 @@ export function CuratedManifestCard({ manifest }: CuratedManifestCardProps) {
     const proxies = manifest.include_macro_proxies || [];
 
     return (
-        <Card className="p-5 rounded-none border border-blue-950/40 bg-slate-900/90 text-white shadow-lg flex flex-col gap-4">
+        <Card className="p-5 rounded-none border border-blue-950/40 bg-slate-900/90 text-voxel-trough shadow-lg flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-blue-400">
                         📦 Curated Pre-Market Data Manifest
                     </span>
-                    <Badge colorScheme="accent" variant="soft" size="xs" radius="none">
+                    <Badge colorScheme="accent" variant="soft" size="xs">
                         LAB CHAMPION
                     </Badge>
                 </div>
@@ -28,19 +28,13 @@ export function CuratedManifestCard({ manifest }: CuratedManifestCardProps) {
             <div className="flex flex-wrap gap-6 text-xs font-normal">
                 {/* Curated Newsletters */}
                 <div className="flex-1 basis-64 min-w-0 flex flex-col gap-2">
-                    <div className="text-slate-400 font-bold uppercase tracking-wider text-xs">
+                    <div className="text-slate-400 text-sm font-bold uppercase tracking-wider">
                         Active Ingested Newsletters ({newsletters.length})
                     </div>
                     {newsletters.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                             {newsletters.map((nl) => (
-                                <Badge
-                                    key={nl}
-                                    colorScheme="info"
-                                    variant="soft"
-                                    size="xs"
-                                    radius="none"
-                                >
+                                <Badge key={nl} colorScheme="info" variant="soft" size="xs">
                                     📰 {nl}
                                 </Badge>
                             ))}
@@ -52,18 +46,12 @@ export function CuratedManifestCard({ manifest }: CuratedManifestCardProps) {
 
                 {/* Macro Proxies */}
                 <div className="flex-1 basis-48 min-w-0 flex flex-col gap-2">
-                    <div className="text-slate-400 font-bold uppercase tracking-wider text-xs">
+                    <div className="text-slate-400 text-sm font-bold uppercase tracking-wider">
                         Active Macro Proxies
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                         {proxies.map((px) => (
-                            <Badge
-                                key={px}
-                                colorScheme="neutral"
-                                variant="soft"
-                                size="xs"
-                                radius="none"
-                            >
+                            <Badge key={px} colorScheme="neutral" variant="soft" size="xs">
                                 📊 {px}
                             </Badge>
                         ))}
@@ -72,27 +60,27 @@ export function CuratedManifestCard({ manifest }: CuratedManifestCardProps) {
 
                 {/* Technical & Pre-Market Signals */}
                 <div className="flex-1 basis-64 min-w-0 flex flex-col gap-2">
-                    <div className="text-slate-400 font-bold uppercase tracking-wider text-xs">
+                    <div className="text-slate-400 text-sm font-bold uppercase tracking-wider">
                         Pre-Market Feature Signals
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                         {manifest.include_synthetic_newsletter && (
-                            <Badge colorScheme="success" variant="soft" size="xs" radius="none">
+                            <Badge colorScheme="success" variant="soft" size="xs">
                                 ⚡ Morning Briefing
                             </Badge>
                         )}
                         {manifest.include_intraday_profile && (
-                            <Badge colorScheme="success" variant="soft" size="xs" radius="none">
+                            <Badge colorScheme="success" variant="soft" size="xs">
                                 📈 Prior Day VWAP/CLV
                             </Badge>
                         )}
                         {manifest.include_economic_calendar && (
-                            <Badge colorScheme="success" variant="soft" size="xs" radius="none">
+                            <Badge colorScheme="success" variant="soft" size="xs">
                                 🏛️ 8:30 AM Econ Releases
                             </Badge>
                         )}
                         {manifest.include_options_derivatives && (
-                            <Badge colorScheme="success" variant="soft" size="xs" radius="none">
+                            <Badge colorScheme="success" variant="soft" size="xs">
                                 🎯 Options Skew
                             </Badge>
                         )}

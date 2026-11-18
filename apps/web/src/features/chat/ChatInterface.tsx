@@ -40,7 +40,7 @@ function ToolTracesView({
     if (!traces.length) return null;
     return (
         <div className="mt-1.5 max-w-[90%] md:max-w-[85%] pl-1">
-            <button
+            <Button
                 type="button"
                 onClick={onToggle}
                 className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/40 border border-cyan-800/40 rounded-none px-2.5 py-1"
@@ -50,7 +50,7 @@ function ToolTracesView({
                     {traces.length} tool {traces.length === 1 ? 'call' : 'calls'} executed
                 </span>
                 <span>{isOpen ? '▲' : '▼'}</span>
-            </button>
+            </Button>
 
             {isOpen && (
                 <div className="mt-1.5 space-y-1 rounded-none border border-zinc-800 bg-zinc-900/70 p-2.5 text-xs font-normal text-zinc-400">
@@ -59,7 +59,7 @@ function ToolTracesView({
                             key={`${trace.tool_name}-${trace.summary}`}
                             className="flex items-start gap-2 border-b border-zinc-800/60 pb-1 last:border-b-0 last:pb-0"
                         >
-                            <Badge variant="outline" size="sm" radius="none" colorScheme="accent">
+                            <Badge variant="soft" size="sm" colorScheme="accent">
                                 {trace.tool_name}
                             </Badge>
                             <span className="text-zinc-300 flex-1">{trace.summary}</span>
@@ -82,23 +82,23 @@ function SuggestedQuestionsView({
 
     return (
         <div className="mt-2.5 w-full max-w-[90%] md:max-w-[85%] pl-1 space-y-1.5">
-            <p className="text-xs font-bold text-zinc-400 flex items-center gap-1.5">
+            <p className="text-sm font-bold text-zinc-400 flex items-center gap-1.5">
                 <span className="text-cyan-400">💡</span>
                 <span>Next best questions:</span>
             </p>
             <div className="flex flex-col gap-1.5">
                 {questions.map((question) => (
-                    <button
+                    <Button
                         key={question}
                         type="button"
                         onClick={() => onSelect(question)}
                         className="text-left rounded-none border border-cyan-900/50 bg-cyan-950/20 hover:bg-cyan-900/40 hover:border-cyan-500/60 p-2.5 text-xs font-normal text-zinc-200 hover:text-cyan-100 transition-all shadow-sm flex items-start gap-2 group"
                     >
-                        <span className="text-cyan-400 shrink-0 font-mono text-xs group-hover:translate-x-0.5 transition-transform">
+                        <span className="text-cyan-400 shrink-0 font-mono text-sm group-hover:translate-x-0.5 transition-transform">
                             ↳
                         </span>
                         <span className="flex-1">{question}</span>
-                    </button>
+                    </Button>
                 ))}
             </div>
         </div>
@@ -131,7 +131,7 @@ function MessageBubble({
             <div
                 className={`rounded-none px-4 py-3 text-xs font-normal leading-relaxed max-w-[90%] md:max-w-[85%] ${
                     isUser
-                        ? 'bg-cyan-600 text-white shadow-sm'
+                        ? 'bg-cyan-600 text-voxel-trough shadow-sm'
                         : 'bg-zinc-900/90 text-zinc-200 border border-zinc-800 shadow-sm'
                 }`}
             >
@@ -148,16 +148,15 @@ function MessageBubble({
                 <div className="mt-1.5 pl-1 flex items-center gap-2">
                     {msg.saved_memory_id ? (
                         <Badge
-                            variant="outline"
+                            variant="soft"
                             size="sm"
-                            radius="none"
                             colorScheme="success"
                             className="text-xs py-0.5"
                         >
                             ✓ Saved to My Theses
                         </Badge>
                     ) : (
-                        <button
+                        <Button
                             type="button"
                             onClick={onPromoteMemory}
                             disabled={isDistilling}
@@ -167,7 +166,7 @@ function MessageBubble({
                             <span>
                                 {isDistilling ? 'Distilling thesis...' : 'Promote to Memory'}
                             </span>
-                        </button>
+                        </Button>
                     )}
                 </div>
             )}
@@ -346,17 +345,17 @@ export function ChatInterface({
 
     if (!isAuthorized) {
         return (
-            <Card className="w-full max-w-2xl mx-auto p-8 border-cyan-900/40 bg-zinc-950/80 backdrop-blur-xl rounded-none shadow-sm flex flex-col gap-4">
+            <Card className="w-full max-w-2xl mx-auto p-8 border-cyan-900/40 bg-zinc-950/80  rounded-none shadow-sm flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-none bg-cyan-500/10 border border-cyan-500/30 text-lg">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-none bg-cyan-500/10 border border-cyan-500/30 text-sm">
                         🔒
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-bold text-white tracking-tight">
+                            <h2 className="text-sm font-bold text-voxel-trough tracking-tight">
                                 Investment Chat Gateway
                             </h2>
-                            <Badge variant="outline" size="sm" radius="none" colorScheme="accent">
+                            <Badge variant="soft" size="sm" colorScheme="accent">
                                 Private Beta
                             </Badge>
                         </div>
@@ -376,7 +375,7 @@ export function ChatInterface({
                         </code>{' '}
                         grounded directly in live Supabase trading records.
                     </p>
-                    <div className="rounded-none border border-zinc-800 bg-zinc-900/50 p-4 flex flex-col gap-2 text-xs text-zinc-400">
+                    <div className="rounded-none border border-zinc-800 bg-zinc-900/50 p-4 flex flex-col gap-2 text-sm text-zinc-400">
                         <p className="font-bold text-zinc-200">
                             ✨ Available Capabilities when Authorized:
                         </p>
@@ -402,7 +401,7 @@ export function ChatInterface({
                         {user ? `Signed in as ${user.email} (Access restricted)` : 'Not signed in'}
                     </span>
                     <Link to="/login">
-                        <Button variant="solid" size="sm" rounded="none" colorScheme="accent">
+                        <Button variant="solid" size="sm" colorScheme="accent">
                             Sign In to Access
                         </Button>
                     </Link>
@@ -415,7 +414,7 @@ export function ChatInterface({
 
     return (
         <div
-            className={`flex flex-col rounded-none border border-zinc-800/80 bg-zinc-950/90 shadow-sm backdrop-blur-xl transition-all ${
+            className={`flex flex-col rounded-none border border-zinc-800/80 bg-zinc-950/90 shadow-sm  transition-all ${
                 isFullPage
                     ? 'w-full h-[calc(100vh-140px)] min-h-[580px]'
                     : 'h-[540px] w-96 max-w-[calc(100vw-2rem)]'
@@ -424,7 +423,7 @@ export function ChatInterface({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-4 py-3 rounded-none">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-none bg-gradient-to-tr from-cyan-500 to-blue-600 font-bold text-white text-sm shadow-sm">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-none bg-gradient-to-tr from-cyan-500 to-blue-600 font-bold text-voxel-trough text-sm shadow-sm">
                         🤖
                     </div>
                     <div>
@@ -432,7 +431,7 @@ export function ChatInterface({
                             <h3 className="font-bold text-zinc-100 text-sm leading-none">
                                 Benchify AI Gateway
                             </h3>
-                            <Badge variant="soft" size="sm" radius="none" colorScheme="accent">
+                            <Badge variant="soft" size="sm" colorScheme="accent">
                                 Live DB Connected
                             </Badge>
                         </div>
@@ -444,24 +443,24 @@ export function ChatInterface({
                 <div className="flex items-center gap-2">
                     <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         colorScheme="neutral"
                         onClick={handleClearHistory}
                         title="Clear conversation history"
-                        className="text-xs text-zinc-400 hover:text-zinc-200"
+                        className="text-sm text-zinc-400 hover:text-zinc-200"
                     >
                         Clear
                     </Button>
                     {onClose && (
-                        <button
+                        <Button
                             type="button"
                             aria-label="Close chat"
                             onClick={onClose}
                             className="rounded-none p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
                         >
                             ✕
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -511,19 +510,19 @@ export function ChatInterface({
                 {/* Prompt Suggestions (if only greeting is present) */}
                 {messages.length <= 1 && (
                     <div className="mt-4 flex flex-col gap-2 pt-2 border-t border-zinc-800/60">
-                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                        <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
                             Suggested Inquiries:
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {SUGGESTED_RESEARCH_PROMPTS.map((prompt) => (
-                                <button
+                                <Button
                                     key={prompt}
                                     type="button"
                                     onClick={() => handleChipClick(prompt)}
                                     className="text-left rounded-none border border-zinc-800 bg-zinc-900/40 p-2.5 text-xs font-normal text-zinc-300 hover:border-cyan-500/50 hover:bg-cyan-950/20 hover:text-cyan-200 transition-all shadow-sm"
                                 >
                                     💡 {prompt}
-                                </button>
+                                </Button>
                             ))}
                         </div>
                     </div>
@@ -538,10 +537,10 @@ export function ChatInterface({
                 className="border-t border-zinc-800 bg-zinc-900/80 p-3 rounded-none flex flex-col gap-2"
             >
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                    <span className="text-sm font-bold text-zinc-500 uppercase tracking-wider">
                         Attach DB Context:
                     </span>
-                    <button
+                    <Button
                         type="button"
                         onClick={() =>
                             setInput(
@@ -549,11 +548,11 @@ export function ChatInterface({
                                     `${prev ? `${prev} ` : ''}Please check the latest daily market briefing and market feeling.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-none text-xs font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 rounded-none text-sm font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
                     >
                         📰 + Briefing
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={() =>
                             setInput(
@@ -561,11 +560,11 @@ export function ChatInterface({
                                     `${prev ? `${prev} ` : ''}Please search our memories for recent market lessons and causal scenarios.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-none text-xs font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 rounded-none text-sm font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
                     >
                         🧠 + Memories
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={() =>
                             setInput(
@@ -573,10 +572,10 @@ export function ChatInterface({
                                     `${prev ? `${prev} ` : ''}Please query our recent trade decisions and portfolio leaderboard.`,
                             )
                         }
-                        className="px-2 py-0.5 rounded-none text-xs font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
+                        className="px-2 py-0.5 rounded-none text-sm font-mono font-bold text-cyan-400 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 hover:bg-cyan-950/30 transition-all"
                     >
                         📊 + Portfolio Trades
-                    </button>
+                    </Button>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -592,10 +591,9 @@ export function ChatInterface({
                         type="submit"
                         variant="solid"
                         size="sm"
-                        rounded="none"
                         colorScheme="accent"
                         disabled={isLoading || !input.trim()}
-                        className="font-bold text-xs shadow-sm shrink-0"
+                        className="font-bold text-sm shadow-sm shrink-0"
                     >
                         Send
                     </Button>

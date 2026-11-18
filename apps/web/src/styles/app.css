@@ -17,15 +17,15 @@
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  /* Matcha & Cedar / Cheddar Boxel Tokens */
-  --color-boxel-canvas: #141c18;
-  --color-boxel-surface: #1d2822;
-  --color-boxel-elevated: #26362e;
-  --color-boxel-trough: #101713;
-  --color-boxel-bevel-hi: #3f574a;
-  --color-boxel-bevel-lo: #090d0b;
-  --color-boxel-ink: #f2ead3;
-  --color-boxel-muted: #9eb0a3;
+  /* Matcha & Cedar / Cheddar Voxel Tokens */
+  --color-voxel-canvas: #141c18;
+  --color-voxel-surface: #1d2822;
+  --color-voxel-elevated: #26362e;
+  --color-voxel-trough: #101713;
+  --color-voxel-bevel-hi: #3f574a;
+  --color-voxel-bevel-lo: #090d0b;
+  --color-voxel-ink: #f2ead3;
+  --color-voxel-muted: #9eb0a3;
 
   /* Semantic color tokens (Matcha & Cedar / Cheddar) */
   --color-accent: #f0a830;
@@ -138,14 +138,14 @@
     html {
         color-scheme: dark;
         font-family: var(--font-body);
-        background-color: var(--color-boxel-canvas);
-        color: var(--color-boxel-ink);
+        background-color: var(--color-voxel-canvas);
+        color: var(--color-voxel-ink);
     }
 
     body {
         font-family: var(--font-body);
-        background-color: var(--color-boxel-canvas);
-        color: var(--color-boxel-ink);
+        background-color: var(--color-voxel-canvas);
+        color: var(--color-voxel-ink);
     }
 
     h1,
@@ -165,7 +165,7 @@
     }
 
     * {
-        border-color: var(--color-boxel-bevel-hi);
+        border-color: var(--color-voxel-bevel-hi);
     }
 
     .using-mouse * {
@@ -174,43 +174,43 @@
 }
 
 @layer utilities {
-    /* Voxel / Boxel 3D Tactile Surface Utilities */
+    /* Voxel 3D Tactile Surface Utilities */
     .voxel-card {
-        background-color: var(--color-boxel-surface);
-        border-top: 2px solid var(--color-boxel-bevel-hi);
-        border-left: 2px solid var(--color-boxel-bevel-hi);
-        border-right: 2px solid var(--color-boxel-bevel-lo);
-        border-bottom: 2px solid var(--color-boxel-bevel-lo);
-        box-shadow: 4px 4px 0px var(--color-boxel-bevel-lo);
+        background-color: var(--color-voxel-surface);
+        border-top: 2px solid var(--color-voxel-bevel-hi);
+        border-left: 2px solid var(--color-voxel-bevel-hi);
+        border-right: 2px solid var(--color-voxel-bevel-lo);
+        border-bottom: 2px solid var(--color-voxel-bevel-lo);
+        box-shadow: 4px 4px 0px var(--color-voxel-bevel-lo);
     }
 
     .voxel-trough {
-        background-color: var(--color-boxel-trough);
-        border-top: 2px solid var(--color-boxel-bevel-lo);
-        border-left: 2px solid var(--color-boxel-bevel-lo);
-        border-right: 2px solid var(--color-boxel-bevel-hi);
-        border-bottom: 2px solid var(--color-boxel-bevel-hi);
+        background-color: var(--color-voxel-trough);
+        border-top: 2px solid var(--color-voxel-bevel-lo);
+        border-left: 2px solid var(--color-voxel-bevel-lo);
+        border-right: 2px solid var(--color-voxel-bevel-hi);
+        border-bottom: 2px solid var(--color-voxel-bevel-hi);
     }
 
     .voxel-btn {
-        border-top: 2px solid var(--color-boxel-bevel-hi);
-        border-left: 2px solid var(--color-boxel-bevel-hi);
-        border-right: 2px solid var(--color-boxel-bevel-lo);
-        border-bottom: 2px solid var(--color-boxel-bevel-lo);
-        box-shadow: 2px 2px 0px var(--color-boxel-bevel-lo);
+        border-top: 2px solid var(--color-voxel-bevel-hi);
+        border-left: 2px solid var(--color-voxel-bevel-hi);
+        border-right: 2px solid var(--color-voxel-bevel-lo);
+        border-bottom: 2px solid var(--color-voxel-bevel-lo);
+        box-shadow: 2px 2px 0px var(--color-voxel-bevel-lo);
         transition: transform 80ms ease, box-shadow 80ms ease, background-color 120ms ease;
     }
 
     .voxel-btn:active:not(:disabled) {
         transform: translate(2px, 2px);
-        box-shadow: 0px 0px 0px var(--color-boxel-bevel-lo);
+        box-shadow: 0px 0px 0px var(--color-voxel-bevel-lo);
     }
 
     .voxel-badge {
-        border-top: 1px solid var(--color-boxel-bevel-hi);
-        border-left: 1px solid var(--color-boxel-bevel-hi);
-        border-right: 1px solid var(--color-boxel-bevel-lo);
-        border-bottom: 1px solid var(--color-boxel-bevel-lo);
+        border-top: 1px solid var(--color-voxel-bevel-hi);
+        border-left: 1px solid var(--color-voxel-bevel-hi);
+        border-right: 1px solid var(--color-voxel-bevel-lo);
+        border-bottom: 1px solid var(--color-voxel-bevel-lo);
     }
     /* Animation Utilities */
     .animate-slow-fade {

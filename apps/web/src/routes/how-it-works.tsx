@@ -147,7 +147,7 @@ function HowItWorks() {
         <div className="flex flex-col min-h-screen px-4 md:px-8 py-8 text-slate-100">
             <div className="flex flex-col w-full gap-12">
                 <div className="text-center flex flex-col gap-4">
-                    <h1 className="text-lg font-bold font-display uppercase tracking-wider text-white">
+                    <h1 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
                         How Benchify Works
                     </h1>
                     <p className="text-xs font-normal text-slate-400 max-w-2xl mx-auto">
@@ -157,19 +157,19 @@ function HowItWorks() {
                         agents for verification and post-analysis.
                     </p>
                     <div className="flex gap-2 justify-center flex-wrap">
-                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
+                        <span className="px-2.5 py-1 text-sm font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             OpenAI {MODELS.OPENAI}
                         </span>
-                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
+                        <span className="px-2.5 py-1 text-sm font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             Claude {MODELS.ANTHROPIC}
                         </span>
-                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
+                        <span className="px-2.5 py-1 text-sm font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             Gemini {MODELS.GEMINI}
                         </span>
-                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
+                        <span className="px-2.5 py-1 text-sm font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             DeepSeek {MODELS.DEEPSEEK}
                         </span>
-                        <span className="px-2.5 py-1 text-xs font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
+                        <span className="px-2.5 py-1 text-sm font-bold rounded-none bg-zinc-900 border border-zinc-700 text-zinc-300 shadow-sm">
                             MiniMax {MODELS.MINIMAX}
                         </span>
                     </div>
@@ -199,19 +199,19 @@ function HowItWorks() {
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span
-                                                className={`${theme.textMuted} font-mono text-xs font-bold tracking-wider uppercase`}
+                                                className={`${theme.textMuted} font-mono text-sm font-bold tracking-wider uppercase`}
                                             >
                                                 Phase {item.phase}
                                             </span>
                                             {item.badge && (
                                                 <span
-                                                    className={`px-2 py-0.5 text-xs font-bold rounded-none ${theme.bgBadge} ${theme.textBadge} border ${theme.borderBadge}`}
+                                                    className={`px-2 py-0.5 text-sm font-bold rounded-none ${theme.bgBadge} ${theme.textBadge} border ${theme.borderBadge}`}
                                                 >
                                                     {item.badge}
                                                 </span>
                                             )}
                                         </div>
-                                        <h3 className="text-sm font-bold text-white">
+                                        <h3 className="text-sm font-bold text-voxel-trough">
                                             {item.title}
                                         </h3>
                                         <p className="text-xs font-normal text-slate-400">
@@ -264,7 +264,7 @@ function HowItWorks() {
                                                 {item.tags.map((tag) => (
                                                     <span
                                                         key={tag}
-                                                        className={`px-2 py-1 text-xs font-bold rounded-none ${theme.bgBadge} ${theme.textBadge} border ${theme.borderBadge}`}
+                                                        className={`px-2 py-1 text-sm font-bold rounded-none ${theme.bgBadge} ${theme.textBadge} border ${theme.borderBadge}`}
                                                     >
                                                         {tag}
                                                     </span>
@@ -281,7 +281,7 @@ function HowItWorks() {
                 <ThoughtProcessFlow />
 
                 <div className="text-center flex flex-col gap-4 items-center">
-                    <h2 className="text-lg font-bold font-display uppercase tracking-wider text-white">
+                    <h2 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
                         See the Results
                     </h2>
                     <p className="text-xs font-normal text-slate-400 max-w-md">
@@ -289,7 +289,7 @@ function HowItWorks() {
                     </p>
                     <a
                         href="/portfolios"
-                        className="inline-block px-6 py-2.5 rounded-none bg-accent hover:bg-accent/90 text-white text-xs font-bold transition-colors shadow-sm"
+                        className="inline-block px-6 py-2.5 rounded-none bg-accent hover:bg-accent/90 text-voxel-trough text-sm font-bold transition-colors shadow-sm"
                     >
                         View Portfolios
                     </a>

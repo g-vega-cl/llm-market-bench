@@ -99,12 +99,12 @@ function ChunkRecoveryView({
 
     return (
         <div className="min-w-0 flex-1 p-8 flex flex-col items-center justify-center gap-4">
-            <div className="voxel-trough px-4 py-3 text-xs font-normal text-boxel-muted flex items-center gap-2">
+            <div className="voxel-trough px-4 py-3 text-xs font-normal text-voxel-muted flex items-center gap-2">
                 <span className="font-mono">{statusMessage}</span>
             </div>
             <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 colorScheme="neutral"
                 size="sm"
                 className="uppercase font-bold text-sm"
@@ -187,7 +187,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
                     variant="solid"
                     colorScheme="neutral"
                     size="sm"
-                    className="uppercase font-bold text-xs"
+                    className="uppercase font-bold text-sm"
                     onClick={() => {
                         router.invalidate();
                     }}
@@ -197,14 +197,14 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
                 {isRoot ? (
                     <Link
                         to="/"
-                        className="px-2.5 py-1 bg-zinc-700 rounded-none text-white uppercase font-bold text-xs shadow-sm"
+                        className="px-2.5 py-1 bg-zinc-700 rounded-none text-voxel-trough uppercase font-bold text-sm shadow-sm"
                     >
                         Home
                     </Link>
                 ) : (
                     <Link
                         to="/"
-                        className="px-2.5 py-1 bg-zinc-700 rounded-none text-white uppercase font-bold text-xs shadow-sm"
+                        className="px-2.5 py-1 bg-zinc-700 rounded-none text-voxel-trough uppercase font-bold text-sm shadow-sm"
                         onClick={(e) => {
                             e.preventDefault();
                             window.history.back();

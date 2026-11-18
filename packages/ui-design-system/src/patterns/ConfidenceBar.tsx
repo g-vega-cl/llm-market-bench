@@ -35,7 +35,7 @@ export function ConfidenceBar({
             <span
                 className={cn(
                     'text-xs font-normal uppercase tracking-wider',
-                    isHero ? 'text-boxel-ink' : 'text-boxel-muted',
+                    isHero ? 'text-voxel-ink' : 'text-voxel-muted',
                 )}
             >
                 {label}
@@ -50,7 +50,7 @@ export function ConfidenceBar({
                             data-filled={isFilled ? 'true' : 'false'}
                             className={cn(
                                 'h-2.5 rounded-none transition-colors',
-                                isFilled ? activeColorClass : 'bg-boxel-surface/50',
+                                isFilled ? activeColorClass : 'bg-voxel-surface/50',
                             )}
                         />
                     );
@@ -59,7 +59,7 @@ export function ConfidenceBar({
             <span
                 className={cn(
                     'text-sm font-bold font-mono tabular-nums',
-                    isHero ? 'text-boxel-ink' : 'text-boxel-ink',
+                    isHero ? 'text-voxel-ink' : 'text-voxel-ink',
                 )}
             >
                 {clampedValue}%

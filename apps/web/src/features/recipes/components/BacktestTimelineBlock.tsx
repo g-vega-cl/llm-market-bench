@@ -1,4 +1,4 @@
-import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import type { BacktestDayStep, BacktestResultData, RecipeJobStatus } from '../types';
 
 export interface BacktestTimelineSelection {
@@ -118,25 +118,25 @@ function DayTile({
 }) {
     const badge = formatDaySignal(step, isCurrent);
     const tileStyle = isSelected
-        ? 'bg-boxel-elevated border-2 border-accent'
+        ? 'bg-voxel-elevated border-2 border-accent'
         : isCurrent
-          ? 'bg-boxel-surface border border-accent'
-          : 'bg-boxel-trough hover:bg-boxel-elevated';
+          ? 'bg-voxel-surface border border-accent'
+          : 'bg-voxel-trough hover:bg-voxel-elevated';
     const pnlColor = !step
-        ? 'text-boxel-muted'
+        ? 'text-voxel-muted'
         : step.day_pnl_net >= 0
           ? 'text-success'
           : 'text-danger';
 
     return (
-        <button
+        <Button
             type="button"
             aria-pressed={isSelected}
             onClick={() => onSelect(day)}
             className={`voxel-trough rounded-none p-3 text-left flex flex-col gap-2 min-w-0 transition-colors ${tileStyle}`}
         >
             <div className="flex flex-wrap items-baseline justify-between gap-2 min-w-0">
-                <span className="text-xs font-normal font-mono tabular-nums text-boxel-ink whitespace-nowrap">
+                <span className="text-xs font-normal font-mono tabular-nums text-voxel-ink whitespace-nowrap">
                     S{index + 1} • {day}
                 </span>
                 <span
@@ -148,13 +148,13 @@ function DayTile({
             <div className="flex items-center justify-between gap-2 min-w-0">
                 <Badge
                     size="xs"
-                    variant={step || isCurrent ? 'soft' : 'outline'}
+                    variant={step || isCurrent ? 'soft' : 'soft'}
                     colorScheme={badge.colorScheme}
                 >
                     {badge.label}
                 </Badge>
             </div>
-        </button>
+        </Button>
     );
 }
 
@@ -175,26 +175,26 @@ function SelectedSlotBar({
     return (
         <div
             data-testid="selected-slot-bar"
-            className="voxel-trough bg-boxel-trough px-4 py-3 flex flex-wrap items-center justify-between gap-3 min-w-0"
+            className="voxel-trough bg-voxel-trough px-4 py-3 flex flex-wrap items-center justify-between gap-3 min-w-0"
         >
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
-                <span className="text-sm font-bold font-mono text-boxel-ink whitespace-nowrap">
+                <span className="text-sm font-bold font-mono text-voxel-ink whitespace-nowrap">
                     S{activeIndex + 1} • {activeDay}
                 </span>
                 <Badge
                     size="xs"
-                    variant={selectedStep || isCurrentRunning ? 'soft' : 'outline'}
+                    variant={selectedStep || isCurrentRunning ? 'soft' : 'soft'}
                     colorScheme={badge.colorScheme}
                 >
                     {badge.label}
                 </Badge>
-                <span className="text-xs font-normal text-boxel-muted whitespace-nowrap">
+                <span className="text-xs font-normal text-voxel-muted whitespace-nowrap">
                     {statusText}
                 </span>
             </div>
             <a
                 href="#session-trace"
-                className="voxel-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold border border-accent text-accent bg-boxel-surface hover:bg-boxel-elevated rounded-none whitespace-nowrap"
+                className="voxel-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold border border-accent text-accent bg-voxel-surface hover:bg-voxel-elevated rounded-none whitespace-nowrap"
             >
                 Jump to Trace ↓
             </a>
@@ -222,21 +222,21 @@ export function BacktestTimelineBlock({
     return (
         <section id="simulation-timeline" className="min-w-0 scroll-mt-4">
             <Card padding="md" className="flex flex-col gap-4 min-w-0">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
-                    <SectionHeading gradient="electric">Simulation Timeline</SectionHeading>
-                    <span className="text-xs font-normal font-mono tabular-nums text-boxel-muted whitespace-nowrap">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
+                    <SectionHeading>Simulation Timeline</SectionHeading>
+                    <span className="text-xs font-normal font-mono tabular-nums text-voxel-muted whitespace-nowrap">
                         {daySteps.length} / {windowDates.length || 30} Sessions Settled
                     </span>
                 </div>
 
                 {windowDates.length === 0 ? (
-                    <div className="voxel-trough bg-boxel-trough p-4 flex flex-col gap-2">
-                        <span className="text-sm font-bold text-boxel-ink">
+                    <div className="voxel-trough bg-voxel-trough p-4 flex flex-col gap-2">
+                        <span className="text-sm font-bold text-voxel-ink">
                             {queuePosition && queuePosition > 0
                                 ? `Queued (#${queuePosition} in line) — Waiting for recipe worker to pick a 2-week historical window...`
                                 : 'Waiting for recipe worker to pick a 2-week historical window...'}
                         </span>
-                        <span className="text-xs font-normal text-boxel-muted">
+                        <span className="text-xs font-normal text-voxel-muted">
                             Single-GPU Strata runs 1 backtest globally at a time (strata-auto-go)
                             while streaming each 3x/day ET session here. You can safely close this
                             tab or cancel anytime.

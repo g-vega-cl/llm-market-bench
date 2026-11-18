@@ -144,12 +144,14 @@ export function ThoughtProcessFlow() {
                     </div>
                     <div className="p-4 rounded-none bg-slate-900/80 border border-emerald-500/30 shadow-sm flex flex-col gap-2">
                         <div className="flex justify-between items-center">
-                            <span className="text-emerald-400 font-bold text-xs">
+                            <span className="text-emerald-400 font-bold text-sm">
                                 TRADE EXECUTED
                             </span>
                             <span className="text-xs font-mono text-slate-500">ID: tr_8a92f2</span>
                         </div>
-                        <div className="text-lg font-bold font-mono text-white">BUY TSLA</div>
+                        <div className="text-sm font-bold font-mono text-voxel-trough">
+                            BUY TSLA
+                        </div>
                         <div className="text-xs font-normal text-slate-400">
                             40 shares @ $248.50 | Total: $9,940.00
                         </div>
@@ -163,12 +165,12 @@ export function ThoughtProcessFlow() {
     ];
 
     return (
-        <section className="mt-12 py-12 px-6 rounded-none bg-slate-900/40 border border-slate-800 backdrop-blur-md relative overflow-hidden shadow-sm">
+        <section className="mt-12 py-12 px-6 rounded-none bg-slate-900/40 border border-slate-800  relative overflow-hidden shadow-sm">
             <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/3 w-96 h-96 bg-blue-500/10 blur-3xl pointer-events-none" />
 
             <div className="max-w-4xl mx-auto flex flex-col gap-8">
                 <div className="text-center flex flex-col gap-2">
-                    <h2 className="text-lg font-bold font-display uppercase tracking-wider text-white">
+                    <h2 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
                         Deep Dive: Follow a Single Thought
                     </h2>
                     <p className="text-slate-400 text-xs font-normal">
@@ -192,7 +194,7 @@ export function ThoughtProcessFlow() {
                                 {step.icon}
                             </span>
                             <span
-                                className={`text-xs font-bold uppercase tracking-widest text-center ${activeStep === idx ? 'text-blue-400' : 'text-slate-500'}`}
+                                className={`text-sm font-bold uppercase tracking-widest text-center ${activeStep === idx ? 'text-blue-400' : 'text-slate-500'}`}
                             >
                                 Step {idx + 1}
                             </span>
@@ -211,10 +213,10 @@ export function ThoughtProcessFlow() {
                             }`}
                         >
                             <div className="w-full md:w-1/3 text-center md:text-left flex flex-col gap-2">
-                                <span className="text-blue-500 font-mono text-xs font-bold uppercase tracking-widest block">
+                                <span className="text-blue-500 font-mono text-sm font-bold uppercase tracking-widest block">
                                     {step.title}
                                 </span>
-                                <h3 className="text-sm font-bold text-white leading-tight">
+                                <h3 className="text-sm font-bold text-voxel-trough leading-tight">
                                     {step.description}
                                 </h3>
                                 <div className="hidden md:flex flex-wrap gap-2 mt-auto">
@@ -225,7 +227,7 @@ export function ThoughtProcessFlow() {
                             </div>
                             <div className="w-full md:w-2/3 p-6 rounded-none bg-slate-900/60 border border-slate-800 shadow-sm relative flex flex-col gap-4">
                                 <div className="absolute top-0 right-0 p-3 opacity-10">
-                                    <span className="text-lg font-bold">{step.icon}</span>
+                                    <span className="text-sm font-bold">{step.icon}</span>
                                 </div>
                                 {step.details}
                             </div>
@@ -237,7 +239,7 @@ export function ThoughtProcessFlow() {
                     <Button
                         variant="outline"
                         colorScheme="neutral"
-                        className="px-6 py-2 text-xs font-bold"
+                        className="px-6 py-2 text-sm font-bold"
                         disabled={activeStep === 0}
                         onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
                     >
@@ -253,7 +255,7 @@ export function ThoughtProcessFlow() {
                     </div>
                     <Button
                         colorScheme="info"
-                        className="px-6 py-2 text-xs font-bold shadow-sm"
+                        className="px-6 py-2 text-sm font-bold shadow-sm"
                         disabled={activeStep === steps.length - 1}
                         onClick={() =>
                             setActiveStep((prev) => Math.min(steps.length - 1, prev + 1))

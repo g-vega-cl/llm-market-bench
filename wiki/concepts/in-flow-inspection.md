@@ -36,7 +36,7 @@ Chart markers and data points that drive the inspector are real controls, not ho
   onKeyDown={(e) => {
     if (e.key === 'Enter' || e.key === ' ') setSelected(point)
   }}
-  className="rounded-none border-boxel-bevel-hi bg-boxel-surface"
+  className="rounded-none border-voxel-bevel-hi bg-voxel-surface"
 />
 ```
 

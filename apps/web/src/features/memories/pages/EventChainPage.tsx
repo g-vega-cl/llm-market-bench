@@ -112,12 +112,12 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
     return (
         <div className="min-h-screen">
             {/* Header */}
-            <div className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+            <div className="border-b border-zinc-200 border-zinc-800 bg-white bg-zinc-950">
                 <PageLayout maxWidth="md" className="py-6 flex flex-col gap-4">
                     <div className="flex items-center gap-3">
                         <Link
                             to="/memories"
-                            className="p-1.5 rounded-none hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            className="p-1.5 rounded-none hover:bg-zinc-100 hover:bg-zinc-800 transition-colors"
                         >
                             <svg
                                 className="w-4 h-4 text-zinc-500"
@@ -134,17 +134,15 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                 />
                             </svg>
                         </Link>
-                        <SectionHeading gradient="electric">
-                            Thought Journey & Event Chain
-                        </SectionHeading>
+                        <SectionHeading>Thought Journey & Event Chain</SectionHeading>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-zinc-600 dark:text-zinc-400 text-xs font-normal m-0">
+                        <p className="text-zinc-600 text-zinc-400 text-xs font-normal m-0">
                             Tracing how this catalyst evolved through model reasoning, debate
                             stress-tests, and market resolutions.
                         </p>
                         {isFetching && (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-accent font-bold bg-boxel-trough px-2 py-0.5 rounded-none border border-boxel-bevel-hi">
+                            <span className="inline-flex items-center gap-1.5 text-sm text-accent font-bold bg-voxel-trough px-2 py-0.5 rounded-none border border-voxel-bevel-hi">
                                 <span
                                     aria-hidden="true"
                                     className="inline-block w-2 h-2 rounded-none bg-accent animate-pulse motion-reduce:animate-none"
@@ -159,7 +157,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
             {/* Main Content Area */}
             <PageLayout maxWidth="md" className="py-8 flex flex-col gap-6">
                 {/* Chain Switcher Bar */}
-                <Card variant="glass" padding="sm">
+                <Card variant="default" padding="sm">
                     <ChainMemorySwitcher currentMemoryId={memoryId} searchFn={searchMemories} />
                 </Card>
 
@@ -180,26 +178,25 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                 {/* Directional Connector from Previous Step */}
                                 {index > 0 && (
                                     <div className="flex flex-col items-center py-3 relative">
-                                        <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700" />
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-none shadow-sm z-10">
-                                            <span className="text-xs font-bold text-zinc-400">
+                                        <div className="w-px h-6 bg-zinc-300 bg-zinc-700" />
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-zinc-100 bg-zinc-800 border border-zinc-200 border-zinc-700 rounded-none shadow-sm z-10">
+                                            <span className="text-sm font-bold text-zinc-400">
                                                 ↓
                                             </span>
                                             <Badge
                                                 size="xs"
                                                 variant="solid"
-                                                radius="none"
                                                 colorScheme={getRelationshipColor(
                                                     memory.relationship_type,
                                                 )}
                                             >
                                                 {memory.relationship_type || 'UPDATE'}
                                             </Badge>
-                                            <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
+                                            <span className="text-xs font-mono text-zinc-500 text-zinc-400">
                                                 {memory.elapsedFromPreceding || '+later'}
                                             </span>
                                         </div>
-                                        <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700" />
+                                        <div className="w-px h-6 bg-zinc-300 bg-zinc-700" />
                                     </div>
                                 )}
 
@@ -208,14 +205,14 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                     id={memory.id}
                                     className={`relative border rounded-none p-5 transition-all shadow-sm ${
                                         isSelected
-                                            ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-900/90 ring-1 ring-zinc-900/10 dark:ring-zinc-100/20'
-                                            : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:border-zinc-300 dark:hover:border-zinc-700'
+                                            ? 'border-zinc-900 border-zinc-100 bg-zinc-50 bg-zinc-900/90 ring-1 ring-zinc-900/10 ring-zinc-100/20'
+                                            : 'border-zinc-200 border-zinc-800 bg-white bg-zinc-950 hover:border-zinc-300 hover:border-zinc-700'
                                     }`}
                                 >
                                     {/* Top Metadata Header */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800/80">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-100 border-zinc-800/80">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="px-2 py-0.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold font-mono uppercase">
+                                            <span className="px-2 py-0.5 bg-zinc-900 bg-zinc-100 text-voxel-trough text-zinc-900 text-sm font-bold font-mono uppercase">
                                                 {isRoot
                                                     ? 'STEP 1 • CATALYST ORIGIN'
                                                     : isFinal
@@ -226,7 +223,6 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                             <Badge
                                                 variant="soft"
                                                 size="xs"
-                                                radius="none"
                                                 colorScheme={getTypeBadgeColor(
                                                     memory.metadata?.type || memory.memory_type,
                                                 )}
@@ -241,7 +237,6 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                     variant="soft"
                                                     size="xs"
                                                     colorScheme="accent"
-                                                    radius="none"
                                                 >
                                                     ${memory.metadata.ticker}
                                                 </Badge>
@@ -251,7 +246,6 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                 <Badge
                                                     variant="soft"
                                                     size="xs"
-                                                    radius="none"
                                                     colorScheme={getImpactBadgeColor(
                                                         memory.metadata.impact,
                                                     )}
@@ -261,7 +255,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                             )}
 
                                             {memory.importance_score && (
-                                                <span className="text-xs font-mono font-bold text-amber-500">
+                                                <span className="text-sm font-mono font-bold text-amber-500">
                                                     ★ {memory.importance_score}/10
                                                 </span>
                                             )}
@@ -272,7 +266,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                 {memory.formattedDate || 'Pending'}
                                             </span>
                                             {memory.elapsedFromRoot && !isRoot && (
-                                                <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                                                <span className="text-sm font-bold font-mono text-emerald-600 text-emerald-400">
                                                     ({memory.elapsedFromRoot})
                                                 </span>
                                             )}
@@ -281,32 +275,31 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
 
                                     {/* Selected Focus Banner */}
                                     {isSelected && (
-                                        <div className="mt-3 p-2 bg-emerald-500/10 border-l-2 border-emerald-500 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                        <div className="mt-3 p-2 bg-emerald-500/10 border-l-2 border-emerald-500 text-sm font-bold text-emerald-700 text-emerald-300">
                                             ← You selected this event
                                         </div>
                                     )}
 
                                     {/* Memory Content Text */}
-                                    <p className="mt-4 text-xs font-normal text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans">
+                                    <p className="mt-4 text-xs font-normal text-zinc-800 text-zinc-200 leading-relaxed font-sans">
                                         {memory.content}
                                     </p>
 
                                     {/* The Model Process Section */}
                                     {(models.length > 0 || debate || scenarios.length > 0) && (
-                                        <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col gap-3">
+                                        <div className="mt-4 pt-3 border-t border-zinc-100 border-zinc-800/80 flex flex-col gap-3">
                                             {/* Models Involved */}
                                             {models.length > 0 && (
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                                                    <span className="text-sm font-bold uppercase tracking-wider text-zinc-400">
                                                         Models Involved:
                                                     </span>
                                                     {models.map((modName, mIdx) => (
                                                         <Badge
                                                             key={mIdx}
-                                                            variant="outline"
+                                                            variant="soft"
                                                             size="xs"
                                                             colorScheme="info"
-                                                            radius="none"
                                                         >
                                                             🤖 {modName}
                                                         </Badge>
@@ -318,7 +311,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                             {debate && (
                                                 <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-none flex flex-col gap-2">
                                                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                                                        <span className="text-sm font-bold text-amber-600 text-amber-400 uppercase tracking-wide">
                                                             🛡️ Red-Team Stress-Test
                                                         </span>
                                                         {debate.adversary_model && (
@@ -328,13 +321,13 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                         )}
                                                     </div>
                                                     {debate.counter_thesis && (
-                                                        <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 leading-relaxed m-0">
+                                                        <p className="text-xs font-normal text-zinc-700 text-zinc-300 leading-relaxed m-0">
                                                             <b>Counter-Thesis:</b>{' '}
                                                             {debate.counter_thesis}
                                                         </p>
                                                     )}
                                                     {debate.pre_mortem && (
-                                                        <p className="text-xs font-normal text-rose-600 dark:text-rose-400 font-mono m-0">
+                                                        <p className="text-xs font-normal text-rose-600 text-rose-400 font-mono m-0">
                                                             <b>Pre-Mortem Failure Mode:</b>{' '}
                                                             {debate.pre_mortem}
                                                         </p>
@@ -342,10 +335,10 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                     {Array.isArray(debate.key_risks) &&
                                                         debate.key_risks.length > 0 && (
                                                             <div className="flex flex-col gap-0.5">
-                                                                <span className="text-xs font-bold text-zinc-400 uppercase">
+                                                                <span className="text-sm font-bold text-zinc-400 uppercase">
                                                                     Key Risks:
                                                                 </span>
-                                                                <ul className="list-disc list-inside text-xs font-normal text-zinc-600 dark:text-zinc-400">
+                                                                <ul className="list-disc list-inside text-xs font-normal text-zinc-600 text-zinc-400">
                                                                     {debate.key_risks.map(
                                                                         (
                                                                             risk: string,
@@ -365,7 +358,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                             {/* Scenarios */}
                                             {scenarios.length > 0 && (
                                                 <div className="flex flex-col gap-2">
-                                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                                                    <span className="text-sm font-bold uppercase tracking-wider text-zinc-400">
                                                         Probability Scenarios:
                                                     </span>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -373,10 +366,10 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                             (sc: ChainScenario, sIdx: number) => (
                                                                 <div
                                                                     key={sIdx}
-                                                                    className="p-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none flex flex-col gap-1"
+                                                                    className="p-2.5 bg-zinc-50 bg-zinc-900 border border-zinc-200 border-zinc-800 rounded-none flex flex-col gap-1"
                                                                 >
                                                                     <div className="flex items-center justify-between gap-2">
-                                                                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                                                        <span className="text-sm font-bold text-zinc-900 text-zinc-100">
                                                                             {sc.header ||
                                                                                 sc.cleanHeader ||
                                                                                 `Scenario ${sIdx + 1}`}
@@ -392,7 +385,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                                         )}
                                                                     </div>
                                                                     {sc.outcome && (
-                                                                        <p className="text-xs font-normal text-zinc-600 dark:text-zinc-400 line-clamp-2 m-0">
+                                                                        <p className="text-xs font-normal text-zinc-600 text-zinc-400 line-clamp-2 m-0">
                                                                             {sc.outcome}
                                                                         </p>
                                                                     )}
@@ -417,14 +410,14 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                             aria-label="Loading other memories in this chain..."
                             className="flex flex-col items-center py-6 gap-2"
                         >
-                            <div className="w-px h-8 bg-boxel-bevel-hi" />
+                            <div className="w-px h-8 bg-voxel-bevel-hi" />
                             <Skeleton variant="card" lines={2} className="w-full" />
                         </div>
                     )}
                 </div>
 
                 {/* Bottom Action Footer */}
-                <div className="mt-4 pt-6 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="mt-4 pt-6 border-t border-zinc-200 border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <Link
                         to="/chat"
                         search={{

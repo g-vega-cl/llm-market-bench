@@ -197,7 +197,7 @@ export function RenkoAgentPageView({
             {/* Header Banner */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-lg font-bold font-display uppercase tracking-wider text-blue-400">
+                    <h1 className="text-sm font-bold font-display uppercase tracking-wider text-blue-400">
                         Linde plc (LIN) — Hyper-Focused Renko Agent
                     </h1>
                     <p className="text-zinc-400 text-xs font-normal">
@@ -205,7 +205,7 @@ export function RenkoAgentPageView({
                     </p>
                 </div>
                 <div className="flex flex-col md:items-end gap-1">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-none text-xs font-bold bg-emerald-900/60 text-emerald-300 border border-emerald-700 shadow-sm w-fit">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-none text-sm font-bold bg-emerald-900/60 text-emerald-300 border border-emerald-700 shadow-sm w-fit">
                         ACTIVE ● {selectedModel}
                     </span>
                     <p className="text-xs font-normal text-zinc-400">
@@ -245,7 +245,7 @@ export function RenkoAgentPageView({
                             return (
                                 <div key={brick.id} className="relative flex-none w-7 h-full">
                                     <div
-                                        className={`absolute w-full rounded-none border flex items-center justify-center text-xs font-bold text-white shadow ${
+                                        className={`absolute w-full rounded-none border flex items-center justify-center text-sm font-bold text-voxel-trough shadow ${
                                             brick.direction === 'UP'
                                                 ? 'bg-emerald-600 border-emerald-500'
                                                 : 'bg-rose-600 border-rose-500'
@@ -312,7 +312,7 @@ export function RenkoAgentPageView({
                 </h3>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 items-stretch">
                     <div className="bg-zinc-950 p-4 rounded-none border border-zinc-800 shadow-sm flex flex-col gap-2">
-                        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                        <h4 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
                             Injected Domain Signals
                         </h4>
                         <ul className="text-xs font-normal text-zinc-300 flex flex-col gap-1.5 list-disc pl-4">
@@ -335,7 +335,7 @@ export function RenkoAgentPageView({
                         </ul>
                     </div>
                     <div className="bg-zinc-950 p-4 rounded-none border border-zinc-800 shadow-sm flex flex-col gap-2">
-                        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                        <h4 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
                             LLM Cognitive Synthesis (DeepSeek Flash)
                         </h4>
                         <p className="text-xs font-normal text-zinc-300 leading-relaxed">
@@ -354,10 +354,8 @@ export function RenkoAgentPageView({
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-zinc-800">
                     <div>
                         <div className="flex items-center gap-3">
-                            <SectionHeading gradient="electric">
-                                LIN Renko Portfolio & Execution Ledger
-                            </SectionHeading>
-                            <Badge variant="glass" size="sm" colorScheme="accent" radius="none">
+                            <SectionHeading>LIN Renko Portfolio & Execution Ledger</SectionHeading>
+                            <Badge variant="soft" size="sm" colorScheme="accent">
                                 $10,000 Isolated Ledger
                             </Badge>
                         </div>
@@ -370,28 +368,28 @@ export function RenkoAgentPageView({
 
                 {/* Portfolio Metrics Grid */}
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4 items-stretch">
-                    <Card padding="md" variant="glass" className="h-full rounded-none shadow-sm">
+                    <Card padding="md" variant="default" className="h-full rounded-none shadow-sm">
                         <MetricTile
                             icon="💰"
                             label="Total Equity"
                             value={`$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
-                    <Card padding="md" variant="glass" className="h-full rounded-none shadow-sm">
+                    <Card padding="md" variant="default" className="h-full rounded-none shadow-sm">
                         <MetricTile
                             icon="💵"
                             label="Cash Balance"
                             value={`$${cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
-                    <Card padding="md" variant="glass" className="h-full rounded-none shadow-sm">
+                    <Card padding="md" variant="default" className="h-full rounded-none shadow-sm">
                         <MetricTile
                             icon="🏭"
                             label="LIN Equity Value"
                             value={`$${positionsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         />
                     </Card>
-                    <Card padding="md" variant="glass" className="h-full rounded-none shadow-sm">
+                    <Card padding="md" variant="default" className="h-full rounded-none shadow-sm">
                         <MetricTile
                             icon="📈"
                             label="Total Return"
@@ -403,7 +401,7 @@ export function RenkoAgentPageView({
                 {/* Performance Timeline & Benchmark Overlay */}
                 <section className="flex flex-col gap-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
-                        <h3 className="text-lg font-bold font-display uppercase tracking-wider text-zinc-100">
+                        <h3 className="text-sm font-bold font-display uppercase tracking-wider text-zinc-100">
                             Performance Timeline
                         </h3>
                         <BenchmarkSelector
@@ -433,15 +431,15 @@ export function RenkoAgentPageView({
 
                 {/* Active Positions Table */}
                 <section className="flex flex-col gap-4">
-                    <SectionHeading gradient="electric">Active Positions</SectionHeading>
+                    <SectionHeading>Active Positions</SectionHeading>
                     <PositionsTable positions={positions} trades={trades} />
                 </section>
 
                 {/* Recent Trades Table */}
                 <section className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
-                        <SectionHeading gradient="success">Recent Trades</SectionHeading>
-                        <Badge variant="soft" size="sm" colorScheme="neutral" radius="none">
+                        <SectionHeading>Recent Trades</SectionHeading>
+                        <Badge variant="soft" size="sm" colorScheme="neutral">
                             Audit Trail
                         </Badge>
                     </div>

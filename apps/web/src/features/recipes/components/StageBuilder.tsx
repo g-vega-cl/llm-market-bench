@@ -71,9 +71,9 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
     };
 
     return (
-        <div className="flex flex-col gap-4 border border-border bg-boxel-surface p-4 rounded-none">
+        <div className="flex flex-col gap-4 border border-border bg-voxel-surface p-4 rounded-none">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
-                <Badge variant="outline" size="sm">
+                <Badge variant="soft" size="sm">
                     LLM Call
                 </Badge>
                 <div className="flex flex-wrap items-center gap-2">
@@ -139,10 +139,10 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                 {stage.blocks.map((block, bIdx) => (
                     <div
                         key={block.id}
-                        className="flex flex-col gap-2 border border-border bg-boxel-canvas p-3 rounded-none"
+                        className="flex flex-col gap-2 border border-border bg-voxel-canvas p-3 rounded-none"
                     >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                            <Badge variant="outline" size="sm">
+                            <Badge variant="soft" size="sm">
                                 {block.type.toUpperCase()} BLOCK
                             </Badge>
                             {block.type === 'output_format' ? null : (
@@ -217,7 +217,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                         )}
                         {block.type === 'output_format' && (
                             <div className="flex items-center gap-2 text-xs">
-                                <Badge variant="outline" size="sm">
+                                <Badge variant="soft" size="sm">
                                     IMMUTABLE
                                 </Badge>
                                 Output format locked to Long-Only BUY/EXIT JSON schema.

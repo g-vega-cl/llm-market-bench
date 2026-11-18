@@ -17,8 +17,8 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
         return (
             <section className="flex flex-col gap-4 animate-slide-up">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <SectionHeading gradient="electric">⚡ Intraday Market Wire</SectionHeading>
-                    <Badge variant="soft" colorScheme="accent" size="xs" radius="none">
+                    <SectionHeading>⚡ Intraday Market Wire</SectionHeading>
+                    <Badge variant="soft" colorScheme="accent" size="xs">
                         Vetted by Jev AI
                     </Badge>
                 </div>
@@ -42,8 +42,8 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
         <section className="flex flex-col gap-4 animate-slide-up">
             <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <SectionHeading gradient="electric">⚡ Intraday Market Wire</SectionHeading>
-                    <Badge variant="soft" colorScheme="accent" size="xs" radius="none">
+                    <SectionHeading>⚡ Intraday Market Wire</SectionHeading>
+                    <Badge variant="soft" colorScheme="accent" size="xs">
                         Vetted by Jev AI
                     </Badge>
                 </div>
@@ -51,18 +51,16 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
                 <div className="flex items-center gap-2 flex-wrap">
                     <Button
                         size="sm"
-                        rounded="none"
                         colorScheme={activeTab === 'catalysts' ? 'success' : 'neutral'}
-                        variant={activeTab === 'catalysts' ? 'soft' : 'ghost'}
+                        variant={activeTab === 'catalysts' ? 'solid' : 'outline'}
                         onClick={() => setActiveTab('catalysts')}
                     >
                         ⚡ Catalysts ({catalysts.length})
                     </Button>
                     <Button
                         size="sm"
-                        rounded="none"
                         colorScheme={activeTab === 'noise' ? 'warning' : 'neutral'}
-                        variant={activeTab === 'noise' ? 'soft' : 'ghost'}
+                        variant={activeTab === 'noise' ? 'solid' : 'outline'}
                         onClick={() => setActiveTab('noise')}
                     >
                         🔇 Filtered Noise ({noiseItems.length})
@@ -106,7 +104,7 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
                                                 {item.formattedTime} ET
                                             </span>
                                             <span className="text-zinc-600 text-xs">•</span>
-                                            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                                            <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
                                                 {item.source}
                                             </span>
                                         </div>
@@ -115,8 +113,7 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
                                             variant="soft"
                                             colorScheme={isNoise ? 'neutral' : 'success'}
                                             size="xs"
-                                            radius="none"
-                                            className="font-mono text-xs font-bold tracking-wider whitespace-nowrap"
+                                            className="font-mono text-sm font-bold tracking-wider whitespace-nowrap"
                                         >
                                             {isNoise ? '🔇' : '⚡'} {item.jev_choice}{' '}
                                             {item.jev_confidence}%
@@ -142,11 +139,10 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
                                         {tickersList.slice(0, 4).map((t) => (
                                             <Badge
                                                 key={t}
-                                                variant="outline"
+                                                variant="soft"
                                                 colorScheme="neutral"
                                                 size="xs"
-                                                radius="none"
-                                                className="font-mono text-xs font-bold uppercase tracking-wider"
+                                                className="font-mono text-sm font-bold uppercase tracking-wider"
                                             >
                                                 ${t}
                                             </Badge>
@@ -158,7 +154,7 @@ export function IntradayNewsWire({ items }: IntradayNewsWireProps) {
                                             href={item.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-xs font-bold text-electric-blue-400 hover:text-electric-blue-300 transition-colors inline-flex items-center gap-2"
+                                            className="text-sm font-bold text-electric-blue-400 hover:text-electric-blue-300 transition-colors inline-flex items-center gap-2"
                                         >
                                             <span>Source</span>
                                             <span>↗</span>

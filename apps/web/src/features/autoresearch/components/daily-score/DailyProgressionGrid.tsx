@@ -1,4 +1,4 @@
-import { SubHeading } from '@llm-market-bench/ui-design-system';
+import { Button, SubHeading } from '@llm-market-bench/ui-design-system';
 import type { Checkpoint } from './daily-score-math';
 
 interface CheckpointCardProps {
@@ -31,8 +31,8 @@ function CheckpointBody({ cp }: { cp: Checkpoint }) {
     if (cp.isFuture) {
         return (
             <>
-                <div className="text-sm font-bold font-mono mt-1 text-boxel-muted">N/A</div>
-                <div className="text-xs text-boxel-muted font-mono font-normal mt-0.5">P: N/A</div>
+                <div className="text-sm font-bold font-mono mt-1 text-voxel-muted">N/A</div>
+                <div className="text-xs text-voxel-muted font-mono font-normal mt-0.5">P: N/A</div>
             </>
         );
     }
@@ -42,7 +42,7 @@ function CheckpointBody({ cp }: { cp: Checkpoint }) {
                 <div className="text-sm font-bold font-mono mt-1 text-amber-400 animate-pulse">
                     Pending
                 </div>
-                <div className="text-xs text-boxel-muted font-mono font-normal mt-0.5">
+                <div className="text-xs text-voxel-muted font-mono font-normal mt-0.5">
                     In Progress
                 </div>
             </>
@@ -56,7 +56,7 @@ function CheckpointBody({ cp }: { cp: Checkpoint }) {
                 {cp.score >= 0 ? '+' : ''}
                 {cp.score.toFixed(3)}
             </div>
-            <div className="text-xs text-boxel-muted font-mono font-normal mt-0.5">
+            <div className="text-xs text-voxel-muted font-mono font-normal mt-0.5">
                 P: {cp.portfolio.toFixed(2)}%
             </div>
         </>
@@ -66,24 +66,24 @@ function CheckpointBody({ cp }: { cp: Checkpoint }) {
 export function CheckpointCard({ cp, idx, isActive, isSelected, onSelect }: CheckpointCardProps) {
     const cardClass = getCardClass(cp, idx, isActive, isSelected);
     return (
-        <button
+        <Button
             type="button"
             disabled={cp.isFuture}
             onClick={onSelect}
             className={`p-3 rounded-none h-full border transition-all duration-300 w-full text-left flex flex-col justify-between ${cardClass}`}
         >
             <div className="flex items-center justify-between gap-1 w-full">
-                <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                     {cp.day.substring(0, 3)}
                 </div>
                 {cp.dateStr && (
-                    <div className="text-xs font-normal text-boxel-muted font-mono bg-boxel-trough px-1 py-0.5 rounded-none border border-boxel-bevel-hi">
+                    <div className="text-xs font-normal text-voxel-muted font-mono bg-voxel-trough px-1 py-0.5 rounded-none border border-voxel-bevel-hi">
                         {cp.dateStr}
                     </div>
                 )}
             </div>
             <CheckpointBody cp={cp} />
-        </button>
+        </Button>
     );
 }
 

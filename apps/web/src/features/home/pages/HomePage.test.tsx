@@ -62,7 +62,7 @@ const baseData: HomePageData = {
     },
 };
 
-describe('HomePage 2-Block Boxel Dashboard', () => {
+describe('HomePage 2-Block Voxel Dashboard', () => {
     it('renders strictly 2 blocks (AI Market Feeling and Active Agent Portfolios) without collapsibles', () => {
         render(<HomePage data={baseData} />);
 

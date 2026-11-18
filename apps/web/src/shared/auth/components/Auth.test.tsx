@@ -48,7 +48,7 @@ describe('Auth — uses design system', () => {
         // DS Label renders with these classes
         for (const label of labels) {
             expect(label.className).toContain('font-bold');
-            expect(label.className).toContain('text-boxel-ink');
+            expect(label.className).toContain('text-voxel-ink');
         }
     });
 });

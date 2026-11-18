@@ -37,39 +37,39 @@ export function FormattedContent({ content }: FormattedContentProps) {
                 {content.map((part) => (
                     <div
                         key={partKey(part)}
-                        className="border-l-2 border-gray-200 dark:border-gray-700 pl-3 md:pl-4 py-1"
+                        className="border-l-2 border-gray-200 border-gray-700 pl-3 md:pl-4 py-1"
                     >
                         {part.text && (
-                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words text-xs font-normal m-0">
+                            <p className="text-gray-700 text-gray-300 whitespace-pre-wrap break-words text-xs font-normal m-0">
                                 {part.text}
                             </p>
                         )}
                         {part.thought && (
-                            <div className="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-none border border-amber-100 dark:border-amber-900/20">
-                                <span className="text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider block mb-1">
+                            <div className="bg-amber-50/50 bg-amber-900/10 p-3 rounded-none border border-amber-100 border-amber-900/20">
+                                <span className="text-sm font-bold text-amber-600 text-amber-500 uppercase tracking-wider block mb-1">
                                     Internal Thought
                                 </span>
-                                <p className="text-amber-800 dark:text-amber-200 italic font-normal text-xs break-words m-0">
+                                <p className="text-amber-800 text-amber-200 italic font-normal text-xs break-words m-0">
                                     {part.thought}
                                 </p>
                             </div>
                         )}
                         {part.function_call && (
-                            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-none border border-blue-100 dark:border-blue-900/20">
-                                <span className="text-xs font-bold text-blue-600 dark:text-blue-500 uppercase tracking-wider block mb-1">
+                            <div className="bg-blue-50/50 bg-blue-900/10 p-3 rounded-none border border-blue-100 border-blue-900/20">
+                                <span className="text-sm font-bold text-blue-600 text-blue-500 uppercase tracking-wider block mb-1">
                                     Tool Call: {part.function_call.name}
                                 </span>
-                                <pre className="text-xs font-normal font-mono text-blue-800 dark:text-blue-300 whitespace-pre-wrap break-all overflow-hidden m-0">
+                                <pre className="text-xs font-normal font-mono text-blue-800 text-blue-300 whitespace-pre-wrap break-all overflow-hidden m-0">
                                     {JSON.stringify(part.function_call.args, null, 2)}
                                 </pre>
                             </div>
                         )}
                         {part.function_response && (
-                            <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded-none border border-emerald-100 dark:border-emerald-900/20">
-                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider block mb-1">
+                            <div className="bg-emerald-50/50 bg-emerald-900/10 p-3 rounded-none border border-emerald-100 border-emerald-900/20">
+                                <span className="text-sm font-bold text-emerald-600 text-emerald-500 uppercase tracking-wider block mb-1">
                                     Tool Response: {part.function_response.name}
                                 </span>
-                                <pre className="text-xs font-normal font-mono text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap break-all overflow-hidden m-0">
+                                <pre className="text-xs font-normal font-mono text-emerald-800 text-emerald-300 whitespace-pre-wrap break-all overflow-hidden m-0">
                                     {JSON.stringify(part.function_response.response, null, 2)}
                                 </pre>
                             </div>

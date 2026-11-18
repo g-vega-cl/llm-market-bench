@@ -4,41 +4,24 @@ import { cn } from '../lib/cn';
 /**
  * SectionHeading pattern.
  *
- * A section title with a gradient decorator bar and gradient text.
- * Used across 5 feature sections as a visual section divider.
+ * A section title with a single accent decorator bar.
+ * Variant budget: one decorator color (`bg-accent`).
  */
 
 export interface SectionHeadingProps {
-    gradient?: 'electric' | 'success' | 'catalyst' | 'ai';
     children: React.ReactNode;
     className?: string;
 }
 
-const decoratorMap: Record<string, string> = {
-    electric: 'bg-accent',
-    success: 'bg-success',
-    catalyst: 'bg-warning',
-    ai: 'bg-info',
-};
-
-export function SectionHeading({
-    gradient = 'electric',
-    children,
-    className,
-}: SectionHeadingProps) {
+export function SectionHeading({ children, className }: SectionHeadingProps) {
     return (
         <h2
             className={cn(
-                'text-lg font-bold text-boxel-ink flex items-center gap-2.5 text-display uppercase tracking-tight',
+                'text-lg font-bold text-voxel-ink flex items-center gap-2.5 text-display uppercase tracking-tight',
                 className,
             )}
         >
-            <span
-                className={cn(
-                    'w-3 h-6 rounded-none voxel-badge shrink-0',
-                    decoratorMap[gradient] ?? decoratorMap.electric,
-                )}
-            />
+            <span className="w-3 h-6 rounded-none voxel-badge shrink-0 bg-accent" />
             <span>{children}</span>
         </h2>
     );

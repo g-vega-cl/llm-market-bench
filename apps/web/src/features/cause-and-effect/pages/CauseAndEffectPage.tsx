@@ -27,7 +27,7 @@ export function CauseAndEffectPage({ initialData, fetchFn }: CauseAndEffectPageP
         <div className="min-h-screen">
             <PageLayout>
                 <header className="mb-12">
-                    <SectionHeading gradient="catalyst">Cause & Effect Library</SectionHeading>
+                    <SectionHeading>Cause & Effect Library</SectionHeading>
                     <p className="text-zinc-400 text-lg leading-relaxed mt-2">
                         A historical playbook of market reactions. Explore why the market moved
                         following specific global events and use it as a frame for the future.

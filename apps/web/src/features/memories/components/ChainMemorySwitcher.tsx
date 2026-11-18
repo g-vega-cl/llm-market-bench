@@ -74,17 +74,17 @@ export function ChainMemorySwitcher({ currentMemoryId, searchFn }: ChainMemorySw
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 {/* Featured Ticker Quick Switch Pills */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                    <span className="text-sm font-bold uppercase tracking-wider text-zinc-400 text-zinc-500">
                         Switch Chain:
                     </span>
                     {FEATURED_TICKERS.map((ticker) => (
                         <Button
                             key={ticker}
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             colorScheme="neutral"
                             onClick={() => handleTickerClick(ticker)}
-                            className="rounded-none text-xs font-bold"
+                            className="rounded-none text-sm font-bold"
                         >
                             ${ticker}
                         </Button>
@@ -104,9 +104,9 @@ export function ChainMemorySwitcher({ currentMemoryId, searchFn }: ChainMemorySw
                             if (results.length > 0) setIsOpen(true);
                         }}
                         placeholder="Search another chain..."
-                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-none px-3 py-1.5 pl-8 pr-8 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-white/20 transition-all font-sans"
+                        className="w-full bg-zinc-50 bg-zinc-900 border border-zinc-200 border-white/10 rounded-none px-3 py-1.5 pl-8 pr-8 text-xs text-zinc-900 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-400 focus:ring-white/20 transition-all font-sans"
                     />
-                    <span className="absolute left-2.5 top-2 text-zinc-400 dark:text-zinc-500">
+                    <span className="absolute left-2.5 top-2 text-zinc-400 text-zinc-500">
                         <svg
                             className="w-3.5 h-3.5"
                             fill="none"
@@ -133,20 +133,20 @@ export function ChainMemorySwitcher({ currentMemoryId, searchFn }: ChainMemorySw
 
             {/* Dropdown Results Box */}
             {isOpen && results.length > 0 && (
-                <div className="absolute top-full right-0 left-0 sm:left-auto sm:w-96 z-50 mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl max-h-72 overflow-y-auto">
-                    <div className="p-2 border-b border-zinc-100 dark:border-zinc-800 text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                <div className="absolute top-full right-0 left-0 sm:left-auto sm:w-96 z-50 mt-1 bg-white bg-zinc-900 border border-zinc-200 border-zinc-800 shadow-xl max-h-72 overflow-y-auto">
+                    <div className="p-2 border-b border-zinc-100 border-zinc-800 text-sm font-bold text-zinc-400 uppercase tracking-wider">
                         Available Memory Chains ({results.length})
                     </div>
                     <div className="flex flex-col">
                         {results.slice(0, 10).map((mem) => {
                             const isCurrent = mem.id === currentMemoryId;
                             return (
-                                <button
+                                <Button
                                     key={mem.id}
                                     type="button"
                                     onClick={() => handleSelectMemory(mem.id)}
-                                    className={`p-3 text-left border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors flex flex-col gap-1 ${
-                                        isCurrent ? 'bg-zinc-100/50 dark:bg-zinc-800/40' : ''
+                                    className={`p-3 text-left border-b border-zinc-100 border-zinc-800/50 hover:bg-zinc-50 hover:bg-zinc-800/60 transition-colors flex flex-col gap-1 ${
+                                        isCurrent ? 'bg-zinc-100/50 bg-zinc-800/40' : ''
                                     }`}
                                 >
                                     <div className="flex items-center justify-between gap-2">
@@ -167,15 +167,15 @@ export function ChainMemorySwitcher({ currentMemoryId, searchFn }: ChainMemorySw
                                             </span>
                                         </div>
                                         {isCurrent && (
-                                            <span className="text-xs font-bold text-emerald-500 font-mono">
+                                            <span className="text-sm font-bold text-emerald-500 font-mono">
                                                 CURRENT
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-xs font-normal text-zinc-800 dark:text-zinc-200 line-clamp-2 m-0">
+                                    <p className="text-xs font-normal text-zinc-800 text-zinc-200 line-clamp-2 m-0">
                                         {mem.content}
                                     </p>
-                                </button>
+                                </Button>
                             );
                         })}
                     </div>

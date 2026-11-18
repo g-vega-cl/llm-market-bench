@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { Badge, Card } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, Card } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
 import { meanConvictionPoints, normalizeConvictionPoints } from '~/shared/conviction';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
@@ -298,14 +298,14 @@ function ConvictionPillar({ metrics }: { metrics: DailyRatchetMetrics }) {
 
     return (
         <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
-            <div className="text-xs font-bold text-danger break-words">Conviction (10%)</div>
-            <div className={`text-lg font-bold font-mono tabular-nums ${toneClass}`}>
+            <div className="text-sm font-bold text-danger break-words">Conviction (10%)</div>
+            <div className={`text-sm font-bold font-mono tabular-nums ${toneClass}`}>
                 {metrics.convictionNorm.toFixed(1)}
             </div>
-            <div className={`text-xs font-bold ${toneClass}`}>
+            <div className={`text-sm font-bold ${toneClass}`}>
                 +{metrics.convictionContribution.toFixed(2)} pts
             </div>
-            <div className="text-xs font-normal text-boxel-muted">{detail}</div>
+            <div className="text-xs font-normal text-voxel-muted">{detail}</div>
         </div>
     );
 }
@@ -314,14 +314,14 @@ function ActiveDailyExperimentPlaceholder({ variantTag }: { variantTag: string }
     return (
         <Card className="p-6 flex flex-col gap-3 rounded-none">
             <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-bold text-boxel-ink">
+                <span className="text-sm font-bold text-voxel-ink">
                     Live Variant Evaluation In Progress
                 </span>
                 <Badge colorScheme="success" variant="solid">
                     ACTIVE
                 </Badge>
             </div>
-            <p className="text-xs font-normal text-boxel-muted leading-relaxed">
+            <p className="text-xs font-normal text-voxel-muted leading-relaxed">
                 This mutated prompt variant (<code className="text-accent">{variantTag}</code>) is
                 currently active and undergoing live daily evaluation. Score calculation and pillar
                 breakdown will be computed automatically as trading sessions conclude and
@@ -339,8 +339,8 @@ function FormulaSubstitutionBar({
     scoreColorClass: string;
 }) {
     return (
-        <div className="voxel-trough rounded-none p-3 text-xs font-mono text-boxel-ink leading-relaxed min-w-0 overflow-x-auto flex flex-col gap-1">
-            <div className="text-xs font-bold text-boxel-muted uppercase tracking-wider">
+        <div className="voxel-trough rounded-none p-3 text-xs font-mono text-voxel-ink leading-relaxed min-w-0 overflow-x-auto flex flex-col gap-1">
+            <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                 FORMULA SUBSTITUTION:
             </div>
             <div className="break-words overflow-wrap-anywhere">
@@ -348,11 +348,11 @@ function FormulaSubstitutionBar({
                 {' + '}
                 <span className="text-info">(0.35 × {metrics.intradayHitPct.toFixed(1)}%)</span>
                 {' + '}
-                <span className="text-boxel-ink">
+                <span className="text-voxel-ink">
                     (0.10 × {metrics.magnitudeCapturePct.toFixed(1)}%)
                 </span>
                 {' = '}
-                <span className="text-boxel-ink">
+                <span className="text-voxel-ink">
                     {metrics.accuracyBlockPoints.toFixed(2)} accuracy
                 </span>
                 <br />
@@ -400,37 +400,37 @@ function ScoringGuideCollapsible({
     meanBrier: number;
 }) {
     return (
-        <div className="border-t border-boxel-bevel-hi pt-3">
-            <button
+        <div className="border-t border-voxel-bevel-hi pt-3">
+            <Button
                 type="button"
                 onClick={onToggle}
-                className="voxel-btn bg-boxel-surface text-boxel-ink hover:text-accent px-3 py-1 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                className="voxel-btn bg-voxel-surface text-voxel-ink hover:text-accent px-3 py-1 text-sm font-bold inline-flex items-center gap-1 cursor-pointer"
             >
                 <span>{showGuide ? '▲ Hide' : '▼ View'} Scoring Formula & Weights Guide</span>
-            </button>
+            </Button>
 
             {showGuide && (
-                <div className="voxel-trough rounded-none p-3 mt-3 flex flex-col gap-2 text-xs font-normal text-boxel-muted leading-relaxed">
-                    <div className="text-xs font-bold text-boxel-ink uppercase tracking-wider">
+                <div className="voxel-trough rounded-none p-3 mt-3 flex flex-col gap-2 text-xs font-normal text-voxel-muted leading-relaxed">
+                    <div className="text-sm font-bold text-voxel-ink uppercase tracking-wider">
                         How the Daily Ratchet Score is Computed:
                     </div>
                     <ul className="m-0 pl-4 flex flex-col gap-1">
                         <li>
-                            <strong className="text-boxel-ink">
+                            <strong className="text-voxel-ink">
                                 Close Directional Accuracy (55%):
                             </strong>{' '}
                             Evaluates whether the 4:00 PM ET close price matched the predicted
                             direction (`UP` if Close &ge; Open else `DOWN`).
                         </li>
                         <li>
-                            <strong className="text-boxel-ink">
+                            <strong className="text-voxel-ink">
                                 Intraday Target Hit Rate (35%):
                             </strong>{' '}
                             Evaluates whether SPY reached the expected return percentage
                             (`expected_return_pct`) at any point between Open and Close.
                         </li>
                         <li>
-                            <strong className="text-boxel-ink">
+                            <strong className="text-voxel-ink">
                                 Magnitude Capture Ratio (10%):
                             </strong>{' '}
                             Rewards predicting aggressive percentage targets on large breakout days
@@ -438,26 +438,26 @@ function ScoringGuideCollapsible({
                             actual) × 100).
                         </li>
                         <li>
-                            <strong className="text-boxel-ink">Conviction (10%):</strong> Scores the
+                            <strong className="text-voxel-ink">Conviction (10%):</strong> Scores the
                             stated confidence against the outcome using the logarithmic rule,
                             recentred so a coin flip is worth zero: +100·ln(2p) when correct,
                             +100·ln(2−2p) when wrong.
                         </li>
                         <li>
-                            <strong className="text-boxel-ink">HOLD Gating & Credits:</strong>{' '}
+                            <strong className="text-voxel-ink">HOLD Gating & Credits:</strong>{' '}
                             Confidence &lt; 56.0% automatically gates execution to `HOLD`. On choppy
                             sessions (|move| &lt; 0.25%), HOLD earns +52.0 pts credit. On normal
                             sessions (0.25% &ndash; 0.75%), HOLD earns +45.0 pts credit. On missed
                             trends (|move| &gt; 0.75%), HOLD earns +35.0 pts credit.
                         </li>
                         <li>
-                            <strong className="text-boxel-ink">Participation Hurdle:</strong> Models
+                            <strong className="text-voxel-ink">Participation Hurdle:</strong> Models
                             must maintain a &ge;75% trade rate (at most 1 HOLD per 4&ndash;5
                             sessions). If trade rate drops below 75%, the final score is scaled by
                             (trade_rate / 0.75).
                         </li>
                         <li>
-                            <strong className="text-boxel-ink">Brier (diagnostic only):</strong>{' '}
+                            <strong className="text-voxel-ink">Brier (diagnostic only):</strong>{' '}
                             Still stored per prediction ({meanBrier.toFixed(4)} here) for
                             calibration auditing.
                         </li>
@@ -477,8 +477,8 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
             return <ActiveDailyExperimentPlaceholder variantTag={experiment.variant_tag} />;
         }
         return (
-            <div className="voxel-trough rounded-none p-4 text-xs font-normal text-boxel-muted">
-                <strong className="text-boxel-ink">Score Breakdown:</strong> No evaluated metrics
+            <div className="voxel-trough rounded-none p-4 text-xs font-normal text-voxel-muted">
+                <strong className="text-voxel-ink">Score Breakdown:</strong> No evaluated metrics
                 available for this variant yet.
             </div>
         );
@@ -491,13 +491,13 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
     return (
         <Card className="p-5 flex flex-col gap-4 rounded-none min-w-0">
             {/* Header */}
-            <div className="flex justify-between items-center flex-wrap gap-3 pb-3 border-b border-boxel-bevel-hi min-w-0">
+            <div className="flex justify-between items-center flex-wrap gap-3 pb-3 border-b border-voxel-bevel-hi min-w-0">
                 <div className="min-w-0 flex flex-col gap-0.5">
-                    <div className="text-sm font-bold text-boxel-ink flex items-center gap-2 flex-wrap">
+                    <div className="text-sm font-bold text-voxel-ink flex items-center gap-2 flex-wrap">
                         <span className="w-2 h-2 bg-accent shrink-0 inline-block" />
                         <span>Daily Ratchet Score Calculation & Breakdown</span>
                     </div>
-                    <div className="text-xs font-normal text-boxel-muted break-words">
+                    <div className="text-xs font-normal text-voxel-muted break-words">
                         Evaluated across {metrics.predictionsEvaluated} prediction
                         {metrics.predictionsEvaluated === 1 ? '' : 's'}
                         {metrics.holdCount > 0
@@ -512,10 +512,10 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                 </div>
 
                 <div className="text-right shrink-0 flex flex-col items-end">
-                    <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                    <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                         Final Score
                     </div>
-                    <div className={`text-lg font-bold font-mono tabular-nums ${scoreColorClass}`}>
+                    <div className={`text-sm font-bold font-mono tabular-nums ${scoreColorClass}`}>
                         {metrics.score.toFixed(2)}
                     </div>
                 </div>
@@ -528,16 +528,16 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3 items-stretch min-w-0">
                 {/* Close Accuracy */}
                 <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
-                    <div className="text-xs font-bold text-success break-words">
+                    <div className="text-sm font-bold text-success break-words">
                         EOD Directional Acc (55%)
                     </div>
-                    <div className="text-lg font-bold font-mono text-success tabular-nums">
+                    <div className="text-sm font-bold font-mono text-success tabular-nums">
                         {metrics.closeAccuracyPct.toFixed(1)}%
                     </div>
-                    <div className="text-xs font-bold text-success">
+                    <div className="text-sm font-bold text-success">
                         +{metrics.closeAccPoints.toFixed(2)} pts
                     </div>
-                    <div className="text-xs font-normal text-boxel-muted">
+                    <div className="text-xs font-normal text-voxel-muted">
                         {metrics.holdCount > 0
                             ? `${metrics.correctCount} / ${metrics.tradedCount} correct (${metrics.holdCount} HOLD)`
                             : `${metrics.correctCount} / ${metrics.predictionsEvaluated} correct`}
@@ -546,16 +546,16 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
 
                 {/* Intraday Hit */}
                 <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
-                    <div className="text-xs font-bold text-info break-words">
+                    <div className="text-sm font-bold text-info break-words">
                         Intraday Target Hit (35%)
                     </div>
-                    <div className="text-lg font-bold font-mono text-info tabular-nums">
+                    <div className="text-sm font-bold font-mono text-info tabular-nums">
                         {metrics.intradayHitPct.toFixed(1)}%
                     </div>
-                    <div className="text-xs font-bold text-info">
+                    <div className="text-sm font-bold text-info">
                         +{metrics.intradayHitPoints.toFixed(2)} pts
                     </div>
-                    <div className="text-xs font-normal text-boxel-muted">
+                    <div className="text-xs font-normal text-voxel-muted">
                         {metrics.holdCount > 0
                             ? `${metrics.intradayHitCount} / ${metrics.tradedCount} targets hit`
                             : `${metrics.intradayHitCount} / ${metrics.predictionsEvaluated} targets hit`}
@@ -564,16 +564,16 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
 
                 {/* Magnitude Capture */}
                 <div className="voxel-trough rounded-none p-3 flex flex-col justify-between gap-1 min-w-0">
-                    <div className="text-xs font-bold text-accent break-words">
+                    <div className="text-sm font-bold text-accent break-words">
                         Magnitude Capture (10%)
                     </div>
-                    <div className="text-lg font-bold font-mono text-accent tabular-nums">
+                    <div className="text-sm font-bold font-mono text-accent tabular-nums">
                         {metrics.magnitudeCapturePct.toFixed(1)}%
                     </div>
-                    <div className="text-xs font-bold text-accent">
+                    <div className="text-sm font-bold text-accent">
                         +{metrics.magnitudeCapturePoints.toFixed(2)} pts
                     </div>
-                    <div className="text-xs font-normal text-boxel-muted">
+                    <div className="text-xs font-normal text-voxel-muted">
                         Breakout capture ratio
                     </div>
                 </div>
@@ -587,7 +587,7 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                 <div className="voxel-trough rounded-none p-3 text-xs font-normal text-amber-400 flex items-start gap-2 border-l-2 border-l-amber-400">
                     <span className="w-2 h-2 bg-amber-400 mt-1 shrink-0 inline-block" />
                     <div>
-                        <strong className="text-boxel-ink">Participation Hurdle Penalty:</strong>{' '}
+                        <strong className="text-voxel-ink">Participation Hurdle Penalty:</strong>{' '}
                         Track traded only {metrics.tradedCount} of {metrics.predictionsEvaluated}{' '}
                         sessions (
                         {((metrics.tradedCount / metrics.predictionsEvaluated) * 100).toFixed(0)}%,
@@ -601,7 +601,7 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                 <div className="voxel-trough rounded-none p-3 text-xs font-normal text-accent flex items-start gap-2 border-l-2 border-l-accent">
                     <span className="w-2 h-2 bg-accent mt-1 shrink-0 inline-block" />
                     <div>
-                        <strong className="text-boxel-ink">
+                        <strong className="text-voxel-ink">
                             Low Sample Window Notice (N = {metrics.predictionsEvaluated}):
                         </strong>{' '}
                         Weekly autoresearch evaluates 7-day windows (all available trading sessions

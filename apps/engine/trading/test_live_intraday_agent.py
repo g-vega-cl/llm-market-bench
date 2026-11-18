@@ -244,7 +244,9 @@ async def test_query_multi_tier_llm_raw_preserves_reasoning_and_token_count():
         "choices": [
             {
                 "message": {
-                    "content": json.dumps({"action": "HOLD", "conviction": 55, "thought": "Wait.", "allocation_pct": 0}),
+                    "content": json.dumps(
+                        {"action": "HOLD", "conviction": 55, "thought": "Wait.", "allocation_pct": 0}
+                    ),
                     "reasoning": "RSI is mid-range and price is pinned to VWAP, so patience beats chasing.",
                 }
             }

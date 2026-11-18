@@ -1,4 +1,4 @@
-import { Card, Skeleton } from '@llm-market-bench/ui-design-system';
+import { Button, Card, Skeleton } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { fetchPairHistory, type PairHistoryPoint } from '../api/fetch-pair-history';
 import { etfDescriptions } from '../utils/etf-descriptions';
@@ -166,28 +166,28 @@ export function CorrelationHistoryExplorer({
         <div className="flex flex-col gap-6 animate-slide-up">
             {/* Control Panel Card */}
             <Card
-                variant="glass"
+                variant="default"
                 padding="lg"
-                className="rounded-none shadow-sm border border-zinc-200/50 dark:border-zinc-800/80 flex flex-col gap-6"
+                className="rounded-none shadow-sm border border-zinc-200/50 border-zinc-800/80 flex flex-col gap-6"
             >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h3 className="text-lg font-bold text-zinc-950 dark:text-white uppercase tracking-tight">
+                    <h3 className="text-sm font-bold text-zinc-950 text-voxel-trough uppercase tracking-tight">
                         Historical Progression Explorer
                     </h3>
-                    <div className="flex gap-1 p-1 bg-zinc-100/50 dark:bg-zinc-800/80 rounded-none border border-zinc-200/50 dark:border-zinc-700/50">
+                    <div className="flex gap-1 p-1 bg-zinc-100/50 bg-zinc-800/80 rounded-none border border-zinc-200/50 border-zinc-700/50">
                         {(['7d', '30d', '60d', '90d'] as const).map((tf) => (
-                            <button
+                            <Button
                                 key={tf}
                                 type="button"
                                 onClick={() => setTimeframe(tf)}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-none transition-all duration-150 cursor-pointer ${
+                                className={`px-3 py-1.5 text-sm font-bold rounded-none transition-all duration-150 cursor-pointer ${
                                     timeframe === tf
-                                        ? 'bg-blue-500 text-white shadow-sm'
-                                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                                        ? 'bg-blue-500 text-voxel-trough shadow-sm'
+                                        : 'text-zinc-600 text-zinc-400 hover:text-zinc-900 hover:text-zinc-100'
                                 }`}
                             >
                                 {tf.toUpperCase()}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
@@ -197,7 +197,7 @@ export function CorrelationHistoryExplorer({
                     <div className="flex flex-col gap-2">
                         <label
                             htmlFor="select-asset-a"
-                            className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
+                            className="text-sm font-bold uppercase tracking-wider text-zinc-500 text-zinc-400"
                         >
                             Select Asset A
                         </label>
@@ -205,7 +205,7 @@ export function CorrelationHistoryExplorer({
                             id="select-asset-a"
                             value={tickerA}
                             onChange={(e) => setTickerA(e.target.value)}
-                            className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100"
+                            className="w-full px-4 py-3 bg-zinc-50 bg-zinc-900 border border-zinc-200 border-zinc-800 rounded-none text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-900 text-zinc-100"
                         >
                             <option value="">-- Choose Ticker --</option>
                             {sortedTickers.map((ticker) => (
@@ -221,7 +221,7 @@ export function CorrelationHistoryExplorer({
                     <div className="flex flex-col gap-2">
                         <label
                             htmlFor="select-asset-b"
-                            className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
+                            className="text-sm font-bold uppercase tracking-wider text-zinc-500 text-zinc-400"
                         >
                             Select Asset B
                         </label>
@@ -229,7 +229,7 @@ export function CorrelationHistoryExplorer({
                             id="select-asset-b"
                             value={tickerB}
                             onChange={(e) => setTickerB(e.target.value)}
-                            className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100"
+                            className="w-full px-4 py-3 bg-zinc-50 bg-zinc-900 border border-zinc-200 border-zinc-800 rounded-none text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-900 text-zinc-100"
                         >
                             <option value="">-- Choose Ticker --</option>
                             {sortedTickers.map((ticker) => (
@@ -243,24 +243,24 @@ export function CorrelationHistoryExplorer({
                 </div>
 
                 {/* Quick Jumps */}
-                <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col gap-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block">
+                <div className="pt-6 border-t border-zinc-100 border-zinc-800/80 flex flex-col gap-3">
+                    <span className="text-sm font-bold uppercase tracking-wider text-zinc-400 text-zinc-500 block">
                         Featured Regime Jumps
                     </span>
                     <div className="flex flex-wrap gap-2">
                         {quickJumps.map((jump) => (
-                            <button
+                            <Button
                                 key={jump.label}
                                 type="button"
                                 onClick={() => handleQuickJump(jump.a, jump.b)}
-                                className={`px-4 py-2 text-xs font-bold rounded-none border transition-all duration-150 cursor-pointer ${
+                                className={`px-4 py-2 text-sm font-bold rounded-none border transition-all duration-150 cursor-pointer ${
                                     tickerA === jump.a && tickerB === jump.b
-                                        ? 'bg-blue-500 border-blue-500 text-white shadow-lg'
-                                        : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                                        ? 'bg-blue-500 border-blue-500 text-voxel-trough shadow-lg'
+                                        : 'bg-white bg-zinc-900 border-zinc-200 border-zinc-800 text-zinc-700 text-zinc-300 hover:border-zinc-300 hover:border-zinc-700 hover:bg-zinc-50 hover:bg-zinc-800/50'
                                 }`}
                             >
                                 {jump.label}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
@@ -277,17 +277,17 @@ export function CorrelationHistoryExplorer({
             {error && !loading && (
                 <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-none text-center flex flex-col gap-2">
                     <span className="text-lg block">⚠️</span>
-                    <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{error}</p>
+                    <p className="text-sm font-bold text-amber-600 text-amber-400">{error}</p>
                 </div>
             )}
 
             {!tickerA || !tickerB ? (
-                <div className="p-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-none text-center flex flex-col gap-2">
+                <div className="p-12 border border-dashed border-zinc-200 border-zinc-800 rounded-none text-center flex flex-col gap-2">
                     <span className="text-lg block animate-float">📈</span>
-                    <h4 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                    <h4 className="text-sm font-bold text-zinc-500 text-zinc-400 uppercase tracking-wider">
                         Select an asset pair to view historical progression
                     </h4>
-                    <p className="text-xs font-normal text-zinc-400 dark:text-zinc-500">
+                    <p className="text-xs font-normal text-zinc-400 text-zinc-500">
                         Pick two tickers or click one of the quick jumps above to begin tracking
                         historical decoupling.
                     </p>
@@ -295,7 +295,7 @@ export function CorrelationHistoryExplorer({
             ) : null}
 
             {timeframe === '7d' && history.length > 0 && !loading && !error && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-none flex items-start gap-3 text-amber-600 dark:text-amber-400 animate-slide-up">
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-none flex items-start gap-3 text-amber-600 text-amber-400 animate-slide-up">
                     <span className="text-lg">⚠️</span>
                     <div className="text-xs font-normal">
                         <span className="font-bold block mb-0.5">
@@ -325,23 +325,23 @@ export function CorrelationHistoryExplorer({
                         <div className="flex flex-col gap-6">
                             <Card
                                 padding="md"
-                                className="rounded-none shadow-sm border border-zinc-100 dark:border-zinc-800/80 flex flex-col gap-4"
+                                className="rounded-none shadow-sm border border-zinc-100 border-zinc-800/80 flex flex-col gap-4"
                             >
-                                <h4 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                                <h4 className="text-sm font-bold text-zinc-400 text-zinc-500 uppercase tracking-wider">
                                     Historical Statistics
                                 </h4>
 
                                 <div className="flex flex-col gap-4">
                                     {/* Average Correlation */}
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500 block">
+                                        <span className="text-sm font-bold uppercase text-zinc-400 text-zinc-500 block">
                                             Average Correlation
                                         </span>
-                                        <div className="text-lg font-bold font-mono text-zinc-900 dark:text-white">
+                                        <div className="text-sm font-bold font-mono text-zinc-900 text-voxel-trough">
                                             {stats.avgCorr.toFixed(3)}
                                         </div>
                                         <span
-                                            className={`text-xs font-bold ${
+                                            className={`text-sm font-bold ${
                                                 Math.abs(stats.avgCorr) < 0.2
                                                     ? 'text-emerald-500'
                                                     : Math.abs(stats.avgCorr) > 0.6
@@ -359,13 +359,13 @@ export function CorrelationHistoryExplorer({
 
                                     {/* Correlation Volatility */}
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500 block">
+                                        <span className="text-sm font-bold uppercase text-zinc-400 text-zinc-500 block">
                                             Correlation Volatility (σ)
                                         </span>
-                                        <div className="text-lg font-bold font-mono text-zinc-900 dark:text-white">
+                                        <div className="text-sm font-bold font-mono text-zinc-900 text-voxel-trough">
                                             {stats.stdDev.toFixed(3)}
                                         </div>
-                                        <span className="text-xs font-bold text-zinc-500">
+                                        <span className="text-sm font-bold text-zinc-500">
                                             {stats.stdDev < 0.15
                                                 ? 'Extremely Stable Trend'
                                                 : 'High Regime Instability'}
@@ -374,7 +374,7 @@ export function CorrelationHistoryExplorer({
 
                                     {/* Maximum Decoupling Point */}
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500 block">
+                                        <span className="text-sm font-bold uppercase text-zinc-400 text-zinc-500 block">
                                             Max Decoupling Event
                                         </span>
                                         <div className="text-sm font-bold text-blue-500 font-mono">
@@ -395,10 +395,10 @@ export function CorrelationHistoryExplorer({
 
                                     {/* Total Observations */}
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500 block">
+                                        <span className="text-sm font-bold uppercase text-zinc-400 text-zinc-500 block">
                                             Timeline Duration
                                         </span>
-                                        <div className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                                        <div className="text-sm font-bold text-zinc-800 text-zinc-200">
                                             {stats.totalWeeks} consecutive weeks
                                         </div>
                                     </div>

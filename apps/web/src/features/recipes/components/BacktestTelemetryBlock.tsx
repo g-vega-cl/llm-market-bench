@@ -31,15 +31,15 @@ function EquityProgression({
     const eqRange = Math.max(1, maxEq - minEq);
 
     return (
-        <div className="voxel-trough bg-boxel-trough p-4 flex flex-col gap-2 min-w-0">
+        <div className="voxel-trough bg-voxel-trough p-4 flex flex-col gap-2 min-w-0">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-sm font-bold text-boxel-ink">Equity Progression</span>
-                <span className="text-xs font-normal font-mono tabular-nums text-boxel-muted">
+                <span className="text-sm font-bold text-voxel-ink">Equity Progression</span>
+                <span className="text-xs font-normal font-mono tabular-nums text-voxel-muted">
                     Baseline: ${startingCapital.toLocaleString()}
                 </span>
             </div>
             {equityCurve.length === 0 ? (
-                <span className="text-xs font-normal text-boxel-muted">
+                <span className="text-xs font-normal text-voxel-muted">
                     Daily equity checkpoints will stream in after Day 1 finishes.
                 </span>
             ) : (
@@ -55,10 +55,10 @@ function EquityProgression({
                                 key={pt.time}
                                 className="flex flex-wrap items-center gap-4 min-w-0"
                             >
-                                <span className="text-xs font-normal font-mono tabular-nums text-boxel-muted whitespace-nowrap">
+                                <span className="text-xs font-normal font-mono tabular-nums text-voxel-muted whitespace-nowrap">
                                     {pt.time}
                                 </span>
-                                <div className="flex-1 basis-40 min-w-0 h-3 bg-boxel-canvas border border-boxel-bevel-lo">
+                                <div className="flex-1 basis-40 min-w-0 h-3 bg-voxel-canvas border border-voxel-bevel-lo">
                                     <div
                                         className={`h-full ${isUp ? 'bg-success' : 'bg-danger'}`}
                                         style={{ width: `${fillPct}%` }}
@@ -109,10 +109,10 @@ export function BacktestTelemetryBlock({ results, isRunning }: BacktestTelemetry
 
     return (
         <Card padding="md" className="flex flex-col gap-4 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
-                <SectionHeading gradient="success">Developing Telemetry</SectionHeading>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
+                <SectionHeading>Developing Telemetry</SectionHeading>
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-normal text-boxel-muted">P&amp;L Model:</span>
+                    <span className="text-xs font-normal text-voxel-muted">P&amp;L Model:</span>
                     <Button
                         size="sm"
                         variant={!useNetPnL ? 'solid' : 'outline'}

@@ -12,7 +12,7 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
                     <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider m-0">
                         Output Schema
                     </h4>
-                    <div className="h-px flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-800 to-transparent" />
+                    <div className="h-px flex-1 bg-gradient-to-r from-gray-200 from-gray-800 to-transparent" />
                 </div>
                 <div className="relative group/raw">
                     <pre className="p-4 bg-zinc-950 text-sky-300 rounded-none text-xs font-normal font-mono whitespace-pre-wrap break-all overflow-hidden border border-zinc-800 shadow-sm leading-relaxed m-0">
@@ -20,7 +20,7 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
                     </pre>
                     <Button
                         size="sm"
-                        variant="glass"
+                        variant="outline"
                         colorScheme="neutral"
                         className="absolute top-2 right-2 opacity-0 group-hover/raw:opacity-100 transition-opacity rounded-none text-sm font-bold"
                         onClick={() =>
@@ -45,14 +45,14 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
                     <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap m-0">
                         Output Schema
                     </h4>
-                    <div className="h-px flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-800 to-transparent min-w-[20px]" />
+                    <div className="h-px flex-1 bg-gradient-to-r from-gray-200 from-gray-800 to-transparent min-w-[20px]" />
                 </div>
-                <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-none border border-zinc-200 dark:border-zinc-800 shadow-inner overflow-x-auto">
+                <div className="flex gap-1 p-1 bg-zinc-100 bg-zinc-900 rounded-none border border-zinc-200 border-zinc-800 shadow-inner overflow-x-auto">
                     {displayedKeys.map((key) => (
                         <Button
                             key={key}
                             size="sm"
-                            variant={activeTab === key ? 'solid' : 'ghost'}
+                            variant={activeTab === key ? 'solid' : 'outline'}
                             colorScheme={activeTab === key ? 'accent' : 'neutral'}
                             onClick={() => setActiveTab(key)}
                             className="rounded-none text-sm font-bold"
@@ -71,7 +71,7 @@ export function HumanFriendlyResponse({ response }: { response: unknown }) {
                         </pre>
                         <Button
                             size="sm"
-                            variant="glass"
+                            variant="outline"
                             colorScheme="neutral"
                             className="absolute top-3 right-3 opacity-0 group-hover/raw:opacity-100 transition-all rounded-none text-sm font-bold"
                             onClick={() =>
@@ -113,18 +113,18 @@ function ResponseDataView({ value, label }: { value: unknown; label: string }) {
 
     return (
         <div
-            className={`p-4 rounded-none border bg-white dark:bg-gray-900/40 border-gray-200 dark:border-gray-800 shadow-sm flex flex-col gap-2 ${
+            className={`p-4 rounded-none border bg-white bg-gray-900/40 border-gray-200 border-gray-800 shadow-sm flex flex-col gap-2 ${
                 isLongText ? 'col-span-full' : ''
             }`}
         >
-            <h5 className="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">
+            <h5 className="text-sm font-bold uppercase tracking-wider text-gray-400 m-0">
                 {label.replace(/_/g, ' ')}
             </h5>
             <div
                 className={`text-xs ${
                     isLongText
-                        ? 'leading-relaxed text-gray-700 dark:text-gray-300 font-normal'
-                        : 'font-bold text-gray-900 dark:text-white'
+                        ? 'leading-relaxed text-gray-700 text-gray-300 font-normal'
+                        : 'font-bold text-gray-900 text-voxel-trough'
                 }`}
             >
                 {String(value)}

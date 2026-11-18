@@ -33,7 +33,7 @@ export function BenchmarkSelector({ selected, onChange }: BenchmarkSelectorProps
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <label
                 htmlFor="benchmark-select"
-                className="text-xs font-bold text-zinc-600 uppercase tracking-wider"
+                className="text-sm font-bold text-zinc-600 uppercase tracking-wider"
             >
                 Benchmark
             </label>

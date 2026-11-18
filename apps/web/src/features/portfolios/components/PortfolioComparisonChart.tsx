@@ -683,21 +683,20 @@ export function PortfolioComparisonChart({
     }, [displayData, data]);
 
     return (
-        <div className="voxel-card w-full bg-boxel-surface rounded-none p-4 overflow-hidden flex flex-col gap-4">
+        <div className="voxel-card w-full bg-voxel-surface rounded-none p-4 overflow-hidden flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-                <h3 className="text-xs font-bold text-boxel-muted uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                     Performance Comparison
                 </h3>
                 <div className="flex items-center gap-2">
-                    <div className="text-xs font-normal text-boxel-muted">
+                    <div className="text-xs font-normal text-voxel-muted">
                         Normalized to percentage returns
                     </div>
                     {isSettled && clickedData && (
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             colorScheme="info"
                             size="sm"
-                            rounded="none"
                             onClick={handleReset}
                         >
                             Reset Crosshair
@@ -724,7 +723,7 @@ export function PortfolioComparisonChart({
 
             {displayData && displayData.portfolioValues.length > 0 && (
                 <div className="voxel-trough p-3 flex flex-col gap-2">
-                    <div className="text-xs font-normal text-boxel-muted">{displayData.date}</div>
+                    <div className="text-xs font-normal text-voxel-muted">{displayData.date}</div>
                     {displayData.benchmarkValue !== undefined && (
                         <div className="flex flex-wrap items-center justify-between gap-4 text-sm min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
@@ -756,7 +755,7 @@ export function PortfolioComparisonChart({
                     preserveAspectRatio="xMidYMid meet"
                 />
             </div>
-            <div className="text-xs text-boxel-muted text-center">
+            <div className="text-xs text-voxel-muted text-center">
                 Click on chart to see performance at a specific date · Press Esc to reset
             </div>
         </div>

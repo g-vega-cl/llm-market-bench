@@ -124,7 +124,7 @@ const mockPortfolios = [
     },
 ] as unknown as (Portfolio & { is_active: boolean; is_autoresearch: boolean })[];
 
-describe('PortfoliosPage 3-Block Boxel Layout & Card Heights', () => {
+describe('PortfoliosPage 3-Block Voxel Layout & Card Heights', () => {
     beforeEach(() => {
         mockComparisonData = null;
         mockComparisonQueryState = {

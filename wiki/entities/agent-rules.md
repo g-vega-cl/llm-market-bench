@@ -79,7 +79,7 @@ Section 11 of `.agents/rules/design-spec.md` codifies table semantics for pooled
 1. **Numeric right-alignment** — prices, returns, percentages, PnL, shares, counts, ratios, and dates/timestamps use `align="right"` or `numeric` on both `TableCell` and the matching `TableHead`, plus `tabular-nums font-mono` so digits align place-by-place across stacked rows. Never leave a header left-aligned over right-aligned figures.
 2. **Text left-alignment** — company names, tickers, model handles, descriptions, and prompt names stay left-aligned, with `truncate`/`break-words` and `min-w-0` protecting table breathing room.
 3. **Bounded categorical states as `Badge`** — enumerations such as trade direction (`BUY`/`SELL`), status (`ACTIVE`/`HALTED`/`CLOSED`), and conviction (`HIGH`/`MED`/`LOW`) render as structured badge primitives, never raw unstyled strings.
-4. **Semantic row states (`isInactive`)** — halted, archived, or disabled rows carry `isInactive` on `TableRow` (`opacity-60 text-boxel-muted bg-boxel-trough/30`), disabling hover highlight and de-emphasizing stale data relative to active rows.
+4. **Semantic row states (`isInactive`)** — halted, archived, or disabled rows carry `isInactive` on `TableRow` (`opacity-60 text-voxel-muted bg-voxel-trough/30`), disabling hover highlight and de-emphasizing stale data relative to active rows.
 5. **In-flow cell clarification** — truncated text, shorthand tickers, and compound formulas are clarified by click-to-inspect in a recessed `.voxel-trough` bar or drawer below the table, never via floating hover tooltips or HTML `title` attributes.
 
 ## Secondary UI Query Settlement Gating (MANDATORY)

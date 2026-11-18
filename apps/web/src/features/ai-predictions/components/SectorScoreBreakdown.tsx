@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { Card, MetricTile, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Button, Card, MetricTile, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
 import { meanConvictionPoints, normalizeConvictionPoints } from '~/shared/conviction';
 import type { SectorPrediction } from '../api/fetch-predictions';
@@ -199,7 +199,7 @@ export function SectorScoreBreakdown({
     return (
         <Card className="p-6 md:p-8 space-y-6 bg-slate-900/60 border-slate-800">
             {/* Header: Headline Score and Delta */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-boxel-bevel-hi pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-6">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-3">
                         <SectionHeading>Sector Ratchet Score & Math Audit</SectionHeading>
@@ -209,7 +209,7 @@ export function SectorScoreBreakdown({
                                 : `v${experiment.variant_tag}`}
                         </span>
                     </div>
-                    <p className="text-xs font-normal text-boxel-muted">
+                    <p className="text-xs font-normal text-voxel-muted">
                         Multi-pillar evaluation balancing relative percentile rank, S&P alpha
                         capture, and conviction-weighted confidence calibration.
                     </p>
@@ -218,7 +218,7 @@ export function SectorScoreBreakdown({
                 <div className="flex items-center gap-4">
                     {deltaVsBaseline !== null && (
                         <div className="flex flex-col items-end">
-                            <span className="text-sm uppercase font-bold text-boxel-muted">
+                            <span className="text-sm uppercase font-bold text-voxel-muted">
                                 vs Baseline
                             </span>
                             <span
@@ -232,12 +232,12 @@ export function SectorScoreBreakdown({
                         </div>
                     )}
 
-                    <div className="flex flex-col items-end pl-4 border-l border-boxel-bevel-hi">
-                        <span className="text-sm uppercase font-bold text-boxel-muted">
+                    <div className="flex flex-col items-end pl-4 border-l border-voxel-bevel-hi">
+                        <span className="text-sm uppercase font-bold text-voxel-muted">
                             Ratchet Score
                         </span>
                         <span
-                            className={`font-mono text-lg font-bold ${
+                            className={`font-mono text-sm font-bold ${
                                 metrics.score >= 0 ? 'text-emerald-400' : 'text-rose-400'
                             }`}
                         >
@@ -248,25 +248,25 @@ export function SectorScoreBreakdown({
             </div>
 
             {/* Formula Substitution Bar */}
-            <div className="p-4 bg-boxel-trough rounded-none border border-boxel-bevel-hi font-mono text-xs font-normal flex flex-col gap-2 text-boxel-ink">
-                <div className="text-sm uppercase font-sans font-bold text-boxel-muted tracking-wider">
+            <div className="p-4 bg-voxel-trough rounded-none border border-voxel-bevel-hi font-mono text-xs font-normal flex flex-col gap-2 text-voxel-ink">
+                <div className="text-sm uppercase font-sans font-bold text-voxel-muted tracking-wider">
                     Formula Substitution
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm font-bold leading-relaxed">
-                    <span className="text-boxel-muted font-normal">Score = 0.90 ×</span>
+                    <span className="text-voxel-muted font-normal">Score = 0.90 ×</span>
                     <span className="text-emerald-400">
                         {metrics.basePercentile.toFixed(1)}%ile (Base)
                     </span>
-                    <span className="text-boxel-muted font-normal">+</span>
+                    <span className="text-voxel-muted font-normal">+</span>
                     <span className="text-teal-400">
                         {metrics.alphaBonus >= 0 ? '+' : ''}
                         {metrics.alphaBonus.toFixed(2)}% (Alpha)
                     </span>
-                    <span className="text-boxel-muted font-normal">+ 0.10 ×</span>
+                    <span className="text-voxel-muted font-normal">+ 0.10 ×</span>
                     <span className="text-accent">
                         {metrics.convictionNorm.toFixed(1)} (Conviction)
                     </span>
-                    <span className="text-boxel-muted font-normal">=</span>
+                    <span className="text-voxel-muted font-normal">=</span>
                     <span
                         className={`font-bold ${metrics.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
                     >
@@ -315,7 +315,7 @@ export function SectorScoreBreakdown({
                     icon="🛡️"
                     label="Brier (diagnostic)"
                     value={
-                        <span className="font-mono text-boxel-muted">
+                        <span className="font-mono text-voxel-muted">
                             {metrics.meanBrier.toFixed(4)}
                         </span>
                     }
@@ -336,17 +336,17 @@ export function SectorScoreBreakdown({
 
             {/* Collapsible Methodology Guide */}
             <div className="border-t border-slate-800/80 pt-4">
-                <button
+                <Button
                     type="button"
                     onClick={() => setShowGuide(!showGuide)}
-                    className="text-xs text-boxel-muted hover:text-boxel-ink font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="text-sm text-voxel-muted hover:text-voxel-ink font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                     <span>{showGuide ? '▼' : '▶'}</span>
                     <span>How Sector Ratchet Scoring Works</span>
-                </button>
+                </Button>
 
                 {showGuide && (
-                    <div className="mt-3 p-4 bg-boxel-canvas border border-boxel-bevel-hi rounded-none text-xs font-normal text-boxel-muted flex flex-col gap-2 leading-relaxed font-sans animate-fade-in">
+                    <div className="mt-3 p-4 bg-voxel-canvas border border-voxel-bevel-hi rounded-none text-xs font-normal text-voxel-muted flex flex-col gap-2 leading-relaxed font-sans animate-fade-in">
                         <p>
                             <strong>1. Relative Percentile Score:</strong> Averages the percentile
                             performance of the predicted best sector, worst sector, and uncorrelated

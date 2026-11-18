@@ -35,18 +35,17 @@ function LessonItem({ prediction }: { prediction: DailyPrediction }) {
         <div className="p-4 rounded-none bg-zinc-900/40 border border-zinc-800 flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-zinc-300">
+                    <span className="font-mono text-sm font-bold text-zinc-300">
                         {prediction.target_date}
                     </span>
                     <Badge
                         variant="soft"
                         colorScheme={prediction.is_correct ? 'success' : 'danger'}
                         size="xs"
-                        radius="none"
                     >
                         {prediction.is_correct ? 'CORRECT' : 'MISSED'}
                     </Badge>
-                    <span className="text-xs font-bold text-zinc-400">
+                    <span className="text-sm font-bold text-zinc-400">
                         {prediction.predicted_direction === 'UP' ? '▲ UP' : '▼ DOWN'} (
                         {prediction.confidence}%)
                     </span>
@@ -54,17 +53,16 @@ function LessonItem({ prediction }: { prediction: DailyPrediction }) {
 
                 <div className="flex flex-wrap items-center gap-2">
                     {category && (
-                        <Badge variant="solid" colorScheme={categoryScheme} size="xs" radius="none">
+                        <Badge variant="solid" colorScheme={categoryScheme} size="xs">
                             {category.replace(/_/g, ' ')}
                         </Badge>
                     )}
                     {prediction.was_predictable !== null &&
                         prediction.was_predictable !== undefined && (
                             <Badge
-                                variant={prediction.was_predictable ? 'outline' : 'soft'}
+                                variant={prediction.was_predictable ? 'soft' : 'soft'}
                                 colorScheme={prediction.was_predictable ? 'accent' : 'neutral'}
                                 size="xs"
-                                radius="none"
                             >
                                 {prediction.was_predictable ? 'PREDICTABLE' : 'UNFORESEEN'}
                             </Badge>

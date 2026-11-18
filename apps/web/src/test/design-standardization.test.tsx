@@ -58,7 +58,7 @@ vi.mock('@tanstack/react-router', async () => {
 
 describe('Design Standardization: Typography & Box Sizing', () => {
     describe('Typography Standardization (Strict 3 Combinations)', () => {
-        it('SectionHeading renders with Tier 1 typography (text-lg font-bold)', () => {
+        it('SectionHeading renders with Tier 1 typography (text-sm font-bold)', () => {
             render(<SectionHeading>Test Heading</SectionHeading>);
             const heading = screen.getByRole('heading', { level: 2, name: /Test Heading/i });
             expect(heading.className).toContain('text-lg');
@@ -99,7 +99,7 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             );
             const badge = container.firstChild as HTMLElement;
             // High contrast check: must use dark Tatami/Trough text, never white
-            expect(badge.className).toContain('text-boxel-trough');
+            expect(badge.className).toContain('text-voxel-trough');
             expect(badge.className).not.toContain('text-white');
             // Gap check: must use container gap, no manual margin on dot
             expect(badge.className).toContain('gap-1.5');
@@ -109,7 +109,7 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             }
         });
 
-        it('MetricTile conforms to sharp voxel-trough boxel styling and eliminates rounded-xl and text-[9px]', () => {
+        it('MetricTile conforms to sharp voxel-trough voxel styling and eliminates rounded-xl and text-[9px]', () => {
             const { container } = render(<MetricTile label="Total Return" value="+12.5%" />);
             const tile = container.firstChild as HTMLElement;
             expect(tile.className).toContain('voxel-trough');
@@ -149,7 +149,7 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             expect(trough.querySelectorAll('.voxel-badge').length).toBe(0);
         });
 
-        it('ErrorCard conforms to boxel geometry rounded-none and Tier 2/3 typography', () => {
+        it('ErrorCard conforms to voxel geometry rounded-none and Tier 2/3 typography', () => {
             const { container } = render(
                 <ErrorCard
                     title="Feed Error"
@@ -273,8 +273,8 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             const inactiveRow = screen.getByTestId('inactive-row');
             expect(inactiveRow).toHaveAttribute('data-inactive', 'true');
             expect(inactiveRow.className).toContain('opacity-60');
-            expect(inactiveRow.className).toContain('text-boxel-muted');
-            expect(inactiveRow.className).toContain('bg-boxel-trough/30');
+            expect(inactiveRow.className).toContain('text-voxel-muted');
+            expect(inactiveRow.className).toContain('bg-voxel-trough/30');
             expect(inactiveRow.className).not.toContain('hover:bg-zinc-50/50');
         });
     });
@@ -409,17 +409,17 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             expect(container.innerHTML).not.toMatch(/\bmb-[0-9]+/);
         });
 
-        it('ScoreCalculation conforms to sharp boxel geometry and 3-tier typography without text-3xl', () => {
+        it('ScoreCalculation conforms to sharp voxel geometry and 3-tier typography without text-3xl', () => {
             const { container } = render(<ScoreCalculation />);
             expect(container.innerHTML).not.toContain('text-3xl');
             expect(container.innerHTML).not.toContain('text-2xl');
             expect(container.innerHTML).not.toContain('rounded-2xl');
             const formulaBlock = container.querySelector('.font-mono');
-            expect(formulaBlock?.className).toContain('text-lg');
+            expect(formulaBlock?.className).toContain('text-sm');
             expect(formulaBlock?.className).toContain('font-bold');
         });
 
-        it('DailyScoreBreakdown eliminates inline style layout and colors in favor of CSS Grid/Flex and Boxel tokens', () => {
+        it('DailyScoreBreakdown eliminates inline style layout and colors in favor of CSS Grid/Flex and Voxel tokens', () => {
             const mockExp = {
                 id: 'exp-1',
                 variant_tag: 'test-v1',
@@ -460,7 +460,7 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             expect(container.innerHTML).not.toContain('background: rgb(255, 255, 255)');
             expect(container.innerHTML).not.toContain('border-radius: 10px');
             expect(container.innerHTML).not.toContain('border-radius: 8px');
-            // Must use Boxel classes and CSS Grid
+            // Must use Voxel classes and CSS Grid
             expect(container.querySelector('.voxel-card, .voxel-trough')).not.toBeNull();
             expect(container.innerHTML).not.toContain('text-3xl');
         });
@@ -484,7 +484,7 @@ describe('Design Standardization: Typography & Box Sizing', () => {
     });
 
     describe('Voxel Skeleton & Zero-Spinner Loading States', () => {
-        it('Skeleton renders sharp rounded-none Boxel trough blocks with reduced-motion pulse and aria-hidden', () => {
+        it('Skeleton renders sharp rounded-none Voxel trough blocks with reduced-motion pulse and aria-hidden', () => {
             const { container } = render(<Skeleton variant="card" lines={3} />);
             const root = container.firstChild as HTMLElement;
             expect(root).toBeTruthy();

@@ -109,7 +109,7 @@ export function PromoteMemoryModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80  animate-in fade-in duration-200">
             <Card className="w-full max-w-lg border-cyan-900/50 bg-zinc-950/95 p-6 rounded-none shadow-sm flex flex-col gap-4 text-zinc-200">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
@@ -118,7 +118,7 @@ export function PromoteMemoryModal({
                             🧠
                         </div>
                         <div>
-                            <h3 className="font-bold text-white text-sm">
+                            <h3 className="font-bold text-voxel-trough text-sm">
                                 Promote Insight to Private Memory
                             </h3>
                             <p className="text-xs font-normal text-zinc-400">
@@ -126,13 +126,13 @@ export function PromoteMemoryModal({
                             </p>
                         </div>
                     </div>
-                    <button
+                    <Button
                         type="button"
                         onClick={onClose}
-                        className="rounded-none p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+                        className="rounded-none p-1 text-zinc-400 hover:bg-zinc-800 hover:text-voxel-trough transition-colors"
                     >
                         ✕
-                    </button>
+                    </Button>
                 </div>
 
                 {error && (
@@ -147,7 +147,7 @@ export function PromoteMemoryModal({
                         <div className="flex flex-col gap-1.5">
                             <label
                                 htmlFor="promote-ticker"
-                                className="text-xs font-bold text-zinc-400"
+                                className="text-sm font-bold text-zinc-400"
                             >
                                 Stock Ticker (Optional)
                             </label>
@@ -164,7 +164,7 @@ export function PromoteMemoryModal({
                         <div className="flex flex-col gap-1.5">
                             <label
                                 htmlFor="promote-score"
-                                className="text-xs font-bold text-zinc-400"
+                                className="text-sm font-bold text-zinc-400"
                             >
                                 Importance Score (1-10)
                             </label>
@@ -182,7 +182,7 @@ export function PromoteMemoryModal({
 
                     {/* Thesis */}
                     <div className="flex flex-col gap-1.5">
-                        <label htmlFor="promote-thesis" className="text-xs font-bold text-zinc-400">
+                        <label htmlFor="promote-thesis" className="text-sm font-bold text-zinc-400">
                             Distilled Market Thesis (Editable)
                         </label>
                         <textarea
@@ -200,7 +200,7 @@ export function PromoteMemoryModal({
                     <div className="flex flex-col gap-1.5">
                         <label
                             htmlFor="promote-tag-input"
-                            className="text-xs font-bold text-zinc-400"
+                            className="text-sm font-bold text-zinc-400"
                         >
                             Topic Tags
                         </label>
@@ -208,20 +208,19 @@ export function PromoteMemoryModal({
                             {tags.map((tag) => (
                                 <Badge
                                     key={tag}
-                                    variant="outline"
+                                    variant="soft"
                                     size="sm"
-                                    radius="none"
                                     colorScheme="accent"
                                     className="gap-1 text-xs"
                                 >
                                     <span>{tag}</span>
-                                    <button
+                                    <Button
                                         type="button"
                                         onClick={() => handleRemoveTag(tag)}
                                         className="hover:text-red-400 ml-0.5"
                                     >
                                         ×
-                                    </button>
+                                    </Button>
                                 </Badge>
                             ))}
                         </div>
@@ -239,7 +238,6 @@ export function PromoteMemoryModal({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                rounded="none"
                                 colorScheme="neutral"
                                 onClick={handleAddTag}
                             >
@@ -250,7 +248,7 @@ export function PromoteMemoryModal({
 
                     {/* Refinement instruction */}
                     <div className="pt-2 border-t border-zinc-800/80 flex flex-col gap-1.5">
-                        <label htmlFor="promote-refine" className="text-xs font-bold text-zinc-400">
+                        <label htmlFor="promote-refine" className="text-sm font-bold text-zinc-400">
                             Refinement Instruction (Optional)
                         </label>
                         <div className="flex gap-2">
@@ -266,7 +264,6 @@ export function PromoteMemoryModal({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                rounded="none"
                                 colorScheme="accent"
                                 disabled={!customInstruction.trim() || isRedistilling}
                                 onClick={handleRedistill}
@@ -280,7 +277,7 @@ export function PromoteMemoryModal({
                     <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-800">
                         <Button
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             colorScheme="neutral"
                             onClick={onClose}

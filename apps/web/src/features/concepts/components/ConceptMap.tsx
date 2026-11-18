@@ -146,20 +146,20 @@ export function ConceptMap({
     const getVelocityBadge = (score: number) => {
         if (score >= 3.0) {
             return (
-                <Badge colorScheme="danger" variant="soft" size="sm" radius="none" showDot>
+                <Badge colorScheme="danger" variant="soft" size="sm" showDot>
                     Accelerating
                 </Badge>
             );
         }
         if (score >= 1.0) {
             return (
-                <Badge colorScheme="success" variant="soft" size="sm" radius="none" showDot>
+                <Badge colorScheme="success" variant="soft" size="sm" showDot>
                     Stable
                 </Badge>
             );
         }
         return (
-            <Badge colorScheme="neutral" variant="soft" size="sm" radius="none" showDot>
+            <Badge colorScheme="neutral" variant="soft" size="sm" showDot>
                 Cooling
             </Badge>
         );
@@ -168,20 +168,20 @@ export function ConceptMap({
     const getStageBadge = (stage: 'upcoming' | 'active' | 'digesting') => {
         if (stage === 'active') {
             return (
-                <Badge colorScheme="danger" variant="soft" size="sm" radius="none" showDot>
+                <Badge colorScheme="danger" variant="soft" size="sm" showDot>
                     Today
                 </Badge>
             );
         }
         if (stage === 'upcoming') {
             return (
-                <Badge colorScheme="info" variant="soft" size="sm" radius="none" showDot>
+                <Badge colorScheme="info" variant="soft" size="sm" showDot>
                     Upcoming
                 </Badge>
             );
         }
         return (
-            <Badge colorScheme="warning" variant="soft" size="sm" radius="none" showDot>
+            <Badge colorScheme="warning" variant="soft" size="sm" showDot>
                 Digesting
             </Badge>
         );
@@ -191,20 +191,20 @@ export function ConceptMap({
         const imp = impact.toUpperCase();
         if (imp.includes('BULLISH')) {
             return (
-                <Badge colorScheme="success" variant="soft" size="sm" radius="none">
+                <Badge colorScheme="success" variant="soft" size="sm">
                     {impact}
                 </Badge>
             );
         }
         if (imp.includes('BEARISH')) {
             return (
-                <Badge colorScheme="danger" variant="soft" size="sm" radius="none">
+                <Badge colorScheme="danger" variant="soft" size="sm">
                     {impact}
                 </Badge>
             );
         }
         return (
-            <Badge colorScheme="neutral" variant="soft" size="sm" radius="none">
+            <Badge colorScheme="neutral" variant="soft" size="sm">
                 {impact}
             </Badge>
         );
@@ -216,30 +216,30 @@ export function ConceptMap({
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 {/* Tabs - Scrollable on mobile */}
                 <div className="w-full sm:w-auto overflow-x-auto max-w-full whitespace-nowrap scrollbar-none pb-1 sm:pb-0">
-                    <div className="inline-flex gap-2 bg-zinc-100 dark:bg-zinc-900 p-1.5 rounded-none border border-zinc-200 dark:border-zinc-800">
+                    <div className="inline-flex gap-2 bg-zinc-100 bg-zinc-900 p-1.5 rounded-none border border-zinc-200 border-zinc-800">
                         <Button
-                            variant={activeTab === 'trending' ? 'solid' : 'ghost'}
+                            variant={activeTab === 'trending' ? 'solid' : 'outline'}
                             onClick={() => handleTabChange('trending')}
                             className="px-4 py-1.5 text-sm font-bold rounded-none transition-all"
                         >
                             Trending 🔥
                         </Button>
                         <Button
-                            variant={activeTab === 'volume' ? 'solid' : 'ghost'}
+                            variant={activeTab === 'volume' ? 'solid' : 'outline'}
                             onClick={() => handleTabChange('volume')}
                             className="px-4 py-1.5 text-sm font-bold rounded-none transition-all"
                         >
                             Most Mentioned 📊
                         </Button>
                         <Button
-                            variant={activeTab === 'newest' ? 'solid' : 'ghost'}
+                            variant={activeTab === 'newest' ? 'solid' : 'outline'}
                             onClick={() => handleTabChange('newest')}
                             className="px-4 py-1.5 text-sm font-bold rounded-none transition-all"
                         >
                             Newest ⏱️
                         </Button>
                         <Button
-                            variant={activeTab === 'keep-an-eye' ? 'solid' : 'ghost'}
+                            variant={activeTab === 'keep-an-eye' ? 'solid' : 'outline'}
                             onClick={() => handleTabChange('keep-an-eye')}
                             className="px-4 py-1.5 text-sm font-bold rounded-none transition-all"
                         >
@@ -281,15 +281,15 @@ export function ConceptMap({
                     return (
                         <div
                             key={concept.id}
-                            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none p-4 shadow-sm flex flex-col gap-3 min-w-0 max-w-full"
+                            className="bg-white bg-zinc-900 border border-zinc-200 border-zinc-800 rounded-none p-4 shadow-sm flex flex-col gap-3 min-w-0 max-w-full"
                             data-testid={`mobile-concept-card-${concept.id}`}
                         >
-                            <button
+                            <Button
                                 type="button"
                                 className="w-full text-left flex items-center justify-between gap-2 cursor-pointer select-none"
                                 onClick={() => handleRowClick(concept)}
                             >
-                                <div className="flex items-center gap-2 font-bold text-sm text-zinc-900 dark:text-zinc-100 min-w-0 flex-1 truncate">
+                                <div className="flex items-center gap-2 font-bold text-sm text-zinc-900 text-zinc-100 min-w-0 flex-1 truncate">
                                     <span
                                         className={`transition-transform duration-200 flex-shrink-0 ${
                                             isExpanded ? 'rotate-90' : ''
@@ -315,11 +315,11 @@ export function ConceptMap({
                                 <div className="flex-shrink-0">
                                     {getVelocityBadge(concept.velocity_score)}
                                 </div>
-                            </button>
+                            </Button>
 
                             {concept.catalyst ? (
-                                <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs font-normal">
-                                    <div className="font-bold text-sm text-zinc-900 dark:text-zinc-100 flex items-center justify-between gap-2">
+                                <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-100 border-zinc-800 text-xs font-normal">
+                                    <div className="font-bold text-sm text-zinc-900 text-zinc-100 flex items-center justify-between gap-2">
                                         <span className="truncate">
                                             {concept.catalyst.catalyst_title}
                                         </span>
@@ -334,16 +334,16 @@ export function ConceptMap({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-between text-xs font-normal text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800 font-mono">
+                                <div className="flex items-center justify-between text-xs font-normal text-zinc-500 text-zinc-400 pt-2 border-t border-zinc-100 border-zinc-800 font-mono">
                                     <div>
                                         <span>Mentions: </span>
-                                        <span className="font-bold text-zinc-700 dark:text-zinc-300">
+                                        <span className="font-bold text-zinc-700 text-zinc-300">
                                             {concept.mention_count}
                                         </span>
                                     </div>
                                     <div>
                                         <span>Velocity: </span>
-                                        <span className="font-bold text-zinc-700 dark:text-zinc-300">
+                                        <span className="font-bold text-zinc-700 text-zinc-300">
                                             {concept.velocity_score.toFixed(2)}
                                         </span>
                                     </div>
@@ -351,7 +351,7 @@ export function ConceptMap({
                             )}
 
                             {isExpanded && (
-                                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 min-w-0">
+                                <div className="pt-2 border-t border-zinc-100 border-zinc-800 min-w-0">
                                     <ConceptDetails
                                         concept={concept}
                                         fetchMemoriesFn={fetchMemoriesFn}
@@ -366,7 +366,7 @@ export function ConceptMap({
                     );
                 })}
                 {processedConcepts.length === 0 && (
-                    <div className="py-12 text-center text-xs font-normal text-zinc-500 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none">
+                    <div className="py-12 text-center text-xs font-normal text-zinc-500 bg-white bg-zinc-900 border border-zinc-200 border-zinc-800 rounded-none">
                         No concepts found matching your filters.
                     </div>
                 )}
@@ -402,7 +402,7 @@ export function ConceptMap({
                                         className="cursor-pointer group select-none"
                                         onClick={() => handleRowClick(concept)}
                                     >
-                                        <TableCell className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                                        <TableCell className="font-bold text-sm text-zinc-900 text-zinc-100">
                                             <div className="flex items-center gap-2">
                                                 <span
                                                     className={`transition-transform duration-200 ${
@@ -410,7 +410,7 @@ export function ConceptMap({
                                                     }`}
                                                 >
                                                     <svg
-                                                        className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200"
+                                                        className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 group-hover:text-zinc-200"
                                                         fill="none"
                                                         viewBox="0 0 24 24"
                                                         stroke="currentColor"
@@ -430,12 +430,12 @@ export function ConceptMap({
 
                                         {activeTab === 'keep-an-eye' && concept.catalyst ? (
                                             <>
-                                                <TableCell className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                                                <TableCell className="font-bold text-sm text-zinc-900 text-zinc-100">
                                                     {concept.catalyst.catalyst_title}
                                                 </TableCell>
                                                 <TableCell
                                                     align="right"
-                                                    className="text-zinc-700 dark:text-zinc-300 font-mono text-xs font-normal"
+                                                    className="text-zinc-700 text-zinc-300 font-mono text-xs font-normal"
                                                 >
                                                     {concept.catalyst.target_date} (
                                                     {concept.catalyst.date_offset_label})
@@ -451,13 +451,13 @@ export function ConceptMap({
                                             <>
                                                 <TableCell
                                                     align="right"
-                                                    className="text-zinc-700 dark:text-zinc-300 font-mono text-xs font-normal"
+                                                    className="text-zinc-700 text-zinc-300 font-mono text-xs font-normal"
                                                 >
                                                     {concept.mention_count}
                                                 </TableCell>
                                                 <TableCell
                                                     align="right"
-                                                    className="text-zinc-700 dark:text-zinc-300 font-mono text-xs font-normal"
+                                                    className="text-zinc-700 text-zinc-300 font-mono text-xs font-normal"
                                                 >
                                                     {concept.velocity_score.toFixed(2)}
                                                 </TableCell>
@@ -471,7 +471,7 @@ export function ConceptMap({
                                     {isExpanded && (
                                         <TableRow
                                             isHoverable={false}
-                                            className="bg-zinc-50/40 dark:bg-zinc-950/40"
+                                            className="bg-zinc-50/40 bg-zinc-950/40"
                                         >
                                             <TableCell
                                                 colSpan={activeTab === 'keep-an-eye' ? 5 : 4}
@@ -534,12 +534,12 @@ function ConceptDetails({
     });
 
     return (
-        <div className="flex flex-col gap-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-none p-4 shadow-sm animate-fade-in min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-col gap-6 bg-white bg-zinc-950 border border-zinc-200 border-zinc-800 rounded-none p-4 shadow-sm animate-fade-in min-w-0 max-w-full overflow-hidden">
             {/* Catalyst Radar Box if linked catalyst exists */}
             {concept.catalyst && (
                 <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-none flex flex-col gap-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-amber-600 text-amber-400 flex items-center gap-1.5">
                             ⚡ Catalyst Radar: {concept.catalyst.catalyst_title}
                         </span>
                         <div className="flex items-center gap-2">
@@ -547,7 +547,7 @@ function ConceptDetails({
                             {getImpactBadge(concept.catalyst.impact)}
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 text-xs font-normal text-zinc-600 dark:text-zinc-400 font-mono">
+                    <div className="flex flex-wrap items-center gap-4 text-xs font-normal text-zinc-600 text-zinc-400 font-mono">
                         <div>
                             <span className="font-bold text-zinc-500">Target Date:</span>{' '}
                             {concept.catalyst.target_date} ({concept.catalyst.date_offset_label})
@@ -565,43 +565,43 @@ function ConceptDetails({
                             )}
                     </div>
                     {concept.catalyst.memory_content && (
-                        <p className="text-xs font-normal text-zinc-600 dark:text-zinc-300 pt-1.5 border-t border-amber-500/20 m-0">
+                        <p className="text-xs font-normal text-zinc-600 text-zinc-300 pt-1.5 border-t border-amber-500/20 m-0">
                             {concept.catalyst.memory_content}
                         </p>
                     )}
                 </div>
             )}
             {/* Top row: Metrics */}
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4 sm:gap-6 pb-4 border-b border-zinc-100 dark:border-zinc-900 items-stretch">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4 sm:gap-6 pb-4 border-b border-zinc-100 border-zinc-900 items-stretch">
                 <div className="flex flex-col gap-1">
-                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
+                    <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block">
                         Timeline Activity
                     </span>
-                    <div className="text-xs font-normal text-zinc-700 dark:text-zinc-300">
+                    <div className="text-xs font-normal text-zinc-700 text-zinc-300">
                         <span className="font-bold text-zinc-500">First Seen:</span>{' '}
                         {formatDate(concept.first_mention_at)}
                     </div>
-                    <div className="text-xs font-normal text-zinc-700 dark:text-zinc-300">
+                    <div className="text-xs font-normal text-zinc-700 text-zinc-300">
                         <span className="font-bold text-zinc-500">Last Seen:</span>{' '}
                         {formatDate(concept.last_mention_at)}
                     </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
+                    <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block">
                         Lifespan Duration
                     </span>
-                    <div className="text-xs font-normal text-zinc-700 dark:text-zinc-300">
+                    <div className="text-xs font-normal text-zinc-700 text-zinc-300">
                         <span className="font-bold text-zinc-500">Duration Active:</span>{' '}
                         {getDurationDays(concept.first_mention_at, concept.last_mention_at)} days
                     </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
+                    <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block">
                         Semantic Coordinates
                     </span>
-                    <div className="text-xs font-normal text-zinc-700 dark:text-zinc-300 font-mono text-zinc-500">
+                    <div className="text-xs font-normal text-zinc-700 text-zinc-300 font-mono text-zinc-500">
                         X: {concept.pca_x?.toFixed(4) ?? 'N/A'}, Y:{' '}
                         {concept.pca_y?.toFixed(4) ?? 'N/A'}
                     </div>
@@ -610,7 +610,7 @@ function ConceptDetails({
 
             {/* Bottom Section: Related Memories */}
             <div className="flex flex-col gap-3 pt-2">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
+                <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block">
                     Sources & Related Memories
                 </span>
 
@@ -641,7 +641,7 @@ function ConceptDetails({
                             return (
                                 <div
                                     key={memory.id}
-                                    className="p-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800/60 rounded-none flex flex-col md:flex-row md:items-start justify-between gap-4 transition-all hover:bg-zinc-100/60 dark:hover:bg-zinc-850 min-w-0 max-w-full"
+                                    className="p-3 bg-zinc-50 bg-zinc-900 border border-zinc-150 border-zinc-800/60 rounded-none flex flex-col md:flex-row md:items-start justify-between gap-4 transition-all hover:bg-zinc-100/60 hover:bg-zinc-850 min-w-0 max-w-full"
                                 >
                                     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
@@ -656,17 +656,11 @@ function ConceptDetails({
                                                               : 'neutral'
                                                     }
                                                     size="xs"
-                                                    radius="none"
                                                 >
                                                     {impact}
                                                 </Badge>
                                             )}
-                                            <Badge
-                                                variant="soft"
-                                                colorScheme="info"
-                                                size="xs"
-                                                radius="none"
-                                            >
+                                            <Badge variant="soft" colorScheme="info" size="xs">
                                                 {matchPercentage}% Match
                                             </Badge>
                                             {memory.created_at && (
@@ -675,7 +669,7 @@ function ConceptDetails({
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-xs font-normal text-zinc-700 dark:text-zinc-300 leading-relaxed break-words m-0">
+                                        <p className="text-xs font-normal text-zinc-700 text-zinc-300 leading-relaxed break-words m-0">
                                             {memory.content}
                                         </p>
                                     </div>
@@ -683,7 +677,7 @@ function ConceptDetails({
                                         <Link
                                             to="/memories/chain/$memoryId"
                                             params={{ memoryId: memory.id }}
-                                            className="text-xs text-accent hover:text-accent/80 font-bold flex items-center gap-1 transition-colors"
+                                            className="text-sm text-accent hover:text-accent/80 font-bold flex items-center gap-1 transition-colors"
                                         >
                                             View Event Chain ↗
                                         </Link>

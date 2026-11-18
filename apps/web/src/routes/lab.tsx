@@ -179,14 +179,14 @@ function LabRouteComponent() {
 
 export function LabDirectoryView() {
     return (
-        <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+        <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
             <PageLayout maxWidth="xl" className="flex flex-col gap-8">
-                <header className="pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
+                <header className="pb-4 border-b-2 border-voxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
                     <div className="flex flex-col gap-1">
-                        <h1 className="text-lg font-bold text-boxel-ink uppercase tracking-tight">
+                        <h1 className="text-sm font-bold text-voxel-ink uppercase tracking-tight">
                             Lab & Experimental Directory
                         </h1>
-                        <p className="text-xs font-normal text-boxel-muted">
+                        <p className="text-xs font-normal text-voxel-muted">
                             Direct access to research modules, telemetry inspectors, audits, and
                             archived models while we streamline the core benchmark.
                         </p>
@@ -207,11 +207,11 @@ export function LabDirectoryView() {
                             padding="md"
                             className="h-full min-w-0 flex flex-col gap-4"
                         >
-                            <div className="pb-3 border-b-2 border-boxel-bevel-hi flex flex-col gap-1">
+                            <div className="pb-3 border-b-2 border-voxel-bevel-hi flex flex-col gap-1">
                                 <SectionHeading className="text-lg">
                                     {category.title}
                                 </SectionHeading>
-                                <p className="text-xs font-normal text-boxel-muted">
+                                <p className="text-xs font-normal text-voxel-muted">
                                     {category.subtitle}
                                 </p>
                             </div>
@@ -221,17 +221,17 @@ export function LabDirectoryView() {
                                     <Link
                                         key={item.to}
                                         to={item.to}
-                                        className="voxel-trough p-3 flex flex-col gap-1 hover:bg-boxel-elevated transition-colors group"
+                                        className="voxel-trough p-3 flex flex-col gap-1 hover:bg-voxel-elevated transition-colors group"
                                     >
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className="font-bold text-sm text-boxel-ink group-hover:text-accent transition-colors">
+                                            <span className="font-bold text-sm text-voxel-ink group-hover:text-accent transition-colors">
                                                 {item.label}
                                             </span>
                                             <span className="font-mono text-xs font-normal text-accent">
                                                 {item.to}
                                             </span>
                                         </div>
-                                        <p className="text-xs font-normal text-boxel-muted leading-relaxed">
+                                        <p className="text-xs font-normal text-voxel-muted leading-relaxed">
                                             {item.description}
                                         </p>
                                     </Link>

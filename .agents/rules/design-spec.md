@@ -20,7 +20,7 @@ Modern CSS Grid and Flexbox are vastly superior to JavaScript-driven layout math
 2. **Zero inline `style={{ ... }}` for layout, typography, or colors**:
    - Never pass layout attributes (`display`, `flex*`, `gridTemplateColumns`, `width`, `height`, `margin`, `padding`, `gap`), typography (`fontSize`, `fontWeight`, `lineHeight`), borders, or color values via React inline `style` objects.
    - Express responsive grids declaratively via Tailwind utilities (e.g. `grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]`).
-   - Express colors using design system semantic tokens (`text-success`, `text-danger`, `text-boxel-muted`, `bg-boxel-trough`).
+   - Express colors using design system semantic tokens (`text-success`, `text-danger`, `text-voxel-muted`, `bg-voxel-trough`).
    - The *only* permitted `style` usage is continuous dynamic data percentages (such as progress bar fills: `style={{ width: `${percent}%` }}`).
 3. **CSS pseudo-classes over JS interaction listeners**:
    - Visual states must use CSS `:hover`, `:active`, `:focus-within`, `group` / `group-hover:`, and `.voxel-btn:active`.
@@ -94,20 +94,20 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Voxel** aesthetic inspired b
 
 1. **Sharp Voxel geometry**:
    - Every surface uses `rounded-none` (0px radius). Never use `rounded-md`, `rounded-xl`, `rounded-2xl`, or `rounded-full`.
-   - Raised surfaces (`.voxel-card`) have 2px directional bevels (`border-boxel-bevel-hi` top/left, `border-boxel-bevel-lo` bottom/right) and hard `4px 4px 0px var(--color-boxel-bevel-lo)` offset drop shadows.
-   - Recessed cells (`.voxel-trough`) invert the bevels (`border-boxel-bevel-lo` top/left, `border-boxel-bevel-hi` bottom/right) to visually carve into the terrace.
+   - Raised surfaces (`.voxel-card`) have 2px directional bevels (`border-voxel-bevel-hi` top/left, `border-voxel-bevel-lo` bottom/right) and hard `4px 4px 0px var(--color-voxel-bevel-lo)` offset drop shadows.
+   - Recessed cells (`.voxel-trough`) invert the bevels (`border-voxel-bevel-lo` top/left, `border-voxel-bevel-hi` bottom/right) to visually carve into the terrace.
    - Physical press (`.voxel-btn`): 2px bevels, 2px shadow, active depression `translate(2px, 2px)` with shadow reset.
 2. **Palette tokens**:
-   - Canvas: `bg-boxel-canvas` (`#141c18` Deep Forest Moss)
-   - Card Surface: `bg-boxel-surface` (`#1d2822` Stepped Moss Terrace)
-   - Spruce Elevated: `bg-boxel-elevated` (`#26362e` Hover Highlight)
-   - Trough: `bg-boxel-trough` (`#101713` Carved Slot)
-   - Ink: `text-boxel-ink` (`#f2ead3` Warm Tatami Cream)
-   - Muted: `text-boxel-muted` (`#9eb0a3` Lichen Sage)
+   - Canvas: `bg-voxel-canvas` (`#141c18` Deep Forest Moss)
+   - Card Surface: `bg-voxel-surface` (`#1d2822` Stepped Moss Terrace)
+   - Spruce Elevated: `bg-voxel-elevated` (`#26362e` Hover Highlight)
+   - Trough: `bg-voxel-trough` (`#101713` Carved Slot)
+   - Ink: `text-voxel-ink` (`#f2ead3` Warm Tatami Cream)
+   - Muted: `text-voxel-muted` (`#9eb0a3` Lichen Sage)
    - Primary Accent: `bg-accent` / `text-accent` (`#f0a830` Cheddar Gold)
    - Signals: `text-success` (`#68d391`), `text-danger` (`#e56b55`), `text-info` (`#7ab89e`)
 3. **WCAG AAA high contrast mandate**:
-   - Solid cheddar gold (`bg-accent`) tags must always use dark text (`text-boxel-trough`), never white, maintaining $\ge 7:1$ contrast.
+   - Solid cheddar gold (`bg-accent`) tags must always use dark text (`text-voxel-trough`), never white, maintaining $\ge 7:1$ contrast.
    - Status indicators in badges use container gap (`gap-1.5`), never child element margins (`mr-1.5`).
 4. **Zero decorative emojis in UI chrome**:
    - Section headers, metric labels, and control buttons use crisp typography and square pixel indicators, never emojis.
@@ -128,7 +128,7 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Voxel** aesthetic inspired b
 
 1. **Tiered loading hierarchy (SSR / `keepPreviousData` first)**: Prefer SSR pre-hydration with silent Suspense fallbacks (`fallback={null}`) and TanStack Query `placeholderData: keepPreviousData` on timeframe or tab transitions so hydrated views never unmount or flash during background refetches.
 2. **Layout-matched Voxel skeletons over spinners**: When a cold or uncached feed, list, or detail panel must display a loading state, use composable `Skeleton` placeholders (`@llm-market-bench/ui-design-system`) or `LoadingBoundary` (with an optional layout-matched `fallback`) rather than a single centered spinner. Skeleton placeholders are preferable to a single spinner because they preserve the expected layout of the feed—users can start scanning the structure immediately, and real content swaps in with less visual jump.
-   - Style skeletons strictly with Voxel tokens (`rounded-none`, `bg-boxel-trough` / `bg-boxel-elevated`, `animate-pulse motion-reduce:animate-none`, `aria-hidden="true"`) and match the target card/row structure and fluid CSS Grid tracks.
+   - Style skeletons strictly with Voxel tokens (`rounded-none`, `bg-voxel-trough` / `bg-voxel-elevated`, `animate-pulse motion-reduce:animate-none`, `aria-hidden="true"`) and match the target card/row structure and fluid CSS Grid tracks.
    - **Zero spinners**: `LoadingSpinner` and `animate-spin` loaders are prohibited across all feeds, panels, and buttons. Pending actions use `Button[isLoading]` (pulsing Voxel pixel square + `aria-busy="true"`).
 3. **Avoid optimistic updates**: Mutations must wait for confirmed server responses with in-flow pending button/status feedback (`Button[isLoading]`) and explicit `ErrorCard` feedback on failure. Do not add speculative `onMutate` cache rewrites or optimistic rollback machinery.
 4. **In-memory cache fallback**: Server fetchers retain last valid in-memory payloads to prevent layout wipeouts on transient disconnects.
@@ -181,7 +181,7 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Voxel** aesthetic inspired b
 3. **Bounded categorical states as Badges**:
    - Bounded enum states (trade direction `BUY`/`SELL`, status `ACTIVE`/`HALTED`/`CLOSED`, conviction `HIGH`/`MED`/`LOW`) must render as structured `Badge` primitives, never raw unstyled strings.
 4. **Semantic row states (`isInactive`)**:
-   - Inactive, halted, archived, or disabled rows must carry the `isInactive` prop on `TableRow` (`opacity-60 text-boxel-muted bg-boxel-trough/30`), disabling hover highlights and visually de-emphasizing stale data relative to active trading rows.
+   - Inactive, halted, archived, or disabled rows must carry the `isInactive` prop on `TableRow` (`opacity-60 text-voxel-muted bg-voxel-trough/30`), disabling hover highlights and visually de-emphasizing stale data relative to active trading rows.
 5. **In-flow cell clarification (Zero tooltips)**:
    - When a table cell contains truncated text, shorthand tickers, or compound formulas, clarification is provided via click-to-inspect in an in-flow recessed `.voxel-trough` bar or drawer below the table—never via floating hover tooltips or HTML `title` attributes.
 

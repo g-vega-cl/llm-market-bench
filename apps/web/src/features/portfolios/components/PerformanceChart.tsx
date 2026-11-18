@@ -447,7 +447,7 @@ export function PerformanceChart({
     return (
         <div className="w-full bg-white border border-zinc-200 rounded-none p-4 shadow-sm overflow-hidden flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">
                     {showPercentage && hasBenchmark ? 'Performance vs Benchmark' : 'Equity Curve'}
                 </h3>
                 <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -472,7 +472,7 @@ export function PerformanceChart({
                 <div className="p-3 bg-zinc-50 rounded-none border border-zinc-100 flex flex-col gap-1">
                     <div className="text-xs font-normal text-zinc-500">{displayData.date}</div>
                     <div className="flex items-baseline gap-3">
-                        <span className="text-lg font-bold font-mono text-sky-600">
+                        <span className="text-sm font-bold font-mono text-sky-600">
                             {showPercentage && hasBenchmark
                                 ? `${displayData.equity > 0 ? '+' : ''}${displayData.equity.toFixed(2)}%`
                                 : `$${displayData.equity.toLocaleString('en-US', {

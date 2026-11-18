@@ -34,15 +34,15 @@ function PredictionExpandedDetail({
     matchingExp?: PromptExperiment;
 }) {
     return (
-        <TableRow className="bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800">
+        <TableRow className="bg-zinc-50 bg-zinc-950/60 border-b border-zinc-200 border-zinc-800">
             <TableCell colSpan={11} className="p-6">
                 <div className="flex flex-col gap-4">
                     {/* Rationale & Catalysts */}
                     <div>
-                        <div className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wider">
+                        <div className="text-sm font-bold text-zinc-500 text-zinc-400 mb-1.5 uppercase tracking-wider">
                             Prediction Rationale & Catalysts
                         </div>
-                        <p className="text-sm text-zinc-800 dark:text-zinc-200 mb-2.5 leading-relaxed">
+                        <p className="text-sm text-zinc-800 text-zinc-200 mb-2.5 leading-relaxed">
                             {p.rationale || 'No detailed rationale recorded for this prediction.'}
                         </p>
                         {p.catalysts && p.catalysts.length > 0 && (
@@ -57,7 +57,7 @@ function PredictionExpandedDetail({
                     </div>
 
                     {/* Price & Intraday Metrics */}
-                    <div className="flex gap-5 text-xs text-zinc-500 dark:text-zinc-400 flex-wrap">
+                    <div className="flex gap-5 text-xs text-zinc-500 text-zinc-400 flex-wrap">
                         <div>
                             <strong>Expected Return:</strong>{' '}
                             {p.expected_return_pct !== null
@@ -98,14 +98,14 @@ function PredictionExpandedDetail({
                     {/* System Prompt Used */}
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                            <span className="text-sm font-bold text-zinc-500 text-zinc-400">
                                 SYSTEM PROMPT VARIANT:
                             </span>
-                            <Badge colorScheme="info" variant="soft" size="xs" radius="none">
+                            <Badge colorScheme="info" variant="soft" size="xs">
                                 {p.prompt_variant_tag || 'baseline'}
                             </Badge>
                         </div>
-                        <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-white dark:bg-zinc-900 p-3.5 rounded-none border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 m-0">
+                        <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-white bg-zinc-900 p-3.5 rounded-none border border-zinc-200 border-zinc-800 text-zinc-700 text-zinc-300 m-0">
                             {matchingExp?.prompt_content ||
                                 'Standard baseline system prompt active during prediction.'}
                         </pre>
@@ -132,14 +132,14 @@ function ConvictionCell({ value }: { value: number | null | undefined }) {
 function PredictionIntradayHitBadge({ p }: { p: DailyPrediction }) {
     if (p.intraday_hit === true) {
         return (
-            <Badge colorScheme="info" variant="soft" size="xs" radius="none">
+            <Badge colorScheme="info" variant="soft" size="xs">
                 HIT
             </Badge>
         );
     }
     if (p.intraday_hit === false) {
         return (
-            <Badge colorScheme="warning" variant="soft" size="xs" radius="none">
+            <Badge colorScheme="warning" variant="soft" size="xs">
                 MISSED
             </Badge>
         );
@@ -150,27 +150,27 @@ function PredictionIntradayHitBadge({ p }: { p: DailyPrediction }) {
 function PredictionOutcomeBadge({ p }: { p: DailyPrediction }) {
     if (p.predicted_direction === 'HOLD' && p.status === 'evaluated') {
         return (
-            <Badge colorScheme="warning" variant="soft" size="xs" radius="none">
+            <Badge colorScheme="warning" variant="soft" size="xs">
                 HOLD
             </Badge>
         );
     }
     if (p.is_correct === true) {
         return (
-            <Badge colorScheme="success" variant="soft" size="xs" radius="none">
+            <Badge colorScheme="success" variant="soft" size="xs">
                 PASS
             </Badge>
         );
     }
     if (p.is_correct === false) {
         return (
-            <Badge colorScheme="danger" variant="soft" size="xs" radius="none">
+            <Badge colorScheme="danger" variant="soft" size="xs">
                 FAIL
             </Badge>
         );
     }
     return (
-        <Badge colorScheme="neutral" variant="soft" size="xs" radius="none">
+        <Badge colorScheme="neutral" variant="soft" size="xs">
             PENDING
         </Badge>
     );
@@ -191,8 +191,8 @@ function PredictionTableRowItem({
 
     return (
         <>
-            <TableRow className="border-b border-zinc-100 dark:border-zinc-800/60">
-                <TableCell className="font-bold text-sm text-zinc-900 dark:text-zinc-100 font-mono">
+            <TableRow className="border-b border-zinc-100 border-zinc-800/60">
+                <TableCell className="font-bold text-sm text-zinc-900 text-zinc-100 font-mono">
                     {p.target_date}
                 </TableCell>
                 <TableCell>{p.ticker}</TableCell>
@@ -232,7 +232,7 @@ export function PredictionsTable({ predictions, experiments }: PredictionsTableP
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
-        <Table containerClassName="rounded-none border border-zinc-200 dark:border-zinc-800">
+        <Table containerClassName="rounded-none border border-zinc-200 border-zinc-800">
             <TableHeader>
                 <TableRow>
                     <TableHead>Date</TableHead>
@@ -270,7 +270,7 @@ export function PredictionsTable({ predictions, experiments }: PredictionsTableP
                     <TableRow>
                         <TableCell
                             colSpan={11}
-                            className="p-6 text-center text-zinc-400 dark:text-zinc-500"
+                            className="p-6 text-center text-zinc-400 text-zinc-500"
                         >
                             No daily predictions logged yet. Run `python main.py --daily-predictor`
                             to generate one.

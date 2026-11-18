@@ -1,5 +1,6 @@
 import {
     Badge,
+    Button,
     Card,
     Input,
     PageLayout,
@@ -36,13 +37,9 @@ function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
 
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-white">{item.ticker}</TableCell>
+            <TableCell className="font-bold text-voxel-trough">{item.ticker}</TableCell>
             <TableCell className="text-zinc-300">
-                <Badge
-                    variant="outline"
-                    radius="none"
-                    className="text-xs border-zinc-700 text-zinc-300"
-                >
+                <Badge variant="soft" className="text-xs border-zinc-700 text-zinc-300">
                     {item.sector}
                 </Badge>
             </TableCell>
@@ -69,27 +66,18 @@ function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
             </TableCell>
             <TableCell className="text-center">
                 {item.is_sloan_accrual_clean ? (
-                    <Badge
-                        radius="none"
-                        className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs"
-                    >
+                    <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs">
                         Clean Cash
                     </Badge>
                 ) : (
-                    <Badge
-                        radius="none"
-                        className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs"
-                    >
+                    <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs">
                         High Accrual
                     </Badge>
                 )}
             </TableCell>
             <TableCell className="text-center">
                 {item.is_top_decile_sue ? (
-                    <Badge
-                        radius="none"
-                        className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs"
-                    >
+                    <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs">
                         Top Decile
                     </Badge>
                 ) : (
@@ -103,14 +91,11 @@ function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
 function BellwetherTableRow({ b }: { b: SectorBellwetherSignal }) {
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-white">{b.sector}</TableCell>
+            <TableCell className="font-bold text-voxel-trough">{b.sector}</TableCell>
             <TableCell className="font-mono text-zinc-200">{b.ticker}</TableCell>
             <TableCell className="text-zinc-300 text-xs">
                 {b.classification === 'EARLY_BELLWETHER' ? (
-                    <Badge
-                        radius="none"
-                        className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs"
-                    >
+                    <Badge className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs">
                         Early Bellwether
                     </Badge>
                 ) : (
@@ -123,21 +108,14 @@ function BellwetherTableRow({ b }: { b: SectorBellwetherSignal }) {
             <TableCell className="text-zinc-400 text-xs">{b.report_date || 'Upcoming'}</TableCell>
             <TableCell className="text-center">
                 {b.is_reported ? (
-                    <Badge radius="none" className="bg-emerald-500/10 text-emerald-400 text-xs">
-                        Reported
-                    </Badge>
+                    <Badge className="bg-emerald-500/10 text-emerald-400 text-xs">Reported</Badge>
                 ) : (
-                    <Badge radius="none" className="bg-zinc-800 text-zinc-400 text-xs">
-                        Awaiting
-                    </Badge>
+                    <Badge className="bg-zinc-800 text-zinc-400 text-xs">Awaiting</Badge>
                 )}
             </TableCell>
             <TableCell className="text-center">
                 {b.is_active_bellwether_signal ? (
-                    <Badge
-                        radius="none"
-                        className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs"
-                    >
+                    <Badge className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs">
                         Active Signal (14d)
                     </Badge>
                 ) : (
@@ -156,7 +134,7 @@ function RevisionTableRow({ item }: { item: EarningsAlphaSnapshot }) {
 
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-white">{item.ticker}</TableCell>
+            <TableCell className="font-bold text-voxel-trough">{item.ticker}</TableCell>
             <TableCell className="text-zinc-300 text-xs">{item.sector}</TableCell>
             <TableCell className="text-zinc-200 text-xs font-normal">
                 {item.analyst_consensus || 'Unknown'}
@@ -238,7 +216,7 @@ export function EarningsAuditPage({
                 {/* Header */}
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h1 className="text-lg font-bold uppercase tracking-wider text-white">
+                        <h1 className="text-sm font-bold uppercase tracking-wider text-voxel-trough">
                             Earnings Alpha & PEAD Audit
                         </h1>
                         <p className="text-xs font-normal text-zinc-400">
@@ -254,13 +232,13 @@ export function EarningsAuditPage({
                         padding="md"
                         className="h-full flex flex-col justify-between gap-1 rounded-none shadow-sm"
                     >
-                        <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                        <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                             Total Analyzed
                         </div>
-                        <div className="text-lg font-bold text-boxel-ink font-mono tabular-nums">
+                        <div className="text-sm font-bold text-voxel-ink font-mono tabular-nums">
                             {snapshots.length}
                         </div>
-                        <div className="text-xs font-normal text-boxel-muted">
+                        <div className="text-xs font-normal text-voxel-muted">
                             S&P 500 Constituents
                         </div>
                     </Card>
@@ -268,13 +246,13 @@ export function EarningsAuditPage({
                         padding="md"
                         className="h-full flex flex-col justify-between gap-1 rounded-none shadow-sm"
                     >
-                        <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                        <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                             Top-Decile SUE (≥ +2.0)
                         </div>
-                        <div className="text-lg font-bold text-success font-mono tabular-nums">
+                        <div className="text-sm font-bold text-success font-mono tabular-nums">
                             {topDecileCount}
                         </div>
-                        <div className="text-xs font-normal text-boxel-muted">
+                        <div className="text-xs font-normal text-voxel-muted">
                             Active Drift Candidates
                         </div>
                     </Card>
@@ -282,15 +260,15 @@ export function EarningsAuditPage({
                         padding="md"
                         className="h-full flex flex-col justify-between gap-1 rounded-none shadow-sm"
                     >
-                        <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                        <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                             Cash-Quality Clean
                         </div>
-                        <div className="text-lg font-bold text-info font-mono tabular-nums">
+                        <div className="text-sm font-bold text-info font-mono tabular-nums">
                             {snapshots.length > 0
                                 ? `${Math.round((cleanAccrualCount / snapshots.length) * 100)}%`
                                 : '0%'}
                         </div>
-                        <div className="text-xs font-normal text-boxel-muted">
+                        <div className="text-xs font-normal text-voxel-muted">
                             Sloan Accrual Filter
                         </div>
                     </Card>
@@ -298,13 +276,13 @@ export function EarningsAuditPage({
                         padding="md"
                         className="h-full flex flex-col justify-between gap-1 rounded-none shadow-sm"
                     >
-                        <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                        <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                             Active Bellwethers
                         </div>
-                        <div className="text-lg font-bold text-accent font-mono tabular-nums">
+                        <div className="text-sm font-bold text-accent font-mono tabular-nums">
                             {bellwethers.filter((b) => b.is_active_bellwether_signal).length}
                         </div>
-                        <div className="text-xs font-normal text-boxel-muted">
+                        <div className="text-xs font-normal text-voxel-muted">
                             14-Day Signal Window
                         </div>
                     </Card>
@@ -312,50 +290,50 @@ export function EarningsAuditPage({
 
                 {/* Navigation Tabs */}
                 <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
-                    <button
+                    <Button
                         type="button"
                         onClick={() => setActiveTab('pead')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-none transition-colors ${
+                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                             activeTab === 'pead'
                                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'text-zinc-400 hover:text-white'
+                                : 'text-zinc-400 hover:text-voxel-trough'
                         }`}
                     >
                         PEAD & SUE Leaderboard
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={() => setActiveTab('bellwethers')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-none transition-colors ${
+                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                             activeTab === 'bellwethers'
                                 ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                                : 'text-zinc-400 hover:text-white'
+                                : 'text-zinc-400 hover:text-voxel-trough'
                         }`}
                     >
                         Sector Bellwether Radar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={() => setActiveTab('revisions')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-none transition-colors ${
+                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                             activeTab === 'revisions'
                                 ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                                : 'text-zinc-400 hover:text-white'
+                                : 'text-zinc-400 hover:text-voxel-trough'
                         }`}
                     >
                         Analyst Revision Momentum
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={() => setActiveTab('arena')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-none transition-colors ${
+                        className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                             activeTab === 'arena'
                                 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                : 'text-zinc-400 hover:text-white'
+                                : 'text-zinc-400 hover:text-voxel-trough'
                         }`}
                     >
                         Day-1 Movement Arena
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Filters (for PEAD, Bellwethers, Revisions) */}
@@ -366,23 +344,23 @@ export function EarningsAuditPage({
                                 placeholder="Search ticker or sector..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="bg-zinc-900/50 border-zinc-800 text-white placeholder:text-zinc-500 rounded-none text-xs font-normal"
+                                className="bg-zinc-900/50 border-zinc-800 text-voxel-trough placeholder:text-zinc-500 rounded-none text-xs font-normal"
                             />
                         </div>
                         <div className="flex items-center gap-2 overflow-x-auto pb-1">
                             {sectors.map((sec) => (
-                                <button
+                                <Button
                                     key={sec}
                                     type="button"
                                     onClick={() => setSelectedSector(sec)}
-                                    className={`px-2.5 py-1 text-xs font-bold rounded-none transition-colors whitespace-nowrap ${
+                                    className={`px-2.5 py-1 text-sm font-bold rounded-none transition-colors whitespace-nowrap ${
                                         selectedSector === sec
-                                            ? 'bg-zinc-700 text-white'
+                                            ? 'bg-zinc-700 text-voxel-trough'
                                             : 'bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
                                     }`}
                                 >
                                     {sec}
-                                </button>
+                                </Button>
                             ))}
                         </div>
                     </div>

@@ -60,7 +60,7 @@ function extractBacktestResults(job: RecipeJobRecord): BacktestResultData | null
 
 function resolveBarColor(status: RecipeJobStatus): string {
     if (status === 'failed') return 'bg-danger';
-    if (status === 'cancelled') return 'bg-boxel-muted';
+    if (status === 'cancelled') return 'bg-voxel-muted';
     if (status === 'completed') return 'bg-success';
     return 'bg-accent';
 }
@@ -123,14 +123,14 @@ function BacktestHeader({
     const barColor = resolveBarColor(job.status);
 
     return (
-        <header className="flex flex-col gap-4 border-b-2 border-boxel-bevel-hi pb-4">
+        <header className="flex flex-col gap-4 border-b-2 border-voxel-bevel-hi pb-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-4 min-w-0">
                     <BacktestHeaderLink
                         readOnlyShowcase={readOnlyShowcase}
                         recipeId={job.recipe_id}
                     />
-                    <h1 className="text-lg font-bold text-boxel-ink min-w-0 break-words">
+                    <h1 className="text-sm font-bold text-voxel-ink min-w-0 break-words">
                         {recipeName || 'Recipe Backtest Run'}
                     </h1>
                 </div>
@@ -139,7 +139,7 @@ function BacktestHeader({
                     <Badge variant="solid" size="sm" colorScheme={statusBadge.colorScheme} showDot>
                         {statusBadge.label}
                     </Badge>
-                    <span className="text-sm font-bold font-mono tabular-nums text-boxel-ink">
+                    <span className="text-sm font-bold font-mono tabular-nums text-voxel-ink">
                         {progressPct}%
                     </span>
                     {canCancel && (
@@ -168,7 +168,7 @@ function BacktestHeader({
 
             <div
                 data-testid="backtest-meta-row"
-                className="flex flex-wrap items-baseline gap-x-4 gap-y-2 text-xs font-normal text-boxel-muted min-w-0"
+                className="flex flex-wrap items-baseline gap-x-4 gap-y-2 text-xs font-normal text-voxel-muted min-w-0"
             >
                 <span className="whitespace-nowrap">Window: {windowLabel}</span>
                 <span className="whitespace-nowrap">
@@ -180,7 +180,7 @@ function BacktestHeader({
                 </span>
             </div>
 
-            <div className="w-full h-2 voxel-trough bg-boxel-trough overflow-hidden">
+            <div className="w-full h-2 voxel-trough bg-voxel-trough overflow-hidden">
                 <div
                     className={`h-full transition-all duration-300 ${barColor}`}
                     style={{ width: `${progressPct}%` }}
@@ -197,13 +197,13 @@ function renderUnavailableBacktestState(
 ) {
     if (!detail && isLoading) {
         return (
-            <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+            <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
                 <PageLayout maxWidth="xl" className="flex flex-col gap-6">
                     <Card padding="md" className="flex flex-col gap-2">
-                        <h1 className="text-lg font-bold text-boxel-ink">
+                        <h1 className="text-sm font-bold text-voxel-ink">
                             Loading Backtest Run...
                         </h1>
-                        <p className="text-xs font-normal text-boxel-muted">
+                        <p className="text-xs font-normal text-voxel-muted">
                             Fetching job {jobId} status and checkpoints from the execution queue.
                         </p>
                     </Card>
@@ -214,7 +214,7 @@ function renderUnavailableBacktestState(
 
     if (!detail) {
         return (
-            <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+            <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
                 <PageLayout maxWidth="xl" className="flex flex-col gap-6">
                     <ErrorCard
                         title="Backtest Run Not Found"
@@ -235,7 +235,7 @@ function renderUnavailableBacktestState(
 
     if (detail.job.mode === 'live_turn') {
         return (
-            <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+            <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
                 <PageLayout maxWidth="xl" className="flex flex-col gap-6">
                     <ErrorCard
                         title="Incompatible Job Mode"
@@ -353,7 +353,7 @@ export function RecipeBacktestPage({
     };
 
     return (
-        <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+        <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
             <PageLayout maxWidth="xl" className="flex flex-col gap-6">
                 <BacktestHeader
                     detail={detail}

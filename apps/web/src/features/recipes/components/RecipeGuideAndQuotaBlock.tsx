@@ -37,7 +37,7 @@ export function RecipeExecutionAlert({
     return (
         <div
             role="alert"
-            className="border border-danger bg-boxel-surface p-3 flex flex-wrap items-center justify-between gap-2 text-xs font-normal text-danger rounded-none min-w-0"
+            className="border border-danger bg-voxel-surface p-3 flex flex-wrap items-center justify-between gap-2 text-xs font-normal text-danger rounded-none min-w-0"
         >
             <span className="min-w-0 break-words">{message}</span>
             <div className="flex flex-wrap items-center gap-2 shrink-0 max-w-full min-w-0">
@@ -45,7 +45,7 @@ export function RecipeExecutionAlert({
                     <Link
                         to="/recipes/backtest/$jobId"
                         params={{ jobId: backtestJobId }}
-                        className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border border-boxel-bevel-hi bg-boxel-elevated text-boxel-ink rounded-none"
+                        className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border border-voxel-bevel-hi bg-voxel-elevated text-voxel-ink rounded-none"
                     >
                         Open Backtest Run →
                     </Link>
@@ -107,7 +107,7 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
         <div className="flex flex-col gap-3 min-w-0">
             <div
                 data-testid="recipe-quota-strip"
-                className="voxel-trough bg-boxel-trough p-3 flex flex-wrap items-center justify-between gap-2 text-xs font-normal text-boxel-muted min-w-0"
+                className="voxel-trough bg-voxel-trough p-3 flex flex-wrap items-center justify-between gap-2 text-xs font-normal text-voxel-muted min-w-0"
             >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                     <Badge variant="soft" colorScheme="accent" size="xs">
@@ -123,26 +123,26 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
                             (max {quotaStatus?.maxConcurrentBacktests ?? 1} active)
                         </span>
                     </span>
-                    <span className="whitespace-nowrap font-mono tabular-nums text-boxel-ink">
+                    <span className="whitespace-nowrap font-mono tabular-nums text-voxel-ink">
                         • Live Turns: {liveLeft}/{quotaStatus?.dailyLiveTurnLimit ?? 3} left today
                     </span>
-                    <span className="whitespace-nowrap font-mono tabular-nums text-boxel-ink">
+                    <span className="whitespace-nowrap font-mono tabular-nums text-voxel-ink">
                         • Scheduled Live: {quotaStatus?.activeLiveRecipes ?? 0}/
                         {quotaStatus?.maxLiveRecipes ?? 1}
                     </span>
                 </div>
-                <span className="whitespace-nowrap font-mono tabular-nums text-boxel-muted">
+                <span className="whitespace-nowrap font-mono tabular-nums text-voxel-muted">
                     Global Backtest Queue: {quotaStatus?.globalPendingBacktests ?? 0}/
                     {quotaStatus?.globalQueueCap ?? 20} (all users)
                 </span>
             </div>
 
-            <div className="voxel-trough bg-boxel-trough p-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 min-w-0">
+            <div className="voxel-trough bg-voxel-trough p-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 min-w-0">
                 <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-sm font-bold text-boxel-ink">
+                    <span className="text-sm font-bold text-voxel-ink">
                         How 2-Week PIT Backtests Work (strata-auto-go)
                     </span>
-                    <span className="text-xs font-normal text-boxel-muted leading-relaxed">
+                    <span className="text-xs font-normal text-voxel-muted leading-relaxed">
                         Simulates a random 10-trading-day window (30 slots at 09:30 / 12:30 / 15:30
                         ET since Feb 9, 2026) one job at a time globally. Tools strictly enforce
                         &lt;= slot_time data (zero web_search or lookahead), Long-Only sizing (max 4
@@ -151,10 +151,10 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
                     </span>
                 </div>
                 <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-sm font-bold text-boxel-ink">
+                    <span className="text-sm font-bold text-voxel-ink">
                         How Live Paper Execution Works (auto-go)
                     </span>
-                    <span className="text-xs font-normal text-boxel-muted leading-relaxed">
+                    <span className="text-xs font-normal text-voxel-muted leading-relaxed">
                         Runs independently on clvg.uk auto-go against your strategy’s isolated
                         $10,000 paper ledger, so live turns never stall behind queued backtests. Use
                         Run Live Now to test one slot immediately, or enable Scheduled Live (3x/day
@@ -168,35 +168,35 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
 
 export function BacktestMethodologyBlock() {
     return (
-        <div className="voxel-trough bg-boxel-trough p-4 flex flex-col gap-3 min-w-0">
-            <SectionHeading gradient="electric">How To Read This Backtest</SectionHeading>
+        <div className="voxel-trough bg-voxel-trough p-4 flex flex-col gap-3 min-w-0">
+            <SectionHeading>How To Read This Backtest</SectionHeading>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-3 min-w-0">
-                <div className="border border-boxel-bevel-lo bg-boxel-surface p-3 flex flex-col gap-1 min-w-0">
-                    <span className="text-sm font-bold text-boxel-ink">
+                <div className="border border-voxel-bevel-lo bg-voxel-surface p-3 flex flex-col gap-1 min-w-0">
+                    <span className="text-sm font-bold text-voxel-ink">
                         Point-in-Time Intraday Slots
                     </span>
-                    <span className="text-xs font-normal text-boxel-muted leading-relaxed">
+                    <span className="text-xs font-normal text-voxel-muted leading-relaxed">
                         Each tile is one ET market checkpoint (09:30, 12:30, 15:30 ET). Click any
                         settled tile to inspect the exact hydrated prompt, tool calls, internal
                         reasoning, and output. A HOLD ([]) session still captures all research tool
                         rounds.
                     </span>
                 </div>
-                <div className="border border-boxel-bevel-lo bg-boxel-surface p-3 flex flex-col gap-1 min-w-0">
-                    <span className="text-sm font-bold text-boxel-ink">
+                <div className="border border-voxel-bevel-lo bg-voxel-surface p-3 flex flex-col gap-1 min-w-0">
+                    <span className="text-sm font-bold text-voxel-ink">
                         Open Positions vs Closed Trades
                     </span>
-                    <span className="text-xs font-normal text-boxel-muted leading-relaxed">
+                    <span className="text-xs font-normal text-voxel-muted leading-relaxed">
                         Active BUY fills stay in Current Portfolio (and show as OPEN rows in
                         Executed Trades) until an explicit EXIT signal (SIGNAL_EXIT) or final
                         liquidation at slot 30 (END_OF_WINDOW).
                     </span>
                 </div>
-                <div className="border border-boxel-bevel-lo bg-boxel-surface p-3 flex flex-col gap-1 min-w-0">
-                    <span className="text-sm font-bold text-boxel-ink">
+                <div className="border border-voxel-bevel-lo bg-voxel-surface p-3 flex flex-col gap-1 min-w-0">
+                    <span className="text-sm font-bold text-voxel-ink">
                         Net Slippage vs Midpoint
                     </span>
-                    <span className="text-xs font-normal text-boxel-muted leading-relaxed">
+                    <span className="text-xs font-normal text-voxel-muted leading-relaxed">
                         Spread &amp; Slippage Net deducts 5 bps (0.05%) on every entry and exit.
                         Toggle Midpoint to inspect raw price movement before execution friction.
                     </span>
@@ -215,8 +215,8 @@ export function SavedRecipesStrip({
 }) {
     if (recipes.length === 0) return null;
     return (
-        <div className="flex flex-wrap items-center gap-2 voxel-trough bg-boxel-trough p-3">
-            <span className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-2 voxel-trough bg-voxel-trough p-3">
+            <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                 My Strategies:
             </span>
             {recipes.slice(0, 6).map((item) => {
@@ -228,8 +228,8 @@ export function SavedRecipesStrip({
                         search={{ recipeId: item.id }}
                         className={`voxel-btn inline-flex items-center gap-2 px-2 py-1 text-xs font-normal border rounded-none max-w-full min-w-0 ${
                             isActive
-                                ? 'border-accent bg-accent text-boxel-trough'
-                                : 'border-boxel-bevel-hi bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated'
+                                ? 'border-accent bg-accent text-voxel-trough'
+                                : 'border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated'
                         }`}
                     >
                         <span className="truncate min-w-0">{item.name}</span>
@@ -248,8 +248,8 @@ export function SavedRecipesStrip({
 export function RecentBacktestsStrip({ recentBacktests }: { recentBacktests: RecipeJobRecord[] }) {
     if (recentBacktests.length === 0) return null;
     return (
-        <div className="flex flex-wrap items-center gap-2 voxel-trough bg-boxel-trough p-3">
-            <span className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-2 voxel-trough bg-voxel-trough p-3">
+            <span className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                 Recent Backtests:
             </span>
             {recentBacktests.slice(0, 5).map((run) => {
@@ -267,7 +267,7 @@ export function RecentBacktestsStrip({ recentBacktests }: { recentBacktests: Rec
                         key={run.id}
                         to="/recipes/backtest/$jobId"
                         params={{ jobId: run.id }}
-                        className="voxel-btn inline-flex items-center gap-2 px-2 py-1 text-xs font-mono border border-boxel-bevel-hi bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated rounded-none"
+                        className="voxel-btn inline-flex items-center gap-2 px-2 py-1 text-xs font-mono border border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated rounded-none"
                     >
                         <span>{run.id.slice(0, 8)}</span>
                         <span className="text-accent">{label}</span>

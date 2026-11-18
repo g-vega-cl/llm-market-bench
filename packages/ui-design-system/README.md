@@ -1,6 +1,6 @@
 # @llm-market-bench/ui-design-system
 
-Shared UI design system for the LLM Market Bench monorepo. Homegrown component library powered by Tailwind CSS v4 and the **Matcha & Cedar / Cheddar Boxel** aesthetic.
+Shared UI design system for the LLM Market Bench monorepo. Homegrown component library powered by Tailwind CSS v4 and the **Matcha & Cedar / Cheddar Voxel** aesthetic.
 
 > [!IMPORTANT]
 > The full design system rules, typography scale, responsive invariants, and layout guidelines are codified in [`.agents/rules/design-spec.md`](../../.agents/rules/design-spec.md) and [`wiki/entities/design-system.md`](../../wiki/entities/design-system.md).
@@ -8,10 +8,10 @@ Shared UI design system for the LLM Market Bench monorepo. Homegrown component l
 ## Philosophy
 
 - **CSS-First Layout (Avoid JS for design)**: All layouts use declarative CSS Grid and Flexbox (`grid`, `flex`, `flex-wrap`, `items-stretch`). Zero JavaScript layout math (`ResizeObserver`, `window.innerWidth`). Zero inline `style={{ ... }}` objects for layout, typography, or colors.
-- **Matcha & Cedar / Cheddar Boxel**: Tactile voxel hardware geometry (`rounded-none`, 2px directional bevels, hard 4px offset shadows, recessed `.voxel-trough` slots, and physical press `.voxel-btn`).
+- **Matcha & Cedar / Cheddar Voxel**: Tactile voxel hardware geometry (`rounded-none`, 2px directional bevels, hard 4px offset shadows, recessed `.voxel-trough` slots, and physical press `.voxel-btn`).
 - **Strict 3-Combination Typography Budget**: Tier 1 (`18px Bold`), Tier 2 (`14px Bold`), and Tier 3 (`12px Normal`).
 - **Parent-Owns-Spacing**: Zero manual child margins (`m-*`, `mb-*`, `mt-*`, `mr-*`, `ml-*`). Parents supply rhythm with `flex gap-*` and `grid gap-*` (`gap-2`, `gap-4`, `gap-6`).
-- **WCAG AAA Contrast**: Solid Cheddar Gold tags use dark trough text (`text-boxel-trough`, never white).
+- **WCAG AAA Contrast**: Solid Cheddar Gold tags use dark trough text (`text-voxel-trough`, never white).
 
 ## Adoption
 
@@ -28,9 +28,9 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 | `CardHeader` / `CardBody` / `CardFooter` | Composable sub-components |
 | `Badge` | Sharp `.voxel-badge` tag with optional square pixel dot indicator. Built-in `gap-1.5` container spacing. |
 | `Table` | Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container. |
-| `Input` / `Label` / `ErrorMessage` | Recessed `.voxel-trough rounded-none` wrapper (`bg-boxel-trough`, `border-boxel-bevel-hi`). Tier 2 control typography. |
+| `Input` / `Label` / `ErrorMessage` | Recessed `.voxel-trough rounded-none` wrapper (`bg-voxel-trough`, `border-voxel-bevel-hi`). Tier 2 control typography. |
 | `Select` | Recessed `.voxel-trough rounded-none` wrapper with design system styling and Tier 2 typography. |
-| `Skeleton` | Sharp `rounded-none` Boxel trough placeholder (`text` / `block` / `card` variants) with reduced-motion pulse. |
+| `Skeleton` | Sharp `rounded-none` Voxel trough placeholder (`text` / `block` / `card` variants) with reduced-motion pulse. |
 | `ErrorBoundary` | React error boundary with retry |
 
 ### Patterns

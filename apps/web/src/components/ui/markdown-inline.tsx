@@ -25,7 +25,7 @@ function renderLink(fullMatch: string, key: string): React.ReactNode {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-accent hover:underline font-bold text-xs"
+            className="text-accent hover:underline font-bold text-sm"
         >
             {linkText}
         </a>
@@ -36,7 +36,7 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
     if (fullMatch.startsWith('***') || fullMatch.startsWith('___')) {
         const inner = fullMatch.slice(3, -3);
         return (
-            <strong key={key} className="font-bold text-white">
+            <strong key={key} className="font-bold text-voxel-trough">
                 <em className="italic text-zinc-300">{parseInlineMarkdown(inner)}</em>
             </strong>
         );
@@ -44,7 +44,7 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
     if (fullMatch.startsWith('**') || fullMatch.startsWith('__')) {
         const inner = fullMatch.slice(2, -2);
         return (
-            <strong key={key} className="font-bold text-white">
+            <strong key={key} className="font-bold text-voxel-trough">
                 {parseInlineMarkdown(inner)}
             </strong>
         );
@@ -62,7 +62,7 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
         return (
             <code
                 key={key}
-                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-accent font-mono text-xs font-bold"
+                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-accent font-mono text-sm font-bold"
             >
                 {inner}
             </code>

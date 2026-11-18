@@ -70,10 +70,10 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
                 <div className="lg:col-span-2 flex flex-col gap-6 animate-slide-up">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
-                        <h1 className="text-lg font-bold text-white uppercase tracking-wider text-display drop-shadow-lg m-0">
+                        <h1 className="text-sm font-bold text-voxel-trough uppercase tracking-wider text-display drop-shadow-lg m-0">
                             TODAY
                         </h1>
-                        <Badge variant="outline" colorScheme="neutral" radius="none">
+                        <Badge variant="soft" colorScheme="neutral">
                             {data.todayDateString}
                         </Badge>
                     </div>
@@ -96,18 +96,17 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
 
                 <div className="lg:col-span-1 flex flex-col gap-6 animate-slide-up animate-stagger-2">
                     <Card
-                        variant="glass"
+                        variant="default"
                         padding="md"
                         className="rounded-none shadow-sm flex flex-col gap-4"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-electric-blue-200 uppercase tracking-wider">
+                            <span className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
                                 Market Status
                             </span>
                             <Badge
                                 variant="soft"
                                 colorScheme={isMarketOpen ? 'success' : 'neutral'}
-                                radius="none"
                                 className="gap-2"
                             >
                                 <span
@@ -121,7 +120,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                             </Badge>
                         </div>
 
-                        <div className="text-lg font-bold font-mono text-white text-display drop-shadow">
+                        <div className="text-sm font-bold font-mono text-voxel-trough text-display drop-shadow">
                             {isMarketOpen ? 'Trading Live' : 'After Hours'}
                         </div>
                         <p className="text-xs font-normal text-electric-blue-200 leading-relaxed">
@@ -132,19 +131,19 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                     </Card>
 
                     <Card
-                        variant="glass"
+                        variant="default"
                         padding="md"
                         className="rounded-none shadow-sm flex flex-col gap-4"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-electric-blue-200 uppercase tracking-wider">
+                            <span className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
                                 How I'm Feeling
                             </span>
                             <div className="flex items-center gap-2">
-                                <span className="text-lg">{fallbackSentiment.emoji}</span>
+                                <span className="text-sm">{fallbackSentiment.emoji}</span>
                                 {isStale && marketFeeling && (
                                     <span
-                                        className="text-xs font-bold px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none"
+                                        className="text-sm font-bold px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none"
                                         title="Data is older than 4 hours"
                                     >
                                         ⚠
@@ -154,7 +153,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         </div>
 
                         <div
-                            className={`text-lg font-bold font-mono text-display drop-shadow ${getDirectionColor(fallbackSentiment.direction)}`}
+                            className={`text-sm font-bold font-mono text-display drop-shadow ${getDirectionColor(fallbackSentiment.direction)}`}
                         >
                             {fallbackSentiment.label}
                         </div>
@@ -171,7 +170,6 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                                               : 'neutral'
                                     }
                                     size="sm"
-                                    radius="none"
                                 >
                                     {fallbackSentiment.direction}
                                 </Badge>
@@ -195,7 +193,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
 
                         {fallbackSentiment.primaryConcern && (
                             <div className="flex flex-wrap gap-2">
-                                <span className="text-xs font-bold text-electric-blue-300 uppercase tracking-wider">
+                                <span className="text-sm font-bold text-electric-blue-300 uppercase tracking-wider">
                                     Concern:
                                 </span>
                                 <span className="text-xs font-normal px-2 py-1 bg-white/5 rounded-none text-electric-blue-100 border border-white/10">
@@ -206,19 +204,19 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
 
                         {totalTrades > 0 && (
                             <div className="flex gap-4 pt-4 border-t border-white/10">
-                                <div className="flex-1 text-center p-3 rounded-none bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300 flex flex-col gap-1">
-                                    <div className="text-lg font-bold font-mono text-neon-green-400 drop-shadow">
+                                <div className="flex-1 text-center p-3 rounded-none bg-white/5  border border-white/10 hover:bg-white/10 transition-all duration-300 flex flex-col gap-1">
+                                    <div className="text-sm font-bold font-mono text-neon-green-400 drop-shadow">
                                         {buyCount}
                                     </div>
-                                    <div className="text-xs font-bold text-electric-blue-200 uppercase tracking-wider">
+                                    <div className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
                                         Buys
                                     </div>
                                 </div>
-                                <div className="flex-1 text-center p-3 rounded-none bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300 flex flex-col gap-1">
-                                    <div className="text-lg font-bold font-mono text-alert-red-400 drop-shadow">
+                                <div className="flex-1 text-center p-3 rounded-none bg-white/5  border border-white/10 hover:bg-white/10 transition-all duration-300 flex flex-col gap-1">
+                                    <div className="text-sm font-bold font-mono text-alert-red-400 drop-shadow">
                                         {sellCount}
                                     </div>
-                                    <div className="text-xs font-bold text-electric-blue-200 uppercase tracking-wider">
+                                    <div className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
                                         Sells
                                     </div>
                                 </div>
@@ -240,7 +238,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         <div className="pt-3 border-t border-white/10">
                             <a
                                 href="/market-overview"
-                                className="text-xs font-bold text-electric-blue-200 hover:text-white transition-colors flex items-center gap-1 underline underline-offset-2"
+                                className="text-sm font-bold text-electric-blue-200 hover:text-voxel-trough transition-colors flex items-center gap-1 underline underline-offset-2"
                             >
                                 View full market analysis
                                 <svg
@@ -268,11 +266,13 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
 
 function StatBadge({ icon, label, value }: { icon: string; label: string; value: number }) {
     return (
-        <div className="group flex items-center gap-3 px-4 py-2.5 bg-white/10 backdrop-blur-sm rounded-none border border-white/20 transition-all duration-300 shadow-sm cursor-default">
+        <div className="group flex items-center gap-3 px-4 py-2.5 bg-white/10  rounded-none border border-white/20 transition-all duration-300 shadow-sm cursor-default">
             <span className="text-lg">{icon}</span>
             <div className="flex flex-col gap-0.5">
-                <div className="text-lg font-bold font-mono text-white drop-shadow">{value}</div>
-                <div className="text-xs font-bold text-electric-blue-200 uppercase tracking-wider">
+                <div className="text-sm font-bold font-mono text-voxel-trough drop-shadow">
+                    {value}
+                </div>
+                <div className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
                     {label}
                 </div>
             </div>

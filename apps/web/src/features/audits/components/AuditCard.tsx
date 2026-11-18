@@ -1,4 +1,4 @@
-import { Badge, Card } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, Card } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 
 interface AuditCardProps {
@@ -13,16 +13,6 @@ interface AuditCardProps {
     };
 }
 
-function getSeverity(severity: string): 'high' | 'medium' {
-    const map: Record<string, 'high' | 'medium'> = {
-        CRITICAL: 'high',
-        HIGH: 'high',
-        MEDIUM: 'medium',
-        LOW: 'medium',
-    };
-    return map[severity] ?? 'medium';
-}
-
 const typeLabels: Record<string, string> = {
     DB_ANOMALY: 'DB Anomaly',
     DATA_QUALITY: 'Data Quality',
@@ -35,11 +25,11 @@ export function AuditCard({ audit }: AuditCardProps) {
     const [expanded, setExpanded] = React.useState(false);
 
     return (
-        <Card variant="glass" padding="md">
+        <Card variant="default" padding="md">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                        <Badge severity={getSeverity(audit.severity)} variant="outline" size="sm">
+                        <Badge variant="soft" size="sm">
                             {audit.severity}
                         </Badge>
                         <span className="text-xs text-zinc-500 uppercase tracking-wider">
@@ -56,20 +46,20 @@ export function AuditCard({ audit }: AuditCardProps) {
                             </span>
                         )}
                     </div>
-                    <h3 className="text-lg font-bold text-zinc-200 mb-2">{audit.title}</h3>
+                    <h3 className="text-sm font-bold text-zinc-200 mb-2">{audit.title}</h3>
                     <p className="text-zinc-400 text-xs font-normal">{audit.description}</p>
                 </div>
             </div>
 
             {audit.suggestion && (
                 <div className="mt-4 pt-4 border-t border-zinc-700">
-                    <button
+                    <Button
                         type="button"
                         onClick={() => setExpanded(!expanded)}
-                        className="text-xs font-bold text-zinc-400 hover:text-zinc-200 transition-colors"
+                        className="text-sm font-bold text-zinc-400 hover:text-zinc-200 transition-colors"
                     >
                         {expanded ? 'Hide suggestion' : 'Show suggestion'}
-                    </button>
+                    </Button>
                     {expanded && (
                         <div className="mt-3 p-4 bg-zinc-800/50 rounded-none text-xs font-normal text-zinc-300 font-mono whitespace-pre-wrap">
                             {typeof audit.suggestion === 'string' &&

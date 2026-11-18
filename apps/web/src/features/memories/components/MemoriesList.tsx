@@ -113,7 +113,7 @@ export function MemoriesList({
         <div className="flex flex-col space-y-6">
             {/* Control Bar */}
             <div className="sticky top-4 z-10 mb-6">
-                <Card variant="glass" padding="sm" className="flex flex-col gap-3">
+                <Card variant="default" padding="sm" className="flex flex-col gap-3">
                     {/* Filter Pills & View Toggle */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex flex-wrap gap-2">
@@ -121,7 +121,7 @@ export function MemoriesList({
                                 <Button
                                     key={type.id}
                                     size="sm"
-                                    variant={filter === type.id ? 'solid' : 'ghost'}
+                                    variant={filter === type.id ? 'solid' : 'outline'}
                                     colorScheme="neutral"
                                     onClick={() => onFilterChange(type.id)}
                                 >
@@ -133,7 +133,7 @@ export function MemoriesList({
                         {/* View Toggle */}
                         <Button
                             size="sm"
-                            variant={showFlow ? 'solid' : 'ghost'}
+                            variant={showFlow ? 'solid' : 'outline'}
                             colorScheme="neutral"
                             onClick={() => setShowFlow(!showFlow)}
                         >
@@ -142,17 +142,17 @@ export function MemoriesList({
                     </div>
 
                     {/* Controls Sub-Bar: Date Presets, High Impact, Sort Select */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 border-t border-zinc-200/50 dark:border-white/5">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 border-t border-zinc-200/50 border-white/5">
                         {/* Date Presets */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                            <span className="text-sm font-bold uppercase tracking-wider text-zinc-400 text-zinc-500">
                                 Date:
                             </span>
                             {DATE_PRESETS.map((dp) => (
                                 <Button
                                     key={dp.id}
                                     size="sm"
-                                    variant={datePreset === dp.id ? 'solid' : 'ghost'}
+                                    variant={datePreset === dp.id ? 'solid' : 'outline'}
                                     colorScheme="neutral"
                                     onClick={() => onDatePresetChange?.(dp.id)}
                                     className="rounded-none text-sm font-bold"
@@ -166,7 +166,7 @@ export function MemoriesList({
                         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
                             <Button
                                 size="sm"
-                                variant={onlyHighImpact ? 'solid' : 'ghost'}
+                                variant={onlyHighImpact ? 'solid' : 'outline'}
                                 colorScheme={onlyHighImpact ? 'accent' : 'neutral'}
                                 onClick={onHighImpactToggle}
                                 title="Filter to memories with importance score 8 or higher"

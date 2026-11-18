@@ -28,7 +28,7 @@ function getLineStyle(added?: boolean, removed?: boolean) {
     }
     return {
         prefix: '  ',
-        classes: 'text-zinc-400 dark:text-zinc-500 px-2 py-0.5 opacity-60',
+        classes: 'text-zinc-400 text-zinc-500 px-2 py-0.5 opacity-60',
     };
 }
 
@@ -61,13 +61,13 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
     if (!parentExperiment) {
         const isBaseline = experiment.experiment_type === 'baseline';
         return (
-            <Card className="p-8 border border-dashed border-boxel-bevel-hi bg-boxel-trough">
+            <Card className="p-8 border border-dashed border-voxel-bevel-hi bg-voxel-trough">
                 <div className="flex flex-col items-center justify-center text-center gap-2 py-4">
-                    <span className="text-lg font-bold">🌱</span>
-                    <h3 className="text-sm font-bold text-boxel-ink">
+                    <span className="text-sm font-bold">🌱</span>
+                    <h3 className="text-sm font-bold text-voxel-ink">
                         {isBaseline ? 'Initial baseline prompt' : 'No parent prompt'}
                     </h3>
-                    <p className="text-boxel-muted text-xs font-normal max-w-md">
+                    <p className="text-voxel-muted text-xs font-normal max-w-md">
                         {isBaseline
                             ? 'This is the starting point of the auto-research loop. No previous variant is available to compare.'
                             : 'This experiment does not have a registered parent variant to compare against.'}
@@ -82,7 +82,7 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1">
                     <SectionHeading>Prompt Changes</SectionHeading>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="text-xs text-zinc-500 text-zinc-400">
                         Comparing{' '}
                         <span className="font-mono text-emerald-500">
                             v{parentExperiment.variant_tag}
@@ -109,13 +109,13 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
             </div>
 
             <div className="relative group min-w-0">
-                <div className="relative font-mono text-xs font-normal leading-relaxed max-h-[400px] overflow-y-auto overflow-x-auto bg-boxel-canvas border border-boxel-bevel-hi rounded-none p-4 md:p-6 flex flex-col gap-[2px] min-w-0">
+                <div className="relative font-mono text-xs font-normal leading-relaxed max-h-[400px] overflow-y-auto overflow-x-auto bg-voxel-canvas border border-voxel-bevel-hi rounded-none p-4 md:p-6 flex flex-col gap-[2px] min-w-0">
                     {!hasChanges ? (
-                        <div className="text-center text-zinc-500 dark:text-zinc-400 py-8 text-sm">
+                        <div className="text-center text-zinc-500 text-zinc-400 py-8 text-sm">
                             ✨ No prompt text changes detected between these variants.
                         </div>
                     ) : showChangesOnly && filteredChanges.length === 0 ? (
-                        <div className="text-center text-zinc-500 dark:text-zinc-400 py-8 text-sm">
+                        <div className="text-center text-zinc-500 text-zinc-400 py-8 text-sm">
                             No added or removed lines to show.
                         </div>
                     ) : (

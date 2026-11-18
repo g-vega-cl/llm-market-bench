@@ -7,7 +7,7 @@ export function CauseAndEffectCard({ entry }: { entry: CauseAndEffectEntry }) {
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-none p-6 shadow-sm hover:border-blue-900/50 transition-all group">
             <div className="flex flex-col md:flex-row md:items-start gap-6">
                 <div className="flex-1 flex flex-col gap-4">
-                    <div className="flex items-center gap-4 text-xs uppercase tracking-wider font-bold text-zinc-500">
+                    <div className="flex items-center gap-4 text-sm uppercase tracking-wider font-bold text-zinc-500">
                         <span>
                             {new Date(created_at).toLocaleDateString('en-US', {
                                 timeZone: 'America/New_York',
@@ -21,7 +21,7 @@ export function CauseAndEffectCard({ entry }: { entry: CauseAndEffectEntry }) {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <h3 className="text-lg font-bold text-zinc-200 group-hover:text-blue-400 transition-colors">
+                        <h3 className="text-sm font-bold text-zinc-200 group-hover:text-blue-400 transition-colors">
                             {event?.content
                                 ? event.content.split('\n')[0].substring(0, 80)
                                 : 'Market Event Analysis'}
@@ -32,14 +32,14 @@ export function CauseAndEffectCard({ entry }: { entry: CauseAndEffectEntry }) {
                     </div>
 
                     <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-none flex flex-col gap-1">
-                        <div className="text-xs uppercase tracking-wider font-bold text-blue-400">
+                        <div className="text-sm uppercase tracking-wider font-bold text-blue-400">
                             Market Outcome
                         </div>
                         <div className="text-sm font-bold text-zinc-200">{market_outcome}</div>
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <div className="text-xs uppercase tracking-wider font-bold text-zinc-500">
+                        <div className="text-sm uppercase tracking-wider font-bold text-zinc-500">
                             Causal Analysis
                         </div>
                         <div className="text-xs font-normal text-zinc-400 leading-relaxed whitespace-pre-wrap">
@@ -51,7 +51,7 @@ export function CauseAndEffectCard({ entry }: { entry: CauseAndEffectEntry }) {
                         {tags?.map((tag: string) => (
                             <span
                                 key={tag}
-                                className="px-2.5 py-1 bg-zinc-800 text-zinc-400 text-xs uppercase font-bold rounded-none border border-zinc-700"
+                                className="px-2.5 py-1 bg-zinc-800 text-zinc-400 text-sm uppercase font-bold rounded-none border border-zinc-700"
                             >
                                 {tag}
                             </span>

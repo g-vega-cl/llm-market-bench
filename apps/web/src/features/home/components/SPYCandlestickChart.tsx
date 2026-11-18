@@ -1,3 +1,4 @@
+import { Button } from '@llm-market-bench/ui-design-system';
 import * as d3 from 'd3';
 import * as React from 'react';
 import { formatEasternExactTime } from '~/utils/date';
@@ -58,12 +59,12 @@ function ChartHeaderHUD({ activeDisplay, priceChange, pctChange }: ChartHeaderHU
     return (
         <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-mono">
             <div className="flex items-center gap-2">
-                <span className="text-boxel-muted uppercase font-bold tracking-wider bg-boxel-surface border border-boxel-border px-1.5 py-0.5">
+                <span className="text-voxel-muted uppercase font-bold tracking-wider bg-voxel-surface border border-voxel-bevel-hi px-1.5 py-0.5">
                     SPY 1M
                 </span>
                 {activeDisplay ? (
                     <>
-                        <span className="font-bold text-boxel-ink text-sm">
+                        <span className="font-bold text-voxel-ink text-sm">
                             ${activeDisplay.close.toFixed(2)}
                         </span>
                         <span
@@ -75,33 +76,33 @@ function ChartHeaderHUD({ activeDisplay, priceChange, pctChange }: ChartHeaderHU
                         </span>
                     </>
                 ) : (
-                    <span className="text-boxel-muted">Syncing market tape...</span>
+                    <span className="text-voxel-muted">Syncing market tape...</span>
                 )}
             </div>
             {activeDisplay && (
-                <div className="flex flex-wrap items-center gap-2 text-boxel-muted">
+                <div className="flex flex-wrap items-center gap-2 text-voxel-muted">
                     <span>
-                        <strong className="text-boxel-ink font-bold">O:</strong> $
+                        <strong className="text-voxel-ink font-bold">O:</strong> $
                         {activeDisplay.open.toFixed(2)}
                     </span>
                     <span>
-                        <strong className="text-boxel-ink font-bold">H:</strong> $
+                        <strong className="text-voxel-ink font-bold">H:</strong> $
                         {activeDisplay.high.toFixed(2)}
                     </span>
                     <span>
-                        <strong className="text-boxel-ink font-bold">L:</strong> $
+                        <strong className="text-voxel-ink font-bold">L:</strong> $
                         {activeDisplay.low.toFixed(2)}
                     </span>
                     <span>
-                        <strong className="text-boxel-ink font-bold">C:</strong> $
+                        <strong className="text-voxel-ink font-bold">C:</strong> $
                         {activeDisplay.close.toFixed(2)}
                     </span>
-                    <span className="border-l border-boxel-border pl-2">
-                        <strong className="text-boxel-ink font-bold">Vol:</strong>{' '}
+                    <span className="border-l border-voxel-bevel-hi pl-2">
+                        <strong className="text-voxel-ink font-bold">Vol:</strong>{' '}
                         {activeDisplay.volume.toLocaleString('en-US')}
                     </span>
                     {timeET && (
-                        <span className="border-l border-boxel-border pl-2 text-xs font-normal">
+                        <span className="border-l border-voxel-bevel-hi pl-2 text-xs font-normal">
                             {timeET} ET
                         </span>
                     )}
@@ -258,31 +259,31 @@ export function SPYCandlestickChart({
             {selectedTrade && (
                 <div
                     data-testid="selected-trade-slot"
-                    className="voxel-trough p-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono border border-boxel-border"
+                    className="voxel-trough p-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono"
                 >
                     <div className="flex flex-wrap items-center gap-2 min-w-0">
                         <span
-                            className={`font-bold px-1.5 py-0.5 text-xs ${
+                            className={`font-bold px-1.5 py-0.5 text-sm ${
                                 selectedTrade.action === 'BUY'
-                                    ? 'text-success bg-boxel-surface border border-success/40'
-                                    : 'text-danger bg-boxel-surface border border-danger/40'
+                                    ? 'text-success bg-voxel-surface border border-success/40'
+                                    : 'text-danger bg-voxel-surface border border-danger/40'
                             }`}
                         >
                             {selectedTrade.action}
                         </span>
                         {selectedTrade.shares !== undefined && (
-                            <span className="text-boxel-ink whitespace-nowrap">
-                                <strong className="text-boxel-muted font-bold">QTY:</strong>{' '}
+                            <span className="text-voxel-ink whitespace-nowrap">
+                                <strong className="text-voxel-muted font-bold">QTY:</strong>{' '}
                                 {selectedTrade.shares} sh
                             </span>
                         )}
-                        <span className="text-boxel-ink whitespace-nowrap">
-                            <strong className="text-boxel-muted font-bold">PRICE:</strong> $
+                        <span className="text-voxel-ink whitespace-nowrap">
+                            <strong className="text-voxel-muted font-bold">PRICE:</strong> $
                             {selectedTrade.price.toFixed(2)}
                         </span>
                         {selectedTrade.shares !== undefined && (
-                            <span className="text-boxel-ink whitespace-nowrap">
-                                <strong className="text-boxel-muted font-bold">TOTAL:</strong> $
+                            <span className="text-voxel-ink whitespace-nowrap">
+                                <strong className="text-voxel-muted font-bold">TOTAL:</strong> $
                                 {(selectedTrade.shares * selectedTrade.price).toLocaleString(
                                     'en-US',
                                     {
@@ -293,19 +294,19 @@ export function SPYCandlestickChart({
                             </span>
                         )}
                         {selectedTradeTimeET && (
-                            <span className="border-l border-boxel-border pl-2 text-boxel-muted whitespace-nowrap">
+                            <span className="border-l border-voxel-bevel-hi pl-2 text-voxel-muted whitespace-nowrap">
                                 {selectedTradeTimeET}
                             </span>
                         )}
                     </div>
-                    <button
+                    <Button
                         type="button"
                         aria-label="Close trade details"
                         onClick={() => setSelectedTrade(null)}
-                        className="voxel-btn text-xs px-2 py-0.5 text-boxel-muted hover:text-boxel-ink cursor-pointer"
+                        className="voxel-btn text-xs px-2 py-0.5 text-voxel-muted hover:text-voxel-ink cursor-pointer"
                     >
                         ✕
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>

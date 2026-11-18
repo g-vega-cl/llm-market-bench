@@ -72,9 +72,9 @@ export function getSystemPortfolioSubtitle(ownerId: string): string | undefined 
 function PortfolioLastUpdated({ timestamp }: { timestamp?: string | null }) {
     if (!timestamp) return null;
     return (
-        <div className="pt-2 border-t border-boxel-bevel-hi/50 flex items-center justify-between text-xs text-boxel-muted">
+        <div className="pt-2 border-t border-voxel-bevel-hi/50 flex items-center justify-between text-xs text-voxel-muted">
             <span>Last updated</span>
-            <span className="font-mono text-boxel-muted">{formatEasternDateTime(timestamp)}</span>
+            <span className="font-mono text-voxel-muted">{formatEasternDateTime(timestamp)}</span>
         </div>
     );
 }
@@ -106,7 +106,7 @@ function PortfolioBadges({
                 </Badge>
             )}
             {!isSystem && !hasVerifier(portfolio.owner_id) && (
-                <Badge variant="outline" size="xs" colorScheme="warning">
+                <Badge variant="soft" size="xs" colorScheme="warning">
                     No Verifier
                 </Badge>
             )}
@@ -137,7 +137,7 @@ function PortfolioCard({
         >
             <Card padding="md" isHoverable className="h-full flex flex-col gap-3">
                 <div className="flex justify-between items-start gap-2">
-                    <h3 className="text-sm font-bold capitalize text-boxel-ink group-hover:text-accent transition-colors">
+                    <h3 className="text-sm font-bold capitalize text-voxel-ink group-hover:text-accent transition-colors">
                         {portfolio.owner_id.replace(/-/g, ' ')}
                     </h3>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -154,16 +154,16 @@ function PortfolioCard({
                     </div>
                 </div>
 
-                {subtitle && <p className="text-xs font-normal text-boxel-muted">{subtitle}</p>}
+                {subtitle && <p className="text-xs font-normal text-voxel-muted">{subtitle}</p>}
 
                 <PortfolioBadges portfolio={portfolio} isSystem={isSystem} track={track} />
 
                 <div className="flex flex-col gap-3 mt-auto">
                     <div className="voxel-trough p-3 flex items-baseline justify-between gap-2">
-                        <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted">
+                        <span className="text-xs font-normal uppercase tracking-wider text-voxel-muted">
                             Total Equity
                         </span>
-                        <span className="text-sm font-bold font-mono text-boxel-ink tabular-nums">
+                        <span className="text-sm font-bold font-mono text-voxel-ink tabular-nums">
                             $
                             {totalEquity.toLocaleString('en-US', {
                                 minimumFractionDigits: 2,
@@ -174,22 +174,22 @@ function PortfolioCard({
 
                     <div className="voxel-trough px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
                         <div className="flex items-center gap-1.5">
-                            <span className="text-boxel-muted uppercase font-sans font-normal">
+                            <span className="text-voxel-muted uppercase font-sans font-normal">
                                 Cash
                             </span>
-                            <span className="text-boxel-ink font-bold tabular-nums">
+                            <span className="text-voxel-ink font-bold tabular-nums">
                                 $
                                 {cashBalance.toLocaleString('en-US', {
                                     maximumFractionDigits: 0,
                                 })}
                             </span>
                         </div>
-                        <span className="text-boxel-bevel-hi">|</span>
+                        <span className="text-voxel-bevel-hi">|</span>
                         <div className="flex items-center gap-1.5">
-                            <span className="text-boxel-muted uppercase font-sans font-normal">
+                            <span className="text-voxel-muted uppercase font-sans font-normal">
                                 Buying Power
                             </span>
-                            <span className="text-boxel-ink font-bold tabular-nums">
+                            <span className="text-voxel-ink font-bold tabular-nums">
                                 $
                                 {buyingPower.toLocaleString('en-US', {
                                     maximumFractionDigits: 0,
@@ -261,11 +261,11 @@ export function PortfoliosPage({
     const hasComparison = processedComparisonData.portfolios?.some((p) => p.performance.length > 0);
 
     return (
-        <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+        <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
             <PageLayout maxWidth="xl" className="flex flex-col gap-8">
-                <header className="pb-4 border-b-2 border-boxel-bevel-hi flex flex-col gap-1">
-                    <SectionHeading gradient="electric">Agent Portfolios</SectionHeading>
-                    <p className="text-boxel-muted text-sm">
+                <header className="pb-4 border-b-2 border-voxel-bevel-hi flex flex-col gap-1">
+                    <SectionHeading>Agent Portfolios</SectionHeading>
+                    <p className="text-voxel-muted text-sm">
                         Live equity curves, active LLM agents, and systematic strategies.
                     </p>
                 </header>
@@ -274,10 +274,8 @@ export function PortfoliosPage({
                 <section data-testid="portfolios-block-chart" className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-center justify-between gap-4 w-full">
                         <div className="flex flex-col gap-1">
-                            <SectionHeading gradient="success">
-                                Performance Comparison
-                            </SectionHeading>
-                            <p className="text-xs text-boxel-muted">
+                            <SectionHeading>Performance Comparison</SectionHeading>
+                            <p className="text-xs text-voxel-muted">
                                 Normalized percentage returns over{' '}
                                 {timeframe === 'all'
                                     ? 'all available days'
@@ -289,14 +287,14 @@ export function PortfoliosPage({
                                 {COMPARISON_TIMEFRAMES.map((tf) => (
                                     <Button
                                         key={tf}
-                                        variant={timeframe === tf ? 'solid' : 'ghost'}
+                                        variant={timeframe === tf ? 'solid' : 'outline'}
                                         colorScheme={timeframe === tf ? 'accent' : 'neutral'}
                                         onClick={() => {
                                             startTransition(() => {
                                                 setTimeframe(tf);
                                             });
                                         }}
-                                        className="px-3 py-1 text-xs font-bold"
+                                        className="px-3 py-1 text-sm font-bold"
                                     >
                                         {tf.toUpperCase()}
                                     </Button>
@@ -321,7 +319,7 @@ export function PortfoliosPage({
                             isSettled={isChartSettled}
                         />
                     ) : (
-                        <div className="voxel-trough py-48 flex items-center justify-center text-xs text-boxel-muted border border-boxel-bevel-hi/40">
+                        <div className="voxel-trough py-48 flex items-center justify-center text-xs text-voxel-muted border border-voxel-bevel-hi/40">
                             Loading performance comparison...
                         </div>
                     )}
@@ -329,8 +327,8 @@ export function PortfoliosPage({
 
                 {/* Block 2: Active LLM Agents */}
                 <section data-testid="portfolios-block-llm" className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between gap-2 pb-2 border-b-2 border-boxel-bevel-hi">
-                        <SectionHeading gradient="electric">Active LLM Agents</SectionHeading>
+                    <div className="flex items-center justify-between gap-2 pb-2 border-b-2 border-voxel-bevel-hi">
+                        <SectionHeading>Active LLM Agents</SectionHeading>
                         <Badge colorScheme="accent" variant="solid" size="xs">
                             {activeLlm.length} Models
                         </Badge>
@@ -348,7 +346,7 @@ export function PortfoliosPage({
                             ))}
                         </div>
                     ) : (
-                        <div className="voxel-trough py-12 flex items-center justify-center text-xs text-boxel-muted border border-boxel-bevel-hi/40">
+                        <div className="voxel-trough py-12 flex items-center justify-center text-xs text-voxel-muted border border-voxel-bevel-hi/40">
                             No active models currently available.
                         </div>
                     )}
@@ -360,10 +358,8 @@ export function PortfoliosPage({
                         data-testid="portfolios-block-systematic"
                         className="flex flex-col gap-4"
                     >
-                        <div className="flex items-center justify-between gap-2 pb-2 border-b-2 border-boxel-bevel-hi">
-                            <SectionHeading gradient="catalyst">
-                                Systematic Strategies
-                            </SectionHeading>
+                        <div className="flex items-center justify-between gap-2 pb-2 border-b-2 border-voxel-bevel-hi">
+                            <SectionHeading>Systematic Strategies</SectionHeading>
                             <Badge colorScheme="warning" variant="soft" size="xs">
                                 {activeSystematic.length} Rules
                             </Badge>

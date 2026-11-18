@@ -7,7 +7,7 @@ export interface MarkdownContentProps {
     className?: string;
 }
 
-const TEXT = 'text-sm text-zinc-300 leading-relaxed font-light';
+const TEXT = 'text-xs text-zinc-300 leading-relaxed font-normal';
 
 function renderList(list: ListBlock): React.ReactNode {
     const Tag = list.ordered ? 'ol' : 'ul';
@@ -15,7 +15,7 @@ function renderList(list: ListBlock): React.ReactNode {
     return (
         <Tag key={list.id} className={`${style} list-inside flex flex-col gap-1.5 ${TEXT} pl-2`}>
             {list.items.map((item) => (
-                <li key={item.id} className="leading-relaxed marker:text-accent font-light">
+                <li key={item.id} className="leading-relaxed marker:text-accent font-normal">
                     {parseInlineMarkdown(item.text)}
                     {item.children.map(renderList)}
                 </li>
@@ -30,7 +30,7 @@ function renderHeading(level: number, text: string, key: string): React.ReactNod
         return (
             <h1
                 key={key}
-                className="text-lg font-bold font-display uppercase tracking-wider text-white"
+                className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough"
             >
                 {children}
             </h1>
@@ -40,7 +40,7 @@ function renderHeading(level: number, text: string, key: string): React.ReactNod
         return (
             <h2
                 key={key}
-                className="text-lg font-bold font-display uppercase tracking-wider text-white border-b border-zinc-800 pb-1"
+                className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough border-b border-zinc-800 pb-1"
             >
                 {children}
             </h2>
@@ -48,13 +48,13 @@ function renderHeading(level: number, text: string, key: string): React.ReactNod
     }
     if (level === 3) {
         return (
-            <h3 key={key} className="text-sm font-bold text-white tracking-tight">
+            <h3 key={key} className="text-sm font-bold text-voxel-trough tracking-tight">
                 {children}
             </h3>
         );
     }
     return (
-        <h4 key={key} className="text-xs font-bold text-zinc-300">
+        <h4 key={key} className="text-sm font-bold text-zinc-300">
             {children}
         </h4>
     );
@@ -67,7 +67,10 @@ function renderTable(block: Extract<Block, { kind: 'table' }>): React.ReactNode 
                 <thead>
                     <tr>
                         {block.headers.map((h) => (
-                            <th key={h.id} className="px-3 py-2 bg-zinc-800 font-bold text-white">
+                            <th
+                                key={h.id}
+                                className="px-3 py-2 bg-zinc-800 font-bold text-sm text-voxel-trough"
+                            >
                                 {parseInlineMarkdown(h.text)}
                             </th>
                         ))}
@@ -79,7 +82,7 @@ function renderTable(block: Extract<Block, { kind: 'table' }>): React.ReactNode 
                             {row.cells.map((cell) => (
                                 <td
                                     key={cell.id}
-                                    className="px-3 py-2 border-b border-zinc-800/60 text-zinc-300"
+                                    className="px-3 py-2 border-b border-zinc-800/60 text-xs font-normal text-zinc-300"
                                 >
                                     {parseInlineMarkdown(cell.text)}
                                 </td>
@@ -117,7 +120,7 @@ function renderBlock(block: Block): React.ReactNode {
             return (
                 <pre
                     key={block.id}
-                    className="bg-zinc-800 text-zinc-200 font-mono text-xs p-3 overflow-x-auto whitespace-pre-wrap break-words rounded-none"
+                    className="bg-zinc-800 text-zinc-200 font-mono text-xs font-normal p-3 overflow-x-auto whitespace-pre-wrap break-words rounded-none"
                 >
                     {block.text}
                 </pre>
@@ -126,7 +129,7 @@ function renderBlock(block: Block): React.ReactNode {
             return (
                 <blockquote
                     key={block.id}
-                    className="border-l-4 border-accent pl-4 py-2 bg-zinc-900/60 text-zinc-300 italic text-sm"
+                    className="border-l-2 border-accent pl-4 py-2 bg-zinc-900/60 text-xs font-normal text-zinc-300 italic"
                 >
                     {parseInlineMarkdown(block.text)}
                 </blockquote>

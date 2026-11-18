@@ -1,5 +1,6 @@
 import {
     Badge,
+    Button,
     Card,
     EmptyState,
     Input,
@@ -48,9 +49,7 @@ export function CompaniesPage({ initialCompanies }: CompaniesPageProps) {
                             ← Back to Daily Newsletters
                         </Link>
                     </div>
-                    <SectionHeading gradient="electric">
-                        Company Intelligence & Research Dossiers
-                    </SectionHeading>
+                    <SectionHeading>Company Intelligence & Research Dossiers</SectionHeading>
                     <p className="text-xs font-normal text-zinc-400 max-w-2xl">
                         Deep-dive institutional research evaluating stocks and sectors spotlighted
                         in Benchify's daily briefings. Every dossier includes valuation, Warren
@@ -69,7 +68,7 @@ export function CompaniesPage({ initialCompanies }: CompaniesPageProps) {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {(['all', 'bullish', 'neutral', 'bearish'] as const).map((filter) => (
-                            <button
+                            <Button
                                 key={filter}
                                 type="button"
                                 onClick={() => setVerdictFilter(filter)}
@@ -80,7 +79,7 @@ export function CompaniesPage({ initialCompanies }: CompaniesPageProps) {
                                 }`}
                             >
                                 {filter}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
@@ -121,11 +120,11 @@ export function CompaniesPage({ initialCompanies }: CompaniesPageProps) {
                                             {/* Ticker & Verdict Row */}
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="text-lg font-bold text-zinc-100 group-hover:text-electric-blue-400 transition-colors">
+                                                    <span className="text-sm font-bold text-zinc-100 group-hover:text-electric-blue-400 transition-colors">
                                                         {c.ticker}
                                                     </span>
                                                     {c.is_sector_etf && (
-                                                        <Badge variant="outline" size="sm">
+                                                        <Badge variant="soft" size="sm">
                                                             ETF
                                                         </Badge>
                                                     )}
@@ -144,14 +143,14 @@ export function CompaniesPage({ initialCompanies }: CompaniesPageProps) {
 
                                             {/* Sector & Stats */}
                                             {c.sector && (
-                                                <p className="text-xs font-normal text-zinc-400 truncate">
+                                                <p className="text-sm font-normal text-zinc-400 truncate">
                                                     Sector: {c.sector}
                                                 </p>
                                             )}
                                         </div>
 
                                         {/* Bottom Meta Row */}
-                                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/80 pt-3 text-xs font-normal text-zinc-500">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/80 pt-3 text-sm font-normal text-zinc-500">
                                             <span>
                                                 {c.spot_price_at_report !== null
                                                     ? `$${c.spot_price_at_report.toFixed(2)}`

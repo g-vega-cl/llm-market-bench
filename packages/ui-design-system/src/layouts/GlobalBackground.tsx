@@ -1,6 +1,6 @@
 export function GlobalBackground() {
     return (
-        <div className="fixed inset-0 z-[-1] pointer-events-none bg-boxel-canvas">
+        <div className="fixed inset-0 z-[-1] pointer-events-none bg-voxel-canvas">
             {/* Subtle warm isometric/voxel grid matrix on Deep Forest Moss canvas */}
             <div
                 className="absolute inset-0 opacity-20"

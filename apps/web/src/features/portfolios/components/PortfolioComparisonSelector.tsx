@@ -51,19 +51,18 @@ export function PortfolioComparisonSelector({
         <div className="voxel-trough flex flex-col gap-2 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 min-w-0">
-                    <span className="text-xs font-bold uppercase tracking-wider text-boxel-muted whitespace-nowrap">
+                    <span className="text-sm font-bold uppercase tracking-wider text-voxel-muted whitespace-nowrap">
                         Agents to Compare
                     </span>
                     <Badge
                         variant="soft"
                         size="xs"
-                        radius="none"
                         colorScheme={selectedCount === maxSelected ? 'warning' : 'neutral'}
                     >
                         {selectedCount} / {maxSelected}
                     </Badge>
                     {selectedCount === maxSelected && (
-                        <span className="text-xs font-normal text-boxel-muted whitespace-nowrap">
+                        <span className="text-xs font-normal text-voxel-muted whitespace-nowrap">
                             (Max reached)
                         </span>
                     )}
@@ -76,7 +75,7 @@ export function PortfolioComparisonSelector({
                             disabled={!canAdd}
                             onChange={handleSelectChange}
                             aria-label="Add agent to comparison"
-                            className="bg-boxel-surface border border-boxel-bevel-hi text-xs rounded-none px-2.5 py-1 font-bold text-boxel-ink focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                            className="bg-voxel-surface border border-voxel-bevel-hi text-sm rounded-none px-2.5 py-1 font-bold text-voxel-ink focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                         >
                             <option value="" disabled>
                                 {canAdd ? '+ Add Agent...' : `+ Add Agent (Max ${maxSelected})`}
@@ -91,12 +90,11 @@ export function PortfolioComparisonSelector({
 
                     {onReset && (
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             colorScheme="neutral"
                             size="sm"
-                            rounded="none"
                             onClick={onReset}
-                            className="text-xs py-1 px-2.5 h-auto text-boxel-muted hover:text-boxel-ink"
+                            className="text-xs py-1 px-2.5 h-auto text-voxel-muted hover:text-voxel-ink"
                         >
                             Reset to Top 5
                         </Button>
@@ -105,7 +103,7 @@ export function PortfolioComparisonSelector({
             </div>
 
             {selectedCount === 0 ? (
-                <div className="h-9 flex items-center text-xs font-normal text-boxel-muted italic">
+                <div className="h-9 flex items-center text-xs font-normal text-voxel-muted italic">
                     No agents selected. Choose up to {maxSelected} above to compare performance.
                 </div>
             ) : (
@@ -127,7 +125,7 @@ export function PortfolioComparisonSelector({
                             <div
                                 key={portfolioId}
                                 data-testid="portfolio-selector-chip"
-                                className="w-full min-w-0 h-9 px-2.5 flex items-center justify-between gap-2 rounded-none text-xs font-bold bg-boxel-surface border border-boxel-bevel-hi transition-colors"
+                                className="w-full min-w-0 h-9 px-2.5 flex items-center justify-between gap-2 rounded-none text-sm font-bold bg-voxel-surface border border-voxel-bevel-hi transition-colors"
                             >
                                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                     <span
@@ -137,7 +135,7 @@ export function PortfolioComparisonSelector({
                                     />
                                     <span
                                         data-testid="portfolio-chip-name"
-                                        className="capitalize text-boxel-ink min-w-0 flex-1 truncate"
+                                        className="capitalize text-voxel-ink min-w-0 flex-1 truncate"
                                     >
                                         {ownerName}
                                     </span>
@@ -153,11 +151,11 @@ export function PortfolioComparisonSelector({
                                             {pct.toFixed(2)}%
                                         </span>
                                     )}
-                                    <button
+                                    <Button
                                         type="button"
                                         onClick={() => onRemove(portfolioId)}
                                         aria-label={`Remove ${ownerName} from comparison`}
-                                        className="text-boxel-muted hover:text-danger rounded-none p-0.5 hover:bg-boxel-elevated transition-colors focus:outline-none focus:ring-1 focus:ring-danger shrink-0"
+                                        className="text-voxel-muted hover:text-danger rounded-none p-0.5 hover:bg-voxel-elevated transition-colors focus:outline-none focus:ring-1 focus:ring-danger shrink-0"
                                     >
                                         <svg
                                             className="w-3 h-3"
@@ -173,7 +171,7 @@ export function PortfolioComparisonSelector({
                                                 d="M6 18L18 6M6 6l12 12"
                                             />
                                         </svg>
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         );

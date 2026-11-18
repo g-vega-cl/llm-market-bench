@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **284**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **285**).
 
 ## Top Hotspots
 
@@ -15,18 +15,18 @@ Files with high churn and high bug fix density represent code where changes freq
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/web/src/routes/__root.tsx` | 18 | 11 | 61.1% | 329 | 198 | **CRITICAL** |
 | `apps/web/src/routes/-__root.test.tsx` | 15 | 9 | 60.0% | 535 | 135 | **CRITICAL** |
-| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 20 | 6 | 30.0% | 361 | 120 | **CRITICAL** |
+| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 20 | 6 | 30.0% | 357 | 120 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 19 | 5 | 26.3% | 341 | 95 | **HIGH** |
 | `apps/engine/tasks/daily_predictor.py` | 18 | 4 | 22.2% | 674 | 72 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 16 | 4 | 25.0% | 501 | 64 | **HIGH** |
-| `apps/engine/trading/test_live_intraday_agent.py` | 14 | 4 | 28.6% | 450 | 56 | **HIGH** |
+| `apps/engine/trading/test_live_intraday_agent.py` | 14 | 4 | 28.6% | 452 | 56 | **HIGH** |
 | `apps/engine/tasks/newsletter_generator.py` | 10 | 5 | 50.0% | 428 | 50 | **HIGH** |
 | `apps/free_llm_proxy/tests/test_proxy.py` | 16 | 3 | 18.8% | 1457 | 48 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 15 | 3 | 20.0% | 301 | 45 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 11 | 4 | 36.4% | 956 | 44 | **HIGH** |
 | `apps/engine/tests/test_workflow_schedule.py` | 11 | 4 | 36.4% | 306 | 44 | **HIGH** |
 | `apps/free_llm_proxy/server.py` | 14 | 3 | 21.4% | 587 | 42 | **HIGH** |
-| `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 10 | 4 | 40.0% | 219 | 40 | **HIGH** |
+| `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 10 | 4 | 40.0% | 220 | 40 | **HIGH** |
 | `apps/engine/tests/test_verify_skill.py` | 13 | 3 | 23.1% | 215 | 39 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **284**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **285**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **STEADY** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **284**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 284 | 100.0% |
+| `g-vega-cl` | 285 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **284**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 122 | ▇▇▇▇▇▇ |
+| 2026-11 | 123 | ▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

@@ -75,9 +75,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                         <TableRow
                             key={exp.id}
                             onClick={() => onSelect(exp)}
-                            className={
-                                isSelected ? 'bg-zinc-100 dark:bg-zinc-800' : 'cursor-pointer'
-                            }
+                            className={isSelected ? 'bg-zinc-100 bg-zinc-800' : 'cursor-pointer'}
                         >
                             <TableCell className="font-mono font-normal">
                                 <div className="flex items-center gap-2">
@@ -86,7 +84,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                         ?.selected_tools && (
                                         <Badge
                                             colorScheme="accent"
-                                            variant="outline"
+                                            variant="soft"
                                             className="px-1.5 py-0 font-sans tracking-wide"
                                         >
                                             🛠️ Pull
@@ -125,7 +123,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                             <TableCell
                                 className={`font-bold ${
                                     score === 'N/A'
-                                        ? 'text-boxel-muted font-normal'
+                                        ? 'text-voxel-muted font-normal'
                                         : Number(score) > 0
                                           ? 'text-emerald-400'
                                           : 'text-rose-400'

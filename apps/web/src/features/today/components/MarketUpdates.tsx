@@ -36,11 +36,11 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
     return (
         <section className="flex flex-col gap-6 animate-slide-up">
             <div className="flex items-center justify-between">
-                <SectionHeading gradient="catalyst">Live Market Pulse</SectionHeading>
+                <SectionHeading>Live Market Pulse</SectionHeading>
 
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-none">
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 bg-amber-950/20 border border-amber-200 border-amber-900/30 rounded-none">
                     <div className="live-dot" />
-                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                    <span className="text-sm font-bold text-amber-600 text-amber-400 uppercase tracking-wider">
                         Real-time
                     </span>
                 </div>
@@ -55,7 +55,6 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                         <Card
                             key={update.ticker}
                             isHoverable
-                            radius="none"
                             padding="sm"
                             className="text-center relative overflow-hidden animate-slide-up rounded-none shadow-sm flex flex-col justify-between"
                             style={{ animationDelay: `${idx * 50}ms` }}
@@ -69,19 +68,19 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
 
                             {/* Ticker */}
                             <div className="relative flex flex-col gap-1">
-                                <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                                <div className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
                                     {update.ticker}
                                 </div>
 
                                 {/* Price */}
-                                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-white">
+                                <div className="text-sm font-bold font-mono text-zinc-900 text-voxel-trough">
                                     ${Number(update.price).toFixed(2)}
                                 </div>
 
                                 {/* Change Indicator */}
                                 {priceChange !== 0 && (
                                     <div
-                                        className={`flex items-center justify-center gap-1 text-xs font-bold font-mono ${
+                                        className={`flex items-center justify-center gap-1 text-sm font-bold font-mono ${
                                             isPositive
                                                 ? 'text-neon-green-500'
                                                 : 'text-alert-red-500'

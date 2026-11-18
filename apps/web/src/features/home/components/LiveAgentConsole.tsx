@@ -1,4 +1,4 @@
-import { Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Button, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { formatEasternTime } from '~/utils/date';
 import { type AgentQueueItem, fetchAgentQueueStatus } from '../api/fetch-agent-queue';
@@ -51,13 +51,13 @@ const DIRECTION_COLOR_MAP: Record<
 > = {
     BULLISH: { text: 'text-success', dot: 'bg-success' },
     BEARISH: { text: 'text-danger', dot: 'bg-danger' },
-    NEUTRAL: { text: 'text-boxel-ink', dot: 'bg-boxel-muted' },
+    NEUTRAL: { text: 'text-voxel-ink', dot: 'bg-voxel-muted' },
 };
 
 const ACTION_COLOR_MAP: Record<LiveAgentState['action'], string> = {
     BUY: 'text-success',
     SELL: 'text-danger',
-    HOLD: 'text-boxel-muted',
+    HOLD: 'text-voxel-muted',
 };
 
 function ConsoleHeaderRibbon({
@@ -81,10 +81,10 @@ function ConsoleHeaderRibbon({
     const actionColor = ACTION_COLOR_MAP[action] ?? ACTION_COLOR_MAP.HOLD;
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-boxel-bevel-hi">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-voxel-bevel-hi">
             <div className="flex flex-col gap-1">
                 <SectionHeading className="text-lg">24/7 Autonomous SPY Trader</SectionHeading>
-                <div className="flex items-center gap-2 text-xs font-mono text-boxel-muted">
+                <div className="flex items-center gap-2 text-xs font-mono text-voxel-muted">
                     <span className="flex items-center gap-1.5">
                         <span
                             className={`h-2 w-2 rounded-none ${
@@ -92,7 +92,7 @@ function ConsoleHeaderRibbon({
                                     ? isStreaming
                                         ? 'bg-success animate-pulse'
                                         : 'bg-success'
-                                    : 'bg-boxel-muted'
+                                    : 'bg-voxel-muted'
                             }`}
                         />
                         {isMarketOpen
@@ -119,28 +119,28 @@ function ConsoleHeaderRibbon({
                         <span
                             className={`h-1.5 w-1.5 shrink-0 rounded-none ${directionStyle.dot}`}
                         />
-                        <span className="text-boxel-muted">BIAS:</span>
+                        <span className="text-voxel-muted">BIAS:</span>
                         <span className={`font-bold ${directionStyle.text}`}>
                             {marketDirection}
                         </span>
                     </span>
-                    <span className="text-boxel-bevel-hi">/</span>
+                    <span className="text-voxel-bevel-hi">/</span>
                     <span className="flex items-center gap-1">
-                        <span className="text-boxel-muted">ACT:</span>
+                        <span className="text-voxel-muted">ACT:</span>
                         <span className={`font-bold ${actionColor}`}>{action}</span>
                     </span>
                 </div>
 
                 {onRefresh && (
-                    <button
+                    <Button
                         type="button"
                         onClick={onRefresh}
                         disabled={isPolling}
-                        className="voxel-btn text-xs font-normal font-mono uppercase px-2.5 py-1 text-boxel-ink hover:text-accent disabled:opacity-50 flex items-center gap-1"
+                        className="voxel-btn text-xs font-normal font-mono uppercase px-2.5 py-1 text-voxel-ink hover:text-accent disabled:opacity-50 flex items-center gap-1"
                         title="Refresh intraday tape from server"
                     >
                         <span>{isPolling ? 'Refreshing...' : 'Refresh Tape'}</span>
-                    </button>
+                    </Button>
                 )}
             </div>
         </div>
@@ -235,12 +235,12 @@ export function LiveAgentConsole({
 
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs font-mono">
                 {currentAgentState.sentimentLabel && (
-                    <div className="text-sm font-bold text-boxel-ink tracking-tight">
+                    <div className="text-sm font-bold text-voxel-ink tracking-tight">
                         {currentAgentState.sentimentLabel}
                     </div>
                 )}
                 {currentAgentState.modelUsed && (
-                    <span className="whitespace-nowrap text-boxel-muted">
+                    <span className="whitespace-nowrap text-voxel-muted">
                         Model: {currentAgentState.modelUsed}
                     </span>
                 )}
@@ -265,7 +265,7 @@ export function LiveAgentConsole({
             <SPYCandlestickChart bars={currentBars} trades={currentTrades ?? trades} height={320} />
 
             <div className="voxel-trough p-3.5 flex flex-col gap-2">
-                <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                <div className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                     Intraday Thought Trace
                 </div>
                 <div
@@ -273,13 +273,13 @@ export function LiveAgentConsole({
                     className="flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-xs"
                 >
                     {turnTimestamp && (
-                        <span className="whitespace-nowrap text-boxel-muted">{turnTimestamp}</span>
+                        <span className="whitespace-nowrap text-voxel-muted">{turnTimestamp}</span>
                     )}
                     <span className="whitespace-nowrap font-bold text-accent">
                         {currentAgentState.action} DECISION
                     </span>
                 </div>
-                <div className="text-xs font-normal leading-relaxed text-boxel-ink break-words">
+                <div className="text-xs font-normal leading-relaxed text-voxel-ink break-words">
                     &quot;{currentAgentState.thought}&quot;
                 </div>
             </div>
@@ -293,12 +293,12 @@ export function LiveAgentConsole({
                 }}
             />
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-boxel-bevel-hi/50 text-xs font-normal font-mono text-boxel-muted">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-voxel-bevel-hi/50 text-xs font-normal font-mono text-voxel-muted">
                 <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     <span>Autonomous intraday paper execution.</span>
                     {currentAgentState.memoriesConsulted &&
                         currentAgentState.memoriesConsulted.length > 0 && (
-                            <span className="text-boxel-muted/80">
+                            <span className="text-voxel-muted/80">
                                 (Grounded in {currentAgentState.memoriesConsulted.length} memory{' '}
                                 {currentAgentState.memoriesConsulted.length === 1
                                     ? 'reference'
@@ -313,7 +313,7 @@ export function LiveAgentConsole({
                     </a>
                     <a
                         href="/lab"
-                        className="text-boxel-muted hover:text-boxel-ink hover:underline"
+                        className="text-voxel-muted hover:text-voxel-ink hover:underline"
                     >
                         Lab →
                     </a>

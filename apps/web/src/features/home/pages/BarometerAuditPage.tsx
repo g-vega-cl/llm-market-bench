@@ -193,22 +193,22 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex flex-col gap-1">
                         <Link to="/">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="outline" size="sm">
                                 ◀ Back to Dashboard
                             </Button>
                         </Link>
-                        <h1 className="text-lg font-bold tracking-tight text-white font-display uppercase">
+                        <h1 className="text-sm font-bold tracking-tight text-voxel-trough font-display uppercase">
                             Market Health Barometer Audit
                         </h1>
-                        <p className="text-white/60 text-xs font-normal">
+                        <p className="text-voxel-trough/60 text-xs font-normal">
                             Auditing S&P 500 aggregate valuation and earnings health statistics
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 p-3 rounded-none backdrop-blur-md shadow-sm">
+                    <div className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 p-3 rounded-none  shadow-sm">
                         <label
                             htmlFor="date-select"
-                            className="text-xs font-bold uppercase tracking-wider text-white/40 font-mono"
+                            className="text-sm font-bold uppercase tracking-wider text-voxel-trough/40 font-mono"
                         >
                             Select Date:
                         </label>
@@ -223,7 +223,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                     }),
                                 });
                             }}
-                            className="bg-zinc-950 border border-zinc-800 text-white px-3 py-1.5 rounded-none text-sm font-bold focus:outline-none focus:border-accent font-mono cursor-pointer"
+                            className="bg-zinc-950 border border-zinc-800 text-voxel-trough px-3 py-1.5 rounded-none text-sm font-bold focus:outline-none focus:border-accent font-mono cursor-pointer"
                         >
                             {dates.map((date) => (
                                 <option key={date} value={date}>
@@ -255,18 +255,18 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                 padding="md"
                                 className={`h-full flex flex-col justify-between gap-1 ${
                                     item.highlight
-                                        ? 'bg-boxel-elevated border-t-accent border-l-accent'
+                                        ? 'bg-voxel-elevated border-t-accent border-l-accent'
                                         : ''
                                 }`}
                             >
-                                <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                                <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                     {item.label}
                                 </span>
                                 <span
-                                    className={`text-lg font-bold font-mono tracking-tight mt-1 tabular-nums ${
+                                    className={`text-sm font-bold font-mono tracking-tight mt-1 tabular-nums ${
                                         item.colorScheme === 'success'
                                             ? 'text-success'
-                                            : 'text-boxel-ink'
+                                            : 'text-voxel-ink'
                                     }`}
                                 >
                                     {formatValue(item.val)}
@@ -279,26 +279,26 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
 
                 {/* Methodology Card */}
                 <Card className="p-6 flex flex-col gap-4 bg-glass-dark border-white/10 rounded-none shadow-sm">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-white/40 border-b border-white/5 pb-2 font-display">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-voxel-trough/40 border-b border-white/5 pb-2 font-display">
                         Calculation Methodology
                     </h3>
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 text-xs font-normal text-white/70">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 text-xs font-normal text-voxel-trough/70">
                         <div className="flex flex-col gap-3">
                             <div>
-                                <span className="text-xs font-bold text-white block">
+                                <span className="text-sm font-bold text-voxel-trough block">
                                     Cap-Weighted Index Aggregates
                                 </span>
-                                <p className="text-xs font-normal leading-relaxed text-white/60">
+                                <p className="text-xs font-normal leading-relaxed text-voxel-trough/60">
                                     All multiples are calculated using the index aggregate
                                     capitalization method rather than a simple arithmetic average.
                                     This aligns the metrics with true index weightings.
                                 </p>
                             </div>
                             <div>
-                                <span className="text-xs font-bold text-white block font-mono">
+                                <span className="text-sm font-bold text-voxel-trough block font-mono">
                                     Trailing P/E = Sum(Mcap) / Sum(Net Income)
                                 </span>
-                                <p className="text-xs font-normal leading-relaxed text-white/60">
+                                <p className="text-xs font-normal leading-relaxed text-voxel-trough/60">
                                     Determined by summing the total market cap of the constituents
                                     and dividing it by their aggregate net income (derived from
                                     `Market Cap / Trailing P/E`). Includes loss-making companies.
@@ -308,20 +308,20 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
 
                         <div className="flex flex-col gap-3">
                             <div>
-                                <span className="text-xs font-bold text-white block font-mono">
+                                <span className="text-sm font-bold text-voxel-trough block font-mono">
                                     Forward P/E = Sum(Mcap) / Sum(Est. Net Income)
                                 </span>
-                                <p className="text-xs font-normal leading-relaxed text-white/60">
+                                <p className="text-xs font-normal leading-relaxed text-voxel-trough/60">
                                     Uses the next fiscal year's consensus EPS estimate multiplied by
                                     shares outstanding (`Market Cap / Price`) to estimate forward
                                     aggregate income. Excludes negative/zero forward estimates.
                                 </p>
                             </div>
                             <div>
-                                <span className="text-xs font-bold text-white block">
+                                <span className="text-sm font-bold text-voxel-trough block">
                                     P/B and P/S Ratios
                                 </span>
-                                <p className="text-xs font-normal leading-relaxed text-white/60">
+                                <p className="text-sm font-normal leading-relaxed text-voxel-trough/60">
                                     Calculated as `Sum(Mcap) / Sum(Book Value)` and `Sum(Mcap) /
                                     Sum(Revenue)` respectively, capturing aggregate book value and
                                     total sales across top 100 S&P 500 constituents.
@@ -335,10 +335,10 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                 <Card className="p-6 flex flex-col gap-6 rounded-none shadow-sm">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/5 pb-4">
                         <div>
-                            <h3 className="text-lg font-bold text-white font-display uppercase tracking-wider">
+                            <h3 className="text-sm font-bold text-voxel-trough font-display uppercase tracking-wider">
                                 Constituent Weights & Valuation (Top {constituents.length})
                             </h3>
-                            <p className="text-xs font-normal text-white/40">
+                            <p className="text-sm font-normal text-voxel-trough/40">
                                 Clicking table headers changes sorting order
                             </p>
                         </div>
@@ -350,7 +350,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                     placeholder="Search by Ticker/Name..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full md:w-64 rounded-none text-xs font-normal"
+                                    className="w-full md:w-64 rounded-none text-sm font-normal"
                                 />
                             </div>
                             <select
@@ -359,7 +359,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                 onChange={(e) =>
                                     setBeatFilter(e.target.value as 'all' | 'beat' | 'miss' | 'na')
                                 }
-                                className="bg-zinc-950 border border-zinc-800 text-white px-3 py-2.5 rounded-none text-xs font-bold focus:outline-none focus:border-accent font-mono cursor-pointer w-full md:w-auto"
+                                className="bg-zinc-950 border border-zinc-800 text-voxel-trough px-3 py-2.5 rounded-none text-sm font-bold focus:outline-none focus:border-accent font-mono cursor-pointer w-full md:w-auto"
                             >
                                 <option value="all">All Earnings Status</option>
                                 <option value="beat">Beats Only</option>
@@ -371,12 +371,12 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
 
                     {/* Check if we have constituents data */}
                     {constituents.length === 0 ? (
-                        <div className="py-12 text-center text-white/40 flex flex-col gap-2 border border-dashed border-zinc-800 rounded-none shadow-sm">
-                            <span className="text-lg">⚠️</span>
-                            <h4 className="text-sm font-bold text-white/80">
+                        <div className="py-12 text-center text-voxel-trough/40 flex flex-col gap-2 border border-dashed border-zinc-800 rounded-none shadow-sm">
+                            <span className="text-sm">⚠️</span>
+                            <h4 className="text-sm font-bold text-voxel-trough/80">
                                 No Constituent-Level Data Available
                             </h4>
-                            <p className="text-xs font-normal max-w-md mx-auto text-white/40 leading-relaxed px-4">
+                            <p className="text-sm font-normal max-w-md mx-auto text-voxel-trough/40 leading-relaxed px-4">
                                 Individual stock weights and ratios are only captured for daily
                                 barometer runs completed after 2026-06-17. Prior records only
                                 contain index aggregate metrics.
@@ -391,7 +391,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                             <TableHead
                                                 key={col.label}
                                                 onClick={() => handleSort(col.field)}
-                                                className={`cursor-pointer hover:text-white transition-colors py-3 px-4 text-xs font-bold text-white/40 uppercase tracking-wider select-none font-display ${
+                                                className={`cursor-pointer hover:text-voxel-trough transition-colors py-3 px-4 text-sm font-bold text-voxel-trough/40 uppercase tracking-wider select-none font-display ${
                                                     ALIGN_CLASS[col.align]
                                                 }`}
                                             >
@@ -402,7 +402,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                 >
                                                     {col.label}
                                                     {sortBy === col.field && (
-                                                        <span className="text-xs font-bold text-accent">
+                                                        <span className="text-sm font-bold text-accent">
                                                             {sortOrder === 'asc' ? '▲' : '▼'}
                                                         </span>
                                                     )}
@@ -416,7 +416,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                         <TableRow>
                                             <TableCell
                                                 colSpan={16}
-                                                className="text-center py-8 text-white/40"
+                                                className="text-center py-8 text-voxel-trough/40"
                                             >
                                                 No constituents match search criteria.
                                             </TableCell>
@@ -437,31 +437,31 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                     key={c.symbol}
                                                     className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
                                                 >
-                                                    <TableCell className="py-2.5 px-4 font-mono font-bold text-white text-sm">
+                                                    <TableCell className="py-2.5 px-4 font-mono font-bold text-voxel-trough text-sm">
                                                         {c.symbol}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-white/80 max-w-48 truncate text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-voxel-trough/80 max-w-48 truncate text-sm font-normal">
                                                         {c.company_name || '—'}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {formatMarketCap(c.market_cap)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         ${formatValue(c.price)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {formatValue(c.pe)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {formatValue(fwdPe)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {formatValue(c.ps)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {formatValue(c.pb)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {formatValue(c.pfcf)}
                                                     </TableCell>
                                                     <TableCell className="py-2.5 px-4 text-center">
@@ -470,7 +470,6 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                                 colorScheme="success"
                                                                 variant="soft"
                                                                 size="sm"
-                                                                radius="none"
                                                             >
                                                                 BEAT
                                                             </Badge>
@@ -480,24 +479,23 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                                 colorScheme="danger"
                                                                 variant="soft"
                                                                 size="sm"
-                                                                radius="none"
                                                             >
                                                                 MISS
                                                             </Badge>
                                                         )}
                                                         {c.beat === null && (
-                                                            <span className="text-white/20 text-xs font-mono">
+                                                            <span className="text-voxel-trough/20 text-xs font-mono">
                                                                 —
                                                             </span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-center font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-center font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {c.earnings_date || '—'}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {formatValue(c.eps_actual)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs font-normal">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs font-normal">
                                                         {formatValue(c.eps_estimated)}
                                                     </TableCell>
                                                     <TableCell className="py-2.5 px-4 text-center">
@@ -506,7 +504,6 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                                 colorScheme="success"
                                                                 variant="soft"
                                                                 size="sm"
-                                                                radius="none"
                                                             >
                                                                 BEAT
                                                             </Badge>
@@ -516,21 +513,20 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                                 colorScheme="danger"
                                                                 variant="soft"
                                                                 size="sm"
-                                                                radius="none"
                                                             >
                                                                 MISS
                                                             </Badge>
                                                         )}
                                                         {c.revenue_beat === null && (
-                                                            <span className="text-white/20 text-xs font-mono">
+                                                            <span className="text-voxel-trough/20 text-xs font-mono">
                                                                 —
                                                             </span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs">
                                                         {formatRevenue(c.revenue_actual)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-trough/80 text-xs">
                                                         {formatRevenue(c.revenue_estimated)}
                                                     </TableCell>
                                                 </TableRow>

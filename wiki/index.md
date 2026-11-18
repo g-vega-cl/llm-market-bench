@@ -106,6 +106,7 @@
 
 ## Concepts
 
+- [[concepts/design-variant-budget]] — max two style variants per primitive, zero legacy theme residue, zero raw buttons, per-file typography/border budgets
 - [[concepts/auto-go-utility-llm]] — routing engine utility LLM flows through the free-llm-proxy `auto-go` alias
 - [[concepts/auth-redirect-sanitization]] — open-redirect-safe return-path preservation for login, signup, and Google OAuth
 - [[concepts/workflow-command-dispatch-guard]] — allow-list gating the generic `main.py` step in daily-predictor.yml so each dispatched action runs exactly once

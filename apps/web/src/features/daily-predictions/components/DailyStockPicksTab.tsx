@@ -28,13 +28,13 @@ function ModelFilterButtons({
                     <Button
                         key={m.id}
                         type="button"
-                        variant={isActive ? 'solid' : 'ghost'}
+                        variant={isActive ? 'solid' : 'outline'}
                         size="sm"
                         onClick={() => onSelectModel(m.id)}
-                        className={`rounded-none font-bold text-xs uppercase tracking-wider px-3 py-1.5 transition-all ${
+                        className={`rounded-none font-bold text-sm uppercase tracking-wider px-3 py-1.5 transition-all ${
                             isActive
-                                ? 'bg-amber-600 dark:bg-amber-500 text-white shadow-sm'
-                                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                                ? 'bg-amber-600 bg-amber-500 text-voxel-trough shadow-sm'
+                                : 'text-zinc-600 text-zinc-400 hover:text-zinc-900 hover:text-voxel-trough'
                         }`}
                     >
                         {m.label}
@@ -50,23 +50,23 @@ function BasketMetricsOverview({ basket }: { basket: DailyStockBasket }) {
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="p-4 rounded-none border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+            <Card className="p-4 rounded-none border border-zinc-200 border-zinc-800 bg-zinc-50 bg-zinc-900/50">
                 <span className="text-xs uppercase tracking-wider text-zinc-500 font-mono">
                     Directional Hit Rate
                 </span>
-                <div className="text-xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400 mt-1">
+                <div className="text-sm font-bold font-mono tabular-nums text-emerald-600 text-emerald-400 mt-1">
                     {basket.directional_hit_rate != null ? `${basket.directional_hit_rate}%` : '—'}
                 </div>
             </Card>
-            <Card className="p-4 rounded-none border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+            <Card className="p-4 rounded-none border border-zinc-200 border-zinc-800 bg-zinc-50 bg-zinc-900/50">
                 <span className="text-xs uppercase tracking-wider text-zinc-500 font-mono">
                     Net L/S Spread Alpha
                 </span>
                 <div
-                    className={`text-xl font-bold font-mono tabular-nums mt-1 ${
+                    className={`text-sm font-bold font-mono tabular-nums mt-1 ${
                         (basket.ls_spread_alpha_pct || 0) >= 0
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-600 dark:text-rose-400'
+                            ? 'text-emerald-600 text-emerald-400'
+                            : 'text-rose-600 text-rose-400'
                     }`}
                 >
                     {basket.ls_spread_alpha_pct != null
@@ -74,25 +74,25 @@ function BasketMetricsOverview({ basket }: { basket: DailyStockBasket }) {
                         : '—'}
                 </div>
             </Card>
-            <Card className="p-4 rounded-none border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+            <Card className="p-4 rounded-none border border-zinc-200 border-zinc-800 bg-zinc-50 bg-zinc-900/50">
                 <span className="text-xs uppercase tracking-wider text-zinc-500 font-mono">
                     SPY Benchmark Move
                 </span>
-                <div className="text-xl font-bold font-mono tabular-nums text-zinc-700 dark:text-zinc-300 mt-1">
+                <div className="text-sm font-bold font-mono tabular-nums text-zinc-700 text-zinc-300 mt-1">
                     {basket.benchmark_spy_return_pct != null
                         ? `${basket.benchmark_spy_return_pct > 0 ? '+' : ''}${basket.benchmark_spy_return_pct}%`
                         : '—'}
                 </div>
             </Card>
-            <Card className="p-4 rounded-none border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+            <Card className="p-4 rounded-none border border-zinc-200 border-zinc-800 bg-zinc-50 bg-zinc-900/50">
                 <span className="text-xs uppercase tracking-wider text-zinc-500 font-mono">
                     Excess vs SPY Alpha
                 </span>
                 <div
-                    className={`text-xl font-bold font-mono tabular-nums mt-1 ${
+                    className={`text-sm font-bold font-mono tabular-nums mt-1 ${
                         (basket.excess_alpha_vs_spy_pct || 0) >= 0
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-600 dark:text-rose-400'
+                            ? 'text-emerald-600 text-emerald-400'
+                            : 'text-rose-600 text-rose-400'
                     }`}
                 >
                     {basket.excess_alpha_vs_spy_pct != null
@@ -115,28 +115,26 @@ function HistoricalBasketRow({ basket: b }: { basket: DailyStockBasket }) {
     const isAlphaPos = (b.ls_spread_alpha_pct || 0) >= 0;
 
     return (
-        <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-            <td className="p-3 font-semibold">{b.target_date}</td>
+        <tr className="hover:bg-zinc-50 hover:bg-zinc-800/40 transition-colors">
+            <td className="p-3 font-bold">{b.target_date}</td>
             <td className="p-3 text-zinc-500">{b.model_name}</td>
             <td className="p-3">
-                <Badge variant="outline" colorScheme={statusScheme}>
+                <Badge variant="soft" colorScheme={statusScheme}>
                     {b.status}
                 </Badge>
             </td>
             <td className="p-3 text-right tabular-nums font-bold">
                 {b.directional_hit_rate != null ? `${b.directional_hit_rate}%` : '—'}
             </td>
-            <td className="p-3 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+            <td className="p-3 text-right tabular-nums text-emerald-600 text-emerald-400">
                 {fmtPct(b.mean_long_return_pct)}
             </td>
-            <td className="p-3 text-right tabular-nums text-rose-600 dark:text-rose-400">
+            <td className="p-3 text-right tabular-nums text-rose-600 text-rose-400">
                 {fmtPct(b.mean_short_return_pct)}
             </td>
             <td
                 className={`p-3 text-right tabular-nums font-bold ${
-                    isAlphaPos
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-rose-600 dark:text-rose-400'
+                    isAlphaPos ? 'text-emerald-600 text-emerald-400' : 'text-rose-600 text-rose-400'
                 }`}
             >
                 {fmtPct(b.ls_spread_alpha_pct)}
@@ -164,15 +162,15 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 border-zinc-800 pb-4">
                 <ModelFilterButtons
                     selectedModel={selectedModel}
                     onSelectModel={setSelectedModel}
                 />
                 {latestBasket && (
-                    <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 dark:text-zinc-400">
+                    <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 text-zinc-400">
                         <span>SESSION:</span>
-                        <Badge variant="outline" colorScheme="neutral">
+                        <Badge variant="soft" colorScheme="neutral">
                             {latestBasket.target_date}
                         </Badge>
                         <Badge
@@ -191,12 +189,12 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
 
             {latestBasket ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="p-5 rounded-none border-t-4 border-t-emerald-600 border-x border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40">
-                        <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-4">
-                            <span className="font-bold text-sm uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                    <Card className="p-5 rounded-none border-t-4 border-t-emerald-600 border-x border-b border-zinc-200 border-zinc-800 bg-zinc-50/50 bg-zinc-900/40">
+                        <div className="flex items-center justify-between border-b border-zinc-200 border-zinc-800 pb-3 mb-4">
+                            <span className="font-bold text-sm uppercase tracking-wider text-emerald-700 text-emerald-400 flex items-center gap-2">
                                 <span>🟢</span> 3 Stocks To Go UP (Long)
                             </span>
-                            <Badge variant="outline" colorScheme="success">
+                            <Badge variant="soft" colorScheme="success">
                                 Long Basket
                             </Badge>
                         </div>
@@ -207,12 +205,12 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
                         </div>
                     </Card>
 
-                    <Card className="p-5 rounded-none border-t-4 border-t-rose-600 border-x border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40">
-                        <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-4">
-                            <span className="font-bold text-sm uppercase tracking-wider text-rose-700 dark:text-rose-400 flex items-center gap-2">
+                    <Card className="p-5 rounded-none border-t-4 border-t-rose-600 border-x border-b border-zinc-200 border-zinc-800 bg-zinc-50/50 bg-zinc-900/40">
+                        <div className="flex items-center justify-between border-b border-zinc-200 border-zinc-800 pb-3 mb-4">
+                            <span className="font-bold text-sm uppercase tracking-wider text-rose-700 text-rose-400 flex items-center gap-2">
                                 <span>🔴</span> 3 Stocks To Go DOWN (Short)
                             </span>
-                            <Badge variant="outline" colorScheme="danger">
+                            <Badge variant="soft" colorScheme="danger">
                                 Short Basket
                             </Badge>
                         </div>
@@ -224,7 +222,7 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
                     </Card>
                 </div>
             ) : (
-                <Card className="p-8 text-center text-zinc-500 rounded-none border border-zinc-200 dark:border-zinc-800 font-mono text-sm">
+                <Card className="p-8 text-center text-zinc-500 rounded-none border border-zinc-200 border-zinc-800 font-mono text-sm">
                     No active stock picks found for selected model track.
                 </Card>
             )}
@@ -232,10 +230,10 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
             {filteredBaskets.length > 0 && (
                 <div className="flex flex-col gap-3 mt-4">
                     <SectionHeading>Historical Basket Performance & Alpha Log</SectionHeading>
-                    <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800">
+                    <div className="overflow-x-auto border border-zinc-200 border-zinc-800">
                         <table className="w-full text-left text-sm border-collapse">
                             <thead>
-                                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/80 text-zinc-600 dark:text-zinc-400 font-mono text-xs uppercase">
+                                <tr className="border-b border-zinc-200 border-zinc-800 bg-zinc-100 bg-zinc-900/80 text-zinc-600 text-zinc-400 font-mono text-xs uppercase">
                                     <th className="p-3">Date</th>
                                     <th className="p-3">Model</th>
                                     <th className="p-3">Status</th>
@@ -246,7 +244,7 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
                                     <th className="p-3 text-right">SPY Move</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono text-xs">
+                            <tbody className="divide-y divide-zinc-200 divide-zinc-800 font-mono text-xs">
                                 {filteredBaskets.map((b) => (
                                     <HistoricalBasketRow key={b.id} basket={b} />
                                 ))}
@@ -261,14 +259,14 @@ export function DailyStockPicksTab({ baskets }: DailyStockPicksTabProps) {
 
 function PickCard({ pick }: { pick: DailyStockPick }) {
     return (
-        <div className="p-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none flex flex-col gap-2">
+        <div className="p-3.5 bg-white bg-zinc-900 border border-zinc-200 border-zinc-800 rounded-none flex flex-col gap-2">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-zinc-500">#{pick.rank}</span>
-                    <span className="font-mono font-bold text-base tracking-tight text-zinc-900 dark:text-white">
+                    <span className="font-mono text-sm font-bold text-zinc-500">#{pick.rank}</span>
+                    <span className="font-mono font-bold text-sm tracking-tight text-zinc-900 text-voxel-trough">
                         {pick.ticker}
                     </span>
-                    <Badge variant="outline" colorScheme="neutral">
+                    <Badge variant="soft" colorScheme="neutral">
                         {pick.confidence}% Conviction
                     </Badge>
                 </div>
@@ -279,12 +277,10 @@ function PickCard({ pick }: { pick: DailyStockPick }) {
                 )}
             </div>
 
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2">
-                {pick.reasoning}
-            </p>
+            <p className="text-xs text-zinc-600 text-zinc-400 line-clamp-2">{pick.reasoning}</p>
 
             {pick.status === 'evaluated' && pick.open_price != null && pick.close_price != null && (
-                <div className="flex flex-wrap items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800/80 font-mono text-xs text-zinc-500">
+                <div className="flex flex-wrap items-center justify-between pt-2 border-t border-zinc-100 border-zinc-800/80 font-mono text-xs text-zinc-500">
                     <div>
                         <span>Open: ${pick.open_price.toFixed(2)}</span>
                         <span className="mx-1.5">→</span>
@@ -293,7 +289,7 @@ function PickCard({ pick }: { pick: DailyStockPick }) {
                     <div className="flex items-center gap-3">
                         <span>
                             Stock:{' '}
-                            <strong className="text-zinc-800 dark:text-zinc-200">
+                            <strong className="text-zinc-800 text-zinc-200">
                                 {pick.stock_return_pct != null
                                     ? `${pick.stock_return_pct > 0 ? '+' : ''}${pick.stock_return_pct}%`
                                     : '—'}
@@ -302,8 +298,8 @@ function PickCard({ pick }: { pick: DailyStockPick }) {
                         <span
                             className={`font-bold ${
                                 (pick.position_return_pct || 0) >= 0
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : 'text-rose-600 dark:text-rose-400'
+                                    ? 'text-emerald-600 text-emerald-400'
+                                    : 'text-rose-600 text-rose-400'
                             }`}
                         >
                             PnL:{' '}

@@ -1,5 +1,6 @@
 import {
     Badge,
+    Button,
     Card,
     EmptyState,
     PageLayout,
@@ -46,7 +47,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
     return (
         <PageLayout className="py-8 space-y-8" maxWidth="xl">
             {/* Header section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 border-zinc-800 pb-6">
                 <div className="space-y-1">
                     <div className="flex items-center gap-4">
                         <Link
@@ -63,47 +64,45 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                             Explore Company Dossiers →
                         </Link>
                     </div>
-                    <SectionHeading gradient="electric">
-                        Daily Market Intelligence Briefings
-                    </SectionHeading>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl font-light">
+                    <SectionHeading>Daily Market Intelligence Briefings</SectionHeading>
+                    <p className="text-sm text-zinc-500 text-zinc-400 max-w-2xl font-normal">
                         Synthesized ~6 minute reads based on ingested daily newsletters, generated
                         twice daily at market open (09:12 ET) and market close (17:00 ET).
                     </p>
                 </div>
 
                 {/* Session filter tabs */}
-                <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none self-start md:self-auto">
-                    <button
+                <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100 bg-zinc-900 border border-zinc-200 border-zinc-800 rounded-none self-start md:self-auto">
+                    <Button
                         type="button"
                         onClick={() => {
                             setSelectedSession('all');
                             if (initialNewsletters.length) setSelectedId(initialNewsletters[0].id);
                         }}
-                        className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all ${
+                        className={`px-3 py-1.5 rounded-none text-sm font-bold transition-all ${
                             selectedSession === 'all'
-                                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+                                ? 'bg-white bg-zinc-800 text-zinc-900 text-voxel-trough shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-900 hover:text-voxel-trough'
                         }`}
                     >
                         All Briefings
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={() => {
                             setSelectedSession('open');
                             const firstOpen = initialNewsletters.find((n) => n.session === 'open');
                             if (firstOpen) setSelectedId(firstOpen.id);
                         }}
-                        className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all flex items-center gap-1 ${
+                        className={`px-3 py-1.5 rounded-none text-sm font-bold transition-all flex items-center gap-1 ${
                             selectedSession === 'open'
-                                ? 'bg-electric-blue-500 text-white shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+                                ? 'bg-electric-blue-500 text-voxel-trough shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-900 hover:text-voxel-trough'
                         }`}
                     >
                         🌅 Open (09:12 ET)
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={() => {
                             setSelectedSession('close');
@@ -112,14 +111,14 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                             );
                             if (firstClose) setSelectedId(firstClose.id);
                         }}
-                        className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all flex items-center gap-1 ${
+                        className={`px-3 py-1.5 rounded-none text-sm font-bold transition-all flex items-center gap-1 ${
                             selectedSession === 'close'
-                                ? 'bg-deep-purple-500 text-white shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+                                ? 'bg-deep-purple-500 text-voxel-trough shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-900 hover:text-voxel-trough'
                         }`}
                     >
                         🌆 Close (17:00 ET)
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -141,7 +140,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                     {/* Left Sidebar: Timeline of generated briefings */}
                     <div className="lg:col-span-4 flex flex-col gap-3">
                         <div className="flex items-center justify-between px-1">
-                            <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                            <span className="text-sm font-bold text-zinc-400 text-zinc-500 uppercase tracking-wider">
                                 Archive ({filteredNewsletters.length})
                             </span>
                             <span className="text-xs font-normal text-zinc-400 font-mono">
@@ -155,14 +154,14 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                 const isOpenSession = newsletter.session === 'open';
 
                                 return (
-                                    <button
+                                    <Button
                                         type="button"
                                         key={newsletter.id}
                                         onClick={() => setSelectedId(newsletter.id)}
                                         className={`w-full p-4 rounded-none border transition-all cursor-pointer text-left flex flex-col gap-2 ${
                                             isSelected
-                                                ? 'bg-electric-blue-50/40 dark:bg-electric-blue-950/20 border-electric-blue-500/50 ring-1 ring-electric-blue-500/30'
-                                                : 'bg-white dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                                                ? 'bg-electric-blue-50/40 bg-electric-blue-950/20 border-electric-blue-500/50 ring-1 ring-electric-blue-500/30'
+                                                : 'bg-white bg-zinc-900/60 border-zinc-200 border-zinc-800 hover:border-zinc-300 hover:border-zinc-700'
                                         }`}
                                     >
                                         <div className="flex items-center justify-between gap-2">
@@ -170,8 +169,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                 variant="soft"
                                                 colorScheme={isOpenSession ? 'accent' : 'warning'}
                                                 size="xs"
-                                                radius="none"
-                                                className="uppercase text-xs font-bold"
+                                                className="uppercase text-sm font-bold"
                                             >
                                                 {isOpenSession
                                                     ? '🌅 Market Open'
@@ -182,21 +180,21 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                             </span>
                                         </div>
 
-                                        <h4 className="text-sm font-bold text-zinc-900 dark:text-white line-clamp-2 leading-snug">
+                                        <h4 className="text-sm font-bold text-zinc-900 text-voxel-trough line-clamp-2 leading-snug">
                                             <InlineMarkdown text={newsletter.title} />
                                         </h4>
 
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 font-normal">
+                                        <p className="text-sm text-zinc-500 text-zinc-400 line-clamp-2 font-normal">
                                             <InlineMarkdown text={newsletter.summary} />
                                         </p>
 
-                                        <div className="flex items-center justify-between text-xs font-normal text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+                                        <div className="flex items-center justify-between text-xs font-normal text-zinc-400 pt-1 border-t border-zinc-100 border-zinc-800/80">
                                             <span>{newsletter.formattedDate}</span>
                                             <span>
                                                 ⏱️ {newsletter.read_time_minutes ?? 6} min read
                                             </span>
                                         </div>
-                                    </button>
+                                    </Button>
                                 );
                             })}
                         </div>
@@ -205,16 +203,15 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                     {/* Right Spotlight: Selected Newsletter Full View */}
                     {activeNewsletter && (
                         <div className="lg:col-span-8 flex flex-col gap-6">
-                            <Card className="p-6 md:p-8 flex flex-col gap-6 rounded-none shadow-sm relative overflow-hidden border-electric-blue-100 dark:border-electric-blue-900/30">
+                            <Card className="p-6 md:p-8 flex flex-col gap-6 rounded-none shadow-sm relative overflow-hidden border-electric-blue-100 border-electric-blue-900/30">
                                 {/* Side Accent Line */}
                                 <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-electric-blue-500 via-deep-purple-500 to-electric-blue-600" />
 
                                 {/* Header badges & Meta */}
-                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4">
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 border-zinc-800 pb-4">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <Badge
                                             variant="solid"
-                                            radius="none"
                                             colorScheme={
                                                 activeNewsletter.session === 'open'
                                                     ? 'accent'
@@ -226,10 +223,10 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                 ? '🌅 Market Open Briefing'
                                                 : '🌆 Market Close Briefing'}
                                         </Badge>
-                                        <span className="px-2.5 py-1 rounded-none text-xs font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                        <span className="px-2.5 py-1 rounded-none text-xs font-mono bg-zinc-100 bg-zinc-800 text-zinc-600 text-zinc-300 border border-zinc-200 border-zinc-700">
                                             🕒 Created at {activeNewsletter.displayTime}
                                         </span>
-                                        <span className="px-2.5 py-1 rounded-none text-xs font-normal bg-electric-blue-50 dark:bg-electric-blue-950/40 text-electric-blue-600 dark:text-electric-blue-400 border border-electric-blue-200 dark:border-electric-blue-800/50">
+                                        <span className="px-2.5 py-1 rounded-none text-xs font-normal bg-electric-blue-50 bg-electric-blue-950/40 text-electric-blue-600 text-electric-blue-400 border border-electric-blue-200 border-electric-blue-800/50">
                                             ⏱️ {activeNewsletter.read_time_minutes ?? 6} min read
                                         </span>
                                     </div>
@@ -239,7 +236,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                             search={{
                                                 q: `Analyze market newsletter briefing "${activeNewsletter.title}": ${activeNewsletter.summary.slice(0, 150)}...`,
                                             }}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm transition-all"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-sm font-bold bg-cyan-600 hover:bg-cyan-500 text-voxel-trough shadow-sm transition-all"
                                             title="Discuss this briefing in AI Chat Gateway"
                                         >
                                             <span>💬</span>
@@ -253,35 +250,35 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
 
                                 {/* Newsletter Title */}
                                 <div>
-                                    <h1 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight leading-tight">
+                                    <h1 className="text-sm font-bold text-zinc-900 text-voxel-trough tracking-tight leading-tight">
                                         <InlineMarkdown text={activeNewsletter.title} />
                                     </h1>
                                 </div>
 
                                 {/* Executive Summary Banner */}
-                                <div className="p-4 rounded-none bg-electric-blue-50/60 dark:bg-electric-blue-950/20 border border-electric-blue-200/60 dark:border-electric-blue-900/40 flex flex-col gap-1.5">
+                                <div className="p-4 rounded-none bg-electric-blue-50/60 bg-electric-blue-950/20 border border-electric-blue-200/60 border-electric-blue-900/40 flex flex-col gap-1.5">
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm">⚡</span>
-                                        <span className="text-xs font-bold uppercase tracking-wider text-electric-blue-600 dark:text-electric-blue-400">
+                                        <span className="text-sm font-bold uppercase tracking-wider text-electric-blue-600 text-electric-blue-400">
                                             Executive Summary
                                         </span>
                                     </div>
-                                    <p className="text-xs font-normal text-zinc-700 dark:text-zinc-200 leading-relaxed">
+                                    <p className="text-xs font-normal text-zinc-700 text-zinc-200 leading-relaxed">
                                         <InlineMarkdown text={activeNewsletter.summary} />
                                     </p>
                                 </div>
 
                                 {/* Key Bullet Highlights */}
                                 {parsedBullets.length > 0 && (
-                                    <div className="flex flex-col gap-3 p-4 rounded-none bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800">
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+                                    <div className="flex flex-col gap-3 p-4 rounded-none bg-zinc-50 bg-zinc-900/40 border border-zinc-200/80 border-zinc-800">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 text-zinc-400 flex items-center gap-2">
                                             📌 Key Takeaways
                                         </h3>
                                         <ul className="flex flex-col gap-2">
                                             {parsedBullets.map((bullet) => (
                                                 <li
                                                     key={bullet}
-                                                    className="text-xs text-zinc-700 dark:text-zinc-300 font-normal flex items-start gap-2.5 leading-relaxed"
+                                                    className="text-xs text-zinc-700 text-zinc-300 font-normal flex items-start gap-2.5 leading-relaxed"
                                                 >
                                                     <span className="text-electric-blue-500 font-bold mt-0.5">
                                                         •
@@ -299,18 +296,18 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
 
                                 {/* Spotlighted Company & Sector Research */}
                                 {spotlightCompanies.length > 0 && (
-                                    <div className="flex flex-col gap-3 p-4 rounded-none bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800">
-                                        <div className="flex items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                                            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-300 flex items-center gap-2">
+                                    <div className="flex flex-col gap-3 p-4 rounded-none bg-zinc-50 bg-zinc-900/40 border border-zinc-200/80 border-zinc-800">
+                                        <div className="flex items-center justify-between gap-2 border-b border-zinc-200 border-zinc-800 pb-2">
+                                            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900 text-zinc-300 flex items-center gap-2">
                                                 <span>🔬</span>
                                                 <span>Spotlighted Company & Sector Research</span>
-                                                <span className="text-zinc-400 dark:text-zinc-500 font-mono font-normal">
+                                                <span className="text-zinc-400 text-zinc-500 font-mono font-normal">
                                                     ({spotlightCompanies.length})
                                                 </span>
                                             </h3>
                                             <Link
                                                 to="/companies"
-                                                className="text-xs font-bold text-electric-blue-500 hover:underline"
+                                                className="text-sm font-bold text-electric-blue-500 hover:underline"
                                             >
                                                 All Dossiers →
                                             </Link>
@@ -329,26 +326,25 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                 return (
                                                     <div
                                                         key={company.id || company.ticker}
-                                                        className="p-3.5 rounded-none bg-white dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2.5 transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+                                                        className="p-3.5 rounded-none bg-white bg-zinc-950/80 border border-zinc-200 border-zinc-800 flex flex-col gap-2.5 transition-all hover:border-zinc-300 hover:border-zinc-700"
                                                     >
                                                         <div className="flex items-start justify-between gap-2">
                                                             <div className="min-w-0">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">
+                                                                    <span className="text-sm font-bold text-zinc-900 text-voxel-trough tracking-tight">
                                                                         {company.ticker}
                                                                     </span>
                                                                     {company.is_sector_etf && (
                                                                         <Badge
-                                                                            variant="outline"
+                                                                            variant="soft"
                                                                             size="xs"
-                                                                            radius="none"
                                                                             colorScheme="neutral"
                                                                         >
                                                                             ETF
                                                                         </Badge>
                                                                     )}
                                                                 </div>
-                                                                <div className="text-xs font-normal text-zinc-500 dark:text-zinc-400 truncate">
+                                                                <div className="text-xs font-normal text-zinc-500 text-zinc-400 truncate">
                                                                     {company.company_name}
                                                                     {company.sector
                                                                         ? ` • ${company.sector}`
@@ -359,7 +355,6 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                             <Badge
                                                                 variant="solid"
                                                                 size="xs"
-                                                                radius="none"
                                                                 colorScheme={verdictColor}
                                                                 className="uppercase font-bold tracking-wider shrink-0"
                                                             >
@@ -367,8 +362,8 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                             </Badge>
                                                         </div>
 
-                                                        <div className="flex items-center gap-3 text-xs font-mono text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-900">
-                                                            <span className="font-bold text-zinc-800 dark:text-zinc-200">
+                                                        <div className="flex items-center gap-3 text-xs font-mono text-zinc-500 text-zinc-400 pt-1 border-t border-zinc-100 border-zinc-900">
+                                                            <span className="font-bold text-zinc-800 text-zinc-200">
                                                                 {company.conviction_score}%
                                                                 Conviction
                                                             </span>
@@ -390,16 +385,16 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                                         </div>
 
                                                         {company.catalyst_context && (
-                                                            <p className="text-xs font-normal text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                                                            <p className="text-xs font-normal text-zinc-600 text-zinc-400 line-clamp-2 leading-relaxed">
                                                                 {company.catalyst_context}
                                                             </p>
                                                         )}
 
-                                                        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900 mt-auto">
+                                                        <div className="pt-2 border-t border-zinc-100 border-zinc-900 mt-auto">
                                                             <Link
                                                                 to="/companies/$ticker"
                                                                 params={{ ticker: company.ticker }}
-                                                                className="text-xs font-bold text-electric-blue-500 hover:underline inline-flex items-center gap-1"
+                                                                className="text-sm font-bold text-electric-blue-500 hover:underline inline-flex items-center gap-1"
                                                             >
                                                                 View Full Dossier →
                                                             </Link>
@@ -412,12 +407,12 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                 )}
 
                                 {/* Main Newsletter Body Content */}
-                                <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                <div className="pt-4 border-t border-zinc-100 border-zinc-800">
                                     <MarkdownContent content={activeNewsletter.content} />
                                 </div>
 
                                 {/* Footer metadata */}
-                                <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs font-normal text-zinc-400 font-mono">
+                                <div className="pt-6 border-t border-zinc-100 border-zinc-800 flex items-center justify-between text-xs font-normal text-zinc-400 font-mono">
                                     <span>
                                         Sources Ingested: {activeNewsletter.source_count ?? 0}{' '}
                                         Briefings

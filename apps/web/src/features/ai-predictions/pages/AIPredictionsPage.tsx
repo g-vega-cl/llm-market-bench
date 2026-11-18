@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { Badge, Card } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, Card } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
 import type { SectorPrediction } from '../api/fetch-predictions';
 import { AIPredictionChart } from '../components/AIPredictionChart';
@@ -130,25 +130,25 @@ function ArenaTabContent({
                     className="h-full flex flex-col justify-between gap-4"
                 >
                     <div className="flex justify-between items-start gap-2">
-                        <h2 className="text-sm font-bold text-boxel-ink">DeepSeek Models</h2>
+                        <h2 className="text-sm font-bold text-voxel-ink">DeepSeek Models</h2>
                         <Badge colorScheme="accent" variant="soft" size="xs">
                             {deepSeekMetrics.evaluatedCount} Evaluated
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-boxel-bevel-hi">
+                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-voxel-bevel-hi">
                         <div>
-                            <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
+                            <div className="text-sm font-bold font-mono text-voxel-ink tabular-nums">
                                 {deepSeekMetrics.avgScore}
                             </div>
-                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 Avg Percentile
                             </div>
                         </div>
                         <div>
-                            <div className="text-lg font-bold font-mono text-success tabular-nums">
+                            <div className="text-sm font-bold font-mono text-success tabular-nums">
                                 {deepSeekMetrics.topQuartileRate}
                             </div>
-                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 Top-Quartile
                             </div>
                         </div>
@@ -162,25 +162,25 @@ function ArenaTabContent({
                     className="h-full flex flex-col justify-between gap-4"
                 >
                     <div className="flex justify-between items-start gap-2">
-                        <h2 className="text-sm font-bold text-boxel-ink">MiniMax-M3.1-Flash</h2>
+                        <h2 className="text-sm font-bold text-voxel-ink">MiniMax-M3.1-Flash</h2>
                         <Badge colorScheme="neutral" variant="soft" size="xs">
                             {miniMaxMetrics.evaluatedCount} Evaluated
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-boxel-bevel-hi">
+                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-voxel-bevel-hi">
                         <div>
-                            <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
+                            <div className="text-sm font-bold font-mono text-voxel-ink tabular-nums">
                                 {miniMaxMetrics.avgScore}
                             </div>
-                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 Avg Percentile
                             </div>
                         </div>
                         <div>
-                            <div className="text-lg font-bold font-mono text-success tabular-nums">
+                            <div className="text-sm font-bold font-mono text-success tabular-nums">
                                 {miniMaxMetrics.topQuartileRate}
                             </div>
-                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 Top-Quartile
                             </div>
                         </div>
@@ -194,25 +194,25 @@ function ArenaTabContent({
                     className="h-full flex flex-col justify-between gap-4"
                 >
                     <div className="flex justify-between items-start gap-2">
-                        <h2 className="text-sm font-bold text-boxel-ink">Gemini 3.5</h2>
+                        <h2 className="text-sm font-bold text-voxel-ink">Gemini 3.5</h2>
                         <Badge colorScheme="accent" variant="soft" size="xs">
                             {geminiMetrics.evaluatedCount} Evaluated
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-boxel-bevel-hi">
+                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-voxel-bevel-hi">
                         <div>
-                            <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
+                            <div className="text-sm font-bold font-mono text-voxel-ink tabular-nums">
                                 {geminiMetrics.avgScore}
                             </div>
-                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 Avg Percentile
                             </div>
                         </div>
                         <div>
-                            <div className="text-lg font-bold font-mono text-success tabular-nums">
+                            <div className="text-sm font-bold font-mono text-success tabular-nums">
                                 {geminiMetrics.topQuartileRate}
                             </div>
-                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 Top-Quartile
                             </div>
                         </div>
@@ -226,25 +226,25 @@ function ArenaTabContent({
                     className="h-full flex flex-col justify-between gap-4"
                 >
                     <div className="flex justify-between items-start gap-2">
-                        <h2 className="text-sm font-bold text-boxel-ink">OpenAI GPT-6</h2>
+                        <h2 className="text-sm font-bold text-voxel-ink">OpenAI GPT-6</h2>
                         <Badge colorScheme="neutral" variant="soft" size="xs">
                             {openAiMetrics.evaluatedCount} Evaluated
                         </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-boxel-bevel-hi">
+                    <div className="grid grid-cols-2 gap-4 mt-auto pt-2 border-t border-voxel-bevel-hi">
                         <div>
-                            <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
+                            <div className="text-sm font-bold font-mono text-voxel-ink tabular-nums">
                                 {openAiMetrics.avgScore}
                             </div>
-                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 Avg Percentile
                             </div>
                         </div>
                         <div>
-                            <div className="text-lg font-bold font-mono text-success tabular-nums">
+                            <div className="text-sm font-bold font-mono text-success tabular-nums">
                                 {openAiMetrics.topQuartileRate}
                             </div>
-                            <div className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <div className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 Top-Quartile
                             </div>
                         </div>
@@ -253,10 +253,10 @@ function ArenaTabContent({
             </div>
 
             {/* SECTION 2: Historical Accuracy Trend Chart */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-none p-6 backdrop-blur-sm shadow-sm">
+            <div className="bg-slate-800/50 border border-slate-700 rounded-none p-6  shadow-sm">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div>
-                        <h3 className="text-lg font-bold font-display uppercase tracking-wider text-white">
+                        <h3 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
                             Historical Accuracy Trend
                         </h3>
                         <p className="text-xs font-normal text-slate-400">
@@ -266,25 +266,25 @@ function ArenaTabContent({
                     </div>
                     <div className="flex bg-slate-900/60 p-1 rounded-none border border-slate-700 shadow-sm">
                         {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
-                            <button
+                            <Button
                                 key={tf}
                                 type="button"
                                 onClick={() => setTimeframeFilter(tf)}
                                 className={`px-3 py-1 text-sm font-bold rounded-none transition-colors ${
                                     timeframeFilter === tf
-                                        ? 'bg-boxel-elevated text-boxel-ink shadow-sm'
-                                        : 'text-boxel-muted hover:text-boxel-ink'
+                                        ? 'bg-voxel-elevated text-voxel-ink shadow-sm'
+                                        : 'text-voxel-muted hover:text-voxel-ink'
                                 }`}
                             >
                                 {tf.toUpperCase()}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
                 {chartFilteredData.length > 0 ? (
                     <AIPredictionChart data={chartFilteredData} />
                 ) : (
-                    <div className="h-[300px] flex items-center justify-center text-boxel-muted text-xs font-normal">
+                    <div className="h-[300px] flex items-center justify-center text-voxel-muted text-xs font-normal">
                         No evaluated predictions available for this timeframe.
                     </div>
                 )}
@@ -292,10 +292,10 @@ function ArenaTabContent({
 
             {/* SECTION 3: Unified Predictions Table & Feed */}
             <div className="flex flex-col gap-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-boxel-trough p-4 rounded-none border border-boxel-bevel-hi">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-voxel-trough p-4 rounded-none border border-voxel-bevel-hi">
                     <div>
-                        <h3 className="text-lg font-bold text-boxel-ink">All Sector Predictions</h3>
-                        <p className="text-xs font-normal text-boxel-muted mt-0.5">
+                        <h3 className="text-sm font-bold text-voxel-ink">All Sector Predictions</h3>
+                        <p className="text-xs font-normal text-voxel-muted mt-0.5">
                             Interactive view for tracking prediction performance, Alpha vs S&P 500,
                             and target dates across all models.
                         </p>
@@ -303,29 +303,29 @@ function ArenaTabContent({
 
                     {/* View Switcher: Table vs Detailed Cards */}
                     <div className="flex items-center gap-3">
-                        <div className="flex bg-boxel-canvas p-1 rounded-none border border-boxel-bevel-hi">
-                            <button
+                        <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi">
+                            <Button
                                 type="button"
                                 onClick={() => setFeedViewMode('table')}
                                 className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors flex items-center gap-1.5 ${
                                     feedViewMode === 'table'
                                         ? 'bg-accent text-accent-ink shadow-sm'
-                                        : 'text-boxel-muted hover:text-boxel-ink'
+                                        : 'text-voxel-muted hover:text-voxel-ink'
                                 }`}
                             >
                                 <span>📊 Data Table</span>
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
                                 onClick={() => setFeedViewMode('cards')}
                                 className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors flex items-center gap-1.5 ${
                                     feedViewMode === 'cards'
                                         ? 'bg-accent text-accent-ink shadow-sm'
-                                        : 'text-boxel-muted hover:text-boxel-ink'
+                                        : 'text-voxel-muted hover:text-voxel-ink'
                                 }`}
                             >
                                 <span>🎴 Feed Cards</span>
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -334,59 +334,59 @@ function ArenaTabContent({
                     <AIPredictionsTable predictions={data} />
                 ) : (
                     <div className="flex flex-col gap-6">
-                        <div className="flex flex-wrap items-center gap-3 bg-boxel-trough p-3 rounded-none border border-boxel-bevel-hi">
+                        <div className="flex flex-wrap items-center gap-3 bg-voxel-trough p-3 rounded-none border border-voxel-bevel-hi">
                             {/* Status Segmented Filter */}
-                            <div className="flex bg-boxel-canvas p-1 rounded-none border border-boxel-bevel-hi">
-                                <button
+                            <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi">
+                                <Button
                                     type="button"
                                     onClick={() => setStatusFilter('all')}
                                     className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                                         statusFilter === 'all'
-                                            ? 'bg-boxel-elevated text-boxel-ink shadow-sm'
-                                            : 'text-boxel-muted hover:text-boxel-ink'
+                                            ? 'bg-voxel-elevated text-voxel-ink shadow-sm'
+                                            : 'text-voxel-muted hover:text-voxel-ink'
                                     }`}
                                 >
                                     All Forecasts ({data.length})
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="button"
                                     onClick={() => setStatusFilter('active')}
                                     className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                                         statusFilter === 'active'
                                             ? 'bg-accent text-accent-ink shadow-sm'
-                                            : 'text-boxel-muted hover:text-boxel-ink'
+                                            : 'text-voxel-muted hover:text-voxel-ink'
                                     }`}
                                 >
                                     🔮 Active ({pendingPredictions.length})
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="button"
                                     onClick={() => setStatusFilter('past')}
                                     className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                                         statusFilter === 'past'
-                                            ? 'bg-emerald-600/80 text-white shadow-sm'
-                                            : 'text-boxel-muted hover:text-boxel-ink'
+                                            ? 'bg-emerald-600/80 text-voxel-trough shadow-sm'
+                                            : 'text-voxel-muted hover:text-voxel-ink'
                                     }`}
                                 >
                                     🎯 Past Outcomes ({evaluatedPredictions.length})
-                                </button>
+                                </Button>
                             </div>
 
                             {/* Timeframe Segmented Filter */}
-                            <div className="flex bg-boxel-canvas p-1 rounded-none border border-boxel-bevel-hi">
+                            <div className="flex bg-voxel-canvas p-1 rounded-none border border-voxel-bevel-hi">
                                 {(['all', '7d', '30d', '60d', '90d'] as const).map((tf) => (
-                                    <button
+                                    <Button
                                         key={tf}
                                         type="button"
                                         onClick={() => setTimeframeFilter(tf)}
                                         className={`px-3 py-1.5 text-sm font-bold rounded-none transition-colors ${
                                             timeframeFilter === tf
-                                                ? 'bg-boxel-elevated text-boxel-ink shadow-sm'
-                                                : 'text-boxel-muted hover:text-boxel-ink'
+                                                ? 'bg-voxel-elevated text-voxel-ink shadow-sm'
+                                                : 'text-voxel-muted hover:text-voxel-ink'
                                         }`}
                                     >
                                         {tf.toUpperCase()}
-                                    </button>
+                                    </Button>
                                 ))}
                             </div>
                         </div>
@@ -467,48 +467,48 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
         <div className="p-8 max-w-7xl mx-auto flex flex-col gap-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-lg font-bold tracking-tight text-boxel-ink uppercase">
+                    <h1 className="text-sm font-bold tracking-tight text-voxel-ink uppercase">
                         AI Sector Predictions Arena
                     </h1>
-                    <p className="text-boxel-muted text-xs font-normal">
+                    <p className="text-voxel-muted text-xs font-normal">
                         Multi-Model Arena: DeepSeek, MiniMax-M3.1-Flash, Gemini 3.5 & OpenAI GPT-6
                         predicting top-performing sectors and uncorrelated pairs.
                     </p>
                 </div>
-                <button
+                <Button
                     type="button"
                     onClick={handleRefresh}
                     disabled={loading}
-                    className="voxel-btn px-4 py-2 bg-boxel-surface hover:bg-boxel-elevated border border-boxel-bevel-hi text-boxel-ink rounded-none transition-colors flex items-center gap-2 text-sm font-bold"
+                    className="voxel-btn px-4 py-2 bg-voxel-surface hover:bg-voxel-elevated border border-voxel-bevel-hi text-voxel-ink rounded-none transition-colors flex items-center gap-2 text-sm font-bold"
                 >
                     {loading ? 'Refreshing...' : 'Refresh Data'}
-                </button>
+                </Button>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-boxel-bevel-hi">
-                <button
+            <div className="flex border-b border-voxel-bevel-hi">
+                <Button
                     type="button"
                     onClick={() => setActiveTab('arena')}
                     className={`py-3 px-6 font-bold border-b-2 text-sm transition-all duration-200 ${
                         activeTab === 'arena'
                             ? 'border-accent text-accent'
-                            : 'border-transparent text-boxel-muted hover:text-boxel-ink'
+                            : 'border-transparent text-voxel-muted hover:text-voxel-ink'
                     }`}
                 >
                     Arena Dashboard
-                </button>
-                <button
+                </Button>
+                <Button
                     type="button"
                     onClick={() => setActiveTab('autoresearch')}
                     className={`py-3 px-6 font-bold border-b-2 text-sm transition-all duration-200 ${
                         activeTab === 'autoresearch'
                             ? 'border-accent text-accent'
-                            : 'border-transparent text-boxel-muted hover:text-boxel-ink'
+                            : 'border-transparent text-voxel-muted hover:text-voxel-ink'
                     }`}
                 >
                     Prompt Auto-Research
-                </button>
+                </Button>
             </div>
 
             {activeTab === 'arena' ? (

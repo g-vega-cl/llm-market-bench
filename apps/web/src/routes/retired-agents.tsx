@@ -30,14 +30,14 @@ function RetiredAgentsRouteComponent() {
 
 export function RetiredAgentsView({ retiredPortfolios }: { retiredPortfolios: Portfolio[] }) {
     return (
-        <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+        <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
             <PageLayout maxWidth="xl" className="flex flex-col gap-6">
-                <header className="pb-4 border-b-2 border-boxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
+                <header className="pb-4 border-b-2 border-voxel-bevel-hi flex flex-wrap items-baseline justify-between gap-4">
                     <div className="flex flex-col gap-1">
-                        <h1 className="text-lg font-bold text-boxel-ink uppercase tracking-tight">
+                        <h1 className="text-sm font-bold text-voxel-ink uppercase tracking-tight">
                             Retired Agents
                         </h1>
-                        <p className="text-xs font-normal text-boxel-muted">
+                        <p className="text-xs font-normal text-voxel-muted">
                             Frozen portfolios of agents no longer trading.
                         </p>
                     </div>
@@ -48,7 +48,7 @@ export function RetiredAgentsView({ retiredPortfolios }: { retiredPortfolios: Po
                 <Card padding="md" className="flex flex-col gap-4">
                     <SectionHeading className="text-lg">Archive</SectionHeading>
                     {retiredPortfolios.length === 0 ? (
-                        <p className="text-xs font-normal text-boxel-muted">No retired agents.</p>
+                        <p className="text-xs font-normal text-voxel-muted">No retired agents.</p>
                     ) : (
                         <div className="flex flex-col gap-2">
                             {retiredPortfolios.map((p) => (
@@ -56,12 +56,12 @@ export function RetiredAgentsView({ retiredPortfolios }: { retiredPortfolios: Po
                                     key={p.id}
                                     to="/portfolios/$portfolioId"
                                     params={{ portfolioId: p.id }}
-                                    className="voxel-trough px-3 py-2 flex items-center justify-between gap-2 hover:bg-boxel-elevated transition-colors"
+                                    className="voxel-trough px-3 py-2 flex items-center justify-between gap-2 hover:bg-voxel-elevated transition-colors"
                                 >
-                                    <span className="text-xs font-normal text-boxel-ink truncate">
+                                    <span className="text-xs font-normal text-voxel-ink truncate">
                                         {p.owner_id ?? 'Retired Agent'}
                                     </span>
-                                    <span className="font-mono text-xs font-normal text-boxel-muted shrink-0">
+                                    <span className="font-mono text-xs font-normal text-voxel-muted shrink-0">
                                         $
                                         {Number(p.total_equity ?? 0).toLocaleString('en-US', {
                                             maximumFractionDigits: 0,

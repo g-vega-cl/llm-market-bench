@@ -28,7 +28,6 @@ function PodiumCard({ model, place }: PodiumCardProps) {
         <Card
             variant="default"
             isHoverable
-            radius="none"
             className={`relative flex flex-col justify-between w-full h-full p-6 ${borderClass}`}
         >
             {/* Rank Badge */}
@@ -40,29 +39,29 @@ function PodiumCard({ model, place }: PodiumCardProps) {
 
             {/* Top Section */}
             <div className="text-center pt-2 flex flex-col gap-3">
-                <div className="text-lg font-bold">{info.emoji}</div>
+                <div className="text-sm font-bold">{info.emoji}</div>
                 <div>
-                    <h3 className="text-sm font-bold text-boxel-ink line-clamp-1">{info.name}</h3>
-                    <p className="text-xs font-normal text-boxel-muted font-mono tracking-wider truncate">
+                    <h3 className="text-sm font-bold text-voxel-ink line-clamp-1">{info.name}</h3>
+                    <p className="text-xs font-normal text-voxel-muted font-mono tracking-wider truncate">
                         {model.model_name}
                     </p>
                 </div>
 
                 {/* Composite Leaderboard Score */}
                 <div className="voxel-trough inline-block px-4 py-2">
-                    <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider block">
+                    <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider block">
                         Leaderboard Score
                     </span>
-                    <span className="text-lg font-bold font-mono text-boxel-ink">
+                    <span className="text-sm font-bold font-mono text-voxel-ink">
                         {model.composite_score.toFixed(1)}%
                     </span>
                 </div>
             </div>
 
             {/* Metrics Breakdown */}
-            <div className="mt-6 space-y-2.5 pt-4 border-t border-boxel-bevel-hi text-xs font-mono">
+            <div className="mt-6 space-y-2.5 pt-4 border-t border-voxel-bevel-hi text-xs font-mono">
                 <div className="flex justify-between items-center">
-                    <span className="text-boxel-muted uppercase tracking-wider text-xs font-normal">
+                    <span className="text-voxel-muted uppercase tracking-wider text-xs font-normal">
                         Return %
                     </span>
                     <span
@@ -73,18 +72,18 @@ function PodiumCard({ model, place }: PodiumCardProps) {
                     </span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-boxel-muted uppercase tracking-wider text-xs font-normal">
+                    <span className="text-voxel-muted uppercase tracking-wider text-xs font-normal">
                         Win Rate
                     </span>
-                    <span className="text-boxel-ink text-sm font-bold">
+                    <span className="text-voxel-ink text-sm font-bold">
                         {model.win_rate.toFixed(1)}%
                     </span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-boxel-muted uppercase tracking-wider text-xs font-normal">
+                    <span className="text-voxel-muted uppercase tracking-wider text-xs font-normal">
                         Approval
                     </span>
-                    <span className="text-boxel-ink text-sm font-bold">
+                    <span className="text-voxel-ink text-sm font-bold">
                         {model.verifier_approval_rate !== null &&
                         model.verifier_approval_rate !== undefined
                             ? `${model.verifier_approval_rate.toFixed(1)}%`
@@ -92,10 +91,10 @@ function PodiumCard({ model, place }: PodiumCardProps) {
                     </span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-boxel-muted uppercase tracking-wider text-xs font-normal">
+                    <span className="text-voxel-muted uppercase tracking-wider text-xs font-normal">
                         Consistency
                     </span>
-                    <span className="text-boxel-ink text-sm font-bold">
+                    <span className="text-voxel-ink text-sm font-bold">
                         {model.consistency_score.toFixed(1)}%
                     </span>
                 </div>

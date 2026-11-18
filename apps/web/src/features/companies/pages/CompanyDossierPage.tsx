@@ -1,5 +1,6 @@
 import {
     Badge,
+    Button,
     Card,
     EmptyState,
     PageLayout,
@@ -49,10 +50,10 @@ function DossierHeader({
 
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold text-zinc-100">{report.ticker}</span>
+                    <span className="text-sm font-bold text-zinc-100">{report.ticker}</span>
                     <span className="text-sm font-bold text-zinc-400">{report.company_name}</span>
                     {report.is_sector_etf && (
-                        <Badge variant="outline" size="sm">
+                        <Badge variant="soft" size="sm">
                             Sector ETF
                         </Badge>
                     )}
@@ -115,7 +116,7 @@ function MoatAndValuationGrid({ report }: { report: CompanyResearchReport }) {
                         Moat: {moat.moat_rating || 'Unrated'}
                     </span>
                     {moat.pricing_power && (
-                        <Badge variant="outline" size="sm">
+                        <Badge variant="soft" size="sm">
                             {moat.pricing_power} Pricing Power
                         </Badge>
                     )}
@@ -167,7 +168,7 @@ function HistoricalTimeline({
         <div className="flex flex-col gap-3 border-t border-zinc-800 pt-6">
             <span className="text-sm font-bold text-zinc-200">Historical Research Timeline</span>
             <div className="flex flex-wrap gap-2">
-                <button
+                <Button
                     type="button"
                     onClick={() => onSelect(latestReport.id)}
                     className={`px-3 py-1.5 text-sm font-bold rounded-none border transition-colors ${
@@ -178,9 +179,9 @@ function HistoricalTimeline({
                 >
                     Latest: {latestReport.formatted_date} ({latestReport.session.toUpperCase()}) •{' '}
                     {latestReport.verdict}
-                </button>
+                </Button>
                 {pastReports.map((past) => (
-                    <button
+                    <Button
                         key={past.id}
                         type="button"
                         onClick={() => onSelect(past.id)}
@@ -191,7 +192,7 @@ function HistoricalTimeline({
                         }`}
                     >
                         {past.formatted_date} ({past.session.toUpperCase()}) • {past.verdict}
-                    </button>
+                    </Button>
                 ))}
             </div>
         </div>
@@ -250,9 +251,7 @@ export function CompanyDossierPage({ initialData }: CompanyDossierPageProps) {
                 )}
 
                 <Card variant="default" className="p-6 border border-zinc-800 flex flex-col gap-4">
-                    <SectionHeading gradient="electric">
-                        Institutional Research Dossier
-                    </SectionHeading>
+                    <SectionHeading>Institutional Research Dossier</SectionHeading>
                     <div className="prose prose-invert max-w-none text-xs font-normal text-zinc-300">
                         <MarkdownContent content={activeReport.full_report_markdown} />
                     </div>

@@ -58,14 +58,14 @@ export function Auth({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-start justify-center p-8 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/80 flex items-start justify-center p-8 ">
             <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-none shadow-sm flex flex-col gap-6 max-w-md w-full">
-                <h1 className="text-lg font-bold font-display uppercase tracking-wider text-white">
+                <h1 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough">
                     {actionText}
                 </h1>
                 {isRecipesGate && (
-                    <div className="voxel-trough bg-boxel-trough p-3 flex flex-col gap-2 text-xs font-normal text-boxel-muted">
-                        <span className="text-sm font-bold text-boxel-ink">
+                    <div className="voxel-trough bg-voxel-trough p-3 flex flex-col gap-2 text-xs font-normal text-voxel-muted">
+                        <span className="text-sm font-bold text-voxel-ink">
                             Strategy Recipe Studio — Free Beta Access
                         </span>
                         <span>
@@ -85,7 +85,7 @@ export function Auth({
                     className="flex flex-col gap-4"
                 >
                     <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="email" className="text-xs font-bold text-zinc-400">
+                        <Label htmlFor="email" className="text-sm font-bold text-zinc-400">
                             Username
                         </Label>
                         <Input
@@ -96,7 +96,7 @@ export function Auth({
                         />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="password" className="text-xs font-bold text-zinc-400">
+                        <Label htmlFor="password" className="text-sm font-bold text-zinc-400">
                             Password
                         </Label>
                         <Input
@@ -109,7 +109,7 @@ export function Auth({
                     <Button
                         type="submit"
                         colorScheme="info"
-                        className="w-full uppercase font-bold text-xs"
+                        className="w-full uppercase font-bold text-sm"
                         isLoading={status === 'pending'}
                     >
                         {actionText}
@@ -128,7 +128,7 @@ export function Auth({
                         type="button"
                         variant="outline"
                         colorScheme="neutral"
-                        className="w-full text-xs font-bold"
+                        className="w-full text-sm font-bold"
                         leftIcon={<GoogleIcon />}
                         onClick={handleGoogleLogin}
                     >

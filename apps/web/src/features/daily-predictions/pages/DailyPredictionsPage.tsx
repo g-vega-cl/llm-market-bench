@@ -54,16 +54,16 @@ function AssetSwitcher({
     picksCount,
 }: AssetSwitcherProps) {
     return (
-        <div className="flex flex-wrap items-center gap-2 p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-none w-fit border border-zinc-200 dark:border-zinc-800">
+        <div className="flex flex-wrap items-center gap-2 p-1 bg-zinc-100 bg-zinc-800/60 rounded-none w-fit border border-zinc-200 border-zinc-800">
             <Button
                 type="button"
-                variant={selectedTicker === 'SPY' ? 'solid' : 'ghost'}
+                variant={selectedTicker === 'SPY' ? 'solid' : 'outline'}
                 size="sm"
                 onClick={() => onSelectTicker('SPY')}
                 className={`rounded-none font-bold text-sm uppercase tracking-wider transition-all px-4 py-2 ${
                     selectedTicker === 'SPY'
-                        ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100'
+                        ? 'bg-blue-600 bg-blue-500 text-voxel-trough shadow-sm'
+                        : 'text-zinc-500 text-zinc-400 hover:text-zinc-800 hover:text-zinc-100'
                 }`}
             >
                 <span className="flex items-center gap-1.5">
@@ -75,13 +75,13 @@ function AssetSwitcher({
             </Button>
             <Button
                 type="button"
-                variant={selectedTicker === 'TLT' ? 'solid' : 'ghost'}
+                variant={selectedTicker === 'TLT' ? 'solid' : 'outline'}
                 size="sm"
                 onClick={() => onSelectTicker('TLT')}
                 className={`rounded-none font-bold text-sm uppercase tracking-wider transition-all px-4 py-2 ${
                     selectedTicker === 'TLT'
-                        ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100'
+                        ? 'bg-blue-600 bg-blue-500 text-voxel-trough shadow-sm'
+                        : 'text-zinc-500 text-zinc-400 hover:text-zinc-800 hover:text-zinc-100'
                 }`}
             >
                 <span className="flex items-center gap-1.5">
@@ -93,13 +93,13 @@ function AssetSwitcher({
             </Button>
             <Button
                 type="button"
-                variant={selectedTicker === 'PICKS' ? 'solid' : 'ghost'}
+                variant={selectedTicker === 'PICKS' ? 'solid' : 'outline'}
                 size="sm"
                 onClick={() => onSelectTicker('PICKS')}
                 className={`rounded-none font-bold text-sm uppercase tracking-wider transition-all px-4 py-2 ${
                     selectedTicker === 'PICKS'
-                        ? 'bg-amber-600 dark:bg-amber-500 text-white shadow-sm'
-                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100'
+                        ? 'bg-amber-600 bg-amber-500 text-voxel-trough shadow-sm'
+                        : 'text-zinc-500 text-zinc-400 hover:text-zinc-800 hover:text-zinc-100'
                 }`}
             >
                 <span className="flex items-center gap-1.5">
@@ -117,10 +117,10 @@ function PredictorHeader({ selectedTicker }: { selectedTicker: SupportedDailyTic
     const isBond = selectedTicker === 'TLT';
     return (
         <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold tracking-tight text-boxel-ink m-0">
+            <h1 className="text-sm font-bold tracking-tight text-voxel-ink m-0">
                 {isBond ? 'Daily 20+ Year Treasury Bond Predictor' : 'Daily S&P Market Predictor'}
             </h1>
-            <p className="text-xs font-normal text-boxel-muted m-0">
+            <p className="text-xs font-normal text-voxel-muted m-0">
                 {isBond
                     ? '9:15 AM ET Intraday (Open to Close) Directional Fixed Income Predictions on TLT powered by GPT-6 Luna, DeepSeek Flash & Jev.'
                     : '9:15 AM ET Intraday (Open to Close) Directional AI Predictions powered by DeepSeek Flash & MiniMax.'}
@@ -171,7 +171,7 @@ function LegacyPredictionsView({
         <>
             <PredictorHeader selectedTicker={selectedTicker} />
 
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-boxel-bevel-hi">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-voxel-bevel-hi">
                 <div className="flex gap-2">
                     {currentModels.map((model) => {
                         const count = tickerPredictions.filter((p) =>
@@ -179,18 +179,18 @@ function LegacyPredictionsView({
                         ).length;
                         const isSelected = activeModelCfg.id === model.id;
                         return (
-                            <button
+                            <Button
                                 key={model.id}
                                 type="button"
                                 onClick={() => onSelectModelId(model.id)}
                                 className={`px-5 py-3 border-none bg-transparent font-bold text-sm cursor-pointer transition-colors -mb-0.5 border-b-2 ${
                                     isSelected
                                         ? 'text-accent border-b-2 border-accent'
-                                        : 'text-boxel-muted border-transparent hover:text-boxel-ink'
+                                        : 'text-voxel-muted border-transparent hover:text-voxel-ink'
                                 }`}
                             >
                                 {model.label} ({count})
-                            </button>
+                            </Button>
                         );
                     })}
                 </div>
@@ -198,17 +198,17 @@ function LegacyPredictionsView({
                 <div className="pb-2">
                     <Link
                         to="/daily-predictions-backtest"
-                        className="voxel-btn px-4 py-2 rounded-none bg-boxel-surface text-boxel-ink no-underline font-bold text-sm border border-boxel-bevel-hi inline-flex items-center gap-1 hover:bg-boxel-elevated transition-colors"
+                        className="voxel-btn px-4 py-2 rounded-none bg-voxel-surface text-voxel-ink no-underline font-bold text-sm border border-voxel-bevel-hi inline-flex items-center gap-1 hover:bg-voxel-elevated transition-colors"
                     >
                         Backtest Arena ↗
                     </Link>
                 </div>
             </div>
 
-            <div className="inline-flex bg-boxel-trough p-1 rounded-none gap-1 border border-boxel-bevel-hi">
+            <div className="inline-flex bg-voxel-trough p-1 rounded-none gap-1 border border-voxel-bevel-hi">
                 <Button
                     type="button"
-                    variant={viewMode === 'predictions' ? 'solid' : 'ghost'}
+                    variant={viewMode === 'predictions' ? 'solid' : 'outline'}
                     size="sm"
                     onClick={() => setViewMode('predictions')}
                 >
@@ -216,7 +216,7 @@ function LegacyPredictionsView({
                 </Button>
                 <Button
                     type="button"
-                    variant={viewMode === 'autoresearch' ? 'solid' : 'ghost'}
+                    variant={viewMode === 'autoresearch' ? 'solid' : 'outline'}
                     size="sm"
                     onClick={() => setViewMode('autoresearch')}
                 >

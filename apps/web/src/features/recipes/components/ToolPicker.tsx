@@ -21,11 +21,11 @@ export function ToolPicker({ selectedTools, onChange }: ToolPickerProps) {
     };
 
     return (
-        <div className="flex flex-col gap-2 border border-border bg-boxel-canvas p-3 rounded-none">
+        <div className="flex flex-col gap-2 border border-border bg-voxel-canvas p-3 rounded-none">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-foreground">Allowed LLM Tools</span>
-                    <Badge variant="outline" size="sm">
+                    <Badge variant="soft" size="sm">
                         {cleanSelected.length} / {CURATED_TOOLS.length}
                     </Badge>
                 </div>
@@ -51,8 +51,8 @@ export function ToolPicker({ selectedTools, onChange }: ToolPickerProps) {
                             key={tool.name}
                             className={`flex flex-1 basis-56 min-w-0 cursor-pointer items-start gap-2 border p-2 rounded-none ${
                                 checked
-                                    ? 'border-primary bg-boxel-surface'
-                                    : 'border-border bg-boxel-canvas'
+                                    ? 'border-primary bg-voxel-surface'
+                                    : 'border-border bg-voxel-canvas'
                             }`}
                         >
                             <input
@@ -63,11 +63,11 @@ export function ToolPicker({ selectedTools, onChange }: ToolPickerProps) {
                             />
                             <div className="flex flex-col gap-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-xs font-bold text-foreground">
+                                    <span className="text-sm font-bold text-foreground">
                                         {tool.label}
                                     </span>
                                     {tool.liveOnly && (
-                                        <Badge size="xs" variant="outline" colorScheme="warning">
+                                        <Badge size="xs" variant="soft" colorScheme="warning">
                                             Live only
                                         </Badge>
                                     )}

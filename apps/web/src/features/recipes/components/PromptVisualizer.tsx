@@ -17,11 +17,11 @@ export function PromptVisualizer({
     const promptText = buildStagePromptPreview(stage, hydratedMap);
 
     return (
-        <div className="flex flex-col gap-2 border border-border bg-boxel-surface p-4 rounded-none">
+        <div className="flex flex-col gap-2 border border-border bg-voxel-surface p-4 rounded-none">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-foreground">Prompt Visualizer</span>
-                    <Badge variant="outline" size="sm">
+                    <Badge variant="soft" size="sm">
                         {previewState.status === 'hydrated'
                             ? 'Live DB Hydrated'
                             : 'Template Preview'}
@@ -38,12 +38,12 @@ export function PromptVisualizer({
             </div>
 
             {previewState.status === 'error' && (
-                <div className="border border-danger bg-boxel-canvas p-2 text-xs font-normal text-danger rounded-none">
+                <div className="border border-danger bg-voxel-canvas p-2 text-xs font-normal text-danger rounded-none">
                     {previewState.message}
                 </div>
             )}
 
-            <pre className="voxel-trough border border-border bg-boxel-canvas p-3 text-xs font-mono font-normal text-foreground whitespace-pre-wrap break-words rounded-none">
+            <pre className="voxel-trough border border-border bg-voxel-canvas p-3 text-xs font-mono font-normal text-foreground whitespace-pre-wrap break-words rounded-none">
                 {promptText}
             </pre>
         </div>

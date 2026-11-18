@@ -43,14 +43,14 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
                     <span className="text-sm font-bold uppercase tracking-wider text-slate-400">
                         Market Context (Model Input)
                     </span>
-                    <Badge variant="soft" colorScheme="neutral" size="sm" radius="none">
+                    <Badge variant="soft" colorScheme="neutral" size="sm">
                         ~{estTokens.toLocaleString('en-US')} tokens
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => setIsOpen((prev) => !prev)}
                         className="text-sm font-bold text-slate-400 hover:text-slate-200 rounded-none"
                     >
@@ -58,7 +58,7 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
                     </Button>
                     <Button
                         size="sm"
-                        variant="soft"
+                        variant="solid"
                         onClick={handleCopy}
                         className="text-sm font-bold font-mono rounded-none"
                     >
@@ -72,7 +72,7 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
                     {context}
                 </pre>
             ) : (
-                <button
+                <Button
                     type="button"
                     onClick={() => setIsOpen(true)}
                     className="w-full text-left p-3 bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 rounded-none text-xs font-mono text-slate-400 cursor-pointer transition-colors line-clamp-3 select-none flex flex-col gap-1"
@@ -82,7 +82,7 @@ export function MarketContextViewer({ context }: MarketContextViewerProps) {
                     <span className="text-xs font-normal text-slate-500 font-sans italic">
                         Click to view complete pre-market briefing and options data.
                     </span>
-                </button>
+                </Button>
             )}
         </div>
     );

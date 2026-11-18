@@ -27,15 +27,13 @@ export function SubHeading({
         <div className={cn('flex items-center gap-3', className)}>
             <h2
                 className={cn(
-                    'text-sm font-bold text-boxel-ink tracking-tight',
+                    'text-sm font-bold text-voxel-ink tracking-tight',
                     uppercase && 'uppercase tracking-wider',
                 )}
             >
                 {children}
             </h2>
-            {withDivider && (
-                <div className="flex-1 border-t border-zinc-200 dark:border-zinc-800" />
-            )}
+            {withDivider && <div className="flex-1 border-t border-zinc-200 border-zinc-800" />}
             {rightElement}
         </div>
     );

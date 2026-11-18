@@ -76,15 +76,15 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+        <div className="min-h-screen bg-zinc-50 bg-zinc-950">
             <MarketOverviewHero marketFeeling={data.marketFeeling} />
 
             <PageLayout className="space-y-16 pb-24">
                 {/* Modern Premium Sub-Navigation Tabs */}
                 <div className="flex justify-center animate-slide-up">
-                    <div className="flex gap-1.5 p-1.5 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md rounded-none border border-zinc-200/60 dark:border-zinc-800/80 shadow-md">
+                    <div className="flex gap-1.5 p-1.5 bg-white/50 bg-zinc-900/50  rounded-none border border-zinc-200/60 border-zinc-800/80 shadow-md">
                         <Button
-                            variant={activeTab === 'current' ? 'solid' : 'ghost'}
+                            variant={activeTab === 'current' ? 'solid' : 'outline'}
                             colorScheme={activeTab === 'current' ? 'accent' : 'neutral'}
                             onClick={() => setActiveTab('current')}
                             className="px-6 py-2.5 rounded-none text-sm font-bold transition-all duration-200"
@@ -92,7 +92,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                             📊 Current Regime
                         </Button>
                         <Button
-                            variant={activeTab === 'history' ? 'solid' : 'ghost'}
+                            variant={activeTab === 'history' ? 'solid' : 'outline'}
                             colorScheme={activeTab === 'history' ? 'accent' : 'neutral'}
                             onClick={() => setActiveTab('history')}
                             className="px-6 py-2.5 rounded-none text-sm font-bold transition-all duration-200"
@@ -107,11 +107,11 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                         <div className="space-y-16 animate-slide-up">
                             {/* Timeframe Selector Button Group */}
                             <div className="flex flex-col items-center gap-4">
-                                <div className="flex gap-1 p-1 bg-white/80 dark:bg-zinc-900/80 rounded-none border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
+                                <div className="flex gap-1 p-1 bg-white/80 bg-zinc-900/80 rounded-none border border-zinc-200/50 border-zinc-800/80 shadow-sm">
                                     {(['7d', '30d', '60d', '90d'] as const).map((tf) => (
                                         <Button
                                             key={tf}
-                                            variant={timeframe === tf ? 'solid' : 'ghost'}
+                                            variant={timeframe === tf ? 'solid' : 'outline'}
                                             colorScheme={timeframe === tf ? 'accent' : 'neutral'}
                                             onClick={() => setTimeframe(tf)}
                                             className="px-4 py-1.5 rounded-none text-sm font-bold transition-all duration-150"
@@ -121,7 +121,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                                     ))}
                                 </div>
                                 {timeframe === '7d' && (
-                                    <div className="max-w-3xl p-4 bg-amber-500/10 border border-amber-500/20 rounded-none flex items-start gap-3 text-amber-600 dark:text-amber-400 animate-slide-up">
+                                    <div className="max-w-3xl p-4 bg-amber-500/10 border border-amber-500/20 rounded-none flex items-start gap-3 text-amber-600 text-amber-400 animate-slide-up">
                                         <span className="text-lg">⚠️</span>
                                         <div className="text-left text-xs leading-relaxed">
                                             <span className="font-bold block mb-0.5">
@@ -225,10 +225,10 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div className="flex flex-col gap-6 animate-slide-up">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
-                        <h1 className="text-lg font-bold text-white uppercase tracking-wider text-display drop-shadow-lg m-0">
+                        <h1 className="text-sm font-bold text-voxel-trough uppercase tracking-wider text-display drop-shadow-lg m-0">
                             MARKET OVERVIEW
                         </h1>
-                        <Badge variant="outline" colorScheme="neutral" radius="none">
+                        <Badge variant="soft" colorScheme="neutral">
                             {now.toLocaleDateString('en-US', {
                                 timeZone: 'America/New_York',
                                 weekday: 'long',
@@ -248,7 +248,6 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         <Badge
                             variant="soft"
                             colorScheme={isMarketOpen ? 'success' : 'neutral'}
-                            radius="none"
                             className="gap-2"
                         >
                             <span
@@ -260,7 +259,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         </Badge>
                         <Link
                             to="/"
-                            className="text-sm font-bold text-electric-blue-200 hover:text-white transition-colors underline underline-offset-2"
+                            className="text-sm font-bold text-electric-blue-200 hover:text-voxel-trough transition-colors underline underline-offset-2"
                         >
                             View AI Trading Activity →
                         </Link>
@@ -269,12 +268,12 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
 
                 <div className="flex flex-col gap-6 animate-slide-up animate-stagger-2">
                     <Card
-                        variant="glass"
+                        variant="default"
                         padding="md"
                         className="rounded-none shadow-sm flex flex-col gap-3"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-electric-blue-200 uppercase tracking-wider">
+                            <span className="text-sm font-bold text-electric-blue-200 uppercase tracking-wider">
                                 How I'm Feeling
                             </span>
                             <div className="flex items-center gap-2">
@@ -283,7 +282,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                                 </span>
                                 {isStale && marketFeeling && (
                                     <span
-                                        className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none font-bold"
+                                        className="text-sm px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none font-bold"
                                         title="Data is older than 4 hours"
                                     >
                                         ⚠
@@ -293,7 +292,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         </div>
 
                         <div
-                            className={`text-lg font-bold font-mono text-display drop-shadow ${getDirectionColor(marketFeeling?.market_direction)}`}
+                            className={`text-sm font-bold font-mono text-display drop-shadow ${getDirectionColor(marketFeeling?.market_direction)}`}
                         >
                             {marketFeeling?.sentiment_label || 'Analyzing...'}
                         </div>
@@ -310,7 +309,6 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                                               : 'neutral'
                                     }
                                     size="sm"
-                                    radius="none"
                                 >
                                     {marketFeeling.market_direction}
                                 </Badge>
@@ -425,7 +423,7 @@ function SectorPerformanceGrid({
 
     return (
         <section>
-            <SectionHeading gradient="electric">
+            <SectionHeading>
                 Sector Performance ({displayTimeframeName} Trailing Returns)
             </SectionHeading>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
@@ -435,13 +433,13 @@ function SectorPerformanceGrid({
                         padding="md"
                         className="h-full flex flex-col justify-between"
                     >
-                        <h3 className="text-sm font-bold text-boxel-muted uppercase tracking-wider mb-3">
+                        <h3 className="text-sm font-bold text-voxel-muted uppercase tracking-wider mb-3">
                             {category}
                         </h3>
                         <div className="space-y-2 mt-auto">
                             {items.map(({ ticker, positive }) => (
                                 <div key={ticker} className="flex items-center justify-between">
-                                    <span className="font-mono text-xs font-normal text-boxel-ink">
+                                    <span className="font-mono text-sm font-normal text-voxel-ink">
                                         {ticker}
                                     </span>
                                     <span

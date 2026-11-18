@@ -25,31 +25,31 @@ interface MilestoneCardProps {
 export function MilestoneCard({ title, value, subtitle, valueClassName }: MilestoneCardProps) {
     return (
         <Card className="p-5 flex flex-col justify-between min-w-0 overflow-hidden rounded-none h-full gap-2">
-            <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+            <div className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                 {title}
             </div>
             <div
-                className={`text-lg font-bold font-mono break-words overflow-wrap-anywhere ${valueClassName ?? 'text-boxel-ink'}`}
+                className={`text-sm font-bold font-mono break-words overflow-wrap-anywhere ${valueClassName ?? 'text-voxel-ink'}`}
             >
                 {value}
             </div>
-            <div className="text-xs font-normal text-boxel-muted">{subtitle}</div>
+            <div className="text-xs font-normal text-voxel-muted">{subtitle}</div>
         </Card>
     );
 }
 
 function getDeltaClassName(isEvaluating: boolean, delta: number | null): string {
-    if (isEvaluating || delta === null) return 'text-boxel-muted';
+    if (isEvaluating || delta === null) return 'text-voxel-muted';
     if (delta > 0) return 'text-success';
     if (delta < 0) return 'text-danger';
-    return 'text-boxel-ink';
+    return 'text-voxel-ink';
 }
 
 function getActiveScoreClassName(isEvaluating: boolean, score: number | null): string {
-    if (isEvaluating) return 'text-boxel-muted';
+    if (isEvaluating) return 'text-voxel-muted';
     if (score !== null && Number(score) > 0) return 'text-success';
     if (score !== null) return 'text-danger';
-    return 'text-boxel-ink';
+    return 'text-voxel-ink';
 }
 
 export function AutoresearchMilestoneCards({

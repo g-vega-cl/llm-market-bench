@@ -33,32 +33,27 @@ export function SelectedVariantHeader({
     return (
         <div className="min-w-0 flex flex-col gap-2">
             <div className="flex items-center justify-between flex-wrap gap-2 min-w-0">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 m-0 break-all">
+                <h3 className="text-sm font-bold text-zinc-900 text-zinc-100 m-0 break-all">
                     {experiment.variant_tag}
                 </h3>
                 <div className="flex gap-2 items-center">
                     {isExperimentColdStart(experiment) && (
-                        <Badge colorScheme="warning" variant="soft" size="xs" radius="none">
+                        <Badge colorScheme="warning" variant="soft" size="xs">
                             From 0
                         </Badge>
                     )}
                     {isActiveVariant && (
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-none bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                        <span className="text-sm font-bold px-2 py-0.5 rounded-none bg-emerald-100 text-emerald-700 bg-emerald-950/60 text-emerald-400">
                             🟢 CURRENT ACTIVE
                         </span>
                     )}
-                    <Badge
-                        colorScheme={statusBadge.colorScheme}
-                        variant="soft"
-                        size="xs"
-                        radius="none"
-                    >
+                    <Badge colorScheme={statusBadge.colorScheme} variant="soft" size="xs">
                         {statusBadge.label}
                     </Badge>
                 </div>
             </div>
 
-            <div className="flex gap-4 text-xs font-normal text-zinc-500 dark:text-zinc-400 flex-wrap min-w-0">
+            <div className="flex gap-4 text-xs font-normal text-zinc-500 text-zinc-400 flex-wrap min-w-0">
                 <div>
                     <strong>Score:</strong> {score !== null ? Number(score).toFixed(2) : 'Pending'}
                 </div>
@@ -105,7 +100,7 @@ export function AutoresearchHistoryArena({
 
     if (experiments.length === 0) {
         return (
-            <div className="p-8 text-center text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 rounded-none border border-zinc-200 dark:border-zinc-800">
+            <div className="p-8 text-center text-zinc-500 text-zinc-400 bg-white bg-zinc-900 rounded-none border border-zinc-200 border-zinc-800">
                 No prompt experiments or autoresearch runs recorded for this model track yet. Runs
                 execute weekly (Sun 6:00 PM ET / 10:00 PM UTC).
             </div>
@@ -113,13 +108,13 @@ export function AutoresearchHistoryArena({
     }
 
     return (
-        <div className="p-5 min-w-0 w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-none border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col gap-4">
+        <div className="p-5 min-w-0 w-full overflow-hidden bg-white bg-zinc-900 rounded-none border border-zinc-200 border-zinc-800 shadow-sm flex flex-col gap-4">
             <div className="flex flex-wrap justify-between items-center gap-3">
-                <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 m-0">
+                <h2 className="text-sm font-bold text-zinc-900 text-zinc-100 m-0">
                     Autoresearch Prompt Lineage & Benchmarks
                 </h2>
                 {activePromptTag && (
-                    <div className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 px-3 py-1 rounded-none text-xs text-emerald-700 dark:text-emerald-400 font-bold">
+                    <div className="inline-flex items-center gap-1.5 bg-emerald-50 bg-emerald-950/40 border border-emerald-200 border-emerald-800/60 px-3 py-1 rounded-none text-sm text-emerald-700 text-emerald-400 font-bold">
                         <span>🟢 Active Runtime:</span>
                         <code className="font-mono font-bold">{activePromptTag}</code>
                     </div>

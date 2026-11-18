@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { Badge } from '@llm-market-bench/ui-design-system';
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import {
     isSectorTrackColdStart,
     type SectorTrackConfig,
@@ -35,13 +35,13 @@ export function PredictorTrackTabs({
     return (
         <div className="flex items-center space-x-2 border-b border-slate-700/60 pb-3 overflow-x-auto">
             {/* "All Models" Tab */}
-            <button
+            <Button
                 type="button"
                 onClick={() => onSelectTrack('all')}
                 className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
                     isAllActive
                         ? 'bg-accent text-accent-ink border border-accent shadow-sm'
-                        : 'bg-boxel-surface text-boxel-muted hover:text-boxel-ink hover:bg-boxel-elevated border border-boxel-bevel-hi'
+                        : 'bg-voxel-surface text-voxel-muted hover:text-voxel-ink hover:bg-voxel-elevated border border-voxel-bevel-hi'
                 }`}
             >
                 <span>All Models</span>
@@ -52,7 +52,7 @@ export function PredictorTrackTabs({
                 >
                     {totalCount}
                 </Badge>
-            </button>
+            </Button>
 
             {/* Individual Model Tracks */}
             {tracks.map((trk) => {
@@ -61,14 +61,14 @@ export function PredictorTrackTabs({
                 const isCold = trackCold[trk.id] ?? false;
 
                 return (
-                    <button
+                    <Button
                         key={trk.id}
                         type="button"
                         onClick={() => onSelectTrack(trk.id)}
                         className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
                             isActive
                                 ? 'bg-accent text-accent-ink border border-accent shadow-sm'
-                                : 'bg-boxel-surface text-boxel-muted hover:text-boxel-ink hover:bg-boxel-elevated border border-boxel-bevel-hi'
+                                : 'bg-voxel-surface text-voxel-muted hover:text-voxel-ink hover:bg-voxel-elevated border border-voxel-bevel-hi'
                         }`}
                     >
                         <span>{trk.label}</span>
@@ -84,7 +84,7 @@ export function PredictorTrackTabs({
                         >
                             {count}
                         </Badge>
-                    </button>
+                    </Button>
                 );
             })}
         </div>

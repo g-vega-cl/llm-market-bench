@@ -57,7 +57,7 @@ function RunningScoreDisplay({
 }) {
     if (isPending) {
         return (
-            <div className="text-lg font-bold font-mono tracking-tight text-amber-400 animate-pulse">
+            <div className="text-sm font-bold font-mono tracking-tight text-amber-400 animate-pulse">
                 Pending
             </div>
         );
@@ -69,7 +69,7 @@ function RunningScoreDisplay({
         : 'text-rose-500';
 
     return (
-        <div className={`text-lg font-bold font-mono tracking-tight ${scoreColor}`}>
+        <div className={`text-sm font-bold font-mono tracking-tight ${scoreColor}`}>
             {isPositive ? '+' : ''}
             {dailyScore.toFixed(4)}
         </div>
@@ -94,14 +94,14 @@ export function DailyScoreOverview({
                         </SectionHeading>
                         <StatusBadges isActive={isActive} isPending={isPending} />
                     </div>
-                    <p className="text-boxel-muted text-xs font-normal max-w-lg">
+                    <p className="text-voxel-muted text-xs font-normal max-w-lg">
                         Real-time daily evaluation of the Meta-Researcher prompt performance against
                         active benchmark parameters.
                     </p>
                 </div>
 
                 <div className="flex flex-col items-end">
-                    <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         Running Score
                     </div>
                     <RunningScoreDisplay isPending={isPending} dailyScore={dailyScore} />

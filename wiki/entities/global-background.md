@@ -14,7 +14,7 @@ Before `GlobalBackground`, each page managed its own backdrop — the HomePage h
 ## Implementation
 
 - **Position:** `fixed inset-0` with `z-[-1]` so it sits behind all content.
-- **Canvas:** `bg-boxel-canvas` (`#141c18`, Deep Forest Moss) fills the viewport.
+- **Canvas:** `bg-voxel-canvas` (`#141c18`, Deep Forest Moss) fills the viewport.
 - **Dot grid:** A repeating `radial-gradient(rgba(242, 234, 211, 0.25) 1px, transparent 1px)` with `background-size: 20px 20px` at 20% opacity creates a fine warm (Tatami Cream) dot pattern.
 - **No interactivity:** `pointer-events-none` ensures clicks pass through to the actual UI.
 

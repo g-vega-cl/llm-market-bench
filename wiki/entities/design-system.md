@@ -16,7 +16,7 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 5. **Zero cards inside cards**: Raised `.voxel-card` surfaces never nest inside another `.voxel-card`. Inner metrics use recessed `.voxel-trough` slots.
 6. **Zero collapsibles or accordions**: Content that belongs on a page renders flat and visible immediately. Secondary telemetry lives in `/lab`.
 7. **Zero decorative emojis in UI chrome**: Section headers, metric labels, and buttons use crisp typography and square pixel indicators instead of emojis.
-8. **Sharp Voxel geometry**: Corners use `rounded-none` with 2px directional bevels (`border-boxel-bevel-hi` on top and left, `border-boxel-bevel-lo` on right and bottom) and hard `4px 4px 0px` offset shadows.
+8. **Sharp Voxel geometry**: Corners use `rounded-none` with 2px directional bevels (`border-voxel-bevel-hi` on top and left, `border-voxel-bevel-lo` on right and bottom) and hard `4px 4px 0px` offset shadows.
 9. **Strict 3-combination typography budget**: The interface standardizes on at most 3 font size and boldness combinations across all chrome and content:
    - **Tier 1 (Display & Headings)**: `18px Bold` (`text-lg font-bold`, `.type-heading`) for page titles (`h1`), `h2`, and `SectionHeading`.
    - **Tier 2 (Controls & Cards)**: `14px Bold` (`text-sm font-bold`, `.type-control`) for buttons, card titles, table headers, badges, and prominent values.
@@ -24,24 +24,24 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 10. **Standardized equal box sizing**: All cards inside grids and composite blocks enforce matched dimensions using fluid CSS Grid (`grid grid-cols-[repeat(auto-fit,minmax(theme(spacing.72),1fr))]`) and `items-stretch` so boxes in a section share identical height and width without awkward trailing wraps.
 11. **Zero manual child margins ("Flow & Gaps Only")**: Individual elements and components must never declare exterior margins (`m-*`, `mb-*`, `mt-*`, `mr-*`, `ml-*`). Spacing between items is strictly owned by parent containers using `flex gap-*` or `grid gap-*` with a 3-step scale: `gap-2` (8px, micro inline elements), `gap-4` (16px, intra-card/controls), and `gap-6` (24px, inter-card/sections). The only permitted margin utilities are flex edge anchors (`mt-auto` to pin footer blocks to bottom of cards, `ml-auto` to push controls rightward in ribbons).
 12. **Zero hardcoded widths and heights ("Intrinsic Fluid Sizing")**: Avoid rigid fixed dimensions (`w-[...]`, `h-[...]`, `min-w-72`). Multi-column card panels size horizontally via fluid CSS Grid tracks (`repeat(auto-fit, minmax(min(100%, 18rem), 1fr))`) and flex wrappers (`flex-1 basis-96 min-w-0`). Vertical dimensions flow intrinsically from content + padding + container gap.
-13. **High-contrast indicator and badge semantics**: Contrast between badge text and background must meet or exceed WCAG AAA ($\ge 7:1$). Cheddar Gold (`bg-accent`) solid tags must use dark trough text (`text-boxel-trough`), never white. Status badges with indicators must use flex gap (`gap-1.5`) rather than child element margins (`mr-1.5`), ensuring zero phantom whitespace if an indicator is rendered invisible.
+13. **High-contrast indicator and badge semantics**: Contrast between badge text and background must meet or exceed WCAG AAA ($\ge 7:1$). Cheddar Gold (`bg-accent`) solid tags must use dark trough text (`text-voxel-trough`), never white. Status badges with indicators must use flex gap (`gap-1.5`) rather than child element margins (`mr-1.5`), ensuring zero phantom whitespace if an indicator is rendered invisible.
 14. **Mobile text rows wrap atomically**: Any row holding label/value, author/timestamp, or badge text uses `flex flex-wrap items-baseline gap-x-* gap-y-1` with `min-w-0` on each child group. Never combine `justify-between` with `items-center` on a text row without `flex-wrap`. Every label, timestamp, and `•` separator is its own `whitespace-nowrap` span (the separator stays in the same span as the value that follows it so it cannot be stranded at a line end), and handles, emails, and display names declare `min-w-0 truncate` (or `break-words` where the full text matters). Every UI change touching text rows must be verified at 360px width, and its component test must assert the `flex-wrap` / `whitespace-nowrap` classes. See section 9 of `.agents/rules/design-spec.md` and [[concepts/fluent-responsive-design]].
 15. **Zero floating tooltips & popovers (in-flow inspection)**: Never implement, propose, or introduce floating tooltips, poppers, popovers, HTML `title` attributes, or SVG `<title>` hovers. Secondary telemetry, details, and point inspections render in-flow inside a dedicated recessed `.voxel-trough` slot, contextual inspector bar, or bottom drawer. Interactive markers must be keyboard-operable (`tabindex="0"`, `role="button"`, `aria-label`, `Enter`/`Space` handlers) and drive the trough slot by click selection. See section 10 of `.agents/rules/design-spec.md` and [[concepts/in-flow-inspection]].
-16. **Data-driven tables (numeric alignment & semantic row states)**: Numeric columns (prices, returns, shares, ratios) and their matching headers MUST be right-aligned (`align="right"` or `numeric`) using `tabular-nums font-mono` so stacked digits vertically align by place value. Text/identifiers are left-aligned with `truncate`/`min-w-0`. Bounded categorical data uses `Badge`. Inactive or deactivated rows carry `isInactive` (`opacity-60 text-boxel-muted bg-boxel-trough/30`), muting non-live entries and disabling hover elevation. See section 11 of `.agents/rules/design-spec.md`.
+16. **Data-driven tables (numeric alignment & semantic row states)**: Numeric columns (prices, returns, shares, ratios) and their matching headers MUST be right-aligned (`align="right"` or `numeric`) using `tabular-nums font-mono` so stacked digits vertically align by place value. Text/identifiers are left-aligned with `truncate`/`min-w-0`. Bounded categorical data uses `Badge`. Inactive or deactivated rows carry `isInactive` (`opacity-60 text-voxel-muted bg-voxel-trough/30`), muting non-live entries and disabling hover elevation. See section 11 of `.agents/rules/design-spec.md`.
 17. **Loading states, CLS prevention & zero spinners**: Prefer SSR pre-hydration with silent Suspense (`fallback={null}`) and `keepPreviousData` on transitions. Cold/uncached feeds render layout-matched Voxel `Skeleton` placeholders (never a spinner). `LoadingSpinner` and `animate-spin` are prohibited across all feeds, panels, and buttons; pending actions use `Button[isLoading]` (pulsing Voxel pixel square + `aria-busy="true"`). Mutations must not use optimistic updates. See section 7 of `.agents/rules/design-spec.md` and [[concepts/cumulative-layout-shift]].
 
 ## Matcha & Cedar / Cheddar palette tokens
 
 Defined in `apps/web/src/styles/app.css` via `@theme inline`:
 
-- `--color-boxel-canvas`: `#141c18` Deep Forest Moss page background
-- `--color-boxel-surface`: `#1d2822` Stepped Moss Terrace card surface
-- `--color-boxel-elevated`: `#26362e` Spruce Highlight hover surface
-- `--color-boxel-trough`: `#101713` Dark Carved Slot recessed cell
-- `--color-boxel-bevel-hi`: `#3f574a` Top and left 3D voxel highlight edge
-- `--color-boxel-bevel-lo`: `#090d0b` Bottom and right 3D voxel shadow edge
-- `--color-boxel-ink`: `#f2ead3` Warm Tatami Cream primary text that prevents halation in dark rooms
-- `--color-boxel-muted`: `#9eb0a3` Lichen Sage secondary text
+- `--color-voxel-canvas`: `#141c18` Deep Forest Moss page background
+- `--color-voxel-surface`: `#1d2822` Stepped Moss Terrace card surface
+- `--color-voxel-elevated`: `#26362e` Spruce Highlight hover surface
+- `--color-voxel-trough`: `#101713` Dark Carved Slot recessed cell
+- `--color-voxel-bevel-hi`: `#3f574a` Top and left 3D voxel highlight edge
+- `--color-voxel-bevel-lo`: `#090d0b` Bottom and right 3D voxel shadow edge
+- `--color-voxel-ink`: `#f2ead3` Warm Tatami Cream primary text that prevents halation in dark rooms
+- `--color-voxel-muted`: `#9eb0a3` Lichen Sage secondary text
 - `--color-accent`: `#f0a830` Cheddar Gold primary action and active state
 - `--color-success`: `#68d391` Sprout Emerald buy and gain signal
 - `--color-danger`: `#e56b55` Terracotta Clay sell and loss signal
@@ -57,7 +57,7 @@ Composable base components that handle styling and accessibility:
 
   | Scheme | Solid dot color |
   | :--- | :--- |
-  | `accent` | `bg-boxel-trough` |
+  | `accent` | `bg-voxel-trough` |
   | `success` | `bg-zinc-950` |
   | `danger` | `bg-white` |
   | `info` | `bg-white` |
@@ -66,12 +66,12 @@ Composable base components that handle styling and accessibility:
   | `high` | `bg-zinc-950` |
   | `medium` | `bg-white` |
 
-  Non-solid variants keep the standard `dotColors` map. The `accent` solid fill uses `bg-accent text-boxel-trough` (never `text-white`) to satisfy the WCAG AAA contrast rule.
-- **Table**: Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container. Supports `numeric` prop on `TableHead` and `TableCell` for automatic `text-right tabular-nums font-mono` alignment, and `isInactive` prop on `TableRow` to shade out halted, archived, or disabled rows (`opacity-60 text-boxel-muted bg-boxel-trough/30`).
-- **Input**: Recessed `.voxel-trough rounded-none` wrapper (`bg-boxel-trough`, `border-boxel-bevel-hi`, `focus-within:ring-accent/40`). The inner `<input>` uses `text-sm font-bold text-boxel-ink` with `placeholder:text-boxel-muted`. Error state swaps the border to `border-danger`.
-- **Label**: `block text-sm font-bold text-boxel-ink uppercase tracking-wider` (Tier 2 control typography, no `mb-*` — spacing is owned by the parent).
-- **Select**: Recessed `.voxel-trough rounded-none` wrapper matching `Input` (`bg-boxel-trough`, `border-boxel-bevel-hi`). The `<select>` uses `text-sm font-bold text-boxel-ink`; `<option>` rows use `bg-boxel-surface text-boxel-ink text-sm font-bold`.
-- **Skeleton**: Sharp `rounded-none` Voxel trough placeholder that preserves feed geometry during cold loads without spinners. Props: `variant` (`'text' | 'block' | 'card'`, default `'block'`) and `lines` (default `3`). Every variant renders `aria-hidden="true"` with `data-slot="skeleton"`; `card` renders a `voxel-trough rounded-none bg-boxel-trough p-4 flex flex-col gap-3` surface with `lines` child bars (`data-slot="skeleton-line"`, `h-3 rounded-none bg-boxel-elevated animate-pulse motion-reduce:animate-none`, widths cycling `w-2/3` / `w-full` / `w-4/5` / `w-5/6`); `text` renders one or more bare bars; `block` renders a `h-24 w-full` trough block. The legacy `.skeleton` shimmer CSS class in `apps/web/src/styles/app.css` has been removed — `Skeleton` is the single implementation.
+  Non-solid variants keep the standard `dotColors` map. The `accent` solid fill uses `bg-accent text-voxel-trough` (never `text-white`) to satisfy the WCAG AAA contrast rule.
+- **Table**: Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container. Supports `numeric` prop on `TableHead` and `TableCell` for automatic `text-right tabular-nums font-mono` alignment, and `isInactive` prop on `TableRow` to shade out halted, archived, or disabled rows (`opacity-60 text-voxel-muted bg-voxel-trough/30`).
+- **Input**: Recessed `.voxel-trough rounded-none` wrapper (`bg-voxel-trough`, `border-voxel-bevel-hi`, `focus-within:ring-accent/40`). The inner `<input>` uses `text-sm font-bold text-voxel-ink` with `placeholder:text-voxel-muted`. Error state swaps the border to `border-danger`.
+- **Label**: `block text-sm font-bold text-voxel-ink uppercase tracking-wider` (Tier 2 control typography, no `mb-*` — spacing is owned by the parent).
+- **Select**: Recessed `.voxel-trough rounded-none` wrapper matching `Input` (`bg-voxel-trough`, `border-voxel-bevel-hi`). The `<select>` uses `text-sm font-bold text-voxel-ink`; `<option>` rows use `bg-voxel-surface text-voxel-ink text-sm font-bold`.
+- **Skeleton**: Sharp `rounded-none` Voxel trough placeholder that preserves feed geometry during cold loads without spinners. Props: `variant` (`'text' | 'block' | 'card'`, default `'block'`) and `lines` (default `3`). Every variant renders `aria-hidden="true"` with `data-slot="skeleton"`; `card` renders a `voxel-trough rounded-none bg-voxel-trough p-4 flex flex-col gap-3` surface with `lines` child bars (`data-slot="skeleton-line"`, `h-3 rounded-none bg-voxel-elevated animate-pulse motion-reduce:animate-none`, widths cycling `w-2/3` / `w-full` / `w-4/5` / `w-5/6`); `text` renders one or more bare bars; `block` renders a `h-24 w-full` trough block. The legacy `.skeleton` shimmer CSS class in `apps/web/src/styles/app.css` has been removed — `Skeleton` is the single implementation.
 
 > [!IMPORTANT]
 > `LoadingSpinner` has been **removed** from the package. `animate-spin` loaders are prohibited across feeds, panels, and buttons. Cold loads use `Skeleton` / `LoadingBoundary`; pending actions use `Button[isLoading]`.
@@ -83,9 +83,9 @@ Higher-level compound components for specific UI patterns:
 - **SectionHeading**: Uppercase display title paired with a solid square cheddar-gold block marker.
 - **SubHeading**: Secondary heading for subsections with optional divider and right element. Carries **no** `mb-*` margin — vertical rhythm is supplied by the parent's `gap`.
 - **ConfidenceBar**: 10 discrete block segments (`data-testid="confidence-segment"`) inside a recessed `.voxel-trough` slot.
-- **MetricTile**: Recessed `.voxel-trough rounded-none p-3` tile laid out as `flex flex-col justify-between gap-1` (label row + value), with `hover:bg-boxel-elevated`. No child `mb-*` margins.
-- **EmptyState**: Centered `flex flex-col items-center gap-4` block. The emoji renders inside a `w-12 h-12 voxel-trough rounded-none` icon box at `text-lg` (no oversized `text-6xl`/`text-7xl` circles). The title is Tier 1 (`text-lg font-bold text-boxel-ink uppercase tracking-tight`) and the subtitle is Tier 3 (`text-xs font-normal text-boxel-muted`), both inside a `gap-1.5` stack with no `mb-*` margins.
-- **ErrorCard**: `voxel-card rounded-none` surface with `border-t-danger/70 border-l-danger/70`, laid out as `flex flex-col gap-3`. Title is `text-sm font-bold text-danger`, message is `text-xs font-normal text-boxel-muted`, and the optional Retry action is a `voxel-btn rounded-none text-sm font-bold uppercase tracking-wider` button.
+- **MetricTile**: Recessed `.voxel-trough rounded-none p-3` tile laid out as `flex flex-col justify-between gap-1` (label row + value), with `hover:bg-voxel-elevated`. No child `mb-*` margins.
+- **EmptyState**: Centered `flex flex-col items-center gap-4` block. The emoji renders inside a `w-12 h-12 voxel-trough rounded-none` icon box at `text-lg` (no oversized `text-6xl`/`text-7xl` circles). The title is Tier 1 (`text-lg font-bold text-voxel-ink uppercase tracking-tight`) and the subtitle is Tier 3 (`text-xs font-normal text-voxel-muted`), both inside a `gap-1.5` stack with no `mb-*` margins.
+- **ErrorCard**: `voxel-card rounded-none` surface with `border-t-danger/70 border-l-danger/70`, laid out as `flex flex-col gap-3`. Title is `text-sm font-bold text-danger`, message is `text-xs font-normal text-voxel-muted`, and the optional Retry action is a `voxel-btn rounded-none text-sm font-bold uppercase tracking-wider` button.
 - **StatPill**, **LoadingBoundary** (renders a layout-preserving Voxel `Skeleton` grid — three `Skeleton variant="card" lines={3}` tiles in a `repeat(auto-fit,minmax(min(100%,18rem),1fr))` `items-stretch` grid — or a caller-supplied layout-matched `fallback` slot when `isLoading` is true; the wrapper carries `role="status"`, `aria-busy="true"`, and `aria-label={loadingText ?? 'Loading content'}` and never emits an SVG spinner): Shared layout and feedback patterns.
 
 ## Layouts
@@ -105,7 +105,7 @@ Composite views follow a strict parent-owns-spacing pattern:
 - Inline stat pairs: `flex items-center gap-1.5` around a label + value, replacing `mr-1.5` on the label.
 - Card grids: `grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch` (Lab uses `minmax(min(100%,20rem),1fr)`).
 
-Neutral states use the `neutral` color scheme rather than `accent`. The `LiveAgentConsole` header ribbon renders its market bias and action telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) as compact `text-xs font-mono` text — a square pixel dot plus `BIAS:`/`ACT:` labels — rather than `Badge` elements, so the header never inherits the Cheddar Gold action fill. Direction and action colors are resolved from `DIRECTION_COLOR_MAP` (`BULLISH` → `text-success`/`bg-success`, `BEARISH` → `text-danger`/`bg-danger`, `NEUTRAL` → `text-boxel-ink`/`bg-boxel-muted`) and `ACTION_COLOR_MAP` (`BUY` → `text-success`, `SELL` → `text-danger`, `HOLD` → `text-boxel-muted`).
+Neutral states use the `neutral` color scheme rather than `accent`. The `LiveAgentConsole` header ribbon renders its market bias and action telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) as compact `text-xs font-mono` text — a square pixel dot plus `BIAS:`/`ACT:` labels — rather than `Badge` elements, so the header never inherits the Cheddar Gold action fill. Direction and action colors are resolved from `DIRECTION_COLOR_MAP` (`BULLISH` → `text-success`/`bg-success`, `BEARISH` → `text-danger`/`bg-danger`, `NEUTRAL` → `text-voxel-ink`/`bg-voxel-muted`) and `ACTION_COLOR_MAP` (`BUY` → `text-success`, `SELL` → `text-danger`, `HOLD` → `text-voxel-muted`).
 
 ## In-flow inspection (no floating overlays)
 
@@ -126,8 +126,8 @@ Beyond the primitives, the feature pages render through the same Voxel tokens an
 - **AI Sector Predictor scoreboard** (`AIPredictionsPage.tsx`): the 4-model head-to-head grid uses `grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch` with `Card` tiles (`h-full flex flex-col justify-between gap-4`), Tier 2 model names, and `text-lg font-bold font-mono tabular-nums` metric values.
 - **Leaderboard podium** (`LeaderboardPodium.tsx`): equal-height `items-stretch` grid (no `items-end`, no arbitrary `min-h-[400px]`/`min-h-[350px]`/`min-h-[320px]`), `radius="none"` cards with rank-colored top/left bevels (`border-t-success`, `border-t-accent`, `border-t-warning`).
 - **Daily metrics overview** (`DailyMetricsOverview.tsx`): `items-stretch` grid of `Card padding="sm"` tiles with `text-lg font-bold font-mono tabular-nums` values; the active-variant badge is a solid `success` badge reading `ACTIVE` (no emoji).
-- **Hero prediction card** (`HeroPredictionCard.tsx`): `bg-boxel-surface rounded-none border-boxel-bevel-hi` card with Tier 1 direction text and Tier 3 rationale.
-- **Score calculation** (`ScoreCalculation.tsx`): `bg-boxel-surface` card, recessed `bg-boxel-trough` formula block at `text-lg font-mono font-bold`, and a fluid `minmax(min(100%,14rem),1fr)` explanation grid.
+- **Hero prediction card** (`HeroPredictionCard.tsx`): `bg-voxel-surface rounded-none border-voxel-bevel-hi` card with Tier 1 direction text and Tier 3 rationale.
+- **Score calculation** (`ScoreCalculation.tsx`): `bg-voxel-surface` card, recessed `bg-voxel-trough` formula block at `text-lg font-mono font-bold`, and a fluid `minmax(min(100%,14rem),1fr)` explanation grid.
 - **Today page** (`TodayPage.tsx`): the 3-column Row 2 grid uses `items-stretch` so `AgentInsights`, `NewsletterFeed`, and `AIFeelingCard` share equal height. `AIFeelingCard` uses `Card padding="md"` with `h-full flex flex-col justify-between gap-4` and a `mt-auto` footer; `NewsletterFeed` renders briefings in a `minmax(min(100%,16rem),1fr)` grid with `Badge`-based sender chips and a `voxel-trough` empty state; `AgentInsights` uses `rounded-none` toggles and Tier 3 telemetry text.
 - **Daily predictions** (`DailyPredictionsPage.tsx`, `PredictionsTable.tsx`, `SegmentedPromptInspector.tsx`, `CuratedManifestCard.tsx`, `DailyPostMortemCard.tsx`, `DailyLessonsLedgerCard.tsx`, `AutoresearchMilestoneCards.tsx`): `rounded-none` segmented switchers, `voxel-btn` backtest link, `radius="none"` badges throughout, and `grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] items-stretch` milestone cards.
 - **Autoresearch arena** (`AutoresearchPage.tsx`, `ExperimentDetails.tsx`, `ExperimentList.tsx`, `PromptChanges.tsx`, `PromptBlocksCard.tsx`, `CognitiveToolboxCard.tsx`, `ResearchRationaleCard.tsx`, `VolatilityCalculation.tsx`, `BacktestTradesAudit.tsx`): `voxel-btn` track tabs, `voxel-trough` prompt panes, `rounded-none` diff/block/tool cards, and `items-stretch` grids replacing inline `gridTemplateColumns` styles.
@@ -139,7 +139,7 @@ Beyond the primitives, the feature pages render through the same Voxel tokens an
 - **Earnings audit** (`EarningsAuditPage.tsx`): `Card padding="md"` summary tiles in a `minmax(min(100%,14rem),1fr)` `items-stretch` grid with `text-lg font-bold font-mono tabular-nums` values.
 - **Barometer audit** (`BarometerAuditPage.tsx`): `minmax(min(100%,10rem),1fr)` aggregate grid with `border-t-accent border-l-accent` highlight bevels.
 - **Market overview** (`MarketOverviewPage.tsx`): sector performance cards in a `minmax(min(100%,18rem),1fr)` `items-stretch` grid using `text-success`/`text-danger` direction glyphs. `CorrelationHistoryExplorer` renders `Skeleton variant="block" className="h-64"` plus `Skeleton variant="text" lines={2}` inside an `aria-busy` wrapper while fetching pair history.
-- **Backtest arena** (`BacktestAutoresearchPage.tsx`): `voxel-btn` navigation, `bg-boxel-surface rounded-none` formula card, and `voxel-trough` run-count badge.
+- **Backtest arena** (`BacktestAutoresearchPage.tsx`): `voxel-btn` navigation, `bg-voxel-surface rounded-none` formula card, and `voxel-trough` run-count badge.
 
 ## Governance and verification protocol
 
@@ -149,7 +149,7 @@ Beyond the primitives, the feature pages render through the same Voxel tokens an
 4. **Fluent responsive layouts**: Prohibit explicit viewport breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) and raw pixel values for structural layouts. All composite views and multi-card panels must use intrinsic fluid design (`flex-wrap`, proportional `basis-72` and `basis-96`). See [[concepts/fluent-responsive-design]].
 5. **Loading states, CLS prevention & zero spinners**: Enforce SSR/`keepPreviousData`/`fallback={null}` first, layout-matched Voxel `Skeleton` placeholders over spinners for cold feeds, zero `LoadingSpinner`/`animate-spin` loaders, and zero optimistic updates. See [[concepts/cumulative-layout-shift]] and [[concepts/tanstack-query]].
 6. **No floating overlays**: Tooltips, popovers, poppers, `title` attributes, and SVG `<title>` hovers are prohibited; detail renders in-flow in a `.voxel-trough` slot with keyboard-operable triggers. See [[concepts/in-flow-inspection]].
-7. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` Voxel styling, solid-accent badge contrast (`text-boxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` rendering NEUTRAL/HOLD telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) with zero `.voxel-badge` elements, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
+7. **Enforced by tests**: `apps/web/src/test/design-standardization.test.tsx` asserts the typography tiers, `MetricTile` Voxel styling, solid-accent badge contrast (`text-voxel-trough`, no `text-white`), badge `gap-1.5` with no dot `mr-1.5`, `LiveAgentConsole` rendering NEUTRAL/HOLD telemetry inside a recessed `voxel-trough` (`data-testid="console-telemetry-trough"`) with zero `.voxel-badge` elements, equal-height stretched grids, intrinsic `minmax(min(100%,20rem),1fr)` tracks, and the absence of `mb-*` margins on page headers. It additionally asserts:
    - `ErrorCard` uses `rounded-none` (no `rounded-xl`), a `text-sm font-bold` title, a `text-xs font-normal` message, and a `text-sm font-bold` Retry button (no `rounded-lg`).
    - `EmptyState` uses a Tier 1 `text-lg font-bold` title (no `text-2xl`/`text-3xl`/`font-black`), a Tier 3 `text-xs font-normal` subtitle, no `text-6xl`/`text-7xl` emoji, and no `mb-*` margins.
    - `Input`/`Select` wrappers use `rounded-none` (no `rounded-xl`) and `Label` uses `text-sm font-bold` (no `font-semibold`).

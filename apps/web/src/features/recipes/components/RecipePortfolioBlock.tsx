@@ -55,10 +55,10 @@ export function RecipePortfolioBlock({
 
     return (
         <Card padding="md" className="flex flex-col gap-4 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-boxel-bevel-hi pb-3">
-                <SectionHeading gradient="electric">{title}</SectionHeading>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
+                <SectionHeading>{title}</SectionHeading>
                 <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" size="xs">
+                    <Badge variant="soft" size="xs">
                         {openPositions.length} / {maxOpenTrades} Slots Open
                     </Badge>
                     <Badge variant="soft" colorScheme="neutral" size="xs">
@@ -97,8 +97,8 @@ export function RecipePortfolioBlock({
             </div>
 
             {openPositions.length === 0 ? (
-                <div className="voxel-trough bg-boxel-trough p-4">
-                    <span className="text-xs font-normal text-boxel-muted">
+                <div className="voxel-trough bg-voxel-trough p-4">
+                    <span className="text-xs font-normal text-voxel-muted">
                         No open positions — 100% cash ({formatDollar(cash)}).
                     </span>
                 </div>

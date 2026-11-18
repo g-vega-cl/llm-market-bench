@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { Badge } from '@llm-market-bench/ui-design-system';
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import { isTrackColdStart } from '../utils/coldStart';
 
 /**
@@ -37,21 +37,21 @@ export function TrackTabs({ experiments, activeTrack, onSelectTrack }: TrackTabs
     }, {});
 
     return (
-        <div className="flex items-center space-x-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 overflow-x-auto">
+        <div className="flex items-center space-x-2 border-b border-zinc-200 border-zinc-800 pb-2 overflow-x-auto">
             {availableTracks.map((tid) => {
                 const isActive = activeTrack === tid;
                 const count = counts[tid] || 0;
                 const isCold = isTrackColdStart(tid, experiments);
 
                 return (
-                    <button
+                    <Button
                         key={tid}
                         type="button"
                         onClick={() => onSelectTrack(tid)}
                         className={`voxel-btn inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition-all whitespace-nowrap ${
                             isActive
                                 ? 'bg-accent text-accent-ink border border-accent'
-                                : 'bg-boxel-surface text-boxel-muted hover:text-boxel-ink hover:bg-boxel-elevated border border-boxel-bevel-hi'
+                                : 'bg-voxel-surface text-voxel-muted hover:text-voxel-ink hover:bg-voxel-elevated border border-voxel-bevel-hi'
                         }`}
                     >
                         <span>{formatTrackLabel(tid)}</span>
@@ -67,7 +67,7 @@ export function TrackTabs({ experiments, activeTrack, onSelectTrack }: TrackTabs
                         >
                             {count}
                         </Badge>
-                    </button>
+                    </Button>
                 );
             })}
         </div>

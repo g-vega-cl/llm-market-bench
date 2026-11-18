@@ -4,70 +4,42 @@ import { cn } from '../lib/cn';
 /**
  * Badge primitive.
  *
- * Variants: solid, soft, outline
- * Sizes: xs, sm, md
- * Color schemes: accent, success, danger, info, warning, neutral
- * Severity schemes: high, medium (overrides colorScheme)
- * Radius: full (rounded-full), lg (rounded-lg), md (rounded-md)
+ * Variant budget: exactly two variants (`solid`, `soft`).
+ * Sizes: `xs`, `sm`, `md`.
+ * Color schemes are semantic, not stylistic variants.
  */
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-    variant?: 'solid' | 'soft' | 'outline' | 'glass';
+    variant?: 'solid' | 'soft';
     size?: 'xs' | 'sm' | 'md';
     colorScheme?: 'accent' | 'success' | 'danger' | 'info' | 'warning' | 'neutral';
-    severity?: 'high' | 'medium';
-    radius?: 'none' | 'full' | 'lg' | 'md';
     showDot?: boolean;
 }
 
 const badgeColors: Record<string, Record<string, string>> = {
     accent: {
-        solid: 'bg-accent text-boxel-trough',
+        solid: 'bg-accent text-voxel-trough',
         soft: 'bg-accent/20 text-accent',
-        outline: 'border border-accent/30 text-accent',
-        glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     success: {
-        solid: 'bg-success text-zinc-950',
+        solid: 'bg-success text-voxel-trough',
         soft: 'bg-success/20 text-success',
-        outline: 'border border-success/30 text-success',
-        glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     danger: {
-        solid: 'bg-danger text-white',
+        solid: 'bg-danger text-voxel-trough',
         soft: 'bg-danger/20 text-danger',
-        outline: 'border border-danger/30 text-danger',
-        glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     info: {
-        solid: 'bg-info text-white',
+        solid: 'bg-info text-voxel-trough',
         soft: 'bg-info/20 text-info',
-        outline: 'border border-info/30 text-info',
-        glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     warning: {
-        solid: 'bg-warning text-zinc-950',
+        solid: 'bg-warning text-voxel-trough',
         soft: 'bg-warning/20 text-warning',
-        outline: 'border border-warning/30 text-warning',
-        glass: 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-300',
     },
     neutral: {
-        solid: 'bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-950',
-        soft: 'bg-zinc-100 dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400',
-        outline: 'border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400',
-        glass: 'bg-white/5 border border-white/10 text-white/70',
-    },
-    high: {
-        solid: 'bg-warning text-zinc-950',
-        soft: 'bg-warning/20 text-warning',
-        outline: 'border border-warning/30 text-warning',
-        glass: 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-300',
-    },
-    medium: {
-        solid: 'bg-info text-white',
-        soft: 'bg-info/20 text-info',
-        outline: 'border border-info/30 text-info',
-        glass: 'bg-white/5 border border-white/10 text-white/70',
+        solid: 'bg-voxel-elevated text-voxel-ink',
+        soft: 'bg-voxel-surface text-voxel-muted',
     },
 };
 
@@ -77,27 +49,22 @@ const dotColors: Record<string, string> = {
     danger: 'bg-danger',
     info: 'bg-info',
     warning: 'bg-warning',
-    neutral: 'bg-zinc-400',
-    high: 'bg-warning',
-    medium: 'bg-info',
+    neutral: 'bg-voxel-muted',
 };
 
 const solidDotColors: Record<string, string> = {
-    accent: 'bg-boxel-trough',
-    success: 'bg-zinc-950',
-    danger: 'bg-white',
-    info: 'bg-white',
-    warning: 'bg-zinc-950',
-    neutral: 'bg-white dark:bg-zinc-950',
-    high: 'bg-zinc-950',
-    medium: 'bg-white',
+    accent: 'bg-voxel-trough',
+    success: 'bg-voxel-trough',
+    danger: 'bg-voxel-trough',
+    info: 'bg-voxel-trough',
+    warning: 'bg-voxel-trough',
+    neutral: 'bg-voxel-muted',
 };
 
-const radiusMap: Record<string, string> = {
-    none: 'rounded-none',
-    full: 'rounded-none',
-    lg: 'rounded-none',
-    md: 'rounded-none',
+const sizeMap = {
+    xs: 'px-1.5 py-0.5 text-sm',
+    sm: 'px-2 py-0.5 text-sm',
+    md: 'px-2.5 py-1 text-sm',
 };
 
 export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
@@ -105,9 +72,7 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
         {
             variant = 'soft',
             size = 'md',
-            colorScheme,
-            severity,
-            radius = 'full',
+            colorScheme = 'neutral',
             showDot = false,
             className,
             children,
@@ -115,26 +80,19 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
         },
         ref,
     ) => {
-        const scheme = severity ?? colorScheme ?? 'neutral';
         const base =
-            'voxel-badge inline-flex items-center gap-1.5 font-bold uppercase tracking-wider';
-        const sizeClasses = {
-            xs: 'px-1.5 py-0.5 text-sm',
-            sm: 'px-2 py-0.5 text-sm',
-            md: 'px-2.5 py-1 text-sm',
-        }[size];
-        const colorClasses = badgeColors[scheme]?.[variant] ?? badgeColors.neutral.soft;
-        const radiusClasses = radiusMap[radius] ?? 'rounded-none';
+            'voxel-badge inline-flex items-center gap-1.5 font-bold uppercase tracking-wider rounded-none';
+        const colorClasses = badgeColors[colorScheme]?.[variant] ?? badgeColors.neutral.soft;
         const dotColorClass =
             variant === 'solid'
-                ? (solidDotColors[scheme] ?? 'bg-white')
-                : (dotColors[scheme] ?? dotColors.neutral);
+                ? (solidDotColors[colorScheme] ?? 'bg-voxel-muted')
+                : (dotColors[colorScheme] ?? dotColors.neutral);
 
         return (
             <span
                 ref={ref}
-                data-color-scheme={scheme}
-                className={cn(base, radiusClasses, sizeClasses, colorClasses, className)}
+                data-color-scheme={colorScheme}
+                className={cn(base, sizeMap[size], colorClasses, className)}
                 {...props}
             >
                 {showDot && (

@@ -49,7 +49,7 @@ An optional `overrideScore` argument replaces the computed score with the engine
 The component renders inside nested detail panes that share horizontal space with sidebars, so it is built entirely from design-system primitives and CSS layout utilities — zero inline `style` objects for layout, typography, or color (see [[entities/design-system]]):
 
 - The outer surface is a `Card` with `p-5 flex flex-col gap-4 rounded-none min-w-0`.
-- The header row is `flex justify-between items-center flex-wrap gap-3` with a `border-b border-boxel-bevel-hi` divider.
+- The header row is `flex justify-between items-center flex-wrap gap-3` with a `border-b border-voxel-bevel-hi` divider.
 - The formula substitution bar and each pillar tile are recessed `voxel-trough rounded-none` slots.
 - The pillar grid steps intrinsically with `grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3 items-stretch` rather than viewport breakpoints or fixed pixel widths.
 - Formula text uses `break-words overflow-wrap-anywhere` inside an `overflow-x-auto` trough so long equations wrap cleanly without forcing parent card expansion.

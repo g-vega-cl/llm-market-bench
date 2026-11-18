@@ -125,7 +125,7 @@ function PredictorExperimentRow({
                     </span>
                 </TableCell>
             )}
-            <TableCell className="font-mono text-boxel-ink font-normal text-xs break-all max-w-[120px]">
+            <TableCell className="font-mono text-voxel-ink font-normal text-xs break-all max-w-[120px]">
                 {exp.variant_tag}
             </TableCell>
             <TableCell>
@@ -143,7 +143,7 @@ function PredictorExperimentRow({
             <TableCell
                 className={`font-bold ${
                     formattedScore === 'N/A'
-                        ? 'text-boxel-muted font-normal'
+                        ? 'text-voxel-muted font-normal'
                         : score > 0
                           ? 'text-emerald-400'
                           : 'text-rose-400'
@@ -173,9 +173,9 @@ function PredictorTrackHeaderCards({
 }) {
     return (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6 items-stretch">
-            <div className="bg-boxel-surface border border-boxel-bevel-hi rounded-none p-6 flex flex-col justify-between h-full">
+            <div className="bg-voxel-surface border border-voxel-bevel-hi rounded-none p-6 flex flex-col justify-between h-full">
                 <div className="flex justify-between items-start">
-                    <h2 className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         {trackConfig?.label ?? 'Model'} All-Time Baseline Score
                     </h2>
                     <span
@@ -186,15 +186,15 @@ function PredictorTrackHeaderCards({
                         {trackConfig?.shortLabel}
                     </span>
                 </div>
-                <div className="text-lg font-bold text-emerald-400 font-mono">{baselineScore}</div>
-                <p className="text-boxel-muted text-xs font-normal">
+                <div className="text-sm font-bold text-emerald-400 font-mono">{baselineScore}</div>
+                <p className="text-voxel-muted text-xs font-normal">
                     Ratchet high-water mark for {trackConfig?.label ?? 'this model track'}
                 </p>
             </div>
 
-            <div className="bg-boxel-surface border border-boxel-bevel-hi rounded-none p-6 flex flex-col justify-between h-full">
+            <div className="bg-voxel-surface border border-voxel-bevel-hi rounded-none p-6 flex flex-col justify-between h-full">
                 <div className="flex justify-between items-start">
-                    <h2 className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         {trackConfig?.label ?? 'Model'} Active Prompt
                     </h2>
                     <span
@@ -205,8 +205,8 @@ function PredictorTrackHeaderCards({
                         {trackConfig?.shortLabel}
                     </span>
                 </div>
-                <div className="text-lg font-bold text-accent font-mono">{activeVariant}</div>
-                <p className="text-boxel-muted text-xs font-normal">
+                <div className="text-sm font-bold text-accent font-mono">{activeVariant}</div>
+                <p className="text-voxel-muted text-xs font-normal">
                     The currently deployed strategy for {trackConfig?.label ?? 'this model track'}
                 </p>
             </div>
@@ -239,17 +239,17 @@ function PredictorPromptInspector({
     return (
         <div className="flex flex-col gap-4">
             {header && (
-                <div className="p-4 bg-boxel-canvas border border-boxel-bevel-hi rounded-none flex flex-col gap-2">
-                    <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                <div className="p-4 bg-voxel-canvas border border-voxel-bevel-hi rounded-none flex flex-col gap-2">
+                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         Frozen System Constraints (Header)
                     </div>
-                    <pre className="whitespace-pre-wrap font-mono text-xs font-normal text-boxel-muted max-h-48 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap font-mono text-xs font-normal text-voxel-muted max-h-48 overflow-y-auto">
                         {header}
                     </pre>
                 </div>
             )}
 
-            <div className="p-4 bg-boxel-trough border border-emerald-500/30 rounded-none flex flex-col gap-2">
+            <div className="p-4 bg-voxel-trough border border-emerald-500/30 rounded-none flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                     <div className="text-sm font-bold text-emerald-400 uppercase tracking-wider">
                         Mutable Analytical Strategies (Evolved by Autoresearch)
@@ -264,11 +264,11 @@ function PredictorPromptInspector({
             </div>
 
             {footer && (
-                <div className="p-4 bg-boxel-canvas border border-boxel-bevel-hi rounded-none flex flex-col gap-2">
-                    <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                <div className="p-4 bg-voxel-canvas border border-voxel-bevel-hi rounded-none flex flex-col gap-2">
+                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         Frozen Output Schema (Footer)
                     </div>
-                    <pre className="whitespace-pre-wrap font-mono text-xs font-normal text-boxel-muted max-h-48 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap font-mono text-xs font-normal text-voxel-muted max-h-48 overflow-y-auto">
                         {footer}
                     </pre>
                 </div>
@@ -312,7 +312,7 @@ function PredictorExperimentDetailsPane({
             <div className="flex items-center space-x-4 px-2">
                 <SectionHeading className="text-slate-200">Experiment Details</SectionHeading>
                 <div className="h-px flex-1 bg-slate-800" />
-                <span className={`px-2 py-0.5 text-xs font-bold rounded ${trkInfo.badgeClass}`}>
+                <span className={`px-2 py-0.5 text-sm font-bold rounded ${trkInfo.badgeClass}`}>
                     {trkInfo.label}
                 </span>
                 <span className="text-sm font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
@@ -348,10 +348,10 @@ function PredictorExperimentDetailsPane({
             />
 
             {/* Metadata Row & Change Description */}
-            <Card className="p-6 bg-boxel-surface border-boxel-bevel-hi flex flex-col gap-6">
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-4 p-4 bg-boxel-trough rounded-none border border-boxel-bevel-hi text-xs font-normal items-stretch">
+            <Card className="p-6 bg-voxel-surface border-voxel-bevel-hi flex flex-col gap-6">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-4 p-4 bg-voxel-trough rounded-none border border-voxel-bevel-hi text-xs font-normal items-stretch">
                     <div>
-                        <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider mb-1">
+                        <div className="text-voxel-muted text-sm font-bold uppercase tracking-wider mb-1">
                             Experiment Type
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -372,37 +372,37 @@ function PredictorExperimentDetailsPane({
                         </div>
                     </div>
                     <div>
-                        <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider mb-1">
+                        <div className="text-voxel-muted text-sm font-bold uppercase tracking-wider mb-1">
                             Active Period
                         </div>
-                        <div className="text-boxel-ink font-normal">
+                        <div className="text-voxel-ink font-normal">
                             {formatStableDate(selectedExperiment.week_start)} -{' '}
                             {formatStableDate(selectedExperiment.week_end)}
                         </div>
                     </div>
                     <div>
-                        <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider mb-1">
+                        <div className="text-voxel-muted text-sm font-bold uppercase tracking-wider mb-1">
                             Parent Variant
                         </div>
-                        <div className="text-boxel-ink font-mono font-normal">
+                        <div className="text-voxel-ink font-mono font-normal">
                             {selectedExperiment.parent_tag || (
-                                <span className="text-boxel-muted italic">None (Root)</span>
+                                <span className="text-voxel-muted italic">None (Root)</span>
                             )}
                         </div>
                     </div>
                     <div>
-                        <div className="text-boxel-muted text-sm font-bold uppercase tracking-wider mb-1">
+                        <div className="text-voxel-muted text-sm font-bold uppercase tracking-wider mb-1">
                             Created At
                         </div>
-                        <div className="text-boxel-ink font-normal">
+                        <div className="text-voxel-ink font-normal">
                             {formatStableDate(selectedExperiment.created_at)}
                         </div>
                     </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <SubHeading className="text-boxel-ink">Change Description</SubHeading>
-                    <p className="text-boxel-muted italic text-xs font-normal">
+                    <SubHeading className="text-voxel-ink">Change Description</SubHeading>
+                    <p className="text-voxel-muted italic text-xs font-normal">
                         "{selectedExperiment.change_description || 'No description provided.'}"
                     </p>
                 </div>
@@ -509,7 +509,7 @@ export function PredictorAutoresearchTab({
             )}
 
             <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
-                <SectionHeading className="text-slate-200 text-lg">
+                <SectionHeading className="text-slate-200">
                     Sector Ratchet Scoring Formula
                 </SectionHeading>
                 <p className="text-slate-400 text-sm leading-relaxed">
@@ -517,11 +517,11 @@ export function PredictorAutoresearchTab({
                     percentile ranking and benchmark outperformance while docking uncalibrated
                     probability confidence:
                 </p>
-                <div className="py-4 px-6 bg-boxel-trough border border-boxel-bevel-hi rounded-none flex flex-col items-center justify-center gap-2">
-                    <div className="text-sm font-bold text-boxel-muted uppercase tracking-wider">
+                <div className="py-4 px-6 bg-voxel-trough border border-voxel-bevel-hi rounded-none flex flex-col items-center justify-center gap-2">
+                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                         Ratchet Baseline Formula
                     </div>
-                    <div className="text-lg font-mono font-bold text-boxel-ink text-center leading-relaxed">
+                    <div className="text-sm font-mono font-bold text-voxel-ink text-center leading-relaxed">
                         Score = Base Percentile + S&amp;P Alpha Bonus − (Mean Brier × 50.0)
                     </div>
                 </div>
@@ -531,16 +531,16 @@ export function PredictorAutoresearchTab({
                 {/* Sidebar: List of Experiments */}
                 <div className="xl:col-span-4 flex flex-col gap-6">
                     <div className="flex items-center justify-between px-2">
-                        <SectionHeading className="text-boxel-ink">
+                        <SectionHeading className="text-voxel-ink">
                             {activeTrack === 'all'
                                 ? 'All Experiments'
                                 : `${activeTrackConfig?.shortLabel ?? ''} History`}
                         </SectionHeading>
-                        <span className="text-xs font-normal text-boxel-muted uppercase tracking-widest">
+                        <span className="text-xs font-normal text-voxel-muted uppercase tracking-widest">
                             {filteredExperiments.length} Experiments
                         </span>
                     </div>
-                    <div className="bg-boxel-trough border border-boxel-bevel-hi rounded-none overflow-hidden">
+                    <div className="bg-voxel-trough border border-voxel-bevel-hi rounded-none overflow-hidden">
                         <Table>
                             <TableHeader>
                                 <TableRow isHoverable={false} className="border-slate-800">

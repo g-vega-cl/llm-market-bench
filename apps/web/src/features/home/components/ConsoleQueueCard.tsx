@@ -1,3 +1,4 @@
+import { Button } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import * as React from 'react';
 import { InlineMarkdown, MarkdownContent } from '~/components/ui/MarkdownContent';
@@ -41,9 +42,9 @@ function AnsweredTurnView({
     const askedTime = formatTimestamp(latestAnswered.created_at);
 
     return (
-        <div className="border-t border-boxel-bevel-hi/60 pt-2 flex flex-col gap-2 text-xs">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-boxel-muted font-mono text-xs font-normal">
-                <span className="text-xs font-normal uppercase tracking-wider text-boxel-muted whitespace-nowrap">
+        <div className="border-t border-voxel-bevel-hi/60 pt-2 flex flex-col gap-2 text-xs">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-voxel-muted font-mono text-xs font-normal">
+                <span className="text-xs font-normal uppercase tracking-wider text-voxel-muted whitespace-nowrap">
                     Question
                 </span>
                 <div className="flex flex-wrap items-baseline gap-x-2 min-w-0">
@@ -53,25 +54,25 @@ function AnsweredTurnView({
             </div>
             <div
                 data-testid="answered-question"
-                className="min-w-0 border-l-2 border-accent/40 pl-2.5 text-xs font-normal leading-relaxed text-boxel-ink whitespace-pre-wrap break-words"
+                className="min-w-0 border-l-2 border-accent/40 pl-2.5 text-xs font-normal leading-relaxed text-voxel-ink whitespace-pre-wrap break-words"
             >
                 <InlineMarkdown text={latestAnswered.message} />
             </div>
             {latestAnswered.agent_response &&
                 (isOutage ? (
-                    <div className="p-2.5 bg-boxel-surface border border-accent/40 flex flex-col gap-1 text-xs font-normal font-mono">
+                    <div className="p-2.5 bg-voxel-surface border border-accent/40 flex flex-col gap-1 text-xs font-normal font-mono">
                         <div className="flex items-center gap-1.5 text-sm font-bold text-accent">
                             <span>⚠️</span>
                             <span>DESK NOTICE: HIGH SYSTEM VOLUME</span>
                         </div>
-                        <div className="text-boxel-ink leading-relaxed">
+                        <div className="text-voxel-ink leading-relaxed">
                             Quantitative commentary models experienced high demand during this
                             evaluation turn. The desk maintained a disciplined neutral stance, and
                             your inquiry has been recorded for the strategists on the next turn.
                         </div>
                     </div>
                 ) : (
-                    <div className="text-boxel-ink text-xs font-normal leading-relaxed break-words bg-boxel-canvas/60 p-2.5 border border-accent/20 font-mono min-w-0">
+                    <div className="text-voxel-ink text-xs font-normal leading-relaxed break-words bg-voxel-canvas/60 p-2.5 border border-accent/20 font-mono min-w-0">
                         <MarkdownContent content={latestAnswered.agent_response} />
                     </div>
                 ))}
@@ -152,19 +153,19 @@ export function ConsoleQueueCard({
                 <span className="text-sm font-bold uppercase tracking-wider text-accent">
                     Audience Interactive Queue & Desk Explainer
                 </span>
-                <span className="text-xs font-normal font-mono text-boxel-muted">
+                <span className="text-xs font-normal font-mono text-voxel-muted">
                     {pendingCount > 0 ? `${pendingCount} in queue` : 'Queue open'}
                 </span>
             </div>
 
-            <p className="text-xs font-normal text-boxel-muted leading-normal">
+            <p className="text-xs font-normal text-voxel-muted leading-normal">
                 Ask the trader about past choices, current SPY positioning, or macroeconomic
                 hypotheses (e.g. &ldquo;What do you think will happen after midterms?&rdquo;).
             </p>
 
             {!user ? (
-                <div className="p-2.5 bg-boxel-elevated border border-boxel-bevel-hi flex flex-col gap-2">
-                    <span className="text-xs font-normal font-mono text-boxel-muted">
+                <div className="p-2.5 bg-voxel-elevated border border-voxel-bevel-hi flex flex-col gap-2">
+                    <span className="text-xs font-normal font-mono text-voxel-muted">
                         🔒 Sign in to submit hypotheses and questions for the live model.
                     </span>
                     <div>
@@ -181,13 +182,13 @@ export function ConsoleQueueCard({
                     <div className="text-sm font-bold font-mono text-success">
                         {submittedMessage}
                     </div>
-                    <button
+                    <Button
                         type="button"
                         onClick={() => setSubmittedMessage(null)}
-                        className="text-xs font-normal font-mono text-boxel-muted hover:text-boxel-ink text-left underline"
+                        className="text-xs font-normal font-mono text-voxel-muted hover:text-voxel-ink text-left underline"
                     >
                         Submit another hypothesis
-                    </button>
+                    </Button>
                 </div>
             ) : (
                 <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
@@ -198,24 +199,24 @@ export function ConsoleQueueCard({
                             maxLength={MAX_QUEUE_MESSAGE_LENGTH}
                             rows={2}
                             placeholder="Ask a question or thesis hypothesis (max 500 chars)..."
-                            className="voxel-input flex-1 min-w-48 px-3 py-1.5 text-xs font-normal bg-boxel-canvas text-boxel-ink border border-boxel-bevel-hi focus:outline-none focus:border-accent resize-none"
+                            className="voxel-input flex-1 min-w-48 px-3 py-1.5 text-xs font-normal bg-voxel-canvas text-voxel-ink border border-voxel-bevel-hi focus:outline-none focus:border-accent resize-none"
                         />
-                        <button
+                        <Button
                             type="submit"
                             disabled={isSubmitting || !userQuestion.trim()}
                             className="voxel-btn bg-accent text-accent-ink px-3 py-1.5 text-sm font-bold uppercase tracking-wider hover:opacity-90 disabled:opacity-50 self-end"
                         >
                             {isSubmitting ? 'Queuing...' : 'Queue'}
-                        </button>
+                        </Button>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs font-normal font-mono text-boxel-muted px-0.5">
+                    <div className="flex items-center justify-between text-xs font-normal font-mono text-voxel-muted px-0.5">
                         <span>Logged in as analyst</span>
                         <span
                             className={
                                 userQuestion.length >= 480
                                     ? 'text-danger font-normal'
-                                    : 'text-boxel-muted'
+                                    : 'text-voxel-muted'
                             }
                         >
                             {userQuestion.length}/{MAX_QUEUE_MESSAGE_LENGTH}

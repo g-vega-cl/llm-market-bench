@@ -19,8 +19,8 @@ export function FrontierThemeCards({ themes, positions }: FrontierThemeCardsProp
     return (
         <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <SectionHeading gradient="electric">Active Frontier Themes</SectionHeading>
-                <Badge variant="soft" size="sm" colorScheme="accent" radius="none">
+                <SectionHeading>Active Frontier Themes</SectionHeading>
+                <Badge variant="soft" size="sm" colorScheme="accent">
                     5-Point Supercycle Rubric
                 </Badge>
             </div>
@@ -55,20 +55,15 @@ export function FrontierThemeCards({ themes, positions }: FrontierThemeCardsProp
                             key={theme.theme_name}
                             variant="outlined"
                             padding="md"
-                            className="h-full flex flex-col justify-between rounded-none hover:border-boxel-bevel-hi transition-colors gap-4"
+                            className="h-full flex flex-col justify-between rounded-none hover:border-voxel-bevel-hi transition-colors gap-4"
                         >
                             <div className="flex flex-col gap-3">
                                 <div className="flex items-start justify-between gap-2">
-                                    <h4 className="text-sm font-bold text-boxel-ink flex items-center gap-2">
+                                    <h4 className="text-sm font-bold text-voxel-ink flex items-center gap-2">
                                         <span>⚛️</span>
                                         <span>{theme.theme_name}</span>
                                     </h4>
-                                    <Badge
-                                        variant="soft"
-                                        size="sm"
-                                        colorScheme="info"
-                                        radius="none"
-                                    >
+                                    <Badge variant="soft" size="sm" colorScheme="info">
                                         Rubric {theme.rubric_score}/5
                                     </Badge>
                                 </div>
@@ -90,7 +85,7 @@ export function FrontierThemeCards({ themes, positions }: FrontierThemeCardsProp
                                         theme.tickers.map((t) => (
                                             <span
                                                 key={t}
-                                                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-zinc-200 font-mono text-xs font-bold"
+                                                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-zinc-200 font-mono text-sm font-bold"
                                             >
                                                 {t}
                                             </span>

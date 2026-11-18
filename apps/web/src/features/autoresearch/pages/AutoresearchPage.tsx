@@ -39,22 +39,22 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 py-12">
+        <div className="min-h-screen bg-zinc-50 bg-zinc-950">
+            <div className="bg-white bg-zinc-900 border-b border-zinc-200 border-zinc-800 py-12">
                 <PageLayout>
                     <div className="flex flex-col gap-2">
                         <div className="flex flex-wrap items-center justify-between gap-4">
-                            <h1 className="text-lg font-bold text-boxel-ink tracking-tight uppercase">
+                            <h1 className="text-sm font-bold text-voxel-ink tracking-tight uppercase">
                                 Auto-Research <span className="text-accent">Arena</span>
                             </h1>
                             <Link
                                 to="/autoresearch-backtest"
-                                className="voxel-btn inline-flex items-center justify-center text-sm font-bold text-boxel-ink bg-boxel-surface hover:bg-boxel-elevated border border-boxel-bevel-hi px-4 py-2 rounded-none transition-all"
+                                className="voxel-btn inline-flex items-center justify-center text-sm font-bold text-voxel-ink bg-voxel-surface hover:bg-voxel-elevated border border-voxel-bevel-hi px-4 py-2 rounded-none transition-all"
                             >
                                 Switch to Backtest Arena →
                             </Link>
                         </div>
-                        <p className="text-boxel-muted text-xs font-normal max-w-2xl leading-relaxed">
+                        <p className="text-voxel-muted text-xs font-normal max-w-2xl leading-relaxed">
                             Track the evolution of our autonomous trading prompts. Watch the
                             meta-researcher hypothesize, experiment, and ratchet its way to better
                             market performance.
@@ -77,7 +77,7 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
                     <div className="xl:col-span-4 space-y-6">
                         <div className="flex items-center justify-between px-2">
                             <SectionHeading>History</SectionHeading>
-                            <span className="text-xs font-normal text-boxel-muted uppercase tracking-wider">
+                            <span className="text-xs font-normal text-voxel-muted uppercase tracking-wider">
                                 {filteredExperiments.length} Experiments
                             </span>
                         </div>
@@ -94,7 +94,7 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
                             <div className="space-y-6">
                                 <div className="flex items-center space-x-4 px-2">
                                     <SectionHeading>Experiment Details</SectionHeading>
-                                    <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+                                    <div className="h-px flex-1 bg-zinc-200 bg-zinc-800" />
                                     <span className="text-sm font-mono text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">
                                         {selectedExperiment.variant_tag}
                                     </span>
@@ -113,7 +113,7 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
                                 />
                             </div>
                         ) : (
-                            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-none text-xs font-normal text-zinc-400">
+                            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-200 border-zinc-800 rounded-none text-xs font-normal text-zinc-400">
                                 Select an experiment to view details
                             </div>
                         )}

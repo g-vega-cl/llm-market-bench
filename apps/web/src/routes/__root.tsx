@@ -210,10 +210,10 @@ export function NavLink({
             to={to}
             aria-label={ariaLabel}
             activeProps={{
-                className: 'bg-accent text-boxel-trough',
+                className: 'bg-accent text-voxel-trough',
             }}
             inactiveProps={{
-                className: 'bg-boxel-surface text-boxel-ink hover:bg-boxel-elevated',
+                className: 'bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated',
             }}
             activeOptions={{ exact }}
             className={cn(
@@ -310,7 +310,7 @@ export function RootDocument({ children }: { children: ReactNode }) {
                     <nav
                         className={cn(
                             'flex items-center gap-3 px-6 py-3',
-                            'bg-boxel-surface border-b-2 border-boxel-bevel-lo shadow-md',
+                            'bg-voxel-surface border-b-2 border-voxel-bevel-lo shadow-md',
                             'sticky top-0 z-50',
                             'text-sm font-bold uppercase tracking-widest',
                         )}
@@ -331,14 +331,14 @@ export function RootDocument({ children }: { children: ReactNode }) {
                             {user ? (
                                 <Link
                                     to="/logout"
-                                    className="voxel-btn inline-flex items-center justify-center h-9 px-3 font-bold bg-boxel-trough text-danger hover:bg-danger/10 text-sm uppercase tracking-wider"
+                                    className="voxel-btn inline-flex items-center justify-center h-9 px-3 font-bold bg-voxel-trough text-danger hover:bg-danger/10 text-sm uppercase tracking-wider"
                                 >
                                     Logout
                                 </Link>
                             ) : (
                                 <Link
                                     to="/login"
-                                    className="voxel-btn inline-flex items-center justify-center h-9 px-3 font-bold bg-accent text-boxel-trough hover:bg-accent-hover text-sm uppercase tracking-wider"
+                                    className="voxel-btn inline-flex items-center justify-center h-9 px-3 font-bold bg-accent text-voxel-trough hover:bg-accent-hover text-sm uppercase tracking-wider"
                                 >
                                     Login
                                 </Link>

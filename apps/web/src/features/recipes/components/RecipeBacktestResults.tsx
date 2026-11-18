@@ -1,4 +1,4 @@
-import { Badge } from '@llm-market-bench/ui-design-system';
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
 import type { BacktestResultData, CompletedTradeRecord, SkippedTradeRecord } from '../types';
 
@@ -7,8 +7,8 @@ interface RecipeBacktestResultsProps {
     isLoading?: boolean;
 }
 
-const TABLE_HEAD_CLASS = 'border-b border-border bg-boxel-canvas text-muted-foreground';
-const SECTION_LABEL_CLASS = 'text-xs font-bold uppercase tracking-wider text-muted-foreground';
+const TABLE_HEAD_CLASS = 'border-b border-border bg-voxel-canvas text-muted-foreground';
+const SECTION_LABEL_CLASS = 'text-sm font-bold uppercase tracking-wider text-muted-foreground';
 
 function signedPct(value: number): string {
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
@@ -31,7 +31,7 @@ function StatePanel({
 }) {
     return (
         <div
-            className={`flex flex-col items-center justify-center ${borderClass} bg-boxel-canvas p-8 rounded-none`}
+            className={`flex flex-col items-center justify-center ${borderClass} bg-voxel-canvas p-8 rounded-none`}
         >
             <span className={titleClass}>{title}</span>
             <span className="text-xs font-normal text-muted-foreground">{detail}</span>
@@ -49,7 +49,7 @@ function StatCard({
     valueClass?: string;
 }) {
     return (
-        <div className="flex flex-col gap-1 border border-border bg-boxel-canvas p-3 rounded-none">
+        <div className="flex flex-col gap-1 border border-border bg-voxel-canvas p-3 rounded-none">
             <span className="text-xs font-normal text-muted-foreground">{label}</span>
             <span className={`font-mono text-sm font-bold tabular-nums ${valueClass}`}>
                 {value}
@@ -68,17 +68,17 @@ function PnlModeButton({
     onClick: () => void;
 }) {
     return (
-        <button
+        <Button
             type="button"
             onClick={onClick}
-            className={`px-2 py-1 text-xs font-bold rounded-none ${
+            className={`px-2 py-1 text-sm font-bold rounded-none ${
                 active
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-boxel-canvas text-muted-foreground'
+                    : 'bg-voxel-canvas text-muted-foreground'
             }`}
         >
             {label}
-        </button>
+        </Button>
     );
 }
 
@@ -106,13 +106,13 @@ function SkippedSignalsTable({ skipped }: { skipped: SkippedTradeRecord[] }) {
                         {skipped.slice(0, 15).map((s) => (
                             <tr
                                 key={`${s.time}-${s.skip_type}-${s.reason.slice(0, 15)}`}
-                                className="hover:bg-boxel-canvas"
+                                className="hover:bg-voxel-canvas"
                             >
                                 <td className="p-2 font-mono text-muted-foreground whitespace-nowrap">
                                     {s.time.replace('T', ' ').slice(0, 16)}
                                 </td>
                                 <td className="p-2">
-                                    <Badge variant="outline" size="sm">
+                                    <Badge variant="soft" size="sm">
                                         {s.skip_type}
                                     </Badge>
                                 </td>
@@ -155,7 +155,7 @@ function ExecutedTradesTable({ trades }: { trades: CompletedTradeRecord[] }) {
                         {trades.map((t) => (
                             <tr
                                 key={`${t.entry_time}-${t.ticker}-${t.exit_time}-${t.entry_price}`}
-                                className="hover:bg-boxel-canvas"
+                                className="hover:bg-voxel-canvas"
                             >
                                 <td className="p-2">
                                     <Badge
@@ -201,7 +201,7 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
             <StatePanel
                 title="Executing Timeline Simulation..."
                 detail="Stepping through intraday candles & news catalysts"
-                titleClass="font-display text-lg font-bold text-foreground"
+                titleClass="font-display text-sm font-bold text-foreground"
                 borderClass="border border-border"
             />
         );
@@ -225,10 +225,10 @@ export function RecipeBacktestResults({ results, isLoading = false }: RecipeBack
     const skipped = results.skipped_trades ?? [];
 
     return (
-        <div className="flex flex-col gap-4 border border-border bg-boxel-surface p-4 rounded-none voxel-card">
+        <div className="flex flex-col gap-4 border border-border bg-voxel-surface p-4 rounded-none voxel-card">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                 <div className="flex items-center gap-2">
-                    <span className="font-display text-lg font-bold text-foreground">
+                    <span className="font-display text-sm font-bold text-foreground">
                         Simulation Telemetry
                     </span>
                     <Badge colorScheme={returnPct >= 0 ? 'success' : 'danger'} size="sm">

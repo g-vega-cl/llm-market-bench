@@ -1,5 +1,5 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
-import { PageLayout, SectionHeading, Skeleton } from '@llm-market-bench/ui-design-system';
+import { Button, PageLayout, SectionHeading, Skeleton } from '@llm-market-bench/ui-design-system';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
@@ -67,7 +67,7 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <SectionHeading gradient="ai">LLM Leaderboard</SectionHeading>
+                        <SectionHeading>LLM Leaderboard</SectionHeading>
                         <p className="text-zinc-400 text-xs font-normal leading-relaxed">
                             Rankings and diagnostics evaluating trading performance, reasoning
                             quality, and consistency.
@@ -77,18 +77,18 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                     {/* Timeframe selector */}
                     <div className="flex bg-white/5 p-1 rounded-none border border-white/10 shrink-0 self-start md:self-auto shadow-sm">
                         {timeframes.map((tf) => (
-                            <button
+                            <Button
                                 key={tf.label}
                                 type="button"
                                 onClick={() => setTimeframe(tf.value)}
-                                className={`px-4 py-1.5 text-xs font-mono font-bold rounded-none transition-all ${
+                                className={`px-4 py-1.5 text-sm font-mono font-bold rounded-none transition-all ${
                                     timeframe === tf.value
                                         ? 'bg-accent text-zinc-950 shadow-sm'
-                                        : 'text-zinc-400 hover:text-white'
+                                        : 'text-zinc-400 hover:text-voxel-trough'
                                 }`}
                             >
                                 {tf.label}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
@@ -111,7 +111,7 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                         {/* Leaderboard Grid / Table */}
                         <div className="flex flex-col gap-4">
                             <div className="flex justify-between items-center">
-                                <h2 className="font-heading text-lg font-bold text-zinc-100 uppercase tracking-wider">
+                                <h2 className="font-heading text-sm font-bold text-zinc-100 uppercase tracking-wider">
                                     All Running Models{' '}
                                     {isFetching && (
                                         <span className="text-xs text-zinc-500 font-mono normal-case">

@@ -33,28 +33,28 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="flex w-full max-w-lg flex-col gap-4 border border-border bg-boxel-surface p-6 rounded-none voxel-card">
+            <div className="flex w-full max-w-lg flex-col gap-4 border border-border bg-voxel-surface p-6 rounded-none voxel-card">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                     <div className="flex items-center gap-2">
-                        <span className="font-display text-lg font-bold text-foreground">
+                        <span className="font-display text-sm font-bold text-foreground">
                             Early Supporter Pledge
                         </span>
-                        <Badge variant="outline" size="sm">
+                        <Badge variant="soft" size="sm">
                             Free Beta
                         </Badge>
                     </div>
-                    <button
+                    <Button
                         type="button"
                         onClick={onClose}
-                        className="text-xs font-bold text-muted-foreground hover:text-foreground"
+                        className="text-sm font-bold text-muted-foreground hover:text-foreground"
                     >
                         ✕
-                    </button>
+                    </Button>
                 </div>
 
                 {isSubmitted ? (
                     <div className="flex flex-col items-center gap-3 py-6 text-center">
-                        <span className="font-display text-lg font-bold text-emerald-400">
+                        <span className="font-display text-sm font-bold text-emerald-400">
                             Pledge Received!
                         </span>
                         <p className="text-xs font-normal text-muted-foreground">
@@ -82,7 +82,7 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="name@domain.com"
-                                className="border border-border bg-boxel-canvas p-2 text-sm font-bold text-foreground rounded-none focus:outline-none"
+                                className="border border-border bg-voxel-canvas p-2 text-sm font-bold text-foreground rounded-none focus:outline-none"
                             />
                         </label>
 
@@ -91,7 +91,7 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
                             <select
                                 value={tier}
                                 onChange={(e) => setTier(e.target.value)}
-                                className="border border-border bg-boxel-canvas p-2 text-sm font-bold text-foreground rounded-none"
+                                className="border border-border bg-voxel-canvas p-2 text-sm font-bold text-foreground rounded-none"
                             >
                                 <option value="supporter">
                                     Pro Researcher ($19/mo - Priority GPU queue & 5-minute ticks)
@@ -111,12 +111,12 @@ export function WaitlistPledgeModal({ isOpen, onClose, onSubmit }: WaitlistPledg
                                 value={feedback}
                                 onChange={(e) => setFeedback(e.target.value)}
                                 placeholder="e.g. Options flow block, Level 2 book pressure, Polymarket prediction markets..."
-                                className="border border-border bg-boxel-canvas p-2 text-xs font-normal text-foreground rounded-none"
+                                className="border border-border bg-voxel-canvas p-2 text-xs font-normal text-foreground rounded-none"
                             />
                         </label>
 
                         <div className="flex justify-end gap-2 border-t border-border pt-3">
-                            <Button variant="ghost" size="sm" type="button" onClick={onClose}>
+                            <Button variant="outline" size="sm" type="button" onClick={onClose}>
                                 Cancel
                             </Button>
                             <Button size="sm" type="submit" disabled={isSubmitting || !email}>

@@ -28,13 +28,13 @@ function RouteComponent() {
     const showcase = Route.useLoaderData();
     if (!showcase) {
         return (
-            <div className="min-h-screen bg-boxel-canvas text-boxel-ink">
+            <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
                 <PageLayout maxWidth="xl" className="flex flex-col gap-6">
                     <Card padding="md" className="flex flex-col gap-3">
-                        <h1 className="text-lg font-bold text-boxel-ink">
+                        <h1 className="text-sm font-bold text-voxel-ink">
                             Strategy Recipe Studio — Sample Backtest Preview
                         </h1>
-                        <p className="text-xs font-normal text-boxel-muted">
+                        <p className="text-xs font-normal text-voxel-muted">
                             No public showcase backtest has been published yet. Sign in free with
                             Google or Email to compose strategies, inspect tool traces, and run
                             2-week point-in-time simulations.

@@ -76,38 +76,38 @@ export function LeaderboardTable({
 
     return (
         <div className="space-y-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <Table containerClassName="border-white/10 dark:bg-zinc-950/40 backdrop-blur-md">
+            <Table containerClassName="border-white/10 bg-zinc-950/40 ">
                 <TableHeader className="bg-white/5 border-b border-white/10">
                     <TableRow isHoverable={false}>
                         <TableHead className="w-12 text-center">Compare</TableHead>
                         <TableHead className="w-16">Rank</TableHead>
                         <TableHead className="min-w-[180px]">Model</TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-white"
+                            className="cursor-pointer select-none hover:text-voxel-trough"
                             onClick={() => handleSort('composite_score')}
                         >
                             Score {renderSortIndicator('composite_score')}
                         </TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-white"
+                            className="cursor-pointer select-none hover:text-voxel-trough"
                             onClick={() => handleSort('return_pct')}
                         >
                             Return {renderSortIndicator('return_pct')}
                         </TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-white"
+                            className="cursor-pointer select-none hover:text-voxel-trough"
                             onClick={() => handleSort('win_rate')}
                         >
                             Win Rate {renderSortIndicator('win_rate')}
                         </TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-white"
+                            className="cursor-pointer select-none hover:text-voxel-trough"
                             onClick={() => handleSort('verifier_approval_rate')}
                         >
                             Approval {renderSortIndicator('verifier_approval_rate')}
                         </TableHead>
                         <TableHead
-                            className="cursor-pointer select-none hover:text-white"
+                            className="cursor-pointer select-none hover:text-voxel-trough"
                             onClick={() => handleSort('consistency_score')}
                         >
                             Consistency {renderSortIndicator('consistency_score')}
@@ -183,7 +183,7 @@ function LeaderboardTableRow({
                 />
             </TableCell>
             <TableCell className="font-mono font-bold">
-                <Badge colorScheme={badgeColor} variant="soft" size="xs" radius="none">
+                <Badge colorScheme={badgeColor} variant="soft" size="xs">
                     #{originalRank}
                 </Badge>
             </TableCell>

@@ -44,8 +44,8 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
     return (
         <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <SectionHeading gradient="electric">Active Multi-Horizon Forces</SectionHeading>
-                <Badge variant="soft" size="sm" colorScheme="accent" radius="none">
+                <SectionHeading>Active Multi-Horizon Forces</SectionHeading>
+                <Badge variant="soft" size="sm" colorScheme="accent">
                     2 to 24 Months Horizon
                 </Badge>
             </div>
@@ -83,7 +83,7 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                             key={force.force_title}
                             variant="outlined"
                             padding="md"
-                            className="h-full flex flex-col justify-between rounded-none hover:border-boxel-bevel-hi transition-colors gap-4"
+                            className="h-full flex flex-col justify-between rounded-none hover:border-voxel-bevel-hi transition-colors gap-4"
                         >
                             <div className="flex flex-col gap-3">
                                 <div className="flex items-start justify-between gap-2">
@@ -93,11 +93,10 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                                                 variant="soft"
                                                 size="sm"
                                                 colorScheme={colorScheme}
-                                                radius="none"
                                             >
                                                 {emoji} {label}
                                             </Badge>
-                                            <Badge variant="outline" size="sm" radius="none">
+                                            <Badge variant="soft" size="sm">
                                                 {force.horizon_months}m Horizon
                                             </Badge>
                                             {isPendingLiquidation && (
@@ -105,7 +104,6 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                                                     variant="solid"
                                                     size="sm"
                                                     colorScheme="danger"
-                                                    radius="none"
                                                 >
                                                     Pending Market Open
                                                 </Badge>
@@ -115,12 +113,7 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                                             {force.force_title}
                                         </h4>
                                     </div>
-                                    <Badge
-                                        variant="soft"
-                                        size="sm"
-                                        colorScheme="accent"
-                                        radius="none"
-                                    >
+                                    <Badge variant="soft" size="sm" colorScheme="accent">
                                         Conviction {force.conviction_score}/5
                                     </Badge>
                                 </div>
@@ -152,7 +145,7 @@ export function FutureForceCards({ forces, positions }: FutureForceCardsProps) {
                                         force.tickers.map((t) => (
                                             <span
                                                 key={t}
-                                                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-zinc-200 font-mono text-xs font-bold"
+                                                className="px-1.5 py-0.5 rounded-none bg-zinc-800 text-zinc-200 font-mono text-sm font-bold"
                                             >
                                                 {t}
                                             </span>

@@ -283,10 +283,10 @@ export function RecipeStudioPage({
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
-                            <h1 className="font-display text-lg font-bold text-foreground">
+                            <h1 className="font-display text-sm font-bold text-foreground">
                                 Strategy Builder MVP
                             </h1>
-                            <Badge variant="outline" size="sm">
+                            <Badge variant="soft" size="sm">
                                 5-Block Push v2
                             </Badge>
                         </div>

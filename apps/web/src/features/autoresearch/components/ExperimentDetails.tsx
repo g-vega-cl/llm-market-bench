@@ -39,9 +39,9 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
 
     return (
         <div className="flex flex-col gap-6 animate-slide-up">
-            <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-none voxel-trough border border-boxel-bevel-hi">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-none voxel-trough border border-voxel-bevel-hi">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                    <span className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                         Optimization Track:
                     </span>
                     <Badge colorScheme="accent" variant="soft">
@@ -55,7 +55,7 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                    <span className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                         Experiment Type:
                     </span>
                     <Badge variant="soft" size="sm">
@@ -113,10 +113,10 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                         <Card className="p-6 flex flex-col gap-4">
                             <div className="flex items-center justify-between">
                                 <SectionHeading>The Trading Prompt</SectionHeading>
-                                <Badge variant="outline">v{experiment.variant_tag}</Badge>
+                                <Badge variant="soft">v{experiment.variant_tag}</Badge>
                             </div>
                             <div className="relative group">
-                                <pre className="p-6 bg-boxel-canvas text-boxel-ink rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-boxel-bevel-hi max-h-[600px] overflow-y-auto">
+                                <pre className="p-6 bg-voxel-canvas text-voxel-ink rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-voxel-bevel-hi max-h-[600px] overflow-y-auto">
                                     {experiment.prompt_content}
                                 </pre>
                             </div>
@@ -129,13 +129,13 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex flex-col gap-1">
                                 <SectionHeading>The Trading Prompt</SectionHeading>
-                                <p className="text-xs font-normal text-boxel-muted">
+                                <p className="text-xs font-normal text-voxel-muted">
                                     System breakdown of engine constraints vs. prompt strategies
                                     mutated by autoresearch.
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Badge variant="outline">v{experiment.variant_tag}</Badge>
+                                <Badge variant="soft">v{experiment.variant_tag}</Badge>
                             </div>
                         </div>
 
@@ -144,10 +144,10 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                             <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-boxel-ink">
+                                        <span className="text-sm font-bold text-voxel-ink">
                                             🔒 1. Engine Constraints & Tool Protocols
                                         </span>
-                                        <span className="text-xs font-normal text-boxel-muted font-mono">
+                                        <span className="text-xs font-normal text-voxel-muted font-mono">
                                             (Header)
                                         </span>
                                     </div>
@@ -158,12 +158,12 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                                         Frozen / System Managed
                                     </Badge>
                                 </div>
-                                <p className="text-xs font-normal text-boxel-muted">
+                                <p className="text-xs font-normal text-voxel-muted">
                                     Unchangeable system rules (price injection rules, tool
                                     requirements, RAG/memory protocols). Autoresearch cannot edit
                                     this.
                                 </p>
-                                <pre className="p-4 bg-boxel-trough text-boxel-muted rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
+                                <pre className="p-4 bg-voxel-trough text-voxel-muted rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
                                     {header}
                                 </pre>
                             </div>
@@ -172,7 +172,7 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                             <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-boxel-ink">
+                                        <span className="text-sm font-bold text-voxel-ink">
                                             ⚡ 2. Trading Strategy & Analysis Rules
                                         </span>
                                         <span className="text-xs font-normal text-emerald-400 font-mono">
@@ -186,12 +186,12 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                                         Mutable / Evolved by Autoresearch
                                     </Badge>
                                 </div>
-                                <p className="text-xs font-normal text-boxel-muted">
+                                <p className="text-xs font-normal text-voxel-muted">
                                     Trading philosophy, reasoning frameworks, entry/exit logic, and
                                     portfolio management rules. This section is iteratively tested
                                     and optimized by autoresearch.
                                 </p>
-                                <pre className="p-4 bg-boxel-canvas text-boxel-ink rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto">
+                                <pre className="p-4 bg-voxel-canvas text-voxel-ink rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto">
                                     {mutable}
                                 </pre>
                             </div>
@@ -200,10 +200,10 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                             <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-boxel-ink">
+                                        <span className="text-sm font-bold text-voxel-ink">
                                             🔒 3. Risk Rules & Output JSON Schema
                                         </span>
-                                        <span className="text-xs font-normal text-boxel-muted font-mono">
+                                        <span className="text-xs font-normal text-voxel-muted font-mono">
                                             (Footer)
                                         </span>
                                     </div>
@@ -214,11 +214,11 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                                         Frozen / System Managed
                                     </Badge>
                                 </div>
-                                <p className="text-xs font-normal text-boxel-muted">
+                                <p className="text-xs font-normal text-voxel-muted">
                                     SMA margin rules, trade signal definitions, and mandatory
                                     structured JSON output schema. Autoresearch cannot edit this.
                                 </p>
-                                <pre className="p-4 bg-boxel-trough text-boxel-muted rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
+                                <pre className="p-4 bg-voxel-trough text-voxel-muted rounded-none overflow-x-auto text-xs font-mono font-normal leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
                                     {footer}
                                 </pre>
                             </div>

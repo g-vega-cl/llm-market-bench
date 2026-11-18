@@ -60,7 +60,7 @@ export function CorrelationHeatmap({ correlationData, tickers }: CorrelationHeat
     };
 
     const getTextColor = (value: number): string => {
-        return value > 0.5 || value < -0.5 ? 'text-white' : 'text-zinc-800';
+        return value > 0.5 || value < -0.5 ? 'text-voxel-trough' : 'text-zinc-800';
     };
 
     // For large matrices, we might want to show a simplified version
@@ -69,23 +69,21 @@ export function CorrelationHeatmap({ correlationData, tickers }: CorrelationHeat
     return (
         <section>
             <div className="flex items-center justify-between mb-6">
-                <SectionHeading gradient="ai">Correlation Matrix</SectionHeading>
+                <SectionHeading>Correlation Matrix</SectionHeading>
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-zinc-500">Method:</span>
                         <Button
-                            rounded="full"
                             size="sm"
-                            variant={method === 'pearson' ? 'solid' : 'soft'}
+                            variant={method === 'pearson' ? 'solid' : 'solid'}
                             colorScheme={method === 'pearson' ? 'accent' : 'neutral'}
                             onClick={() => setMethod('pearson')}
                         >
                             Pearson
                         </Button>
                         <Button
-                            rounded="full"
                             size="sm"
-                            variant={method === 'spearman' ? 'solid' : 'soft'}
+                            variant={method === 'spearman' ? 'solid' : 'solid'}
                             colorScheme={method === 'spearman' ? 'accent' : 'neutral'}
                             onClick={() => setMethod('spearman')}
                         >
@@ -114,7 +112,7 @@ export function CorrelationHeatmap({ correlationData, tickers }: CorrelationHeat
                     />
                 )}
 
-                <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-zinc-200 border-zinc-800">
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-blue-700" />
                         <span className="text-xs text-zinc-500">-1.0 (Inverse)</span>
@@ -131,22 +129,22 @@ export function CorrelationHeatmap({ correlationData, tickers }: CorrelationHeat
             </Card>
 
             {hoveredCell && (
-                <div className="mt-4 p-4 bg-zinc-100 dark:bg-zinc-800 rounded-none border border-zinc-200 dark:border-zinc-700">
+                <div className="mt-4 p-4 bg-zinc-100 bg-zinc-800 rounded-none border border-zinc-200 border-zinc-700">
                     <div className="flex items-center gap-4 text-xs font-normal flex-wrap">
                         <div className="flex flex-col gap-0.5">
-                            <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                            <span className="font-mono font-bold text-sm text-zinc-900 text-zinc-100">
                                 {hoveredCell.ticker_a}
                             </span>
-                            <span className="text-xs text-zinc-500 dark:text-zinc-400 max-w-[120px] truncate">
+                            <span className="text-xs text-zinc-500 text-zinc-400 max-w-[120px] truncate">
                                 {etfDescriptions[hoveredCell.ticker_a] || 'Unknown'}
                             </span>
                         </div>
                         <span className="text-zinc-400">/</span>
                         <div className="flex flex-col gap-0.5">
-                            <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                            <span className="font-mono font-bold text-sm text-zinc-900 text-zinc-100">
                                 {hoveredCell.ticker_b}
                             </span>
-                            <span className="text-xs text-zinc-500 dark:text-zinc-400 max-w-[120px] truncate">
+                            <span className="text-xs text-zinc-500 text-zinc-400 max-w-[120px] truncate">
                                 {etfDescriptions[hoveredCell.ticker_b] || 'Unknown'}
                             </span>
                         </div>
@@ -205,7 +203,7 @@ function FullMatrix({
                 <div className="w-16 shrink-0" />
                 {tickers.map((ticker) => (
                     <div key={ticker} className="w-10 shrink-0 text-center">
-                        <div className="text-xs font-mono font-bold text-zinc-500 truncate">
+                        <div className="text-sm font-mono font-bold text-zinc-500 truncate">
                             {ticker}
                         </div>
                     </div>
@@ -215,7 +213,7 @@ function FullMatrix({
             {tickers.map((rowTicker) => (
                 <div key={rowTicker} className="flex items-center">
                     <div className="w-16 shrink-0 text-right pr-2">
-                        <span className="text-xs font-mono font-bold text-zinc-500 truncate">
+                        <span className="text-sm font-mono font-bold text-zinc-500 truncate">
                             {rowTicker}
                         </span>
                     </div>
@@ -274,7 +272,7 @@ function SimplifiedMatrix({
                 {tickers.map((ticker, _i) => (
                     <div key={ticker} className="w-8 shrink-0 text-center">
                         <div
-                            className="text-xs font-mono font-bold text-zinc-500 truncate transform -rotate-45 origin-center"
+                            className="text-sm font-mono font-bold text-zinc-500 truncate transform -rotate-45 origin-center"
                             style={{
                                 height: '40px',
                                 display: 'flex',
@@ -293,7 +291,7 @@ function SimplifiedMatrix({
                 return (
                     <div key={rowTicker} className="flex items-center">
                         <div className="w-16 shrink-0 text-right pr-2">
-                            <span className="text-xs font-mono font-bold text-zinc-500 truncate">
+                            <span className="text-sm font-mono font-bold text-zinc-500 truncate">
                                 {rowTicker}
                             </span>
                         </div>
@@ -303,7 +301,7 @@ function SimplifiedMatrix({
                             return (
                                 <div
                                     key={colTicker}
-                                    className={`w-8 h-8 shrink-0 flex items-center justify-center ${i <= j ? getColor(value) : 'bg-zinc-100 dark:bg-zinc-800'}`}
+                                    className={`w-8 h-8 shrink-0 flex items-center justify-center ${i <= j ? getColor(value) : 'bg-zinc-100 bg-zinc-800'}`}
                                     onMouseEnter={() =>
                                         i < j &&
                                         onHover({

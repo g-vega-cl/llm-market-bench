@@ -45,10 +45,10 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
 
     return (
         <section className="flex flex-col gap-6 animate-slide-up">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800/80 pb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 border-zinc-800/80 pb-6">
                 <div>
-                    <SectionHeading gradient="electric">Global Macro Regime</SectionHeading>
-                    <p className="text-xs font-normal text-zinc-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
+                    <SectionHeading>Global Macro Regime</SectionHeading>
+                    <p className="text-xs font-normal text-zinc-500 text-zinc-400 mt-1.5 leading-relaxed">
                         Dynamic standard deviations, current price shifts, and volatility regime
                         signals.
                     </p>
@@ -65,7 +65,7 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
                     )}
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-electric-blue-500/10 border border-electric-blue-500/20 rounded-none">
                         <span className="live-dot" />
-                        <span className="text-xs font-bold text-electric-blue-600 dark:text-electric-blue-400 uppercase tracking-wider font-mono">
+                        <span className="text-sm font-bold text-electric-blue-600 text-electric-blue-400 uppercase tracking-wider font-mono">
                             Calculated Live
                         </span>
                     </div>
@@ -73,15 +73,15 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
             </div>
 
             {/* Category Navigation Tabs */}
-            <div className="flex justify-center border-b border-zinc-200 dark:border-zinc-800/80 pb-4 overflow-x-auto scrollbar-none">
-                <div className="flex gap-1.5 p-1.5 bg-zinc-100/80 dark:bg-zinc-900/65 backdrop-blur-md rounded-none border border-zinc-200/50 dark:border-zinc-800/80 max-w-full">
+            <div className="flex justify-center border-b border-zinc-200 border-zinc-800/80 pb-4 overflow-x-auto scrollbar-none">
+                <div className="flex gap-1.5 p-1.5 bg-zinc-100/80 bg-zinc-900/65  rounded-none border border-zinc-200/50 border-zinc-800/80 max-w-full">
                     {CATEGORIES.map((cat) => (
                         <Button
                             key={cat}
-                            variant={activeTab === cat ? 'solid' : 'ghost'}
+                            variant={activeTab === cat ? 'solid' : 'outline'}
                             colorScheme={activeTab === cat ? 'accent' : 'neutral'}
                             onClick={() => setActiveTab(cat)}
-                            className="px-4 py-2.5 rounded-none font-bold text-xs uppercase tracking-wider transition-all duration-200 shrink-0"
+                            className="px-4 py-2.5 rounded-none font-bold text-sm uppercase tracking-wider transition-all duration-200 shrink-0"
                         >
                             {cat}
                         </Button>
@@ -91,17 +91,17 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
 
             {/* Bonds & Treasury Yields Explanatory Banner */}
             {activeTab === 'Bonds & Treasury Yields' && (
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-none flex gap-3.5 items-start animate-scale-in text-xs font-normal text-zinc-600 dark:text-zinc-300 leading-relaxed shadow-inner">
+                <div className="p-4 bg-zinc-50 bg-zinc-900/40 border border-zinc-200 border-zinc-800/80 rounded-none flex gap-3.5 items-start animate-scale-in text-xs font-normal text-zinc-600 text-zinc-300 leading-relaxed shadow-inner">
                     <span className="text-lg animate-pulse">💡</span>
                     <div>
-                        <span className="font-bold text-zinc-900 dark:text-white uppercase tracking-wider block mb-1">
+                        <span className="font-bold text-zinc-900 text-voxel-trough uppercase tracking-wider block mb-1">
                             Bond Prices vs Treasury Yields (Inverse Rule)
                         </span>
                         The S&P 500 benchmark model tracks bond ETFs (`IEF` and `TLT`) directly.
                         Because bond prices move
                         <strong className="text-electric-blue-500 font-bold"> inversely </strong> to
                         market interest yields:
-                        <ul className="list-disc list-inside mt-2 flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        <ul className="list-disc list-inside mt-2 flex flex-col gap-1 text-xs text-zinc-500 text-zinc-400">
                             <li>
                                 If{' '}
                                 <strong className="text-alert-red-500">
@@ -139,18 +139,17 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
                         <Card
                             key={stat.ticker}
                             isHoverable
-                            radius="none"
                             padding="md"
-                            className="relative overflow-hidden border border-boxel-bevel-hi transition-all duration-300 shadow-sm animate-slide-up flex flex-col justify-between h-full"
+                            className="relative overflow-hidden border border-voxel-bevel-hi transition-all duration-300 shadow-sm animate-slide-up flex flex-col justify-between h-full"
                             style={{ animationDelay: `${idx * 40}ms` }}
                         >
                             <div className="flex flex-col gap-3">
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="flex flex-col gap-0.5">
-                                        <div className="text-sm font-bold text-boxel-ink line-clamp-1">
+                                        <div className="text-sm font-bold text-voxel-ink line-clamp-1">
                                             {stat.name}
                                         </div>
-                                        <div className="text-xs font-normal text-boxel-muted font-mono uppercase tracking-wider">
+                                        <div className="text-xs font-normal text-voxel-muted font-mono uppercase tracking-wider">
                                             {stat.ticker}
                                         </div>
                                     </div>
@@ -158,7 +157,7 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
                                 </div>
 
                                 <div className="flex justify-between items-baseline gap-2">
-                                    <span className="text-lg font-bold text-boxel-ink font-mono tracking-tight text-display tabular-nums">
+                                    <span className="text-sm font-bold text-voxel-ink font-mono tracking-tight text-display tabular-nums">
                                         {stat.ticker === 'BTCUSD'
                                             ? `$${stat.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                             : `$${stat.price.toFixed(2)}`}
@@ -174,10 +173,10 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
                                 </div>
                             </div>
 
-                            <div className="pt-3 mt-3 border-t border-boxel-bevel-hi flex flex-col gap-2">
+                            <div className="pt-3 mt-3 border-t border-voxel-bevel-hi flex flex-col gap-2">
                                 {/* Standard deviation visual index threshold bar */}
                                 <div className="flex flex-col gap-1">
-                                    <div className="flex justify-between text-xs font-normal text-boxel-muted uppercase tracking-wider font-mono">
+                                    <div className="flex justify-between text-xs font-normal text-voxel-muted uppercase tracking-wider font-mono">
                                         <span>30d Volatility</span>
                                         <span>Stdev: {stat.stdevPct.toFixed(2)}%</span>
                                     </div>
@@ -192,7 +191,7 @@ export function GlobalMacroStats({ macroStats, lastUpdated }: GlobalMacroStatsPr
                                 </div>
 
                                 {stat.formattedTime && (
-                                    <div className="flex justify-between items-center text-xs font-normal text-boxel-muted font-mono">
+                                    <div className="flex justify-between items-center text-xs font-normal text-voxel-muted font-mono">
                                         <span>Updated</span>
                                         <span className="tabular-nums">{stat.formattedTime}</span>
                                     </div>
@@ -210,19 +209,19 @@ function RegimeBadge({ flag }: { flag: 'Normal' | '❗ UNUSUAL' | '⚠️ HIGHLY
     switch (flag) {
         case '⚠️ HIGHLY UNUSUAL':
             return (
-                <Badge variant="soft" colorScheme="danger" size="xs" radius="none">
+                <Badge variant="soft" colorScheme="danger" size="xs">
                     ⚠️ REGIME SHIFT
                 </Badge>
             );
         case '❗ UNUSUAL':
             return (
-                <Badge variant="soft" colorScheme="warning" size="xs" radius="none">
+                <Badge variant="soft" colorScheme="warning" size="xs">
                     ❗ UNUSUAL
                 </Badge>
             );
         default:
             return (
-                <Badge variant="soft" colorScheme="neutral" size="xs" radius="none">
+                <Badge variant="soft" colorScheme="neutral" size="xs">
                     Normal
                 </Badge>
             );

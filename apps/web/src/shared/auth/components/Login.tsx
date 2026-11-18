@@ -75,7 +75,7 @@ export function Login() {
                         {loginMutation.data.message === 'Invalid login credentials' ? (
                             <div>
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     colorScheme="info"
                                     className="text-blue-500"
                                     onClick={(e) => {

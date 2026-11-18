@@ -1,6 +1,7 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import {
     Badge,
+    Button,
     Card,
     SectionHeading,
     Table,
@@ -33,17 +34,17 @@ function PredictionTableRow({ pred }: { pred: DailyPrediction }) {
 
     return (
         <TableRow>
-            <TableCell className="font-bold text-boxel-ink">
+            <TableCell className="font-bold text-voxel-ink">
                 {pred.target_date || pred.prediction_date}
             </TableCell>
-            <TableCell className="font-bold font-mono text-boxel-ink">{pred.ticker}</TableCell>
+            <TableCell className="font-bold font-mono text-voxel-ink">{pred.ticker}</TableCell>
             <TableCell>
                 <Badge colorScheme={isUp ? 'success' : 'danger'} variant="soft" size="xs">
                     {pred.predicted_direction}
                 </Badge>
             </TableCell>
-            <TableCell className="font-bold font-mono text-boxel-ink">{pred.confidence}%</TableCell>
-            <TableCell className="font-mono text-boxel-muted">
+            <TableCell className="font-bold font-mono text-voxel-ink">{pred.confidence}%</TableCell>
+            <TableCell className="font-mono text-voxel-muted">
                 {pred.open_price !== null && pred.close_price !== null ? (
                     <span>
                         ${pred.open_price.toFixed(2)} → ${pred.close_price.toFixed(2)}
@@ -58,15 +59,15 @@ function PredictionTableRow({ pred }: { pred: DailyPrediction }) {
                         {isCorrect ? '✓ Correct' : '✗ Incorrect'}
                     </span>
                 ) : (
-                    <span className="text-boxel-muted">Pending</span>
+                    <span className="text-voxel-muted">Pending</span>
                 )}
             </TableCell>
-            <TableCell className="font-mono text-boxel-muted">
+            <TableCell className="font-mono text-voxel-muted">
                 {pred.conviction_score !== null && pred.conviction_score !== undefined
                     ? `${pred.conviction_score >= 0 ? '+' : ''}${pred.conviction_score.toFixed(2)}`
                     : '-'}
             </TableCell>
-            <TableCell className="text-boxel-muted">
+            <TableCell className="text-voxel-muted">
                 <code className="text-accent">{pred.prompt_variant_tag || 'baseline'}</code>
             </TableCell>
         </TableRow>
@@ -101,7 +102,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                             DeepSeek Flash Sandbox
                         </Badge>
                     </div>
-                    <p className="text-xs font-normal text-boxel-muted">
+                    <p className="text-xs font-normal text-voxel-muted">
                         Temporal sandbox audit of S&P 500 (SPY) daily open-to-close predictions and
                         weekly prompt mutations.
                     </p>
@@ -110,13 +111,13 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                 <div className="flex gap-2 flex-wrap">
                     <Link
                         to="/daily-predictions"
-                        className="voxel-btn bg-boxel-surface text-boxel-ink px-4 py-2 text-sm font-bold no-underline hover:text-accent transition-colors"
+                        className="voxel-btn bg-voxel-surface text-voxel-ink px-4 py-2 text-sm font-bold no-underline hover:text-accent transition-colors"
                     >
                         ← Live Predictions
                     </Link>
                     <Link
                         to="/autoresearch-backtest"
-                        className="voxel-btn bg-boxel-surface text-boxel-ink px-4 py-2 text-sm font-bold no-underline hover:text-accent transition-colors"
+                        className="voxel-btn bg-voxel-surface text-voxel-ink px-4 py-2 text-sm font-bold no-underline hover:text-accent transition-colors"
                     >
                         Portfolio Backtests →
                     </Link>
@@ -126,49 +127,49 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
             {/* Metrics Overview Cards */}
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-4 items-stretch min-w-0">
                 <Card className="p-5 flex flex-col justify-between gap-2 h-full rounded-none">
-                    <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                    <div className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                         Backtest Directional Accuracy
                     </div>
-                    <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
+                    <div className="text-sm font-bold font-mono text-voxel-ink tabular-nums">
                         {accuracyPct}%
                     </div>
-                    <div className="text-xs font-normal text-boxel-muted">
+                    <div className="text-xs font-normal text-voxel-muted">
                         {correctCount} / {totalEvaluated} correct predictions
                     </div>
                 </Card>
 
                 <Card className="p-5 flex flex-col justify-between gap-2 h-full rounded-none">
-                    <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                    <div className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                         Conviction Score
                     </div>
-                    <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
+                    <div className="text-sm font-bold font-mono text-voxel-ink tabular-nums">
                         {convictionScore}
                     </div>
-                    <div className="text-xs font-normal text-boxel-muted">
+                    <div className="text-xs font-normal text-voxel-muted">
                         Calibrated confidence · 50 = coin flip
                     </div>
                 </Card>
 
                 <Card className="p-5 flex flex-col justify-between gap-2 h-full rounded-none">
-                    <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                    <div className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                         Backtest Runs Logged
                     </div>
-                    <div className="text-lg font-bold font-mono text-boxel-ink tabular-nums">
+                    <div className="text-sm font-bold font-mono text-voxel-ink tabular-nums">
                         {initialPredictions.length}
                     </div>
-                    <div className="text-xs font-normal text-boxel-muted">
+                    <div className="text-xs font-normal text-voxel-muted">
                         Model: DeepSeek Flash (`deepseek-flash`)
                     </div>
                 </Card>
 
                 <Card className="p-5 flex flex-col justify-between gap-2 h-full rounded-none">
-                    <div className="text-sm font-bold uppercase tracking-wider text-boxel-muted">
+                    <div className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                         Prompt Experiments
                     </div>
-                    <div className="text-lg font-bold font-mono text-accent tabular-nums">
+                    <div className="text-sm font-bold font-mono text-accent tabular-nums">
                         {experiments.length}
                     </div>
-                    <div className="text-xs font-normal text-boxel-muted">
+                    <div className="text-xs font-normal text-voxel-muted">
                         Mutated strategy variants tracked
                     </div>
                 </Card>
@@ -176,12 +177,12 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
 
             {/* Backtest Predictions Log */}
             <Card className="p-6 flex flex-col gap-4 rounded-none min-w-0">
-                <div className="text-sm font-bold text-boxel-ink uppercase tracking-wider">
+                <div className="text-sm font-bold text-voxel-ink uppercase tracking-wider">
                     Historical Backtest Predictions Log
                 </div>
 
                 {initialPredictions.length === 0 ? (
-                    <div className="voxel-trough p-6 text-center text-xs font-normal text-boxel-muted">
+                    <div className="voxel-trough p-6 text-center text-xs font-normal text-voxel-muted">
                         No backtest predictions found. Run `python apps/engine/main.py
                         backtest-daily-autoresearch --weeks 1` to populate results.
                     </div>
@@ -212,43 +213,43 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
 
             {/* Backtest Prompt Experiments Arena */}
             <Card className="p-6 flex flex-col gap-4 rounded-none min-w-0">
-                <div className="text-sm font-bold text-boxel-ink uppercase tracking-wider">
+                <div className="text-sm font-bold text-voxel-ink uppercase tracking-wider">
                     Backtest Prompt Experiments Arena
                 </div>
 
                 {experiments.length === 0 ? (
-                    <div className="voxel-trough p-6 text-center text-xs font-normal text-boxel-muted">
+                    <div className="voxel-trough p-6 text-center text-xs font-normal text-voxel-muted">
                         No prompt experiments recorded in backtest database.
                     </div>
                 ) : (
                     <div className="flex flex-wrap gap-6 items-start min-w-0 w-full">
                         {/* Variant List Sidebar */}
                         <div className="w-full flex-1 basis-72 min-w-0 flex flex-col gap-2">
-                            <div className="text-xs font-bold uppercase tracking-wider text-boxel-muted">
+                            <div className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                                 Variant Lineage
                             </div>
                             <div className="flex flex-col gap-2 max-h-96 overflow-y-auto pr-1 min-w-0">
                                 {experiments.map((exp) => {
                                     const isSelected = exp.id === selectedExperiment?.id;
                                     return (
-                                        <button
+                                        <Button
                                             type="button"
                                             key={exp.id}
                                             onClick={() => setSelectedExpId(exp.id)}
                                             className={`w-full text-left cursor-pointer min-w-0 p-3 rounded-none transition-colors border-2 ${
                                                 isSelected
-                                                    ? 'voxel-card bg-boxel-elevated border-accent text-accent'
-                                                    : 'voxel-trough border-boxel-bevel-hi text-boxel-ink hover:bg-boxel-surface'
+                                                    ? 'voxel-card bg-voxel-elevated border-accent text-accent'
+                                                    : 'voxel-trough border-voxel-bevel-hi text-voxel-ink hover:bg-voxel-surface'
                                             }`}
                                         >
                                             <div className="text-sm font-bold break-all">
                                                 {exp.variant_tag}
                                             </div>
-                                            <div className="text-xs font-normal text-boxel-muted mt-1">
+                                            <div className="text-xs font-normal text-voxel-muted mt-1">
                                                 {exp.status.toUpperCase()} •{' '}
                                                 {exp.experiment_type || 'incremental'}
                                             </div>
-                                        </button>
+                                        </Button>
                                     );
                                 })}
                             </div>
@@ -259,10 +260,10 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                             {selectedExperiment && (
                                 <div className="min-w-0 flex flex-col gap-4">
                                     <div className="flex justify-between items-center flex-wrap gap-2 min-w-0">
-                                        <h3 className="text-sm font-bold text-boxel-ink break-all m-0">
+                                        <h3 className="text-sm font-bold text-voxel-ink break-all m-0">
                                             Variant: {selectedExperiment.variant_tag}
                                         </h3>
-                                        <span className="text-xs font-normal text-boxel-muted">
+                                        <span className="text-xs font-normal text-voxel-muted">
                                             Created:{' '}
                                             {formatEasternShortDateWithYear(
                                                 selectedExperiment.created_at,
@@ -346,10 +347,10 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                                     if (!isSplit) {
                                                         return (
                                                             <div className="p-4 voxel-trough rounded-none flex flex-col gap-2 min-w-0">
-                                                                <div className="text-xs font-bold uppercase tracking-wider text-boxel-muted">
+                                                                <div className="text-sm font-bold uppercase tracking-wider text-voxel-muted">
                                                                     The Predictor Prompt
                                                                 </div>
-                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs max-h-96 overflow-y-auto m-0 text-boxel-ink">
+                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs max-h-96 overflow-y-auto m-0 text-voxel-ink">
                                                                     {
                                                                         selectedExperiment.prompt_content
                                                                     }
@@ -362,10 +363,10 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                                                         <div className="flex flex-col gap-4 min-w-0">
                                                             {header && (
                                                                 <div className="p-4 voxel-trough rounded-none flex flex-col gap-2 min-w-0">
-                                                                    <div className="text-xs font-bold text-boxel-muted uppercase tracking-wider">
+                                                                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                                                                         Frozen System Header
                                                                     </div>
-                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-boxel-muted max-h-48 overflow-y-auto m-0">
+                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-voxel-muted max-h-48 overflow-y-auto m-0">
                                                                         {header}
                                                                     </pre>
                                                                 </div>
@@ -373,29 +374,29 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
 
                                                             <div className="p-4 voxel-card rounded-none flex flex-col gap-2 min-w-0 border-l-4 border-l-success">
                                                                 <div className="flex items-center justify-between">
-                                                                    <div className="text-xs font-bold text-success uppercase tracking-wider">
+                                                                    <div className="text-sm font-bold text-success uppercase tracking-wider">
                                                                         Mutable Analytical
                                                                         Strategies
                                                                     </div>
-                                                                    <span className="text-xs text-success px-2 py-0.5 rounded-none font-mono font-bold voxel-trough">
+                                                                    <span className="text-sm text-success px-2 py-0.5 rounded-none font-mono font-bold voxel-trough">
                                                                         v
                                                                         {
                                                                             selectedExperiment.variant_tag
                                                                         }
                                                                     </span>
                                                                 </div>
-                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs text-boxel-ink max-h-96 overflow-y-auto m-0">
+                                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs text-voxel-ink max-h-96 overflow-y-auto m-0">
                                                                     {mutable}
                                                                 </pre>
                                                             </div>
 
                                                             {footer && (
                                                                 <div className="p-4 voxel-trough rounded-none flex flex-col gap-2 min-w-0">
-                                                                    <div className="text-xs font-bold text-boxel-muted uppercase tracking-wider">
+                                                                    <div className="text-sm font-bold text-voxel-muted uppercase tracking-wider">
                                                                         Frozen Output Format &
                                                                         Schema
                                                                     </div>
-                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-boxel-muted max-h-48 overflow-y-auto m-0">
+                                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-voxel-muted max-h-48 overflow-y-auto m-0">
                                                                         {footer}
                                                                     </pre>
                                                                 </div>

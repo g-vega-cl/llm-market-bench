@@ -29,7 +29,7 @@ function renderSkeletonLines(lineCount: number) {
             key={spec.id}
             data-slot="skeleton-line"
             className={cn(
-                'h-3 rounded-none bg-boxel-elevated animate-pulse motion-reduce:animate-none',
+                'h-3 rounded-none bg-voxel-elevated animate-pulse motion-reduce:animate-none',
                 spec.widthClass,
             )}
         />
@@ -46,7 +46,7 @@ export const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
                     aria-hidden="true"
                     data-slot="skeleton"
                     className={cn(
-                        'voxel-trough rounded-none bg-boxel-trough p-4 flex flex-col gap-3',
+                        'voxel-trough rounded-none bg-voxel-trough p-4 flex flex-col gap-3',
                         className,
                     )}
                     {...props}
@@ -65,7 +65,7 @@ export const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
                         aria-hidden="true"
                         data-slot="skeleton"
                         className={cn(
-                            'h-3 w-full rounded-none bg-boxel-elevated animate-pulse motion-reduce:animate-none',
+                            'h-3 w-full rounded-none bg-voxel-elevated animate-pulse motion-reduce:animate-none',
                             className,
                         )}
                         {...props}
@@ -91,7 +91,7 @@ export const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
                 aria-hidden="true"
                 data-slot="skeleton"
                 className={cn(
-                    'voxel-trough rounded-none bg-boxel-trough animate-pulse motion-reduce:animate-none h-24 w-full',
+                    'voxel-trough rounded-none bg-voxel-trough animate-pulse motion-reduce:animate-none h-24 w-full',
                     className,
                 )}
                 {...props}

@@ -35,11 +35,11 @@ export function EmptyState({ emoji, title, subtitle, actions, className }: Empty
                 </div>
             )}
             <div className="flex flex-col items-center gap-1.5 max-w-md">
-                <h2 className="text-lg font-bold text-boxel-ink tracking-tight uppercase">
+                <h2 className="text-lg font-bold text-voxel-ink tracking-tight uppercase">
                     {title}
                 </h2>
                 {subtitle && (
-                    <p className="text-xs font-normal text-boxel-muted leading-relaxed">
+                    <p className="text-xs font-normal text-voxel-muted leading-relaxed">
                         {subtitle}
                     </p>
                 )}

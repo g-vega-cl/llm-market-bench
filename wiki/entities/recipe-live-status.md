@@ -13,9 +13,17 @@ The dedicated live-status page for a Push v2 strategy. Previously live paper por
 - **Loader**: `useLoaderData` seeds `RecipeLivePage` via `fetchLivePortfolioAndRunsFn({ data: { recipeId } })`. The call fails soft to `null`, so a missing or stale recipe never breaks the page.
 - **Auth**: guarded like all `/_authed` routes; the loader redirects to login when the user is not signed in.
 
+## Entry Points
+
+The live status page is reachable from three places in the studio:
+
+- **`StudioActionBar`** — when the open recipe is currently scheduled live (`isCurrentlyScheduledLive`), a `Live Status →` link is rendered next to the `Live: ON (3x/d)` toggle, pointed at `/recipes/live/$recipeId` with the open recipe's id via `liveRecipeId` (passed by `RecipeStudioPage` as `strategy.id` while live).
+- **`SavedRecipesStrip` (My Strategies)** — every strategy chip whose `RecipeSummaryItem.is_live` is true also renders a `Live Status →` link to its own live page.
+- **`RecipeAlertsInbox`** — the recipe name on each alert card is a `Link` to `/recipes/live/$recipeId` when the alert carries a `recipe_id`; otherwise the name renders as plain text.
+
 ## Page Content
 
-- **Header** — a `← Back to Studio` link, the `Live Status` heading, the short recipe id, a `Live: ON (3x/d)` success badge, and a `Next run: <slot>` label computed from the current ET time (`getNextSlotLabel`).
+- **Header** — a `← Back to Studio` link, the `Live Status` heading, the short recipe id, a `Live: ON (3x/d)` success badge, and a `Next run: <slot>` label computed from the current ET time (`getNextSlotLabel`). The `← Back to Studio` link carries `search={{ recipeId }}` so it returns to `/recipes?recipeId=<recipeId>` and reopens this strategy in the studio rather than landing on a fresh draft.
 - **Live Paper Portfolio** — `RecipePortfolioBlock` fed by `paper_cash` / `paper_positions` / `paper_trades`, with every open position enriched by the latest mark price.
 - **Live Run Traces** — `RunSelectorBar` of the last 10 persisted `live_turn` jobs, each rendering stage prompt, per-round reasoning, tool calls & results, and full output through `TraceInspectorBlock`. Each stage header uses the fixed `LLM Call` label (no per-stage title). There is no inline `Latest Turn` option — the studio no longer runs live turns inline, so only persisted daemon runs appear here.
 - **Empty / Error State** — if the recipe has no live runs yet, the page renders a quiet trough ("No live runs yet. The first scheduled run will execute at the next 3x/day ET slot (09:30, 12:30, 15:30)."). If the loader fails soft, the page renders the portfolio-less fallback without crashing.
@@ -38,7 +46,7 @@ Both DST halves must be correct, so the conversion is driven by `Intl.DateTimeFo
 - Otherwise the next slot is the first of `[9.5, 12.5, 15.5]` (09:30, 12:30, 15:30 ET) strictly greater than the current ET hour. A remaining slot renders as `<HH:MM> ET today`.
 - If no slot remains today, `Fri` → `09:30 ET Monday` (the weekend has no sessions); any other weekday → `09:30 ET tomorrow`.
 
-`RecipeLivePage.test.tsx` pins this behavior with fake timers across the boundaries: 15:50 EST Wednesday → `09:30 ET tomorrow`, 12:00 EST Wednesday → `12:30 ET today`, 16:00 EST Friday → `09:30 ET Monday`, and Saturday → `09:30 ET Monday`.
+`RecipeLivePage.test.tsx` pins this behavior with fake timers across the boundaries: 15:50 EST Wednesday → `09:30 ET tomorrow`, 12:00 EST Wednesday → `12:30 ET today`, 16:00 EST Friday → `09:30 ET Monday`, and Saturday → `09:30 ET Monday`. The same test asserts the `← Back to Studio` link resolves to `/recipes?recipeId=rec-1` for the active recipe.
 
 ## Why a Separate Page
 

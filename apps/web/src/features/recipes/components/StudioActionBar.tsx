@@ -1,8 +1,10 @@
 import { Button } from '@llm-market-bench/ui-design-system';
+import { Link } from '@tanstack/react-router';
 
 interface StudioActionBarProps {
     isTogglingLive: boolean;
     isCurrentlyScheduledLive: boolean;
+    liveRecipeId?: string;
     isRunningBacktest: boolean;
     backtestButtonLabel: string;
     unreadAlerts: number;
@@ -16,6 +18,7 @@ interface StudioActionBarProps {
 export function StudioActionBar({
     isTogglingLive,
     isCurrentlyScheduledLive,
+    liveRecipeId,
     isRunningBacktest,
     backtestButtonLabel,
     unreadAlerts,
@@ -42,6 +45,15 @@ export function StudioActionBar({
             >
                 {isCurrentlyScheduledLive ? 'Live: ON (3x/d)' : 'Enable Live (3x/d)'}
             </Button>
+            {isCurrentlyScheduledLive && liveRecipeId && (
+                <Link
+                    to="/recipes/live/$recipeId"
+                    params={{ recipeId: liveRecipeId }}
+                    className="voxel-btn inline-flex items-center justify-center gap-1 px-3 py-1.5 text-sm font-bold border border-success/50 bg-voxel-surface text-success hover:bg-voxel-elevated rounded-none whitespace-nowrap"
+                >
+                    Live Status →
+                </Link>
+            )}
             <Button
                 size="sm"
                 variant="solid"

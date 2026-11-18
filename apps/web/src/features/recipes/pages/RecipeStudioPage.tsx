@@ -347,6 +347,7 @@ export function RecipeStudioPage({
                     <StudioActionBar
                         isTogglingLive={isTogglingLive}
                         isCurrentlyScheduledLive={isCurrentlyScheduledLive}
+                        liveRecipeId={isCurrentlyScheduledLive ? strategy.id : undefined}
                         isRunningBacktest={isRunningBacktest}
                         backtestButtonLabel={backtestButtonLabel}
                         unreadAlerts={alerts.filter((a) => !a.is_read).length}

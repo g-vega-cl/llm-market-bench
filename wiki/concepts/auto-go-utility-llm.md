@@ -88,6 +88,18 @@ Legacy `strata_url`, `reasoning_budget_tokens`, and `strata_timeout` parameters 
 
 Reasoning tokens are billed inside `max_tokens`, so the auto-go budget is the thinking budget. `query_multi_tier_llm` now defaults to `max_tokens=32768` (the trading turn and the conversational explainer both use it) because the previous `16384` sat exactly on the proxy's global clamp and truncated chain-of-thought-heavy answers before the visible decision was emitted. Utility flows keep deliberately terse budgets — the news synthesizer still passes `4096` — because they want short answers, not deep thinking. On the proxy side the clamp is now per-provider (`max_output_tokens` in `providers.json`), so a raised caller budget is no longer silently rewritten to a single global ceiling. See [[entities/free-llm-proxy]].
 
+## Never-Unanswered Failover
+
+`auto-go` is defined as "free pool, then OpenCode Go", and the proxy now enforces that definition end to end. Before this contract, 24 of 7,681 audited calls returned a terminal `502`; every one of them had attempted 5-7 distinct providers (no chain ever repeated a provider), and 10 of them ended with `opencode-go (skipped: paid guard after free timeout)` — the one tier that answers was refused because a free provider was slow. The wasted effort was compounded by the callers: `get_auto_go_client` is wrapped by instructor call sites that pass `max_retries=2` (`apps/engine/ingest/cleaner.py`, `apps/engine/analysis/pre_filter.py`, `apps/engine/tasks/newsletter_generator.py`), so the visible "three retries" is three attempts at the same alias, each one a full multi-provider pass, and each pass took 272-721s against a 180s caller timeout (`TIMEOUT` in `apps/engine/core/llm/clients.py`).
+
+Three changes make the alias keep its promise:
+
+1. **Alias-scoped paid guard** — a free-provider timeout no longer blocks OpenCode Go for `auto-go`, `auto-strata-go`, or `strata-auto-go` (the aliases in Go's `auto_aliases`). Free-only aliases keep refusing spend.
+2. **Free-plan models first inside Go** — `free_model_patterns` (`["*free*"]`) is matched against Go's live catalog before the single metered `last_resort_model` (`deepseek-v4.1-flash`), so a subscription call does not buy tokens while a plan-included model is available.
+3. **Bounded pass** — `FREE_ATTEMPT_TIMEOUT_SECONDS` (45s), `FREE_PASS_DEADLINE_SECONDS` (120s) and `PAID_ATTEMPT_TIMEOUT_SECONDS` (45s) bound a non-streaming pass to roughly 165s, inside the caller's 180s window, and a per-day/quota `429` skips the same-provider model cascade instead of spending four attempts on a wall that cannot clear.
+
+See [[entities/free-llm-proxy]] for the knobs and the terminal `failover_chain` shape.
+
 ## Failure Behavior
 
 Migrated flows keep their pre-existing failure semantics. De-advertisement still falls back to the original newsletter text, the calendar pipeline returns `0` events, government extraction returns `0` memories, and post-analysis simply logs and skips the trade. The log analyzer returns `None` on a missing key, empty `choices`, or an exception — and now distinguishes the empty-response case explicitly with `logger.error("auto-go log analysis returned empty choices/content")` rather than crashing on `choices[0]`. All exception handlers were upgraded to `logger.exception(...)` per [[concepts/observability-standard]].

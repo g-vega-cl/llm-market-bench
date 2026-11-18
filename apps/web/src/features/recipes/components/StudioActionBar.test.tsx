@@ -2,6 +2,32 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { StudioActionBar } from './StudioActionBar';
 
+vi.mock('@tanstack/react-router', () => ({
+    Link: ({
+        children,
+        to,
+        params,
+        className,
+    }: {
+        children: React.ReactNode;
+        to: string;
+        params?: Record<string, string>;
+        className?: string;
+    }) => {
+        let href = to;
+        if (params) {
+            for (const [k, v] of Object.entries(params)) {
+                href = href.replace(`$${k}`, v);
+            }
+        }
+        return (
+            <a href={href} className={className}>
+                {children}
+            </a>
+        );
+    },
+}));
+
 function renderBar(overrides: Partial<Parameters<typeof StudioActionBar>[0]> = {}) {
     const handlers = {
         onOpenWaitlist: vi.fn(),
@@ -38,12 +64,17 @@ describe('StudioActionBar', () => {
         expect(handlers.onBacktest).toHaveBeenCalledTimes(1);
     });
 
-    it('reflects the live-on state', () => {
+    it('reflects the live-on state and links to the live status page when liveRecipeId is provided', () => {
         renderBar({
             isCurrentlyScheduledLive: true,
+            liveRecipeId: 'rec-live-1',
         });
 
         expect(screen.getByRole('button', { name: 'Live: ON (3x/d)' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Live Status/i })).toHaveAttribute(
+            'href',
+            '/recipes/live/rec-live-1',
+        );
     });
 
     it('shows loading state on the live toggle button', () => {

@@ -130,6 +130,7 @@ export function RecipeLivePage({ recipeId, initialData }: RecipeLivePageProps) {
                     <div className="flex items-center gap-3">
                         <Link
                             to="/recipes"
+                            search={{ recipeId }}
                             className="voxel-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-bold border border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated rounded-none"
                         >
                             ← Back to Studio

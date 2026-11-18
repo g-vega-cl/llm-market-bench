@@ -7,18 +7,31 @@ vi.mock('@tanstack/react-router', () => ({
     Link: ({
         children,
         to,
+        params,
         search,
         className,
     }: {
         children: React.ReactNode;
         to: string;
+        params?: Record<string, string>;
         search?: Record<string, string>;
         className?: string;
-    }) => (
-        <a href={search ? `${to}?recipeId=${search.recipeId}` : to} className={className}>
-            {children}
-        </a>
-    ),
+    }) => {
+        let href = to;
+        if (params) {
+            for (const [k, v] of Object.entries(params)) {
+                href = href.replace(`$${k}`, v);
+            }
+        }
+        if (search?.recipeId) {
+            href = `${href}?recipeId=${search.recipeId}`;
+        }
+        return (
+            <a href={href} className={className}>
+                {children}
+            </a>
+        );
+    },
 }));
 
 const strategies: RecipeSummaryItem[] = [
@@ -117,5 +130,13 @@ describe('SavedRecipesStrip', () => {
     it('renders nothing when the user has no strategies', () => {
         const { container } = render(<SavedRecipesStrip recipes={[]} />);
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it('links directly to the live status page for live strategies', () => {
+        render(<SavedRecipesStrip recipes={strategies} />);
+
+        const liveLinks = screen.getAllByRole('link', { name: /Live Status/i });
+        expect(liveLinks).toHaveLength(1);
+        expect(liveLinks[0]).toHaveAttribute('href', '/recipes/live/rec-1');
     });
 });

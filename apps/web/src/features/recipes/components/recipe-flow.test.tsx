@@ -9,6 +9,32 @@ import { RecipeBacktestResults } from './RecipeBacktestResults';
 import { StageBuilder } from './StageBuilder';
 import { WaitlistPledgeModal } from './WaitlistPledgeModal';
 
+vi.mock('@tanstack/react-router', () => ({
+    Link: ({
+        children,
+        to,
+        params,
+        className,
+    }: {
+        children: React.ReactNode;
+        to: string;
+        params?: Record<string, string>;
+        className?: string;
+    }) => {
+        let href = to;
+        if (params) {
+            for (const [k, v] of Object.entries(params)) {
+                href = href.replace(`$${k}`, v);
+            }
+        }
+        return (
+            <a href={href} className={className}>
+                {children}
+            </a>
+        );
+    },
+}));
+
 function ControlledStageHarness({ initialStage }: { initialStage: StrategyStage }) {
     const [stage, setStage] = useState<StrategyStage>(initialStage);
     return (
@@ -140,6 +166,10 @@ describe('RecipeAlertsInbox & WaitlistPledgeModal', () => {
         render(<RecipeAlertsInbox alerts={mockAlerts} onClose={vi.fn()} onMarkRead={onMarkRead} />);
 
         expect(screen.getByText(/BUY\s+NVDA/)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'NVDA Momentum' })).toHaveAttribute(
+            'href',
+            '/recipes/live/r-1',
+        );
         const markBtn = screen.getByRole('button', { name: 'Mark Read' });
         fireEvent.click(markBtn);
         expect(onMarkRead).toHaveBeenCalledWith('a-1');

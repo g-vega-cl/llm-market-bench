@@ -254,6 +254,15 @@ export function SavedRecipesStrip({
                                     </Badge>
                                 )}
                             </Link>
+                            {item.is_live && (
+                                <Link
+                                    to="/recipes/live/$recipeId"
+                                    params={{ recipeId: item.id }}
+                                    className="voxel-btn inline-flex items-center gap-1 px-2 py-1 text-xs font-normal border border-success/50 bg-voxel-surface text-success hover:bg-voxel-elevated rounded-none whitespace-nowrap"
+                                >
+                                    Live Status →
+                                </Link>
+                            )}
                             {onRemove && (
                                 <Button
                                     size="sm"

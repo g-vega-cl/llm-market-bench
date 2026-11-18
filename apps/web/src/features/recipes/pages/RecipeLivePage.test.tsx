@@ -7,12 +7,14 @@ vi.mock('@tanstack/react-router', () => ({
     Link: ({
         children,
         to,
+        search,
     }: {
         children: React.ReactNode;
         to: string;
         params?: Record<string, string>;
+        search?: Record<string, string>;
         className?: string;
-    }) => <a href={to}>{children}</a>,
+    }) => <a href={search?.recipeId ? `${to}?recipeId=${search.recipeId}` : to}>{children}</a>,
 }));
 
 const initialData: LivePortfolioAndRuns = {
@@ -121,12 +123,12 @@ describe('RecipeLivePage', () => {
         expect(screen.queryByText(/Analyze NVDA at slot 1/i)).not.toBeInTheDocument();
     });
 
-    it('links back to the studio', () => {
+    it('links back to the studio with the active recipeId', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
         expect(screen.getByRole('link', { name: /Back to Studio/i })).toHaveAttribute(
             'href',
-            '/recipes',
+            '/recipes?recipeId=rec-1',
         );
     });
 

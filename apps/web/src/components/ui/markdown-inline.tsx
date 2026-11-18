@@ -36,7 +36,7 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
     if (fullMatch.startsWith('***') || fullMatch.startsWith('___')) {
         const inner = fullMatch.slice(3, -3);
         return (
-            <strong key={key} className="font-bold text-voxel-trough">
+            <strong key={key} className="font-bold text-voxel-ink">
                 <em className="italic text-zinc-300">{parseInlineMarkdown(inner)}</em>
             </strong>
         );
@@ -44,7 +44,7 @@ function renderTokenNode(fullMatch: string, key: string): React.ReactNode {
     if (fullMatch.startsWith('**') || fullMatch.startsWith('__')) {
         const inner = fullMatch.slice(2, -2);
         return (
-            <strong key={key} className="font-bold text-voxel-trough">
+            <strong key={key} className="font-bold text-voxel-ink">
                 {parseInlineMarkdown(inner)}
             </strong>
         );

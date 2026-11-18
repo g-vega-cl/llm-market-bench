@@ -30,7 +30,7 @@ function renderHeading(level: number, text: string, key: string): React.ReactNod
         return (
             <h1
                 key={key}
-                className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough"
+                className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink"
             >
                 {children}
             </h1>
@@ -40,7 +40,7 @@ function renderHeading(level: number, text: string, key: string): React.ReactNod
         return (
             <h2
                 key={key}
-                className="text-sm font-bold font-display uppercase tracking-wider text-voxel-trough border-b border-zinc-800 pb-1"
+                className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink border-b border-zinc-800 pb-1"
             >
                 {children}
             </h2>
@@ -48,7 +48,7 @@ function renderHeading(level: number, text: string, key: string): React.ReactNod
     }
     if (level === 3) {
         return (
-            <h3 key={key} className="text-sm font-bold text-voxel-trough tracking-tight">
+            <h3 key={key} className="text-sm font-bold text-voxel-ink tracking-tight">
                 {children}
             </h3>
         );
@@ -69,7 +69,7 @@ function renderTable(block: Extract<Block, { kind: 'table' }>): React.ReactNode 
                         {block.headers.map((h) => (
                             <th
                                 key={h.id}
-                                className="px-3 py-2 bg-zinc-800 font-bold text-sm text-voxel-trough"
+                                className="px-3 py-2 bg-zinc-800 font-bold text-sm text-voxel-ink"
                             >
                                 {parseInlineMarkdown(h.text)}
                             </th>

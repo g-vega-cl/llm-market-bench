@@ -137,9 +137,9 @@ async def run_sentiment_fader_task(
     current_holdings: list[dict[str, Any]] = []
     holding_evaluations: dict[str, dict[str, Any]] = {}
 
-    for pos in portfolio.positions:
-        sym = pos.ticker.upper()
-        spot_px = current_prices.get(sym) or float(pos.current_price or pos.cost_basis)
+    for sym_key, pos in portfolio.positions.items():
+        sym = str(sym_key).upper()
+        spot_px = current_prices.get(sym) or float(pos.average_cost_basis)
         current_prices[sym] = spot_px
 
         sent = sentiment_cache.get(sym)
@@ -147,9 +147,9 @@ async def run_sentiment_fader_task(
 
         holding_info = {
             "ticker": sym,
-            "shares": pos.shares,
-            "cost_basis": float(pos.cost_basis),
-            "entry_price": float(pos.cost_basis),
+            "shares": pos.quantity,
+            "cost_basis": float(pos.average_cost_basis),
+            "entry_price": float(pos.average_cost_basis),
             "current_price": spot_px,
         }
         current_holdings.append(holding_info)

@@ -53,9 +53,18 @@ System portfolios are automated, rule-based investment and trading strategies th
 - **Signal**: Daily 9:30 AM – 4:00 PM ET fixed income predictions (`UP` or `DOWN`, `confidence`, `expected_return_pct`) from `daily_predictions` table (ticker='TLT') produced by `apps/engine/tasks/bond_predictor.py`.
 - **Target Asset**: `TLT` (iShares 20+ Year Treasury Bond ETF, ~17y duration).
 - **Architecture**: Tool-first, pull-based multi-turn research loop for reasoning models (`gpt-6-luna`, `deepseek-flash`) and automated lean tool bundle for `~typesafe/jev-latest`.
-- **Portfolios**: One systematic portfolio per model: `sys-daily-tlt-close-gpt-6-luna`, `sys-daily-tlt-close-deepseek-flash`, `sys-daily-tlt-close-jev`.
+- **Portfolios**: One systematic portfolio per model: `sys-daily-tlt-close-gpt-6-luna`, `sys-daily-tlt-close-deepseek-flash`, `sys-daily-tlt-close-~typesafe/jev-latest`.
 - **Position Sizing & Execution**: 100% portfolio equity entered at 9:30 AM open (Long if UP, Short if DOWN) and liquidated at 3:50 PM session close (MOC) with 2 bps (0.02%) liquidity slippage via `apps/engine/execution/daily_bond_trading.py`.
 - **Trigger**: Piggybacked in `.github/workflows/daily-predictor.yml` (`daily-trade --ticker TLT --action entry` and afternoon close exits / evaluation).
+
+### Archived (retired) portfolios
+
+Retired system portfolios are **archived, never deleted**. `ARCHIVED_PORTFOLIO_OWNER_IDS` in `packages/config/models.json` is the single declaration; both layers read it:
+
+- **Web** — `isActiveOwnerId()` in `apps/web/src/features/portfolios/lib/config.ts` returns `false` for an archived id even when it starts with `sys-`. `fetchPortfolios()` and `fetchAllActivePortfolioPerformance()` both use it, so archived portfolios disappear from `/portfolios`, the homepage leaderboard and the comparison chart, and appear under `/retired-agents`.
+- **Engine** — `is_archived_portfolio()` in `apps/engine/core/config.py` makes `_fetch_portfolio_owners()` skip them, so the marks loop never writes their equity, `last_updated_at` or `portfolio_performance` rows again. Their history is frozen at the last snapshot before retirement.
+
+Currently archived: the retired model ids (`gpt-5.6-luna`, `deepseek-v4-flash`, `MiniMax-M3` daily spy/spy-close/tlt-close portfolios), `sys-daily-spy-close-jev-local-autoresearched`, and `sys-daily-spy-close-jev-four-regime-champion` (retired at a 47% hit rate over 15 predictions).
 
 ### Idempotency & Timeframe Guardrails
 - **Horizon-Isolated Routing**: Sector predictor predictions are strictly routed to their matching horizon system portfolios: `7d` routes to weekly `sys-sector-ls-consensus`, `30d` routes to monthly `sys-sector-ls-30d`, and `90d` routes to quarterly `sys-sector-ls-90d`. The 4 mechanical sector benchmark portfolios strictly consume weekly trailing metrics. This eliminates cross-timeframe collision while providing systematic benchmark execution across all forecast horizons.

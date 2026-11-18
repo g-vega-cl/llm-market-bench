@@ -45,6 +45,52 @@ export function isSystemPortfolio(ownerId: string | null): boolean {
     return normalizeOwnerId(ownerId).startsWith('sys-');
 }
 
+let cachedArchivedOwnerIds: Set<string> | null = null;
+
+/**
+ * Owner IDs declared retired in packages/config/models.json.
+ * Their rows are preserved forever but they are no longer active or updated.
+ */
+export function getArchivedOwnerIds(): Set<string> {
+    if (cachedArchivedOwnerIds) {
+        return cachedArchivedOwnerIds;
+    }
+
+    try {
+        const raw = (modelsConfig as Record<string, unknown>).ARCHIVED_PORTFOLIO_OWNER_IDS;
+        const ids = Array.isArray(raw)
+            ? raw.filter((value): value is string => typeof value === 'string')
+            : [];
+        cachedArchivedOwnerIds = new Set(ids.map((id) => normalizeOwnerId(id)));
+        return cachedArchivedOwnerIds;
+    } catch (error) {
+        console.error('Failed to load archived portfolio ids:', error);
+        cachedArchivedOwnerIds = new Set();
+        return cachedArchivedOwnerIds;
+    }
+}
+
+/**
+ * True when the owner has been retired (archived) and must be shown as inactive.
+ */
+export function isArchivedPortfolio(ownerId: string | null): boolean {
+    if (!ownerId) return false;
+    return getArchivedOwnerIds().has(normalizeOwnerId(ownerId));
+}
+
+/**
+ * Single definition of "active portfolio" for the read layer.
+ *
+ * Archived ids are inactive even when they are mechanical `sys-*` portfolios,
+ * which would otherwise be treated as always-on.
+ */
+export function isActiveOwnerId(ownerId: string | null): boolean {
+    if (!ownerId) return false;
+    if (isArchivedPortfolio(ownerId)) return false;
+    if (isSystemPortfolio(ownerId)) return true;
+    return getActiveOwnerIds().includes(normalizeOwnerId(ownerId));
+}
+
 let cachedAutoresearchOwnerIds: string[] | null = null;
 
 function addOwnerIds(set: Set<string>, ids: unknown) {

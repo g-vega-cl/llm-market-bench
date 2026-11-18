@@ -39,6 +39,16 @@
     "track_default": "deepseek-flash",
     "track_claude": "deepseek-flash",
     "track_openai": "MiniMax-M3.1-Flash"
-  }
+  },
+  "ARCHIVED_PORTFOLIO_OWNER_IDS": [
+    "sys-daily-spy-MiniMax-M3",
+    "sys-daily-spy-close-MiniMax-M3",
+    "sys-daily-spy-deepseek-v4-flash",
+    "sys-daily-spy-close-deepseek-v4-flash",
+    "sys-daily-tlt-close-deepseek-v4-flash",
+    "sys-daily-tlt-close-gpt-5.6-luna",
+    "sys-daily-spy-close-jev-local-autoresearched",
+    "sys-daily-spy-close-jev-four-regime-champion"
+  ]
 }
 

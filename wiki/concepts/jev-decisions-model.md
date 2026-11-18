@@ -29,12 +29,11 @@ The question shape is fixed in `apps/engine/core/llm/daily_predictor_prompts.py`
 
 Criteria are serialized to JSON via `format_jev_prompt_content()` and recovered via `parse_jev_prompt_content()` when stored in and read back from `prompt_experiments.prompt_content` (falling back to the defaults on missing/invalid JSON).
 
-### Curated Manifest & Zero Abstention (`jev-four-regime-champion`)
+### Retired: Four-Regime Champion (`jev-four-regime-champion`)
 
-For the evolved champion track (`jev-four-regime-champion`, replacing the deprecated `jev-local-autoresearched`), the criteria schema is extended via `format_jev_curated_prompt_content()` and `parse_jev_curated_prompt_content()` to package:
-1. **Four-Regime Decision Criteria**: Symmetrical classification criteria based on the tournament Iteration 43 champion prompt (*Risk-On Expansion*, *Risk-Off Expansion*, *Balanced Pinning*, *Catalyst Shock*), requiring cross-asset internal confirmation (small caps, defensives, credit spreads, commodities).
-2. **Zero Abstention Contract**: Forced binary classification (`predicted_direction IN ('UP', 'DOWN')`). Confidence gating to `NO_TRADE` is deprecated and eliminated (see [[concepts/confidence-gating]]). Ambiguous or balanced market regimes are signaled through lower calibrated confidence scores (e.g. $51\%–54\%$), but the model always commits to a direction.
-3. **Data Manifest ("Box of Data")**: JSON manifest specifying curated information inputs compiled by `pack_daily_context()`, including narrative newsletters (`Sherwood News`, `Chartr`), macro proxies (`QQQ`, `IWM`), options positioning, and technical intraday profiles, while strictly pruning noise sources (`UUP`, market barometer, market feeling).
+The curated four-regime champion track was **removed on 2026-11-18** after 15 live predictions produced a 47% directional hit rate. `jev-four-regime-champion` is no longer in the daily arena, its tab is gone from the daily predictions page, and its system portfolio is archived (rows preserved, `is_active = false`). The 15 historical predictions and the `daily-pred-four-regime-champ` prompt experiment remain in the database as audit history.
+
+The curated criteria helpers (`format_jev_curated_prompt_content`, `parse_jev_curated_prompt_content`) and the `jev_curated` executor branch still exist because the offline Strata ratchet (`apps/engine/local_autoresearch/runner.py`) uses them; nothing in the daily arena calls them.
 
 ## Inference Path
 
@@ -55,17 +54,11 @@ Because Jev is a direction-only classifier without a percentage target:
 
 ## Autoresearch Integration
 
-The daily predictor arena supports two distinct Jev optimization pathways:
-1. **Weekly Remote Ratchet (`~typesafe/jev-latest`)**: Runs in `apps/engine/tasks/daily_autoresearch.py` using `gpt-6-luna` to mutate symmetric criteria.
-2. **Local Ground-Truth Ratchet (`jev-four-regime-champion`)**: Promoted from offline Strata prompt research (`apps/engine/local_autoresearch/single_prompt_ratchet.py`). Packs the Four-Regime State Classifier into symmetric criteria, evaluated against curated daily context.
+The daily predictor arena keeps a single live Jev optimization path: the **Weekly Remote Ratchet (`~typesafe/jev-latest`)** in `apps/engine/tasks/daily_autoresearch.py`, which uses `gpt-6-luna` to mutate symmetric criteria. The offline Strata ratchet (`apps/engine/local_autoresearch/single_prompt_ratchet.py`) still exists as research tooling but no longer promotes a champion into the arena.
 
 ## Frontend
 
-`DailyPredictionsPage` exposes dedicated tabs for both Jev models:
-- **Jev (TypeSafe)**: Baseline uncurated model (`~typesafe/jev-latest`).
-- **Jev (Four-Regime Champion)**: Active curated champion (`jev-four-regime-champion`). Historical predictions for deprecated `jev-local-autoresearched` remain preserved in the database but are no longer grouped under the champion tab.
-
-The champion tab features the `CuratedManifestCard` detailing the active "Box of Data" configuration, and high-contrast amber badges (`⚡ NO TRADE`) when confidence falls below the gating threshold.
+`DailyPredictionsPage` exposes a single Jev tab — **Jev (TypeSafe)**, the baseline uncurated model (`~typesafe/jev-latest`). The champion tab and its `CuratedManifestCard` were removed with the track; historical rows for `jev-four-regime-champion` and `jev-local-autoresearched` stay in `daily_predictions` but are no longer surfaced as a model track.
 
 ## Related
 

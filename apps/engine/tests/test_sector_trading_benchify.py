@@ -402,30 +402,24 @@ async def test_system_sector_exit_preserves_positions_until_after_alpaca_order()
 
 
 @pytest.mark.asyncio
-async def test_friday_exit_hook_in_update_prices():
-    """Verify that update_prices triggers sector exit on Friday at or after 3:25 PM ET."""
+async def test_friday_exit_hook_runs_from_daemon_hooks():
+    """Verify the Friday 3:30 PM ET sector exit fires from run_systematic_strategy_hooks.
+
+    The hook is invoked by the MiniPC daemon (trading.runner), not by the price update script.
+    """
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    from scripts.update_prices import update_prices
+    from scripts.update_prices import run_systematic_strategy_hooks
 
-    # Mock datetime to a Friday at 3:30 PM ET (2026-09-25 15:30:00 ET)
     friday_330pm = datetime(2026, 9, 25, 15, 30, 0, tzinfo=ZoneInfo("America/New_York"))
 
-    mock_client = MagicMock()
-    mock_chain = MagicMock()
-    mock_chain.select.return_value = mock_chain
-    mock_chain.execute.return_value = MagicMock(data=[])
-    mock_client.table.return_value = mock_chain
-
     with (
-        patch("execution.market_data.MarketDataManager.is_market_open", new_callable=AsyncMock, return_value=True),
-        patch("scripts.update_prices.get_supabase_client", return_value=mock_client),
-        patch("scripts.update_prices.datetime") as mock_dt,
         patch("execution.sector_trading.run_sector_trade", new_callable=AsyncMock) as mock_sector_exit,
+        patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
+        patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock),
     ):
-        mock_dt.now.return_value = friday_330pm
-        await update_prices()
+        await run_systematic_strategy_hooks(friday_330pm)
 
     assert mock_sector_exit.called
     assert mock_sector_exit.call_args.kwargs["action"] == "exit"

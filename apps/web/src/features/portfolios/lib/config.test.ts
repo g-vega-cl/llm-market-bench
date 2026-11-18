@@ -237,3 +237,39 @@ describe('Portfolio Config Utils Error Handling', () => {
         expect(result).toEqual([]);
     });
 });
+
+describe('Archived portfolio ids', () => {
+    let configModule: typeof import('./config');
+
+    beforeEach(async () => {
+        vi.resetModules();
+        vi.doMock('@repo/config/models.json', () => ({
+            default: {
+                OPENAI_MODEL: 'gpt-6-luna',
+                ARCHIVED_PORTFOLIO_OWNER_IDS: [
+                    'sys-daily-tlt-close-gpt-5.6-luna',
+                    'sys-daily-spy-close-jev-four-regime-champion',
+                ],
+            },
+        }));
+        configModule = await import('./config');
+    });
+
+    it('treats archived system portfolios as inactive', () => {
+        expect(configModule.isArchivedPortfolio('sys-daily-tlt-close-gpt-5.6-luna')).toBe(true);
+        expect(configModule.isActiveOwnerId('sys-daily-tlt-close-gpt-5.6-luna')).toBe(false);
+        expect(configModule.isActiveOwnerId('sys-daily-spy-close-jev-four-regime-champion')).toBe(
+            false,
+        );
+    });
+
+    it('leaves live system portfolios active', () => {
+        expect(configModule.isActiveOwnerId('sys-pead-drift')).toBe(true);
+        expect(configModule.isActiveOwnerId('sys-max-pain')).toBe(true);
+    });
+
+    it('normalizes archived ids before matching', () => {
+        expect(configModule.isArchivedPortfolio('SYS-DAILY-TLT-CLOSE-GPT-5.6-LUNA')).toBe(true);
+        expect(configModule.isArchivedPortfolio(null)).toBe(false);
+    });
+});

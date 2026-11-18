@@ -142,7 +142,12 @@ def test_web_model_mirror_matches_registry():
 
 
 def test_no_retired_model_ids_in_production_paths():
-    """Retired ids must not reappear in engine, web, workflow, or shared config code."""
+    """Retired ids must not reappear in engine, web, workflow, or shared config code.
+
+    `ARCHIVED_PORTFOLIO_OWNER_IDS` in models.json is the one legitimate exception:
+    it names retired ids on purpose so their portfolios can be archived without
+    deleting history. That key is stripped before scanning so model slots stay guarded.
+    """
     offenders = []
     for path in _iter_source_files():
         rel = path.relative_to(REPO_ROOT).as_posix()
@@ -152,11 +157,43 @@ def test_no_retired_model_ids_in_production_paths():
             text = path.read_text()
         except (UnicodeDecodeError, FileNotFoundError):
             continue
+        if path == MODELS_JSON:
+            try:
+                registry = json.loads(text)
+            except json.JSONDecodeError:
+                pass
+            else:
+                registry.pop("ARCHIVED_PORTFOLIO_OWNER_IDS", None)
+                text = json.dumps(registry, indent=2)
         for pattern in RETIRED_PATTERNS:
             for hit in pattern.finditer(text):
                 line_no = text[: hit.start()].count("\n") + 1
                 offenders.append(f"{rel}:{line_no} -> {hit.group(0)}")
     assert not offenders, "retired model ids in production code: " + "; ".join(offenders)
+
+
+def test_archived_portfolio_ids_are_retired_models_only():
+    """The archive list must only ever contain ids that are genuinely retired."""
+    registry = _registry()
+    archived = set(registry.get("ARCHIVED_PORTFOLIO_OWNER_IDS", []))
+    assert archived, "ARCHIVED_PORTFOLIO_OWNER_IDS must not be empty while retired portfolios exist"
+
+    configured = {registry[slot] for slot in MODEL_SLOTS}
+    retired_fragments = {
+        "gpt-5.6-luna",
+        "deepseek-v4-flash",
+        "MiniMax-M3",
+        "jev-four-regime-champion",
+        "jev-local-autoresearched",
+    }
+    for owner_id in archived:
+        assert owner_id.startswith("sys-"), f"archived owner must be a system portfolio: {owner_id}"
+        assert any(fragment in owner_id for fragment in retired_fragments), (
+            f"archived owner references a live model id: {owner_id}"
+        )
+        assert not any(live in owner_id for live in configured if live != "MiniMax-M3.1-Flash"), (
+            f"archived owner references a configured model: {owner_id}"
+        )
 
 
 def test_retired_id_allowlist_is_display_only():

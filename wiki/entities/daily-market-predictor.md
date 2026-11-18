@@ -5,15 +5,16 @@ category: entity
 
 # Daily Market Predictor
 
-The daily market predictor (`apps/engine/tasks/daily_predictor.py`) generates a morning directional prediction for a ticker (default `SPY`) before the US market opens. It compiles a rich pre-market context, asks an LLM for a prediction across a four-model arena, and persists the result to `daily_predictions`.
+The daily market predictor (`apps/engine/tasks/daily_predictor.py`) generates a morning directional prediction for a ticker (default `SPY`) before the US market opens. It compiles a rich pre-market context, asks an LLM for a prediction across a three-model arena, and persists the result to `daily_predictions`.
 
 ## Model Arena (S&P 500)
 
-The daily predictor arena compares four distinct model architectures:
+The daily predictor arena compares three distinct model architectures:
 1. **DeepSeek Flash** (`deepseek-flash`) — Direct thinking/reasoning prompt with structured output via Instructor.
 2. **MiniMax** (`MiniMax-M3.1-Flash`) — High-context reasoning LLM with JSON format output.
 3. **Jev Baseline** (`~typesafe/jev-latest`) — Direct System One typed classification via OpenRouter Decisions API.
-4. **Jev Four-Regime Champion** (`jev-four-regime-champion`) — Evolved via Strata single-prompt ratchet tournament (Iteration 43 Champion, Score 54.34, Win Rate 72.73%, $p = 0.0262$). Promoted to replace deprecated `jev-local-autoresearched`. Uses a tailored **Curated Manifest** ("Box of Data") compiled by `pack_daily_context()`, symmetrical four-regime classification criteria (*Risk-On Expansion*, *Risk-Off Expansion*, *Balanced Pinning*, *Catalyst Shock*), and **Zero Abstention** (forces a binary directional prediction `UP` or `DOWN` on every session).
+
+The **Jev Four-Regime Champion** (`jev-four-regime-champion`) track was retired on 2026-11-18 after 15 live predictions produced a 47% directional hit rate. It is no longer in the arena, its tab is gone from the daily predictions page, and its system portfolio is archived (rows preserved, `is_active = false`). The curated executor branch (`jev_curated`) and its helpers still exist because the offline Strata ratchet (`apps/engine/local_autoresearch/runner.py`) uses them; nothing in the daily arena calls them. See [[concepts/jev-decisions-model]].
 
 ## Market Context Compilation & Curated Manifests
 
@@ -25,9 +26,7 @@ Multi-day momentum and trend indicators are calculated by `analytics/trend_profi
 - 20-day Simple Moving Average (SMA20) and distance % (monthly cycle, verified history only).
 - 3-day direction sequence (e.g. `UP (+0.3%) -> DOWN (-0.2%) -> UP (+0.6%)`).
 
-For standard models, the full narrative context is passed. For `jev-four-regime-champion`, the raw data record is compiled dynamically through `pack_daily_context(data_record, manifest)` into a lean, noise-pruned "Box of Data" adhering to the winning variant's active manifest:
-- **Included**: Multi-day momentum & trend vector (`include_trend_vector=True`), prior session intraday technical profile (VWAP, Close Location Value), high-signal proxies (`QQQ`, `IWM`), options positioning, economic releases, and curated newsletters (`Sherwood News`, `Chartr`).
-- **Pruned / Excluded**: FX noise (`UUP`), market health barometer, qualitative market feeling.
+For the standard arena models, the full narrative context is passed. The `pack_daily_context(data_record, manifest)` compiler (which produces a lean, noise-pruned "Box of Data" from a declarative manifest) remains available as offline research tooling for the Strata ratchet, but no live arena model consumes a curated manifest today. See [[concepts/curated-data-manifest]].
 
 ## Confidence Gating, HOLD Execution, & Zero Abstention
 
@@ -36,7 +35,6 @@ Daily predictions are gated mechanically through `apply_confidence_hold_gate`:
 - Calls with confidence strictly below `HOLD_CONFIDENCE_THRESHOLD = 56.0%` are automatically gated to `HOLD`.
 - Gated `HOLD` predictions enter zero market exposure (100% cash) with `expected_return_pct = 0.0`.
 - To prevent cowardice and selective abstention, weekly autoresearch enforces a 75% trade participation hurdle ($\text{participation\_factor} = \min(1.0, \text{trade\_rate} / 0.75)$) and awards move-aware credits ($+52.0$ pts on flat chop, $+45.0$ pts on normal moves, $+35.0$ pts on missed trends).
-- Dedicated high-frequency decision classifiers (e.g. `jev-four-regime-champion`) can configure explicit zero abstention (`min_confidence = 0.0%`).
 - Database integrity is maintained via `CHECK (predicted_direction IN ('UP', 'DOWN', 'HOLD'))`. See [[concepts/confidence-gating]].
 
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import time
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -366,11 +367,80 @@ async def run_news_synthesis_worker_loop(
             await asyncio.sleep(float(interval_seconds))
 
 
+def _is_price_refresh_window(now_dt: datetime | None = None) -> bool:
+    """Weekday 09:30–16:05 ET: the regular session plus the post-close print window."""
+    if now_dt is None:
+        now_dt = datetime.now(ZoneInfo("America/New_York"))
+    if now_dt.weekday() >= 5:
+        return False
+    return 570 <= now_dt.hour * 60 + now_dt.minute <= 965
+
+
+async def run_systematic_hooks_loop(interval_seconds: int = 300, strategy_lock: asyncio.Lock | None = None) -> None:
+    """Run every time-gated systematic strategy hook while the market is open.
+
+    This daemon is the single owner of deterministic strategy execution. The price
+    update script no longer invokes the hooks, so max pain, PEAD, the sentiment fader
+    and the sector/horizon exits can never be executed by two callers at once.
+    """
+    from scripts.update_prices import run_systematic_strategy_hooks
+
+    lock = strategy_lock or asyncio.Lock()
+    logger.info(f"Starting systematic strategy hooks loop (interval={interval_seconds}s)")
+    while True:
+        try:
+            now_et = datetime.now(ZoneInfo("America/New_York"))
+            if is_market_session_active(now_et):
+                async with lock:
+                    await run_systematic_strategy_hooks(now_et)
+        except Exception:
+            logger.exception("Systematic strategy hooks loop failed")
+        await asyncio.sleep(float(interval_seconds))
+
+
+async def run_market_data_loop(
+    interval_seconds: int = 900,
+    history_interval_seconds: int = 1800,
+    strategy_lock: asyncio.Lock | None = None,
+) -> None:
+    """Refresh portfolio marks on every tick and benchmark/macro history less often.
+
+    Marks are cheap (one batch quote plus one snapshot per portfolio); rebuilding
+    90-day histories for every benchmark and macro ticker is not, so it runs at its
+    own slower cadence. Both share the strategy lock so a mark never snapshots a
+    portfolio mid-execution.
+    """
+    from execution.market_data import MarketDataManager
+    from scripts.update_prices import fetch_benchmark_history, refresh_portfolio_marks
+
+    lock = strategy_lock or asyncio.Lock()
+    sb_client = get_supabase_client()
+    mdm = MarketDataManager()
+    last_history_at = 0.0
+    logger.info(
+        f"Starting market data loop (marks={interval_seconds}s, history={history_interval_seconds}s)"
+    )
+    while True:
+        try:
+            now_et = datetime.now(ZoneInfo("America/New_York"))
+            if _is_price_refresh_window(now_et):
+                async with lock:
+                    await refresh_portfolio_marks(sb_client, mdm)
+                if (time.monotonic() - last_history_at) >= history_interval_seconds:
+                    await fetch_benchmark_history(mdm)
+                    last_history_at = time.monotonic()
+        except Exception:
+            logger.exception("Market data loop failed")
+        await asyncio.sleep(float(interval_seconds))
+
+
 async def run_loop(
     ticker: str = "SPY",
     interval_seconds: int = 300,
     tape_interval_seconds: int = 10,
     news_interval_seconds: int = 1800,
+    marks_interval_seconds: int = 900,
+    history_interval_seconds: int = 1800,
     tape_port: int = 8090,
     enable_tape_server: bool = True,
     strata_url: str = DEFAULT_STRATA_URL,
@@ -433,7 +503,28 @@ async def run_loop(
                 interval_seconds=news_interval_seconds,
             )
         )
-        await asyncio.gather(tape_task, agent_task, qa_task, news_synth_task)
+        strategy_lock = asyncio.Lock()
+        systematic_task = asyncio.create_task(
+            run_systematic_hooks_loop(
+                interval_seconds=interval_seconds,
+                strategy_lock=strategy_lock,
+            )
+        )
+        market_data_task = asyncio.create_task(
+            run_market_data_loop(
+                interval_seconds=marks_interval_seconds,
+                history_interval_seconds=history_interval_seconds,
+                strategy_lock=strategy_lock,
+            )
+        )
+        await asyncio.gather(
+            tape_task,
+            agent_task,
+            qa_task,
+            news_synth_task,
+            systematic_task,
+            market_data_task,
+        )
     finally:
         if server:
             server.close()
@@ -461,6 +552,18 @@ def main() -> None:
         type=int,
         default=1800,
         help="Cadence for AI news synthesis in seconds (default: 1800)",
+    )
+    parser.add_argument(
+        "--marks-interval",
+        type=int,
+        default=900,
+        help="Cadence for portfolio quotes/marks in seconds (default: 900)",
+    )
+    parser.add_argument(
+        "--history-interval",
+        type=int,
+        default=1800,
+        help="Cadence for benchmark/macro history refresh in seconds (default: 1800)",
     )
     parser.add_argument(
         "--tape-port",
@@ -513,6 +616,8 @@ def main() -> None:
                 interval_seconds=args.interval,
                 tape_interval_seconds=args.tape_interval,
                 news_interval_seconds=args.news_interval,
+                marks_interval_seconds=args.marks_interval,
+                history_interval_seconds=args.history_interval,
                 tape_port=args.tape_port,
                 enable_tape_server=not args.no_tape_server,
                 strata_url=args.strata_url,

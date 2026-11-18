@@ -679,7 +679,6 @@ async def run_daily_prediction(ticker: str = "SPY", force: bool = False) -> list
         {"name": DEEPSEEK_FLASH_MODEL, "type": "instructor", "provider": "deepseek"},
         {"name": MINIMAX_MODEL, "type": "minimax", "provider": "minimax"},
         {"name": JEV_MODEL, "type": "jev", "provider": "openrouter"},
-        {"name": "jev-four-regime-champion", "type": "jev_curated", "provider": "openrouter"},
         {"name": "laya-local-autoresearched", "type": "laya_curated", "provider": "local"},
     ]
 

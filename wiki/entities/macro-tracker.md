@@ -43,11 +43,11 @@ The exact same 23 tickers and volatility calculations are mirrored on the Web Ap
 
 The rolling volatility, percentage change, and regime classification metrics are pre-calculated using the `update_prices.py` script (`apps/engine/scripts/update_prices.py`) and cached in the `market_data_cache` table.
 
-This is executed automatically on a scheduled **GitHub Action workflow** (`.github/workflows/update-prices.yml`) to keep the data fresh:
+The fetch is owned by the MiniPC `live-spy-trader` daemon, not by GitHub Actions:
 
-- **Cadence**: Scheduled to run **every 30 minutes** during US market hours:
-  - **Cron Trigger**: `cron: "0,30 13-21 * * 1-5"` (13:00 - 21:00 UTC, covering both EDT 9:30 AM open and EST 9:30 AM open with pre-market failsafe skip).
-  - Can also be triggered manually via a `workflow_dispatch` event on GitHub.
+- **Marks**: `run_market_data_loop` calls `refresh_portfolio_marks()` every **15 minutes** between 09:30 and 16:05 ET (weekdays), refreshing quotes, portfolio metrics and `portfolio_performance`.
+- **History & cache**: the same loop calls `fetch_benchmark_history()` every **30 minutes** in that window, which rebuilds the 90-day benchmark/macro history, `price_history` rows and the pre-calculated `market_data_cache` metrics.
+- **Manual refresh**: `python3 -m scripts.update_prices` still performs one marks + history pass (it no longer triggers strategy hooks). The GitHub Actions `update-prices` workflow was deleted so prices are never fetched by two schedulers.
 - **Ingestion Pipeline Sync**: In addition to the dedicated price updater, the primary daily ingestion and consensus pipeline workflow (`.github/workflows/ingest.yml`) triggers **3 times daily** (at **9:35 AM ET, 11:35 AM ET, and 3:30 PM ET**) on trading days via the Cloudflare Worker edge dispatcher (`apps/cron-dispatcher`). Pre-market or off-hour runs are gracefully skipped by the engine's `is_market_open()` failsafe. Dispatched via edge `workflow_dispatch` calls to eliminate GitHub Actions queue delays.
 
 - **Cache Persistence**: The calculated statistics (rolling 30-day volatility `stdev_pct`, `today_pct_change`, `price`, `regime_flag`) are saved to the persistent Supabase `market_data_cache` table. This allows the serverless loader (`fetch-today-data.ts`) to retrieve all 23 tickers in a single consolidated database query in less than 5ms.

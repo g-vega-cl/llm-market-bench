@@ -32,7 +32,7 @@ Systematic 30-day and 90-day sector long/short portfolio execution engine. Manag
 ## Scheduling
 
 - **Entry**: Monday 9:35 AM ET via `sector-trade.yml` and Monday ingestion hook, now extended to cover 30d/90d portfolios through `execute_horizon_sector_entries`.
-- **Maturity Exit Check**: Daily at 3:30 PM ET via `apps/engine/scripts/update_prices.py` (Mon-Thu) and Friday exit hook. `execute_horizon_sector_exits` is called, checking each portfolio's maturity date.
+- **Maturity Exit Check**: Daily at 3:30 PM ET via the `live-spy-trader` daemon's `run_systematic_hooks_loop`, which calls `run_systematic_strategy_hooks` (Mon-Thu) and the Friday exit hook. `execute_horizon_sector_exits` is called, checking each portfolio's maturity date. The former `update-prices.yml` GitHub Actions workflow was deleted; the daemon is the single owner of time-gated strategy hooks.
 - **Friday Exit Hook**: Also runs via the existing Friday afternoon sector exit flow.
 
 ## Related

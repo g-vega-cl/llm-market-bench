@@ -32,7 +32,7 @@ A systematic, daily intraday portfolio that captures options dealer gamma pinnin
 `evaluate_max_pain_holding_exit` returns an exit signal when any trigger fires:
 
 - **Target strike hit (pin achieved)**: Spot price or session high (`dayHigh` from FMP `/stable/quote`) reaches within 0.05% of today's verified Alpaca Max Pain strike. When triggered, the sale fills at the target strike (less 1 bps slippage) rather than a lower pullback price, and same-day idempotency (`has_entered_today`) prevents re-entering the same ticker later in the session.
-- **Session close liquidation (3:25+ PM MOC)**: Mandatory exit window (`>= 15:25 ET` in `apps/engine/scripts/update_prices.py`, catching the 15:30 ET cron run) before the 4:00 PM close to guarantee zero overnight holding.
+- **Session close liquidation (3:25+ PM MOC)**: Mandatory exit window (`>= 15:25 ET`, evaluated by the `live-spy-trader` daemon's 300-second systematic-hooks task) before the 4:00 PM close to guarantee zero overnight holding.
 - **After-the-fact EOD reconciliation**: If an afternoon cron run is skipped and a position remains open after 16:00 ET (or from a prior trading day), `reconcile_unliquidated_max_pain_positions` (invoked by [[entities/portfolio-auditor]] in `--fix` mode) checks the day's RTH high against the verified Max Pain strike and backfills the `SELL` at the target strike (if touched intraday) or at the RTH close price (`alpaca_status = "BACKFILLED"`).
 - **Adverse stop loss**: Current price drops >1.0% below entry price (indicating gamma support breakdown).
 

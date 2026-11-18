@@ -6,12 +6,7 @@ import type {
 } from '@llm-market-bench/database';
 import { getDbServerClient } from '~/lib/db';
 import { getEasternDate } from '~/utils/date';
-import {
-    getActiveOwnerIds,
-    isAutoresearchPortfolio,
-    isSystemPortfolio,
-    normalizeOwnerId,
-} from '../lib/config';
+import { isActiveOwnerId, isAutoresearchPortfolio, isSystemPortfolio } from '../lib/config';
 
 export async function fetchPortfolios(): Promise<
     (Portfolio & { is_active: boolean; is_autoresearch: boolean; is_system: boolean })[]
@@ -24,12 +19,11 @@ export async function fetchPortfolios(): Promise<
 
     if (error) throw error;
 
-    const activeIds = new Set(getActiveOwnerIds());
     return data.map((p) => {
         const isSystem = isSystemPortfolio(p.owner_id);
         return {
             ...p,
-            is_active: isSystem || activeIds.has(normalizeOwnerId(p.owner_id)),
+            is_active: isActiveOwnerId(p.owner_id),
             is_autoresearch: isAutoresearchPortfolio(p.owner_id),
             is_system: isSystem,
         };
@@ -417,10 +411,7 @@ export async function fetchAllActivePortfolioPerformance(maxDays: number = 90): 
 
     if (portfoliosError) throw portfoliosError;
 
-    const activeIds = new Set(getActiveOwnerIds());
-    const activePortfolios = portfolios.filter(
-        (p) => isSystemPortfolio(p.owner_id) || activeIds.has(normalizeOwnerId(p.owner_id)),
-    );
+    const activePortfolios = portfolios.filter((p) => isActiveOwnerId(p.owner_id));
 
     if (activePortfolios.length === 0) {
         return { portfolios: [], startDate: '', endDate: '' };

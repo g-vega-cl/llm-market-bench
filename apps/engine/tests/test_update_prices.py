@@ -66,36 +66,27 @@ class TestAsyncSleepOptimization:
             mock_sleep.assert_called_with(1)  # wait_time = 2 ** (1 - 1) = 1
 
     @pytest.mark.asyncio
-    async def test_update_prices_triggers_friday_afternoon_sector_exit(self):
+    async def test_hooks_trigger_friday_afternoon_sector_exit(self):
         """Should invoke run_sector_trade(action='exit') on Friday at or after 3:25 PM ET."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
         friday_afternoon = datetime(2026, 9, 25, 15, 30, 0, tzinfo=ZoneInfo("America/New_York"))
         with (
-            patch("scripts.update_prices.get_supabase_client") as mock_get_client,
-            patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls,
-            patch("scripts.update_prices.datetime") as mock_dt,
             patch("execution.sector_trading.run_sector_trade", new_callable=AsyncMock) as mock_exit,
             patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
             patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock),
         ):
-            mock_dt.now.return_value = friday_afternoon
-            mock_mdm = mock_mdm_cls.return_value
-            mock_mdm.is_market_open = AsyncMock(return_value=True)
-
-            mock_client = mock_get_client.return_value
-            mock_client.table.return_value.select.return_value.execute.return_value = MagicMock(data=[])
-
-            await update_prices()
+            await run_systematic_strategy_hooks(friday_afternoon)
 
             mock_exit.assert_awaited_once_with(action="exit", dry_run=False)
 
     @pytest.mark.asyncio
-    async def test_update_prices_triggers_weekday_afternoon_horizon_exit(self):
+    async def test_hooks_trigger_weekday_afternoon_horizon_exit(self):
         """Should invoke execute_horizon_sector_exits on Mon-Thu at or after 3:25 PM ET."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
         thursday_afternoon = datetime(2026, 9, 24, 15, 30, 0, tzinfo=ZoneInfo("America/New_York"))
         with (
-            patch("scripts.update_prices.get_supabase_client") as mock_get_client,
-            patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls,
-            patch("scripts.update_prices.datetime") as mock_dt,
             patch(
                 "execution.sector_horizon_trading.execute_horizon_sector_exits",
                 new_callable=AsyncMock,
@@ -103,14 +94,7 @@ class TestAsyncSleepOptimization:
             patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
             patch("tasks.pead_drift_task.run_pead_drift_task", new_callable=AsyncMock),
         ):
-            mock_dt.now.return_value = thursday_afternoon
-            mock_mdm = mock_mdm_cls.return_value
-            mock_mdm.is_market_open = AsyncMock(return_value=True)
-
-            mock_client = mock_get_client.return_value
-            mock_client.table.return_value.select.return_value.execute.return_value = MagicMock(data=[])
-
-            await update_prices()
+            await run_systematic_strategy_hooks(thursday_afternoon)
 
             mock_horizon_exit.assert_awaited_once_with(today_str="2026-09-24", price_map={})
 

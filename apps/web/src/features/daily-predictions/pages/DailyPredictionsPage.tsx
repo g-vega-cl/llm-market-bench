@@ -7,7 +7,6 @@ import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import type { DailyStockBasket } from '../api/fetch-stock-picks';
 import { AutoresearchHistoryArena } from '../components/AutoresearchHistoryArena';
 import { AutoresearchMilestoneCards } from '../components/AutoresearchMilestoneCards';
-import { CuratedManifestCard } from '../components/CuratedManifestCard';
 import { DailyMetricsOverview } from '../components/DailyMetricsOverview';
 import { DailyStockPicksTab } from '../components/DailyStockPicksTab';
 import { HeroPredictionCard } from '../components/HeroPredictionCard';
@@ -18,7 +17,6 @@ import {
     getPredictorModelsForTicker,
     type ModelConfig,
     PREDICTOR_MODELS,
-    parseCuratedManifest,
     resolveActiveDailyPrompt,
     type SupportedDailyTicker,
 } from '../utils/daily-predictions-helpers';
@@ -54,17 +52,14 @@ function AssetSwitcher({
     picksCount,
 }: AssetSwitcherProps) {
     return (
-        <div className="flex flex-wrap items-center gap-2 p-1 bg-zinc-100 bg-zinc-800/60 rounded-none w-fit border border-zinc-200 border-zinc-800">
+        <div className="flex flex-wrap items-center gap-2 p-1 bg-voxel-trough rounded-none w-fit border border-voxel-bevel-hi">
             <Button
                 type="button"
                 variant={selectedTicker === 'SPY' ? 'solid' : 'outline'}
+                colorScheme={selectedTicker === 'SPY' ? 'accent' : 'neutral'}
                 size="sm"
                 onClick={() => onSelectTicker('SPY')}
-                className={`rounded-none font-bold text-sm uppercase tracking-wider transition-all px-4 py-2 ${
-                    selectedTicker === 'SPY'
-                        ? 'bg-blue-600 bg-blue-500 text-voxel-trough shadow-sm'
-                        : 'text-zinc-500 text-zinc-400 hover:text-zinc-800 hover:text-zinc-100'
-                }`}
+                className="uppercase tracking-wider"
             >
                 <span className="flex items-center gap-1.5">
                     <span>📈 S&P 500 (SPY)</span>
@@ -76,13 +71,10 @@ function AssetSwitcher({
             <Button
                 type="button"
                 variant={selectedTicker === 'TLT' ? 'solid' : 'outline'}
+                colorScheme={selectedTicker === 'TLT' ? 'accent' : 'neutral'}
                 size="sm"
                 onClick={() => onSelectTicker('TLT')}
-                className={`rounded-none font-bold text-sm uppercase tracking-wider transition-all px-4 py-2 ${
-                    selectedTicker === 'TLT'
-                        ? 'bg-blue-600 bg-blue-500 text-voxel-trough shadow-sm'
-                        : 'text-zinc-500 text-zinc-400 hover:text-zinc-800 hover:text-zinc-100'
-                }`}
+                className="uppercase tracking-wider"
             >
                 <span className="flex items-center gap-1.5">
                     <span>🏛️ 20+ Year Treasuries (TLT)</span>
@@ -94,13 +86,10 @@ function AssetSwitcher({
             <Button
                 type="button"
                 variant={selectedTicker === 'PICKS' ? 'solid' : 'outline'}
+                colorScheme={selectedTicker === 'PICKS' ? 'accent' : 'neutral'}
                 size="sm"
                 onClick={() => onSelectTicker('PICKS')}
-                className={`rounded-none font-bold text-sm uppercase tracking-wider transition-all px-4 py-2 ${
-                    selectedTicker === 'PICKS'
-                        ? 'bg-amber-600 bg-amber-500 text-voxel-trough shadow-sm'
-                        : 'text-zinc-500 text-zinc-400 hover:text-zinc-800 hover:text-zinc-100'
-                }`}
+                className="uppercase tracking-wider"
             >
                 <span className="flex items-center gap-1.5">
                     <span>🎯 3 UP / 3 DOWN</span>
@@ -145,7 +134,6 @@ interface LegacyPredictionsViewProps {
     setSelectedExpId: (id: string | null) => void;
     latestPrediction: DailyPrediction | null;
     activePrompt: PromptExperiment | null;
-    curatedManifest: ReturnType<typeof parseCuratedManifest>;
 }
 
 function LegacyPredictionsView({
@@ -163,7 +151,6 @@ function LegacyPredictionsView({
     setSelectedExpId,
     latestPrediction,
     activePrompt,
-    curatedManifest,
 }: LegacyPredictionsViewProps) {
     const stats = computeDailyPredictionStats(modelPredictions);
 
@@ -182,12 +169,11 @@ function LegacyPredictionsView({
                             <Button
                                 key={model.id}
                                 type="button"
+                                variant={isSelected ? 'solid' : 'outline'}
+                                colorScheme={isSelected ? 'accent' : 'neutral'}
+                                size="sm"
                                 onClick={() => onSelectModelId(model.id)}
-                                className={`px-5 py-3 border-none bg-transparent font-bold text-sm cursor-pointer transition-colors -mb-0.5 border-b-2 ${
-                                    isSelected
-                                        ? 'text-accent border-b-2 border-accent'
-                                        : 'text-voxel-muted border-transparent hover:text-voxel-ink'
-                                }`}
+                                className="-mb-0.5"
                             >
                                 {model.label} ({count})
                             </Button>
@@ -244,8 +230,6 @@ function LegacyPredictionsView({
                         predictions={modelPredictions}
                         experiments={promptExperiments}
                     />
-
-                    {curatedManifest && <CuratedManifestCard manifest={curatedManifest} />}
                 </>
             ) : (
                 <>
@@ -309,7 +293,6 @@ export function DailyPredictionsPage({
 
     const latestPrediction = modelPredictions.length > 0 ? modelPredictions[0] : null;
     const { activePrompt } = resolveActiveDailyPrompt(modelExperiments);
-    const curatedManifest = parseCuratedManifest(activePrompt?.prompt_content);
 
     const handleSelectTicker = (newTicker: SupportedDailyTicker) => {
         if (newTicker === selectedTicker) return;
@@ -358,7 +341,6 @@ export function DailyPredictionsPage({
                     setSelectedExpId={setSelectedExpId}
                     latestPrediction={latestPrediction}
                     activePrompt={activePrompt}
-                    curatedManifest={curatedManifest}
                 />
             )}
         </div>

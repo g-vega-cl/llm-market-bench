@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -134,64 +134,24 @@ def test_pack_daily_context_curation():
 
 
 @pytest.mark.asyncio
-async def test_run_daily_prediction_jev_curated_high_confidence():
-    """Verify jev-four-regime-champion predicts direction when confidence exceeds threshold."""
-    from tasks.daily_predictor import run_daily_prediction
+async def test_jev_curated_executor_predicts_direction_above_threshold():
+    """The curated executor still resolves direction/confidence/min_confidence for research tooling.
 
-    mock_sb = MagicMock()
-    # No existing predictions
-    mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
+    The champion left the daily arena on 2026-11-18; the executor branch stays because the
+    offline Strata ratchet uses it.
+    """
+    from tasks.daily_predictor import JEV_MODEL, _execute_model_daily_prediction
 
-    # Mock active prompt experiment for jev-four-regime-champion
     curated_payload = json.dumps(
         {
             "criteria": {"UP": "Up rule", "DOWN": "Down rule"},
             "min_confidence": 61.0,
-            "manifest": {
-                "selected_newsletters": ["Sherwood News"],
-                "include_macro_proxies": ["QQQ"],
-            },
+            "manifest": {"selected_newsletters": ["Sherwood News"], "include_macro_proxies": ["QQQ"]},
         }
     )
-    mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
-        {"variant_tag": "qwen-jev-243de1", "prompt_content": curated_payload}
-    ]
+    model_cfg = {"name": "jev-four-regime-champion", "type": "jev_curated", "provider": "openrouter"}
 
-    mock_mdm = MagicMock()
-    mock_mdm.is_trading_day = AsyncMock(return_value=True)
-
-    mock_deepseek = MagicMock()
-    mock_deepseek.chat.completions.create = AsyncMock(
-        return_value=MagicMock(
-            predicted_direction="UP",
-            confidence=70.0,
-            expected_return_pct=0.3,
-            rationale="Rationale",
-            catalysts=[],
-        )
-    )
-    mock_minimax = MagicMock()
-    mock_minimax.chat_with_json_response = AsyncMock(
-        return_value={
-            "predicted_direction": "UP",
-            "confidence": 70.0,
-            "expected_return_pct": 0.3,
-            "rationale": "Rationale",
-            "catalysts": [],
-        }
-    )
-    mock_minimax.close = AsyncMock()
-
-    with (
-        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_sb),
-        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
-        patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
-        patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
-        patch("tasks.daily_predictor.close_client", new_callable=AsyncMock),
-        patch("tasks.daily_predictor.get_structured_daily_market_context", new_callable=AsyncMock) as mock_ctx,
-        patch("tasks.daily_predictor.predict_daily_with_jev", new_callable=AsyncMock) as mock_jev,
-    ):
-        mock_ctx.return_value = ("Monolithic text", {"ticker": "SPY", "target_date": "2026-10-09", "proxies": {}})
+    with patch("tasks.daily_predictor.predict_daily_with_jev", new_callable=AsyncMock) as mock_jev:
         mock_jev.return_value = {
             "predicted_direction": "UP",
             "confidence": 74.0,
@@ -199,25 +159,27 @@ async def test_run_daily_prediction_jev_curated_high_confidence():
             "rationale": "Strong pre-market confirmation.",
             "catalysts": [],
         }
+        direction, confidence, ret, _, _, _, min_conf = await _execute_model_daily_prediction(
+            model_cfg,
+            "SPY",
+            "Monolithic text",
+            {"ticker": "SPY", "target_date": "2026-10-09", "proxies": {}},
+            "user",
+            curated_payload,
+            curated_payload,
+        )
 
-        # Run with force=True to bypass time-of-day checks
-        results = await run_daily_prediction(ticker="SPY", force=True)
-
-        # Assert jev-four-regime-champion was included and predicted UP with 74%
-        jev_curated_res = [r for r in results if r["model_name"] == "jev-four-regime-champion"]
-        assert len(jev_curated_res) == 1
-        assert jev_curated_res[0]["predicted_direction"] == "UP"
-        assert jev_curated_res[0]["confidence"] == 74.0
-        assert jev_curated_res[0]["prompt_variant_tag"] == "qwen-jev-243de1"
+    assert direction == "UP"
+    assert confidence == 74.0
+    assert ret == 0.0
+    assert min_conf == 61.0
+    assert mock_jev.call_args.kwargs["model_name"] == JEV_MODEL
 
 
 @pytest.mark.asyncio
-async def test_run_daily_prediction_jev_curated_zero_abstention_forced_direction():
-    """Verify jev-four-regime-champion enforces Zero Abstention and commits to direction even at low confidence."""
-    from tasks.daily_predictor import run_daily_prediction
-
-    mock_sb = MagicMock()
-    mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
+async def test_jev_curated_executor_keeps_zero_abstention_contract():
+    """Curated criteria never emit NO_TRADE: low confidence still commits to a direction."""
+    from tasks.daily_predictor import _execute_model_daily_prediction
 
     curated_payload = json.dumps(
         {
@@ -226,57 +188,27 @@ async def test_run_daily_prediction_jev_curated_zero_abstention_forced_direction
             "manifest": {"selected_newsletters": ["Sherwood News"]},
         }
     )
-    mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
-        {"variant_tag": "qwen-jev-243de1", "prompt_content": curated_payload}
-    ]
+    model_cfg = {"name": "jev-four-regime-champion", "type": "jev_curated", "provider": "openrouter"}
 
-    mock_mdm = MagicMock()
-    mock_mdm.is_trading_day = AsyncMock(return_value=True)
-
-    mock_deepseek = MagicMock()
-    mock_deepseek.chat.completions.create = AsyncMock(
-        return_value=MagicMock(
-            predicted_direction="UP",
-            confidence=70.0,
-            expected_return_pct=0.3,
-            rationale="Rationale",
-            catalysts=[],
-        )
-    )
-    mock_minimax = MagicMock()
-    mock_minimax.chat_with_json_response = AsyncMock(
-        return_value={
-            "predicted_direction": "UP",
-            "confidence": 70.0,
-            "expected_return_pct": 0.3,
-            "rationale": "Rationale",
-            "catalysts": [],
-        }
-    )
-    mock_minimax.close = AsyncMock()
-
-    with (
-        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_sb),
-        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
-        patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
-        patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
-        patch("tasks.daily_predictor.close_client", new_callable=AsyncMock),
-        patch("tasks.daily_predictor.get_structured_daily_market_context", new_callable=AsyncMock) as mock_ctx,
-        patch("tasks.daily_predictor.predict_daily_with_jev", new_callable=AsyncMock) as mock_jev,
-    ):
-        mock_ctx.return_value = ("Monolithic text", {"ticker": "SPY", "target_date": "2026-10-09", "proxies": {}})
+    with patch("tasks.daily_predictor.predict_daily_with_jev", new_callable=AsyncMock) as mock_jev:
         mock_jev.return_value = {
             "predicted_direction": "UP",
-            "confidence": 52.5,  # Low confidence, but zero abstention forces direction
+            "confidence": 52.5,
             "expected_return_pct": 0.0,
             "rationale": "Borderline signal.",
             "catalysts": [],
         }
+        direction, confidence, _, _, _, _, min_conf = await _execute_model_daily_prediction(
+            model_cfg,
+            "SPY",
+            "Monolithic text",
+            {"ticker": "SPY", "target_date": "2026-10-09", "proxies": {}},
+            "user",
+            curated_payload,
+            curated_payload,
+        )
 
-        results = await run_daily_prediction(ticker="SPY", force=True)
-
-        jev_curated_res = [r for r in results if r["model_name"] == "jev-four-regime-champion"]
-        assert len(jev_curated_res) == 1
-        assert jev_curated_res[0]["predicted_direction"] == "UP"
-        assert jev_curated_res[0]["confidence"] == 52.5
-        assert jev_curated_res[0]["predicted_direction"] != "NO_TRADE"
+    assert direction == "UP"
+    assert direction != "NO_TRADE"
+    assert confidence == 52.5
+    assert min_conf == 0.0

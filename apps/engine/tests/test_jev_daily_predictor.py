@@ -185,11 +185,12 @@ async def test_run_daily_prediction_includes_jev_track():
     ):
         results = await run_daily_prediction(ticker="SPY", force=True)
 
-        # 4 models in the arena: DeepSeek, MiniMax, Jev, and Jev Four-Regime Champion
+        # 3 models in the arena: DeepSeek, MiniMax, Jev. The four-regime champion
+        # was retired (47% hit rate) and must never be predicted again.
         model_names = [r["model_name"] for r in results]
         assert JEV_MODEL in model_names
-        assert "jev-four-regime-champion" in model_names
-        assert len(results) == 4
+        assert "jev-four-regime-champion" not in model_names
+        assert len(results) == 3
 
         jev_row = next(r for r in results if r["model_name"] == JEV_MODEL)
         assert jev_row["predicted_direction"] == "UP"

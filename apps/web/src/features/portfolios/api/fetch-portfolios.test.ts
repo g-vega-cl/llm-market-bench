@@ -29,6 +29,11 @@ import {
 
 vi.mock('../lib/config', () => ({
     getActiveOwnerIds: vi.fn(() => ['gemini-3.5-flash-lite', 'deepseek-v4-pro']),
+    isActiveOwnerId: vi.fn(
+        (id) =>
+            Boolean(id) &&
+            (id.startsWith('sys-') || ['gemini-3.5-flash-lite', 'deepseek-v4-pro'].includes(id)),
+    ),
     isAutoresearchPortfolio: vi.fn((id) =>
         ['gemini-3.5-flash-lite', 'deepseek-v4-pro'].includes(id),
     ),

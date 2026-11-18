@@ -5,11 +5,13 @@ category: concept
 
 # Systematic Strategy Hooks
 
-A single orchestrating function in the price-update script — `run_systematic_strategy_hooks()` — drives every clock-driven, non-LLM strategy trigger off US/Eastern market hours. It exists so that systematic strategies (weekly sector exits, options Max Pain, PEAD drift rebalance) fire at the correct intraday moment regardless of which cron invocation happens to run.
+A single orchestrating function — `run_systematic_strategy_hooks()` in `apps/engine/scripts/update_prices.py` — drives every clock-driven, non-LLM strategy trigger off US/Eastern market hours. It exists so that systematic strategies (weekly sector exits, options Max Pain, PEAD drift rebalance) fire at the correct intraday moment regardless of which tick happens to invoke them.
 
 ## Why It Exists
 
-The daily price update (`apps/engine/scripts/update_prices.py`) is invoked repeatedly through market hours. Rather than scattering ad-hoc `if now_et.hour ...` branches throughout the script, all time-gated strategy triggers live behind one function that is called **before** portfolios are loaded. This ordering matters: the hooks may liquidate positions or spend cash, and those effects must be reflected in the portfolio snapshots loaded immediately afterward.
+The hooks are driven by the `live-spy-trader` daemon on the MiniPC, not by GitHub Actions. `trading/runner.py` runs `run_systematic_hooks_loop` every 300 seconds while `is_market_session_active()`, and that is the **only** caller of the hook function: the price-update script no longer invokes it, so two schedulers can never execute the same strategy against the same portfolio at once.
+
+All time-gated strategy triggers live behind one function that is called **before** portfolios are marked. This ordering matters: the hooks may liquidate positions or spend cash, and those effects must be reflected in the portfolio snapshots taken immediately afterward. Inside the daemon the hooks and the marks loop share a single `asyncio.Lock`, which preserves that guarantee instead of relying on task scheduling luck.
 
 ## The Hooks
 
@@ -38,7 +40,7 @@ A single morning window (09:35–10:35 ET) rebalances the `sys-pead-drift` portf
 
 ## Dry-Run Support
 
-Every hook accepts a `dry_run` flag that is threaded through to the underlying strategy calls, allowing the whole orchestration to be simulated without executing trades. `update_prices(dry_run=...)` forwards its flag into the hook function.
+Every hook accepts a `dry_run` flag that is threaded through to the underlying strategy calls, allowing the whole orchestration to be simulated without executing trades. The daemon always runs them live; `python3 -m scripts.update_prices` no longer triggers hooks at all (it only refreshes quotes, marks and history).
 
 ## Earnings-Alpha Trigger
 

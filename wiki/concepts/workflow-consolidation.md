@@ -16,8 +16,11 @@ update, ingest).
 1. **Never create a standalone workflow** for a secondary or periodic task when an
 existing scheduled pipeline already runs on the appropriate cadence.
 2. **Prefer piggybacking** the task into an established workflow
-   (`update-prices.yml`, `update-earnings-alpha.yml`, `ingest.yml`) as a distinct
-   step or a chained script call.
+   (`update-earnings-alpha.yml`, `ingest.yml`) as a distinct
+   step or a chained script call. Intraday, clock-gated execution (price marks,
+   strategy hooks) belongs on the MiniPC daemon (`trading/runner.py`), not in a
+   workflow: `update-prices.yml` was deleted after its 18-per-session cron
+   delivered ~2 runs a day.
 3. **Only introduce a new workflow file** when the cadence, trigger event, or
    execution runner environment is genuinely decoupled and cannot be shared with
    any existing pipeline.

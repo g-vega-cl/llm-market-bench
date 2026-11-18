@@ -25,29 +25,13 @@ The `PredictorHeader` swaps its title and subtitle based on the ticker — "Dail
   - `deepseek-flash`
   - `MiniMax-M3.1-Flash`
   - `~typesafe/jev-latest`
-  - `jev-four-regime-champion` ("Jev (Four-Regime Champion)")
 - **TLT** (`BOND_PREDICTOR_MODELS`): `gpt-6-luna` (default), `deepseek-flash`, `~typesafe/jev-latest`
 
 The OpenAI model id is read from `@repo/config/models.json` (`OPENAI_MODEL`, falling back to `gpt-6-luna`). `PREDICTOR_MODELS` is retained as an alias for `SPY_PREDICTOR_MODELS` for backwards compatibility. `SupportedDailyTicker` is the union `'SPY' | 'TLT' | 'PICKS'`.
 
 ### Model Matching
 
-Each `ModelConfig` carries a `matches(modelName)` predicate. The curated Jev entry matches only on `four-regime`, so the deprecated `jev-local-autoresearched` tag no longer groups under the champion tab (its historical predictions remain in the database but are not surfaced under the active champion). The baseline Jev entry matches `jev` while explicitly excluding names containing `autoresearch`.
-
-## Curated Manifest & Zero Abstention
-
-For the `jev-four-regime-champion` model, the UI renders specialized visual components:
-- **Curated Manifest Card** (`CuratedManifestCard.tsx`): Displays the model's active "Box of Data" configuration, breaking down included/pruned proxies, selected newsletter senders, options positioning, and technical intraday profiles.
-- **Zero Abstention Binary Classification**: The model commits strictly to `UP` or `DOWN` on every session (see [[concepts/confidence-gating]]). Amber `NO_TRADE` gating is deprecated and preserved only as a backwards-compatible parser fallback for legacy historical data.
-
-## Daily Stock Picker Tab (`PICKS`)
-
-Selecting the `PICKS` arena renders `DailyStockPicksTab` (`apps/web/src/features/daily-predictions/components/DailyStockPicksTab.tsx`) with the `DailyStockBasket[]` array loaded from `daily_stock_baskets` / `daily_stock_picks` (via `fetchDailyStockBaskets` in `fetch-stock-picks.ts`). The tab provides:
-
-- **Model filter buttons** — `⭐ Consensus`, `DeepSeek Flash`, `MiniMax-M3.1-Flash`, `GPT-6 Luna`; the persona filter matches `model_name` by substring (case-insensitive), and `consensus` matches exactly.
-- **Performance tiles** — Directional Hit Rate, Net L/S Spread Alpha, SPY Benchmark move, and Excess vs SPY Alpha (all pre-materialized by the engine).
-- **Two-column pick showcase** — three UP cards with rank badges and emerald borders, three DOWN cards with rose borders; each card shows the ticker, `confidence% Conviction` badge, ranking, two-line reasoning, and (when evaluated) open→close prices, stock return, and position PnL with a `HIT`/`MISS` badge.
-- **Historical basket table** — audited ledger with right-aligned tabular numbers and status badges (see [[entities/daily-stock-picker]]).
+The baseline Jev entry matches `jev` while explicitly excluding names containing `local` or `autoresearch`. The retired `jev-four-regime-champion` track is no longer a model tab — its historical predictions remain in the database but are not surfaced as a model track. See [[concepts/jev-decisions-model]].
 
 ## Filtering and Routing
 
@@ -60,4 +44,4 @@ Predictions are filtered by ticker before model matching; a missing `ticker` fie
 - [[entities/bond-predictor]] — the TLT prediction arena
 - [[entities/daily-stock-picker]] — the 3-UP / 3-DOWN stock selection arena
 - [[entities/web-app]] — the dashboard that hosts this page
-- [[concepts/jev-decisions-model]] — the Jev classifier and its curated champion track
+- [[concepts/jev-decisions-model]] — the Jev classifier and its retired curated champion track

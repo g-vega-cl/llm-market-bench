@@ -47,11 +47,6 @@ export const SPY_PREDICTOR_MODELS: ModelConfig[] = [
             !m.toLowerCase().includes('local') &&
             !m.toLowerCase().includes('autoresearch'),
     },
-    {
-        id: 'jev-four-regime-champion',
-        label: 'Jev (Four-Regime Champion)',
-        matches: (m: string) => m.toLowerCase().includes('four-regime'),
-    },
 ];
 
 export interface ParsedCuratedManifest {
@@ -64,21 +59,6 @@ export interface ParsedCuratedManifest {
     include_market_health_barometer?: boolean;
     include_recent_market_feeling?: boolean;
     include_intraday_profile?: boolean;
-}
-
-export function parseCuratedManifest(
-    promptContent: string | null | undefined,
-): ParsedCuratedManifest | null {
-    if (!promptContent) return null;
-    try {
-        const parsed = JSON.parse(promptContent);
-        if (parsed && typeof parsed === 'object' && parsed.manifest) {
-            return parsed.manifest as ParsedCuratedManifest;
-        }
-    } catch {
-        // Plain text prompt content
-    }
-    return null;
 }
 
 export const BOND_PREDICTOR_MODELS: ModelConfig[] = [

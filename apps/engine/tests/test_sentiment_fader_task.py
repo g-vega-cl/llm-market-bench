@@ -73,7 +73,7 @@ async def test_run_sentiment_fader_task_dry_run():
     mock_portfolio = MagicMock()
     mock_portfolio.id = "mock-port-id"
     mock_portfolio.cash_balance = 10000.0
-    mock_portfolio.positions = []
+    mock_portfolio.positions = {}
     mock_portfolio.initialize = AsyncMock()
 
     mock_sentiment_spy = {
@@ -118,7 +118,7 @@ async def test_run_sentiment_fader_task_live_execution():
     mock_portfolio = MagicMock()
     mock_portfolio.id = "mock-port-id"
     mock_portfolio.cash_balance = 10000.0
-    mock_portfolio.positions = []
+    mock_portfolio.positions = {}
     mock_portfolio.total_equity = 10000.0
     mock_portfolio.unrealized_pnl = 0.0
     mock_portfolio.buying_power = 20000.0

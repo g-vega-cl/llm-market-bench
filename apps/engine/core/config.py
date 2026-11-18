@@ -239,6 +239,18 @@ SKIP_VERIFIER_OWNER_IDS = set(
     )
 )
 
+# Retired portfolios: rows are preserved forever, but they are no longer active.
+# Declared once in packages/config/models.json and read by both the Python engine
+# (bulk price-update mark-to-market) and the web layer (is_active derivation).
+ARCHIVED_PORTFOLIO_OWNER_IDS = frozenset(_models.get("ARCHIVED_PORTFOLIO_OWNER_IDS", []))
+
+
+def is_archived_portfolio(owner_id: str | None) -> bool:
+    """Return True when this portfolio owner is retired and must stop being updated."""
+    if not owner_id:
+        return False
+    return str(owner_id).strip() in ARCHIVED_PORTFOLIO_OWNER_IDS
+
 
 def is_verifier_enabled_for_owner(owner_id: str | None) -> bool:
     """Return True if second-step skeptical LLM verification is enabled for this portfolio owner."""

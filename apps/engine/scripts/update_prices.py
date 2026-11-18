@@ -10,7 +10,7 @@ import math
 from datetime import UTC, datetime
 from typing import Any
 
-from core.config import logger
+from core.config import is_archived_portfolio, logger
 from core.db import SUPABASE_RETRIES, get_supabase_client, is_transient_supabase_error
 from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
@@ -129,7 +129,9 @@ async def _fetch_portfolio_owners(sb_client: Any) -> list[str]:
     for attempt in range(1, SUPABASE_RETRIES + 1):
         try:
             port_res = fetch_portfolios()
-            return [p["owner_id"] for p in port_res.data] if port_res.data else []
+            owners = [p["owner_id"] for p in port_res.data] if port_res.data else []
+            # Archived portfolios keep every historical row but are never marked again.
+            return [owner for owner in owners if not is_archived_portfolio(owner)]
         except Exception as exc:
             if not is_transient_supabase_error(exc):
                 logger.error(f"fetch_portfolios failed with non-transient error: {exc}")
@@ -210,29 +212,17 @@ async def _update_portfolio_metrics(
     return updated_count
 
 
-async def update_prices(dry_run: bool = False):
-    """Main function to update prices and metrics."""
-    logger.info("Starting Price Update Script (No LLM)...")
+async def refresh_portfolio_marks(sb_client: Any, mdm: MarketDataManager) -> int:
+    """Re-quote every active portfolio and persist its metrics and daily snapshot.
 
-    sb_client = get_supabase_client()
-    mdm = MarketDataManager()
-
-    if not await mdm.is_market_open():
-        logger.info("Market is currently CLOSED. Skipping price update to save resources.")
-        return
-
-    try:
-        from zoneinfo import ZoneInfo
-
-        now_et = datetime.now(ZoneInfo("America/New_York"))
-        await run_systematic_strategy_hooks(now_et, dry_run=dry_run)
-    except Exception:
-        logger.exception("Systematic strategy hooks in update_prices failed")
-
+    Archived owners are excluded upstream by ``_fetch_portfolio_owners``, so their
+    equity, timestamp and ``portfolio_performance`` rows stay frozen at the last
+    value written before retirement.
+    """
     owners = await _fetch_portfolio_owners(sb_client)
     if not owners:
         logger.warning("No portfolios found to update.")
-        return
+        return 0
 
     logger.info(f"Found {len(owners)} portfolios to update.")
     portfolios_to_update, all_tickers, open_shorts = await _collect_portfolios_and_tickers(owners, sb_client)
@@ -250,7 +240,26 @@ async def update_prices(dry_run: bool = False):
 
     updated_count = await _update_portfolio_metrics(portfolios_to_update, price_map, open_shorts)
     logger.info(f"Price update complete. Updated {updated_count} portfolios.")
+    return updated_count
 
+
+async def update_prices(dry_run: bool = False):
+    """Refresh market data and portfolio state.
+
+    Strategy execution (max pain, PEAD, sentiment fader, sector exits) is NOT run here:
+    the live-spy-trader daemon on the MiniPC is the single owner of time-gated strategy
+    hooks. This entry point only refreshes quotes, marks, and benchmark history.
+    """
+    logger.info("Starting Price Update Script (No LLM)...")
+
+    sb_client = get_supabase_client()
+    mdm = MarketDataManager()
+
+    if not await mdm.is_market_open():
+        logger.info("Market is currently CLOSED. Skipping price update to save resources.")
+        return
+
+    await refresh_portfolio_marks(sb_client, mdm)
     await fetch_benchmark_history(mdm)
 
 

@@ -22,32 +22,28 @@ def test_workflow_schedule():
     assert not schedule, f"Expected no native schedule in ingest.yml, found: {schedule}"
 
 
-def test_update_prices_workflow_schedule():
-    """Verify that update-prices.yml covers 13:00-21:00 UTC to support EDT 9:30 AM open."""
+def test_update_prices_workflow_removed():
+    """The MiniPC daemon is the single owner of price fetching and strategy hooks.
+
+    GitHub Actions no longer polls prices: the old update-prices.yml workflow was
+    deleted so the same data can never be fetched and written by two schedulers.
+    """
     root = Path(__file__).resolve().parent.parent.parent.parent
     prices_yml_path = root / ".github" / "workflows" / "update-prices.yml"
 
-    assert prices_yml_path.exists(), f"Could not find workflow file at {prices_yml_path}"
-
-    with open(prices_yml_path) as f:
-        config = yaml.safe_load(f)
-
-    on_key = "on" if "on" in config else True
-    schedule = config.get(on_key, {}).get("schedule", [])
-    cron_triggers = [trigger.get("cron") for trigger in schedule if isinstance(trigger, dict) and "cron" in trigger]
-
-    assert "0,30 13-21 * * 1-5" in cron_triggers, (
-        f"Expected 0,30 13-21 * * 1-5 in cron triggers, found: {cron_triggers}"
+    assert not prices_yml_path.exists(), (
+        "update-prices.yml must stay deleted: trading/runner.py owns quotes, marks, "
+        "history refresh and the time-gated strategy hooks on the MiniPC"
     )
 
-    jobs = config.get("jobs", {})
-    job = jobs.get("update-prices", {})
-    steps = job.get("steps", [])
-    run_step = next((s for s in steps if "update_prices.py" in s.get("run", "")), None)
-    assert run_step is not None
-    step_env = run_step.get("env", {})
-    assert "ALPACA_API_KEY" in step_env
-    assert "ALPACA_SECRET_KEY" in step_env
+    runner_path = root / "apps" / "engine" / "trading" / "runner.py"
+    runner_src = runner_path.read_text()
+    for owned in (
+        "run_systematic_strategy_hooks",
+        "refresh_portfolio_marks",
+        "fetch_benchmark_history",
+    ):
+        assert owned in runner_src, f"runner.py must own {owned}"
 
 
 def test_daily_predictor_workflow_schedule():

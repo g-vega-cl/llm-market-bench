@@ -123,7 +123,7 @@ Fluid layout rules prevent cards from shifting horizontally or wrapping unexpect
 When users navigate between model, track, or asset tabs (e.g. switching between baseline and champion models on `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx`), primary decision and hero cards must maintain invariant vertical positioning across tabs:
 
 - **Primary Anchor Stability**: Anchor components such as `HeroPredictionCard` (`apps/web/src/features/daily-predictions/components/HeroPredictionCard.tsx`) and `PredictionsTable` (`apps/web/src/features/daily-predictions/components/PredictionsTable.tsx`) must never be shoved downward or displaced when switching to a tab that possesses extra metadata.
-- **Auxiliary Card Placement**: Tab-specific supplementary sections (such as `CuratedManifestCard` in `apps/web/src/features/daily-predictions/components/CuratedManifestCard.tsx`, detailing the Champion model's data manifest) must be placed underneath the primary table and hero blocks rather than inserted above them.
+- **Auxiliary Card Placement**: Tab-specific supplementary sections (such as the retired champion `CuratedManifestCard`, removed with the four-regime track) must be placed underneath the primary table and hero blocks rather than inserted above them.
 - **Zero Whiplash on Tab Transitions**: Placing auxiliary panels at the bottom ensures the user's primary visual focal points (metrics overview, latest prediction outlook, predictions table) remain rock-solid and visually stable across tab clicks, avoiding disorienting vertical layout shifts.
 
 ### 7. Secondary UI Query Settlement Gating

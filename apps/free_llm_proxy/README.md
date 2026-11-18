@@ -118,7 +118,17 @@ print(response.choices[0].message.content)
 
 ### OpenCode Go (Paid Tier)
 
-`opencode-go` discovers its catalog from `https://opencode.ai/zen/go/v1/models` — there is no model list to maintain. Set `OPENCODE_GO_API_KEY` to activate it. It is **never** part of `free-auto`, `auto-strata`, `free-fast`, or `free-reasoning`; only `auto-go`, `auto-strata-go`, `strata-auto-go`, and explicit `opencode-go/<model>` requests can reach it. Within the `*-go` aliases it sits after both the healthy and cooling free candidates, so a 429 cooldown storm still tries free providers first. If its catalog cannot be read, the proxy fails closed instead of sending a paid request with an ungrounded model name. The proxy forwards a client `x-opencode-session` header only after validating it, or derives a stable fallback session ID automatically, since Go requires one on every chat request.
+`opencode-go` discovers its catalog from `https://opencode.ai/zen/go/v1/models` — there is no model list to maintain. Set `OPENCODE_GO_API_KEY` to activate it. It is **never** part of `free-auto`, `auto-strata`, `free-fast`, or `free-reasoning`; only `auto-go`, `auto-strata-go`, `strata-auto-go`, and explicit `opencode-go/<model>` requests can reach it. Within the `*-go` aliases it sits after both the healthy and cooling free candidates, so a 429 cooldown storm still tries free providers first. If its catalog cannot be read, the proxy fails closed instead of sending a paid request with an ungrounded model name.
+
+Inside Go the order is **plan-included models first, then one metered model**:
+
+1. `free_model_patterns` (`["*free*"]`) matched against the live catalog — today `beam-free`, `longcat-2.5-free`, `hy4-flash-free`, `iceman-contributor-free`. These are covered by the Go subscription, so failing over to them costs nothing extra.
+2. `last_resort_model` (`deepseek-v4.1-flash`) — the single metered model this provider is allowed to spend on. If the live catalog no longer lists it, the proxy logs a warning and falls back to the catalog-resolved model rather than inventing an id or turning every request into a 502.
+3. The normally resolved model, as a final grounded attempt.
+
+An explicit `opencode-go/<model>` request bypasses this ordering: the caller is deliberately charging that model.
+
+Money control is **routing**, not a timeout branch: `providers.json` gives the paid provider an `auto_aliases` allowlist, and the router admits it only to those aliases (or to an explicit `opencode-go/...` request). A free alias therefore never sees a paid candidate at all — there is no timeout-keyed guard to configure, and none to leak spend through a stale flag. The proxy forwards a client `x-opencode-session` header only after validating it, or derives a stable fallback session ID automatically, since Go requires one on every chat request.
 
 ### Thinking Budgets and Output Ceilings
 
@@ -131,7 +141,10 @@ proxy therefore clamps to a per-provider ceiling instead of a single global numb
 | `providers.json` → `max_output_tokens` | gemini `65536`, all other cloud providers `32768` | Provider's own output/thinking ceiling. The clamp is `min(requested, ceiling)` and only ever lowers a caller's budget. |
 | `CLOUD_MAX_OUTPUT_TOKENS` | `32768` | Fallback ceiling for providers that declare none. Strata is exempt (keeps its 128k+ budget). |
 | `CLOUD_REQUEST_TIMEOUT_SECONDS` | `90.0` | Wall-clock cap per non-Strata attempt; also the httpx read window (`client.build_timeout`), so there is no second hidden cap. Non-streaming only — a streaming response returns its generator as soon as headers arrive. |
-| `PAID_TIMEOUT_GUARD` | `true` | A free provider timing out never falls through to the paid OpenCode Go tier. Set `false` to restore pre-audit failover. Explicit `opencode-go/<model>` requests are always served. |
+| `FREE_ATTEMPT_TIMEOUT_SECONDS` | `45.0` | Tighter per-attempt cap for free candidates (non-streaming), clamped further by what is left of the free budget. |
+| `PAID_ATTEMPT_TIMEOUT_SECONDS` | `45.0` | Per-attempt cap for the paid last resort, so one metered call cannot pin the pass. |
+| `FREE_PASS_DEADLINE_SECONDS` | `120.0` | Whole free-segment budget (non-streaming). Once spent, remaining free candidates are skipped with a `free pass deadline exhausted` entry in the failover chain and the paid tier runs. Re-checked before every dispatch, including each cascade retry, so a multi-model provider cannot spend it several times over. `0` disables. |
+| `PAID_PASS_DEADLINE_SECONDS` | `45.0` | Whole metered-segment budget on top of the free one, so a `*-go` request cannot bill for an unbounded sequence of paid attempts. Worst case for a non-streaming pass is `FREE + PAID` = 165s, inside the engine's 180s caller window. `0` disables. |
 | `AUTO_GO_DEFAULT_REASONING_EFFORT` | unset | Optional thinking floor (`low`/`medium`/`high`) applied to `*-go` aliases. Unset keeps the provider default (Gemini 3 = dynamic/high), so the proxy never fabricates a cap. |
 
 Thinking controls are **only forwarded to providers that declare support** in

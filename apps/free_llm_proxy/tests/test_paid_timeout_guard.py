@@ -101,23 +101,13 @@ async def test_connect_error_still_maps_to_503_connection_error():
 
 
 # --------------------------------------------------------------------------- #
-# Money guard: a free-provider timeout must not reach the paid tier
+# Timeouts and the paid tier
 # --------------------------------------------------------------------------- #
 
-
-def test_timeout_skips_paid_tier(client, monkeypatch):
-    """auto-go: kilo timing out must produce an error, not an OpenCode Go charge."""
-    _install(monkeypatch)
-    monkeypatch.setattr(config, "PAID_TIMEOUT_GUARD", True, raising=False)
-    dispatched = capture(monkeypatch, behaviour=_timeout_free)
-
-    resp = post(client, "auto-go")
-
-    assert [name for name, _ in dispatched] == ["Kilo Code"]
-    assert resp.status_code == 502
-    assert "paid guard" in resp.text
-    # The terminal error still reports the real cause, not the guard's note.
-    assert "timed out" in resp.text
+# The money control is routing, not a timeout branch: the router admits a paid
+# provider only to the aliases in its `auto_aliases` allowlist, so a free-only
+# alias can never buy tokens (see test_last_resort_failover.py). These tests pin
+# the timeout-specific behaviour that remains in the dispatch loop.
 
 
 def test_timeout_does_not_trigger_in_provider_cascade(client, monkeypatch):
@@ -128,18 +118,6 @@ def test_timeout_does_not_trigger_in_provider_cascade(client, monkeypatch):
     post(client, "auto-go")
 
     assert [name for name, _ in dispatched].count("Kilo Code") == 1
-
-
-def test_timeout_still_dispatches_when_guard_disabled(client, monkeypatch):
-    """With the guard off, paid failover behaves as before (explicit opt-out)."""
-    _install(monkeypatch)
-    monkeypatch.setattr(config, "PAID_TIMEOUT_GUARD", False, raising=False)
-    dispatched = capture(monkeypatch, behaviour=_timeout_free)
-
-    resp = post(client, "auto-go")
-
-    assert [name for name, _ in dispatched] == ["Kilo Code", "OpenCode Go"]
-    assert resp.status_code == 200
 
 
 def test_explicit_paid_target_survives_free_timeout(client, monkeypatch):
@@ -153,8 +131,8 @@ def test_explicit_paid_target_survives_free_timeout(client, monkeypatch):
     assert [name for name, _ in dispatched] == ["Kilo Code", "OpenCode Go"]
 
 
-def test_timeout_guard_is_per_request(client, monkeypatch):
-    """A timeout in one request must not poison the next request's paid fallback."""
+def test_timeout_does_not_poison_the_next_request(client, monkeypatch):
+    """A timeout in one request must not change the next request's failover."""
     _install(monkeypatch)
     capture(monkeypatch, behaviour=_timeout_free)
     post(client, "auto-go")
@@ -171,7 +149,7 @@ def test_timeout_guard_is_per_request(client, monkeypatch):
 
 
 def test_429_still_reaches_paid_tier(client, monkeypatch):
-    """Only timeouts are guarded; a genuine rate limit may still use the paid tier."""
+    """A genuine rate limit still advances to the paid tier."""
     _install(monkeypatch)
 
     async def rate_limited(provider_cfg_):

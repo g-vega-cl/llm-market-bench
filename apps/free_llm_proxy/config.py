@@ -30,12 +30,28 @@ CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "32768")
 CLOUD_REQUEST_TIMEOUT_SECONDS = float(
     os.environ.get("CLOUD_REQUEST_TIMEOUT_SECONDS", "90.0")
 )
-# Never let a wall-clock timeout on a free provider buy paid-tier tokens.
-PAID_TIMEOUT_GUARD = os.environ.get("PAID_TIMEOUT_GUARD", "true").lower() not in {
-    "0",
-    "false",
-    "no",
-}
+# Per-attempt caps under the wall clock above. The engine's auto-go callers give
+# up at 180s and retry twice, so one pass has to return an answer (or a real
+# error) well inside that window: a 6-provider pass at 90s each took 272-721s
+# and was abandoned by the caller every time.
+FREE_ATTEMPT_TIMEOUT_SECONDS = float(
+    os.environ.get("FREE_ATTEMPT_TIMEOUT_SECONDS", "45.0")
+)
+PAID_ATTEMPT_TIMEOUT_SECONDS = float(
+    os.environ.get("PAID_ATTEMPT_TIMEOUT_SECONDS", "45.0")
+)
+# Whole free segment budget. Once spent, remaining free candidates are skipped
+# with a logged reason and the *-go paid last resort is dispatched. `<= 0`
+# disables. Re-checked before every dispatch, so a multi-model cascade cannot
+# spend it more than once.
+FREE_PASS_DEADLINE_SECONDS = float(
+    os.environ.get("FREE_PASS_DEADLINE_SECONDS", "120.0")
+)
+# Whole metered-segment budget, on top of the free budget. One *-go request
+# therefore cannot bill for more than this window of paid attempts; with the
+# defaults a non-streaming pass ends by FREE + PAID = 165s, inside the engine's
+# 180s caller timeout.
+PAID_PASS_DEADLINE_SECONDS = float(os.environ.get("PAID_PASS_DEADLINE_SECONDS", "45.0"))
 # Optional global reasoning effort for the *-go aliases. Empty keeps the
 # provider default (Gemini 3 = dynamic/high) instead of forcing a floor.
 AUTO_GO_DEFAULT_REASONING_EFFORT = (

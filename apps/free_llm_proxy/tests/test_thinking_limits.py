@@ -44,9 +44,19 @@ def test_cloud_timeout_default_exceeds_the_old_cap():
     assert 45.0 < config.CLOUD_REQUEST_TIMEOUT_SECONDS <= 180.0
 
 
-def test_paid_timeout_guard_enabled_by_default():
-    """A timeout on a free provider must not be allowed to buy paid tokens."""
-    assert config.PAID_TIMEOUT_GUARD is True
+def test_pass_budgets_are_bounded_and_ordered():
+    """A pass is bounded twice: the free segment first, the metered one after it.
+
+    The money control is routing (a paid provider is only admitted to a `*-go`
+    chain), so the remaining cost control is time: neither segment may outlive
+    the caller's own 180s window.
+    """
+    assert config.FREE_ATTEMPT_TIMEOUT_SECONDS <= config.CLOUD_REQUEST_TIMEOUT_SECONDS
+    assert config.PAID_ATTEMPT_TIMEOUT_SECONDS <= config.CLOUD_REQUEST_TIMEOUT_SECONDS
+    total = config.FREE_PASS_DEADLINE_SECONDS + config.PAID_PASS_DEADLINE_SECONDS
+    assert 0 < config.FREE_PASS_DEADLINE_SECONDS
+    assert 0 < config.PAID_PASS_DEADLINE_SECONDS
+    assert total <= 180.0
 
 
 def test_provider_catalog_declares_output_ceilings():

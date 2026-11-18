@@ -114,6 +114,8 @@
       "extra_headers": {
         "User-Agent": "free-llm-proxy/1.0 (llm.clvg.uk)"
       },
+      "free_model_patterns": ["*free*"],
+      "last_resort_model": "deepseek-v4.1-flash",
       "preferred_patterns": [
         "*flash*",
         "*kimi*k3*",

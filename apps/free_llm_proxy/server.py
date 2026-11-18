@@ -4,7 +4,7 @@ import asyncio
 import logging
 import secrets
 import time
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -14,6 +14,16 @@ from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
 from apps.free_llm_proxy.client import execute_completion
 from apps.free_llm_proxy.db import AuditDB
 from apps.free_llm_proxy.discovery import ModelDiscovery
+from apps.free_llm_proxy.failover import (
+    IN_PROVIDER_CASCADES,
+    MIN_ATTEMPT_SECONDS,
+    UNCAPPED,
+    attempt_budget,
+    is_futile_rate_limit,
+    is_plan_model,
+    opencode_go_attempts,
+    segment_remaining_s,
+)
 from apps.free_llm_proxy.models import ChatCompletionRequest
 from apps.free_llm_proxy.router import Router, estimate_prompt_tokens
 from apps.free_llm_proxy.security import UnauthorizedMonitor
@@ -46,8 +56,14 @@ async def _dispatch_with_timeout(
     provider_cfg: dict[str, Any],
     payload: dict[str, Any],
     stream: bool,
+    budget_s: float | None = None,
 ) -> tuple[int, Any, dict[str, str]]:
-    """Dispatch upstream completion with a wall-clock cap for non-Strata cloud routes."""
+    """Dispatch upstream completion with a wall-clock cap for non-Strata cloud routes.
+
+    ``budget_s`` tightens the configured cap for this one attempt (the free
+    segment's remaining budget, or the paid tier's own smaller cap). ``None``
+    keeps the provider-wide default.
+    """
     timeout = config.CLOUD_REQUEST_TIMEOUT_SECONDS
     if provider_id == "strata" or timeout <= 0:
         return await execute_completion(
@@ -55,6 +71,8 @@ async def _dispatch_with_timeout(
             payload=payload,
             stream=stream,
         )
+    if budget_s is not None:
+        timeout = min(timeout, budget_s)
     try:
         return await asyncio.wait_for(
             execute_completion(
@@ -75,6 +93,118 @@ async def _dispatch_with_timeout(
             },
             {},
         )
+
+
+async def _dispatch_candidate_attempts(
+    p_id: str,
+    p_cfg: dict[str, Any],
+    dispatch_cfg: dict[str, Any],
+    payload: dict[str, Any],
+    attempt_models: list[tuple[str, bool]],
+    *,
+    stream: bool,
+    is_paid: bool,
+    metered_used: int,
+    remaining_fn: Callable[[], float],
+    failover_log: list[str],
+) -> tuple[tuple[int, Any, dict[str, str]], str | None, int, dict[str, Any] | None]:
+    """Dispatches this candidate's models in order, spending at most one metered call.
+
+    Returns ``((status, body, headers), answered_model, metered_used, skip_error)``.
+    A skipped candidate returns status ``0`` with the reason already recorded in
+    ``failover_log``, so the caller never mistakes a harness deadline for a
+    provider response.
+    """
+    status_code: int = 0
+    body_or_gen: Any = None
+    resp_headers: dict[str, str] = {}
+    skip_error: dict[str, Any] | None = None
+
+    for attempt_model, metered in attempt_models:
+        if metered and metered_used >= 1:
+            failover_log.append(
+                f"{p_id} ({attempt_model} skipped: metered attempt already spent)"
+            )
+            break
+        budget = UNCAPPED if stream else attempt_budget(p_cfg, remaining_fn())
+        if budget.skip:
+            segment = "paid" if is_paid else "free"
+            failover_log.append(f"{p_id} (skipped: {segment} pass deadline exhausted)")
+            skip_error = {
+                "error": {
+                    "message": (
+                        f"{p_id} skipped: the {segment} segment budget is spent; "
+                        "raise FREE_PASS_DEADLINE_SECONDS / "
+                        "PAID_PASS_DEADLINE_SECONDS (0 disables)"
+                    ),
+                    "type": "timeout_error",
+                }
+            }
+            break
+        payload["model"] = attempt_model
+        status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
+            provider_id=p_id,
+            provider_cfg=dispatch_cfg,
+            payload=payload,
+            stream=stream,
+            budget_s=budget.cap_s,
+        )
+        if metered:
+            metered_used += 1
+        if status_code == 200:
+            return (
+                (status_code, body_or_gen, resp_headers),
+                attempt_model,
+                metered_used,
+                None,
+            )
+
+    return (status_code, body_or_gen, resp_headers), None, metered_used, skip_error
+
+
+async def _cascade_in_provider(
+    provider_id: str,
+    provider_cfg: dict[str, Any],
+    dispatch_cfg: dict[str, Any],
+    payload: dict[str, Any],
+    target_model: str,
+    result: tuple[int, Any, dict[str, str]],
+    *,
+    stream: bool,
+    remaining_fn: Callable[[], float],
+) -> tuple[int, Any, dict[str, str], str]:
+    """Retries adjacent models on the same provider after a transient failure.
+
+    Returns the last ``(status, body, headers)`` plus the model that answered (or
+    the last one tried). The segment budget is recomputed before *every* retry,
+    so a four-model cascade cannot spend the request budget four times over, and
+    quota-dead 429s stop the cascade mid-way instead of only at its start.
+    """
+    status_code, body_or_gen, resp_headers = result
+    spec = IN_PROVIDER_CASCADES.get(provider_id)
+    if not spec or status_code not in spec[0]:
+        return status_code, body_or_gen, resp_headers, target_model
+
+    for fallback_model in spec[1]:
+        if target_model.endswith(fallback_model):
+            continue
+        if is_futile_rate_limit(status_code, body_or_gen):
+            break
+        budget = UNCAPPED if stream else attempt_budget(provider_cfg, remaining_fn())
+        if budget.skip:
+            break
+        payload["model"] = fallback_model
+        status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
+            provider_id=provider_id,
+            provider_cfg=dispatch_cfg,
+            payload=payload,
+            stream=stream,
+            budget_s=budget.cap_s,
+        )
+        if status_code == 200:
+            target_model = fallback_model
+            break
+    return status_code, body_or_gen, resp_headers, target_model
 
 
 THINKING_KEYS = ("reasoning_effort", "reasoning", "reasoning_budget_tokens")
@@ -366,25 +496,33 @@ async def chat_completions(
     start_time = time.perf_counter()
     failover_log = []
     last_error = None
-    timed_out_seen = False
+    paid_started: float | None = None
+    metered_dispatches = 0
+
+    def _segment_remaining(is_paid_candidate: bool) -> float:
+        """Seconds left in the segment that is currently allowed to spend."""
+        if not is_paid_candidate:
+            return segment_remaining_s(start_time, config.FREE_PASS_DEADLINE_SECONDS)
+        return segment_remaining_s(paid_started, config.PAID_PASS_DEADLINE_SECONDS)
 
     for p_id, p_cfg in candidate_chain:
-        # Money guard: a slow free provider must never buy paid-tier tokens.
-        if (
-            config.PAID_TIMEOUT_GUARD
-            and p_cfg.get("billing") == "paid"
-            and timed_out_seen
-            and not _is_explicit_paid_request(req.model, p_id)
-        ):
-            failover_log.append(f"{p_id} (skipped: paid guard after free timeout)")
-            # Keep the original timeout body as last_error so the terminal 502
-            # reports the real cause instead of the guard's own explanation.
+        is_paid = p_cfg.get("billing") == "paid"
+        if is_paid and paid_started is None:
+            paid_started = time.perf_counter()
+
+        # Budget guard, re-checked at every dispatch below as well: the free
+        # segment must finish inside the caller's own window, and the metered
+        # segment gets its own small budget so a paid pass cannot outlive it.
+        if not req.stream and _segment_remaining(is_paid) < MIN_ATTEMPT_SECONDS:
+            segment = "paid" if is_paid else "free"
+            failover_log.append(f"{p_id} (skipped: {segment} pass deadline exhausted)")
             if last_error is None:
                 last_error = {
                     "error": {
                         "message": (
-                            f"{p_id} skipped: cheap tier timed out; paid dispatch "
-                            "refused (set PAID_TIMEOUT_GUARD=false to override)"
+                            f"{p_id} skipped: the {segment} segment budget is spent; "
+                            "raise FREE_PASS_DEADLINE_SECONDS / "
+                            "PAID_PASS_DEADLINE_SECONDS (0 disables)"
                         ),
                         "type": "timeout_error",
                     }
@@ -401,7 +539,7 @@ async def chat_completions(
         available_models = await discovery.fetch_live_models(p_id, base_url, headers)
 
         # Fail closed on money: never dispatch a paid request against an unknown catalog.
-        if p_cfg.get("billing") == "paid" and not available_models:
+        if is_paid and not available_models:
             failover_log.append(f"{p_id} (catalog unavailable; paid dispatch refused)")
             last_error = {
                 "error": {
@@ -444,107 +582,58 @@ async def chat_completions(
             apply_thinking_params(payload, p_cfg, req.model)
             apply_output_ceiling(payload, p_cfg)
 
-        status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
-            provider_id=p_id,
-            provider_cfg=dispatch_cfg,
-            payload=payload,
+        # A plan-bearing provider declares which of its models the subscription
+        # already covers. Spend those first and keep exactly one metered model as
+        # the last resort, so a subscription call never buys tokens needlessly.
+        attempt_models: list[tuple[str, bool]] = [
+            (target_model, is_paid and not is_plan_model(p_cfg, target_model))
+        ]
+        if p_id == "opencode-go" and not _is_explicit_paid_request(req.model, p_id):
+            attempt_models = opencode_go_attempts(p_cfg, available_models, target_model)
+
+        (
+            (status_code, body_or_gen, resp_headers),
+            answered_model,
+            metered_dispatches,
+            skip_error,
+        ) = await _dispatch_candidate_attempts(
+            p_id,
+            p_cfg,
+            dispatch_cfg,
+            payload,
+            attempt_models,
             stream=req.stream,
+            is_paid=is_paid,
+            metered_used=metered_dispatches,
+            remaining_fn=lambda: _segment_remaining(is_paid),
+            failover_log=failover_log,
         )
+        if answered_model:
+            target_model = answered_model
+        if skip_error is not None and last_error is None:
+            last_error = skip_error
 
-        # In-provider cascade for Gemini when high demand (503) or rate-limit (429) occurs
-        if p_id == "gemini" and status_code in (429, 503):
-            gemini_fallbacks = [
-                m
-                for m in [
-                    "gemini-flash-latest",
-                    "gemini-3.8-flash",
-                    "gemini-3.6-flash",
-                    "gemini-3.5-flash",
-                ]
-                if m != target_model and not target_model.endswith(m)
-            ]
-            for fallback_model in gemini_fallbacks:
-                payload["model"] = fallback_model
-                status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
-                    provider_id=p_id,
-                    provider_cfg=dispatch_cfg,
-                    payload=payload,
-                    stream=req.stream,
-                )
-                if status_code == 200:
-                    target_model = fallback_model
-                    break
+        if status_code == 0:
+            # Nothing was dispatched for this candidate: the budget ran out
+            # between the chain guard and the attempt. The skip is already in the
+            # failover log, and there is no provider result to strike or report.
+            continue
 
-        # In-provider cascade for OpenRouter when high demand (503) or rate-limit (429) occurs
-        if p_id == "openrouter" and status_code in (429, 503):
-            or_fallbacks = [
-                m
-                for m in [
-                    "openrouter/free",
-                    "nvidia/nemotron-3-ultra-550b-a55b:free",
-                    "nvidia/nemotron-3.5-super-vl:free",
-                    "nvidia/nemotron-3.5-lightning:free",
-                ]
-                if m != target_model and not target_model.endswith(m)
-            ]
-            for fallback_model in or_fallbacks:
-                payload["model"] = fallback_model
-                status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
-                    provider_id=p_id,
-                    provider_cfg=dispatch_cfg,
-                    payload=payload,
-                    stream=req.stream,
-                )
-                if status_code == 200:
-                    target_model = fallback_model
-                    break
-
-        # In-provider cascade for NVIDIA NIM when deprecated function (404) or rate-limit occurs
-        if p_id == "nvidia" and status_code in (404, 429, 503):
-            nvidia_fallbacks = [
-                m
-                for m in [
-                    "minimaxai/minimax-m3.1-flash",
-                    "nvidia/nemotron-3.5-super-vl-120b-a12b",
-                    "nvidia/nemotron-3-ultra-550b-a55b",
-                    "mistralai/mistral-large-4-1t-a52b",
-                ]
-                if m != target_model and not target_model.endswith(m)
-            ]
-            for fallback_model in nvidia_fallbacks:
-                payload["model"] = fallback_model
-                status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
-                    provider_id=p_id,
-                    provider_cfg=dispatch_cfg,
-                    payload=payload,
-                    stream=req.stream,
-                )
-                if status_code == 200:
-                    target_model = fallback_model
-                    break
-
-        # In-provider cascade for Kilo Code when paid model (401) or rate-limit occurs
-        if p_id == "kilo" and status_code in (400, 401, 429, 503):
-            kilo_fallbacks = [
-                m
-                for m in [
-                    "kilo-auto/free",
-                    "reflection/beam-free",
-                    "nvidia/nemotron-3.5-super-vl:free",
-                ]
-                if m != target_model and not target_model.endswith(m)
-            ]
-            for fallback_model in kilo_fallbacks:
-                payload["model"] = fallback_model
-                status_code, body_or_gen, resp_headers = await _dispatch_with_timeout(
-                    provider_id=p_id,
-                    provider_cfg=dispatch_cfg,
-                    payload=payload,
-                    stream=req.stream,
-                )
-                if status_code == 200:
-                    target_model = fallback_model
-                    break
+        (
+            status_code,
+            body_or_gen,
+            resp_headers,
+            target_model,
+        ) = await _cascade_in_provider(
+            p_id,
+            p_cfg,
+            dispatch_cfg,
+            payload,
+            target_model,
+            (status_code, body_or_gen, resp_headers),
+            stream=req.stream,
+            remaining_fn=lambda: _segment_remaining(is_paid),
+        )
 
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
 
@@ -654,11 +743,6 @@ async def chat_completions(
 
         else:
             # Trip circuit breaker and try next candidate
-            if (
-                isinstance(body_or_gen, dict)
-                and (body_or_gen.get("error") or {}).get("type") == "timeout_error"
-            ):
-                timed_out_seen = True
             retry_after = resp_headers.get("retry-after") or resp_headers.get(
                 "ratelimit-reset"
             )

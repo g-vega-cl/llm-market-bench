@@ -62,7 +62,9 @@ You do **not** need to register or configure keys for these; they are active in 
 * **Env Variable**: Set `OPENCODE_GO_API_KEY=oc_sk_...` in `apps/free_llm_proxy/.env`.
 * **Catalog**: Discovered automatically from `GET https://opencode.ai/zen/go/v1/models` (no model list to maintain).
 * **Routing**: Reachable only via `auto-go`, `auto-strata-go`, `strata-auto-go`, or explicit `opencode-go/<model>`. It is deliberately excluded from every free alias (`free-auto`, `auto-strata`, `free-fast`, `free-reasoning`) and sits after both healthy and cooling free candidates as a last resort. Its `billing: "paid"` + `auto_aliases` configuration is fail-closed, and dispatch is refused if the live catalog cannot be discovered.
-* **Timeout guard**: `PAID_TIMEOUT_GUARD=true` (default) skips this tier when a free provider already timed out, so a slow reasoning pass cannot spend money. Explicit `opencode-go/<model>` requests bypass the guard because the charge is intentional. Set `PAID_TIMEOUT_GUARD=false` to restore unguarded failover.
+* **Money control is routing**: the `auto_aliases` allowlist in `providers.json` is what keeps this tier out of every free alias. A free alias never gets a paid candidate, so no timeout-keyed flag is involved and none can be misconfigured into spend. Explicit `opencode-go/<model>` requests are deliberate charges and are always served.
+* **Time bound**: a non-streaming pass is capped at `FREE_PASS_DEADLINE_SECONDS` (120s) plus `PAID_PASS_DEADLINE_SECONDS` (45s), re-checked before every dispatch including cascade retries, and only one metered model may be dispatched per request.
+* **Model order inside Go**: plan-included models first (`free_model_patterns`, default `["*free*"]` — `beam-free`, `longcat-2.5-free`, `hy4-flash-free`, `iceman-contributor-free` today), then the single metered `last_resort_model` (`deepseek-v4.1-flash`), then the catalog-resolved model. A retired pin degrades to the catalog-resolved model with a warning rather than a 502.
 
 ---
 

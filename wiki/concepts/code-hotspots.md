@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **293**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **294**).
 
 ## Top Hotspots
 
@@ -23,8 +23,8 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 12 | 6 | 50.0% | 226 | 72 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 16 | 4 | 25.0% | 501 | 64 | **HIGH** |
 | `apps/web/src/components/ui/DefaultCatchBoundary.tsx` | 9 | 7 | 77.8% | 201 | 63 | **HIGH** |
-| `apps/free_llm_proxy/server.py` | 15 | 4 | 26.7% | 717 | 60 | **HIGH** |
-| `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 14 | 4 | 28.6% | 382 | 56 | **HIGH** |
+| `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 15 | 4 | 26.7% | 382 | 60 | **HIGH** |
+| `apps/free_llm_proxy/server.py` | 15 | 4 | 26.7% | 703 | 60 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 11 | 5 | 45.5% | 192 | 55 | **HIGH** |
 | `apps/engine/tasks/newsletter_generator.py` | 10 | 5 | 50.0% | 428 | 50 | **HIGH** |
 | `apps/free_llm_proxy/tests/test_proxy.py` | 16 | 3 | 18.8% | 1457 | 48 | **HIGH** |
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **293**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **294**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **STEADY** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **293**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 293 | 100.0% |
+| `g-vega-cl` | 294 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **293**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 134 | ▇▇▇▇▇▇ |
+| 2026-11 | 135 | ▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

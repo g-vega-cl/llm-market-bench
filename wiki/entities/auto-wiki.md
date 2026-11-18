@@ -5,13 +5,13 @@ category: entity
 
 # Auto-Wiki Documentation Generator
 
-An automated system that reads staged git diffs and generates wiki documentation via LLM. It runs as part of the pre-commit hook, analyzing code changes and producing new entity pages, concept pages, log entries, and index updates without blocking the commit.
+An automated system that reads staged git diffs and generates wiki documentation via LLM. It runs as part of the pre-commit hook, analyzing code changes and producing new entity pages, concept pages, log entries, and index updates. A failing run blocks the commit — documentation is treated as a required artifact, not an optional nicety.
 
 ## Architecture
 
 The auto-wiki system consists of two components:
 
-- **`apps/engine/auto_wiki.py`** — Python script that collects the staged diff, sends it to an LLM (OpenRouter with ollama fallback), parses the JSON response, and writes wiki files
+- **`apps/engine/auto_wiki.py`** — Python script that collects the staged diff, sends it to an LLM (OpenRouter → free-llm-proxy fallback), parses the JSON response, and writes wiki files
 - **`scripts/auto-wiki.sh`** — Bash wrapper called from `.husky/pre-commit` that captures the diff, invokes the Python script, and re-stages any wiki changes
 
 ## Diff Filtering (`filter_diff`)
@@ -27,9 +27,15 @@ The script implements a 3-tier resilient fallback architecture:
 
 1. **OpenRouter Primary** — uses `~deepseek/deepseek-flash-latest` by default, configurable via `WIKI_DOC_MODEL` env var
 2. **OpenRouter Free Backup** — if the primary model fails or is rate-limited, automatically falls back to `openrouter/free` (configurable via `WIKI_DOC_FREE_MODEL`)
-3. **Local Ollama (Last Resort)** — if OpenRouter is unreachable or fails, falls back to local Ollama (`gemma4:31b` by default, configurable via `OLLAMA_MODEL` env var). It includes an **automatic dynamic fallback resolver**: if the requested model is not installed locally, it queries Ollama and falls back in order of preference (`gemma4:31b`, `qwen3.6:35b`, `llama3.1:8b`, etc.) or uses the first available local model.
+3. **free-llm-proxy (Last Resort)** — if both OpenRouter models fail, falls back to the in-repo `apps/free_llm_proxy/` over its OpenAI-compatible API. Base URL comes from `FREE_LLM_PROXY_URL` (default `https://llm.clvg.uk/v1`), the bearer key from `FREE_PROXY_MASTER_KEY`, and the model from `WIKI_DOC_PROXY_MODEL` (default `auto-go`). A loopback proxy URL (`127.0.0.1`, `localhost`, `::1`) is accepted without a master key so a local `free_llm_proxy` instance stays usable.
+
+Every tier is remote. An earlier on-device 31B-model tier was removed: it demanded tens of GB of RAM and a populated local model store, so on a clean checkout it always failed and blocked the commit anyway. Tier 3 now costs zero local GPU/RAM and reuses the same proxy the engine already routes through.
 
 The OpenRouter API key is resolved from the `OPENROUTER_API_KEY` environment variable or the macOS keychain item `openrouter-api-key`.
+
+### Proxy Call Parameters
+
+`call_free_proxy` posts an OpenAI-compatible payload to `{base_url}/chat/completions` with `temperature: 0.2`, `max_tokens: 32768`, and `response_format: {"type": "json_object"}`, using a 180-second timeout. A `null` content response raises an error noting that all upstream providers may be exhausted. The fallback model is selectable via the `--proxy-model` CLI flag (default `auto-go`).
 
 ### Token Budget
 
@@ -51,8 +57,8 @@ This keeps auto-generated pages lint-clean without requiring the LLM to distingu
 
 ## Safety & Design
 
-- **Resource Preservation**: To save VRAM/RAM, Ollama models are queried with `"keep_alive": "10s"`, which keeps them warm for 10 seconds to speed up rapid consecutive queries while still ensuring they unload cleanly from system memory shortly afterwards. Furthermore, once the pre-commit lifecycle finishes (regardless of success or failure), the `auto-wiki.sh` script executes a cleanup trap that automatically terminates the local Ollama background server process (`pkill` routine) to conserve CPU/memory.
-- **Non-blocking**: The pre-commit hook runs `auto-wiki.sh` with `|| true`, so wiki generation failures never block a commit
+- **Zero Local Compute**: No tier loads a model on the committing machine. The proxy tier is a plain HTTPS call, so contributors need neither a GPU nor a multi-GB model store to commit — `scripts/auto-wiki.sh` no longer starts or kills any local inference server.
+- **Blocking by Design**: `.husky/pre-commit` invokes `scripts/auto-wiki.sh` without `|| true`, and the script exits non-zero when every LLM tier fails, so an undocumented code change cannot slip through silently.
 - **Path traversal protection**: The `write_new_page` function validates that the target path stays within the `wiki/` directory
 - **Dry-run mode**: `--dry-run` prints the LLM response without writing files
 - **Skip logic**: Only triggers when staged files include non-documentation changes (skips wiki/raw/docs-only commits)

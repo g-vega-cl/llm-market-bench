@@ -15,9 +15,6 @@ SCRIPT="${REPO_ROOT}/apps/engine/auto_wiki.py"
 
 cleanup() {
     rm -f "$DIFF_FILE"
-    # Stop local Ollama server process after run is complete
-    echo "[auto-wiki] stopping local Ollama service..."
-    pkill -f "ollama serve" || pkill ollama || true
 }
 trap cleanup EXIT
 

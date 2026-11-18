@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Auto-document staged code changes into the wiki.
 
-Reads git diff --cached, sends it to an LLM (OpenRouter → ollama fallback),
-and writes new wiki pages, log entries, and index updates.
+Reads git diff --cached, sends it to an LLM (OpenRouter → free-llm-proxy
+fallback), and writes new wiki pages, log entries, and index updates.
 
 Usage:
     python apps/engine/auto_wiki.py --diff-file /tmp/diff.txt
@@ -12,7 +12,11 @@ Env / keychain:
     macOS keychain item
       "openrouter-api-key"    — fallback (security find-generic-password)
     WIKI_DOC_MODEL            — override default model
-    OLLAMA_MODEL              — fallback model (default: qwen3)
+    WIKI_DOC_FREE_MODEL       — OpenRouter free backup model
+    FREE_LLM_PROXY_URL        — last-resort OpenAI-compatible proxy
+                                (default: https://llm.clvg.uk/v1)
+    FREE_PROXY_MASTER_KEY     — bearer key for a remote proxy
+    WIKI_DOC_PROXY_MODEL      — proxy model (default: auto-go)
 
 Exit code 0 = no changes needed or success. Non-zero = error (printed to stderr).
 """
@@ -34,11 +38,12 @@ ENV_PATH = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 WIKI_DIR = REPO_ROOT / "wiki"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-OLLAMA_URL = "http://localhost:11434/api/chat"
+DEFAULT_PROXY_URL = "https://llm.clvg.uk/v1"
+LOCAL_PROXY_HOSTS = ("127.0.0.1", "localhost", "::1")
 
 DEFAULT_MODEL = "~deepseek/deepseek-flash-latest"
 DEFAULT_FREE_BACKUP_MODEL = "openrouter/free"
-DEFAULT_OLLAMA_MODEL = "gemma4:31b"
+DEFAULT_PROXY_MODEL = "auto-go"
 
 
 def get_api_key() -> str | None:
@@ -331,69 +336,55 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
     return _parse_llm_response(content)
 
 
-def get_available_ollama_models() -> list[str]:
-    """Fetch list of models available in local Ollama instance."""
-    try:
-        resp = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if resp.status_code == 200:
-            return [m["name"] for m in resp.json().get("models", [])]
-    except requests.RequestException:
-        pass
-    return []
+def get_proxy_config() -> tuple[str, str]:
+    """Resolve the free-llm-proxy base URL and bearer key.
 
-
-def call_ollama(prompt: str, model: str) -> dict:
-    system_prompt = SYSTEM_PROMPT + "\n\nIMPORTANT: Output ONLY the JSON. No markdown, no explanation."
-
-    # Check if the requested model is installed. If not, try to resolve fallback before sending request.
-    available_models = get_available_ollama_models()
-    resolved_model = model
-
-    if available_models and model not in available_models:
-        # Check if the model with ':latest' stripped or suffix differences exists, or use preferred list
-        fallback_preferences = ["gemma4:31b", "qwen3.6:35b", "llama3.1:8b"]
-        found_fallback = False
-
-        for pref in fallback_preferences:
-            if pref in available_models:
-                print(
-                    f"  [auto-wiki] model '{model}' not found. Falling back to installed model: {pref}", file=sys.stderr
-                )
-                resolved_model = pref
-                found_fallback = True
-                break
-
-        if not found_fallback:
-            # Fall back to the first available local model
-            fallback = available_models[0]
-            print(
-                f"  [auto-wiki] model '{model}' not found. Falling back to first available model: {fallback}",
-                file=sys.stderr,
+    A remote proxy requires FREE_PROXY_MASTER_KEY; a loopback proxy is accepted
+    without one so `docker compose up` of apps/free_llm_proxy stays usable.
+    """
+    base_url = (os.getenv("FREE_LLM_PROXY_URL") or DEFAULT_PROXY_URL).strip().rstrip("/")
+    api_key = (os.getenv("FREE_PROXY_MASTER_KEY") or "").strip()
+    if not api_key:
+        if any(host in base_url for host in LOCAL_PROXY_HOSTS):
+            api_key = "local"
+        else:
+            raise RuntimeError(
+                "FREE_PROXY_MASTER_KEY is required for the remote free-llm-proxy fallback "
+                f"({base_url}); set it in apps/engine/.env."
             )
-            resolved_model = fallback
+    return base_url, api_key
+
+
+def call_free_proxy(prompt: str, model: str | None = None) -> dict:
+    """Call the in-repo free-llm-proxy (OpenAI-compatible) as the last-resort tier.
+
+    Runs entirely off-box, so it needs no local GPU or RAM — unlike the removed
+    on-device tier, which needed a multi-GB model store just to be reachable.
+    """
+    base_url, api_key = get_proxy_config()
+    target_model = model or os.getenv("WIKI_DOC_PROXY_MODEL", DEFAULT_PROXY_MODEL)
 
     payload = {
-        "model": resolved_model,
+        "model": target_model,
         "messages": [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
-        "format": "json",
-        "stream": False,
-        "keep_alive": "10s",  # Keep model warm for 10s to speed up rapid sequential queries
+        "temperature": 0.2,
+        "max_tokens": 32768,
+        "response_format": {"type": "json_object"},
     }
 
-    resp = requests.post(OLLAMA_URL, json=payload, timeout=120)
-    if resp.status_code == 404:
-        models = get_available_ollama_models()
-        if models:
-            raise requests.RequestException(f"model '{resolved_model}' not found. Available: {', '.join(models)}")
-        else:
-            raise requests.RequestException(f"model '{resolved_model}' not found.")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    resp = requests.post(f"{base_url}/chat/completions", json=payload, headers=headers, timeout=180)
     resp.raise_for_status()
-    content = resp.json()["message"]["content"]
+    content = resp.json()["choices"][0]["message"]["content"]
     if content is None:
-        raise RuntimeError("Ollama returned null content. Model may have failed or timed out.")
+        raise RuntimeError("free-llm-proxy returned null content. All upstream providers may be exhausted.")
     return _parse_llm_response(content)
 
 
@@ -640,9 +631,9 @@ def main():
         help=f"OpenRouter free backup model (default: {DEFAULT_FREE_BACKUP_MODEL})",
     )
     parser.add_argument(
-        "--ollama-model",
-        default=os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
-        help=f"Ollama fallback model (default: {DEFAULT_OLLAMA_MODEL})",
+        "--proxy-model",
+        default=os.getenv("WIKI_DOC_PROXY_MODEL", DEFAULT_PROXY_MODEL),
+        help=f"free-llm-proxy fallback model (default: {DEFAULT_PROXY_MODEL})",
     )
     parser.add_argument(
         "--dry-run",
@@ -692,7 +683,7 @@ def main():
         except (json.JSONDecodeError, RuntimeError) as e:
             print(f"  [auto-wiki] OpenRouter response error ({model}): {e}", file=sys.stderr)
 
-        # Tier 2: Try OpenRouter Free backup model before local Ollama
+        # Tier 2: Try OpenRouter Free backup model before the free-llm-proxy
         if result is None and args.free_model and args.free_model != model:
             print(
                 f"  [auto-wiki] primary model failed, falling back to OpenRouter free backup ({args.free_model})...",
@@ -711,16 +702,20 @@ def main():
     else:
         print("  [auto-wiki] no OPENROUTER_API_KEY found (env or keychain)", file=sys.stderr)
 
-    # Tier 3: Fallback to local Ollama as last resort
+    # Tier 3: Fall back to the in-repo free-llm-proxy (remote, zero local RAM)
     if result is None:
-        print(f"  [auto-wiki] falling back to local Ollama ({args.ollama_model}) as last resort...", file=sys.stderr)
+        print(
+            f"  [auto-wiki] falling back to free-llm-proxy ({args.proxy_model}) as last resort...",
+            file=sys.stderr,
+        )
         try:
-            result = call_ollama(prompt, args.ollama_model)
-            print(f"  [auto-wiki] ollama ({args.ollama_model}) succeeded", file=sys.stderr)
-        except (requests.RequestException, json.JSONDecodeError) as e:
-            print(f"  [auto-wiki] ollama error: {e}", file=sys.stderr)
+            result = call_free_proxy(prompt, args.proxy_model)
+            print(f"  [auto-wiki] free-llm-proxy ({args.proxy_model}) succeeded", file=sys.stderr)
+        except (requests.RequestException, json.JSONDecodeError, RuntimeError) as e:
+            print(f"  [auto-wiki] free-llm-proxy error: {e}", file=sys.stderr)
             print(
-                "  [auto-wiki] ERROR: All LLM tiers (OpenRouter primary, OpenRouter free, and local Ollama) failed. Documentation is required.",
+                "  [auto-wiki] ERROR: All LLM tiers (OpenRouter primary, OpenRouter free, and free-llm-proxy) "
+                "failed. Documentation is required.",
                 file=sys.stderr,
             )
             sys.exit(1)  # BLOCK the commit

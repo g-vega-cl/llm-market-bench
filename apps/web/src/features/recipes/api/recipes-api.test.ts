@@ -431,7 +431,6 @@ describe('enqueueRecipeJob', () => {
         mockAdminDb = db;
 
         await enqueueRecipeJob('rec-1', 'backtest', 'user-1');
-        await enqueueRecipeJob('rec-1', 'live_turn', 'user-1');
 
         const inserts = calls.filter((call) => call.op === 'insert');
         expect(inserts[0]?.payload).toMatchObject({
@@ -442,12 +441,7 @@ describe('enqueueRecipeJob', () => {
             provider: 'free-llm-proxy',
             model: 'strata-auto-go',
         });
-        expect(inserts[1]?.payload).toMatchObject({
-            mode: 'live_turn',
-            priority: 1,
-            provider: 'free-llm-proxy',
-            model: 'auto-go',
-        });
+        expect(inserts).toHaveLength(1);
     });
 });
 

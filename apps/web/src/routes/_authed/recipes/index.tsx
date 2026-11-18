@@ -4,7 +4,6 @@ import {
     fetchRecipeQuotaStatusFn,
     fetchUserRecipesFn,
 } from '~/features/recipes/api/recipes-quota-api';
-import { fetchLivePortfolioAndRunsFn } from '~/features/recipes/api/recipes-studio-api';
 import { RecipeStudioPage } from '~/features/recipes/pages/RecipeStudioPage';
 import { seo } from '~/lib/seo';
 
@@ -15,29 +14,18 @@ export const Route = createFileRoute('/_authed/recipes/')({
     }),
     loaderDeps: ({ search }) => ({ recipeId: search.recipeId }),
     loader: async ({ deps }) => {
-        const [
-            initialStrategy,
-            recentBacktests,
-            initialLiveState,
-            initialQuota,
-            initialUserRecipes,
-        ] = await Promise.all([
-            deps.recipeId
-                ? fetchRecipeByIdFn({ data: { recipeId: deps.recipeId } }).catch(() => null)
-                : Promise.resolve(null),
-            fetchRecentBacktestJobsFn().catch(() => []),
-            deps.recipeId
-                ? fetchLivePortfolioAndRunsFn({ data: { recipeId: deps.recipeId } }).catch(
-                      () => null,
-                  )
-                : Promise.resolve(null),
-            fetchRecipeQuotaStatusFn().catch(() => null),
-            fetchUserRecipesFn().catch(() => []),
-        ]);
+        const [initialStrategy, recentBacktests, initialQuota, initialUserRecipes] =
+            await Promise.all([
+                deps.recipeId
+                    ? fetchRecipeByIdFn({ data: { recipeId: deps.recipeId } }).catch(() => null)
+                    : Promise.resolve(null),
+                fetchRecentBacktestJobsFn().catch(() => []),
+                fetchRecipeQuotaStatusFn().catch(() => null),
+                fetchUserRecipesFn().catch(() => []),
+            ]);
         return {
             initialStrategy,
             recentBacktests,
-            initialLiveState,
             initialQuota,
             initialUserRecipes,
         };
@@ -55,14 +43,13 @@ export const Route = createFileRoute('/_authed/recipes/')({
 });
 
 function RouteComponent() {
-    const { initialStrategy, recentBacktests, initialLiveState, initialQuota, initialUserRecipes } =
+    const { initialStrategy, recentBacktests, initialQuota, initialUserRecipes } =
         Route.useLoaderData();
     return (
         <RecipeStudioPage
             key={initialStrategy?.id ?? 'starter'}
             initialStrategy={initialStrategy}
             recentBacktests={recentBacktests}
-            initialLiveState={initialLiveState}
             initialQuota={initialQuota}
             initialUserRecipes={initialUserRecipes}
         />

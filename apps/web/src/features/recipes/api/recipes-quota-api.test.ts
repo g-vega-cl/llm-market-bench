@@ -249,35 +249,6 @@ describe('recipes-quota-api', () => {
         await expect(assertQuotaAllowsJob('user-1', 'backtest')).rejects.toThrow(
             'Backtest queue is currently full (20/20)',
         );
-
-        mockAdminDb = createQuotaMockDb({
-            queueRows: [
-                {
-                    id: 'l1',
-                    user_id: 'user-1',
-                    mode: 'live_turn',
-                    status: 'completed',
-                    created_at: nowIso,
-                },
-                {
-                    id: 'l2',
-                    user_id: 'user-1',
-                    mode: 'live_turn',
-                    status: 'completed',
-                    created_at: nowIso,
-                },
-                {
-                    id: 'l3',
-                    user_id: 'user-1',
-                    mode: 'live_turn',
-                    status: 'completed',
-                    created_at: nowIso,
-                },
-            ],
-        }).db;
-        await expect(assertQuotaAllowsJob('user-1', 'live_turn')).rejects.toThrow(
-            'Daily live turn limit reached (3/3 in 24h)',
-        );
     });
 
     it('enforces max 1 scheduled live recipe when toggling is_live on', async () => {

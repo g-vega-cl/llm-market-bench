@@ -1,0 +1,151 @@
+import { describe, expect, it } from 'vitest';
+import type { BacktestError } from '../types';
+import {
+    buildBacktestError,
+    buildInlinePortfolio,
+    isQuotaLimitMessage,
+    upsertSavedRecipeSummary,
+} from './live-studio-helpers';
+
+const baseList = [
+    {
+        id: 'rec-1',
+        name: 'Old Name',
+        cadence: '3h',
+        is_live: false,
+        trial_count: 0,
+        updated_at: '2026-04-06T09:00:00Z',
+    },
+];
+
+const savedRecipe = {
+    id: 'rec-2',
+    name: 'Trump & Chips',
+    cadence: '3h',
+    trial_count: 0,
+    updated_at: '2026-04-06T09:32:00Z',
+} as const;
+
+describe('isQuotaLimitMessage', () => {
+    it.each([
+        'Daily backtest limit reached (2/2 in 24h).',
+        'Concurrent backtest limit reached (1/1 active).',
+        'Backtest queue is currently full (20/20).',
+        'Scheduled live limit reached (1/1).',
+    ])('returns true for %s', (msg) => expect(isQuotaLimitMessage(msg)).toBe(true));
+
+    it.each([
+        'Network timeout',
+        'Navigation aborted',
+        'Recipe not found',
+        '',
+    ])('returns false for %s', (msg) => expect(isQuotaLimitMessage(msg)).toBe(false));
+});
+
+describe('buildBacktestError', () => {
+    it('classifies quota limit failures as kind quota without backtestJobId', () => {
+        const err = buildBacktestError({
+            err: new Error('Daily backtest limit reached (2/2 in 24h).'),
+        }) as BacktestError;
+        expect(err.kind).toBe('quota');
+        expect(err.backtestJobId).toBeUndefined();
+    });
+
+    it('preserves the queued backtest job id when navigation fails', () => {
+        const err = buildBacktestError({
+            err: new Error('Navigation aborted'),
+            queuedBacktestJobId: 'job-42',
+        }) as BacktestError;
+        expect(err.kind).toBe('navigation');
+        expect(err.backtestJobId).toBe('job-42');
+    });
+
+    it('returns execution kind for generic failures', () => {
+        const err = buildBacktestError({ err: new Error('Worker timed out') }) as BacktestError;
+        expect(err.kind).toBe('execution');
+        expect(err.message).toBe('Worker timed out');
+    });
+
+    it('handles a non-Error thrown value', () => {
+        const err = buildBacktestError({ err: 'just a string' }) as BacktestError;
+        expect(err.kind).toBe('execution');
+        expect(err.message).toBe('Execution failed');
+    });
+});
+
+describe('buildInlinePortfolio', () => {
+    const updatedPortfolio = {
+        paper_cash: 10000,
+        paper_positions: [
+            {
+                ticker: 'NVDA',
+                shares: 2,
+                entry_price: 120,
+                entry_time: '2026-04-06T09:30:00Z',
+                current_price: 135,
+                market_value: 270,
+                cost_basis: 240,
+                unrealized_pnl_net: 30,
+                unrealized_return_pct: 12.5,
+            },
+        ],
+        paper_trades: [],
+        paper_equity_curve: [],
+    };
+
+    it('builds a LivePortfolioSnapshot with enriched positions', () => {
+        const snapshot = buildInlinePortfolio({
+            mode: 'live_turn',
+            as_of_utc: '2026-04-06T09:30:00Z',
+            stages: [],
+            final_output: '[{"action":"BUY","ticker":"NVDA"}]',
+            signals: [{ action: 'BUY', ticker: 'NVDA' }],
+            signal_prices: { NVDA: 135 },
+            updated_portfolio: updatedPortfolio,
+        } as never);
+        expect(snapshot).not.toBeNull();
+        expect(snapshot?.cash).toBe(10000);
+        expect(snapshot?.open_positions).toHaveLength(1);
+        const pos = snapshot?.open_positions[0];
+        expect(pos?.current_price).toBe(135);
+        expect(pos?.market_value).toBe(270);
+        expect(pos?.unrealized_pnl_net).toBe(30);
+        expect(pos?.unrealized_return_pct).toBe(12.5);
+        expect(snapshot?.total_equity).toBe(10270);
+    });
+
+    it('returns null when the live run has no portfolio', () => {
+        const snapshot = buildInlinePortfolio({
+            mode: 'live_turn',
+            as_of_utc: '2026-04-06T09:30:00Z',
+            stages: [],
+            final_output: 'HOLD',
+            signals: [],
+            updated_portfolio: undefined,
+        } as never);
+        expect(snapshot).toBeNull();
+    });
+});
+
+describe('upsertSavedRecipeSummary', () => {
+    it('appends a brand new saved recipe', () => {
+        const next = upsertSavedRecipeSummary(baseList as never, savedRecipe as never);
+        expect(next).toHaveLength(2);
+        expect(next[0].id).toBe('rec-2');
+        expect(next[1].id).toBe('rec-1');
+        expect(next[0].name).toBe('Trump & Chips');
+    });
+
+    it('updates an existing recipe in place', () => {
+        const existing = { ...savedRecipe, id: 'rec-1', name: 'New Name' };
+        const next = upsertSavedRecipeSummary(baseList as never, existing as never);
+        expect(next).toHaveLength(1);
+        expect(next[0].name).toBe('New Name');
+    });
+
+    it('applies an explicit is_live override', () => {
+        const next = upsertSavedRecipeSummary(baseList as never, savedRecipe as never, true);
+        const updated = next.find((r) => r.id === 'rec-2');
+        expect(updated?.is_live).toBe(true);
+    });
+});

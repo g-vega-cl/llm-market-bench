@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
-import * as liveStudioHelpers from '../utils/live-studio-helpers';
 import { RecipeStudioPage } from './RecipeStudioPage';
 
 const mockNavigate = vi.fn();
@@ -52,6 +51,35 @@ vi.mock('../api/recipes-studio-api', () => ({
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockResolvedValue(undefined);
+});
+
+describe('RecipeStudioPage > basic rendering', () => {
+    it('offers exactly one LLM call with no add or remove stage controls', () => {
+        render(<RecipeStudioPage />);
+
+        expect(screen.getByText('LLM Call')).toBeInTheDocument();
+        expect(screen.queryByText(/LLM Call #\d/)).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: '+ Add LLM Stage' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Remove Stage' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: '2-Stage Research -> Trade Decision' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('does not render LiveRunsBlock (moved to dedicated page)', () => {
+        render(<RecipeStudioPage />);
+
+        expect(screen.queryByText(/Live Paper Portfolio/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Live Run Traces/i)).not.toBeInTheDocument();
+    });
+
+    it('renders the Enable Live button instead of Run Live', () => {
+        render(<RecipeStudioPage />);
+
+        expect(screen.getByRole('button', { name: 'Enable Live (3x/d)' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Run Live/i })).not.toBeInTheDocument();
+    });
 });
 
 describe('RecipeStudioPage > runs, quota, and scheduling', () => {
@@ -75,7 +103,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
         });
     });
 
-    it('renders quota status strip and toggles Scheduled Live 3x/day ET', async () => {
+    it('renders quota status strip and toggles Live 3x/day ET', async () => {
         vi.mocked(saveRecipeFn).mockResolvedValue({
             id: 'rec-sched-1',
             name: 'Live Scheduler Test',
@@ -118,15 +146,132 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
         );
 
         expect(screen.getByText(/Backtests: 2\/2 left today/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: /Schedule Live \(3x\/d\)/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(3x\/d\)/i }));
 
         await waitFor(() => {
             expect(toggleLiveScheduleFn).toHaveBeenCalledWith({
                 data: { recipeId: 'rec-sched-1', isLive: true },
             });
+            expect(screen.getByRole('button', { name: /Live: ON \(3x\/d\)/i })).toBeInTheDocument();
+        });
+    });
+
+    it('shows confirmation trough when enabling live while another recipe is live', async () => {
+        vi.mocked(saveRecipeFn).mockResolvedValue({
+            id: 'rec-new-1',
+            name: 'New Recipe',
+            cadence: '3h',
+        } as never);
+        vi.mocked(toggleLiveScheduleFn)
+            .mockResolvedValueOnce({ id: 'rec-old-1', is_live: false })
+            .mockResolvedValueOnce({ id: 'rec-new-1', is_live: true });
+        vi.mocked(fetchRecipeQuotaStatusFn).mockResolvedValue({
+            tier: 'beta_starter',
+            activeBacktests: 0,
+            maxConcurrentBacktests: 1,
+            backtestsLast24h: 0,
+            dailyBacktestLimit: 2,
+            liveTurnsLast24h: 0,
+            dailyLiveTurnLimit: 3,
+            activeLiveRecipes: 1,
+            maxLiveRecipes: 1,
+            globalPendingBacktests: 0,
+            globalQueueCap: 20,
+        });
+
+        render(
+            <RecipeStudioPage
+                initialUserRecipes={[
+                    {
+                        id: 'rec-old-1',
+                        name: 'Old Live Recipe',
+                        cadence: '3h',
+                        is_live: true,
+                        trial_count: 1,
+                        updated_at: '',
+                    },
+                ]}
+            />,
+        );
+
+        // Click Enable Live — should show confirmation trough
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(3x\/d\)/i }));
+
+        await waitFor(() => {
+            const alert = screen.getByRole('alert');
+            expect(alert).toHaveTextContent(/Old Live Recipe/i);
+            expect(alert).toHaveTextContent(/Enable live for/i);
+            expect(alert).toHaveTextContent(/instead\?/i);
+            expect(screen.getByRole('button', { name: 'Switch to This' })).toBeInTheDocument();
             expect(
-                screen.getByRole('button', { name: /Scheduled Live: ON \(3x\/d\)/i }),
+                screen.getByRole('button', { name: 'Keep Old Live Recipe' }),
             ).toBeInTheDocument();
+        });
+
+        // Click Switch to This — should disable old, enable new, navigate
+        fireEvent.click(screen.getByRole('button', { name: 'Switch to This' }));
+
+        await waitFor(() => {
+            expect(toggleLiveScheduleFn).toHaveBeenCalledTimes(2);
+            expect(toggleLiveScheduleFn).toHaveBeenNthCalledWith(1, {
+                data: { recipeId: 'rec-old-1', isLive: false },
+            });
+            expect(toggleLiveScheduleFn).toHaveBeenNthCalledWith(2, {
+                data: { recipeId: 'rec-new-1', isLive: true },
+            });
+            expect(mockNavigate).toHaveBeenCalledWith({
+                to: '/recipes/live/$recipeId',
+                params: { recipeId: 'rec-new-1' },
+            });
+        });
+    });
+
+    it('cancels live switch when Keep is clicked', async () => {
+        vi.mocked(saveRecipeFn).mockResolvedValue({
+            id: 'rec-new-1',
+            name: 'New Recipe',
+            cadence: '3h',
+        } as never);
+        vi.mocked(fetchRecipeQuotaStatusFn).mockResolvedValue({
+            tier: 'beta_starter',
+            activeBacktests: 0,
+            maxConcurrentBacktests: 1,
+            backtestsLast24h: 0,
+            dailyBacktestLimit: 2,
+            liveTurnsLast24h: 0,
+            dailyLiveTurnLimit: 3,
+            activeLiveRecipes: 1,
+            maxLiveRecipes: 1,
+            globalPendingBacktests: 0,
+            globalQueueCap: 20,
+        });
+
+        render(
+            <RecipeStudioPage
+                initialUserRecipes={[
+                    {
+                        id: 'rec-old-1',
+                        name: 'Old Live Recipe',
+                        cadence: '3h',
+                        is_live: true,
+                        trial_count: 1,
+                        updated_at: '',
+                    },
+                ]}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(3x\/d\)/i }));
+
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Keep Old Live Recipe' }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+            expect(toggleLiveScheduleFn).not.toHaveBeenCalled();
         });
     });
 
@@ -180,7 +325,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
         errorSpy.mockRestore();
     });
 
-    it('preserves fallback backtest link across quota retry and never attaches live_turn jobId', async () => {
+    it('preserves fallback backtest link across quota retry', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         vi.mocked(saveRecipeFn).mockResolvedValue({ id: 'rec-nav-1' } as never);
@@ -216,50 +361,24 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
             );
         });
 
-        // A live_turn failure after enqueue must never attach a backtest link
-        const pollSpy = vi
-            .spyOn(liveStudioHelpers, 'pollJobResults')
-            .mockRejectedValueOnce(new Error('Live poll crashed'));
-        vi.mocked(enqueueRecipeJobFn).mockResolvedValueOnce({
-            id: 'live-err-1',
-            status: 'pending',
-        } as never);
-        fireEvent.click(screen.getByRole('button', { name: /Run Live/i }));
-
-        await waitFor(() => {
-            const alert = screen.getByRole('alert');
-            expect(alert).toHaveTextContent('Live poll crashed');
-            expect(
-                screen.queryByRole('link', { name: /Open Backtest Run/i }),
-            ).not.toBeInTheDocument();
-        });
-
-        pollSpy.mockRestore();
         errorSpy.mockRestore();
         warnSpy.mockRestore();
     });
 
-    it('surfaces Schedule Live errors in a single top alert without keeping stale execution errors', async () => {
+    it('surfaces Schedule Live errors in a single top alert', async () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         vi.mocked(saveRecipeFn).mockResolvedValue({
             id: 'rec-sched-err',
             name: 'Schedule Error Recipe',
             cadence: '3h',
         } as never);
-        vi.mocked(enqueueRecipeJobFn).mockRejectedValueOnce(new Error('Prior backtest error'));
         vi.mocked(toggleLiveScheduleFn).mockRejectedValueOnce(
             new Error('Scheduled live limit reached (1/1). Pause your existing live recipe first.'),
         );
 
         render(<RecipeStudioPage />);
 
-        fireEvent.click(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i }));
-        await waitFor(() => {
-            expect(screen.getByRole('alert')).toHaveTextContent('Prior backtest error');
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: /Schedule Live \(3x\/d\)/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(3x\/d\)/i }));
         await waitFor(() => {
             const alerts = screen.getAllByRole('alert');
             expect(alerts).toHaveLength(1);
@@ -269,6 +388,5 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
 
         expect(warnSpy).toHaveBeenCalled();
         warnSpy.mockRestore();
-        errorSpy.mockRestore();
     });
 });

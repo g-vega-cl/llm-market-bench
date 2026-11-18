@@ -1,7 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
-import { fetchLivePortfolioAndRunsFn } from '../api/recipes-studio-api';
 import { RecipeStudioPage } from './RecipeStudioPage';
 
 const mockNavigate = vi.fn();
@@ -51,6 +49,7 @@ vi.mock('../api/recipes-studio-api', () => ({
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockResolvedValue(undefined);
 });
 
 describe('RecipeStudioPage', () => {
@@ -66,170 +65,17 @@ describe('RecipeStudioPage', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('renders persisted Live Paper Portfolio & Run Traces for a saved recipe', () => {
-        render(
-            <RecipeStudioPage
-                initialStrategy={{
-                    id: 'rec-live-1',
-                    name: 'Live Test',
-                    cadence: '3h',
-                    version: '2.0-push',
-                    stages: [
-                        {
-                            id: 's1',
-                            blocks: [{ id: 'b1', type: 'prompt', text: 'Trade semis' }],
-                            selected_tools: ['get_stock_quote'],
-                        },
-                    ],
-                }}
-                initialLiveState={{
-                    portfolio: {
-                        cash: 7500,
-                        total_equity: 10125,
-                        open_positions: [
-                            {
-                                ticker: 'NVDA',
-                                shares: 12.5,
-                                entry_price: 200,
-                                entry_time: '2026-11-14 09:30 ET',
-                                cost_basis: 2500,
-                                current_price: 210,
-                                market_value: 2623.69,
-                                unrealized_pnl_net: 123.69,
-                                unrealized_return_pct: 4.95,
-                            },
-                        ],
-                        trades: [],
-                    },
-                    recentLiveRuns: [
-                        {
-                            id: 'live-job-1',
-                            mode: 'live_turn',
-                            status: 'completed',
-                            progress_pct: 100,
-                            error_message: null,
-                            created_at: '2026-11-15T15:30:00Z',
-                            result_json: {
-                                mode: 'live_turn',
-                                as_of_utc: '2026-11-15T15:30:00Z',
-                                slot_label: '2026-11-15 10:30 ET',
-                                final_output: '[{"action": "BUY", "ticker": "NVDA"}]',
-                                signals: [{ action: 'BUY', ticker: 'NVDA' }],
-                                stages: [
-                                    {
-                                        stage_id: 's1',
-                                        prompt: 'Live Hydrated Prompt',
-                                        output: '[{"action": "BUY", "ticker": "NVDA"}]',
-                                        tool_calls: ['get_stock_quote({"ticker":"NVDA"})'],
-                                        trace: {
-                                            forced_final_synthesis: false,
-                                            rounds: [
-                                                {
-                                                    round: 1,
-                                                    reasoning: 'NVDA momentum confirmed.',
-                                                    assistant_text: '',
-                                                    tool_calls: [
-                                                        {
-                                                            name: 'get_stock_quote',
-                                                            args: { ticker: 'NVDA' },
-                                                            result: 'Price: $210.00',
-                                                        },
-                                                    ],
-                                                },
-                                            ],
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                }}
-            />,
-        );
+    it('does not render LiveRunsBlock (moved to dedicated page)', () => {
+        render(<RecipeStudioPage />);
 
-        expect(screen.getByText(/Live Paper Portfolio/i)).toBeInTheDocument();
-        expect(screen.getByText('$7,500.00')).toBeInTheDocument();
-        expect(screen.getByText('NVDA')).toBeInTheDocument();
-        expect(screen.getByText('Live Hydrated Prompt')).toBeInTheDocument();
-        expect(screen.getByText('NVDA momentum confirmed.')).toBeInTheDocument();
-        expect(screen.getByText('Price: $210.00')).toBeInTheDocument();
+        expect(screen.queryByText(/Live Paper Portfolio/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Live Run Traces/i)).not.toBeInTheDocument();
     });
 
-    it('updates displayed portfolio from fresh live_turn result immediately even when refresh fails', async () => {
-        vi.mocked(saveRecipeFn).mockResolvedValue({ id: 'rec-live-1' } as never);
-        vi.mocked(enqueueRecipeJobFn).mockResolvedValue({
-            id: 'live-job-2',
-            status: 'completed',
-            result_json: {
-                mode: 'live_turn',
-                as_of_utc: '2026-11-15T18:00:00Z',
-                slot_label: '2026-11-15 13:00 ET',
-                final_output: '[{"action": "BUY", "ticker": "AVGO"}]',
-                signals: [{ action: 'BUY', ticker: 'AVGO' }],
-                signal_prices: { AVGO: 180 },
-                updated_portfolio: {
-                    paper_cash: 6400,
-                    paper_positions: [
-                        {
-                            ticker: 'AVGO',
-                            shares: 20,
-                            entry_price: 180,
-                            entry_time: '2026-11-15 13:00 ET',
-                            cost_basis: 3600,
-                            current_price: 180,
-                            market_value: 3600,
-                            unrealized_pnl_net: -1.8,
-                            unrealized_return_pct: -0.05,
-                        },
-                    ],
-                    paper_trades: [],
-                    paper_equity_curve: [],
-                },
-                stages: [
-                    {
-                        stage_id: 's1',
-                        prompt: 'Fresh Prompt',
-                        output: '[{"action": "BUY", "ticker": "AVGO"}]',
-                        tool_calls: [],
-                    },
-                ],
-            },
-        } as never);
-        vi.mocked(fetchLivePortfolioAndRunsFn).mockRejectedValue(new Error('Replica lag'));
+    it('renders the Enable Live button instead of Run Live', () => {
+        render(<RecipeStudioPage />);
 
-        render(
-            <RecipeStudioPage
-                initialStrategy={{
-                    id: 'rec-live-1',
-                    name: 'Live Test',
-                    cadence: '3h',
-                    version: '2.0-push',
-                    stages: [
-                        {
-                            id: 's1',
-                            blocks: [{ id: 'b1', type: 'prompt', text: 'Trade semis' }],
-                            selected_tools: ['get_stock_quote'],
-                        },
-                    ],
-                }}
-                initialLiveState={{
-                    portfolio: {
-                        cash: 10000,
-                        total_equity: 10000,
-                        open_positions: [],
-                        trades: [],
-                    },
-                    recentLiveRuns: [],
-                }}
-            />,
-        );
-
-        expect(screen.getAllByText('$10,000.00').length).toBeGreaterThanOrEqual(1);
-        fireEvent.click(screen.getByRole('button', { name: /Run Live/i }));
-
-        await waitFor(() => {
-            expect(screen.getAllByText('$6,400.00').length).toBeGreaterThanOrEqual(1);
-            expect(screen.getByText('AVGO')).toBeInTheDocument();
-        });
+        expect(screen.getByRole('button', { name: 'Enable Live (3x/d)' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Run Live/i })).not.toBeInTheDocument();
     });
 });

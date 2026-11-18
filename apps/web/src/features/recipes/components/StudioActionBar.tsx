@@ -1,33 +1,27 @@
 import { Button } from '@llm-market-bench/ui-design-system';
 
 interface StudioActionBarProps {
-    isBusy: boolean;
     isTogglingLive: boolean;
     isCurrentlyScheduledLive: boolean;
-    isRunningLiveTurn: boolean;
     isRunningBacktest: boolean;
     backtestButtonLabel: string;
     unreadAlerts: number;
     onOpenWaitlist: () => void;
     onOpenAlerts: () => void;
     onToggleScheduledLive: () => void;
-    onRunLive: () => void;
     onBacktest: () => void;
 }
 
-/** Waitlist, alerts, live scheduling, and the two run actions for the studio. */
+/** Waitlist, alerts, live scheduling, and the backtest action for the studio. */
 export function StudioActionBar({
-    isBusy,
     isTogglingLive,
     isCurrentlyScheduledLive,
-    isRunningLiveTurn,
     isRunningBacktest,
     backtestButtonLabel,
     unreadAlerts,
     onOpenWaitlist,
     onOpenAlerts,
     onToggleScheduledLive,
-    onRunLive,
     onBacktest,
 }: StudioActionBarProps) {
     return (
@@ -43,19 +37,16 @@ export function StudioActionBar({
                 variant={isCurrentlyScheduledLive ? 'solid' : 'outline'}
                 colorScheme={isCurrentlyScheduledLive ? 'success' : 'neutral'}
                 onClick={onToggleScheduledLive}
-                disabled={isBusy}
+                disabled={isTogglingLive || isRunningBacktest}
                 isLoading={isTogglingLive}
             >
-                {isCurrentlyScheduledLive ? 'Scheduled Live: ON (3x/d)' : 'Schedule Live (3x/d)'}
-            </Button>
-            <Button size="sm" variant="outline" onClick={onRunLive} disabled={isBusy}>
-                {isRunningLiveTurn ? 'Running Live...' : '▶ Run Live'}
+                {isCurrentlyScheduledLive ? 'Live: ON (3x/d)' : 'Enable Live (3x/d)'}
             </Button>
             <Button
                 size="sm"
                 variant="solid"
                 onClick={onBacktest}
-                disabled={isBusy}
+                disabled={isRunningBacktest}
                 isLoading={isRunningBacktest}
             >
                 {backtestButtonLabel}

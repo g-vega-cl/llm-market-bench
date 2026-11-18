@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +24,7 @@ ANONYMOUS_USER_ID = "00000000-0000-0000-0000-000000000000"
 SLOT_WINDOW_SECONDS = 1200  # 20-minute trigger window per 09:30 / 12:30 / 15:30 ET slot
 POLL_INTERVAL_SECONDS = 5
 MAX_JOBS_PER_CYCLE = 25
+LIVE_TURN_CONCURRENCY = int(os.environ.get("RECIPE_LIVE_CONCURRENCY", "10"))
 
 
 def due_trading_slot(now_dt: datetime, last_slot_key: str | None = None) -> str | None:
@@ -217,14 +219,43 @@ async def drain_lane(
     *,
     mode: str,
     max_jobs: int = MAX_JOBS_PER_CYCLE,
+    concurrency: int | None = None,
 ) -> int:
-    """Drain queued jobs for a single execution lane (live_turn or backtest)."""
+    """Drain queued jobs for a single execution lane (live_turn or backtest).
+
+    Jobs are processed serially by default so callers that do not care about
+    concurrency (tests, one-off drains) never fan out accidentally. The daemon
+    passes ``concurrency=LIVE_TURN_CONCURRENCY`` for the live_turn lane so many
+    users' recipes run in parallel with a bounded semaphore; backtest is always
+    serialized (``concurrency=1``) because local Strata must never contend.
+    """
+    if mode == "backtest" or concurrency is None:
+        concurrency = 1
+
+    if concurrency <= 1:
+        processed = 0
+        for _ in range(max_jobs):
+            outcome = await async_process_next_recipe_job(sb_client, target_mode=mode)
+            if outcome == "EMPTY":
+                break
+            if outcome == "COMPLETED":
+                processed += 1
+        return processed
+
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def _process_one() -> str:
+        async with semaphore:
+            return await async_process_next_recipe_job(sb_client, target_mode=mode)
+
+    tasks = [_process_one() for _ in range(max_jobs)]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
     processed = 0
-    for _ in range(max_jobs):
-        outcome = await async_process_next_recipe_job(sb_client, target_mode=mode)
-        if outcome == "EMPTY":
-            break
-        if outcome == "COMPLETED":
+    for r in results:
+        if isinstance(r, Exception):
+            logger.exception("Live turn drain task failed: %s", r)
+        elif r == "COMPLETED":
             processed += 1
     return processed
 
@@ -248,7 +279,7 @@ async def _live_lane_loop(sb_client: Any) -> None:
             try:
                 news_stats = await sync_live_news_to_corpus(sb_client, as_of_utc=now_utc)
                 live_enqueued = enqueue_live_recipes(sb_client, slot_start_utc=slot_dt_utc)
-                live_done = await drain_lane(sb_client, mode="live_turn")
+                live_done = await drain_lane(sb_client, mode="live_turn", concurrency=LIVE_TURN_CONCURRENCY)
                 snapped = await snapshot_live_intraday_bars(
                     sb_client, _collect_recipe_watchlist(sb_client), slot_dt_utc
                 )

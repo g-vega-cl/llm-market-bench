@@ -1,8 +1,8 @@
 import { Badge, Button, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import type {
+    BacktestError,
     BacktestResultData,
-    ExecutionState,
     RecipeJobRecord,
     RecipeSummaryItem,
     RecipeUserQuotaStatus,
@@ -61,20 +61,20 @@ export function RecipeExecutionAlert({
 }
 
 export function StudioAlertSlot({
-    execution,
+    backtestError,
     scheduleError,
     onRequestCapacity,
 }: {
-    execution: ExecutionState;
+    backtestError: BacktestError | null;
     scheduleError: string | null;
     onRequestCapacity: () => void;
 }) {
-    if (execution.status === 'error') {
+    if (backtestError) {
         return (
             <RecipeExecutionAlert
-                message={execution.message}
-                kind={execution.kind}
-                backtestJobId={execution.kind === 'execution' ? undefined : execution.backtestJobId}
+                message={backtestError.message}
+                kind={backtestError.kind}
+                backtestJobId={backtestError.backtestJobId}
                 onRequestCapacity={onRequestCapacity}
             />
         );

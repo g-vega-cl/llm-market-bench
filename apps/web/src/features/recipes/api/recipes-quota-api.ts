@@ -109,7 +109,7 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
 
 export async function assertQuotaAllowsJob(
     userId: string,
-    mode: 'live_turn' | 'backtest',
+    mode: 'backtest',
 ): Promise<RecipeUserQuotaStatus> {
     const quota = await fetchRecipeQuotaStatus(userId);
     if (mode === 'backtest') {
@@ -128,10 +128,6 @@ export async function assertQuotaAllowsJob(
                 `Backtest queue is currently full (${quota.globalPendingBacktests}/${quota.globalQueueCap}). Live auto-go turns still run normally; please retry shortly or join Waitlist.`,
             );
         }
-    } else if (quota.liveTurnsLast24h >= quota.dailyLiveTurnLimit) {
-        throw new Error(
-            `Daily live turn limit reached (${quota.liveTurnsLast24h}/${quota.dailyLiveTurnLimit} in 24h). Starter tier matches 1 active 3x/day ET strategy.`,
-        );
     }
     return quota;
 }

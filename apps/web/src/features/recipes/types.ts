@@ -349,13 +349,21 @@ export interface LivePortfolioAndRuns {
     recentLiveRuns: RecipeJobRecord[];
 }
 
-export type ExecutionState =
-    | { status: 'idle' }
-    | { status: 'running'; mode: 'live_turn' | 'backtest' }
-    | { status: 'live_done'; result: LiveRunResult }
-    | { status: 'error'; kind: 'navigation'; message: string; backtestJobId: string }
-    | { status: 'error'; kind: 'quota'; message: string; backtestJobId?: string }
-    | { status: 'error'; kind: 'execution'; message: string };
+/**
+ * Backtest error state surfaced in StudioAlertSlot.
+ *
+ * Replaces the old ExecutionState union. The studio page no longer
+ * executes live turns (only the daemon does), so the only async
+ * execution path left is Backtest, which navigates away on success.
+ * A failure here is always an error — there is no "running" or
+ * "done" state to track.
+ */
+export interface BacktestError {
+    kind: 'quota' | 'navigation' | 'execution';
+    message: string;
+    /** Only set for navigation failures — lets the alert offer "Open Backtest Run →". */
+    backtestJobId?: string;
+}
 
 export type PreviewState =
     | { status: 'template' }

@@ -221,7 +221,7 @@ export const fetchRecipeByIdFn = createServerFn({ method: 'GET' })
 
 export async function enqueueRecipeJob(
     recipeId: string,
-    mode: 'live_turn' | 'backtest',
+    mode: 'backtest',
     userId: string,
     weeksRequested: string[] = [],
 ) {
@@ -263,10 +263,10 @@ export async function enqueueRecipeJob(
         recipe_id: recipeId,
         user_id: userId,
         mode,
-        priority: mode === 'live_turn' ? 1 : 10,
+        priority: 10,
         status: 'pending',
         provider: 'free-llm-proxy',
-        model: mode === 'live_turn' ? 'auto-go' : 'strata-auto-go',
+        model: 'strata-auto-go',
         weeks_requested: weeksRequested,
         progress_pct: 0,
     };
@@ -282,9 +282,7 @@ export async function enqueueRecipeJob(
 }
 
 export const enqueueRecipeJobFn = createServerFn({ method: 'POST' })
-    .validator(
-        (d: { recipeId: string; mode: 'live_turn' | 'backtest'; weeksRequested?: string[] }) => d,
-    )
+    .validator((d: { recipeId: string; mode: 'backtest'; weeksRequested?: string[] }) => d)
     .handler(async ({ data: { recipeId, mode, weeksRequested = ['2026-W10'] } }) => {
         const auth = getAuthServerClient();
         const {

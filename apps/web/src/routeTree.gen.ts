@@ -46,6 +46,7 @@ import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as AuthedRecipesIndexRouteImport } from './routes/_authed/recipes/index'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
 import { Route as AuthedRecipesBacktestJobIdRouteImport } from './routes/_authed/recipes/backtest/$jobId'
+import { Route as AuthedRecipesLiveRecipeIdRouteImport } from './routes/_authed/recipes/live/$recipeId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -233,6 +234,12 @@ const AuthedRecipesBacktestJobIdRoute =
     path: '/recipes/backtest/$jobId',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedRecipesLiveRecipeIdRoute =
+  AuthedRecipesLiveRecipeIdRouteImport.update({
+    id: '/recipes/live/$recipeId',
+    path: '/recipes/live/$recipeId',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/recipes/': typeof AuthedRecipesIndexRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
+  '/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -309,6 +317,7 @@ export interface FileRoutesByTo {
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/recipes': typeof AuthedRecipesIndexRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
+  '/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -349,6 +358,7 @@ export interface FileRoutesById {
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/_authed/recipes/': typeof AuthedRecipesIndexRoute
   '/_authed/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
+  '/_authed/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/memories/chain/$memoryId'
     | '/recipes/'
     | '/recipes/backtest/$jobId'
+    | '/recipes/live/$recipeId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -427,6 +438,7 @@ export interface FileRouteTypes {
     | '/memories/chain/$memoryId'
     | '/recipes'
     | '/recipes/backtest/$jobId'
+    | '/recipes/live/$recipeId'
   id:
     | '__root__'
     | '/'
@@ -466,6 +478,7 @@ export interface FileRouteTypes {
     | '/memories/chain/$memoryId'
     | '/_authed/recipes/'
     | '/_authed/recipes/backtest/$jobId'
+    | '/_authed/recipes/live/$recipeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -764,6 +777,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRecipesBacktestJobIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/recipes/live/$recipeId': {
+      id: '/_authed/recipes/live/$recipeId'
+      path: '/recipes/live/$recipeId'
+      fullPath: '/recipes/live/$recipeId'
+      preLoaderRoute: typeof AuthedRecipesLiveRecipeIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
@@ -771,12 +791,14 @@ interface AuthedRouteChildren {
   AuthedProfileRoute: typeof AuthedProfileRoute
   AuthedRecipesIndexRoute: typeof AuthedRecipesIndexRoute
   AuthedRecipesBacktestJobIdRoute: typeof AuthedRecipesBacktestJobIdRoute
+  AuthedRecipesLiveRecipeIdRoute: typeof AuthedRecipesLiveRecipeIdRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedProfileRoute: AuthedProfileRoute,
   AuthedRecipesIndexRoute: AuthedRecipesIndexRoute,
   AuthedRecipesBacktestJobIdRoute: AuthedRecipesBacktestJobIdRoute,
+  AuthedRecipesLiveRecipeIdRoute: AuthedRecipesLiveRecipeIdRoute,
 }
 
 const AuthedRouteWithChildren =

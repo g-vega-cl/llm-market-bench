@@ -51,6 +51,7 @@ vi.mock('../api/recipes-studio-api', () => ({
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockResolvedValue(undefined);
 });
 
 describe('RecipeStudioPage > draft and explicit save', () => {
@@ -87,7 +88,7 @@ describe('RecipeStudioPage > draft and explicit save', () => {
         });
     });
 
-    it('blocks runs while a save is in flight, then persists the edited draft', async () => {
+    it('persists the edited draft after a save, then runs backtest with the saved graph', async () => {
         let resolveFirst: (value: never) => void = () => {};
         vi.mocked(saveRecipeFn)
             .mockReturnValueOnce(
@@ -107,11 +108,23 @@ describe('RecipeStudioPage > draft and explicit save', () => {
             id: 'job-run-1',
             status: 'pending',
             result_json: {
-                mode: 'live_turn',
-                as_of_utc: '2026-11-16T19:00:00Z',
-                final_output: '[]',
-                signals: [],
-                stages: [],
+                mode: 'backtest',
+                window_dates: [],
+                days_completed: 0,
+                total_days: 30,
+                current_day: null,
+                starting_capital: 10000,
+                ending_capital_midpoint: 10000,
+                ending_capital_net: 10000,
+                cash: 10000,
+                total_equity: 10000,
+                open_positions: [],
+                total_return_pct_midpoint: 0,
+                total_return_pct_net: 0,
+                total_trades: 0,
+                win_rate_pct: 0,
+                equity_curve: [],
+                trades: [],
             },
         } as never);
 
@@ -120,7 +133,8 @@ describe('RecipeStudioPage > draft and explicit save', () => {
         fireEvent.change(screen.getByLabelText('Recipe Name'), { target: { value: 'Run Draft' } });
         fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }));
 
-        expect(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i })).toBeDisabled();
+        // Each action manages its own pending state; backtest is not blocked by an in-flight save.
+        expect(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i })).toBeEnabled();
 
         fireEvent.click(screen.getByRole('button', { name: '+ Prompt' }));
 
@@ -134,7 +148,7 @@ describe('RecipeStudioPage > draft and explicit save', () => {
         } as never);
 
         await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i })).toBeEnabled();
+            expect(screen.getByRole('button', { name: 'Save Recipe' })).toBeEnabled();
         });
 
         fireEvent.click(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i }));

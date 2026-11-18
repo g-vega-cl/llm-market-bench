@@ -18,6 +18,11 @@ from typing import Any
 import dotenv
 from supabase import Client, create_client
 
+try:
+    from apps.engine.sync_knowledge_documents import fetch_and_export_documents
+except ModuleNotFoundError:  # executed as a script: `python apps/engine/sync_knowledge_db.py`
+    from sync_knowledge_documents import fetch_and_export_documents
+
 
 def ensure_gitignore(target_gitignore: Path | str | None = None) -> None:
     """Ensure knowledge-db/ cache directory is in .gitignore."""
@@ -131,6 +136,19 @@ def run_cmd(command: list[str] | str, shell: bool | None = None) -> str:
         return ""
 
 
+def _resolve_key() -> str | None:
+    """Service-level key wins over anon: `knowledge_documents` has no anon grant, and an
+    anon key answers with zero rows instead of an error, so the article mirror would
+    silently export nothing."""
+    return (
+        os.getenv("SUPABASE_SECRET_KEY")
+        or os.getenv("MISC_SUPABASE_KEY")
+        or os.getenv("SUPABASE_KEY")
+        or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        or os.getenv("VITE_SUPABASE_ANON_KEY")
+    )
+
+
 def get_supabase_client(
     url: str | None = None,
     key: str | None = None,
@@ -150,38 +168,22 @@ def get_supabase_client(
         repo_root / ".env",
     ]
 
-    resolved_url = os.getenv("MISC_SUPABASE_URL") or os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL")
-    resolved_key = (
-        os.getenv("MISC_SUPABASE_KEY")
-        or os.getenv("SUPABASE_KEY")
-        or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-        or os.getenv("VITE_SUPABASE_ANON_KEY")
-    )
+    # Load every candidate env file (dotenv never overrides an existing variable) so a
+    # secret key living in ../knowledge-db/.env is visible even when apps/engine/.env
+    # already supplied an anon key.
+    for candidate in env_candidates:
+        if candidate and candidate.exists():
+            dotenv.load_dotenv(candidate)
 
-    if not resolved_url or not resolved_key:
-        for candidate in env_candidates:
-            if candidate and candidate.exists():
-                dotenv.load_dotenv(candidate)
-                resolved_url = (
-                    resolved_url
-                    or os.getenv("MISC_SUPABASE_URL")
-                    or os.getenv("SUPABASE_URL")
-                    or os.getenv("VITE_SUPABASE_URL")
-                )
-                resolved_key = (
-                    resolved_key
-                    or os.getenv("MISC_SUPABASE_KEY")
-                    or os.getenv("SUPABASE_KEY")
-                    or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-                    or os.getenv("VITE_SUPABASE_ANON_KEY")
-                )
-                if resolved_url and resolved_key:
-                    break
+    resolved_url = (
+        os.getenv("MISC_SUPABASE_URL") or os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL")
+    )
+    resolved_key = _resolve_key()
 
     if not resolved_url or not resolved_key:
         raise ValueError(
             "Supabase credentials not found. Provide --url/--key or set "
-            "MISC_SUPABASE_URL / MISC_SUPABASE_KEY in apps/engine/.env or ../knowledge-db/.env"
+            "SUPABASE_SECRET_KEY / MISC_SUPABASE_KEY in apps/engine/.env or ../knowledge-db/.env"
         )
 
     return create_client(resolved_url, resolved_key)
@@ -297,6 +299,11 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=200, help="Batch size for Supabase pagination.")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory (default: ./knowledge-db).")
     parser.add_argument("--no-qmd", action="store_true", help="Skip updating QMD collection index.")
+    parser.add_argument(
+        "--skip-documents",
+        action="store_true",
+        help="Only sync emails; leave knowledge_documents articles untouched.",
+    )
     parser.add_argument("--url", type=str, default=None, help="Supabase project URL.")
     parser.add_argument("--key", type=str, default=None, help="Supabase API key.")
     args = parser.parse_args()
@@ -325,8 +332,21 @@ def main() -> None:
         flush=True,
     )
 
+    # Step 3b: Mirror long-form articles (knowledge_documents) into greatfrontend/*.md
+    docs_written, docs_skipped = 0, 0
+    if not args.skip_documents:
+        docs_written, docs_skipped = fetch_and_export_documents(
+            client=client,
+            target_dir=target_dir,
+            dry_run=args.dry_run,
+        )
+        print(
+            f"[knowledge-sync] Documents: {docs_written} written/updated, {docs_skipped} unchanged or empty.",
+            flush=True,
+        )
+
     # Step 4: Refresh QMD index if changes occurred and not disabled
-    if not args.no_qmd and not args.dry_run and exported > 0:
+    if not args.no_qmd and not args.dry_run and (exported + docs_written) > 0:
         update_qmd_index(target_dir=target_dir)
 
 

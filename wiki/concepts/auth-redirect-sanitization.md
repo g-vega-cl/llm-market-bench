@@ -5,7 +5,7 @@ category: concept
 
 # Auth Redirect Sanitization & Return-Path Preservation
 
-The web app gates several routes behind authentication (`/_authed/recipes`, `/_authed/recipes/backtest/$jobId`, `/profile`). When an unauthenticated visitor lands on a gated route, they are sent to `/login` or `/signup`, and after a successful sign-in they must be returned to the page they originally wanted — not dumped on the home page. Doing that safely requires rejecting attacker-controlled redirect targets, because a naive `?next=` parameter is a classic **open-redirect** vector.
+The web app gates several routes behind authentication (`/_authed/recipes`, `/_authed/recipes/backtest/$jobId`, `/profile`). When an unauthenticated visitor lands on a gated route, the `/_authed` `beforeLoad` guard throws a 307 to `/auth?redirect=<path>` (rather than throwing an error, which SSR answered with a 500 error page), and after a successful sign-in the visitor is returned to the page they originally wanted — not dumped on the home page. Doing that safely requires rejecting attacker-controlled redirect targets, because a naive `?next=` parameter is a classic **open-redirect** vector.
 
 `apps/web/src/shared/auth/redirect.ts` is the single source of truth for both concerns: it sanitizes every redirect target and builds the OAuth callback URL with a safe `next` parameter.
 
@@ -23,7 +23,11 @@ Everything else — absolute URLs (`https://evil.com/phish`), protocol-relative 
 
 ### `resolveCurrentReturnPath()`
 
-Reads `window.location.pathname + window.location.search` in the browser and runs it through `sanitizeRedirectPath`. Auth self-paths (`/`, `/login`, `/signup`, `/logout`, `/auth/callback`) are collapsed to `/`, so signing in from the login page never bounces the user back to the login page. Returns `/` during SSR (`typeof window === 'undefined'`).
+Reads `window.location.pathname + window.location.search` in the browser and runs it through `sanitizeRedirectPath`. Auth self-paths (`/`, `/auth`, `/login`, `/signup`, `/logout`, `/auth/callback`) are collapsed to `/`, so signing in from the auth card never bounces the user back to the auth card. Returns `/` during SSR (`typeof window === 'undefined'`).
+
+### `buildAuthRedirectSearch(pathname, searchStr?)`
+
+Builds the `{ redirect }` search object the gated-route guard forwards, running the composed path through `sanitizeRedirectPath` so the guard never constructs a redirect target by hand. `/_authed` passes `location.pathname` + `location.searchStr`, which is why a deep link like `/recipes?recipeId=rec-1` survives the round-trip while `//evil.com` collapses to `/`.
 
 ### `buildOAuthCallbackUrl(origin, currentPath?)`
 
@@ -31,14 +35,16 @@ Builds `${origin}/auth/callback`. When the sanitized current path is not an auth
 
 ## Wiring
 
-- **Google OAuth** — `Auth.tsx` calls `buildOAuthCallbackUrl(window.location.origin, resolveCurrentReturnPath())` as the `redirectTo` option of `signInWithOAuth`.
-- **Callback** — `routes/auth.callback.tsx` validates `next` with `sanitizeRedirectPath` in `validateSearch`, exchanges the code, then `throw redirect({ href: sanitizeRedirectPath(next) })`.
+- **Gated routes** — `/_authed.tsx` `beforeLoad` throws `redirect({ to: '/auth', search: buildAuthRedirectSearch(pathname, searchStr), replace: true })`. SSR answers `307` with `Location: /auth?redirect=%2Frecipes`, so an anonymous deep link is a real navigation to a `200` auth card instead of a `500` error page. Its `errorComponent` still renders `<Login />` for the legacy `Not authenticated` error.
+- **Auth entry** — `routes/auth.tsx` (and `routes/login.tsx`, kept as an alias) validate `?redirect=` with `sanitizeRedirectPath` and pass it to `Login` as `redirectPath`.
+- **Google OAuth** — `Auth.tsx` calls `buildOAuthCallbackUrl(window.location.origin, returnPath)` where `returnPath` is the `redirect` param when present, else `resolveCurrentReturnPath()`, as the `redirectTo` option of `signInWithOAuth`.
+- **Callback** — `routes/auth.callback.tsx` validates `next` with `sanitizeRedirectPath` in `validateSearch`, exchanges the code, then `throw redirect({ href: sanitizeRedirectPath(next) })`. It is a child of `routes/auth.tsx`; it carries no component, so the loader's redirect settles before the parent card would render.
 - **Signup** — `routes/signup.tsx` validates `next` in `validateSearch`, passes it to `SignupComp` as `redirectTo`, forwards it to `signupFn` as `redirectUrl`, and navigates to the sanitized value on success.
-- **Login** — `Login.tsx` resolves `resolveCurrentReturnPath()` on success and navigates there (or to `/` when it is the root), and forwards the same path into the signup mutation so a first-time user is returned to the gated route after account creation.
+- **Login** — `Login.tsx` navigates to `redirectPath` on success (falling back to `resolveCurrentReturnPath()`, or `/` at the root), forwards the same path into the signup mutation, and hands it to `Auth` so the card shows the right context.
 
 ## Gated-Route UX
 
-When the current return path starts with `/recipes`, `Auth.tsx` renders a **Strategy Recipe Studio — Free Beta Access** panel inside the auth card explaining the free beta limits (2 backtests/day on `strata-auto-go`, 3 live paper turns/day on `auto-go`) and linking to the public read-only `/recipes-demo` showcase so a visitor can inspect a sample backtest before signing in. See [[entities/recipe-studio]].
+Anonymous `/recipes` (including `/recipes?recipeId=<id>`) lands on `/auth?redirect=%2Frecipes`. When the resolved return path starts with `/recipes`, `Auth.tsx` renders a **Strategy Recipe Studio — Free Beta Access** panel inside the auth card explaining the free beta limits (2 backtests/day on `strata-auto-go`, 3 live paper turns/day on `auto-go`) and linking to the public read-only `/recipes-demo` showcase so a visitor can inspect a sample backtest before signing in. The panel is driven by the `redirectPath` prop, so it appears both on `/auth?redirect=/recipes` and `/login?redirect=/recipes`; a bare `/auth` shows the plain card. See [[entities/recipe-studio]].
 
 ## Why It Matters
 
@@ -48,7 +54,7 @@ When the current return path starts with `/recipes`, `Auth.tsx` renders a **Stra
 
 ## Tests
 
-`apps/web/src/shared/auth/redirect.test.ts` asserts that clean internal paths (including query strings) pass through, that external, protocol-relative, backslash, and control-character inputs collapse to `/`, and that `buildOAuthCallbackUrl` only attaches `next` for non-auth paths.
+`apps/web/src/shared/auth/redirect.test.ts` asserts that clean internal paths (including query strings) pass through, that external, protocol-relative, backslash, and control-character inputs collapse to `/`, that `buildAuthRedirectSearch` sanitizes the carried target, and that `buildOAuthCallbackUrl` only attaches `next` for non-auth paths (with `/auth` counted as an auth path). `apps/web/src/routes/-authed-guard.test.tsx` asserts the guard throws a `307` to `/auth` with the sanitized `redirect` and lets an authenticated context through, and `Auth.test.tsx` asserts the beta panel shows for `/recipes` targets only.
 
 ## Related
 

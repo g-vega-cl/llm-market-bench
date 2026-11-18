@@ -32,16 +32,24 @@ export function Auth({
     onSubmit,
     status,
     afterSubmit,
+    redirectPath,
 }: {
     actionText: string;
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
     status: 'pending' | 'idle' | 'success' | 'error';
     afterSubmit?: React.ReactNode;
+    /**
+     * Path the visitor asked for, when the auth card is reached by a redirect
+     * (e.g. `/auth?redirect=/recipes`). Drives both the return navigation and
+     * the trailing `next` param of the OAuth callback.
+     */
+    redirectPath?: string;
 }) {
-    const [returnPath, setReturnPath] = useState('/');
+    const [browserReturnPath, setBrowserReturnPath] = useState('/');
     useEffect(() => {
-        setReturnPath(resolveCurrentReturnPath());
+        setBrowserReturnPath(resolveCurrentReturnPath());
     }, []);
+    const returnPath = redirectPath ?? browserReturnPath;
     const isRecipesGate = returnPath.startsWith('/recipes');
 
     const handleGoogleLogin = async () => {
@@ -49,10 +57,7 @@ export function Auth({
         await authClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: buildOAuthCallbackUrl(
-                    window.location.origin,
-                    resolveCurrentReturnPath(),
-                ),
+                redirectTo: buildOAuthCallbackUrl(window.location.origin, returnPath),
             },
         });
     };

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
 import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
 import { Route as ChatRouteImport } from './routes/chat'
@@ -53,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AutoresearchBacktestRoute = AutoresearchBacktestRouteImport.update({
@@ -152,9 +158,9 @@ const AuditsIndexRoute = AuditsIndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
-  getParentRoute: () => rootRouteImport,
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
 } as any)
 const AutoresearchIndexRoute = AutoresearchIndexRouteImport.update({
   id: '/autoresearch/',
@@ -230,6 +236,7 @@ const AuthedRecipesBacktestJobIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRouteWithChildren
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRouteWithChildren
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
@@ -306,6 +314,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/auth': typeof AuthRouteWithChildren
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/chat': typeof ChatRoute
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/chat'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/chat'
@@ -420,6 +431,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/auth'
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/chat'
@@ -459,6 +471,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  AuthRoute: typeof AuthRouteWithChildren
   AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   BarometerAuditRoute: typeof BarometerAuditRoute
   ChatRoute: typeof ChatRoute
@@ -475,7 +488,6 @@ export interface RootRouteChildren {
   RetiredAgentsRoute: typeof RetiredAgentsRoute
   SignupRoute: typeof SignupRoute
   TodayRoute: typeof TodayRoute
-  AuthCallbackRoute: typeof AuthCallbackRoute
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
   AiPredictionsIndexRoute: typeof AiPredictionsIndexRoute
   AuditsIndexRoute: typeof AuditsIndexRoute
@@ -505,6 +517,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/autoresearch-backtest': {
@@ -642,10 +661,10 @@ declare module '@tanstack/react-router' {
     }
     '/auth/callback': {
       id: '/auth/callback'
-      path: '/auth/callback'
+      path: '/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/autoresearch/': {
       id: '/autoresearch/'
@@ -763,6 +782,16 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 interface CompaniesRouteChildren {
   CompaniesTickerRoute: typeof CompaniesTickerRoute
 }
@@ -778,6 +807,7 @@ const CompaniesRouteWithChildren = CompaniesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  AuthRoute: AuthRouteWithChildren,
   AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   BarometerAuditRoute: BarometerAuditRoute,
   ChatRoute: ChatRoute,
@@ -794,7 +824,6 @@ const rootRouteChildren: RootRouteChildren = {
   RetiredAgentsRoute: RetiredAgentsRoute,
   SignupRoute: SignupRoute,
   TodayRoute: TodayRoute,
-  AuthCallbackRoute: AuthCallbackRoute,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
   AiPredictionsIndexRoute: AiPredictionsIndexRoute,
   AuditsIndexRoute: AuditsIndexRoute,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildOAuthCallbackUrl, sanitizeRedirectPath } from './redirect';
+import { buildAuthRedirectSearch, buildOAuthCallbackUrl, sanitizeRedirectPath } from './redirect';
 
 describe('auth redirect helpers', () => {
     it('allows clean internal relative paths and rejects external or protocol-relative URLs', () => {
@@ -24,6 +24,20 @@ describe('auth redirect helpers', () => {
             'https://benchify.app/auth/callback',
         );
         expect(buildOAuthCallbackUrl('https://benchify.app', '/')).toBe(
+            'https://benchify.app/auth/callback',
+        );
+    });
+
+    it('carries the requested gated path to /auth as a sanitized redirect param', () => {
+        expect(buildAuthRedirectSearch('/recipes')).toEqual({ redirect: '/recipes' });
+        expect(buildAuthRedirectSearch('/recipes', '?recipeId=rec-1')).toEqual({
+            redirect: '/recipes?recipeId=rec-1',
+        });
+        expect(buildAuthRedirectSearch('//evil.com')).toEqual({ redirect: '/' });
+    });
+
+    it('treats /auth itself as an auth path, not a return target', () => {
+        expect(buildOAuthCallbackUrl('https://benchify.app', '/auth')).toBe(
             'https://benchify.app/auth/callback',
         );
     });

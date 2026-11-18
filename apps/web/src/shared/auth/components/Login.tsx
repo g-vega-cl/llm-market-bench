@@ -13,9 +13,21 @@ type AuthResult =
     | { user?: { id: string; email: string }; redirectUrl?: string }
     | undefined;
 
-export function Login() {
+export function Login({ redirectPath }: { redirectPath?: string } = {}) {
     const router = useRouter();
     const posthog = usePostHog();
+    // Set when the auth card is reached by a redirect from a gated route
+    // (`/auth?redirect=/recipes`); otherwise fall back to the live location.
+    const authReturnPath = redirectPath ?? resolveCurrentReturnPath();
+
+    const navigateAfterAuth = async () => {
+        await router.invalidate();
+        if (authReturnPath === '/') {
+            router.navigate({ to: '/' });
+        } else {
+            router.navigate({ href: authReturnPath });
+        }
+    };
 
     const loginMutation = useMutation<AuthResult, Error, LoginVariables>({
         mutationFn: (variables) => loginFn({ data: variables }),
@@ -25,13 +37,7 @@ export function Login() {
                     posthog.identify(data.user.id, { email: data.user.email });
                 }
                 posthog.capture('user_logged_in', { email: variables.email });
-                const returnPath = resolveCurrentReturnPath();
-                await router.invalidate();
-                if (returnPath === '/') {
-                    router.navigate({ to: '/' });
-                } else {
-                    router.navigate({ href: returnPath });
-                }
+                await navigateAfterAuth();
                 return;
             }
         },
@@ -39,26 +45,21 @@ export function Login() {
 
     const signupMutation = useMutation<AuthResult, Error, LoginVariables>({
         mutationFn: (variables: LoginVariables) =>
-            signupFn({ data: { ...variables, redirectUrl: resolveCurrentReturnPath() } }),
+            signupFn({ data: { ...variables, redirectUrl: authReturnPath } }),
         onSuccess: async (data, variables) => {
             if (!data || ('error' in data && data.error)) return;
             if ('user' in data && data.user) {
                 posthog.identify(data.user.id, { email: data.user.email });
             }
             posthog.capture('user_signed_up', { email: variables.email });
-            const returnPath = resolveCurrentReturnPath();
-            await router.invalidate();
-            if (returnPath === '/') {
-                router.navigate({ to: '/' });
-            } else {
-                router.navigate({ href: returnPath });
-            }
+            await navigateAfterAuth();
         },
     });
 
     return (
         <Auth
             actionText="Login"
+            redirectPath={authReturnPath}
             status={loginMutation.status}
             onSubmit={(e) => {
                 const formData = new FormData(e.target as HTMLFormElement);

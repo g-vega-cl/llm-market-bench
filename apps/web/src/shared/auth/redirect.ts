@@ -1,4 +1,4 @@
-const AUTH_SELF_PATHS = new Set(['/', '/login', '/signup', '/logout', '/auth/callback']);
+const AUTH_SELF_PATHS = new Set(['/', '/auth', '/login', '/signup', '/logout', '/auth/callback']);
 
 export function sanitizeRedirectPath(raw: unknown): string {
     if (typeof raw !== 'string') return '/';
@@ -21,6 +21,18 @@ export function resolveCurrentReturnPath(): string {
     const candidate = `${window.location.pathname || '/'}${window.location.search || ''}`;
     const safe = sanitizeRedirectPath(candidate);
     return AUTH_SELF_PATHS.has(window.location.pathname || '/') ? '/' : safe;
+}
+
+/**
+ * Search params that send an anonymous visitor of a gated route to the auth
+ * card, carrying the path they actually asked for.
+ *
+ * Sanitised here so `beforeLoad` never builds a redirect target by hand: the
+ * value is relative-only, so the auth card can navigate back to it after
+ * sign-in without an open-redirect risk.
+ */
+export function buildAuthRedirectSearch(pathname: string, searchStr = ''): { redirect: string } {
+    return { redirect: sanitizeRedirectPath(`${pathname}${searchStr}`) };
 }
 
 export function buildOAuthCallbackUrl(origin: string, currentPath?: string): string {

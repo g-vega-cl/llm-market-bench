@@ -10,6 +10,33 @@ vi.mock('~/lib/auth-client', () => ({
     }),
 }));
 
+describe('Auth — recipe beta panel', () => {
+    const panelProps = {
+        actionText: 'Login',
+        onSubmit: vi.fn(),
+        status: 'idle' as const,
+    };
+
+    it('shows the Recipe Studio beta panel when the redirect target is /recipes', () => {
+        render(<Auth {...panelProps} redirectPath="/recipes?recipeId=rec-1" />);
+
+        expect(screen.getByText('Strategy Recipe Studio — Free Beta Access')).toBeInTheDocument();
+        expect(screen.getByText(/2 free 2-week backtests\/day/i)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /public sample backtest/i })).toHaveAttribute(
+            'href',
+            '/recipes-demo',
+        );
+    });
+
+    it('hides the panel for any other redirect target', () => {
+        render(<Auth {...panelProps} redirectPath="/portfolios" />);
+
+        expect(
+            screen.queryByText('Strategy Recipe Studio — Free Beta Access'),
+        ).not.toBeInTheDocument();
+    });
+});
+
 describe('Auth — uses design system', () => {
     const defaultProps = {
         actionText: 'Login',

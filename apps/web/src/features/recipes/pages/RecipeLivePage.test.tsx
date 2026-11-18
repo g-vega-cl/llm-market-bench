@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LivePortfolioAndRuns } from '../types';
 import { RecipeLivePage } from './RecipeLivePage';
 
@@ -107,15 +107,15 @@ describe('RecipeLivePage', () => {
     it('renders run selector with all persisted runs', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-        // Both jobs appear in the RunSelectorBar with their created_at stamps.
-        expect(screen.getByText(/09:32/i)).toBeInTheDocument();
-        expect(screen.getByText(/12:32/i)).toBeInTheDocument();
+        // Both jobs appear in the RunSelectorBar with their created_at stamps in ET.
+        expect(screen.getByText(/Apr 6 • 5:32 AM ET/i)).toBeInTheDocument();
+        expect(screen.getByText(/Apr 6 • 8:32 AM ET/i)).toBeInTheDocument();
     });
 
     it('switches run selection and surfaces a pending run without trace output', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-        fireEvent.click(screen.getByText(/12:32/i));
+        fireEvent.click(screen.getByText(/Apr 6 • 8:32 AM ET/i));
 
         expect(screen.getByText(/Selected live job has no trace output yet/i)).toBeInTheDocument();
         expect(screen.queryByText(/Analyze NVDA at slot 1/i)).not.toBeInTheDocument();
@@ -128,5 +128,47 @@ describe('RecipeLivePage', () => {
             'href',
             '/recipes',
         );
+    });
+
+    describe('Next run schedule label (America/New_York)', () => {
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('shows 09:30 ET tomorrow at 15:50 EST on a Wednesday', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-11-18T15:50:00-05:00'));
+
+            render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
+
+            expect(screen.getByText(/Next run: 09:30 ET tomorrow/i)).toBeInTheDocument();
+        });
+
+        it('shows 12:30 ET today at 12:00 EST on a Wednesday', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-11-18T12:00:00-05:00'));
+
+            render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
+
+            expect(screen.getByText(/Next run: 12:30 ET today/i)).toBeInTheDocument();
+        });
+
+        it('shows 09:30 ET Monday on Friday after 15:30 EST', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-11-20T16:00:00-05:00'));
+
+            render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
+
+            expect(screen.getByText(/Next run: 09:30 ET Monday/i)).toBeInTheDocument();
+        });
+
+        it('shows 09:30 ET Monday on Saturday', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-11-21T11:00:00-05:00'));
+
+            render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
+
+            expect(screen.getByText(/Next run: 09:30 ET Monday/i)).toBeInTheDocument();
+        });
     });
 });

@@ -7,6 +7,7 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { formatEasternDateTime } from '~/utils/date';
 import { RecipePortfolioBlock } from '../components/RecipePortfolioBlock';
 import { TraceInspectorBlock } from '../components/TraceInspectorBlock';
 import type { LivePortfolioSnapshot, LiveRunResult, RecipeJobRecord } from '../types';
@@ -31,18 +32,30 @@ function extractLiveResult(job: RecipeJobRecord | undefined): LiveRunResult | nu
 
 function getNextSlotLabel(now: Date): string {
     // 09:30, 12:30, 15:30 ET, Mon-Fri.
-    const etOffset = -4; // EDT
-    const etNow = new Date(now.getTime() + etOffset * 60 * 60 * 1000);
-    if (etNow.getDay() < 1 || etNow.getDay() > 5) return '09:30 ET Monday';
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short',
+        hour: 'numeric',
+        minute: 'numeric',
+        hourCycle: 'h23',
+    }).formatToParts(now);
+
+    const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+    const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+
+    if (weekday === 'Sat' || weekday === 'Sun') return '09:30 ET Monday';
 
     const slotsET = [9.5, 12.5, 15.5];
-    const currentHour = etNow.getHours() + etNow.getMinutes() / 60;
+    const currentHour = hour + minute / 60;
     const nextSlot = slotsET.find((s) => s > currentHour);
-    if (nextSlot === undefined) return '09:30 ET tomorrow';
+    if (nextSlot === undefined) {
+        return weekday === 'Fri' ? '09:30 ET Monday' : '09:30 ET tomorrow';
+    }
 
-    const hour = Math.floor(nextSlot);
-    const minute = Math.round((nextSlot - hour) * 60);
-    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ET today`;
+    const slotHour = Math.floor(nextSlot);
+    const slotMinute = Math.round((nextSlot - slotHour) * 60);
+    return `${slotHour.toString().padStart(2, '0')}:${slotMinute.toString().padStart(2, '0')} ET today`;
 }
 
 interface RunSelectorBarProps {
@@ -75,7 +88,8 @@ function RunSelectorBar({
             )}
             {recentLiveRuns.map((run) => {
                 const isSelected = !isViewingInline && activeJobId === run.id;
-                const stamp = (run.created_at || '').slice(0, 16).replace('T', ' ');
+                const stamp = run.created_at ? formatEasternDateTime(run.created_at) : '';
+                const label = stamp && stamp !== 'Unknown' ? stamp : run.id.slice(0, 8);
                 return (
                     <Button
                         key={run.id}
@@ -83,7 +97,7 @@ function RunSelectorBar({
                         variant={isSelected ? 'solid' : 'outline'}
                         onClick={() => onSelect(run.id)}
                     >
-                        {stamp || run.id.slice(0, 8)}
+                        {label}
                     </Button>
                 );
             })}
@@ -160,7 +174,8 @@ export function RecipeLivePage({ recipeId, initialData }: RecipeLivePageProps) {
                             {activeRun && (
                                 <div className="flex flex-wrap items-center gap-2">
                                     <Badge variant="soft" size="xs">
-                                        {activeRun.slot_label || activeRun.as_of_utc.slice(0, 16)}
+                                        {activeRun.slot_label ||
+                                            formatEasternDateTime(activeRun.as_of_utc)}
                                     </Badge>
                                     <Badge variant="soft" colorScheme="accent" size="xs">
                                         {activeRun.signals.length} Signals

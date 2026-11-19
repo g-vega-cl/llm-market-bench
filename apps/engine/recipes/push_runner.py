@@ -10,6 +10,7 @@ from typing import Any
 
 from core.config import logger
 from core.time_utils import EASTERN_TZ
+from recipes.alpaca_mirror import mirror_recipe_fills, position_snapshot, record_mirror_status
 from recipes.backtest_accounting import BacktestAccumulator
 from recipes.intraday_bars import (
     CORPUS_MIN_DATE,
@@ -120,6 +121,7 @@ async def run_push_live(
     if new_tickers:
         live_prices.update(await _resolve_live_prices(new_tickers))
 
+    positions_before = position_snapshot(portfolio)
     step_res = apply_portfolio_step(
         portfolio,
         slot_label=now_et_label,
@@ -127,6 +129,14 @@ async def run_push_live(
         prices=live_prices,
         concurrency_config=concurrency_cfg,
     )
+    mirror_results = await mirror_recipe_fills(
+        recipe_id=str((recipe_row or {}).get("id") or "unknown-recipe"),
+        slot_label=now_et_label,
+        slot_key=now_utc.strftime("%Y%m%dT%H%M%SZ"),
+        before=positions_before,
+        state=portfolio,
+    )
+    record_mirror_status(portfolio, mirror_results, slot_label=now_et_label)
 
     return {
         "mode": "live_turn",
@@ -136,6 +146,7 @@ async def run_push_live(
         "final_output": prev_output or "",
         "signals": signals,
         "executed_signals": step_res["executed_signals"],
+        "alpaca_fills": mirror_results,
         "signal_prices": live_prices,
         "updated_portfolio": {
             "paper_cash": round(portfolio.cash, 2),

@@ -39,6 +39,11 @@ function formatSignedPct(value: number): string {
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
+function formatShares(value: number): string {
+    // Whole shares render as integers; legacy fractional rows stay readable at 4dp
+    return Number(value ?? 0).toLocaleString('en-US', { maximumFractionDigits: 4 });
+}
+
 export function RecipePortfolioBlock({
     title,
     cash,
@@ -135,7 +140,7 @@ export function RecipePortfolioBlock({
                                         </div>
                                     </TableCell>
                                     <TableCell align="right">{pos.entry_time}</TableCell>
-                                    <TableCell numeric>{pos.shares.toFixed(4)}</TableCell>
+                                    <TableCell numeric>{formatShares(pos.shares)}</TableCell>
                                     <TableCell numeric>${pos.entry_price.toFixed(2)}</TableCell>
                                     <TableCell numeric>${curPx.toFixed(2)}</TableCell>
                                     <TableCell numeric>{formatDollar(mktVal)}</TableCell>

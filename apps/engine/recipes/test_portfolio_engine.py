@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from recipes.portfolio_engine import (  # noqa: F401 - tested below
     DEFAULT_CONCURRENCY_CONFIG,
     PortfolioState,
@@ -26,7 +28,9 @@ def test_long_only_multi_day_hold_exit_and_cash_conservation():
     assert res1["trades_opened"] == 1
     assert res1["trades_closed"] == 0
     assert len(state.positions) == 1
-    assert state.cash == 7500.0
+    # Whole shares only: 24 shares at $100 + 5bps slip = $2,401.20 spent, not the full $2,500 alloc
+    assert state.positions[0]["shares"] == 24
+    assert state.cash == pytest.approx(7598.8)
     assert len(state.trades) == 0  # Not closed next bar! Held across turns!
 
     # Turn 2: HOLD (no signals) at $110 -> equity marks up cleanly, still open
@@ -59,7 +63,8 @@ def test_long_only_multi_day_hold_exit_and_cash_conservation():
     assert trade["entry_time"] == "2026-04-06 09:30 ET"
     assert trade["exit_time"] == "2026-04-07 09:30 ET"
     assert trade["exit_reason"] == "SIGNAL_EXIT"
-    assert trade["pnl_net"] > 240.0
+    assert trade["shares"] == 24
+    assert trade["pnl_net"] == pytest.approx(24 * 110.0 * (1 - 0.0005) - 2401.2, abs=0.01)
     # Cash conservation: starting 10000 + realized net P&L == ending cash
     assert round(10000.0 + trade["pnl_net"], 2) == round(state.cash, 2)
 
@@ -135,7 +140,61 @@ def test_format_portfolio_prompt_block_renders_holdings_and_unrealized_pct():
     )
     assert "Cash Available: $7,500.00" in text
     assert "Open Slots: 1 / 4" in text
-    assert "NVDA: 25.0000 shares | Entry $100.00 @ 2026-04-06 09:30 ET | Current $110.00 (+10.00%)" in text
+    assert "NVDA: 25 shares | Entry $100.00 @ 2026-04-06 09:30 ET | Current $110.00 (+10.00%)" in text
+
+
+def test_prompt_block_keeps_legacy_fractional_rows_readable():
+    state = PortfolioState(
+        cash=7500.0,
+        positions=[
+            {
+                "ticker": "DIS",
+                "side": "LONG",
+                "shares": 20.474849,
+                "entry_price": 122.04,
+                "entry_time": "2026-11-19 09:30 ET",
+                "cost_basis": 2500.0,
+            }
+        ],
+    )
+    text = format_portfolio_prompt_block(state, current_prices={"DIS": 122.04})
+    assert "DIS: 20.4748 shares | Entry $122.04" in text
+
+
+def test_entries_size_to_whole_shares_and_charge_actual_spend():
+    state = PortfolioState(cash=10000.0)
+    res = apply_portfolio_step(
+        state,
+        slot_label="2026-11-19 09:30 ET",
+        signals=[{"action": "BUY", "ticker": "DIS"}],
+        prices={"DIS": 122.04},
+        concurrency_config={"max_open_trades": 4, "max_equity_pct_per_trade": 25.0},
+        slippage_bps=5.0,
+    )
+    assert res["trades_opened"] == 1
+    pos = state.positions[0]
+    assert pos["shares"] == 20
+    assert isinstance(pos["shares"], int)
+    expected_spend = round(20 * 122.04 * 1.0005, 4)
+    assert pos["cost_basis"] == pytest.approx(expected_spend, abs=1e-6)
+    # Cash must equal exactly what was spent: no silent leak from the $2,500 notional cap
+    assert state.cash == pytest.approx(10000.0 - expected_spend, abs=1e-6)
+
+
+def test_alloc_below_one_share_is_skipped_not_rounded_up():
+    state = PortfolioState(cash=10000.0)
+    res = apply_portfolio_step(
+        state,
+        slot_label="2026-11-19 09:30 ET",
+        signals=[{"action": "BUY", "ticker": "BRKA"}],
+        prices={"BRKA": 700000.0},
+        concurrency_config={"max_open_trades": 4, "max_equity_pct_per_trade": 25.0},
+        slippage_bps=5.0,
+    )
+    assert res["trades_opened"] == 0
+    assert state.positions == []
+    assert state.cash == 10000.0
+    assert "ALLOCATION_BELOW_ONE_SHARE" in [s["skip_type"] for s in state.skipped_trades]
 
 
 def test_lowercase_held_ticker_exits_and_computes_clean_pnl_midpoint():

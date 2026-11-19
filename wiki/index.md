@@ -247,6 +247,7 @@
 - [[concepts/consensus]] — Semantic grouping, weighted voting, event promotion
 - [[concepts/execution]] — Pre-market validation, Reg T checks, trade settlement
 - [[concepts/alpaca-order-sync]] — Decoupled Alpaca order status sync (SUBMITTED → FILLED via daily cron)
+- [[concepts/recipe-portfolio-engine]] — shared Long-Only recipe stepper: whole-share sizing, actual-spend cash math, and the fire-and-forget Alpaca paper mirror
 - [[concepts/memory-feedback]] — Post-mortem, contrarian analysis, cause & effect
 - [[concepts/agent-workflow]] — Mandatory Search/Plan/TDD sequence for all agents
 - [[concepts/visual-planning]] — Terminal-native visual planning using Unicode box-drawing, flowcharts, and tables

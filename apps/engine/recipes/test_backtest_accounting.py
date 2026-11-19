@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from recipes.backtest_accounting import BacktestAccumulator
 
 
@@ -69,7 +71,9 @@ def test_accumulator_tracks_multi_slot_long_only_positions_and_snapshots():
     assert len(snap3["open_positions"]) == 0
     assert len(snap3["trades"]) == 1
     assert snap3["trades"][0]["exit_reason"] == "SIGNAL_EXIT"
-    assert snap3["trades"][0]["pnl_net"] > 240.0
+    # 24 whole shares @ $100 spent $2,401.20; exit at $110 nets $2,638.68
+    assert snap3["trades"][0]["shares"] == 24
+    assert snap3["trades"][0]["pnl_net"] == pytest.approx(237.48, abs=0.01)
     assert snap3["win_rate_pct"] == 100.0
 
 
@@ -121,8 +125,10 @@ def test_snapshot_enriches_open_positions_with_mtm_and_stores_full_trace():
     pos = snap["open_positions"][0]
     assert pos["ticker"] == "NVDA"
     assert pos["current_price"] == 110.0
-    assert pos["market_value"] > 2700.0
-    assert pos["unrealized_pnl_net"] > 240.0
+    # 24 whole shares: $2,640 mark, net of the 5bps exit slip $2,639.68 vs $2,401.20 cost
+    assert pos["shares"] == 24
+    assert pos["market_value"] == 2640.0
+    assert pos["unrealized_pnl_net"] == pytest.approx(237.48, abs=0.01)
     assert pos["unrealized_return_pct"] > 9.0
 
     step = snap["day_steps"][0]

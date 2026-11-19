@@ -279,16 +279,27 @@ def _process_entries(
                 f"BUY {tkr} skipped (available cash ${state.cash:.2f} < ${_MIN_TRADE_NOTIONAL:.0f})",
             )
             continue
-        shares = alloc / (entry_px * (1.0 + slip))
-        state.cash -= alloc
+        fill_px = entry_px * (1.0 + slip)
+        shares = int(alloc // fill_px) if fill_px > 0 else 0
+        if shares < 1:
+            skipped += 1
+            _record_skip(
+                state,
+                slot_label,
+                "ALLOCATION_BELOW_ONE_SHARE",
+                f"BUY {tkr} skipped (${alloc:.2f} alloc buys no whole share at ${entry_px:.2f})",
+            )
+            continue
+        cost_basis = round(shares * fill_px, 4)
+        state.cash -= cost_basis
         state.positions.append(
             {
                 "ticker": tkr,
                 "side": "LONG",
-                "shares": round(shares, 6),
+                "shares": shares,
                 "entry_price": round(entry_px, 4),
                 "entry_time": slot_label,
-                "cost_basis": alloc,
+                "cost_basis": cost_basis,
             }
         )
         filled.append({"action": "BUY", "ticker": tkr, "price": round(entry_px, 4)})
@@ -385,6 +396,14 @@ def apply_portfolio_step(
     }
 
 
+def _format_shares(shares: float) -> str:
+    """Render whole shares as integers; keep legacy fractional rows readable."""
+    value = float(shares)
+    if value.is_integer():
+        return str(int(value))
+    return f"{value:.4f}".rstrip("0").rstrip(".")
+
+
 def format_portfolio_prompt_block(
     state: PortfolioState,
     *,
@@ -411,7 +430,7 @@ def format_portfolio_prompt_block(
         cur_px = float(px_map.get(tkr) or entry_px)
         unr_pct = ((cur_px - entry_px) / entry_px) * 100.0 if entry_px > 0 else 0.0
         lines.append(
-            f"  * {tkr}: {shares:.4f} shares | Entry ${entry_px:.2f} @ {pos['entry_time']} "
+            f"  * {tkr}: {_format_shares(shares)} shares | Entry ${entry_px:.2f} @ {pos['entry_time']} "
             f"| Current ${cur_px:.2f} ({unr_pct:+.2f}%)"
         )
     return "\n".join(lines)

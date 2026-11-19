@@ -598,10 +598,62 @@ async def test_run_push_live_injects_held_positions_and_returns_updated_portfoli
             recipe_row=recipe_row,
         )
 
-    assert "NVDA: 25.0000 shares" in captured_prompts[0]
+    assert "NVDA: 25 shares" in captured_prompts[0]
     assert res["updated_portfolio"]["paper_positions"] == []
     assert len(res["updated_portfolio"]["paper_trades"]) == 1
     assert res["updated_portfolio"]["paper_cash"] > 10200.0
+
+
+@pytest.mark.asyncio
+async def test_run_push_live_mirrors_fills_and_stamps_open_positions():
+    """Wiring check: a live BUY must reach the broker mirror and carry its order id back."""
+    strategy = _sample_strategy()
+    sb = _mock_sb_client(news_rows=[], memory_rows=[], price_rows=[])
+    recipe_row = {
+        "id": "0773afba-948e-4b11-a445-1d39934839ad",
+        "concurrency_config": {"max_open_trades": 4, "max_equity_pct_per_trade": 25.0},
+        "paper_cash": 10000.0,
+        "paper_positions": [],
+        "paper_trades": [],
+        "paper_equity_curve": [],
+    }
+
+    class FakeBroker:
+        def __init__(self) -> None:
+            self.orders = []
+
+        def get_open_position(self, ticker: str):
+            raise RuntimeError("flat")
+
+        def submit_order(self, request):
+            self.orders.append(request)
+            return type("Order", (), {"id": "alpaca-order-1"})()
+
+    broker = FakeBroker()
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr("recipes.alpaca_mirror._build_client", lambda: broker)
+
+    async def fake_llm(prompt: str, selected_tools: list[str], cutoff_date: str | None) -> dict:
+        return {"output": '[{"action": "BUY", "ticker": "DIS"}]', "tool_calls": []}
+
+    try:
+        with patch("recipes.push_runner._resolve_live_prices", new=AsyncMock(return_value={"DIS": 122.04})):
+            res = await run_push_live(
+                strategy,
+                sb,
+                llm_caller=fake_llm,
+                as_of_utc=datetime(2026, 11, 19, 14, 30, tzinfo=UTC),
+                recipe_row=recipe_row,
+            )
+    finally:
+        monkeypatch.undo()
+
+    assert len(broker.orders) == 1
+    assert broker.orders[0].symbol == "DIS"
+    assert broker.orders[0].qty == 20
+    assert broker.orders[0].client_order_id == "recipe-0773afba__DIS__BUY__20261119T143000Z"
+    assert res["alpaca_fills"][0]["status"] == "SUBMITTED"
+    assert res["updated_portfolio"]["paper_positions"][0]["alpaca_order_id"] == "alpaca-order-1"
 
 
 @pytest.mark.asyncio

@@ -55,6 +55,8 @@ describe('RecipePortfolioBlock', () => {
         expect(screen.getAllByText('$5,000.00').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('$10,250.00')).toBeInTheDocument();
         expect(screen.getByText('NVDA')).toBeInTheDocument();
+        expect(screen.getByText('25')).toBeInTheDocument();
+        expect(screen.queryByText('25.0000')).not.toBeInTheDocument();
         expect(screen.getByText('+$250.00')).toBeInTheDocument();
         expect(screen.getByText('+5.00%')).toBeInTheDocument();
         expect(screen.getByText('INTC')).toBeInTheDocument();

@@ -38,6 +38,13 @@ You do **not** need to register or configure keys for these; they are active in 
 * **Env Variable**: Set `OPENROUTER_API_KEY=sk-or-v1-...` in `apps/free_llm_proxy/.env`.
 * **Limits**: 20 RPM, 50 requests/day per free model (17 free models available).
 
+### Nous Research Portal 🦉
+* **Signup URL**: [portal.nousresearch.com](https://portal.nousresearch.com)
+* **API Docs**: [portal.nousresearch.com/api-docs](https://portal.nousresearch.com/api-docs)
+* **Env Variable**: Set `NOUS_RESEARCH_KEY=...` in `apps/free_llm_proxy/.env`.
+* **Catalog**: Strictly filtered to `:free` models (`qwen/qwen4-max:free`, `tencent/hy4-flash:free`, `meituan/longcat-2.5:free`, `stepfun/step-3.7-flash:free`, `upstage/solar-mini4:free`).
+* **Limits**: ~50 RPM, 2,100 requests/hour.
+
 ---
 
 ## 3. Optional Additional Providers to Expand

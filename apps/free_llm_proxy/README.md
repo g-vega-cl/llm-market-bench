@@ -9,7 +9,7 @@ A high-performance, model-agnostic OpenAI-compatible proxy that unifies free LLM
 - **Single Universal Endpoint**: Connect any OpenAI-compatible chat app, IDE, agent, or script to `http://localhost:8086/v1`.
 - **Dynamic Model-Agnostic Discovery**: Queries live provider `/v1/models` catalogs. No broken model strings when providers release or retire checkpoints.
 - **Smart Tiered Failover**:
-  - **Tier 1 (High Performance)**: Groq (ultra-fast 120B/27B), Gemini (Flash Latest / 3.x Flash), Kilo Code (no key needed).
+  - **Tier 1 (High Performance)**: Groq (ultra-fast 120B/27B), Gemini (Flash Latest / 3.x Flash), Kilo Code (no key needed), Nous Research (`:free` models).
   - **Tier 2 (Fallback Pool)**: OpenRouter (17 `:free` models), NVIDIA NIM.
 - **Zero Hardcoded Model IDs**: Relies on dynamic runtime `/models` discovery, official dynamic provider aliases (`gemini-flash-latest`, `openrouter/free`), and virtual model aliases (`free-auto`, `strata-auto`) to insulate clients from model obsolescence.
 - **Circuit Breaker**: On HTTP 429 (rate limit), 5xx downtime, or two consecutive truncated streams, automatically cools down the provider and retries next candidate seamlessly.
@@ -32,6 +32,7 @@ FREE_PROXY_MASTER_KEY=sk-free-proxy-secret-key-12345
 GROQ_API_KEY=gsk_...
 GEMINI_API_KEY_FREE=...
 OPENROUTER_API_KEY=...
+NOUS_RESEARCH_KEY=...
 OPENCODE_GO_API_KEY=oc_sk_...
 ```
 
@@ -151,7 +152,7 @@ Thinking controls are **only forwarded to providers that declare support** in
 `providers.json` via `thinking_params`:
 
 - `gemini`, `groq` → `reasoning_effort` (`low`/`medium`/`high`)
-- `openrouter` → `reasoning` object; a caller's `reasoning_effort` is normalized into `{"effort": "..."}`
+- `openrouter`, `nous` → `reasoning` object; a caller's `reasoning_effort` is normalized into `{"effort": "..."}`
 - `nvidia`, `kilo`, `opencode-go` → nothing (these gateways 400 on unknown fields, and a 400 cools a healthy provider for 60s)
 - Strata keeps its native `reasoning_budget_tokens`
 

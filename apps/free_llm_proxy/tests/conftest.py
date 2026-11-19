@@ -1,8 +1,16 @@
 """Hermetic pytest fixtures for Free LLM Proxy tests."""
 
 import os
+from pathlib import Path
+import sys
+
 import pytest
 from fastapi.testclient import TestClient
+
+# Ensure repository root is in sys.path when pytest runs from apps/free_llm_proxy/
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 # Enforce test environment variables before importing the server module.
 os.environ["FREE_PROXY_MASTER_KEY"] = "sk-test-master-key"

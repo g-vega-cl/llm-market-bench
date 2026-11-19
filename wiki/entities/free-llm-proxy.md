@@ -5,7 +5,7 @@ category: entity
 
 # Free LLM Proxy
 
-A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint, with an opt-in paid OpenCode Go fallback tier. It features dynamic model catalog discovery, tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, per-provider output/thinking ceilings declared in `providers.json`, declared-only reasoning-parameter passthrough, per-attempt wall-clock timeouts with whole-segment deadlines, plan-included-model-first ordering inside paid providers, and full token usage logging.
+A model-agnostic, OpenAI-compatible proxy server located at `apps/free_llm_proxy` that pools permanent free-tier LLM inference providers into a single resilient endpoint, with an opt-in paid OpenCode Go fallback tier. It features dynamic model catalog discovery, per-provider free-model allowlists (`allowed_model_patterns`), catalog-driven in-provider cascades (`cascade_statuses`), tiered round-robin load balancing, circuit-breaker cooldowns on rate limits, failure-priority preservation across cascades, per-provider output/thinking ceilings declared in `providers.json`, declared-only reasoning-parameter passthrough, per-attempt wall-clock timeouts with whole-segment deadlines, plan-included-model-first ordering inside paid providers, and full token usage logging.
 
 ## Architecture & Lifecycle
 
@@ -30,7 +30,7 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
        ┌─────────────────────────────────────────────────────────────┐
        │                      Router & Failover                      │
        │                                                             │
-       │  Tier 1: [Groq] ⇄ [Gemini] ⇄ [Kilo Code] (Round-Robin)      │
+       │  Tier 1: [Groq] ⇄ [Gemini] ⇄ [Kilo Code] ⇄ [Nous Research]  │
        │           │ 429 / 5xx / Timeout / 504 wall-clock cap       │
        │           ▼ (Trip Circuit Breaker)                          │
        │  Tier 2: [OpenRouter] ⇄ [NVIDIA NIM]                        │
@@ -52,19 +52,37 @@ The proxy binds by default to `http://0.0.0.0:8086` and accepts standard `POST /
 
 ### Dynamic Catalog Discovery (`apps/free_llm_proxy/discovery.py`)
 
-Queries each active provider's `GET /models` endpoint at runtime. Avoids hardcoded model IDs so provider version rollouts (e.g. `qwen3.8-27b`, `gpt-oss-120b`) work automatically without code edits. Results are cached per provider (`ModelDiscovery`, default 3600s TTL) and matched against prioritized `fnmatch` patterns. Discovery requests use a short connect timeout (`httpx.Timeout(4.0, connect=2.0)`) so an offline provider (e.g. local Strata) fails fast instead of stalling the catalog refresh.
+Queries each active provider's `GET /models` endpoint at runtime. Avoids hardcoded model IDs so provider version rollouts (e.g. `qwen3.8-27b`, `gpt-oss-120b`) work automatically without code edits. Results are cached per provider (`ModelDiscovery`, default 3600s TTL) and matched against prioritized `fnmatch` patterns. Discovery requests use a short connect timeout (`httpx.Timeout(4.0, connect=2.0)`) so an offline provider (e.g. local Strata) fails fast instead of stalling the catalog refresh. An empty cached list is a valid cache hit (`if cached is not None`), so a provider that legitimately exposes zero allowed models is not re-fetched on every request.
+
+#### Per-Provider Free-Model Allowlists (`allowed_model_patterns`)
+
+Zero-cost isolation is no longer hardcoded per provider. A provider may declare `allowed_model_patterns` in `providers.json`; `ModelDiscovery.configure_allowed_patterns(providers)` loads them at router construction, and `fetch_live_models` filters the discovered catalog through `filter_allowed_models(models, patterns)` before caching. The helpers are pure and shared by the router and the failover layer:
+
+- **`is_allowed_model(model, allowed_patterns)`** — true only for a *concrete* model ID. It rejects empty strings, IDs starting with `:` or `-`, and any string containing `*`, `?`, or `[` (a pattern is not a model). `None` means "no allowlist" (allow everything); an **empty list fails closed** (allow nothing). Matching is case-insensitive `fnmatch`.
+- **`filter_allowed_models(models, allowed_patterns)`** — filters a live catalog down to allowed concrete IDs.
+- **`filter_allowed_patterns(patterns, allowed_patterns)`** — filters a provider's `preferred_patterns` list (which may contain globs) to entries scoped by the allowlist, dropping the bare `*` wildcard.
+
+Declared allowlists: `openrouter` → `["*:free", "openrouter/free"]`, `kilo` → `["*:free", "*-free", "kilo-auto/free"]`, `nous` → `["*:free"]`. A provider that declares no allowlist keeps the previous unrestricted behavior.
+
+#### `dynamic_fallback_model`
+
+A provider with an allowlist may also declare a `dynamic_fallback_model` (`kilo` → `kilo-auto/free`, `openrouter` → `openrouter/free`) that the router and server fall back to when the live catalog is empty or no allowed model resolves. Providers without one (e.g. `nous`) fail closed instead of inventing a checkpoint.
 
 ### Circuit Breaker (`apps/free_llm_proxy/circuit_breaker.py`)
 
 Reacts to HTTP 429 rate limits or repeated 5xx errors by placing the failed provider into cooldown (respecting `Retry-After` if sent). Deterministic 4xx responses (400/403/408/409/413/422) are treated like rate limits — a provider that returns a 413 payload-too-large is cooled down so it is skipped on the next request instead of being re-probed first on every oversized call. A 429 trips the breaker immediately; two consecutive 5xx errors trip it, and `record_stream_failure` applies the same two-strike rule to streams that die mid-flight. `record_success` resets the consecutive-failure counter, and `get_status_overview` exposes per-provider health, cooldown remaining, failure count, and rate-limit hit count.
 
+**Failure-priority preservation.** When an in-provider cascade ends without a `200`, the proxy reports the *highest-priority* failure rather than the last one tried: `429` (priority 4) > deterministic 4xx (3) > `5xx` (2) > anything else (1). A trailing `404` or `504` from a fallback model therefore never masks the `429` that should trip the breaker, so `rate_limit_hits` and cooldown state stay accurate.
+
 ### Tiered Router (`apps/free_llm_proxy/router.py`)
 
 Distributes traffic across Tier 1 providers using round-robin counters to balance free-tier request limits. Healthy providers are tried before cooling-down ones; for free-only aliases, cooling providers are used only as a last resort when no healthy candidate remains. Routing is split into free and paid cost segments: for `*-go` aliases the order is free healthy ➔ free cooling ➔ paid healthy ➔ paid cooling, so a rate-limit storm can never promote the paid provider ahead of a still-usable free one. An explicit `provider/model` prefix moves that provider to the front of its segment. Providers declaring `enabled_in_auto: false` (such as local Strata) are excluded from the standard auto rotation unless explicitly targeted or opted in: `strata-auto` and `strata-auto-go` move Strata to the front of the free segment, while `auto-strata` and `auto-strata-go` add it to the Tier 1 rotation. Paid providers declare `billing: "paid"` and an `auto_aliases` allowlist; eligibility is fail-closed, so a missing or edited `enabled_in_auto` flag cannot leak paid spend into a free alias. Tier buckets are created dynamically from each provider's normalized integer `tier` value (malformed values fall back to the default rather than crashing), and the paid OpenCode Go pool sits at Tier 3.
 
+Model resolution is allowlist-driven and provider-agnostic. `_filter_provider_candidates` narrows both the live catalog and the provider's `preferred_patterns` through the allowlist (falling back to `dynamic_fallback_model` when the pattern list empties), and the resolution helpers `_fallback_model`, `_resolve_prefixed_model`, and `_finalize_resolved_model` re-validate every candidate — including an explicitly prefixed `provider/model` request — against the allowlist before dispatch. Gemini keeps its dedicated `_is_modern_gemini_flash` guard (Flash-only, legacy 1.5/2.0/2.5 excluded) layered on top of the generic allowlist path.
+
 ### Provider Output Ceilings & Thinking Passthrough (`apps/free_llm_proxy/server.py`, `providers.json`)
 
-Before dispatch, requests routed to any non-Strata (cloud) provider are rewritten by two helpers. `apply_output_ceiling` clamps `max_tokens` and `max_completion_tokens` to `min(requested, p_cfg["max_output_tokens"])` — the provider's own declared ceiling (`gemini` 65536, every other cloud provider 32768 — groq is held at 32768 because its smaller models cap below 65k), falling back to `CLOUD_MAX_OUTPUT_TOKENS` (default `32768`) only for a provider that declares none. Because reasoning tokens are billed inside the completion budget, this ceiling **is** the thinking budget: the previous global `16384` clamp silently truncated chain-of-thought-heavy answers, and every engine caller already requested exactly that ceiling. Strata is exempt and keeps the caller's full budget (e.g. 131,072 tokens). `apply_thinking_params` strips every thinking key (`reasoning_effort`, `reasoning`, `reasoning_budget_tokens`) and re-adds only those the provider declares in `thinking_params` — `reasoning_effort` for `gemini`/`groq`, a normalized `{"effort": ...}` object for `openrouter`, nothing for gateways that 400 on unknown fields (`nvidia`, `kilo`, `opencode-go`). A Strata-style `reasoning_budget_tokens` sent to a cloud provider is translated into an effort band (`>8192` high, `>4096` medium, else low) instead of being silently dropped, and `AUTO_GO_DEFAULT_REASONING_EFFORT` (default unset) can impose an explicit floor on `*-go` aliases.
+Before dispatch, requests routed to any non-Strata (cloud) provider are rewritten by two helpers. `apply_output_ceiling` clamps `max_tokens` and `max_completion_tokens` to `min(requested, p_cfg["max_output_tokens"])` — the provider's own declared ceiling (`gemini` 65536, `nous` 65536, every other cloud provider 32768 — groq is held at 32768 because its smaller models cap below 65k), falling back to `CLOUD_MAX_OUTPUT_TOKENS` (default `32768`) only for a provider that declares none. Because reasoning tokens are billed inside the completion budget, this ceiling **is** the thinking budget: the previous global `16384` clamp silently truncated chain-of-thought-heavy answers, and every engine caller already requested exactly that ceiling. Strata is exempt and keeps the caller's full budget (e.g. 131,072 tokens). `apply_thinking_params` strips every thinking key (`reasoning_effort`, `reasoning`, `reasoning_budget_tokens`) and re-adds only those the provider declares in `thinking_params` — `reasoning_effort` for `gemini`/`groq`, a normalized `{"effort": ...}` object for `openrouter`/`nous`, nothing for gateways that 400 on unknown fields (`nvidia`, `kilo`, `opencode-go`). A Strata-style `reasoning_budget_tokens` sent to a cloud provider is translated into an effort band (`>8192` high, `>4096` medium, else low) instead of being silently dropped, and `AUTO_GO_DEFAULT_REASONING_EFFORT` (default unset) can impose an explicit floor on `*-go` aliases.
 
 ### Failover Policy Module (`apps/free_llm_proxy/failover.py`)
 
@@ -82,6 +100,7 @@ Key constructs:
 - `last_resort_model(provider_cfg, available_models)` — the single metered model this provider may spend on, grounded in the catalog. A retired or renamed pin falls back to the catalog-resolved model instead of turning every request into a 502.
 - `opencode_go_attempts(provider_cfg, available_models, resolved_model)` — ordered `(model, metered)` attempts for a plan-bearing provider: plan-included models first, then exactly one metered model.
 - `is_futile_rate_limit(status_code, body)` — true for a 429 that a same-provider retry cannot clear (daily/plan quota, TPD, exhausted free-tier requests). The cascade re-checks this before *every* retry.
+- `cascade_candidates(provider_id, provider_cfg, status_code, target_model, available_models)` — returns the ordered allowed fallback model IDs for an in-provider retry. Static `IN_PROVIDER_CASCADES` entries still apply where declared (Gemini, OpenRouter, NVIDIA NIM, Kilo Code); otherwise a provider may declare `cascade_statuses` (e.g. `nous` → `[400, 429, 503]`) and the cascade is built from the live catalog, ordered by `preferred_patterns` so retired checkpoints are never hardcoded. Dynamic cascades are capped at `_MAX_DYNAMIC_CASCADE_RETRIES` (2) models, and every candidate is re-validated against the provider's allowlist.
 - `IN_PROVIDER_CASCADES` — declarative table of adjacent models per provider for transient failures (Gemini, OpenRouter, NVIDIA NIM, Kilo Code).
 
 ### Cloud Wall-Clock Dispatch Timeout (`_dispatch_with_timeout`, `apps/free_llm_proxy/server.py`)
@@ -93,6 +112,16 @@ Every upstream attempt on a non-Strata route is wrapped in `asyncio.wait_for(...
 Strata and any non-positive timeout are exempt and dispatched unwrapped, preserving deep local reasoning runs that legitimately exceed the cloud cap. Non-streaming passes are bounded by one deadline per segment, and the deadline is re-checked before *every* dispatch — the attempt loop and each in-provider cascade retry both recompute what is left, so a four-model cascade cannot spend the budget four times over. `FREE_PASS_DEADLINE_SECONDS` (120s) bounds the free segment, `PAID_PASS_DEADLINE_SECONDS` (45s) bounds the metered one, and `FREE_ATTEMPT_TIMEOUT_SECONDS` / `PAID_ATTEMPT_TIMEOUT_SECONDS` (45s each) cap a single attempt. A remainder below `MIN_ATTEMPT_SECONDS` (2s) is skipped rather than dispatched, so a harness deadline is never recorded as provider misbehaviour. Total worst case is 165s, inside the engine's 180s caller timeout, instead of the 272-721s observed before the bound. Streaming keeps the unbounded semantics, because the head of a stream is what an interactive caller is waiting on.
 
 Money control is routing, not a timeout flag: the paid provider's `auto_aliases` allowlist keeps it out of every free alias. There is no `PAID_TIMEOUT_GUARD` flag to configure or misconfigure.
+
+### Fail-Closed Candidate Resolution (`_resolve_candidate_model`)
+
+Before any request is sent, `chat_completions` resolves the target model through `_resolve_candidate_model(p_id, p_cfg, requested_model, available_models, is_paid=...)` and re-validates it against the provider's allowlist. It refuses dispatch — recording a `failover_chain` entry and continuing to the next candidate — when:
+
+- a **paid** provider's live catalog is unavailable (`<provider> (catalog unavailable; paid dispatch refused)`);
+- a **free-only** provider (allowlist declared, no `dynamic_fallback_model`) has an unavailable catalog (`<provider> (catalog unavailable; free-only dispatch refused)`);
+- no allowed model resolves (`<provider> (no allowed free model resolved)`).
+
+A declared `dynamic_fallback_model` is substituted when the resolved model is disallowed, so `openrouter`/`kilo` degrade to their known free alias instead of failing. Providers without one fail closed rather than dispatching an ungrounded model name.
 
 ### Audit Database (`apps/free_llm_proxy/db.py`)
 
@@ -123,7 +152,7 @@ async def _dispatch_with_timeout(
 ) -> tuple[int, Any, dict[str, str]]:
 ```
 
-- **Applies to every cloud attempt** — the primary dispatch plus each in-provider cascade step (Gemini, OpenRouter, NVIDIA NIM, Kilo Code) routes through `_dispatch_with_timeout`, so a hung fallback model is bounded exactly like the primary one.
+- **Applies to every cloud attempt** — the primary dispatch plus each in-provider cascade step (Gemini, OpenRouter, NVIDIA NIM, Kilo Code, and catalog-driven cascades such as Nous) routes through `_dispatch_with_timeout`, so a hung fallback model is bounded exactly like the primary one.
 - **`budget_s` tightens the cap** — the free segment passes its remaining budget; the paid segment passes its own smaller cap. `None` keeps the provider-wide default.
 - **Returns `504`, not an exception** — the synthesized `504` `timeout_error` body flows through the normal status-code handling, so the router advances to the next candidate and the attempt is recorded in the audit `failover_chain` as `<provider> (HTTP 504)`.
 - **Strata is exempt** — local inference legitimately runs for minutes on deep reasoning prompts, so `provider_id == "strata"` bypasses the wrapper entirely and keeps its full budget with no total duration cap.
@@ -148,7 +177,7 @@ A foundational architectural principle of Free LLM Proxy is **zero hardcoded mod
 1. **Model Obsolescence Rate**: Frontier and fast-tier LLM models churn rapidly. Checkpoint names are sunset and replaced on weeks-long cadences (e.g., Google advancing from Gemini 1.5 to 2.0 to 3.x Flash, Groq updating Qwen and Llama checkpoints). Hardcoding specific model strings in clients or configurations creates constant maintenance friction, broken upstream calls, and silent degradation.
 2. **Dynamic Provider Catalog Ingestion (`discovery.py`)**: The proxy queries each active provider's live `/models` endpoint at runtime and caches the catalog. New models released by providers are immediately discovered and become available to the router without requiring code commits or proxy restarts.
 3. **Official Provider Dynamic Aliases**: Wherever an upstream provider supports an official moving pointer (such as Google's official `gemini-flash-latest` or OpenRouter's `openrouter/free`), the proxy targets the alias as the primary pattern. This ensures downstream callers automatically receive newly promoted versions without intervention.
-4. **Resilient In-Provider Fallback**: If an upstream bleeding-edge model experiences high-demand spikes (e.g. Google HTTP 503 on `gemini-flash-latest`), the proxy cascades down through adjacent active generation variants (e.g. `gemini-3.6-flash`, `gemini-3.5-flash`) before tripping circuit breakers.
+4. **Resilient In-Provider Fallback**: If an upstream bleeding-edge model experiences high-demand spikes (e.g. Google HTTP 503 on `gemini-flash-latest`), the proxy cascades down through adjacent active generation variants (e.g. `gemini-3.6-flash`, `gemini-3.5-flash`) before tripping circuit breakers. Providers that declare `cascade_statuses` get the same behavior built from their live catalog rather than a hardcoded list.
 5. **Virtual Alias Abstraction**: Callers (such as the Pi agent or background prediction routines) consume generic virtual aliases (`free-auto`, `strata-auto`, `free-fast`, `free-reasoning`). Clients never specify brittle upstream IDs, allowing the routing engine to swap, balance, and heal underlying model targets transparently.
 
 ## Model Resolution & Provider Targeting
@@ -158,10 +187,9 @@ A foundational architectural principle of Free LLM Proxy is **zero hardcoded mod
 1. **Local Strata** — when `provider_id == "strata"`, a `strata/<model>` prefix is stripped and matched against the live catalog; otherwise the requested model is used if present in the catalog, else the first live model, else the literal `"strata"`.
 2. **Virtual alias** — if `requested_model` is a key in `virtual_aliases` (e.g. `free-auto`), its pattern list is used.
 3. **Default/auto** — `default`, `auto`, or the empty string resolve to the `free-auto` patterns.
-4. **Exact preferred pattern** — if `requested_model` appears verbatim in the provider's `preferred_patterns`, it is returned unchanged (no catalog lookup required).
-5. **Exact catalog match** — if `requested_model` is present in the discovered `available_models`, it is returned unchanged.
-6. **Explicit `provider/model` prefix** — the prefix is stripped and the remainder matched against the catalog. The literal `openrouter/free` is special-cased and returned as-is (it is a real OpenRouter model ID, not a `provider/model` pair, so it must never be stripped down to `free`).
-7. **Pattern fallback** — otherwise the first `preferred_patterns` entry matching the catalog is used.
+4. **Exact catalog match** — if `requested_model` is present in the discovered `available_models`, it is returned after allowlist re-validation.
+5. **Explicit `provider/model` prefix** — the prefix is stripped and the remainder matched against the catalog. The literal `openrouter/free` is special-cased and returned as-is (it is a real OpenRouter model ID, not a `provider/model` pair, so it must never be stripped down to `free`). A stripped model that violates the provider's allowlist (or Gemini's Flash-only guard) falls back through `_fallback_model`.
+6. **Pattern fallback** — otherwise the first `preferred_patterns` entry matching the catalog is used, then `_finalize_resolved_model` re-validates the result against the allowlist and Gemini's Flash guard.
 
 `Router.get_candidate_chain(requested_model)` builds the ordered provider attempt list. A request is treated as **explicitly provider-targeted** when either:
 - the model contains a `/` and the prefix matches an active provider ID (e.g. `groq/qwen...`), or
@@ -198,18 +226,28 @@ Providers declare an optional `max_prompt_tokens` in `providers.json` (e.g. Groq
 
 ### OpenRouter Zero-Cost Isolation
 
-The `openrouter` provider operates as a mixed marketplace of paid and free models. To guarantee that no account credits are ever billed unintentionally:
-- **Discovered Catalog Filtering (`discovery.py`)**: Models fetched from OpenRouter's live `/models` endpoint are strictly filtered at ingestion time to keep only zero-cost variants ending with `:free` or equaling `openrouter/free`. Paid models are stripped before pattern matching can evaluate them.
+The `openrouter` provider operates as a mixed marketplace of paid and free models. Zero-cost isolation is expressed declaratively through `allowed_model_patterns: ["*:free", "openrouter/free"]` plus `dynamic_fallback_model: "openrouter/free"`:
+- **Discovered Catalog Filtering (`discovery.py`)**: Models fetched from OpenRouter's live `/models` endpoint are filtered at ingestion time by the allowlist, so only zero-cost variants ending with `:free` or equaling `openrouter/free` survive. Paid models are stripped before pattern matching can evaluate them.
 - **Resolution Safety Gate (`router.py`)**: Virtual aliases (such as `free-auto`) and provider patterns are restricted to `:free` variants. If an explicit paid model is targeted or no pattern matches, the router coerces the model to `openrouter/free`.
-- **Server Dispatch Guard (`server.py`)**: Pre-flight verification enforces that requests dispatched to OpenRouter must end with `:free` or equal `openrouter/free`, ensuring 100% hermetic zero-cost inference.
+- **Server Dispatch Guard (`server.py`)**: `_resolve_candidate_model` re-validates the resolved model against the allowlist and substitutes `dynamic_fallback_model` when it is disallowed, ensuring 100% hermetic zero-cost inference.
 - **Attribution Headers**: Requests to OpenRouter pass `HTTP-Referer: https://llm.clvg.uk` and `X-Title: Pi / Free LLM Proxy`.
 
 ### Kilo Code Zero-Cost Isolation
 
-The `kilo` provider (`requires_auth: false`) also operates as a mixed marketplace of free and paid models. To prevent HTTP 401 `PAID_MODEL_AUTH_REQUIRED` failures:
+The `kilo` provider (`requires_auth: false`) also operates as a mixed marketplace of free and paid models. It declares `allowed_model_patterns: ["*:free", "*-free", "kilo-auto/free"]` and `dynamic_fallback_model: "kilo-auto/free"`, which prevents HTTP 401 `PAID_MODEL_AUTH_REQUIRED` failures:
 - **Discovered Catalog Filtering (`discovery.py`)**: Strips paid models and retains only zero-cost variants (`:free`, `*-free`, or `kilo-auto/free`).
 - **Resolution Safety Gate (`router.py`)**: Prioritizes `kilo-auto/free` and coerces unrecognized models to `kilo-auto/free` before dispatch.
 - **In-Provider Cascade (`server.py`)**: If a specific model returns 401/429/503, the proxy falls back through `kilo-auto/free`, `reflection/beam-free`, and `nvidia/nemotron-3.5-super-vl:free` before leaving the provider.
+
+### Nous Research (`nous`)
+
+Tier 1 provider at `https://inference-api.nousresearch.com/v1`, activated by `NOUS_RESEARCH_KEY` (`requires_auth: true`). It is a mixed marketplace, so it declares `allowed_model_patterns: ["*:free"]` and is filtered to zero-cost models only (`qwen/qwen4-max:free`, `tencent/hy4-flash:free`, `meituan/longcat-2.5:free`, `stepfun/step-3.7-flash:free`, `upstage/solar-mini4:free` at the time of writing). `preferred_patterns` orders the catalog `qwen4-max` → `hy4-flash` → `longcat-2.5` → any `:free`.
+
+- **Thinking passthrough** — declares `thinking_params: ["reasoning"]`, so a caller's `reasoning_effort` is normalized into `{"effort": ...}` exactly as for OpenRouter.
+- **Output ceiling** — `max_output_tokens: 65536`.
+- **Catalog-driven cascade** — `cascade_statuses: [400, 429, 503]` enables in-provider cascades built from the live catalog. A `400` on one `:free` model (e.g. a missing-tags rejection) retries the next allowed `:free` model instead of cooling the whole provider.
+- **Fail-closed** — with no `dynamic_fallback_model`, an empty or paid-only catalog is refused (`nous (catalog unavailable; free-only dispatch refused)`) rather than dispatching an ungrounded model name.
+- **Rotation** — `nous` participates in the Tier 1 rotation for `free-auto`, `auto-strata`, and `auto-go` whenever `NOUS_RESEARCH_KEY` is set; without the key it disappears from `get_active_providers()`.
 
 ### OpenCode Go Paid-Tier Isolation
 
@@ -232,8 +270,9 @@ When an upstream endpoint returns temporary errors (503 high-demand spike, 404 d
 - **OpenRouter**: Cascades from the primary model ➔ `openrouter/free` ➔ `nvidia/nemotron-3-ultra-550b-a55b:free` ➔ `nvidia/nemotron-3.5-super-vl:free` ➔ `nvidia/nemotron-3.5-lightning:free`.
 - **NVIDIA NIM**: Cascades from the primary model ➔ `minimaxai/minimax-m3.1-flash` ➔ `nvidia/nemotron-3.5-super-vl-120b-a12b` ➔ `nvidia/nemotron-3-ultra-550b-a55b` ➔ `mistralai/mistral-large-4-1t-a52b`.
 - **Kilo Code**: Cascades from the primary model ➔ `kilo-auto/free` ➔ `reflection/beam-free` ➔ `nvidia/nemotron-3.5-super-vl:free`.
+- **Nous Research** (catalog-driven): On `400`/`429`/`503`, cascades through up to 2 further allowed `:free` models ordered by `preferred_patterns`.
 
-The cascade re-checks the segment budget before *every* retry, so a multi-model provider cannot spend the request budget several times over, and quota-dead 429s stop the cascade mid-way instead of only at its start.
+The cascade re-checks the segment budget before *every* retry, so a multi-model provider cannot spend the request budget several times over, and quota-dead 429s stop the cascade mid-way instead of only at its start. When no fallback answers, the highest-priority failure status is preserved (see Circuit Breaker) so a trailing `404`/`504` never masks a `429`.
 
 ## Provider Output Ceilings & Thinking Passthrough (Behavioral Rules)
 
@@ -248,9 +287,9 @@ if p_id != "strata":
 
 Behavioral rules:
 - **Strata is exempt** — requests routed to the `strata` provider keep the caller's full budget (e.g. `max_tokens: 131072`) and the native `reasoning_budget_tokens` kwarg, since local inference has no cloud ceiling and understands it.
-- **Per-provider ceilings** — `max_output_tokens` in `providers.json` (`gemini` 65536, everything else cloud-side 32768) is applied as `min(requested, ceiling)`. `CLOUD_MAX_OUTPUT_TOKENS` (default `32768`) covers only providers that declare nothing.
+- **Per-provider ceilings** — `max_output_tokens` in `providers.json` (`gemini` 65536, `nous` 65536, everything else cloud-side 32768) is applied as `min(requested, ceiling)`. `CLOUD_MAX_OUTPUT_TOKENS` (default `32768`) covers only providers that declare nothing.
 - **Clamping only lowers** — values at or below the ceiling pass through unchanged, and `None` is untouched. Both `max_tokens` and `max_completion_tokens` are handled independently.
-- **Declared-only thinking passthrough** — `reasoning_effort` reaches `gemini`/`groq`; `openrouter` receives it normalized to `{"effort": ...}` or gets an explicit `reasoning` object verbatim; `nvidia`, `kilo`, and `opencode-go` never see any thinking key, because those gateways 400 on unknown fields and a deterministic 400 cools a healthy provider for the cooldown window.
+- **Declared-only thinking passthrough** — `reasoning_effort` reaches `gemini`/`groq`; `openrouter` and `nous` receive it normalized to `{"effort": ...}` or get an explicit `reasoning` object verbatim; `nvidia`, `kilo`, and `opencode-go` never see any thinking key, because those gateways 400 on unknown fields and a deterministic 400 cools a healthy provider for the cooldown window.
 - **Budget translation, not deletion** — a Strata-style `reasoning_budget_tokens` sent to a cloud provider is banded into `high` / `medium` / `low` (thresholds `REASONING_BUDGET_BANDS`, `>8192`/`>4096`) unless the caller also passed an explicit `reasoning_effort`, which always wins.
 - **Optional floor** — `AUTO_GO_DEFAULT_REASONING_EFFORT` is empty by default so the provider default governs (Gemini 3 = dynamic/high); setting it applies a floor to `*-go` aliases only.
 
@@ -307,7 +346,7 @@ Environment variables (loaded strictly from `apps/free_llm_proxy/.env` to isolat
 | `CONNECTOR_ID` | hostname | Connector identity returned by `/health` and `/v1/metrics`; compose sets `workstation` / `secondary` |
 | `SECURITY_ALERT_401_THRESHOLD` | `20` | Unauthorized requests within the window required to emit one `security.401_spike` warning (`0` disables) |
 | `SECURITY_ALERT_WINDOW_SECONDS` | `300` | Rolling window for the log-only 401 spike monitor |
-| `GROQ_API_KEY`, `GEMINI_API_KEY_FREE`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`, `OPENCODE_GO_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool. `OPENCODE_GO_API_KEY` activates the paid Tier 3 fallback used only by `auto-go` / `auto-strata-go` / `strata-auto-go`. |
+| `GROQ_API_KEY`, `GEMINI_API_KEY_FREE`, `OPENROUTER_API_KEY`, `NOUS_RESEARCH_KEY`, `NVIDIA_API_KEY`, `OPENCODE_GO_API_KEY` | unset | Provider credentials; unset providers are simply excluded from the active pool. `NOUS_RESEARCH_KEY` activates the Nous Research Tier 1 provider (strictly `:free` models). `OPENCODE_GO_API_KEY` activates the paid Tier 3 fallback used only by `auto-go` / `auto-strata-go` / `strata-auto-go`. |
 
 `ENABLE_STRATA` is parsed leniently — `0`, `false`, and `no` (case-insensitive) disable the provider. When disabled, `load_providers_config()` removes the `strata` entry from the provider map entirely. When enabled, `STRATA_BASE_URL` overrides the `strata` provider's `base_url` at load time.
 
@@ -344,6 +383,8 @@ docker compose -f apps/free_llm_proxy/docker-compose.yml logs -f
 ```
 
 The test suite covers master-key auth rejection, the unauthenticated health probe, circuit-breaker tripping on 429, alias resolution against live catalogs, automatic failover when the primary returns 429, SSE streaming pass-through, metrics/models endpoints, and SQLite audit logging. It also verifies `openrouter/free` resolution (never stripped to `free` when the catalog is empty, prioritized as the first OpenRouter preferred pattern, and routed to OpenRouter as the first candidate) and end-to-end chat completion routing for `model: "openrouter/free"`. Additional coverage validates OpenRouter zero-cost isolation (paid models filtered from discovery, coerced to `openrouter/free` at resolution and dispatch), the Strata alias chains (`strata-auto` first, `auto-strata` in rotation, strict `strata` with no fallback), Strata cooldown bypass, `ENABLE_STRATA=false` provider removal, graceful `503` handling of `httpx.RequestError` connection failures, cloud output-token clamping (`test_max_tokens_unclamped_for_strata_and_clamped_for_cloud` — including `reasoning_budget_tokens` preservation on Strata and stripping on cloud routes), unauthorized 401 audit logging (`test_unauthorized_call_is_logged_in_audit_db`), Gemini Pro→Flash coercion (`test_gemini_pro_model_is_coerced_to_free_flash`), and the `GEMINI_API_KEY_FREE` provider key (`test_gemini_uses_gemini_api_key_free`). OpenCode Go coverage verifies that `auto-go` places `opencode-go` last and excludes Strata, `auto-strata-go` includes both Strata and Go, `strata-auto-go` puts Strata first and Go last, every free alias stays Go-free even with a key configured, the provider disappears without `OPENCODE_GO_API_KEY`, alias/prefix resolution works against a discovered catalog, and an end-to-end `auto-go` request exhausts free providers before calling Go exactly once (`test_auto_go_end_to_end_falls_back_to_go`), including forwarding the client `x-opencode-session` and preserving the Go `User-Agent`. An end-to-end `strata-auto-go` request proves the full `Strata ➔ free pool ➔ Go` failover path (`test_strata_auto_go_end_to_end_fails_over_strata_then_free_then_go`). Additional regressions prove that a full free-pool cooldown still tries cooling free candidates before paid Go, paid routing fails closed if its `auto_aliases` allowlist disappears, malformed `tier` values do not crash the router, and paid dispatch is refused when the live catalog is unavailable. Cloud wall-clock timeout coverage lives in `test_cloud_provider_timeout_triggers_504_failover` (a slow cloud candidate yields `504` and the request still succeeds via the next provider) and `test_strata_provider_exempt_from_cloud_wall_clock_timeout` (Strata is never cancelled by the cap). Session affinity derivation (client-header passthrough, sanitization of control characters and oversized IDs, stable multi-turn fallback, multimodal text extraction, caller-identity fallback) is covered by `apps/free_llm_proxy/tests/test_session.py`, and an autouse fixture resets the shared circuit breaker between tests. Stream telemetry in `apps/free_llm_proxy/tests/test_streaming.py`, `apps/free_llm_proxy/tests/test_streaming_integration.py`, and `apps/free_llm_proxy/tests/test_db_telemetry.py` verifies byte-for-byte SSE pass-through, usage parsing across chunk boundaries, malformed/oversized-frame resilience, callback failures, mid-stream errors, end-to-end Strata and cloud usage logging, the absence of any injected `stream_options`, legacy schema migration, and token-coverage metrics. Log-only 401 spike detection and connector-scoped metrics are covered by `apps/free_llm_proxy/tests/test_security.py`. `apps/free_llm_proxy/tests/test_stream_truncation.py` pins the terminal-chunk contract: byte-identical pass-through for complete streams, synthesized `finish_reason: length` + `[DONE]` for `[DONE]`-only, clean-EOF and mid-stream-error cases, pre-token failover with the `(stream ended before first token)` chain entry, `502` when every candidate dies before its first token, truncation recorded as `incomplete_streams` and struck against the breaker, and the retired-provider catalog check. A `conftest.py` socket guard raises on any non-loopback connection, keeping the suite hermetic per [[concepts/test-coverage]].
+
+Nous Research and the generic allowlist/cascade machinery are covered by `test_discovery_filters_nous_to_free_models_only` (discovery strips non-`:free` models), `test_nous_never_resolves_to_paid_model` (paid coercion, case-insensitive/whitespace prefix handling, wildcard rejection, empty-allowlist fail-closed, and ungrounded-catalog fail-closed), `test_nous_fail_closed_when_catalog_empty` (no dispatch when the catalog has no `:free` models), `test_nous_in_rotation_paid_coercion_and_reasoning_translation` (`nous` in the `free-auto`/`auto-strata`/`auto-go` chains, paid model coerced, `reasoning_effort` translated to `{"effort": "medium"}`), `test_nous_in_provider_cascade_on_400` (catalog-driven cascade across `:free` models), `test_cascade_preserves_429_when_fallback_returns_404`, and `test_multihop_cascade_503_then_429_then_404_preserves_429` (failure-priority preservation keeps the breaker tripped on the 429 and records one `rate_limit_hits`).
 
 ## Pi Assistant Integration
 

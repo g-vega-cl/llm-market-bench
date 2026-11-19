@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from apps.free_llm_proxy import config
+from apps.free_llm_proxy.discovery import filter_allowed_models, is_allowed_model
 
 logger = logging.getLogger("free_llm_proxy.failover")
 
@@ -227,3 +228,50 @@ IN_PROVIDER_CASCADES: dict[str, tuple[tuple[int, ...], tuple[str, ...]]] = {
         ),
     ),
 }
+
+_MAX_DYNAMIC_CASCADE_RETRIES = 2
+
+
+def cascade_candidates(
+    provider_id: str,
+    provider_cfg: dict[str, Any],
+    status_code: int,
+    target_model: str,
+    available_models: list[str] | None = None,
+) -> list[str]:
+    """Returns ordered allowed fallback model IDs for an in-provider retry.
+
+    Supports both static ``IN_PROVIDER_CASCADES`` entries and catalog-driven
+    cascades declared via ``cascade_statuses`` in ``providers.json`` (ordered
+    by ``preferred_patterns`` so retired checkpoints are never hardcoded).
+    """
+    allowed = provider_cfg.get("allowed_model_patterns")
+    spec = IN_PROVIDER_CASCADES.get(provider_id)
+    if spec:
+        if status_code not in spec[0]:
+            return []
+        return [
+            m
+            for m in spec[1]
+            if not target_model.endswith(m) and is_allowed_model(m, allowed)
+        ]
+
+    statuses = set(provider_cfg.get("cascade_statuses") or [])
+    if status_code not in statuses or not available_models:
+        return []
+
+    eligible = [
+        m for m in filter_allowed_models(available_models, allowed) if m != target_model
+    ]
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for pattern in provider_cfg.get("preferred_patterns") or ["*"]:
+        for model in eligible:
+            if model not in seen and fnmatch.fnmatch(model.lower(), pattern.lower()):
+                ordered.append(model)
+                seen.add(model)
+    for model in eligible:
+        if model not in seen:
+            ordered.append(model)
+            seen.add(model)
+    return ordered[:_MAX_DYNAMIC_CASCADE_RETRIES]

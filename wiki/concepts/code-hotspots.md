@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **298**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **300**).
 
 ## Top Hotspots
 
@@ -18,7 +18,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 22 | 6 | 27.3% | 328 | 132 | **CRITICAL** |
 | `apps/web/src/routes/-__root.test.tsx` | 14 | 9 | 64.3% | 535 | 126 | **CRITICAL** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 17 | 5 | 29.4% | 304 | 85 | **HIGH** |
-| `apps/free_llm_proxy/server.py` | 16 | 5 | 31.2% | 703 | 80 | **HIGH** |
+| `apps/free_llm_proxy/server.py` | 16 | 5 | 31.2% | 707 | 80 | **HIGH** |
 | `apps/engine/tasks/daily_predictor.py` | 19 | 4 | 21.1% | 673 | 76 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 15 | 5 | 33.3% | 452 | 75 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 12 | 6 | 50.0% | 226 | 72 | **HIGH** |
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **298**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **300**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **ACCELERATING** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **298**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 298 | 100.0% |
+| `g-vega-cl` | 300 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **298**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 140 | ▇▇▇▇▇▇ |
+| 2026-11 | 143 | ▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

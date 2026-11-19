@@ -10,15 +10,15 @@ from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.free_llm_proxy import config
-from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
+from apps.free_llm_proxy.circuit_breaker import _DETERMINISTIC_4XX, CircuitBreaker
 from apps.free_llm_proxy.client import execute_completion
 from apps.free_llm_proxy.db import AuditDB
-from apps.free_llm_proxy.discovery import ModelDiscovery
+from apps.free_llm_proxy.discovery import ModelDiscovery, is_allowed_model
 from apps.free_llm_proxy.failover import (
-    IN_PROVIDER_CASCADES,
     MIN_ATTEMPT_SECONDS,
     UNCAPPED,
     attempt_budget,
+    cascade_candidates,
     is_futile_rate_limit,
     is_plan_model,
     opencode_go_attempts,
@@ -162,6 +162,74 @@ async def _dispatch_candidate_attempts(
     return (status_code, body_or_gen, resp_headers), None, metered_used, skip_error
 
 
+def _failure_priority(status_code: int) -> int:
+    """Orders failure statuses so downstream 404/504 never masks 429/5xx."""
+    if status_code == 429:
+        return 4
+    if status_code in _DETERMINISTIC_4XX:
+        return 3
+    if status_code >= 500:
+        return 2
+    return 1
+
+
+def _resolve_candidate_model(
+    p_id: str,
+    p_cfg: dict[str, Any],
+    requested_model: str,
+    available_models: list[str],
+    *,
+    is_paid: bool,
+) -> tuple[str | None, str | None, dict[str, Any] | None]:
+    """Resolves target model or returns ``(None, skip_reason, error_body)``."""
+    allowed_patterns = p_cfg.get("allowed_model_patterns")
+    dynamic_fallback = p_cfg.get("dynamic_fallback_model")
+    if is_paid and not available_models:
+        return (
+            None,
+            f"{p_id} (catalog unavailable; paid dispatch refused)",
+            {
+                "error": {
+                    "message": f"{p_id} catalog discovery failed; refusing paid dispatch",
+                    "type": "provider_unavailable",
+                }
+            },
+        )
+    if allowed_patterns is not None and not dynamic_fallback and not available_models:
+        return (
+            None,
+            f"{p_id} (catalog unavailable; free-only dispatch refused)",
+            {
+                "error": {
+                    "message": (
+                        f"{p_id} catalog discovery failed; refusing ungrounded dispatch"
+                    ),
+                    "type": "provider_unavailable",
+                }
+            },
+        )
+
+    target_model = router.resolve_model_for_provider(
+        p_id, requested_model, available_models
+    )
+    if allowed_patterns is not None and not is_allowed_model(
+        target_model, allowed_patterns
+    ):
+        if dynamic_fallback and is_allowed_model(dynamic_fallback, allowed_patterns):
+            return dynamic_fallback, None, None
+        return (
+            None,
+            f"{p_id} (no allowed free model resolved)",
+            {
+                "error": {
+                    "message": f"{p_id} resolved no allowed free model",
+                    "type": "provider_unavailable",
+                }
+            },
+        )
+    return target_model, None, None
+
+
 async def _cascade_in_provider(
     provider_id: str,
     provider_cfg: dict[str, Any],
@@ -170,23 +238,28 @@ async def _cascade_in_provider(
     target_model: str,
     result: tuple[int, Any, dict[str, str]],
     *,
+    available_models: list[str] | None = None,
     stream: bool,
     remaining_fn: Callable[[], float],
 ) -> tuple[int, Any, dict[str, str], str]:
     """Retries adjacent models on the same provider after a transient failure.
 
-    Returns the last ``(status, body, headers)`` plus the model that answered (or
-    the last one tried). The segment budget is recomputed before *every* retry,
-    so a four-model cascade cannot spend the request budget four times over, and
-    quota-dead 429s stop the cascade mid-way instead of only at its start.
+    Returns the winning ``(200, body, headers)`` or preserves the highest-priority
+    failure status (429 > 4xx > 5xx > 404) so fallback errors never mask rate
+    limits from the circuit breaker.
     """
-    status_code, body_or_gen, resp_headers = result
-    spec = IN_PROVIDER_CASCADES.get(provider_id)
-    if not spec or status_code not in spec[0]:
-        return status_code, body_or_gen, resp_headers, target_model
+    initial_status, initial_body, initial_headers = result
+    fallbacks = cascade_candidates(
+        provider_id, provider_cfg, initial_status, target_model, available_models
+    )
+    if not fallbacks:
+        return initial_status, initial_body, initial_headers, target_model
 
-    for fallback_model in spec[1]:
-        if target_model.endswith(fallback_model):
+    status_code, body_or_gen, resp_headers = result
+    best_failure = result
+    allowed = provider_cfg.get("allowed_model_patterns")
+    for fallback_model in fallbacks:
+        if allowed is not None and not is_allowed_model(fallback_model, allowed):
             continue
         if is_futile_rate_limit(status_code, body_or_gen):
             break
@@ -202,9 +275,11 @@ async def _cascade_in_provider(
             budget_s=budget.cap_s,
         )
         if status_code == 200:
-            target_model = fallback_model
-            break
-    return status_code, body_or_gen, resp_headers, target_model
+            return status_code, body_or_gen, resp_headers, fallback_model
+        if _failure_priority(status_code) > _failure_priority(best_failure[0]):
+            best_failure = (status_code, body_or_gen, resp_headers)
+
+    return (*best_failure, target_model)
 
 
 THINKING_KEYS = ("reasoning_effort", "reasoning", "reasoning_budget_tokens")
@@ -537,16 +612,14 @@ async def chat_completions(
             else {}
         )
         available_models = await discovery.fetch_live_models(p_id, base_url, headers)
-
-        # Fail closed on money: never dispatch a paid request against an unknown catalog.
-        if is_paid and not available_models:
-            failover_log.append(f"{p_id} (catalog unavailable; paid dispatch refused)")
-            last_error = {
-                "error": {
-                    "message": f"{p_id} catalog discovery failed; refusing paid dispatch",
-                    "type": "provider_unavailable",
-                }
-            }
+        target_model, skip_reason, skip_err = _resolve_candidate_model(
+            p_id, p_cfg, req.model, available_models, is_paid=is_paid
+        )
+        if target_model is None:
+            if skip_reason:
+                failover_log.append(skip_reason)
+            if skip_err is not None and last_error is None:
+                last_error = skip_err
             continue
 
         # OpenCode Go requires a stable session header for routing and prompt caching
@@ -565,13 +638,6 @@ async def chat_completions(
                     SESSION_HEADER: session_id,
                 },
             }
-        target_model = router.resolve_model_for_provider(
-            p_id, req.model, available_models
-        )
-        if p_id == "openrouter" and not (
-            target_model.endswith(":free") or target_model == "openrouter/free"
-        ):
-            target_model = "openrouter/free"
 
         # Build payload copy with resolved target model
         payload = dict(raw_body)
@@ -631,6 +697,7 @@ async def chat_completions(
             payload,
             target_model,
             (status_code, body_or_gen, resp_headers),
+            available_models=available_models,
             stream=req.stream,
             remaining_fn=lambda: _segment_remaining(is_paid),
         )

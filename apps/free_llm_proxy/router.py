@@ -5,9 +5,50 @@ from typing import Any
 
 from apps.free_llm_proxy import config
 from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
-from apps.free_llm_proxy.discovery import ModelDiscovery
+from apps.free_llm_proxy.discovery import (
+    ModelDiscovery,
+    filter_allowed_models,
+    filter_allowed_patterns,
+    is_allowed_model,
+)
 
 PAID_BILLING = "paid"
+_LEGACY_GEMINI_MARKERS = ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5")
+
+
+def _is_modern_gemini_flash(model: str) -> bool:
+    return "flash" in model.lower() and not any(
+        v in model for v in _LEGACY_GEMINI_MARKERS
+    )
+
+
+def _resolve_strata_model(
+    requested_model: str, available_models: list[str] | None
+) -> str:
+    if requested_model.lower().startswith("strata/"):
+        return requested_model.split("/", 1)[1]
+    if available_models:
+        if requested_model in available_models:
+            return requested_model
+        return available_models[0]
+    return "strata"
+
+
+def _filter_provider_candidates(
+    provider_id: str, p_cfg: dict, available_models: list[str] | None
+) -> tuple[list[str] | None, list[str]]:
+    preferred_patterns = list(p_cfg.get("preferred_patterns", ["*"]))
+    allowed = p_cfg.get("allowed_model_patterns")
+    if allowed is not None:
+        if available_models is not None:
+            available_models = filter_allowed_models(available_models, allowed)
+        preferred_patterns = filter_allowed_patterns(preferred_patterns, allowed)
+        dyn = p_cfg.get("dynamic_fallback_model")
+        if not preferred_patterns and dyn:
+            preferred_patterns = [dyn]
+    if provider_id == "gemini" and available_models:
+        available_models = [m for m in available_models if _is_modern_gemini_flash(m)]
+    return available_models, preferred_patterns
 
 
 def estimate_prompt_tokens(messages: list[Any] | None) -> int:
@@ -110,6 +151,7 @@ class Router:
         self.config_data = config.load_providers_config()
         self.providers = self.config_data.get("providers", {})
         self.virtual_aliases = self.config_data.get("virtual_aliases", {})
+        self.discovery.configure_allowed_patterns(self.providers)
 
         # Round-robin iterators for load balancing within tiers (created lazily)
         self._tier_counters: dict[int, itertools.count] = {}
@@ -130,199 +172,157 @@ class Router:
                     active[p_id] = cfg_copy
         return active
 
+    def _fallback_model(
+        self,
+        provider_id: str,
+        p_cfg: dict,
+        available_models: list[str] | None,
+        preferred_patterns: list[str],
+    ) -> str:
+        if provider_id == "gemini":
+            flash_models = [
+                m for m in (available_models or []) if _is_modern_gemini_flash(m)
+            ]
+            matched = (
+                self.discovery.match_best_model(flash_models, preferred_patterns)
+                if flash_models
+                else None
+            )
+            return (matched or "gemini-flash-latest").replace("*", "").strip()
+
+        allowed = p_cfg.get("allowed_model_patterns")
+        if allowed is not None:
+            if available_models:
+                matched = self.discovery.match_best_model(
+                    available_models, preferred_patterns
+                )
+                if matched and is_allowed_model(matched, allowed):
+                    return matched
+            dyn = p_cfg.get("dynamic_fallback_model") or ""
+            return dyn if is_allowed_model(dyn, allowed) else ""
+
+        matched = self.discovery.match_best_model(
+            available_models or preferred_patterns, preferred_patterns
+        )
+        return (matched or "").replace("*", "").strip()
+
+    def _resolve_prefixed_model(
+        self,
+        provider_id: str,
+        p_cfg: dict,
+        requested_model: str,
+        available_models: list[str] | None,
+        preferred_patterns: list[str],
+    ) -> str:
+        stripped = requested_model.split("/", 1)[1].strip()
+        allowed = p_cfg.get("allowed_model_patterns")
+        if (
+            provider_id == "openrouter"
+            and stripped.lower() == "free"
+            and (allowed is None or is_allowed_model("openrouter/free", allowed))
+        ):
+            return "openrouter/free"
+
+        disallowed_marketplace = allowed is not None and not is_allowed_model(
+            stripped, allowed
+        )
+        disallowed_gemini = provider_id == "gemini" and not _is_modern_gemini_flash(
+            stripped
+        )
+        if disallowed_marketplace or disallowed_gemini:
+            return self._fallback_model(
+                provider_id, p_cfg, available_models, preferred_patterns
+            )
+
+        if available_models:
+            if stripped in available_models:
+                return stripped
+            for candidate in available_models:
+                if candidate.endswith(f"/{stripped}"):
+                    return candidate
+            if allowed is not None:
+                return self._fallback_model(
+                    provider_id, p_cfg, available_models, preferred_patterns
+                )
+        elif allowed is not None:
+            return self._fallback_model(
+                provider_id, p_cfg, available_models, preferred_patterns
+            )
+        return stripped
+
+    def _finalize_resolved_model(
+        self,
+        provider_id: str,
+        p_cfg: dict,
+        resolved: str,
+        available_models: list[str] | None,
+        preferred_patterns: list[str],
+    ) -> str:
+        cleaned = resolved.replace("*", "").strip()
+        allowed = p_cfg.get("allowed_model_patterns")
+        if allowed is not None and not is_allowed_model(cleaned, allowed):
+            return self._fallback_model(
+                provider_id, p_cfg, available_models, preferred_patterns
+            )
+        if provider_id == "gemini" and not _is_modern_gemini_flash(cleaned):
+            return self._fallback_model(
+                provider_id, p_cfg, available_models, preferred_patterns
+            )
+        return cleaned
+
     def resolve_model_for_provider(
         self,
         provider_id: str,
         requested_model: str,
         available_models: list[str] | None = None,
     ) -> str:
-        """Resolves requested model or alias to an actual model string on the provider."""
-        # Generic local strata handling: use whichever model is live, or generic 'strata'
+        """Resolves requested model or alias to a safe model ID on the provider."""
         if provider_id == "strata":
-            if "/" in requested_model and requested_model.startswith("strata/"):
-                stripped = requested_model.split("/", 1)[1]
-                if available_models and stripped in available_models:
-                    return stripped
-                return stripped
-            if available_models:
-                if requested_model in available_models:
-                    return requested_model
-                return available_models[0]
-            return "strata"
+            return _resolve_strata_model(requested_model, available_models)
 
         p_cfg = self.providers.get(provider_id, {})
-        preferred_patterns = p_cfg.get("preferred_patterns", ["*"])
+        available_models, preferred_patterns = _filter_provider_candidates(
+            provider_id, p_cfg, available_models
+        )
 
-        # OpenRouter safety guard: strictly filter available models to free tier
-        if provider_id == "openrouter":
-            if available_models:
-                available_models = [
-                    m
-                    for m in available_models
-                    if m.endswith(":free") or m == "openrouter/free"
-                ]
-            preferred_patterns = [
-                p
-                for p in preferred_patterns
-                if p.endswith(":free") or p == "openrouter/free"
-            ] or ["openrouter/free"]
-
-        # Kilo Code safety guard: strictly filter available models to free tier
-        if provider_id == "kilo":
-            if available_models:
-                available_models = [
-                    m
-                    for m in available_models
-                    if m.endswith(":free")
-                    or m.endswith("-free")
-                    or m == "kilo-auto/free"
-                ]
-            preferred_patterns = [
-                p
-                for p in preferred_patterns
-                if p.endswith(":free") or p.endswith("-free") or p == "kilo-auto/free"
-            ] or ["kilo-auto/free"]
-
-        # Gemini safety guard: strictly filter available models to modern free Flash tier
-        if provider_id == "gemini":
-            if available_models:
-                available_models = [
-                    m
-                    for m in available_models
-                    if "flash" in m.lower()
-                    and not any(
-                        v in m
-                        for v in (
-                            "-1.5",
-                            "-2.0",
-                            "-2.5",
-                            "-2-",
-                            "-1-",
-                            "1.5",
-                            "2.0",
-                            "2.5",
-                        )
-                    )
-                ]
-
-        # Check virtual alias patterns first
         if requested_model in self.virtual_aliases:
             patterns = self.virtual_aliases[requested_model]
         elif requested_model in {"default", "auto", ""}:
             patterns = self.virtual_aliases.get("auto-strata", preferred_patterns)
-        elif requested_model in preferred_patterns:
-            return requested_model.replace("*", "").strip()
         elif available_models and requested_model in available_models:
-            return requested_model
-        elif "/" in requested_model and requested_model.startswith(f"{provider_id}/"):
-            # Explicit provider prefix passed by client: strip prefix
-            stripped = requested_model.split("/", 1)[1]
-            if provider_id == "openrouter":
-                if (
-                    requested_model == "openrouter/free"
-                    or stripped == "openrouter/free"
-                ):
-                    return "openrouter/free"
-                if not stripped.endswith(":free"):
-                    # Non-free model requested for OpenRouter: strictly disallow and fall back
-                    return "openrouter/free"
-            if provider_id == "gemini" and (
-                "flash" not in stripped.lower()
-                or any(
-                    v in stripped
-                    for v in ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5")
-                )
-            ):
-                flash_candidates = (
-                    [m for m in (available_models or []) if "flash" in m.lower()]
-                    if available_models
-                    else []
-                )
-                matched = (
-                    self.discovery.match_best_model(
-                        flash_candidates, preferred_patterns
-                    )
-                    if flash_candidates
-                    else (
-                        flash_candidates[0]
-                        if flash_candidates
-                        else "gemini-flash-latest"
-                    )
-                )
-                return (matched or "gemini-flash-latest").replace("*", "").strip()
-            if available_models:
-                if stripped in available_models:
-                    return stripped
-                for m in available_models:
-                    if m.endswith(f"/{stripped}") or m.endswith(stripped):
-                        return m
-            return stripped
+            return self._finalize_resolved_model(
+                provider_id,
+                p_cfg,
+                requested_model,
+                available_models,
+                preferred_patterns,
+            )
+        elif requested_model.lower().startswith(f"{provider_id.lower()}/"):
+            return self._resolve_prefixed_model(
+                provider_id,
+                p_cfg,
+                requested_model,
+                available_models,
+                preferred_patterns,
+            )
         else:
-            # Check if requested model exists directly in provider's live models
-            if (
-                available_models
-                and requested_model in available_models
-                and not (
-                    provider_id == "gemini"
-                    and (
-                        "flash" not in requested_model.lower()
-                        or any(
-                            v in requested_model
-                            for v in (
-                                "-1.5",
-                                "-2.0",
-                                "-2.5",
-                                "-2-",
-                                "-1-",
-                                "1.5",
-                                "2.0",
-                                "2.5",
-                            )
-                        )
-                    )
-                )
-            ):
-                return requested_model
-            # Otherwise treat as generic request -> fall back to preferred patterns
             patterns = preferred_patterns
 
-        candidates = available_models or preferred_patterns
-        best = self.discovery.match_best_model(candidates, patterns)
-        resolved = best or (candidates[0] if candidates else requested_model)
-        if provider_id == "openrouter" and not (
-            resolved.endswith(":free") or resolved == "openrouter/free"
-        ):
-            return "openrouter/free"
-        if provider_id == "kilo" and not (
-            resolved.endswith(":free")
-            or resolved.endswith("-free")
-            or resolved == "kilo-auto/free"
-        ):
-            return "kilo-auto/free"
-        if provider_id == "gemini":
-            is_legacy = any(
-                v in resolved
-                for v in ("-1.5", "-2.0", "-2.5", "-2-", "-1-", "1.5", "2.0", "2.5")
+        if p_cfg.get("allowed_model_patterns") is not None and not available_models:
+            return self._fallback_model(
+                provider_id, p_cfg, available_models, preferred_patterns
             )
-            if "flash" not in resolved.lower() or is_legacy:
-                flash_candidates = (
-                    [m for m in (available_models or []) if "flash" in m.lower()]
-                    if available_models
-                    else []
-                )
-                matched = (
-                    self.discovery.match_best_model(
-                        flash_candidates, preferred_patterns
-                    )
-                    if flash_candidates
-                    else (
-                        flash_candidates[0]
-                        if flash_candidates
-                        else "gemini-flash-latest"
-                    )
-                )
-                resolved = matched or "gemini-flash-latest"
-        return resolved.replace("*", "").strip()
+
+        candidates = available_models or preferred_patterns
+        best = (
+            self.discovery.match_best_model(candidates, patterns)
+            if candidates
+            else None
+        )
+        resolved = best or (candidates[0] if candidates else "")
+        return self._finalize_resolved_model(
+            provider_id, p_cfg, resolved, available_models, preferred_patterns
+        )
 
     def get_candidate_chain(
         self, requested_model: str, prompt_tokens: int | None = None

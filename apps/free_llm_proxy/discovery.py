@@ -2,14 +2,79 @@
 
 import fnmatch
 import time
+
 import httpx
+
+# Default allowlists for callers (e.g. unit tests) that invoke discovery without cfg.
+_DEFAULT_ALLOWED_PATTERNS: dict[str, list[str]] = {
+    "openrouter": ["*:free", "openrouter/free"],
+    "kilo": ["*:free", "*-free", "kilo-auto/free"],
+    "nous": ["*:free"],
+}
+
+
+def is_allowed_model(model: str, allowed_patterns: list[str] | None) -> bool:
+    """True when ``model`` is a concrete ID permitted by ``allowed_patterns``."""
+    cleaned = model.strip()
+    if (
+        not cleaned
+        or cleaned.startswith((":", "-"))
+        or any(ch in cleaned for ch in "*?[")
+    ):
+        return False
+    if allowed_patterns is None:
+        return True
+    if not allowed_patterns:
+        return False
+    lowered = cleaned.lower()
+    return any(fnmatch.fnmatch(lowered, p.lower()) for p in allowed_patterns)
+
+
+def filter_allowed_models(
+    models: list[str], allowed_patterns: list[str] | None
+) -> list[str]:
+    """Filters a live catalog down to concrete models matching ``allowed_patterns``."""
+    if allowed_patterns is None:
+        return models
+    return [m for m in models if is_allowed_model(m, allowed_patterns)]
+
+
+def filter_allowed_patterns(
+    patterns: list[str], allowed_patterns: list[str] | None
+) -> list[str]:
+    """Filters pattern lists (may include globs) to entries scoped by allowlist."""
+    if allowed_patterns is None:
+        return patterns
+    return [
+        p
+        for p in patterns
+        if p != "*"
+        and any(fnmatch.fnmatch(p.lower(), allow.lower()) for allow in allowed_patterns)
+    ]
 
 
 class ModelDiscovery:
-    def __init__(self, cache_ttl_seconds: int = 3600):
+    def __init__(
+        self,
+        cache_ttl_seconds: int = 3600,
+        allowed_patterns_by_provider: dict[str, list[str]] | None = None,
+    ):
         self.cache_ttl = cache_ttl_seconds
         # provider_id -> {"models": list[str], "expires_at": float}
         self._cache: dict[str, dict] = {}
+        self._allowed_patterns: dict[str, list[str]] = (
+            dict(allowed_patterns_by_provider)
+            if allowed_patterns_by_provider is not None
+            else dict(_DEFAULT_ALLOWED_PATTERNS)
+        )
+
+    def configure_allowed_patterns(self, providers: dict[str, dict]) -> None:
+        """Replaces per-provider allowlists with those loaded from providers.json."""
+        self._allowed_patterns = {
+            p_id: list(p_cfg["allowed_model_patterns"])
+            for p_id, p_cfg in providers.items()
+            if p_cfg.get("allowed_model_patterns") is not None
+        }
 
     def get_cached_models(self, provider_id: str) -> list[str] | None:
         entry = self._cache.get(provider_id)
@@ -32,7 +97,7 @@ class ModelDiscovery:
     ) -> list[str]:
         """Queries provider's GET /models endpoint to discover live models."""
         cached = self.get_cached_models(provider_id)
-        if cached:
+        if cached is not None:
             return cached
 
         url = f"{base_url.rstrip('/')}/models"
@@ -55,23 +120,8 @@ class ModelDiscovery:
                     elif isinstance(item, str):
                         models.append(item)
                 if models:
-                    # OpenRouter is a mixed marketplace; strictly filter to zero-cost models
-                    if provider_id == "openrouter":
-                        models = [
-                            m
-                            for m in models
-                            if m.endswith(":free") or m == "openrouter/free"
-                        ]
-                    # Kilo Code is a mixed marketplace; strictly filter to zero-cost models
-                    elif provider_id == "kilo":
-                        models = [
-                            m
-                            for m in models
-                            if m.endswith(":free")
-                            or m.endswith("-free")
-                            or m == "kilo-auto/free"
-                        ]
-
+                    patterns = self._allowed_patterns.get(provider_id)
+                    models = filter_allowed_models(models, patterns)
                     self.set_cached_models(provider_id, models)
                     return models
         except Exception:

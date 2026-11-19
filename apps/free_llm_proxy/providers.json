@@ -44,10 +44,36 @@
       "requires_auth": false,
       "models_endpoint": "/models",
       "max_output_tokens": 32768,
+      "allowed_model_patterns": [
+        "*:free",
+        "*-free",
+        "kilo-auto/free"
+      ],
+      "dynamic_fallback_model": "kilo-auto/free",
       "preferred_patterns": [
         "kilo-auto/free",
         "*:free",
         "*-free"
+      ]
+    },
+    "nous": {
+      "name": "Nous Research",
+      "base_url": "https://inference-api.nousresearch.com/v1",
+      "env_key": "NOUS_RESEARCH_KEY",
+      "tier": 1,
+      "requires_auth": true,
+      "models_endpoint": "/models",
+      "max_output_tokens": 65536,
+      "thinking_params": ["reasoning"],
+      "allowed_model_patterns": [
+        "*:free"
+      ],
+      "cascade_statuses": [400, 429, 503],
+      "preferred_patterns": [
+        "*qwen4-max:free",
+        "*hy4-flash:free",
+        "*longcat-2.5:free",
+        "*:free"
       ]
     },
     "openrouter": {
@@ -59,6 +85,11 @@
       "models_endpoint": "/models",
       "max_output_tokens": 32768,
       "thinking_params": ["reasoning"],
+      "allowed_model_patterns": [
+        "*:free",
+        "openrouter/free"
+      ],
+      "dynamic_fallback_model": "openrouter/free",
       "preferred_patterns": [
         "openrouter/free",
         "*ultra*",

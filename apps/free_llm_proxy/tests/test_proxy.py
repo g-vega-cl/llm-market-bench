@@ -1721,3 +1721,337 @@ def test_strata_provider_exempt_from_cloud_wall_clock_timeout(client, monkeypatc
 
     assert resp.status_code == 200
     assert resp.json()["choices"][0]["message"]["content"] == "strata ok"
+
+
+@pytest.mark.asyncio
+async def test_discovery_filters_nous_to_free_models_only():
+    """Verify discovery.fetch_live_models strips non-:free models when provider is nous."""
+    from apps.free_llm_proxy.discovery import ModelDiscovery
+
+    discovery = ModelDiscovery()
+
+    class MockResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "data": [
+                    {"id": "nousresearch/hermes-4-405b"},
+                    {"id": "anthropic/claude-opus-4"},
+                    {"id": "qwen/qwen4-max:free"},
+                    {"id": "tencent/hy4-flash:free"},
+                    {"id": "stepfun/step-3.7-flash:free"},
+                    {"id": "meituan/longcat-2.5:free"},
+                    {"id": "upstage/solar-mini4:free"},
+                ]
+            }
+
+    class MockAsyncClient:
+        async def get(self, url, headers=None):
+            return MockResponse()
+
+    models = await discovery.fetch_live_models(
+        "nous",
+        "https://inference-api.nousresearch.com/v1",
+        {},
+        client=MockAsyncClient(),
+    )
+    assert "nousresearch/hermes-4-405b" not in models
+    assert "anthropic/claude-opus-4" not in models
+    assert models == [
+        "qwen/qwen4-max:free",
+        "tencent/hy4-flash:free",
+        "stepfun/step-3.7-flash:free",
+        "meituan/longcat-2.5:free",
+        "upstage/solar-mini4:free",
+    ]
+
+
+def test_nous_never_resolves_to_paid_model(monkeypatch):
+    """Verify Nous Research strictly filters to :free and fails closed if empty."""
+    monkeypatch.setenv("NOUS_RESEARCH_KEY", "nous_test_key")
+    router = Router()
+
+    mixed_catalog = [
+        "nousresearch/hermes-4-405b",
+        "upstage/solar-mini4:free",
+        "tencent/hy4-flash:free",
+        "qwen/qwen4-max:free",
+        "meituan/longcat-2.5:free",
+    ]
+    resolved_auto = router.resolve_model_for_provider(
+        "nous", "free-auto", mixed_catalog
+    )
+    assert resolved_auto.endswith(":free")
+
+    resolved_paid = router.resolve_model_for_provider(
+        "nous", "nous/nousresearch/hermes-4-405b", mixed_catalog
+    )
+    assert resolved_paid == "qwen/qwen4-max:free"
+
+    # Case-insensitive explicit prefix, whitespace, loose suffix, and wildcard rejection
+    assert (
+        router.resolve_model_for_provider(
+            "nous", "Nous/tencent/hy4-flash:free", mixed_catalog
+        )
+        == "tencent/hy4-flash:free"
+    )
+    assert (
+        router.resolve_model_for_provider(
+            "nous", "nous/ tencent/hy4-flash:free ", mixed_catalog
+        )
+        == "tencent/hy4-flash:free"
+    )
+    for bad_req in (
+        "*:free",
+        ":free",
+        "*qwen4-max:free",
+        "nous/*:free",
+        "nous/:free",
+        "nous/*qwen4-max:free",
+        "nous/nonexistent-paid:free",
+        "nous/x:free",
+    ):
+        resolved_bad = router.resolve_model_for_provider("nous", bad_req, mixed_catalog)
+        assert resolved_bad == "qwen/qwen4-max:free"
+
+    # Empty allowlist [] must fail closed (never fall back to unrestricted)
+    from apps.free_llm_proxy.discovery import is_allowed_model
+
+    assert is_allowed_model("qwen/qwen4-max:free", []) is False
+    assert is_allowed_model("qwen/qwen4-max:free", None) is True
+
+    # Ungrounded/paid-only catalog must fail closed (never invent a checkpoint)
+    paid_only = ["nousresearch/hermes-4-405b", "openai/gpt-5"]
+    assert router.resolve_model_for_provider("nous", "free-auto", paid_only) == ""
+    assert (
+        router.resolve_model_for_provider(
+            "nous", "nous/nousresearch/hermes-4-405b", None
+        )
+        == ""
+    )
+
+
+def test_nous_fail_closed_when_catalog_empty(client, monkeypatch):
+    """Verify Nous refuses dispatch when its live catalog has no :free models."""
+    monkeypatch.setenv("NOUS_RESEARCH_KEY", "nous_test_key")
+    executed = []
+
+    async def mock_fetch(provider_id, base_url, headers, client=None, **kwargs):
+        return []
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        executed.append((provider_cfg["name"], payload["model"]))
+        return (
+            200,
+            {"choices": [{"message": {"content": "Fallback OK"}}], "usage": {}},
+            {},
+        )
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={
+            "model": "nous/qwen/qwen4-max:free",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
+    )
+    assert resp.status_code == 200
+    assert not any(name == "Nous Research" for name, _ in executed)
+
+
+def test_nous_in_rotation_paid_coercion_and_reasoning_translation(client, monkeypatch):
+    """Verify Nous enters Tier 1 rotation, coerces paid models, and maps reasoning."""
+    monkeypatch.setenv("NOUS_RESEARCH_KEY", "nous_test_key")
+    from apps.free_llm_proxy.server import router as server_router
+
+    for alias in ("free-auto", "auto-strata", "auto-go"):
+        chain = [p[0] for p in server_router.get_candidate_chain(alias)]
+        assert "nous" in chain
+
+    executed_requests = []
+
+    async def mock_fetch(provider_id, base_url, headers, client=None, **kwargs):
+        if provider_id == "nous":
+            return ["qwen/qwen4-max:free", "tencent/hy4-flash:free"]
+        return []
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        executed_requests.append((provider_cfg["name"], dict(payload)))
+        return (
+            200,
+            {
+                "id": "chatcmpl-nous-free",
+                "object": "chat.completion",
+                "created": 1700000000,
+                "model": payload["model"],
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "Nous OK"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 2,
+                    "total_tokens": 7,
+                },
+            },
+            {},
+        )
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={
+            "model": "nous/nousresearch/hermes-4-405b",
+            "messages": [{"role": "user", "content": "hi"}],
+            "reasoning_effort": "medium",
+        },
+    )
+    assert resp.status_code == 200
+    assert len(executed_requests) == 1
+    provider_name, payload = executed_requests[0]
+    assert provider_name == "Nous Research"
+    assert payload["model"] == "qwen/qwen4-max:free"
+    assert "reasoning_effort" not in payload
+    assert payload["reasoning"] == {"effort": "medium"}
+
+
+def test_nous_in_provider_cascade_on_400(client, monkeypatch):
+    """Verify a 400 on one Nous :free model cascades across catalog :free models."""
+    monkeypatch.setenv("NOUS_RESEARCH_KEY", "nous_test_key")
+    attempts = []
+
+    async def mock_fetch(provider_id, base_url, headers, client=None, **kwargs):
+        if provider_id == "nous":
+            return [
+                "stepfun/step-3.7-flash:free",
+                "qwen/qwen4-max:free",
+                "tencent/hy4-flash:free",
+            ]
+        return []
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        model = payload["model"]
+        attempts.append((provider_cfg.get("name"), model))
+        if provider_cfg.get("name") == "Nous Research":
+            if model == "stepfun/step-3.7-flash:free":
+                return (
+                    400,
+                    {"status": 400, "message": "Additional info: missing tags"},
+                    {},
+                )
+            if model == "qwen/qwen4-max:free":
+                return (
+                    200,
+                    {
+                        "choices": [{"message": {"content": "Nous Cascade OK"}}],
+                        "usage": {},
+                    },
+                    {},
+                )
+        return 200, {"choices": [{"message": {"content": "OK"}}], "usage": {}}, {}
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={
+            "model": "nous/stepfun/step-3.7-flash:free",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["message"]["content"] == "Nous Cascade OK"
+    assert ("Nous Research", "stepfun/step-3.7-flash:free") in attempts
+    assert ("Nous Research", "qwen/qwen4-max:free") in attempts
+
+
+def test_cascade_preserves_429_when_fallback_returns_404(client, monkeypatch):
+    """Verify a 404 on a cascade fallback never masks a 429 from CircuitBreaker."""
+    monkeypatch.setenv("NOUS_RESEARCH_KEY", "nous_test_key")
+    from apps.free_llm_proxy.server import circuit_breaker, router
+
+    chain = [("nous", router.providers["nous"] | {"api_key": "nous_test_key"})]
+    monkeypatch.setattr(router, "get_candidate_chain", lambda *a, **kw: chain)
+
+    async def mock_fetch(provider_id, base_url, headers, client=None, **kwargs):
+        return ["qwen/qwen4-max:free", "tencent/hy4-flash:free"]
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        if payload["model"] == "qwen/qwen4-max:free":
+            return 429, {"error": {"message": "rate limited"}}, {}
+        return 404, {"error": {"message": "not found"}}, {}
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={
+            "model": "nous/qwen/qwen4-max:free",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
+    )
+    assert resp.status_code == 502
+    assert circuit_breaker.is_healthy("nous") is False
+
+
+def test_multihop_cascade_503_then_429_then_404_preserves_429(client, monkeypatch):
+    """Verify a trailing 404 after an intermediate 429 never masks the 429."""
+    monkeypatch.setenv("NOUS_RESEARCH_KEY", "nous_test_key")
+    from apps.free_llm_proxy.server import circuit_breaker, router
+
+    chain = [("nous", router.providers["nous"] | {"api_key": "nous_test_key"})]
+    monkeypatch.setattr(router, "get_candidate_chain", lambda *a, **kw: chain)
+
+    async def mock_fetch(provider_id, base_url, headers, client=None, **kwargs):
+        return [
+            "upstage/solar-mini4:free",
+            "qwen/qwen4-max:free",
+            "tencent/hy4-flash:free",
+        ]
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        model = payload["model"]
+        if model == "upstage/solar-mini4:free":
+            return 503, {"error": {"message": "overloaded"}}, {}
+        if model == "qwen/qwen4-max:free":
+            return 429, {"error": {"message": "rate limited"}}, {"retry-after": "30"}
+        return 404, {"error": {"message": "not found"}}, {}
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={
+            "model": "nous/upstage/solar-mini4:free",
+            "messages": [{"role": "user", "content": "hi"}],
+        },
+    )
+    assert resp.status_code == 502
+    assert circuit_breaker.is_healthy("nous") is False
+    assert circuit_breaker.get_status_overview()["nous"]["rate_limit_hits"] == 1

@@ -13,8 +13,11 @@ export const BETA_STARTER_LIMITS = {
     tier: 'beta_starter',
     maxConcurrentBacktests: 1,
     dailyBacktestLimit: 2,
-    dailyLiveTurnLimit: 3,
-    maxLiveRecipes: 1,
+    // Live turns are unbounded per user: the live-bot cap below already bounds
+    // the work at maxLiveRecipes x 3 ET slots per day. The column survives in
+    // recipe_user_quotas for old overrides but is no longer shown or enforced.
+    dailyLiveTurnLimit: Number.POSITIVE_INFINITY,
+    maxLiveRecipes: 3,
     globalQueueCap: 20,
 } as const;
 
@@ -32,6 +35,7 @@ interface QueueQuotaRow {
     mode: 'backtest' | 'live_turn';
     status: string;
     created_at: string;
+    started_at?: string | null;
 }
 
 export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUserQuotaStatus> {
@@ -54,14 +58,14 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
             .maybeSingle(),
         db
             .from('recipe_execution_queue')
-            .select('id, user_id, mode, status, created_at')
+            .select('id, user_id, mode, status, created_at, started_at')
             .eq('user_id', userId)
             .gte('created_at', since24hIso)
             .neq('status', 'cancelled')
             .limit(200),
         db
             .from('recipe_execution_queue')
-            .select('id, user_id, mode, status, created_at')
+            .select('id, user_id, mode, status, created_at, started_at')
             .eq('user_id', userId)
             .eq('mode', 'backtest')
             .in('status', ['pending', 'processing'])
@@ -87,7 +91,13 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
     const globalRows = (globalActiveRows || []) as QueueQuotaRow[];
 
     const activeBacktests = userActiveBacktests.length;
-    const backtestsLast24h = recent.filter((row) => row.mode === 'backtest').length;
+    // A run burns the allowance once it has actually started: completed runs
+    // count, and so does a run the user cancelled after it spent LLM calls.
+    // Never-started rows and provider failures do not, so a bad free-tier model
+    // cannot lock someone out for a day.
+    const backtestsLast24h = recent.filter(
+        (row) => row.mode === 'backtest' && (row.status === 'completed' || Boolean(row.started_at)),
+    ).length;
     const liveTurnsLast24h = recent.filter((row) => row.mode === 'live_turn').length;
 
     return {

@@ -1,167 +1,156 @@
-import { act, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { calculateBenchmarkMoves, Route, RouteComponent } from './index';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { RecipeDeskHomePage } from '~/features/home/pages/RecipeDeskHomePage';
+import type { PublicDesk } from '~/features/recipes/api/public-board-api';
+import { Route } from './index';
 
-const mockInvalidate = vi.fn();
-const mockReloadFeatureFlags = vi.fn();
-const mockCapture = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock('@tanstack/react-start', () => ({
+    createServerFn: () => ({
+        handler: (fn: unknown) => fn,
+        validator: () => ({ handler: (fn: unknown) => fn }),
+    }),
+}));
+
+vi.mock('~/features/recipes/api/fork-recipe', () => ({
+    forkRecipeFn: vi.fn(),
+}));
+
+vi.mock('~/features/recipes/api/public-board-api', () => ({
+    fetchPublicDesk: vi.fn(),
+}));
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@tanstack/react-router')>();
     return {
         ...actual,
-        useRouter: () => ({
-            invalidate: mockInvalidate,
-        }),
+        Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
+            <a href={to} {...rest}>
+                {children}
+            </a>
+        ),
+        useRouter: () => ({ navigate: mockNavigate }),
     };
 });
 
-vi.mock('@posthog/react', () => ({
-    usePostHog: () => ({
-        reloadFeatureFlags: mockReloadFeatureFlags,
-        capture: mockCapture,
-    }),
-}));
+const desk: PublicDesk = {
+    cards: [
+        {
+            recipeId: 'r-new',
+            name: 'Chip Momentum',
+            returnPct: 3.2,
+            spyReturnPct: 1.1,
+            tradeCount: 4,
+            openPositions: 2,
+            runsToday: 2,
+            lastRunAt: '2026-11-19T15:30:00+00:00',
+            lastAction: { action: 'EXIT', ticker: 'NVDA', price: 181.2, reason: 'Thesis broken' },
+            resolvedModel: 'qwen3.8-27b',
+        },
+        {
+            recipeId: 'r-old',
+            name: 'Value Screener',
+            returnPct: -4.5,
+            spyReturnPct: 3.1,
+            tradeCount: 1,
+            openPositions: 0,
+            runsToday: 1,
+            lastRunAt: '2026-11-18T15:30:00+00:00',
+            lastAction: null,
+            resolvedModel: null,
+        },
+    ],
+    feed: [
+        {
+            at: '2026-11-19T15:30:00+00:00',
+            recipeId: 'r-new',
+            recipeName: 'Chip Momentum',
+            action: 'EXIT',
+            ticker: 'NVDA',
+        },
+    ],
+    liveCount: 2,
+    beatSpyCount: 1,
+    medianReturnPct: -0.65,
+};
 
-vi.mock('~/features/home/pages/HomePage', () => ({
-    HomePage: ({ data }: { data: { currentUser?: { email?: string } | null } }) => (
-        <div data-testid="mock-home-page">
-            Homepage Content - User: {data.currentUser?.email ?? 'anonymous'}
-        </div>
-    ),
-}));
+describe('Recipe desk homepage', () => {
+    it('renders every card and publishes a losing recipe', () => {
+        render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} />);
 
-describe('Homepage Route Component (routes/index)', () => {
-    beforeEach(() => {
-        vi.useFakeTimers();
-        mockInvalidate.mockClear();
-        mockReloadFeatureFlags.mockClear();
-        mockCapture.mockClear();
+        expect(screen.getAllByText('Chip Momentum').length).toBeGreaterThan(0);
+        expect(screen.getByText('Value Screener')).toBeInTheDocument();
+        expect(screen.getByText('-4.50%')).toBeInTheDocument();
+        expect(screen.getByText('+3.20%')).toBeInTheDocument();
+    });
 
-        Object.defineProperty(document, 'hidden', {
-            configurable: true,
-            value: false,
+    it('shows the live count, beat-SPY count and median', () => {
+        render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} />);
+
+        expect(screen.getByText(/2 live/)).toBeInTheDocument();
+        expect(screen.getByText(/1 beating SPY/)).toBeInTheDocument();
+        expect(screen.getByText(/-0\.65%/)).toBeInTheDocument();
+    });
+
+    it('renders the today feed for executed signals', () => {
+        render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} />);
+
+        expect(screen.getAllByText('NVDA').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('EXIT').length).toBeGreaterThan(0);
+    });
+
+    it('forks the recipe the visitor clicked', () => {
+        const onFork = vi.fn();
+        render(<RecipeDeskHomePage desk={desk} onFork={onFork} />);
+
+        fireEvent.click(screen.getAllByRole('button', { name: 'Fork' })[0]);
+
+        expect(onFork).toHaveBeenCalledWith('r-new');
+    });
+
+    it('sends the one-line idea to the builder instead of opening a blank editor', () => {
+        render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} />);
+
+        fireEvent.change(screen.getByLabelText('Describe your strategy'), {
+            target: { value: 'buy chips on capex news' },
         });
+        fireEvent.click(screen.getByRole('button', { name: 'Build it' }));
 
-        // Mock Route.useLoaderData and Route.useRouteContext
-        vi.spyOn(Route, 'useLoaderData').mockReturnValue({
-            portfolios: [],
-            benchmark: { todayPct: 0, weekPct: 0 },
-            bars: [],
-            agentState: undefined,
-            isMarketOpen: true,
-            feeling: undefined,
-            barometer: null,
-        } as ReturnType<typeof Route.useLoaderData>);
-
-        vi.spyOn(Route, 'useRouteContext').mockReturnValue({
-            user: { id: 'usr-123', email: 'trader@example.com' },
-        } as ReturnType<typeof Route.useRouteContext>);
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-        vi.useRealTimers();
-    });
-
-    it('renders HomePage with loader data and context', () => {
-        render(<RouteComponent />);
-        expect(screen.getByTestId('mock-home-page')).toBeInTheDocument();
-        expect(screen.getByText(/User: trader@example\.com/)).toBeInTheDocument();
-    });
-
-    it('invalidates router and syncs posthog on window focus after cooldown', () => {
-        render(<RouteComponent />);
-
-        // Advance timers past initial 5000ms throttle cooldown
-        vi.advanceTimersByTime(5001);
-
-        act(() => {
-            window.dispatchEvent(new Event('focus'));
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: '/build',
+            search: { idea: 'buy chips on capex news' },
         });
-
-        expect(mockInvalidate).toHaveBeenCalledTimes(1);
-        expect(mockReloadFeatureFlags).toHaveBeenCalledTimes(1);
-        expect(mockCapture).toHaveBeenCalledWith('window_focus_refreshed', { path: '/' });
     });
 
-    it('invalidates router when tab becomes visible after visibilitychange', () => {
-        render(<RouteComponent />);
+    it('falls back to an empty state instead of an empty grid', () => {
+        render(
+            <RecipeDeskHomePage
+                desk={{
+                    ...desk,
+                    cards: [],
+                    feed: [],
+                    liveCount: 0,
+                    beatSpyCount: 0,
+                    medianReturnPct: null,
+                }}
+                onFork={vi.fn()}
+            />,
+        );
 
-        vi.advanceTimersByTime(5001);
+        expect(screen.getByText('No live recipes yet')).toBeInTheDocument();
+    });
 
-        act(() => {
-            document.dispatchEvent(new Event('visibilitychange'));
-        });
+    it('surfaces a fork failure in-flow', () => {
+        render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} error="Fork failed: network" />);
 
-        expect(mockInvalidate).toHaveBeenCalledTimes(1);
-        expect(mockReloadFeatureFlags).toHaveBeenCalledTimes(1);
-        expect(mockCapture).toHaveBeenCalledWith('window_focus_refreshed', { path: '/' });
+        expect(screen.getByRole('alert')).toHaveTextContent('Fork failed: network');
     });
 });
 
-describe('calculateBenchmarkMoves', () => {
-    const historicalData = [
-        { date: '2026-11-03', price: 754.35 },
-        { date: '2026-11-04', price: 766.81 },
-        { date: '2026-11-05', price: 733.0 },
-        { date: '2026-11-06', price: 735.29 },
-        { date: '2026-11-09', price: 752.69 },
-    ];
-
-    it('calculates moves purely from history when no live quote provided', () => {
-        const moves = calculateBenchmarkMoves(historicalData);
-        // Nov 9 ($752.69) vs Nov 6 ($735.29): +2.37%
-        expect(moves.todayPct).toBe(2.37);
-        // Nov 9 ($752.69) vs Nov 3 ($754.35): -0.22%
-        expect(moves.weekPct).toBe(-0.22);
-    });
-
-    it('incorporates today live intraday quote vs yesterday EOD close (reproduction test)', () => {
-        // Today is Nov 10, intraday price is $747.08
-        // (747.08 - 752.69) / 752.69 = -0.745% -> -0.75%
-        // (747.08 - 754.35) / 754.35 = -0.963% -> -0.96%
-        const liveQuote = { price: 747.08, date: '2026-11-10' };
-        const moves = calculateBenchmarkMoves(historicalData, liveQuote);
-
-        expect(moves.todayPct).toBe(-0.75);
-        expect(moves.weekPct).toBe(-0.96);
-    });
-
-    it('updates same-day price when quote date matches latest benchmark date during market hours', () => {
-        const dataWithToday = [...historicalData, { date: '2026-11-10', price: 750.0 }];
-        // During market hours (isMarketOpen: true), live quote should update same-day bar
-        const liveQuote = { price: 747.08, date: '2026-11-10' };
-        const moves = calculateBenchmarkMoves(dataWithToday, liveQuote, true);
-
-        expect(moves.todayPct).toBe(-0.75);
-        expect(moves.weekPct).toBe(-0.96);
-    });
-
-    it('preserves official EOD close when market is closed (does not overwrite with stale tick)', () => {
-        const officialClose = 750.0;
-        const dataWithEOD = [...historicalData, { date: '2026-11-10', price: officialClose }];
-        // When market is closed (isMarketOpen: false), official EOD close takes precedence
-        const staleBar = { price: 747.08, date: '2026-11-10' };
-        const moves = calculateBenchmarkMoves(dataWithEOD, staleBar, false);
-
-        // (750.00 - 752.69) / 752.69 = -0.357% -> -0.36%
-        expect(moves.todayPct).toBe(-0.36);
-    });
-
-    it('ignores stale quote with date earlier than latest benchmark history', () => {
-        const staleQuote = { price: 700.0, date: '2026-11-05' };
-        const moves = calculateBenchmarkMoves(historicalData, staleQuote);
-
-        expect(moves.todayPct).toBe(2.37);
-        expect(moves.weekPct).toBe(-0.22);
-    });
-
-    it('handles empty or insufficient data gracefully', () => {
-        expect(calculateBenchmarkMoves([])).toEqual({ todayPct: 0, weekPct: 0 });
-        expect(calculateBenchmarkMoves([{ date: '2026-11-10', price: 747.08 }])).toEqual({
-            todayPct: 0,
-            weekPct: 0,
-        });
+describe('Homepage route', () => {
+    it('exports a loader and a component', () => {
+        expect(Route.options.loader).toBeTypeOf('function');
+        expect(Route.options.component).toBeTypeOf('function');
     });
 });

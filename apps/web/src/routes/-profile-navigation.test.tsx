@@ -25,18 +25,14 @@ describe('Profile Navigation & Route Migration TDD', () => {
         expect(postsItem).toBeUndefined();
     });
 
-    it('topbar enforces the 3-item budget: B, Portfolios icon, Lab icon', () => {
+    it('topbar enforces the 3-item budget: B, Recipes icon, Lab icon', () => {
         expect(navItems).toHaveLength(3);
-        expect(navItems.map((item) => item.to).sort()).toEqual(['/', '/lab', '/portfolios']);
-        expect(navItems.map((item) => item.ariaLabel).sort()).toEqual([
-            'Home',
-            'Lab',
-            'Portfolios',
-        ]);
+        expect(navItems.map((item) => item.to).sort()).toEqual(['/', '/lab', '/recipes']);
+        expect(navItems.map((item) => item.ariaLabel).sort()).toEqual(['Home', 'Lab', 'Recipes']);
         // Non-home items must render icons, not text labels
-        const portfoliosItem = navItems.find((item) => item.to === '/portfolios');
+        const recipesItem = navItems.find((item) => item.to === '/recipes');
         const labItem = navItems.find((item) => item.to === '/lab');
-        expect(portfoliosItem?.label).not.toBe('Portfolios');
+        expect(recipesItem?.label).not.toBe('Recipes');
         expect(labItem?.label).not.toBe('Lab');
     });
 

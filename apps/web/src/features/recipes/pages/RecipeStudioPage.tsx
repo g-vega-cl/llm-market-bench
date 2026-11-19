@@ -1,6 +1,6 @@
 import { PageLayout } from '@llm-market-bench/ui-design-system';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
 import {
@@ -42,6 +42,7 @@ import {
     isQuotaLimitMessage,
     upsertSavedRecipeSummary,
 } from '../utils/live-studio-helpers';
+import { clearLocalDraft, loadLocalDraft } from '../utils/local-draft';
 import { RecipeSaveError, useRecipeDraft } from '../utils/use-recipe-draft';
 import { useStrategyRemoval } from '../utils/use-strategy-removal';
 
@@ -63,6 +64,18 @@ export function RecipeStudioPage({
         initialStrategy ?? STARTER_RECIPES[0],
         initialStrategy?.name ?? null,
     );
+    // A recipe compiled in /build (or typed while logged out) is parked in this
+    // browser. It is adopted in an effect, not a state initializer: reading
+    // localStorage during render makes the first client paint differ from SSR.
+    const importedRef = useRef(false);
+    useEffect(() => {
+        if (initialStrategy || importedRef.current) return;
+        importedRef.current = true;
+        const local = loadLocalDraft();
+        if (!local) return;
+        draft.resetTo(local.strategy);
+        clearLocalDraft();
+    }, [initialStrategy, draft]);
     const strategy = draft.strategy;
     const [activeTemplateIdx, setActiveTemplateIdx] = useState<number>(() =>
         initialStrategy ? -1 : 0,

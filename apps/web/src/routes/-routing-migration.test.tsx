@@ -3,14 +3,14 @@ import { navItems } from './__root';
 import { LAB_CATEGORIES } from './lab';
 
 describe('Routing Migration TDD Verification', () => {
-    it('should have B mapped to /, Portfolios to /portfolios, and Lab to /lab in navItems', () => {
+    it('should have B mapped to /, Recipes to /recipes, and Lab to /lab in navItems', () => {
         const homeItem = navItems.find((item) => item.to === '/');
         expect(homeItem).toBeDefined();
         expect(homeItem?.ariaLabel).toBe('Home');
 
-        const portfoliosItem = navItems.find((item) => item.to === '/portfolios');
-        expect(portfoliosItem).toBeDefined();
-        expect(portfoliosItem?.ariaLabel).toBe('Portfolios');
+        const recipesItem = navItems.find((item) => item.to === '/recipes');
+        expect(recipesItem).toBeDefined();
+        expect(recipesItem?.ariaLabel).toBe('Recipes');
 
         const labItem = navItems.find((item) => item.to === '/lab');
         expect(labItem).toBeDefined();

@@ -99,9 +99,6 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
     const btLeft = quotaStatus
         ? Math.max(0, quotaStatus.dailyBacktestLimit - quotaStatus.backtestsLast24h)
         : 2;
-    const liveLeft = quotaStatus
-        ? Math.max(0, quotaStatus.dailyLiveTurnLimit - quotaStatus.liveTurnsLast24h)
-        : 3;
 
     return (
         <div className="flex flex-col gap-3 min-w-0">
@@ -124,11 +121,8 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
                         </span>
                     </span>
                     <span className="whitespace-nowrap font-mono tabular-nums text-voxel-ink">
-                        • Live Turns: {liveLeft}/{quotaStatus?.dailyLiveTurnLimit ?? 3} left today
-                    </span>
-                    <span className="whitespace-nowrap font-mono tabular-nums text-voxel-ink">
-                        • Scheduled Live: {quotaStatus?.activeLiveRecipes ?? 0}/
-                        {quotaStatus?.maxLiveRecipes ?? 1}
+                        • Live bots: {quotaStatus?.activeLiveRecipes ?? 0}/
+                        {quotaStatus?.maxLiveRecipes ?? 3}
                     </span>
                 </div>
                 <span className="whitespace-nowrap font-mono tabular-nums text-voxel-muted">

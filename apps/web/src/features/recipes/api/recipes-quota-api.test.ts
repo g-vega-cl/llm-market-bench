@@ -205,9 +205,9 @@ describe('recipes-quota-api', () => {
             backtestsLast24h: 1,
             dailyBacktestLimit: 2,
             liveTurnsLast24h: 1,
-            dailyLiveTurnLimit: 3,
+            dailyLiveTurnLimit: Number.POSITIVE_INFINITY,
             activeLiveRecipes: 1,
-            maxLiveRecipes: 1,
+            maxLiveRecipes: 3,
             globalPendingBacktests: 1,
             globalQueueCap: 20,
         });
@@ -251,7 +251,7 @@ describe('recipes-quota-api', () => {
         );
     });
 
-    it('enforces max 1 scheduled live recipe when toggling is_live on', async () => {
+    it('allows a second live bot but enforces the three-bot cap', async () => {
         mockAdminDb = createQuotaMockDb({
             singleRecipe: {
                 id: 'rec-2',
@@ -262,8 +262,24 @@ describe('recipes-quota-api', () => {
             recipeRows: [{ id: 'rec-1', user_id: 'user-1', is_live: true }],
         }).db;
 
-        await expect(toggleLiveSchedule('rec-2', true, 'user-1')).rejects.toThrow(
-            'Scheduled live limit reached (1/1)',
+        await expect(toggleLiveSchedule('rec-2', true, 'user-1')).resolves.toBeDefined();
+
+        mockAdminDb = createQuotaMockDb({
+            singleRecipe: {
+                id: 'rec-4',
+                user_id: 'user-1',
+                is_live: false,
+                graph_json: STARTER_RECIPES[0],
+            },
+            recipeRows: [
+                { id: 'rec-1', user_id: 'user-1', is_live: true },
+                { id: 'rec-2', user_id: 'user-1', is_live: true },
+                { id: 'rec-3', user_id: 'user-1', is_live: true },
+            ],
+        }).db;
+
+        await expect(toggleLiveSchedule('rec-4', true, 'user-1')).rejects.toThrow(
+            'Scheduled live limit reached (3/3)',
         );
     });
 

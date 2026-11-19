@@ -123,6 +123,18 @@ export const LAB_CATEGORIES: LabCategory[] = [
         subtitle: 'Execution verification, regime barometers, methodology, and retired models',
         items: [
             {
+                to: '/live-trader',
+                label: 'Live Trader',
+                description:
+                    '24/7 autonomous SPY tape, active agent portfolios, and the S&P 500 benchmark.',
+            },
+            {
+                to: '/portfolios',
+                label: 'Portfolios',
+                description:
+                    'Every active agent portfolio, its equity curve, holdings, and benchmark comparison.',
+            },
+            {
                 to: '/leaderboard',
                 label: 'Leaderboard',
                 description:

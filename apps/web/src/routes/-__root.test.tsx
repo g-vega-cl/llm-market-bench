@@ -32,11 +32,11 @@ vi.mock('@posthog/react', () => ({
 }));
 
 describe('Root layout navigation', () => {
-    it('navItems should strictly contain 3 topbar items: B, Portfolios icon, and Lab icon', () => {
+    it('navItems should strictly contain 3 topbar items: B, Recipes icon, and Lab icon', () => {
         expect(navItems).toHaveLength(3);
         expect(navItems[0]).toEqual({ to: '/', label: 'B', ariaLabel: 'Home', exact: true });
-        expect(navItems[1].to).toBe('/portfolios');
-        expect(navItems[1].ariaLabel).toBe('Portfolios');
+        expect(navItems[1].to).toBe('/recipes');
+        expect(navItems[1].ariaLabel).toBe('Recipes');
         expect(navItems[2].to).toBe('/lab');
         expect(navItems[2].ariaLabel).toBe('Lab');
     });
@@ -44,12 +44,7 @@ describe('Root layout navigation', () => {
     it('NavLink should render with correct properties and shrink-0 class', async () => {
         const rootRoute = createRootRoute({
             component: () => (
-                <NavLink
-                    to="/portfolios"
-                    label={<BriefcaseIcon />}
-                    ariaLabel="Portfolios"
-                    exact={true}
-                />
+                <NavLink to="/recipes" label={<BriefcaseIcon />} ariaLabel="Recipes" exact={true} />
             ),
         });
 
@@ -65,10 +60,10 @@ describe('Root layout navigation', () => {
         render(<RouterProvider router={router} />);
 
         // Wait for router resolution and element to appear
-        const link = await screen.findByLabelText('Portfolios');
+        const link = await screen.findByLabelText('Recipes');
         expect(link).toBeInTheDocument();
         expect(link.tagName.toLowerCase()).toBe('a');
-        expect(link).toHaveAttribute('href', '/portfolios');
+        expect(link).toHaveAttribute('href', '/recipes');
         expect(link).toHaveClass('shrink-0');
         expect(link).toHaveClass('voxel-btn');
         expect(link.querySelector('svg')).toBeInTheDocument();
@@ -185,7 +180,7 @@ describe('Root layout navigation', () => {
 
         await screen.findByText('Content');
 
-        for (const name of ['Home', 'Portfolios', 'Lab']) {
+        for (const name of ['Home', 'Recipes', 'Lab']) {
             const link = screen.getByRole('link', { name });
             expect(link).toHaveClass('inline-flex', 'items-center', 'justify-center', 'h-9', 'w-9');
         }

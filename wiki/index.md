@@ -107,6 +107,7 @@
 
 ## Concepts
 
+- [[concepts/recipe-builder-compiler]] — Auto-indexed page
 - [[concepts/recipe-backtest-concurrency]] — three concurrent backtests with counted and per-recipe guards
 - [[concepts/recipe-builder-usage]] — per-user daily /build compile cap with atomic spend
 - [[concepts/recipe-ops-telemetry]] — durable scheduler/ops events for the recipe runner

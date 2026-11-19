@@ -259,14 +259,23 @@ export async function enqueueRecipeJob(
 
     await assertQuotaAllowsJob(userId, mode);
 
+    // First run jumps the queue but never preempts a running backtest: priority
+    // only reorders pending jobs (pop_next_recipe_job orders priority ASC).
+    const { count: completedBacktests } = await db
+        .from('recipe_execution_queue')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('mode', 'backtest')
+        .eq('status', 'completed');
+
     const payload = {
         recipe_id: recipeId,
         user_id: userId,
         mode,
-        priority: 10,
+        priority: (completedBacktests ?? 0) === 0 ? 0 : 10,
         status: 'pending',
         provider: 'free-llm-proxy',
-        model: 'strata-auto-go',
+        model: 'auto-go',
         weeks_requested: weeksRequested,
         progress_pct: 0,
     };

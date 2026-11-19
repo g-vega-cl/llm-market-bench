@@ -421,7 +421,7 @@ describe('enqueueRecipeJob', () => {
         expect(calls.some((call) => call.op === 'insert')).toBe(false);
     });
 
-    it('queues backtests on strata-auto-go and live turns on auto-go via free-llm-proxy', async () => {
+    it('queues every job on auto-go via free-llm-proxy and gives a first run priority 0', async () => {
         const { db, calls } = createMockDb({
             'select:strategy_recipes': (call) =>
                 call.filters.is_live === true ? { data: [] } : { data: recipeRow() },
@@ -437,9 +437,9 @@ describe('enqueueRecipeJob', () => {
             recipe_id: 'rec-1',
             user_id: 'user-1',
             mode: 'backtest',
-            priority: 10,
+            priority: 0,
             provider: 'free-llm-proxy',
-            model: 'strata-auto-go',
+            model: 'auto-go',
         });
         expect(inserts).toHaveLength(1);
     });

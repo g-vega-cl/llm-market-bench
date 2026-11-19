@@ -14,6 +14,7 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
 import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
+import { Route as BuildRouteImport } from './routes/build'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CompaniesRouteImport } from './routes/companies'
 import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
@@ -21,6 +22,7 @@ import { Route as EarningsAuditRouteImport } from './routes/earnings-audit'
 import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as LabRouteImport } from './routes/lab'
+import { Route as LiveTraderRouteImport } from './routes/live-trader'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as RecipesDemoRouteImport } from './routes/recipes-demo'
@@ -43,7 +45,7 @@ import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
 import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
 import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
-import { Route as AuthedRecipesIndexRouteImport } from './routes/_authed/recipes/index'
+import { Route as RecipesIndexRouteImport } from './routes/recipes/index'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
 import { Route as AuthedRecipesBacktestJobIdRouteImport } from './routes/_authed/recipes/backtest/$jobId'
 import { Route as AuthedRecipesLiveRecipeIdRouteImport } from './routes/_authed/recipes/live/$recipeId'
@@ -70,6 +72,11 @@ const AutoresearchBacktestRoute = AutoresearchBacktestRouteImport.update({
 const BarometerAuditRoute = BarometerAuditRouteImport.update({
   id: '/barometer-audit',
   path: '/barometer-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuildRoute = BuildRouteImport.update({
+  id: '/build',
+  path: '/build',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -106,6 +113,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
 const LabRoute = LabRouteImport.update({
   id: '/lab',
   path: '/lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveTraderRoute = LiveTraderRouteImport.update({
+  id: '/live-trader',
+  path: '/live-trader',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -218,10 +230,10 @@ const ReasoningIndexRoute = ReasoningIndexRouteImport.update({
   path: '/reasoning/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedRecipesIndexRoute = AuthedRecipesIndexRouteImport.update({
+const RecipesIndexRoute = RecipesIndexRouteImport.update({
   id: '/recipes/',
   path: '/recipes/',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
   id: '/memories/chain/$memoryId',
@@ -246,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/build': typeof BuildRoute
   '/chat': typeof ChatRoute
   '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
@@ -253,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
+  '/live-trader': typeof LiveTraderRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/recipes-demo': typeof RecipesDemoRoute
@@ -275,8 +289,8 @@ export interface FileRoutesByFullPath {
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
+  '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
-  '/recipes/': typeof AuthedRecipesIndexRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
   '/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
@@ -285,6 +299,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/build': typeof BuildRoute
   '/chat': typeof ChatRoute
   '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
@@ -292,6 +307,7 @@ export interface FileRoutesByTo {
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
+  '/live-trader': typeof LiveTraderRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/recipes-demo': typeof RecipesDemoRoute
@@ -314,8 +330,8 @@ export interface FileRoutesByTo {
   '/memories': typeof MemoriesIndexRoute
   '/portfolios': typeof PortfoliosIndexRoute
   '/reasoning': typeof ReasoningIndexRoute
+  '/recipes': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
-  '/recipes': typeof AuthedRecipesIndexRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
   '/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
@@ -326,6 +342,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/build': typeof BuildRoute
   '/chat': typeof ChatRoute
   '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
@@ -333,6 +350,7 @@ export interface FileRoutesById {
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
+  '/live-trader': typeof LiveTraderRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/recipes-demo': typeof RecipesDemoRoute
@@ -355,8 +373,8 @@ export interface FileRoutesById {
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
+  '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
-  '/_authed/recipes/': typeof AuthedRecipesIndexRoute
   '/_authed/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
   '/_authed/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
@@ -367,6 +385,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/build'
     | '/chat'
     | '/companies'
     | '/daily-predictions-backtest'
@@ -374,6 +393,7 @@ export interface FileRouteTypes {
     | '/generated-newsletters'
     | '/how-it-works'
     | '/lab'
+    | '/live-trader'
     | '/login'
     | '/logout'
     | '/recipes-demo'
@@ -396,8 +416,8 @@ export interface FileRouteTypes {
     | '/memories/'
     | '/portfolios/'
     | '/reasoning/'
-    | '/memories/chain/$memoryId'
     | '/recipes/'
+    | '/memories/chain/$memoryId'
     | '/recipes/backtest/$jobId'
     | '/recipes/live/$recipeId'
   fileRoutesByTo: FileRoutesByTo
@@ -406,6 +426,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/build'
     | '/chat'
     | '/companies'
     | '/daily-predictions-backtest'
@@ -413,6 +434,7 @@ export interface FileRouteTypes {
     | '/generated-newsletters'
     | '/how-it-works'
     | '/lab'
+    | '/live-trader'
     | '/login'
     | '/logout'
     | '/recipes-demo'
@@ -435,8 +457,8 @@ export interface FileRouteTypes {
     | '/memories'
     | '/portfolios'
     | '/reasoning'
-    | '/memories/chain/$memoryId'
     | '/recipes'
+    | '/memories/chain/$memoryId'
     | '/recipes/backtest/$jobId'
     | '/recipes/live/$recipeId'
   id:
@@ -446,6 +468,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/build'
     | '/chat'
     | '/companies'
     | '/daily-predictions-backtest'
@@ -453,6 +476,7 @@ export interface FileRouteTypes {
     | '/generated-newsletters'
     | '/how-it-works'
     | '/lab'
+    | '/live-trader'
     | '/login'
     | '/logout'
     | '/recipes-demo'
@@ -475,8 +499,8 @@ export interface FileRouteTypes {
     | '/memories/'
     | '/portfolios/'
     | '/reasoning/'
+    | '/recipes/'
     | '/memories/chain/$memoryId'
-    | '/_authed/recipes/'
     | '/_authed/recipes/backtest/$jobId'
     | '/_authed/recipes/live/$recipeId'
   fileRoutesById: FileRoutesById
@@ -487,6 +511,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   BarometerAuditRoute: typeof BarometerAuditRoute
+  BuildRoute: typeof BuildRoute
   ChatRoute: typeof ChatRoute
   CompaniesRoute: typeof CompaniesRouteWithChildren
   DailyPredictionsBacktestRoute: typeof DailyPredictionsBacktestRoute
@@ -494,6 +519,7 @@ export interface RootRouteChildren {
   GeneratedNewslettersRoute: typeof GeneratedNewslettersRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LabRoute: typeof LabRoute
+  LiveTraderRoute: typeof LiveTraderRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   RecipesDemoRoute: typeof RecipesDemoRoute
@@ -513,6 +539,7 @@ export interface RootRouteChildren {
   MemoriesIndexRoute: typeof MemoriesIndexRoute
   PortfoliosIndexRoute: typeof PortfoliosIndexRoute
   ReasoningIndexRoute: typeof ReasoningIndexRoute
+  RecipesIndexRoute: typeof RecipesIndexRoute
   MemoriesChainMemoryIdRoute: typeof MemoriesChainMemoryIdRoute
 }
 
@@ -551,6 +578,13 @@ declare module '@tanstack/react-router' {
       path: '/barometer-audit'
       fullPath: '/barometer-audit'
       preLoaderRoute: typeof BarometerAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/build': {
+      id: '/build'
+      path: '/build'
+      fullPath: '/build'
+      preLoaderRoute: typeof BuildRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -600,6 +634,13 @@ declare module '@tanstack/react-router' {
       path: '/lab'
       fullPath: '/lab'
       preLoaderRoute: typeof LabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live-trader': {
+      id: '/live-trader'
+      path: '/live-trader'
+      fullPath: '/live-trader'
+      preLoaderRoute: typeof LiveTraderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -756,12 +797,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReasoningIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed/recipes/': {
-      id: '/_authed/recipes/'
+    '/recipes/': {
+      id: '/recipes/'
       path: '/recipes'
       fullPath: '/recipes/'
-      preLoaderRoute: typeof AuthedRecipesIndexRouteImport
-      parentRoute: typeof AuthedRoute
+      preLoaderRoute: typeof RecipesIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/memories/chain/$memoryId': {
       id: '/memories/chain/$memoryId'
@@ -789,14 +830,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthedRouteChildren {
   AuthedProfileRoute: typeof AuthedProfileRoute
-  AuthedRecipesIndexRoute: typeof AuthedRecipesIndexRoute
   AuthedRecipesBacktestJobIdRoute: typeof AuthedRecipesBacktestJobIdRoute
   AuthedRecipesLiveRecipeIdRoute: typeof AuthedRecipesLiveRecipeIdRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedProfileRoute: AuthedProfileRoute,
-  AuthedRecipesIndexRoute: AuthedRecipesIndexRoute,
   AuthedRecipesBacktestJobIdRoute: AuthedRecipesBacktestJobIdRoute,
   AuthedRecipesLiveRecipeIdRoute: AuthedRecipesLiveRecipeIdRoute,
 }
@@ -832,6 +871,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   BarometerAuditRoute: BarometerAuditRoute,
+  BuildRoute: BuildRoute,
   ChatRoute: ChatRoute,
   CompaniesRoute: CompaniesRouteWithChildren,
   DailyPredictionsBacktestRoute: DailyPredictionsBacktestRoute,
@@ -839,6 +879,7 @@ const rootRouteChildren: RootRouteChildren = {
   GeneratedNewslettersRoute: GeneratedNewslettersRoute,
   HowItWorksRoute: HowItWorksRoute,
   LabRoute: LabRoute,
+  LiveTraderRoute: LiveTraderRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   RecipesDemoRoute: RecipesDemoRoute,
@@ -858,6 +899,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoriesIndexRoute: MemoriesIndexRoute,
   PortfoliosIndexRoute: PortfoliosIndexRoute,
   ReasoningIndexRoute: ReasoningIndexRoute,
+  RecipesIndexRoute: RecipesIndexRoute,
   MemoriesChainMemoryIdRoute: MemoriesChainMemoryIdRoute,
 }
 export const routeTree = rootRouteImport

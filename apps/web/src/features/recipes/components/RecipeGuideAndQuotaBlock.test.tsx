@@ -15,7 +15,7 @@ describe('RecipeGuideAndQuotaBlock', () => {
                     liveTurnsLast24h: 2,
                     dailyLiveTurnLimit: 3,
                     activeLiveRecipes: 1,
-                    maxLiveRecipes: 1,
+                    maxLiveRecipes: 3,
                     globalPendingBacktests: 4,
                     globalQueueCap: 20,
                 }}
@@ -24,8 +24,9 @@ describe('RecipeGuideAndQuotaBlock', () => {
 
         expect(screen.getByText('FREE BETA STARTER')).toBeInTheDocument();
         expect(screen.getByText(/Backtests: 1\/2 left today/i)).toBeInTheDocument();
-        expect(screen.getByText(/Live Turns: 1\/3 left today/i)).toBeInTheDocument();
-        expect(screen.getByText(/Scheduled Live: 1\/1/i)).toBeInTheDocument();
+        // Live turns are unbounded: the strip shows the live-bot cap instead.
+        expect(screen.getByText(/Live bots: 1\/3/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Live Turns: /)).not.toBeInTheDocument();
         expect(screen.getByText(/Global Backtest Queue: 4\/20/i)).toBeInTheDocument();
         expect(screen.getByText(/How 2-Week PIT Backtests Work/i)).toBeInTheDocument();
         expect(screen.getByText(/How Live Paper Execution Works/i)).toBeInTheDocument();

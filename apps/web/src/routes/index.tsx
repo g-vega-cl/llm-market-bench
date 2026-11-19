@@ -8,6 +8,17 @@ import { fetchPublicDesk, type PublicDesk } from '~/features/recipes/api/public-
 import { track } from '~/lib/analytics';
 import { seo } from '~/lib/seo';
 
+function normalizeDesk(value: unknown): PublicDesk {
+    const raw = (value ?? {}) as Partial<PublicDesk>;
+    return {
+        cards: Array.isArray(raw.cards) ? raw.cards : [],
+        feed: Array.isArray(raw.feed) ? raw.feed : [],
+        liveCount: Number(raw.liveCount ?? 0),
+        beatSpyCount: Number(raw.beatSpyCount ?? 0),
+        medianReturnPct: typeof raw.medianReturnPct === 'number' ? raw.medianReturnPct : null,
+    };
+}
+
 const EMPTY_DESK: PublicDesk = {
     cards: [],
     feed: [],
@@ -41,7 +52,7 @@ export const Route = createFileRoute('/')({
 });
 
 export function RouteComponent() {
-    const desk = Route.useLoaderData();
+    const desk = normalizeDesk(Route.useLoaderData());
     const router = useRouter();
     const posthog = usePostHog();
     const [forkingId, setForkingId] = useState<string | null>(null);

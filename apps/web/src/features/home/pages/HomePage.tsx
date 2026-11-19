@@ -145,7 +145,10 @@ function PortfoliosBlock({
     portfolios: HomePageData['portfolios'];
     benchmark: HomePageData['benchmark'];
 }) {
-    const llmPortfolios = portfolios.filter((p) => !p.isSystem);
+    // Deploy skew can hand this component an older/newer payload shape; a missing
+    // array must render an empty block, not take the whole route to the error boundary.
+    const llmPortfolios = (portfolios ?? []).filter((p) => !p.isSystem);
+    const safeBenchmark = benchmark ?? { todayPct: 0, weekPct: 0 };
 
     return (
         <Card
@@ -163,7 +166,7 @@ function PortfoliosBlock({
                 </Link>
             </div>
 
-            <SPInlineRow benchmark={benchmark} />
+            <SPInlineRow benchmark={safeBenchmark} />
 
             <div className="voxel-trough overflow-x-auto flex-1">
                 <table className="w-full border-collapse text-left">

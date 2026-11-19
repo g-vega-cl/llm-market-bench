@@ -107,6 +107,7 @@
 
 ## Concepts
 
+- [[concepts/deploy-skew-payload-tolerance]] — normalizing loader payloads so a stale client bundle renders an empty state instead of the error boundary
 - [[concepts/recipe-builder-compiler]] — Auto-indexed page
 - [[concepts/recipe-backtest-concurrency]] — three concurrent backtests with counted and per-recipe guards
 - [[concepts/recipe-builder-usage]] — per-user daily /build compile cap with atomic spend

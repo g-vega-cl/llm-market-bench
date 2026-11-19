@@ -152,3 +152,21 @@ describe('HomePage 2-Block Voxel Dashboard', () => {
         expect(dashboard.className).not.toMatch(/\b(sm|md|lg|xl):/);
     });
 });
+
+describe('HomePage deploy-skew tolerance', () => {
+    it('renders the portfolio block with a missing portfolios array instead of throwing', () => {
+        render(
+            <HomePage
+                data={
+                    {
+                        ...baseData,
+                        portfolios: undefined,
+                        benchmark: undefined,
+                    } as unknown as HomePageData
+                }
+            />,
+        );
+
+        expect(screen.getByTestId('home-block-portfolios')).toBeInTheDocument();
+    });
+});

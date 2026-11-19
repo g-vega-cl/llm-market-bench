@@ -109,6 +109,8 @@ function RecipeCard({
 export function RecipeDeskHomePage({ desk, onFork, forkingId, error }: RecipeDeskHomePageProps) {
     const router = useRouter();
     const [idea, setIdea] = useState('');
+    const cards = Array.isArray(desk?.cards) ? desk.cards : [];
+    const feed = Array.isArray(desk?.feed) ? desk.feed : [];
 
     const submitIdea = (event: FormEvent) => {
         event.preventDefault();
@@ -155,19 +157,19 @@ export function RecipeDeskHomePage({ desk, onFork, forkingId, error }: RecipeDes
                             <span id="desk-heading">Live desk</span>
                         </SectionHeading>
                         <p className="font-mono text-xs font-normal text-voxel-muted">
-                            {desk.liveCount} live · {desk.beatSpyCount} beating SPY · median{' '}
-                            {formatPct(desk.medianReturnPct)}
+                            {desk.liveCount ?? 0} live · {desk.beatSpyCount ?? 0} beating SPY ·
+                            median {formatPct(desk.medianReturnPct)}
                         </p>
                     </div>
 
-                    {desk.cards.length === 0 ? (
+                    {cards.length === 0 ? (
                         <EmptyState
                             title="No live recipes yet"
                             subtitle="The board fills as recipes run at 09:30, 12:30 and 15:30 ET. Start from a starter recipe and it will appear here once it trades."
                         />
                     ) : (
                         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 items-stretch">
-                            {desk.cards.map((card) => (
+                            {cards.map((card) => (
                                 <RecipeCard
                                     key={card.recipeId}
                                     card={card}
@@ -179,13 +181,13 @@ export function RecipeDeskHomePage({ desk, onFork, forkingId, error }: RecipeDes
                     )}
                 </section>
 
-                {desk.feed.length > 0 ? (
+                {feed.length > 0 ? (
                     <section className="flex flex-col gap-3" aria-labelledby="feed-heading">
                         <SectionHeading className="text-sm">
                             <span id="feed-heading">Today</span>
                         </SectionHeading>
                         <ul className="flex flex-col gap-1">
-                            {desk.feed.map((item) => (
+                            {feed.map((item) => (
                                 <li
                                     key={`${item.recipeId}-${item.at}-${item.ticker}-${item.action}`}
                                     className="voxel-trough px-3 py-2 flex flex-wrap items-baseline gap-2 text-xs"

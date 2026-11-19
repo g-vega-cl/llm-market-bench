@@ -154,3 +154,26 @@ describe('Homepage route', () => {
         expect(Route.options.component).toBeTypeOf('function');
     });
 });
+
+describe('desk payload skew', () => {
+    it('renders an empty desk when a cached client receives a partial payload', () => {
+        // A stale bundle can hand this route an older/newer loader shape; the
+        // route must degrade to the empty state instead of the error boundary.
+        render(
+            <RecipeDeskHomePage
+                desk={
+                    {
+                        cards: undefined,
+                        feed: undefined,
+                        liveCount: undefined,
+                        beatSpyCount: undefined,
+                        medianReturnPct: undefined,
+                    } as unknown as PublicDesk
+                }
+                onFork={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText('No live recipes yet')).toBeInTheDocument();
+    });
+});

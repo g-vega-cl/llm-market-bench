@@ -44,6 +44,18 @@ audit_db = AuditDB(db_path=config.DB_PATH)
 circuit_breaker = CircuitBreaker(default_cooldown_seconds=config.DEFAULT_COOLDOWN)
 discovery = ModelDiscovery()
 router = Router(circuit_breaker=circuit_breaker, discovery=discovery)
+
+# One-time relabel of rows written before call_logs carried a billing column.
+try:
+    _PAID_PROVIDERS = [
+        pid
+        for pid, cfg in (router.providers or {}).items()
+        if cfg.get("billing") == "paid"
+    ]
+    audit_db.backfill_paid_billing(_PAID_PROVIDERS)
+except Exception:  # pragma: no cover - startup hygiene must never block serving
+    audit_db  # noqa: B018
+
 unauthorized_monitor = UnauthorizedMonitor(
     threshold=config.SECURITY_ALERT_401_THRESHOLD,
     window_seconds=config.SECURITY_ALERT_WINDOW_SECONDS,
@@ -768,6 +780,7 @@ async def chat_completions(
                         ttft_ms=float(result.get("ttft_ms") or 0.0),
                         duration_ms=float(result.get("duration_ms") or elapsed_ms),
                         stream_completed=bool(result.get("completed")),
+                        billing=str(p_cfg.get("billing") or "free"),
                     )
 
                 return StreamingResponse(
@@ -805,6 +818,7 @@ async def chat_completions(
                     usage_available=bool(usage),
                     duration_ms=elapsed_ms,
                     stream_completed=True,
+                    billing=str(p_cfg.get("billing") or "free"),
                 )
                 return JSONResponse(content=body_or_gen, status_code=200)
 

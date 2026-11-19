@@ -3,7 +3,7 @@
 import json
 import sqlite3
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -66,6 +66,7 @@ class AuditDB:
             "ttft_ms": "REAL DEFAULT 0",
             "duration_ms": "REAL DEFAULT 0",
             "stream_completed": "INTEGER DEFAULT 0",
+            "billing": "TEXT DEFAULT 'free'",
         }
         added = set()
         for col, ddl in migrations.items():
@@ -113,6 +114,7 @@ class AuditDB:
         ttft_ms: float = 0.0,
         duration_ms: float | None = None,
         stream_completed: bool = False,
+        billing: str = "free",
     ) -> str:
         call_id = f"call_{uuid.uuid4().hex[:12]}"
         now_iso = datetime.now(UTC).isoformat()
@@ -127,8 +129,8 @@ class AuditDB:
                 prompt_tokens, completion_tokens, total_tokens, latency_ms,
                 status_code, failover_chain, error_message,
                 client_ip, user_agent, purpose, prompt_preview,
-                is_stream, usage_available, ttft_ms, duration_ms, stream_completed
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_stream, usage_available, ttft_ms, duration_ms, stream_completed, billing
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 call_id,
@@ -152,12 +154,30 @@ class AuditDB:
                 ttft_ms,
                 duration_ms,
                 int(stream_completed),
+                billing,
             ),
         )
         conn.commit()
         if self._persistent_conn is None:
             conn.close()
         return call_id
+
+    def backfill_paid_billing(self, paid_providers: list[str]) -> int:
+        """Relabel rows from paid providers that the new column defaulted to 'free'."""
+        providers = [p for p in paid_providers if p]
+        if not providers:
+            return 0
+        placeholders = ",".join("?" * len(providers))
+        conn = self._get_connection()
+        cursor = conn.execute(
+            f"UPDATE call_logs SET billing = 'paid' "  # noqa: S608 - placeholders only
+            f"WHERE billing = 'free' AND routed_provider IN ({placeholders})",
+            providers,
+        )
+        conn.commit()
+        if self._persistent_conn is None:
+            conn.close()
+        return int(cursor.rowcount or 0)
 
     def get_metrics(self) -> dict[str, Any]:
         conn = self._get_connection()
@@ -203,6 +223,25 @@ class AuditDB:
                 "WHERE status_code = 200 AND is_stream = 1 AND ttft_ms > 0"
             ).fetchone()[0]
             or 0.0
+        )
+        # Paid last-resort visibility: the number that turns "our bill is capped"
+        # into something the operator can actually read.
+        paid_total = conn.execute(
+            "SELECT COUNT(*) FROM call_logs WHERE billing = 'paid'"
+        ).fetchone()[0]
+        # timestamp is a lexicographically sorted ISO-8601 string with 'T'; the
+        # SQLite datetime() form uses a space and would over-count by up to a day.
+        cutoff = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
+        paid_24h = conn.execute(
+            "SELECT COUNT(*) FROM call_logs WHERE billing = 'paid' AND timestamp >= ?",
+            (cutoff,),
+        ).fetchone()[0]
+        paid_24h_tokens = (
+            conn.execute(
+                "SELECT SUM(total_tokens) FROM call_logs WHERE billing = 'paid' AND timestamp >= ?",
+                (cutoff,),
+            ).fetchone()[0]
+            or 0
         )
 
         cursor = conn.execute(
@@ -259,6 +298,9 @@ class AuditDB:
             "avg_latency_ms": round(avg_lat, 1),
             "avg_stream_duration_ms": round(avg_stream_duration, 1),
             "avg_ttft_ms": round(avg_ttft, 1),
+            "paid_calls_total": paid_total,
+            "paid_calls_24h": paid_24h,
+            "paid_tokens_24h": paid_24h_tokens,
             "providers": providers_stats,
             "recent_calls": recent_logs,
         }

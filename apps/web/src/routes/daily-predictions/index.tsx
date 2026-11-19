@@ -8,12 +8,31 @@ const getDailyPredictionsData = createServerFn({ method: 'GET' }).handler(async 
 );
 
 export const Route = createFileRoute('/daily-predictions/')({
+    /**
+     * Canonical, round-tripping search.
+     *
+     * `loadServerRoute` (@tanstack/router-core) rebuilds the request URL from
+     * this result with `_includeValidateSearch` and 307-redirects whenever it
+     * differs from the requested href. Returning `{ ticker: undefined }` for a
+     * ticker present in the URL therefore rewrote the URL on every SSR request,
+     * and when the rewrite dropped the only param the target carried no query
+     * at all — which is the shape of the production ERR_TOO_MANY_REDIRECTS loop
+     * on `?ticker=SPY` (the edge is the likely reason the query-less target was
+     * re-expanded back to the requested URL; that hop is not reproducible from
+     * the repo).
+     *
+     * Keep every value the page can write in the URL: an absent param stays
+     * absent (cold load renders SPY with a clean URL), and a present but
+     * unrecognised value lands on SPY instead of a queryless redirect target.
+     */
     validateSearch: (search: Record<string, unknown>): { ticker?: 'SPY' | 'TLT' | 'PICKS' } => {
-        const raw = typeof search.ticker === 'string' ? search.ticker.toUpperCase() : '';
+        if (!('ticker' in search)) return {};
+        const raw = typeof search.ticker === 'string' ? search.ticker.trim().toUpperCase() : '';
         if (raw === 'TLT') return { ticker: 'TLT' };
         if (raw === 'PICKS') return { ticker: 'PICKS' };
-        return { ticker: undefined };
+        return { ticker: 'SPY' };
     },
+
     loader: async () => await getDailyPredictionsData(),
     component: RouteComponent,
 });

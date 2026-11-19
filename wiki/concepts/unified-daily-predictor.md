@@ -13,7 +13,14 @@ The Daily Predictor page (`apps/web/src/features/daily-predictions/pages/DailyPr
 
 1. Updates `selectedTicker` state.
 2. Resets the selected model to the first model configured for that ticker (skipped for the `PICKS` tab, which shares one basket filter row).
-3. Writes the choice to the URL via `history.replaceState` (`?ticker=TLT`, `?ticker=PICKS`), so the view is shareable and survives reloads.
+3. Writes the choice to the URL via `history.replaceState` — `?ticker=SPY`, `?ticker=TLT`, `?ticker=PICKS` — so the view survives reloads and is shareable. `/daily-predictions` and `/daily-predictions?ticker=SPY` are both valid addresses for the SPY tab; neither redirects.
+
+### Canonical Search (no self-redirect)
+
+`validateSearch` in `apps/web/src/routes/daily-predictions/index.tsx` must round-trip every value the page itself writes. TanStack Router rebuilds the request URL from the validator's result on the server (`loadServerRoute` in `@tanstack/router-core` builds the location with `_includeValidateSearch` and 307-redirects whenever the rebuilt href differs from the requested `publicHref`), so a validator that returned `{ ticker: undefined }` for SPY — the value the switcher wrote — rewrote the URL on every SSR request: the canonical href became `/daily-predictions`, a target with no query at all. Production answered that hop with a `Location` equal to the request, so browsers reported `ERR_TOO_MANY_REDIRECTS` on `?ticker=SPY` only (with any second param the canonical target kept a query and the hop converged in one step). The router side is reproducible from the repo; the edge hop that re-expanded the query-less `Location` is not, so treat that step as the likely explanation rather than a measured fact. A trailing-slash request (`/daily-predictions/`) still canonicalises once to the non-slash form — pre-existing, one hop, no loop.
+
+Current contract: an absent `ticker` key returns `{}` so a cold load stays param-less; `TLT`/`PICKS` pass through; every other present value (including lowercase, empty, and unknown tickers) normalizes to `SPY`, which keeps a normalising redirect target queryful. Regression guard: `apps/web/src/routes/-daily-predictions-search.test.ts` drives a real router (memory history + `buildLocation({ _includeValidateSearch: true })`) so the assertion covers search serialisation, not a hand-rolled copy of it.
+
 
 The `PredictorHeader` swaps its title and subtitle based on the ticker — "Daily S&P Market Predictor" (DeepSeek Flash & MiniMax) versus "Daily 20+ Year Treasury Bond Predictor" (GPT-6 Luna, DeepSeek Flash & Jev). The `PICKS` tab bypasses `PredictorHeader` and renders the `DailyStockPicksTab` component directly (see [[entities/daily-stock-picker]]).
 

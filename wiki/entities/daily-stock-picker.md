@@ -148,7 +148,7 @@ Three resolution rules keep the panel coherent when data is sparse or legacy:
 
 ### Where To Read The Picks
 
-`https://www.benchify.dev/daily-predictions?ticker=PICKS` opens the 3 UP / 3 DOWN tab directly (the `PICKS` value is accepted by the route's `validateSearch` in `apps/web/src/routes/daily-predictions/index.tsx`). Without the query param the page lands on SPY and the tab must be clicked.
+`https://www.benchify.dev/daily-predictions?ticker=PICKS` opens the 3 UP / 3 DOWN tab directly (the `PICKS` value is accepted by the route's `validateSearch` in `apps/web/src/routes/daily-predictions/index.tsx`; `SPY` and `TLT` are accepted too, and any other value normalizes to `SPY`). Without the query param the page lands on SPY and the tab must be clicked — see [[concepts/unified-daily-predictor]] for why the validator must round-trip every value it accepts.
 
 The route loader delegates to `loadDailyPredictionsPageData()` (`apps/web/src/features/daily-predictions/api/load-daily-predictions-page-data.ts`), which fetches predictions, daily predictor experiments, `fetchDailyStockBaskets()`, and `fetchStockPickerExperiments()` (`STOCK_PICKER_PROMPT` rows from `prompt_experiments` with `is_backtest = false`, via `apps/web/src/features/daily-predictions/api/fetch-daily-predictions.ts`) in one `Promise.allSettled`. The baskets payload is what the picks view renders — a loader that omits it leaves the tab permanently on its empty state ("No active stock picks found for selected model track"), which is exactly how the surface silently broke before the aggregator existed. The `stockExperiments` payload feeds the autoresearch view and degrades to an empty list (logged, never thrown) if the query fails.
 

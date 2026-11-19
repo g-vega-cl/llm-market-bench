@@ -95,15 +95,10 @@ class PromptFactory:
         variant from the database. Otherwise, uses the hardcoded baseline
         prompt from prompts.py.
         """
-        from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS, AUTORESEARCH_TRACKS
+        from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
+        from core.llm.analysis_pipeline.prompt_assembly import resolve_track_id
 
-        track_id = None
-        if owner_id and AUTORESEARCH_TRACKS:
-            for t_id, owners in AUTORESEARCH_TRACKS.items():
-                if owner_id in owners:
-                    track_id = t_id
-                    break
-
+        track_id = resolve_track_id(owner_id) if owner_id else None
         is_experiment = bool(track_id or (owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS))
 
         if is_experiment:

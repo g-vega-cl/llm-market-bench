@@ -18,17 +18,23 @@ monolithic patch surface.
 
 | Module | Responsibility |
 | :--- | :--- |
-| `prompt_assembly.py` | News formatting, held-ticker / `$SYMB` extraction, experiment-tool resolution, web-search flags, provider message shaping, schema hints, extraction args, message orchestration |
-| `response_parsing.py` | JSON repair, multi-strategy parsing, fallback model creation, Instructor extraction with retry, MiniMax OpenAI-endpoint extraction (`extract_with_minimax_openai` / `sanitize_minimax_content`), multi-block aggregation |
+| `prompt_assembly.py` | News formatting, held-ticker / `$SYMB` extraction, autoresearch track resolution (`resolve_track_id`), experiment-tool resolution (`resolve_experiment_tools`, `_build_override_tool_list`), web-search flags, provider message shaping, schema hints (`build_schema_hint`), extraction args, message orchestration |
+| `response_parsing.py` | JSON repair, multi-strategy parsing, fallback model creation, Instructor extraction with retry, MiniMax OpenAI-endpoint extraction (`extract_with_minimax_openai` / `sanitize_minimax_content` / `_compact_minimax_user_content`), multi-block aggregation |
 | `validation.py` | History tool scanning, hard tool enforcement, portfolio ownership validation, attribution trace attachment |
 
 ## Orchestrator Flow
 
 `analyze_with_provider` drives the pipeline in ordered stages:
 
-1. **Resolve experiment tools** — `prompt_assembly.resolve_experiment_tools` loads
-   the active autoresearch variant's `selected_tools` for experiment-owned models,
-   force-injects `calculate_buy_quantity` / `calculate_sell_quantity`, and intercepts
+1. **Resolve experiment tools** — `prompt_assembly.resolve_experiment_tools` resolves the
+   model's track through `prompt_assembly.resolve_track_id` (which scans
+   `AUTORESEARCH_TRACKS` for the track whose owner list contains the model, honouring an
+   explicit `track_id` override first) and also accepts membership in
+   `AUTORESEARCH_EXPERIMENT_OWNER_IDS`. A model that appears only in `AUTORESEARCH_TRACKS`
+   (e.g. `gpt-6-luna` under `track_openai`) therefore still receives its track's tool set.
+   The active variant's `selected_tools` are mapped to canonical tool definitions by
+   `_build_override_tool_list`, which force-injects `calculate_buy_quantity` /
+   `calculate_sell_quantity`, logs a warning for unknown tool names, and intercepts
    `web_search` into a native flag. `resolve_web_search_flag` falls back to per-provider
    config defaults (`ENABLE_*_WEB_SEARCH`) when no override exists.
 2. **Assemble prompt** — `prompt_assembly.assemble_analysis_messages` builds the
@@ -56,6 +62,28 @@ monolithic patch surface.
    with a `REJECTED_OWNERSHIP` reasoning.
 8. **Attribution trace** — `validation.attach_attribution_trace` binds an execution
    trace to the surviving decisions for factual logging.
+
+## Schema Hints (`build_schema_hint`)
+
+`prompt_assembly.build_schema_hint(response_model)` produces the JSON shape embedded in
+validation-recovery and extraction prompts. It inspects Pydantic v2 `model_fields`
+(falling back to `hasattr` for non-Pydantic objects) to decide whether the response model
+carries `decisions`, `macro_events`, or both, and emits a fully-populated item template
+rather than an ellipsis stub:
+
+- **Decision item** — `ticker`, `signal` (`BUY|SELL|HOLD`), `allocation_percentage`,
+  `catalyst_type` (the full `MACRO|EARNINGS|M_A|PRODUCT|REGULATORY|EVENT|INNOVATION|TECHNICAL|UNCROWDED_TRADE|OTHER`
+  enum), `catalyst_duration` (`INTRADAY|SHORT_TERM|MEDIUM_TERM|LONG_TERM`), `confidence`,
+  `reasoning`, `source_id`.
+- **Macro item** — `event_name`, `impact` (`BULLISH|BEARISH|NEUTRAL`), `catalyst_type`,
+  `is_ongoing`, `is_future_catalyst`, `importance_score`, `confidence`, `reasoning`,
+  `scenario_analysis`, `source_id`.
+
+Because the check reads `model_fields`, a Pydantic v2 response class can never fall
+through to the `"{}"` default — the previous `hasattr`-only check returned an empty
+schema for classes whose fields are declared as annotations, which silently degraded the
+recovery prompt. `create_fallback_model` uses the same `model_fields` inspection so an
+empty `decisions` / `macro_events` instance is always constructible.
 
 ## Provider-Specific Extraction Contracts
 
@@ -106,17 +134,25 @@ marker-only, scanning earlier turns for real prose.
 → `JSON extraction malformed-input work limit exceeded`), so extraction runs on
 `MiniMaxClient.chat` (the OpenAI-format endpoint) instead of Instructor:
 
-- **Payload** — the system prompt plus a single user message holding the last
-  `MINIMAX_HISTORY_TAIL_CHARS` (6000) characters of the flattened history, followed by
-  an explicit *do not continue the tool conversation / do not emit tool-call syntax /
-  return ONLY the raw JSON object matching this schema* instruction.
-- **Budget** — `max_completion_tokens=8192`.
-- **Sanitization** — `sanitize_minimax_content` strips `think` blocks (including
+- **Payload** — a clean extraction-only system prompt (`_MINIMAX_EXTRACTION_SYSTEM_PROMPT`,
+  omitting tool-loop `SEQUENCE RULE` instructions) plus a compacted user message
+  (`MINIMAX_MAX_CONTEXT_CHARS = 60000`) that preserves the initial prompt context
+  (`MINIMAX_INITIAL_CONTEXT_CHARS = 12000`), the earliest tool outputs
+  (`get_portfolio_ledger`, `get_todays_news_menu` `source_id`s, kept in the first
+  `MINIMAX_HISTORY_HEAD_CHARS = 16000` chars of the `=== Tool Execution History ===`
+  block), and the trailing `MINIMAX_HISTORY_TAIL_CHARS = 32000` chars of tool results on
+  newline boundaries, followed by an explicit *do not continue the tool conversation /
+  do not emit tool-call syntax / return ONLY the raw JSON object matching this schema*
+  instruction (with `build_schema_hint` inspecting Pydantic v2 `model_fields`).
+- **Budget & Mode** — `max_completion_tokens=32768` (`MINIMAX_EXTRACTION_MAX_TOKENS`,
+  accommodating MiniMax M3.1's 10k–14k reasoning token budget) and `response_format={"type": "json_object"}`.
+- **Sanitization & Retry** — `sanitize_minimax_content` strips `think` blocks (including
   unclosed ones), `<tool_call>` / `<invoke>` blocks, `]<]minimax[>` markers, and stray
   `tool_call` / `invoke` / `ticker` / `content` / `parameter` tags before
-  `try_parse_response`.
-- **Failure** — a parse failure logs the sanitized head (first 500 chars) and returns
-  `[create_fallback_model(response_model)]` rather than raising.
+  `try_parse_response`, with 1 bounded validation-recovery retry that echoes the previous
+  output (first 2000 chars) plus a schema-feedback correction turn.
+- **Failure** — after 2 failed attempts, logs `finish_reason`, `usage`, and the sanitized
+  head (first 500 chars) and returns `[create_fallback_model(response_model)]` rather than raising.
 - **Cleanup** — the client is always closed in a `finally` block.
 
 The MiniMax *tool loop* still runs through the Anthropic SDK
@@ -140,3 +176,4 @@ mock targets resolve unchanged.
 - [[concepts/rag-strategy]] — how targeted context reaches the analysis agents
 - [[concepts/thinking-agents]] — per-provider thinking/extraction mode allocation
 - [[concepts/model-anomalies]] — the DeepSeek and MiniMax failure modes these contracts resolve
+- [[concepts/multi-track-autoresearch]] — the track resolution that drives experiment tool sets

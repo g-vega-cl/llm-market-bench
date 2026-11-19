@@ -141,23 +141,6 @@ describe('Portfolio Config Utils', () => {
         });
     });
 
-    describe('hasVerifier', () => {
-        it('identifies if a portfolio uses a verifier correctly', () => {
-            expect(configModule.hasVerifier('claude-haiku-5-5')).toBe(true);
-            expect(configModule.hasVerifier('deepseek-flash')).toBe(true);
-            expect(configModule.hasVerifier('gemini-3.5-flash-lite')).toBe(false);
-            expect(configModule.hasVerifier('deepseek-v4-pro')).toBe(false);
-            expect(configModule.hasVerifier('gpt-6-luna')).toBe(false);
-            expect(configModule.hasVerifier('MiniMax-M3.1-Flash')).toBe(false);
-            expect(configModule.hasVerifier('minimax-m3')).toBe(false);
-        });
-
-        it('returns false for null or empty ownerId', () => {
-            expect(configModule.hasVerifier(null)).toBe(false);
-            expect(configModule.hasVerifier('')).toBe(false);
-        });
-    });
-
     describe('isSystemPortfolio', () => {
         it('identifies system portfolios correctly', () => {
             expect(configModule.isSystemPortfolio('sys-sector-ls-consensus')).toBe(true);

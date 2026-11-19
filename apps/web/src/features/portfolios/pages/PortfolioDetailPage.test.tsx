@@ -175,4 +175,25 @@ describe('PortfolioDetailPage Daily Move', () => {
 
         expect(screen.getByText(/Last updated:/i)).toBeDefined();
     });
+
+    it('does not render the "No Verifier" badge in the portfolio detail header', () => {
+        const initialData = {
+            portfolio: mockPortfolio,
+            positions: [],
+            history: mockHistory,
+            trades: [],
+        };
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <PortfolioDetailPage
+                    initialData={initialData}
+                    fetchFn={vi.fn().mockResolvedValue(initialData)}
+                    benchmarkFetchFn={vi.fn().mockResolvedValue({})}
+                />
+            </QueryClientProvider>,
+        );
+
+        expect(screen.queryByText('No Verifier')).toBeNull();
+    });
 });

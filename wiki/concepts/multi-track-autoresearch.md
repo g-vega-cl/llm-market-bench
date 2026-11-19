@@ -27,11 +27,13 @@ Each track maintains its own independent prompt lineage, baseline, ratchet score
 Track isolation extends into the live analysis pipeline, not just the evolution loop. `resolve_experiment_tools(model_name, prompt_type, track_id=None)` in `apps/engine/core/llm/analysis_pipeline/prompt_assembly.py` resolves the active variant for the model's **own** track:
 
 1. If an explicit `track_id` is supplied, it is used directly.
-2. Otherwise the function scans `AUTORESEARCH_TRACKS` in `apps/engine/core/config.py` for the track whose owner list contains `model_name`, and uses that track id.
+2. Otherwise `resolve_track_id(model_name)` scans `AUTORESEARCH_TRACKS` in `apps/engine/core/config.py` for the track whose owner list contains `model_name`, and uses that track id.
 3. If no track matches, it falls back to `track_default`.
 4. The resolved track is passed to `get_active_variant(track_id=...)`, so a `track_claude` model reads `track_claude`'s `selected_tools` and `web_search` flag rather than inheriting another track's tool set.
 
-After resolution, `calculate_buy_quantity` / `calculate_sell_quantity` are force-injected into the allowed tool list (see [[concepts/tool-enforcement]]), and a `web_search` selection is intercepted into a native provider flag.
+**Track membership alone qualifies a model for experiment tools.** `resolve_experiment_tools` treats a model as an experiment participant when it resolves to a track in `AUTORESEARCH_TRACKS` *or* appears in `AUTORESEARCH_EXPERIMENT_OWNER_IDS`. A model listed only in a track (for example `gpt-6-luna` under `track_openai`) therefore still receives its track's `selected_tools` instead of silently falling back to the baseline tool list. `PromptFactory` uses the same shared `resolve_track_id` helper, so the prompt-variant lookup and the tool lookup can never disagree about which track a model belongs to.
+
+After resolution, `_build_override_tool_list` maps the selected names to canonical tool definitions, force-injects `calculate_buy_quantity` / `calculate_sell_quantity` (see [[concepts/tool-enforcement]]), logs a warning for unknown tool names, and intercepts a `web_search` selection into a native provider flag.
 
 ## Frontend Enforcement
 
@@ -47,3 +49,4 @@ After resolution, `calculate_buy_quantity` / `calculate_sell_quantity` are force
 - [[concepts/auto-research-prompt-improver]]
 - [[entities/daily-market-predictor]]
 - [[concepts/prompt-section-splitting]]
+- [[entities/analysis-pipeline]] — where `resolve_track_id` and `resolve_experiment_tools` live

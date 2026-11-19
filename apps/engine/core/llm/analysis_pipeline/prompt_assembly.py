@@ -95,6 +95,40 @@ def extract_tickers_from_chunks(chunks: list[dict], portfolio_tickers: list[str]
     return frozenset(tickers)
 
 
+def resolve_track_id(model_name: str, track_id: str | None = None) -> str | None:
+    """Resolve autoresearch track_id for a model from configured AUTORESEARCH_TRACKS."""
+    if track_id:
+        return track_id
+    from core import config
+
+    tracks = getattr(config, "AUTORESEARCH_TRACKS", None)
+    if model_name and tracks:
+        for t_id, owners in tracks.items():
+            if model_name in owners:
+                return t_id
+    return None
+
+
+def _build_override_tool_list(selected_tool_names: list[str]) -> tuple[list, bool]:
+    """Map selected tool names to canonical tool defs and extract native web_search flag."""
+    override_tools = []
+    for name in selected_tool_names:
+        t_def = tools.CANONICAL_TOOLS_REGISTRY.get(name)
+        if t_def:
+            override_tools.append(t_def)
+        else:
+            logger.warning("Active prompt variant specified invalid tool name: %s", name)
+
+    for st in [tools.CALCULATE_BUY_QUANTITY_TOOL, tools.CALCULATE_SELL_QUANTITY_TOOL]:
+        if st not in override_tools:
+            override_tools.append(st)
+
+    enable_web_search = tools.WEB_SEARCH_TOOL in override_tools
+    if enable_web_search:
+        override_tools = [t for t in override_tools if t != tools.WEB_SEARCH_TOOL]
+    return override_tools, enable_web_search
+
+
 async def resolve_experiment_tools(
     model_name: str, prompt_type: str, track_id: str | None = None
 ) -> tuple[list | None, bool]:
@@ -102,26 +136,19 @@ async def resolve_experiment_tools(
     if prompt_type == "macro":
         return [], False
 
-    if model_name not in AUTORESEARCH_EXPERIMENT_OWNER_IDS:
+    from core import config
+
+    resolved_track = resolve_track_id(model_name, track_id)
+    experiment_owners = getattr(config, "AUTORESEARCH_EXPERIMENT_OWNER_IDS", AUTORESEARCH_EXPERIMENT_OWNER_IDS)
+    if not resolved_track and model_name not in experiment_owners:
         return None, False
 
     try:
         from autoresearch.prompt_store import get_active_variant
-        from core.config import AUTORESEARCH_TRACKS
-
-        resolved_track = track_id
-        if not resolved_track and model_name and AUTORESEARCH_TRACKS:
-            for t_id, owners in AUTORESEARCH_TRACKS.items():
-                if model_name in owners:
-                    resolved_track = t_id
-                    break
 
         variant = await get_active_variant(track_id=resolved_track or "track_default")
-        selected_tool_names = None
-        if variant:
-            research_output = variant.get("research_output")
-            if isinstance(research_output, dict):
-                selected_tool_names = research_output.get("selected_tools")
+        research_output = variant.get("research_output") if isinstance(variant, dict) else None
+        selected_tool_names = research_output.get("selected_tools") if isinstance(research_output, dict) else None
 
         if not isinstance(selected_tool_names, list):
             selected_tool_names = [
@@ -136,24 +163,7 @@ async def resolve_experiment_tools(
                 model_name,
             )
 
-        override_tools = []
-        for name in selected_tool_names:
-            t_def = tools.CANONICAL_TOOLS_REGISTRY.get(name)
-            if t_def:
-                override_tools.append(t_def)
-            else:
-                logger.warning("Active prompt variant specified invalid tool name: %s", name)
-
-        for st in [tools.CALCULATE_BUY_QUANTITY_TOOL, tools.CALCULATE_SELL_QUANTITY_TOOL]:
-            if st not in override_tools:
-                override_tools.append(st)
-
-        enable_web_search = False
-        if tools.WEB_SEARCH_TOOL in override_tools:
-            enable_web_search = True
-            override_tools = [t for t in override_tools if t != tools.WEB_SEARCH_TOOL]
-
-        return override_tools, enable_web_search
+        return _build_override_tool_list(selected_tool_names)
 
     except Exception as e:
         logger.warning("Failed to fetch selected tools for experiment variant: %s. Using baseline.", e)
@@ -284,12 +294,33 @@ def prepare_messages_for_provider(messages: list, provider: str, model_name: str
 
 def build_schema_hint(response_model: Any) -> str:
     """Generate dynamic JSON schema hint string for validation recovery prompts."""
-    if hasattr(response_model, "decisions") and hasattr(response_model, "macro_events"):
-        return '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}], "macro_events": [...]}\n'
-    if hasattr(response_model, "decisions"):
-        return '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}]}\n'
-    if hasattr(response_model, "macro_events"):
-        return '{"macro_events": [{"event_name": "string", "impact": "BULLISH|BEARISH|NEUTRAL", ...}]}\n'
+    model_fields = getattr(response_model, "model_fields", None)
+    if isinstance(model_fields, dict):
+        has_decisions = "decisions" in model_fields
+        has_macro = "macro_events" in model_fields
+    else:
+        has_decisions = hasattr(response_model, "decisions")
+        has_macro = hasattr(response_model, "macro_events")
+
+    decision_item = (
+        '{"ticker": "string", "signal": "BUY|SELL|HOLD", "allocation_percentage": 20, '
+        '"catalyst_type": "MACRO|EARNINGS|M_A|PRODUCT|REGULATORY|EVENT|INNOVATION|TECHNICAL|UNCROWDED_TRADE|OTHER", '
+        '"catalyst_duration": "INTRADAY|SHORT_TERM|MEDIUM_TERM|LONG_TERM", '
+        '"confidence": 0, "reasoning": "string", "source_id": "string"}'
+    )
+    macro_item = (
+        '{"event_name": "string", "impact": "BULLISH|BEARISH|NEUTRAL", '
+        '"catalyst_type": "MACRO|EARNINGS|M_A|PRODUCT|REGULATORY|EVENT|INNOVATION|TECHNICAL|UNCROWDED_TRADE|OTHER", '
+        '"is_ongoing": false, "is_future_catalyst": false, "importance_score": 5, '
+        '"confidence": 0, "reasoning": "string", "scenario_analysis": "string or null", "source_id": "string"}'
+    )
+
+    if has_decisions and has_macro:
+        return f'{{"decisions": [{decision_item}], "macro_events": [{macro_item}]}}\n'
+    if has_decisions:
+        return f'{{"decisions": [{decision_item}]}}\n'
+    if has_macro:
+        return f'{{"macro_events": [{macro_item}]}}\n'
     return "{}"
 
 

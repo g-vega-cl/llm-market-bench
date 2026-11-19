@@ -7,7 +7,7 @@ category: concept
 
 Verifier bypass allows LLM portfolios to skip the skeptical verification agent stage during trade execution. The system scopes verification via `VERIFIER_ENABLED_OWNER_IDS` and `SKIP_VERIFIER_OWNER_IDS` in `packages/config/models.json`, applied in `apps/engine/pipeline/decision_processor.py` and `apps/engine/tasks/backtest_autoresearch.py` via `is_verifier_enabled_for_owner`.
 
-As of November 2026, the second-step LLM Verifier is decommissioned across all active benchmark models (`VERIFIER_ENABLED_OWNER_IDS: []`). All portfolios execute under identical deterministic server-side guardrails.
+As of November 2026, the second-step LLM Verifier is decommissioned across all active benchmark models (`VERIFIER_ENABLED_OWNER_IDS: []`). All portfolios execute under identical deterministic server-side guardrails, and the web app no longer surfaces a per-portfolio verifier indicator — the former `hasVerifier()` helper and the `No Verifier` badge on `/portfolios` cards and the portfolio detail header were removed, because every active portfolio is in the same state.
 
 ## Historical Context and Forensic Audit
 

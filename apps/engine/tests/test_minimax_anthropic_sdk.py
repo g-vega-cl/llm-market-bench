@@ -151,7 +151,7 @@ async def test_minimax_extraction_uses_openai_endpoint():
 
     kwargs = fake_minimax.chat.call_args.kwargs
     assert kwargs["model"] == "MiniMax-M3.1-Flash"
-    assert kwargs["max_completion_tokens"] == 8192
+    assert kwargs["max_completion_tokens"] == 32768
     messages = kwargs["messages"]
     assert messages[0]["role"] == "system"
     assert messages[0]["content"]
@@ -312,9 +312,10 @@ async def test_minimax_history_flattening_to_single_user_message():
         call_kwargs = fake_minimax.chat.call_args.kwargs
         flat_messages = call_kwargs["messages"]
 
-        # Verify that system prompt is extracted correctly
+        # Verify that the extraction-only system prompt replaced the tool-loop system prompt
         assert flat_messages[0]["role"] == "system"
-        assert "=== SYSTEM PROTOCOL: MANDATORY TOOL USE FOR MINIMAX ===" in flat_messages[0]["content"]
+        assert "do NOT emit tool-call syntax" in flat_messages[0]["content"]
+        assert "SEQUENCE RULE" not in flat_messages[0]["content"]
 
         # Verify messages collapse to system + exactly 1 user message
         assert len(flat_messages) == 2

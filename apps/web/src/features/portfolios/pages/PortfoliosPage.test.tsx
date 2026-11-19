@@ -396,4 +396,28 @@ describe('PortfoliosPage 3-Block Voxel Layout & Card Heights', () => {
             expect(chartProps?.data?.[0]?.portfolioId).toBe('p-sys');
         });
     });
+
+    it('does not render the "No Verifier" badge on active LLM portfolio cards', async () => {
+        const fetchFn = vi.fn().mockResolvedValue(mockPortfolios);
+        const comparisonFetchFn = vi.fn().mockResolvedValue({
+            portfolios: [],
+            startDate: '',
+            endDate: '',
+            benchmarkData: {},
+        });
+
+        render(
+            <PortfoliosPage
+                initialData={mockPortfolios}
+                fetchFn={fetchFn}
+                comparisonFetchFn={comparisonFetchFn}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('portfolios-block-llm')).toBeInTheDocument();
+        });
+
+        expect(screen.queryByText('No Verifier')).toBeNull();
+    });
 });

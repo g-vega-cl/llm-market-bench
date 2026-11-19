@@ -20,7 +20,7 @@ import {
     computeTimeframeSlice,
     precomputeAllTimeframes,
 } from '../lib/comparison-timeframes';
-import { getPortfolioTrack, hasVerifier, isSystemPortfolio } from '../lib/config';
+import { getPortfolioTrack, isSystemPortfolio } from '../lib/config';
 import { portfolioQueries } from '../queries/options';
 
 export { COMPARISON_TIMEFRAMES, type ComparisonTimeframe, computeTimeframeSlice };
@@ -91,6 +91,10 @@ function PortfolioBadges({
     isSystem: boolean;
     track: ReturnType<typeof getPortfolioTrack>;
 }) {
+    if (!isSystem && !portfolio.is_autoresearch && !track) {
+        return null;
+    }
+
     return (
         <div className="flex flex-wrap gap-1.5">
             {isSystem && (
@@ -106,11 +110,6 @@ function PortfolioBadges({
             {track && (
                 <Badge variant="soft" size="xs" colorScheme="accent">
                     Track: {track.trackLabel}
-                </Badge>
-            )}
-            {!isSystem && !hasVerifier(portfolio.owner_id) && (
-                <Badge variant="soft" size="xs" colorScheme="warning">
-                    No Verifier
                 </Badge>
             )}
         </div>

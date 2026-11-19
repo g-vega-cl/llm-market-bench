@@ -24,7 +24,6 @@ import { PositionsTable } from '../components/PositionsTable';
 import { StrategyExplainer } from '../components/StrategyExplainer';
 import { TradesTable } from '../components/TradesTable';
 import { usePortfolioBenchmark } from '../hooks/usePortfolioBenchmark';
-import { hasVerifier } from '../lib/config';
 import { portfolioQueries } from '../queries/options';
 
 interface PortfolioDetailData {
@@ -115,11 +114,6 @@ export function PortfolioDetailPage({
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-3">
                             <SectionHeading>{portfolio.owner_id.replace(/-/g, ' ')}</SectionHeading>
-                            {!hasVerifier(portfolio.owner_id) && (
-                                <Badge variant="soft" size="sm" colorScheme="warning">
-                                    No Verifier
-                                </Badge>
-                            )}
                         </div>
                         <p className="text-voxel-muted text-xs font-normal">
                             Portfolio analysis and performance timeline.

@@ -336,3 +336,32 @@ async def test_analyze_with_provider_pulls_tools_fallback():
         assert called_kwargs.get("enable_web_search") is True
         assert "calculate_buy_quantity" in override_tool_names
         assert "calculate_sell_quantity" in override_tool_names
+
+
+@pytest.mark.asyncio
+async def test_resolve_experiment_tools_for_track_member_outside_owner_list():
+    """Models in AUTORESEARCH_TRACKS (e.g. gpt-6-luna) must resolve their track tools even if omitted from AUTORESEARCH_EXPERIMENT_OWNER_IDS."""
+    from core.llm.analysis_pipeline import prompt_assembly
+
+    mock_variant = {
+        "variant_tag": "v20261116-013033",
+        "research_output": {"selected_tools": ["get_portfolio_ledger", "get_todays_news_menu"]},
+    }
+
+    with (
+        patch("core.config.AUTORESEARCH_EXPERIMENT_OWNER_IDS", frozenset(["gemini-3.5-flash-lite"])),
+        patch("core.config.AUTORESEARCH_TRACKS", {"track_openai": ["gpt-6-luna"]}),
+        patch("autoresearch.prompt_store.get_active_variant", new_callable=AsyncMock, return_value=mock_variant),
+    ):
+        override_tools, enable_web_search = await prompt_assembly.resolve_experiment_tools(
+            model_name="gpt-6-luna",
+            prompt_type="analysis",
+        )
+
+    assert override_tools is not None
+    tool_names = [t["function"]["name"] for t in override_tools]
+    assert "get_portfolio_ledger" in tool_names
+    assert "get_todays_news_menu" in tool_names
+    assert "calculate_buy_quantity" in tool_names
+    assert "calculate_sell_quantity" in tool_names
+    assert enable_web_search is False

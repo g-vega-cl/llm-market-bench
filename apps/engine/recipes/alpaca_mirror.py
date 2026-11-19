@@ -127,15 +127,11 @@ async def mirror_recipe_fills(
         if action == "SELL":
             shares = min(shares, _alpaca_held(broker, ticker))
             if shares <= 0:
-                logger.warning(
-                    "[Alpaca] SKIPPED SELL %s: broker holds no shares (slot %s)", ticker, slot_label
-                )
+                logger.warning("[Alpaca] SKIPPED SELL %s: broker holds no shares (slot %s)", ticker, slot_label)
                 results.append({**fill, "status": "SKIPPED_NO_POSITION", "order_id": None})
                 continue
         try:
-            order_id = _submit(
-                broker, ticker, shares, action, _client_order_id(recipe_id, ticker, action, slot_key)
-            )
+            order_id = _submit(broker, ticker, shares, action, _client_order_id(recipe_id, ticker, action, slot_key))
             logger.info("[Alpaca] Recipe %s mirrored %s %s x%d (order %s)", recipe_id, action, ticker, shares, order_id)
             results.append({**fill, "shares": shares, "status": "SUBMITTED", "order_id": order_id})
         except Exception:

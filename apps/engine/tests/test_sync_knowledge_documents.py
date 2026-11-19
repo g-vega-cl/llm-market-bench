@@ -24,7 +24,7 @@ def test_format_document_markdown_keeps_body_verbatim():
     assert 'url: "https://www.greatfrontend.com/questions/system-design/image-carousel"' in md
     assert 'slug: "image-carousel"' in md
     assert 'access: "premium"' in md
-    assert "content_hash: \"hash-v1\"" in md
+    assert 'content_hash: "hash-v1"' in md
     assert "tags: [knowledge-db, frontend, system-design]" in md
     # body must survive untouched: fences and exercise text are part of the corpus
     assert "```ts\nexport const a = 1;\n```" in md

@@ -202,11 +202,13 @@ async def run_tool_loop(
 
     tool_traces: list[str] = []
     rounds: list[dict[str, Any]] = []
+    resolved_model: str | None = None
     for round_idx in range(1, MAX_TOOL_ROUNDS + 1):
         kwargs: dict[str, Any] = {"model": model_id, "messages": messages, "temperature": 0.1}
         if tool_schemas:
             kwargs["tools"] = tool_schemas
         resp = await client.chat.completions.create(**kwargs)
+        resolved_model = resolved_model or getattr(resp, "model", None)
         msg = resp.choices[0].message
         reasoning, visible_text = _extract_reasoning_and_text(msg)
         tool_calls = getattr(msg, "tool_calls", None) or []
@@ -224,6 +226,7 @@ async def run_tool_loop(
             return {
                 "output": final_text,
                 "tool_calls": tool_traces,
+                "resolved_model": resolved_model,
                 "trace": {"rounds": rounds, "forced_final_synthesis": False},
             }
 
@@ -250,6 +253,7 @@ async def run_tool_loop(
     return {
         "output": final_text,
         "tool_calls": tool_traces,
+        "resolved_model": resolved_model,
         "trace": {"rounds": rounds, "forced_final_synthesis": True},
     }
 

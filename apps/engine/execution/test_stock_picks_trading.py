@@ -166,9 +166,7 @@ def _seed_session(store, session=SESSION, models=PICKS_MODEL_TRACKS):
     picks = store.rows.setdefault("daily_stock_picks", [])
     for index, model in enumerate(models):
         basket_id = f"basket-{index}"
-        baskets.append(
-            {"id": basket_id, "target_date": session, "model_name": model, "status": "pending"}
-        )
+        baskets.append({"id": basket_id, "target_date": session, "model_name": model, "status": "pending"})
         for rank, ticker in enumerate(LONG_TICKERS, start=1):
             picks.append(
                 {

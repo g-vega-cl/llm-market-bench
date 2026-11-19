@@ -175,9 +175,7 @@ def get_supabase_client(
         if candidate and candidate.exists():
             dotenv.load_dotenv(candidate)
 
-    resolved_url = (
-        os.getenv("MISC_SUPABASE_URL") or os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL")
-    )
+    resolved_url = os.getenv("MISC_SUPABASE_URL") or os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL")
     resolved_key = _resolve_key()
 
     if not resolved_url or not resolved_key:

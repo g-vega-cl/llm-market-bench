@@ -107,6 +107,10 @@
 
 ## Concepts
 
+- [[concepts/recipe-backtest-concurrency]] — three concurrent backtests with counted and per-recipe guards
+- [[concepts/recipe-builder-usage]] — per-user daily /build compile cap with atomic spend
+- [[concepts/recipe-ops-telemetry]] — durable scheduler/ops events for the recipe runner
+- [[concepts/recipe-public-stats]] — runner-materialised leaderboard/desk tables read directly by the homepage
 - [[concepts/design-variant-budget]] — max two style variants per primitive, zero legacy theme residue, zero raw buttons, per-file typography/border budgets
 - [[concepts/auto-go-utility-llm]] — routing engine utility LLM flows through the free-llm-proxy `auto-go` alias
 - [[concepts/auth-redirect-sanitization]] — open-redirect-safe return-path preservation for login, signup, and Google OAuth

@@ -431,9 +431,7 @@ async def run_market_data_loop(
     sb_client = get_supabase_client()
     mdm = MarketDataManager()
     last_history_at = 0.0
-    logger.info(
-        f"Starting market data loop (marks={interval_seconds}s, history={history_interval_seconds}s)"
-    )
+    logger.info(f"Starting market data loop (marks={interval_seconds}s, history={history_interval_seconds}s)")
     while True:
         try:
             now_et = datetime.now(ZoneInfo("America/New_York"))

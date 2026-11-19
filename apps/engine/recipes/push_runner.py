@@ -94,6 +94,7 @@ async def run_push_live(
 
     prev_output: str | None = None
     stage_results: list[dict[str, Any]] = []
+    resolved_model: str | None = None
     for stage in strategy.stages:
         prompt = hydrate_stage_prompt(
             stage,
@@ -105,6 +106,8 @@ async def run_push_live(
         )
         res = await _invoke_llm(caller, prompt, stage.selected_tools, None, as_of_utc=None, model=model)
         output_text = str(res.get("output", ""))
+        if resolved_model is None and res.get("resolved_model"):
+            resolved_model = str(res["resolved_model"])
         stage_results.append(
             {
                 "stage_id": stage.id,
@@ -144,6 +147,7 @@ async def run_push_live(
         "slot_label": now_et_label,
         "stages": stage_results,
         "final_output": prev_output or "",
+        "resolved_model": resolved_model,
         "signals": signals,
         "executed_signals": step_res["executed_signals"],
         "alpaca_fills": mirror_results,
@@ -294,6 +298,7 @@ async def run_push_backtest(
 
     last_prices: dict[str, float] = {}
     steps_done = 0
+    resolved_model: str | None = None
     for idx, slot in enumerate(slots):
         if is_cancelled is not None and is_cancelled():
             snap = acc.snapshot(
@@ -302,6 +307,7 @@ async def run_push_backtest(
                 latest_prices=last_prices,
             )
             snap["cancelled"] = True
+            snap["resolved_model"] = resolved_model
             return snap
 
         held_tickers = {str(p["ticker"]).upper() for p in acc.portfolio.positions}
@@ -345,6 +351,8 @@ async def run_push_backtest(
                 )
                 acc.llm_calls_made += 1
                 prev_output = str(res.get("output", ""))
+                if resolved_model is None and res.get("resolved_model"):
+                    resolved_model = str(res["resolved_model"])
                 day_tool_calls.extend(str(tc) for tc in (res.get("tool_calls") or []))
                 last_trace = res.get("trace")
             except Exception:
@@ -386,8 +394,10 @@ async def run_push_backtest(
             acc.snapshot(days_completed=steps_done, current_day=next_label, latest_prices=slot_prices),
         )
 
-    return acc.snapshot(
+    snapshot = acc.snapshot(
         days_completed=total_slots,
         current_day=slots[-1]["slot_label"] if slots else None,
         latest_prices=last_prices,
     )
+    snapshot["resolved_model"] = resolved_model
+    return snapshot

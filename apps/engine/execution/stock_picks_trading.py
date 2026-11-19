@@ -176,9 +176,7 @@ def _open_basket_legs(
                     "decision_id": basket_id,
                 }
             ).execute()
-        legs.append(
-            {"ticker": pick["ticker"], "side": "SHORT", "quantity": shares, "entry_price": entry_price}
-        )
+        legs.append({"ticker": pick["ticker"], "side": "SHORT", "quantity": shares, "entry_price": entry_price})
 
     return legs, long_cost
 
@@ -213,12 +211,7 @@ async def execute_picks_entries(
         return {"status": "skipped", "reason": f"No baskets for {session_date}"}
 
     picks = (
-        client.table("daily_stock_picks")
-        .select("*")
-        .in_("basket_id", [b["id"] for b in baskets])
-        .execute()
-        .data
-        or []
+        client.table("daily_stock_picks").select("*").in_("basket_id", [b["id"] for b in baskets]).execute().data or []
     )
     picks_by_basket: dict[str, list[dict[str, Any]]] = {}
     for pick in picks:
@@ -423,9 +416,7 @@ async def execute_picks_exits(
                         {"portfolio_id": portfolio_id, "ticker": entry["ticker"]}
                     ).execute()
 
-            legs.append(
-                {"ticker": entry["ticker"], "side": exit_signal, "quantity": shares, "pnl": round(pnl, 4)}
-            )
+            legs.append({"ticker": entry["ticker"], "side": exit_signal, "quantity": shares, "pnl": round(pnl, 4)})
 
         if not legs:
             skipped[owner_id] = "no close prices"
@@ -552,11 +543,7 @@ async def _picks_entry_tickers(client: Any, session_date: str) -> list[str]:
     if not baskets:
         return []
     picks = (
-        client.table("daily_stock_picks")
-        .select("ticker")
-        .in_("basket_id", [b["id"] for b in baskets])
-        .execute()
-        .data
+        client.table("daily_stock_picks").select("ticker").in_("basket_id", [b["id"] for b in baskets]).execute().data
         or []
     )
     return sorted({str(p["ticker"]).upper() for p in picks if p.get("ticker")})

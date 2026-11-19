@@ -17,7 +17,8 @@ SUPPORTED_JOB_MODES = ("backtest", "live_turn")
 
 
 def _default_model_for_mode(mode: str) -> str:
-    return "auto-go" if mode == "live_turn" else "strata-auto-go"
+    """Both lanes run on the free-llm proxy (auto-go); local Strata is retired for recipes."""
+    return "auto-go"
 
 
 def _is_job_cancelled(sb: Any, job_id: str) -> bool:

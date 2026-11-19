@@ -369,7 +369,9 @@ class TestPicksShortBook:
         def _table(name):
             table = MagicMock()
             if name == "trades":
-                table.select.return_value.eq.return_value.eq.return_value.is_.return_value.execute.return_value.data = rows
+                table.select.return_value.eq.return_value.eq.return_value.is_.return_value.execute.return_value.data = (
+                    rows
+                )
             return table
 
         client.table.side_effect = _table

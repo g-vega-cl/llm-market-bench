@@ -61,13 +61,15 @@ def test_enqueue_live_recipes_skips_if_already_pending():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_chain = recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value
+    recipes_chain = (
+        recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range.return_value
+    )
     recipes_chain.execute.return_value.data = [
         {"id": "rec-legacy", "user_id": "u0", "name": "Legacy DAG", "graph_json": {"nodes": [], "edges": []}},
         {"id": "rec-1", "user_id": "u1", "name": "Live 1", "graph_json": {"stages": [{"id": "s1"}]}},
         {"id": "rec-2", "user_id": "u2", "name": "Live 2", "graph_json": {"stages": [{"id": "s1"}]}},
     ]
-    queue_tbl.select.return_value.in_.return_value.limit.return_value.execute.return_value.data = [
+    queue_tbl.select.return_value.in_.return_value.order.return_value.range.return_value.execute.return_value.data = [
         {"recipe_id": "rec-1"}
     ]
 
@@ -96,7 +98,9 @@ def test_enqueue_live_recipes_excludes_archived_recipes():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_chain = recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value
+    recipes_chain = (
+        recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range.return_value
+    )
     recipes_chain.execute.return_value.data = []
 
     assert enqueue_live_recipes(sb) == 0
@@ -127,7 +131,9 @@ def test_enqueue_live_recipes_skips_multi_stage_recipes():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_chain = recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value
+    recipes_chain = (
+        recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range.return_value
+    )
     recipes_chain.execute.return_value.data = [
         {
             "id": "rec-two-calls",
@@ -136,7 +142,7 @@ def test_enqueue_live_recipes_skips_multi_stage_recipes():
             "graph_json": {"stages": [{"id": "s1"}, {"id": "s2"}]},
         },
     ]
-    queue_tbl.select.return_value.in_.return_value.limit.return_value.execute.return_value.data = []
+    queue_tbl.select.return_value.in_.return_value.order.return_value.range.return_value.execute.return_value.data = []
 
     assert enqueue_live_recipes(sb) == 0
     queue_tbl.insert.assert_not_called()
@@ -155,7 +161,9 @@ def test_enqueue_live_recipes_skips_graph_that_fails_strategy_validation():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_chain = recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value
+    recipes_chain = (
+        recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range.return_value
+    )
     recipes_chain.execute.return_value.data = [
         {
             "id": "rec-broken",
@@ -165,7 +173,7 @@ def test_enqueue_live_recipes_skips_graph_that_fails_strategy_validation():
             "graph_json": {"stages": [{"id": "s1", "blocks": [{"id": "b1", "type": "bogus"}]}]},
         },
     ]
-    queue_tbl.select.return_value.in_.return_value.limit.return_value.execute.return_value.data = []
+    queue_tbl.select.return_value.in_.return_value.order.return_value.range.return_value.execute.return_value.data = []
 
     assert enqueue_live_recipes(sb) == 0
     queue_tbl.insert.assert_not_called()
@@ -196,7 +204,13 @@ async def test_run_hourly_cycle_syncs_enqueues_and_drains_queue():
     mock_enqueue.assert_called_once_with(sb)
     # FAILED job must not starve subsequent jobs; stops only on EMPTY.
     assert mock_pop.call_count == 4
-    assert stats == {"news_synced": 4, "live_enqueued": 2, "jobs_processed": 2, "jobs_failed": 1}
+    assert stats == {
+        "news_synced": 4,
+        "live_enqueued": 2,
+        "jobs_processed": 2,
+        "jobs_failed": 1,
+        "public_stats_rows": 0,
+    }
 
 
 @pytest.mark.asyncio
@@ -229,7 +243,7 @@ async def test_run_hourly_cycle_drains_real_worker_without_nested_event_loop_cra
         ),
         MagicMock(data=[]),
     ]
-    recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value.execute.return_value.data = []
+    recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range.return_value.execute.return_value.data = []
     recipes_tbl.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
         "id": "r-1",
         "name": "Live Chip Momentum",
@@ -290,12 +304,12 @@ def test_enqueue_live_recipes_dedups_already_enqueued_in_same_slot():
         return MagicMock()
 
     sb.table.side_effect = _router
-    recipes_tbl.select.return_value.eq.return_value.is_.return_value.limit.return_value.execute.return_value.data = [
+    recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range.return_value.execute.return_value.data = [
         {"id": "rec-1", "user_id": "u1", "name": "Live 1", "graph_json": {"stages": [{"id": "s1"}]}},
         {"id": "rec-2", "user_id": "u2", "name": "Live 2", "graph_json": {"stages": [{"id": "s1"}]}},
     ]
-    queue_tbl.select.return_value.in_.return_value.limit.return_value.execute.return_value.data = []
-    queue_tbl.select.return_value.eq.return_value.gte.return_value.limit.return_value.execute.return_value.data = [
+    queue_tbl.select.return_value.in_.return_value.order.return_value.range.return_value.execute.return_value.data = []
+    queue_tbl.select.return_value.eq.return_value.gte.return_value.order.return_value.range.return_value.execute.return_value.data = [
         {"recipe_id": "rec-1"}
     ]
 
@@ -323,3 +337,163 @@ async def test_drain_lane_passes_target_mode_independently():
     assert bt_done == 1
     assert mock_worker.await_args_list[0].kwargs == {"target_mode": "live_turn"}
     assert mock_worker.await_args_list[2].kwargs == {"target_mode": "backtest"}
+
+
+def _enqueue_client(recipes, open_ids, ops_tbl=None):
+    """Router stub for enqueue_live_recipes_with_stats."""
+    sb = MagicMock()
+    recipes_tbl = MagicMock()
+    queue_tbl = MagicMock()
+    ops = ops_tbl if ops_tbl is not None else MagicMock()
+
+    def _router(name: str):
+        if name == "strategy_recipes":
+            return recipes_tbl
+        if name == "recipe_execution_queue":
+            return queue_tbl
+        if name == "recipe_ops_events":
+            return ops
+        return MagicMock()
+
+    sb.table.side_effect = _router
+    recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range.return_value.execute.return_value.data = recipes
+    queue_tbl.select.return_value.in_.return_value.order.return_value.range.return_value.execute.return_value.data = [
+        {"recipe_id": rid} for rid in open_ids
+    ]
+    return sb, recipes_tbl, queue_tbl, ops
+
+
+def test_enqueue_live_recipes_with_stats_reports_every_counter():
+    from recipes.runner import enqueue_live_recipes_with_stats
+
+    # 11 live recipes, 1 already open (9.1% of seen, under the 10% alarm) and 1 invalid.
+    recipes = [
+        {"id": f"rec-{i}", "user_id": "u1", "name": f"Live {i}", "graph_json": {"stages": [{"id": "s1"}]}}
+        for i in range(9)
+    ] + [
+        {"id": "rec-open", "user_id": "u2", "name": "Open", "graph_json": {"stages": [{"id": "s1"}]}},
+        {"id": "rec-bad", "user_id": "u3", "name": "Bad", "graph_json": {"stages": [{"id": "s1"}, {"id": "s2"}]}},
+    ]
+    sb, _recipes, _queue, ops = _enqueue_client(recipes, open_ids=["rec-open"])
+
+    stats = enqueue_live_recipes_with_stats(sb)
+
+    assert stats == {
+        "seen": 11,
+        "enqueued": 9,
+        "skipped_open": 1,
+        "skipped_invalid_graph": 1,
+    }
+    ops.insert.assert_not_called()
+
+
+def test_enqueue_live_recipes_records_high_skip_ratio_event():
+    """More than 10% of live recipes skipped as already-open is a scheduler smell, not noise."""
+    from recipes.runner import enqueue_live_recipes_with_stats
+
+    recipes = [
+        {"id": "rec-1", "user_id": "u1", "name": "Live 1", "graph_json": {"stages": [{"id": "s1"}]}},
+        {"id": "rec-2", "user_id": "u2", "name": "Live 2", "graph_json": {"stages": [{"id": "s1"}]}},
+    ]
+    sb, _recipes, _queue, ops = _enqueue_client(recipes, open_ids=["rec-1"])
+
+    stats = enqueue_live_recipes_with_stats(sb)
+
+    assert stats["skipped_open"] == 1
+    ops.insert.assert_called_once()
+    payload = ops.insert.call_args[0][0]
+    assert payload["event"] == "live_enqueue_high_skip_ratio"
+    assert payload["detail"]["seen"] == 2
+
+
+def test_enqueue_live_recipes_pages_past_the_first_page_of_live_recipes():
+    """A single .limit() silently stopped scheduling recipe 201; pagination must not."""
+    from recipes.runner import LIVE_PAGE_SIZE, enqueue_live_recipes_with_stats
+
+    page_one = [
+        {"id": f"rec-{i}", "user_id": "u1", "name": f"R{i}", "graph_json": {"stages": [{"id": "s1"}]}}
+        for i in range(LIVE_PAGE_SIZE)
+    ]
+    page_two = [{"id": "rec-last", "user_id": "u2", "name": "Last", "graph_json": {"stages": [{"id": "s1"}]}}]
+    sb, recipes_tbl, queue_tbl, _ops = _enqueue_client([], open_ids=[])
+    range_mock = recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range
+    first_page = MagicMock()
+    first_page.execute.return_value.data = page_one
+    second_page = MagicMock()
+    second_page.execute.return_value.data = page_two
+    range_mock.side_effect = [first_page, second_page]
+
+    stats = enqueue_live_recipes_with_stats(sb)
+
+    assert range_mock.call_count == 2
+    assert stats["seen"] == LIVE_PAGE_SIZE + 1
+    assert stats["enqueued"] == LIVE_PAGE_SIZE + 1
+    inserted = queue_tbl.insert.call_args[0][0]
+    assert len(inserted) == LIVE_PAGE_SIZE + 1
+    assert inserted[-1]["recipe_id"] == "rec-last"
+
+
+@pytest.mark.asyncio
+async def test_backtest_lane_runs_three_jobs_concurrently():
+    """Three concurrent backtests are the product promise; a serial lane would deadlock here."""
+    import asyncio
+
+    from recipes.runner import drain_lane
+
+    started = 0
+    all_started = asyncio.Event()
+
+    async def fake_process(_client, target_mode=None):
+        nonlocal started
+        started += 1
+        if started == 3:
+            all_started.set()
+        await asyncio.wait_for(all_started.wait(), timeout=2)
+        return "COMPLETED"
+
+    with patch("recipes.runner.async_process_next_recipe_job", side_effect=fake_process):
+        processed = await drain_lane(MagicMock(), mode="backtest", max_jobs=3)
+
+    assert processed == 3
+
+
+@pytest.mark.asyncio
+async def test_scheduled_slot_refreshes_the_public_board():
+    """The deployed --loop daemon drives this path; the board must materialise here."""
+    from recipes.runner import run_scheduled_slot
+
+    sb = MagicMock()
+    with (
+        patch(
+            "recipes.runner.sync_live_news_to_corpus",
+            new=AsyncMock(return_value={"inserted": 3}),
+        ),
+        patch("recipes.runner.enqueue_live_recipes", return_value=2),
+        patch("recipes.runner.drain_lane", new=AsyncMock(return_value=2)),
+        patch("recipes.runner.snapshot_live_intraday_bars", new=AsyncMock(return_value=0)),
+        patch("recipes.runner._collect_recipe_watchlist", return_value=[]),
+        patch("recipes.runner.refresh_public_stats") as refresh,
+    ):
+        stats = await run_scheduled_slot(sb, "2026-11-19T09:30", datetime(2026, 11, 19, 14, 30, tzinfo=UTC))
+
+    refresh.assert_called_once_with(sb)
+    assert stats == {"live_enqueued": 2, "live_done": 2, "bars_snapped": 0}
+
+
+@pytest.mark.asyncio
+async def test_scheduled_slot_survives_a_stats_refresh_failure():
+    """A board write must never abort the trading cycle."""
+    from recipes.runner import run_scheduled_slot
+
+    sb = MagicMock()
+    with (
+        patch("recipes.runner.sync_live_news_to_corpus", new=AsyncMock(return_value={})),
+        patch("recipes.runner.enqueue_live_recipes", return_value=0),
+        patch("recipes.runner.drain_lane", new=AsyncMock(return_value=0)),
+        patch("recipes.runner.snapshot_live_intraday_bars", new=AsyncMock(return_value=0)),
+        patch("recipes.runner._collect_recipe_watchlist", return_value=[]),
+        patch("recipes.runner.refresh_public_stats", side_effect=RuntimeError("db down")),
+    ):
+        stats = await run_scheduled_slot(sb, "2026-11-19T12:30", datetime(2026, 11, 19, 17, 30, tzinfo=UTC))
+
+    assert stats["live_enqueued"] == 0

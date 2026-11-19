@@ -529,9 +529,7 @@ async def _audit_picks_portfolios(
                 flagged.append(anomaly)
                 continue
 
-            tickers = {
-                t["ticker"] for t in entries if str(t.get("executed_at", ""))[:10] == session_date
-            }
+            tickers = {t["ticker"] for t in entries if str(t.get("executed_at", ""))[:10] == session_date}
             price_map: dict[str, float] = {}
             for ticker in tickers:
                 try:
@@ -555,9 +553,7 @@ async def _audit_picks_portfolios(
                     "new_equity": (result.get("portfolios", {}).get(owner_id, {}) or {}).get("equity"),
                 }
             )
-            logger.warning(
-                f"Auto-healed {owner_id} for {session_date}: liquidated {len(price_map)} stale picks leg(s)"
-            )
+            logger.warning(f"Auto-healed {owner_id} for {session_date}: liquidated {len(price_map)} stale picks leg(s)")
 
     return anomalies, healed, flagged
 

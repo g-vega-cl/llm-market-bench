@@ -148,6 +148,7 @@ Mutations must wait for confirmed server responses with in-flow pending feedback
 
 ## Related
 
+- [[concepts/core-web-vitals]] — p75 LCP, INP, and CLS targets and 3-tier JS loading model
 - [[entities/design-system]] — UI primitive library, theme conventions, and layout governance
 - [[concepts/fluent-responsive-design]] — Breakpoint-free intrinsic responsive layouts
 - [[concepts/zero-frontend-compute]] — Keeping the presentation layer clean of heavy client math

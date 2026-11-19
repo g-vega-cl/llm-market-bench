@@ -134,6 +134,7 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Voxel** aesthetic inspired b
 4. **In-memory cache fallback**: Server fetchers retain last valid in-memory payloads to prevent layout wipeouts on transient disconnects.
 5. **Anchor stability**: Auxiliary tab panels (e.g. curated manifests) must sit below primary decision tables and hero charts, keeping visual focal points vertically invariant across tab clicks.
 6. **Secondary UI query settlement gating**: Secondary action buttons (such as 'Reset to Top 5' or 'Reset Crosshair') and volatile derived badges (such as daily percentage moves) must never flash or render during in-flight fetches, `keepPreviousData` background refetches, or React transition states. Use `isQuerySettled(queries, isTransitionPending)` from `apps/web/src/lib/query-client.tsx` to ensure secondary elements only appear once all relevant page queries and transitions have fully settled, while keeping primary chart and container chrome stably mounted to prevent CLS.
+7. **Core Web Vitals targets**: Pair CLS discipline with `LCP <= 2.5s` and `INP <= 200ms` at p75 (`https://web.dev/articles/vitals`) by keeping Tier 1–2 initial JS lean and deferring Tier 3 secondary modules; see `[[concepts/core-web-vitals]]`.
 
 ---
 

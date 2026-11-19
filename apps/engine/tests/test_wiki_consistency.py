@@ -134,3 +134,24 @@ def test_validate_agent_rules_budget_flags_oversized(tmp_path):
     errors = validate_agent_rules_budget(tmp_path)
     assert len(errors) == 1
     assert "GEMINI.md" in errors[0]
+
+
+def test_core_web_vitals_documented():
+    """Ensure Core Web Vitals (web.dev/articles/vitals) and 3-tier JS loading are codified in rules and wiki."""
+    gemini_text = (REPO_ROOT / "GEMINI.md").read_text()
+    for token in ("Core Web Vitals", "LCP", "INP", "CLS", "2.5", "200", "0.1", "[[concepts/core-web-vitals]]"):
+        assert token in gemini_text, f"GEMINI.md must document Core Web Vitals token: {token}"
+
+    design_spec_text = (REPO_ROOT / ".agents" / "rules" / "design-spec.md").read_text()
+    assert "[[concepts/core-web-vitals]]" in design_spec_text, (
+        ".agents/rules/design-spec.md must cross-reference [[concepts/core-web-vitals]]"
+    )
+
+    cwv_page = WIKI_DIR / "concepts" / "core-web-vitals.md"
+    assert cwv_page.is_file(), "wiki/concepts/core-web-vitals.md must exist"
+    cwv_text = cwv_page.read_text()
+    for token in ("https://web.dev/articles/vitals", "LCP", "INP", "CLS", "75th percentile", "Tier 1", "Tier 2", "Tier 3"):
+        assert token in cwv_text, f"wiki/concepts/core-web-vitals.md missing required section/token: {token}"
+
+    index_text = (WIKI_DIR / "index.md").read_text()
+    assert "[[concepts/core-web-vitals]]" in index_text, "wiki/index.md must index [[concepts/core-web-vitals]]"

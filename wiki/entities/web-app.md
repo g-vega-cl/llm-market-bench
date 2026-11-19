@@ -75,6 +75,7 @@ All feature data fetchers import `getDbServerClient` / `getDbBrowserClient` from
 - [[entities/design-system]]
 - [[concepts/auth-db-client-separation]]
 - [[concepts/chunk-reload-recovery]]
+- [[concepts/core-web-vitals]]
 - [[concepts/vertical-slice-islands]]
 - [[concepts/zero-frontend-compute]]
 - [[concepts/tanstack-query]]

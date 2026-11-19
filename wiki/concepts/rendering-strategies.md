@@ -94,6 +94,7 @@ To completely eliminate database overhead during the initial request phase for n
 
 ## Related
 
+- [[concepts/core-web-vitals]]
 - [[concepts/performance-auditing-strategy]]
 - [[concepts/zero-frontend-compute]]
 - [[entities/web-app]]

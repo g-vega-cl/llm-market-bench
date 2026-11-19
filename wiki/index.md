@@ -264,6 +264,7 @@
 - [[concepts/minimax-portfolio]] — Simplified execution model & ±0.5% market order buffer for MiniMax-M3.1-Flash
 - [[concepts/supabase-grant-convention]] — Explicit GRANTs required for PostgREST Data API access
 - [[concepts/supabase-redirect-whitelisting]] — Supabase OAuth redirect whitelisting rules and local dev proxy port configuration
+- [[concepts/core-web-vitals]] — Core Web Vitals targets (LCP, INP, CLS), 3-tier JS loading strategy, and Benchify guardrails
 - [[concepts/performance-auditing-strategy]] — Cloud-native edge performance auditing with Netlify Lighthouse budgets
 - [[concepts/rendering-strategies]] — SSR, Hybrid SSR, and CSR decision frameworks, patterns, and live examples
 - [[concepts/mcp-setup]] — Setup, configuration, plugin management, and caching details for Model Context Protocol (MCP) servers

@@ -57,6 +57,7 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 16. **Avoid New Dependencies**: Do not add new packages, dev dependencies, test runners, or lockfile changes without explicit user approval; prefer the standard library and tooling already in the repo.
 17. **Targeted Git Staging & Multi-Agent Isolation**: Never blanket-stage; stage only the files touched by the active task (`[[entities/agent-rules]]`).
 18. **Live Edge & Server Deployment Mandate (Build Implies Run)**: Committing or syncing files is not completion — edge services must be deployed, launched, and health-verified (`[[entities/secondary-minipc-edge]]`).
+19. **Core Web Vitals & Tiered JS Loading**: Follow `https://web.dev/articles/vitals` p75 targets (`LCP <= 2.5s`, `INP <= 200ms`, `CLS <= 0.1`), keep Tier 1–2 initial JS lean while deferring Tier 3 modules, and respect Benchify's Voxel guardrails (`[[concepts/core-web-vitals]]`).
 
 ## Design Specification (Canonical)
 
@@ -173,6 +174,7 @@ qmd embed
 - [[concepts/fluent-responsive-design]]
 - [[concepts/in-flow-inspection]]
 - [[concepts/cumulative-layout-shift]]
+- [[concepts/core-web-vitals]]
 - [[concepts/tanstack-query]]
 - [[entities/commit-msg-lint]]
 - [[concepts/wiki-synchronization]]

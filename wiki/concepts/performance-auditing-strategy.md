@@ -107,7 +107,7 @@ The pipeline utilizes `@lhci/cli` triggered automatically on deployment successe
 
 ## Technical Mitigations & Best Practices
 
-To safeguard performance and achieve high-fidelity Core Web Vitals, all frontend and backend database implementations must adhere to the following optimized engineering guidelines:
+To safeguard performance and achieve Good Core Web Vitals at the 75th percentile (`LCP <= 2.5s`, `INP <= 200ms`, `CLS <= 0.1` per [[concepts/core-web-vitals]] and `https://web.dev/articles/vitals`), all frontend and backend database implementations must adhere to the following optimized engineering guidelines:
 
 ### 1. Eliminating SSR Hydration Mismatches (React Error #418)
 
@@ -264,6 +264,7 @@ If a deployment is absolutely critical and blocked by a minor score variance or 
 
 ## Related
 
+- [[concepts/core-web-vitals]]
 - [[entities/web-app]]
 - [[sources/web-deployment-source]]
 - [[concepts/rendering-strategies]]

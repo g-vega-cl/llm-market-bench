@@ -6,6 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+# Strip proxy env vars so httpx/requests/supabase cannot bypass the socket guard via 127.0.0.1 proxies
+for _proxy_var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
+    os.environ.pop(_proxy_var, None)
+
 # Set dummy environment variables BEFORE imports happen during test collection
 # This prevents get_supabase_client() and LLM client constructors from raising
 # credential errors at import/init time in hermetic CI environments
@@ -79,6 +83,7 @@ def hermetic_memory_store_embeddings():
     with (
         patch("memory.store.get_embedding", return_value=[0.1] * 768),
         patch("memory.store.get_embeddings_batch", return_value=[[0.1] * 768]),
+        patch("analysis.consensus.get_embedding", return_value=[0.1] * 768),
     ):
         yield
 

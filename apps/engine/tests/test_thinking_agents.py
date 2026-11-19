@@ -15,6 +15,7 @@ class DummyPredictionResponse(BaseModel):
     predicted_worst_sector: str = "XLE"
     predicted_pair: str = "XLK/XLE"
     confidence: float = 75.0
+    worst_confidence: float | None = 70.0
     reasoning: str = "Tech momentum vs energy weakness"
 
 

@@ -25,7 +25,7 @@ Enforcement happens at two levels, neither of which is the pre-commit hook:
 1.  **Verify skill (local, full)**: `.agents/skills/verify/scripts/verify.sh` runs the hermetic pytest suite with `--cov=. --cov-config=.coveragerc --cov-fail-under=70` and the web suite with coverage, failing the run when a threshold regresses. Supports sequential 1-worker mode via `SEQUENTIAL=1` or `git config benchify.sequential true`.
 2.  **CI/CD**: `.github/workflows/ci.yml` runs the engine suite (`pytest -n auto`) and the `test-web` job (`biome check`, `typecheck`, `vitest --maxWorkers=2`, `pnpm build:web`) on every push and pull request.
 
-The pre-commit hook deliberately runs **scoped, worker-capped tests without coverage** (`pytest -n 2` on affected or core engine tests, `vitest related --maxWorkers=2`) so commits stay fast; the coverage ratchet is a verify/CI concern. See [[concepts/project-linting]] for the full hook scoping rules.
+The pre-commit hook deliberately runs **scoped, worker-capped tests without coverage** (`pytest -n 4` on affected or core engine tests, `vitest related --maxWorkers=4`) so commits stay fast; the coverage ratchet is a verify/CI concern. See [[concepts/project-linting]] for the full hook scoping rules.
 
 ## Configuration
 
@@ -58,13 +58,14 @@ Thresholds are periodically reviewed and ratcheted upward as the codebase mature
 All tests in the repository must be 100% hermetic:
 - **No Outbound Network Calls**: Tests must never initiate live HTTP requests, WebSocket connections, or external socket calls to third-party services (FMP, Massive/Polygon, FRED, Alpaca, Supabase, LLM provider APIs, or Gmail IMAP).
 - **Socket & DNS Enforcement**: `apps/engine/tests/conftest.py` installs a global, session-scoped network guard fixture (`block_external_network_calls`). Any attempt to resolve external DNS or open a non-loopback TCP connection immediately raises a `RuntimeError`, failing the test fast before network packets leave the machine.
+- **Proxy Environment Stripping**: the same `conftest.py` pops `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and their lowercase variants from `os.environ` at import time. `httpx`, `requests`, and `supabase-py` honour those variables by default, so an ambient proxy configuration would otherwise route a supposedly-blocked request through a loopback proxy and slip past the socket guard.
 - **Credential Independence**: Tests must never rely on ambient environment variables (`FMP_API_KEY`, `OPENAI_API_KEY`, etc.). When testing functions that check API keys, tests must explicitly mock or patch the key (e.g. `patch("tools.congress_tools.FMP_API_KEY", "test-key")`), ensuring tests pass reliably in clean CI runners.
 
 ## Zero Artificial Sleep & Test Latency Policy (MANDATORY)
 
 Test suites must execute cleanly without artificial delays. Slow tests cannot be solved simply by adding parallel compute processes (`pytest -n auto`) if individual tests block on real-time sleeps, rate limiters, or retry backoffs.
 
-- **Zero Unmocked Tenacity Retries**: Tenacity `@retry` decorators must specify exception filters (`retry_if_exception`) to fast-fail non-transient errors (such as `RuntimeError` from the hermetic socket guard or 401/403 HTTP errors) rather than retrying with exponential backoff (e.g., 4s + 4s + 8s). Tests asserting retry behavior must patch retry sleep (`patch.object(func.retry, "sleep", return_value=None)`).
+- **Zero Unmocked Tenacity Retries**: Tenacity `@retry` decorators must specify exception filters (`retry_if_exception`) to fast-fail non-transient errors (such as `RuntimeError` from the hermetic socket guard or 401/403 HTTP errors) rather than retrying with exponential backoff (e.g. 4s + 4s + 8s). Tests asserting retry behavior must patch retry sleep (`patch.object(func.retry, "sleep", return_value=None)`).
 - **Autouse Rate Limiter & Embedding Fixtures**: Global singletons (like `_MASSIVE_LIMITER` in `apps/engine/execution/market_data.py`) must be neutralized in `apps/engine/tests/conftest.py` via autouse fixtures (`hermetic_massive_rate_limiter`, `hermetic_memory_store_embeddings`) so tests never wait for token bucket replenishment.
 - **Environment-Aware Fallback Delays**: Any loop or fallback logic that sleeps on transient connection failure (e.g. local autoresearch server checks) must detect `os.getenv("PYTEST_CURRENT_TEST")` and set delay to 0.0 seconds.
 - **Latency Regression Suite**: `apps/engine/tests/test_test_suite_latency_guards.py` validates that rate-limited, retried, and fallback code paths execute in under 100ms.

@@ -16,7 +16,7 @@ def test_pre_commit_supports_sequential_and_capped_workers():
 
     # Must cap workers instead of unbounded -n auto, and support 1-worker sequential mode
     assert "-n auto" not in content, "pre-commit must not use unbounded pytest -n auto"
-    assert "-n 2" in content, "pre-commit must cap parallel engine workers at 2"
+    assert "-n 4" in content, "pre-commit must cap parallel engine workers at 4"
     assert "WEB_WORKERS=1" in content, "pre-commit must support 1-worker sequential mode for web"
     assert "--maxWorkers=" in content, "pre-commit must cap web Vitest workers"
     assert "test -- --maxWorkers" not in content, "pre-commit must not pass extra -- before --maxWorkers under pnpm"

@@ -40,6 +40,14 @@ When the engine rejects a model's trading recommendation due to a safety guardra
 - The log must report **all actual tool calls** detected in the message history, enabling developers and automated audit systems to immediately see what tools were called instead.
 - **Example**: `HARD ENFORCEMENT: Agent recommended BUY for AAPL without executing 'calculate_buy_quantity' tool. Total messages in history: 5. Tools called: ['get_stock_quote({"ticker": "AAPL"})']. Rejecting trade.`
 
+## Reasoning Trace Serialization Safety
+
+`log_reasoning_trace` in `apps/engine/core/llm/logger.py` persists every LLM prompt and response to the reasoning archive, so the payload must be JSON-serializable before it reaches Supabase. Its `sterilize_data(obj, depth=0)` helper recursively converts arbitrary objects into plain JSON primitives, and three guards keep the serialization itself from becoming a failure mode:
+
+1. **Bounded recursion depth** — recursion stops at `depth > 12` and the remaining subtree is stringified. Provider SDKs, ORM rows, and client handles routinely form back-references (`obj.parent.children[i].parent …`), which previously raised `RecursionError` and lost the entire trace. A trace that is partially stringified is still an audit record; a trace that raised is not.
+2. **Mock short-circuit** — objects whose `type(obj).__module__` starts with `unittest.mock` are stringified immediately rather than walked via `__dict__`. `MagicMock` fabricates a new child mock on every attribute access, so `hasattr(obj, "model_dump")` / `hasattr(obj, "__dict__")` walking amplified into unbounded trees during tests.
+3. **Deterministic primitive ordering** — primitives (`str`, `int`, `float`, `bool`, `None`) are returned first, then `dict`, then `list`, then objects exposing `model_dump()` (Pydantic v2) or `dict()` (Pydantic v1), then any object with a public `__dict__`, and only then `str(obj)` as the terminal fallback. Private (`_`-prefixed) attributes are dropped from `__dict__` walks.
+
 ## Implementation Details
 
 ### Python (Engine)
@@ -57,4 +65,4 @@ When the engine rejects a model's trading recommendation due to a safety guardra
 - [[sources/anomaly-detector-source]]
 - [[concepts/agent-workflow]]
 - [[concepts/posthog-stealth-proxy]]
-
+- [[concepts/reasoning]]

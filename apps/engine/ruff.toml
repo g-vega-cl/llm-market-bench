@@ -22,9 +22,8 @@ ignore = ["E501"]
 max-complexity = 15
 
 [lint.per-file-ignores]
-# Scripts and manual tests use sys.path manipulation for imports
+# Scripts use sys.path manipulation for imports
 "scripts/*.py" = ["E402"]
-"tests/test_memory_chains.py" = ["E402"]
 # Nested with in test files — often clearer than combined with long param lists
 "tests/*.py" = ["SIM117"]
 # B023 false positive: closures called within same loop iteration

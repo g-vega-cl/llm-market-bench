@@ -14,7 +14,7 @@ echo "[security] Scanning staged changes for credentials..."
 
 # Sequential / low-memory toggle
 IS_SEQUENTIAL=false
-WEB_WORKERS=2
+WEB_WORKERS=4
 if [ "${SEQUENTIAL:-0}" = "1" ] || [ "$(git config --bool --get benchify.sequential 2>/dev/null || echo false)" = "true" ]; then
   IS_SEQUENTIAL=true
   WEB_WORKERS=1
@@ -119,8 +119,8 @@ if [ "$RUN_FULL_ENGINE" = true ]; then
     echo "[test] Core/config changed — running engine tests sequentially (in-process)..."
     ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest )
   else
-    echo "[test] Core/config changed — running engine tests (max 2 workers)..."
-    ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest -n 2 )
+    echo "[test] Core/config changed — running engine tests (max 4 workers)..."
+    ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest -n 4 )
   fi
 elif [ "${#ENGINE_TEST_TARGETS[@]}" -gt 0 ]; then
   mapfile -t UNIQUE_ENGINE_TARGETS < <(printf '%s\n' "${ENGINE_TEST_TARGETS[@]}" | sort -u)
@@ -128,8 +128,8 @@ elif [ "${#ENGINE_TEST_TARGETS[@]}" -gt 0 ]; then
     echo "[test] Running targeted engine tests sequentially: ${UNIQUE_ENGINE_TARGETS[*]}"
     ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest "${UNIQUE_ENGINE_TARGETS[@]}" )
   else
-    echo "[test] Running targeted engine tests (max 2 workers): ${UNIQUE_ENGINE_TARGETS[*]}"
-    ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest -n 2 "${UNIQUE_ENGINE_TARGETS[@]}" )
+    echo "[test] Running targeted engine tests (max 4 workers): ${UNIQUE_ENGINE_TARGETS[*]}"
+    ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest -n 4 "${UNIQUE_ENGINE_TARGETS[@]}" )
   fi
 elif [ "${#ENGINE_PY_REL[@]}" -gt 0 ]; then
   echo "[test] No targeted engine tests matched staged files; skipping pytest (run verify.sh for full suite)."

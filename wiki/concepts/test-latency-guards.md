@@ -79,6 +79,9 @@ def _call_embed_with_retry(...):
     ...
 ```
 
+#### Exception-Chain Walking
+`_is_retryable_embedding_error` in `apps/engine/memory/embeddings.py` does not inspect only the top-level exception. It walks the full `__cause__` / `__context__` chain and fails fast if **any** link is a `RuntimeError`, `ValueError`, `TypeError`, `KeyError`, carries a `code`/`status_code` of 400/401/402/403/404, or whose message matches `blocked during test`, `unauthorized`, or `prepayment credits`. Tenant SDKs routinely wrap the real cause (a socket-guard `RuntimeError`, an auth error) inside a provider-specific exception, so checking only the outermost object let a wrapped guard escape the filter and pay the full backoff. It returns `True` only when every link in the chain looks transient.
+
 ### Layer 2: Fast-Forwarding Retry Delays in Unit Tests
 Tests specifically designed to verify retry logic or resilience must never sleep in real time. They must patch the Tenacity retry sleep handler or use zero-delay configurations:
 
@@ -88,11 +91,15 @@ with patch.object(_call_embed_with_retry.retry, "sleep", return_value=None):
     result = _call_embed_with_retry(...)
 ```
 
+The same rule applies to plain `asyncio.sleep` calls inside a retried production path. `apps/engine/core/llm/verification.py` exposes its sleep through a module-level `asyncio_sleep` symbol so verification tests can patch `core.llm.verification.asyncio_sleep` instead of waiting out the retry interval; `apps/engine/tests/test_verification.py` installs that patch in every test that reaches `verify_trading_decision`.
+
 ### Layer 3: Autouse Global Conftest Fixtures
 Global singleton rate limiters and external embedding lookups must be neutralized in `apps/engine/tests/conftest.py` via autouse fixtures:
 
-- `hermetic_memory_store_embeddings`: Mocks `memory.store.get_embedding` to return dummy vector representations (`[0.1] * 768`) and `memory.store.get_embeddings_batch` to return `[[0.1] * 768]`. Tests can override this fixture locally when specifically asserting embedding dimensions.
+- `hermetic_memory_store_embeddings`: Mocks `memory.store.get_embedding` to return dummy vector representations (`[0.1] * 768`), `memory.store.get_embeddings_batch` to return `[[0.1] * 768]`, and `analysis.consensus.get_embedding` to the same dummy vector. Tests can override this fixture locally when specifically asserting embedding dimensions. The consensus patch is required because the consensus engine imports the embedding helper directly; without it, consensus clustering tests reach the live Gemini embedding client.
 - `hermetic_massive_rate_limiter`: Replaces `_MASSIVE_LIMITER.acquire` with `AsyncMock(return_value=None)` so mock test suites never wait for token bucket replenishment.
+
+Feature-local autouse fixtures extend the same idea where a module has its own network boundaries. `apps/engine/tests/test_verification.py` patches `core.llm.verification.retrieve_for_decision` (RAG), `core.llm.verification.log_reasoning_trace` (Supabase), and `execution.market_data.MarketDataManager.get_quote` (FMP) for its whole module, so no verification test can fall through to a live provider.
 
 ### Layer 4: Test Environment Detection (`PYTEST_CURRENT_TEST`)
 When fallback loops or backoff delays are embedded deep in execution or document generation paths, they must check for the active test runner and zero the delay:
@@ -103,10 +110,15 @@ if os.getenv("PYTEST_CURRENT_TEST") and retry_delay_seconds >= 1.0:
     retry_delay_seconds = 0.0
 ```
 
+The same guard is applied to the production call throttles that would otherwise serialize every mocked request:
+
+- **FMP provider throttling (`apps/engine/execution/providers/fmp.py`)** — the `FINANCIAL_API_THROTTLE_SECONDS` pre-call wait, the `2 ** (attempt - 1)` exponential backoff between quote/history retries, the fixed `asyncio.sleep(FINANCIAL_API_THROTTLE_SECONDS)` before the aftermarket path, and the 1-second aftermarket retry delay are all skipped when `PYTEST_CURRENT_TEST` is set. The retry *count* and error semantics are unchanged; only the wall-clock waits are suppressed, so a mocked test exercises every attempt instantly.
+- **Embedding inter-call pacing (`apps/engine/memory/embeddings.py`)** — the `_EMBED_MIN_INTERVAL` gap enforced between `get_embeddings_batch` calls is skipped under pytest. `_last_embed_time` is still updated so production pacing semantics are untouched.
+
 ## Latency Guard Regression Suite
 
 The engine includes a dedicated regression suite in `apps/engine/tests/test_test_suite_latency_guards.py`. It runs latency benchmarks against all retry, rate-limiting, and fallback codepaths, enforcing that:
-1. `_is_retryable_embedding_error` fast-fails `RuntimeError` and auth errors under 100ms.
+1. `_is_retryable_embedding_error` fast-fails `RuntimeError` and auth errors under 100ms, including when they are wrapped in a provider exception's `__cause__`/`__context__` chain.
 2. `hermetic_massive_rate_limiter` permits 10 rapid calls to `_fetch_with_backoff` in under 100ms without rate-limiter stalls.
 3. `generate_daily_document` completes fallback attempts in under 100ms without waiting for real-time sleeps.
 

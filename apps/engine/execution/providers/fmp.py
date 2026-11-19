@@ -60,7 +60,7 @@ class FMPProvider(FinancialProvider):
         # Throttling logic
         from core.config import FINANCIAL_API_THROTTLE_SECONDS
 
-        if FINANCIAL_API_THROTTLE_SECONDS > 0:
+        if FINANCIAL_API_THROTTLE_SECONDS > 0 and not os.getenv("PYTEST_CURRENT_TEST"):
             elapsed = time.time() - FMPProvider._last_call_time
             wait_time = FINANCIAL_API_THROTTLE_SECONDS - elapsed
             if wait_time > 0:
@@ -127,7 +127,7 @@ class FMPProvider(FinancialProvider):
                 error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
                 logger.warning(f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed for {ticker} via FMP: {error_details}")
 
-            if attempt < MARKET_DATA_RETRIES:
+            if attempt < MARKET_DATA_RETRIES and not os.getenv("PYTEST_CURRENT_TEST"):
                 wait_time = 2 ** (attempt - 1)
                 await asyncio.sleep(wait_time)
 
@@ -221,7 +221,7 @@ class FMPProvider(FinancialProvider):
                     f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed fetching history for {ticker} via FMP: {error_details}"
                 )
 
-            if attempt < MARKET_DATA_RETRIES:
+            if attempt < MARKET_DATA_RETRIES and not os.getenv("PYTEST_CURRENT_TEST"):
                 wait_time = 2 ** (attempt - 1)
                 await asyncio.sleep(wait_time)
 
@@ -637,7 +637,7 @@ class FMPProvider(FinancialProvider):
         # Throttling logic
         from core.config import FINANCIAL_API_THROTTLE_SECONDS
 
-        if FINANCIAL_API_THROTTLE_SECONDS > 0:
+        if FINANCIAL_API_THROTTLE_SECONDS > 0 and not os.getenv("PYTEST_CURRENT_TEST"):
             await asyncio.sleep(FINANCIAL_API_THROTTLE_SECONDS)
 
         for attempt in range(1, MARKET_DATA_RETRIES + 1):
@@ -760,7 +760,7 @@ class FMPProvider(FinancialProvider):
             except Exception as e:
                 logger.warning(f"Error fetching aftermarket quote from FMP for {ticker}: {e}")
 
-            if attempt < MARKET_DATA_RETRIES:
+            if attempt < MARKET_DATA_RETRIES and not os.getenv("PYTEST_CURRENT_TEST"):
                 await asyncio.sleep(1)
 
         return None

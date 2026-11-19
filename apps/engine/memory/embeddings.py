@@ -1,6 +1,7 @@
 """Google Gemini embedding implementation."""
 
 import logging
+import os
 
 from google import genai
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
@@ -21,15 +22,20 @@ def _is_retryable_embedding_error(exc: BaseException) -> bool:
     Explicitly refuses to retry RuntimeError (test network guards), auth/billing errors,
     or programming mistakes.
     """
-    if isinstance(exc, (RuntimeError, ValueError, TypeError, KeyError)):
-        return False
-    error_code = getattr(exc, "code", None)
-    if error_code in (400, 401, 402, 403, 404):
-        return False
-    message = str(exc).lower()
-    return not any(
-        non_retryable in message for non_retryable in ("blocked during test", "unauthorized", "prepayment credits")
-    )
+    cur: BaseException | None = exc
+    while cur is not None:
+        if isinstance(cur, (RuntimeError, ValueError, TypeError, KeyError)):
+            return False
+        error_code = getattr(cur, "code", None)
+        if error_code in (400, 401, 402, 403, 404):
+            return False
+        message = str(cur).lower()
+        if any(
+            non_retryable in message for non_retryable in ("blocked during test", "unauthorized", "prepayment credits")
+        ):
+            return False
+        cur = cur.__cause__ or cur.__context__
+    return True
 
 
 def get_client():
@@ -90,7 +96,7 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
         global _last_embed_time
         now = time.time()
         elapsed = now - _last_embed_time
-        if elapsed < _EMBED_MIN_INTERVAL:
+        if elapsed < _EMBED_MIN_INTERVAL and not os.getenv("PYTEST_CURRENT_TEST"):
             time.sleep(_EMBED_MIN_INTERVAL - elapsed)
         _last_embed_time = time.time()
 

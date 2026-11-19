@@ -37,26 +37,26 @@ async def log_reasoning_trace(
         elif hasattr(response, "dict"):
             processed_response = response.dict()
 
-        # Ensure prompt is serializable
-        def sterilize_data(obj):
-            if isinstance(obj, dict):
-                return {k: sterilize_data(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [sterilize_data(i) for i in obj]
-            elif hasattr(obj, "model_dump"):
-                return sterilize_data(obj.model_dump())
-            elif hasattr(obj, "dict"):
-                return sterilize_data(obj.dict())
-            elif hasattr(obj, "__dict__"):
-                # Handle generic objects by taking their dict representation
-                return {k: sterilize_data(v) for k, v in obj.__dict__.items() if not k.startswith("_")}
-            elif hasattr(obj, "role") and hasattr(obj, "parts"):
-                # Handle Google GenAI Content objects explicitly if needed, but the logic above should cover most
+        # Ensure prompt is serializable (bounded depth avoids RecursionError on cyclic objects or mocks)
+        def sterilize_data(obj, depth: int = 0):
+            if depth > 12:
                 return str(obj)
-            elif isinstance(obj, (str, int, float, bool, type(None))):
+            if isinstance(obj, (str, int, float, bool, type(None))):
                 return obj
-            else:
+            if type(obj).__module__.startswith("unittest.mock"):
                 return str(obj)
+            if isinstance(obj, dict):
+                return {k: sterilize_data(v, depth + 1) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [sterilize_data(i, depth + 1) for i in obj]
+            if hasattr(obj, "model_dump"):
+                return sterilize_data(obj.model_dump(), depth + 1)
+            if hasattr(obj, "dict"):
+                return sterilize_data(obj.dict(), depth + 1)
+            if hasattr(obj, "__dict__"):
+                # Handle generic objects by taking their dict representation
+                return {k: sterilize_data(v, depth + 1) for k, v in obj.__dict__.items() if not k.startswith("_")}
+            return str(obj)
 
         serializable_prompt = sterilize_data(prompt)
 

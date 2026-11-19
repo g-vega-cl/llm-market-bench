@@ -9,6 +9,21 @@ from core.llm.verification import verify_trading_decision
 from core.models import DecisionObject, VerificationResult
 
 
+@pytest.fixture(autouse=True)
+def _hermetic_verification_boundaries():
+    """Prevent verification unit tests from attempting network calls via memory/market/logging."""
+    with (
+        patch("core.llm.verification.retrieve_for_decision", return_value=""),
+        patch("core.llm.verification.log_reasoning_trace", new_callable=AsyncMock),
+        patch(
+            "execution.market_data.MarketDataManager.get_quote",
+            new_callable=AsyncMock,
+            return_value=MagicMock(price=120.0, exists=True),
+        ),
+    ):
+        yield
+
+
 @pytest.mark.asyncio
 async def test_verify_trading_decision_approved():
     """Test that verifier can approve a trade."""
@@ -44,7 +59,10 @@ async def test_verify_trading_decision_approved():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with (
+            patch("core.llm.clients.close_client", new_callable=AsyncMock),
+            patch("core.llm.verification.asyncio_sleep", new_callable=AsyncMock),
+        ):
             result = await verify_trading_decision(
                 decision=decision, portfolio_context="Cash: $10,000", aggregated_context="Historical context"
             )
@@ -85,7 +103,10 @@ async def test_verify_trading_decision_rejected():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with (
+            patch("core.llm.clients.close_client", new_callable=AsyncMock),
+            patch("core.llm.verification.asyncio_sleep", new_callable=AsyncMock),
+        ):
             result = await verify_trading_decision(
                 decision=decision, portfolio_context="Cash: $10,000", aggregated_context="Historical context"
             )
@@ -245,7 +266,10 @@ async def test_verify_trading_decision_exception_defaults_to_rejected():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with (
+            patch("core.llm.clients.close_client", new_callable=AsyncMock),
+            patch("core.llm.verification.asyncio_sleep", new_callable=AsyncMock),
+        ):
             result = await verify_trading_decision(
                 decision=decision, portfolio_context="Cash: $10,000", aggregated_context="Historical context"
             )

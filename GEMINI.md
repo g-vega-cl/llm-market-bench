@@ -23,7 +23,7 @@
 
 - Python (engine): Ruff with rules E, F, I, UP, B, SIM (`apps/engine/ruff.toml`).
 - TypeScript (web + packages): Biome with recommended rules + organize imports (`biome.json`).
-- **Test Execution & Coverage**: `.husky/pre-commit` runs scoped, worker-capped checks (`pytest -n 2` on affected/core engine tests, `biome`, `typecheck`, and `vitest related --maxWorkers=2`) without coverage overhead; full coverage gates (70% engine, 40% web) are enforced in `.agents/skills/verify/scripts/verify.sh` and CI. Supports sequential 1-worker execution via `SEQUENTIAL=1 git commit` or `git config benchify.sequential true`.
+- **Test Execution & Coverage**: `.husky/pre-commit` runs scoped, worker-capped checks (`pytest -n 4` on affected/core engine tests, `biome`, `typecheck`, and `vitest related --maxWorkers=4`) without coverage overhead; full coverage gates (70% engine, 40% web) are enforced in `.agents/skills/verify/scripts/verify.sh` and CI. Supports sequential 1-worker execution via `SEQUENTIAL=1 git commit` or `git config benchify.sequential true`.
 - **After every code change, verify lint and targeted tests pass before marking work complete.** Run `ruff check` on changed Python files, `biome check` and `pnpm run typecheck` on changed TS files, and `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` whenever any file in `wiki/` is created or modified. Validate that all backtick code references in wiki markdown match existing paths on disk. Use `ruff check --fix` or `biome check --write` to auto-fix before manual edits.
 
 ## Git Staging & Commit Protocol (MANDATORY)

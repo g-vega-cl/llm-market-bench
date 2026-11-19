@@ -117,9 +117,11 @@ When a staged `apps/web` file is a `.ts`/`.tsx` source file, the hook additional
 
 ### Worker caps and sequential mode
 
-- **Engine**: `pytest -n 2` for the full suite, `pytest -n 2 <targets>` for a targeted run, and plain in-process `pytest` when sequential mode is on or only one target matched.
-- **Web**: `--maxWorkers=2` by default, `--maxWorkers=1` in sequential mode. The flag is passed directly to `pnpm test` / `pnpm exec vitest` — never behind an extra `--`, which pnpm would forward as a literal argument.
+- **Engine**: `pytest -n 4` for the full suite, `pytest -n 4 <targets>` for a targeted run, and plain in-process `pytest` when sequential mode is on or only one target matched.
+- **Web**: `--maxWorkers=4` by default, `--maxWorkers=1` in sequential mode. The flag is passed directly to `pnpm test` / `pnpm exec vitest` — never behind an extra `--`, which pnpm would forward as a literal argument.
 - **Sequential toggle**: `SEQUENTIAL=1 git commit` or `git config benchify.sequential true`.
+
+The 4-worker caps are pinned by `apps/engine/tests/test_pre_commit_sequential.py`, which asserts the hook contains `-n 4` (and not unbounded `-n auto`), sets `WEB_WORKERS=1` in sequential mode, and never emits an extra `--` before `--maxWorkers` under pnpm.
 
 ### What moved out of pre-commit
 
@@ -161,5 +163,6 @@ CI is the authoritative full-suite gate; the pre-commit hook is the fast local f
 - [[entities/biome-linter]] — TypeScript/JS linter details
 - [[concepts/code-hotspots]] — Churn forensics and bug hotspot analyzer
 - [[concepts/test-coverage]] — where the coverage gates now live
+- [[concepts/test-latency-guards]] — why the engine suite stays fast under parallel workers
 - [[entities/engine]]
 - `AGENTS.md` — canonical command reference

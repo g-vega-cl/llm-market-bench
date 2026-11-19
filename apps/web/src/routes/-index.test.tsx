@@ -46,7 +46,7 @@ const desk: PublicDesk = {
             runsToday: 2,
             lastRunAt: '2026-11-19T15:30:00+00:00',
             lastAction: { action: 'EXIT', ticker: 'NVDA', price: 181.2, reason: 'Thesis broken' },
-            resolvedModel: 'qwen3.8-27b',
+            resolvedModel: 'tencent/hy4-flash:free',
         },
         {
             recipeId: 'r-old',
@@ -145,6 +145,15 @@ describe('Recipe desk homepage', () => {
         render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} error="Fork failed: network" />);
 
         expect(screen.getByRole('alert')).toHaveTextContent('Fork failed: network');
+    });
+});
+
+describe('public model label', () => {
+    it('renders the model without the free-tier suffix', () => {
+        render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} />);
+
+        expect(screen.getByText('run on tencent/hy4-flash')).toBeInTheDocument();
+        expect(screen.queryByText(/:free/)).not.toBeInTheDocument();
     });
 });
 

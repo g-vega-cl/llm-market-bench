@@ -12,6 +12,7 @@ import { type FormEvent, useState } from 'react';
 import type { PublicBoardCard, PublicDesk } from '~/features/recipes/api/public-board-api';
 import { STARTER_RECIPES } from '~/features/recipes/starter-templates';
 import { formatPct } from './format-pct';
+import { modelLabel } from './model-label';
 
 export interface RecipeDeskHomePageProps {
     desk: PublicDesk;
@@ -91,7 +92,9 @@ function RecipeCard({
 
             <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
                 <span className="font-mono text-xs font-normal text-voxel-muted truncate">
-                    {card.resolvedModel ? `run on ${card.resolvedModel}` : 'no model recorded'}
+                    {modelLabel(card.resolvedModel)
+                        ? `run on ${modelLabel(card.resolvedModel)}`
+                        : 'no model recorded'}
                 </span>
                 <Button
                     variant="outline"

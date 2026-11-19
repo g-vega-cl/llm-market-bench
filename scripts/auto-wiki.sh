@@ -52,15 +52,20 @@ echo "[auto-wiki] analyzing staged changes..."
     exit 1
 }
 
-# Run the pipeline compiler to keep the web app's How It Works in sync
-COMPILE_SCRIPT="${REPO_ROOT}/apps/engine/scripts/compile_how_it_works.py"
-if [ -f "$COMPILE_SCRIPT" ]; then
-    echo "[auto-wiki] compiling How It Works page..."
-    "$PYTHON" "$COMPILE_SCRIPT" || echo "[auto-wiki] WARNING: How It Works compilation failed"
+# Run the pipeline compiler only when pipeline wiki docs changed
+if git diff --name-only -- wiki/entities/pipeline.md | grep -q . || git diff --cached --name-only -- wiki/entities/pipeline.md | grep -q .; then
+    COMPILE_SCRIPT="${REPO_ROOT}/apps/engine/scripts/compile_how_it_works.py"
+    if [ -f "$COMPILE_SCRIPT" ]; then
+        echo "[auto-wiki] compiling How It Works page..."
+        "$PYTHON" "$COMPILE_SCRIPT" || echo "[auto-wiki] WARNING: How It Works compilation failed"
+    fi
 fi
 
-# Re-stage wiki and compiled changes so they're included in the commit
-if git diff --name-only -- wiki/ apps/web/src/config/how-it-works.json | grep -q .; then
+# Re-stage modified and newly created wiki/compiled files so they're included in the commit
+AUTO_WIKI_FILES="$( { git diff --name-only -- wiki/ apps/web/src/config/how-it-works.json; git ls-files --others --exclude-standard -- wiki/; } | sort -u )"
+if [ -n "$AUTO_WIKI_FILES" ]; then
     echo "[auto-wiki] staging updated files..."
-    git add wiki/ apps/web/src/config/how-it-works.json
+    while IFS= read -r file; do
+        [ -n "$file" ] && git add -- "$file"
+    done <<< "$AUTO_WIKI_FILES"
 fi

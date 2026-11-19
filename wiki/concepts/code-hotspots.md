@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **297**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **298**).
 
 ## Top Hotspots
 
@@ -15,7 +15,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `apps/web/src/routes/__root.tsx` | 18 | 12 | 66.7% | 329 | 216 | **CRITICAL** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 21 | 7 | 33.3% | 360 | 147 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 21 | 6 | 28.6% | 328 | 126 | **CRITICAL** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 22 | 6 | 27.3% | 328 | 132 | **CRITICAL** |
 | `apps/web/src/routes/-__root.test.tsx` | 14 | 9 | 64.3% | 535 | 126 | **CRITICAL** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 17 | 5 | 29.4% | 304 | 85 | **HIGH** |
 | `apps/free_llm_proxy/server.py` | 16 | 5 | 31.2% | 703 | 80 | **HIGH** |
@@ -26,8 +26,8 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/components/ui/DefaultCatchBoundary.tsx` | 9 | 7 | 77.8% | 201 | 63 | **HIGH** |
 | `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 15 | 4 | 26.7% | 382 | 60 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 11 | 5 | 45.5% | 192 | 55 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 13 | 4 | 30.8% | 973 | 52 | **HIGH** |
 | `apps/engine/tasks/newsletter_generator.py` | 10 | 5 | 50.0% | 428 | 50 | **HIGH** |
-| `apps/free_llm_proxy/tests/test_proxy.py` | 16 | 3 | 18.8% | 1457 | 48 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **297**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **298**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **ACCELERATING** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **297**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 297 | 100.0% |
+| `g-vega-cl` | 298 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **297**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 138 | ▇▇▇▇▇▇ |
+| 2026-11 | 140 | ▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

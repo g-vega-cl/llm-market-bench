@@ -41,7 +41,7 @@ The full operational requirements are maintained in root `GEMINI.md`. Key princi
 
 1. **Search First (QMD)**: Query the wiki using `qmd` before writing code or answering design questions.
 2. **Plan First**: Present visual terminal plans (`[[concepts/visual-planning]]`) and wait for explicit approval before changing code.
-3. **TDD First**: Every plan requires a reproduction test first (`[[concepts/agent-workflow]]`).
+3. **TDD First**: Every plan requires a reproduction test first (`[[concepts/agent-workflow]]`). Tests must be hermetic (zero outbound network, zero artificial sleep) and **high-signal**: focus on pure logic, parsers, financial math, state reducers, and API/schema contracts. Never mock the module under test or child page components just to satisfy coverage; mock only external I/O boundaries. Avoid brittle CSS/layout assertions and heavy integration tests — `tsc --noEmit`, Biome, and the existing static design/hydration audits cover those surfaces (`[[concepts/test-coverage]]`).
 4. **Code is Truth**: Validate claims against working code.
 5. **Observability**: Use structured tracebacks over opaque error strings (`[[concepts/observability-standard]]`).
 6. **Hotspot Awareness**: Inspect churn forensics before modifying high-risk files (`[[concepts/code-hotspots]]`).
@@ -140,14 +140,15 @@ See [[concepts/hybrid-database-archival]] and [[entities/database]] for the sche
 
 ## Verification Gate
 
-After every code change, lint and coverage must pass before work is marked complete. The pre-commit hook blocks commits with lint errors, low coverage, or broken wiki links:
+After every code change, lint and targeted tests must pass before work is marked complete. The pre-commit hook is staged-file scoped and blocks commits with lint errors, failing targeted tests, or broken wiki links:
 
 - `ruff check` on changed Python files (`ruff check --fix` / `--unsafe-fixes` to auto-fix)
 - `biome check` on changed TS files (`biome check --write` to auto-fix)
+- `pnpm --filter web typecheck` whenever web or shared package files are staged
 - `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` whenever any file in `wiki/` is created or modified
 - All backtick code references in wiki markdown must match existing paths on disk
 
-A passing test suite with failing lint or low coverage is not done.
+Coverage gates (70% engine, 40% web) and the production web build are **not** part of the pre-commit hook — they run in `.agents/skills/verify/scripts/verify.sh` and `.github/workflows/ci.yml` (`[[concepts/test-coverage]]`, `[[concepts/project-linting]]`). A passing test suite with failing lint is not done.
 
 ## One-Time QMD Installation Reference
 
@@ -179,3 +180,5 @@ qmd embed
 - [[entities/live-agent-trader]]
 - [[concepts/hybrid-database-archival]]
 - [[entities/verify-skill]]
+- [[concepts/project-linting]]
+- [[concepts/test-coverage]]

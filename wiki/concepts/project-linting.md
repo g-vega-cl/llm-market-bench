@@ -69,28 +69,73 @@ pnpm biome check --write --unsafe
 
 ### Zero-Warning Test Enforcement
 
-- **Python (`pytest.ini`)**: Configured at repository root and `apps/engine/` to filter third-party deprecation warnings (e.g. `websockets.legacy`).
+- **Python (`pytest.ini`)**: Configured at repository root and `apps/engine/` to filter third-party deprecation warnings (e.g. `websockets.legacy`). Both files also declare `norecursedirs = .venv market __pycache__ .git node_modules`, so a bare `pytest` invocation never descends into the virtualenv, the local `market` data directory, or `node_modules`.
 - **Web (`apps/web/package.json`)**: Configured with `NODE_OPTIONS="--no-warnings --no-deprecation"` to suppress experimental Node.js runtime warnings during test runs.
 
 ## Pre-commit Hook
 
-`.husky/pre-commit` uses `set -euo pipefail` for fail-fast behavior. Key design decisions:
+`.husky/pre-commit` uses `set -euo pipefail` for fail-fast behavior. It is **staged-file scoped**: the hook classifies the staged paths once and runs only the checks those paths can break, so a docs-only or single-file commit no longer pays for the entire suite.
 
-- **Subshells for directory isolation** — `( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && ruff check )` instead of `cd apps/engine && ... && cd ../..`. If a command fails, the subshell exits cleanly and the parent CWD is unchanged.
-- **Absolute paths from `$REPO_ROOT`** — `REPO_ROOT="$(git rev-parse --show-toplevel)"` at the top, then reference everything as `$REPO_ROOT/path/to/thing`.
-- **Non-blocking steps use `|| true`** — auto-wiki only.
-- **`pnpm build:web` is ALWAYS blocking** — `vite build && tsc --noEmit` must pass. Never weaken this with `|| true`.
-- **Tests are blocking** — `pytest` (engine) and `vitest` (web) must pass.
+### Staged file collection
+
+```sh
+mapfile -t STAGED_FILES < <(git diff --cached --name-only --diff-filter=ACMR)
+```
+
+`--diff-filter=ACMR` skips deletions, so removing a file never feeds a nonexistent path to Ruff, Biome, or pytest.
 
 ### Execution order
 
-1. `scripts/auto-wiki.sh` (non-blocking)
-2. Ruff lint — engine Python (fail-fast)
-3. Biome lint — web TypeScript (fail-fast)
-4. Engine tests — pytest (fail-fast)
-5. Web tests — vitest (fail-fast)
-6. Web build — `vite build && tsc --noEmit` (fail-fast, MUST pass)
-7. Wiki lint + QMD re-index (conditional on wiki/raw changes, fail-fast)
+1. `secret_scanner.py --cached` — fail-fast credential scan (blocking)
+2. `scripts/auto-wiki.sh` — wiki generation (blocking)
+3. Ruff on the staged engine Python files
+4. Engine pytest — full suite or targeted subset
+5. Root-level tests (`tests/test_*.py`, `tests/*_test.py`, `tests/verify_*.py`)
+6. `apps/free_llm_proxy` test suite
+7. Biome on the staged web/package files
+8. `pnpm --filter web typecheck`
+9. Web vitest — full suite or `vitest related`
+10. `packages/mcp-knowledge-rag` Biome + test suite
+11. Wiki lint + QMD re-index (conditional on `wiki/` or `raw/` changes)
+
+### Scoping rules
+
+| Staged path | Effect |
+| :--- | :--- |
+| `apps/engine/**/*.py` | Ruff on those files. `core/*`, `execution/*`, `tests/conftest.py`, `apps/engine/pytest.ini`, or `packages/config/*` escalate to the **full** engine suite; otherwise the hook collects matching test files (`tests/test_*<base>*.py`, same-subdirectory `test_*.py`/`*_test.py` globs) and runs only those. If nothing matches, pytest is skipped with a hint to run `verify.sh`. |
+| `tests/test_*.py`, `tests/*_test.py`, `tests/verify_*.py` | Run directly from the repo root. |
+| `apps/free_llm_proxy/*` | Runs `apps/free_llm_proxy/tests/`. |
+| `packages/config/*` | Escalates to the full engine suite **and** the full web suite. |
+| `apps/web/*` | Biome on the staged files. `apps/web/src/test/*`, `apps/web/package.json`, `vitest.config.ts`, `vite.config.ts` escalate to the full web suite; other `apps/web/src/*` files run `vitest related --run` on the changed sources. |
+| `packages/database/*`, `packages/ui-design-system/*` | Biome + full web suite. |
+| `packages/mcp-knowledge-rag/*` | Biome + that package's own test suite. |
+| `wiki/*`, `raw/*` | Structural wiki lint + `qmd update` / `qmd embed`. |
+
+### Design and contrast static audits
+
+When a staged `apps/web` file is a `.ts`/`.tsx` source file, the hook additionally runs `src/test/contrast-audit.test.tsx` and `src/test/design-variant-budget.test.tsx` after the related tests, so a styling change can never slip past the [[concepts/design-variant-budget]] and contrast invariants.
+
+### Worker caps and sequential mode
+
+- **Engine**: `pytest -n 2` for the full suite, `pytest -n 2 <targets>` for a targeted run, and plain in-process `pytest` when sequential mode is on or only one target matched.
+- **Web**: `--maxWorkers=2` by default, `--maxWorkers=1` in sequential mode. The flag is passed directly to `pnpm test` / `pnpm exec vitest` — never behind an extra `--`, which pnpm would forward as a literal argument.
+- **Sequential toggle**: `SEQUENTIAL=1 git commit` or `git config benchify.sequential true`.
+
+### What moved out of pre-commit
+
+- **Coverage gates** — the hook no longer passes `--cov` / `--cov-fail-under`. Coverage is enforced by `.agents/skills/verify/scripts/verify.sh` and CI (see [[concepts/test-coverage]]).
+- **`pnpm build:web`** — the production build (`vite build && tsc --noEmit`) now runs in the CI `test-web` job. The hook still runs `pnpm --filter web typecheck` so type regressions fail locally.
+
+## CI Workflow
+
+`.github/workflows/ci.yml` (name `CI`, `permissions: contents: read`) runs two jobs on every push and pull request:
+
+| Job | Steps |
+| :--- | :--- |
+| `test` (engine) | Checkout, Python setup, dependency install, `python3 -m pytest -n auto` from `apps/engine`. |
+| `test-web` (15-minute timeout) | Checkout, `pnpm/action-setup@v4`, Node 24 with pnpm cache, `pnpm install --frozen-lockfile`, `pnpm biome check`, `pnpm --filter web typecheck`, `pnpm --filter web test --maxWorkers=2`, `pnpm build:web`. |
+
+CI is the authoritative full-suite gate; the pre-commit hook is the fast local filter.
 
 ## TypeScript type conventions
 
@@ -115,5 +160,6 @@ pnpm biome check --write --unsafe
 - [[entities/ruff-linter]] — Python linter details
 - [[entities/biome-linter]] — TypeScript/JS linter details
 - [[concepts/code-hotspots]] — Churn forensics and bug hotspot analyzer
+- [[concepts/test-coverage]] — where the coverage gates now live
 - [[entities/engine]]
 - `AGENTS.md` — canonical command reference

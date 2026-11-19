@@ -2,47 +2,183 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+ENGINE_PY="$REPO_ROOT/apps/engine/.venv/bin/python3"
+ENGINE_RUFF="$REPO_ROOT/apps/engine/.venv/bin/ruff"
 
 # Scan staged changes for leaked API keys / secrets (FAIL FAST)
 echo "[security] Scanning staged changes for credentials..."
-"$REPO_ROOT/apps/engine/.venv/bin/python3" "$REPO_ROOT/apps/engine/secret_scanner.py" --cached || exit 1
+"$ENGINE_PY" "$REPO_ROOT/apps/engine/secret_scanner.py" --cached || exit 1
 
 # Auto-document code changes in the wiki (BLOCKING)
 "$REPO_ROOT/scripts/auto-wiki.sh"
 
-# Lint Python (engine)
-( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && ruff check )
-
-# Lint TypeScript (web + packages)
-pnpm biome check --no-errors-on-unmatched apps/web packages/database packages/ui-design-system
-
-# Run tests with coverage enforcement (70% engine, 40% web)
+# Sequential / low-memory toggle
 IS_SEQUENTIAL=false
+WEB_WORKERS=2
 if [ "${SEQUENTIAL:-0}" = "1" ] || [ "$(git config --bool --get benchify.sequential 2>/dev/null || echo false)" = "true" ]; then
   IS_SEQUENTIAL=true
+  WEB_WORKERS=1
 fi
 
-if [ "$IS_SEQUENTIAL" = true ]; then
-  echo "[coverage] Running engine tests sequentially (1 worker, minimal CPU/RAM)..."
-  ( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && python3 -m pytest --cov=. --cov-config=.coveragerc --cov-fail-under=70 )
+# Gather staged existing/modified files safely (skip deletions)
+mapfile -t STAGED_FILES < <(git diff --cached --name-only --diff-filter=ACMR)
 
-  echo "[coverage] Running web tests sequentially (1 worker, minimal CPU/RAM)..."
-  ( cd "$REPO_ROOT/apps/web" && pnpm test -- --maxWorkers=1 --coverage )
-else
-  echo "[coverage] Running engine tests with coverage..."
-  ( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && python3 -m pytest -n auto --cov=. --cov-config=.coveragerc --cov-fail-under=70 )
+ENGINE_PY_REL=()
+ENGINE_TEST_TARGETS=()
+ROOT_TEST_TARGETS=()
+FREE_PROXY_CHANGED=false
+RUN_FULL_ENGINE=false
 
-  echo "[coverage] Running web tests with coverage..."
-  ( cd "$REPO_ROOT/apps/web" && pnpm test -- --coverage )
+WEB_BIOME_FILES=()
+WEB_RELATED_FILES=()
+WEB_SOURCE_CHANGED=false
+RUN_FULL_WEB=false
+MCP_RAG_FILES=()
+WIKI_OR_RAW_CHANGED=false
+
+for file in "${STAGED_FILES[@]}"; do
+  [ -z "$file" ] && continue
+
+  case "$file" in
+    wiki/*|raw/*)
+      WIKI_OR_RAW_CHANGED=true
+      ;;
+  esac
+
+  case "$file" in
+    apps/engine/*.py)
+      rel="${file#apps/engine/}"
+      ENGINE_PY_REL+=("$rel")
+      case "$rel" in
+        core/*|execution/*|tests/conftest.py)
+          RUN_FULL_ENGINE=true
+          ;;
+        tests/test_*.py|tests/*_test.py)
+          ENGINE_TEST_TARGETS+=("$rel")
+          ;;
+        *)
+          base="$(basename "$rel" .py)"
+          if [[ "$base" == test_* ]] || [[ "$base" == *_test ]]; then
+            ENGINE_TEST_TARGETS+=("$rel")
+          else
+            subdir="${rel%%/*}"
+            if [ "$subdir" != "$rel" ] && [ "$subdir" != "tests" ]; then
+              if compgen -G "$REPO_ROOT/apps/engine/$subdir/test_*.py" > /dev/null || compgen -G "$REPO_ROOT/apps/engine/$subdir/*_test.py" > /dev/null; then
+                ENGINE_TEST_TARGETS+=("$subdir")
+              fi
+            fi
+            for match in "$REPO_ROOT/apps/engine/tests/test_"*"$base"*.py; do
+              [ -f "$match" ] && ENGINE_TEST_TARGETS+=("${match#$REPO_ROOT/apps/engine/}")
+            done
+          fi
+          ;;
+      esac
+      ;;
+    apps/engine/pytest.ini)
+      RUN_FULL_ENGINE=true
+      ;;
+    tests/test_*.py|tests/*_test.py|tests/verify_*.py)
+      ROOT_TEST_TARGETS+=("$file")
+      ;;
+    apps/free_llm_proxy/*)
+      FREE_PROXY_CHANGED=true
+      ;;
+    packages/config/*)
+      RUN_FULL_ENGINE=true
+      RUN_FULL_WEB=true
+      ;;
+    apps/web/*)
+      WEB_BIOME_FILES+=("$file")
+      if [[ "$file" == apps/web/src/test/* ]] || [[ "$file" == apps/web/package.json ]] || [[ "$file" == apps/web/vitest.config.ts ]] || [[ "$file" == apps/web/vite.config.ts ]]; then
+        RUN_FULL_WEB=true
+      elif [[ "$file" == apps/web/src/* ]]; then
+        WEB_RELATED_FILES+=("${file#apps/web/}")
+        if [[ "$file" == *.ts ]] || [[ "$file" == *.tsx ]]; then
+          WEB_SOURCE_CHANGED=true
+        fi
+      fi
+      ;;
+    packages/database/*|packages/ui-design-system/*)
+      WEB_BIOME_FILES+=("$file")
+      RUN_FULL_WEB=true
+      ;;
+    packages/mcp-knowledge-rag/*)
+      MCP_RAG_FILES+=("$file")
+      ;;
+  esac
+done
+
+# 1. Python checks (engine)
+if [ "${#ENGINE_PY_REL[@]}" -gt 0 ]; then
+  echo "[lint] Running Ruff on ${#ENGINE_PY_REL[@]} staged engine Python file(s)..."
+  ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_RUFF" check "${ENGINE_PY_REL[@]}" )
 fi
 
-# Build + type-check (BLOCKING — must pass)
-pnpm build:web
+if [ "$RUN_FULL_ENGINE" = true ]; then
+  if [ "$IS_SEQUENTIAL" = true ]; then
+    echo "[test] Core/config changed — running engine tests sequentially (in-process)..."
+    ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest )
+  else
+    echo "[test] Core/config changed — running engine tests (max 2 workers)..."
+    ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest -n 2 )
+  fi
+elif [ "${#ENGINE_TEST_TARGETS[@]}" -gt 0 ]; then
+  mapfile -t UNIQUE_ENGINE_TARGETS < <(printf '%s\n' "${ENGINE_TEST_TARGETS[@]}" | sort -u)
+  if [ "$IS_SEQUENTIAL" = true ] || [ "${#UNIQUE_ENGINE_TARGETS[@]}" -eq 1 ]; then
+    echo "[test] Running targeted engine tests sequentially: ${UNIQUE_ENGINE_TARGETS[*]}"
+    ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest "${UNIQUE_ENGINE_TARGETS[@]}" )
+  else
+    echo "[test] Running targeted engine tests (max 2 workers): ${UNIQUE_ENGINE_TARGETS[*]}"
+    ( cd "$REPO_ROOT/apps/engine" && "$ENGINE_PY" -m pytest -n 2 "${UNIQUE_ENGINE_TARGETS[@]}" )
+  fi
+elif [ "${#ENGINE_PY_REL[@]}" -gt 0 ]; then
+  echo "[test] No targeted engine tests matched staged files; skipping pytest (run verify.sh for full suite)."
+fi
 
-# Run wiki lint and re-index QMD when wiki/ files change
-if git diff --cached --name-only | grep -qE '^(wiki|raw)/'; then
+if [ "${#ROOT_TEST_TARGETS[@]}" -gt 0 ]; then
+  echo "[test] Running staged root tests: ${ROOT_TEST_TARGETS[*]}"
+  "$ENGINE_PY" -m pytest "${ROOT_TEST_TARGETS[@]}"
+fi
+
+if [ "$FREE_PROXY_CHANGED" = true ] && [ -d "$REPO_ROOT/apps/free_llm_proxy/tests" ]; then
+  echo "[test] Running free_llm_proxy tests..."
+  ( cd "$REPO_ROOT/apps/free_llm_proxy" && "$ENGINE_PY" -m pytest tests/ )
+fi
+
+# 2. Web & package checks
+if [ "${#WEB_BIOME_FILES[@]}" -gt 0 ] || [ "$RUN_FULL_WEB" = true ]; then
+  if [ "${#WEB_BIOME_FILES[@]}" -gt 0 ]; then
+    echo "[lint] Running Biome on ${#WEB_BIOME_FILES[@]} staged web/package file(s)..."
+    pnpm biome check --no-errors-on-unmatched "${WEB_BIOME_FILES[@]}"
+  fi
+
+  echo "[typecheck] Running tsc --noEmit for web..."
+  pnpm --filter web typecheck
+
+  if [ "$RUN_FULL_WEB" = true ]; then
+    echo "[test] Shared web/package files changed — running web tests (maxWorkers=$WEB_WORKERS)..."
+    ( cd "$REPO_ROOT/apps/web" && pnpm test --maxWorkers="$WEB_WORKERS" )
+  elif [ "${#WEB_RELATED_FILES[@]}" -gt 0 ]; then
+    echo "[test] Running vitest related (maxWorkers=$WEB_WORKERS)..."
+    ( cd "$REPO_ROOT/apps/web" && pnpm exec vitest related --run --maxWorkers="$WEB_WORKERS" "${WEB_RELATED_FILES[@]}" )
+    if [ "$WEB_SOURCE_CHANGED" = true ]; then
+      echo "[test] Running design/contrast static audits..."
+      ( cd "$REPO_ROOT/apps/web" && pnpm exec vitest run --maxWorkers="$WEB_WORKERS" src/test/contrast-audit.test.tsx src/test/design-variant-budget.test.tsx )
+    fi
+  fi
+fi
+
+if [ "${#MCP_RAG_FILES[@]}" -gt 0 ]; then
+  echo "[lint] Running Biome on staged mcp-knowledge-rag files..."
+  pnpm biome check --no-errors-on-unmatched "${MCP_RAG_FILES[@]}"
+  echo "[test] Running mcp-knowledge-rag tests (maxWorkers=$WEB_WORKERS)..."
+  pnpm --filter @llm-market-bench/mcp-knowledge-rag test --maxWorkers="$WEB_WORKERS"
+fi
+
+# 3. Wiki lint and QMD re-index when wiki/ or raw/ files change
+if [ "$WIKI_OR_RAW_CHANGED" = true ]; then
   echo "[wiki] Running structural lint..."
-  "$REPO_ROOT/apps/engine/.venv/bin/python3" "$REPO_ROOT/apps/engine/wiki_lint.py" || exit 1
+  "$ENGINE_PY" "$REPO_ROOT/apps/engine/wiki_lint.py" || exit 1
   echo "[wiki] Re-indexing QMD..."
   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24 && qmd update && (qmd embed || echo "[wiki] Warning: qmd embed skipped (GPU busy/OOM)")
 fi

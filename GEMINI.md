@@ -23,8 +23,8 @@
 
 - Python (engine): Ruff with rules E, F, I, UP, B, SIM (`apps/engine/ruff.toml`).
 - TypeScript (web + packages): Biome with recommended rules + organize imports (`biome.json`).
-- **Test Coverage**: Enforced in `.husky/pre-commit` (70% engine, 40% web). Supports sequential execution (1 worker, low CPU/RAM) via `SEQUENTIAL=1 git commit` or `git config benchify.sequential true`.
-- **After every code change, verify lint and coverage pass before marking work complete.** Run `ruff check` on changed Python files, `biome check` and `pnpm run typecheck` on changed TS files, and `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` whenever any file in `wiki/` is created or modified. Validate that all backtick code references in wiki markdown match existing paths on disk. Use `ruff check --fix` or `biome check --write` to auto-fix before manual edits. A passing test suite with failing lint or low coverage is not done.
+- **Test Execution & Coverage**: `.husky/pre-commit` runs scoped, worker-capped checks (`pytest -n 2` on affected/core engine tests, `biome`, `typecheck`, and `vitest related --maxWorkers=2`) without coverage overhead; full coverage gates (70% engine, 40% web) are enforced in `.agents/skills/verify/scripts/verify.sh` and CI. Supports sequential 1-worker execution via `SEQUENTIAL=1 git commit` or `git config benchify.sequential true`.
+- **After every code change, verify lint and targeted tests pass before marking work complete.** Run `ruff check` on changed Python files, `biome check` and `pnpm run typecheck` on changed TS files, and `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` whenever any file in `wiki/` is created or modified. Validate that all backtick code references in wiki markdown match existing paths on disk. Use `ruff check --fix` or `biome check --write` to auto-fix before manual edits.
 
 ## Git Staging & Commit Protocol (MANDATORY)
 
@@ -57,6 +57,7 @@ All commit messages are validated by `.husky/commit-msg` via `apps/engine/commit
 3. **TDD First, Hermetic Testing & Zero Sleep**: Create a reproduction test first that fails without your change and passes with it.
    - **Zero External Network Calls**: Unit and integration tests MUST NEVER make outbound network calls (HTTP/HTTPS, sockets, or DNS). Strictly mock all external APIs, SDKs, and databases (`httpx`, `requests`, `AsyncAnthropic`, `AsyncOpenAI`, Supabase, FMP, Massive, FRED, Gmail IMAP). An autouse fixture in `apps/engine/tests/conftest.py` blocks unmocked sockets.
    - **Zero Artificial Sleep (< 100ms per test)**: Never allow unmocked sleep, tenacity retry backoffs (`patch.object(func.retry, "sleep", return_value=None)`), or rate limiters (`_MASSIVE_LIMITER.acquire = AsyncMock()`). Non-transient errors (`RuntimeError`, 401/403) must fail fast in `@retry` definitions. See `[[concepts/test-latency-guards]]`.
+   - **High-Signal Anti-Bloat Testing**: Focus unit tests on pure logic, parsers, financial math, state reducers, and API/schema contracts. Never mock the module under test or child page components (e.g., `vi.mock('~/features/.../HomePage')`) just to satisfy coverage; mock only external I/O boundaries. Avoid brittle CSS/layout assertions or heavy integration tests—rely on `tsc --noEmit`, Biome, and existing static design/hydration audits.
 4. **Code is Truth**: Docs are hints. When they conflict, trust the code. Read the code before acting.
 5. **Observability**: Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks.
 6. **Hotspot Awareness**: Before modifying high-risk areas, check `apps/engine/hotspots.py`. Files flagged as CRITICAL or HIGH risk with high bug ratios require defensive editing and regression tests.

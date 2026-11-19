@@ -55,6 +55,11 @@ The generator occasionally cites a page it never creates. For each remaining `ta
 
 This keeps auto-generated pages lint-clean without requiring the LLM to distinguish file paths from page slugs or to remember which pages it actually created.
 
+## Wrapper Script (`scripts/auto-wiki.sh`)
+
+- **Conditional How It Works compilation** — `apps/engine/scripts/compile_how_it_works.py` runs only when `wiki/entities/pipeline.md` is modified (checked against both the working tree and the index). A commit that touches no pipeline documentation no longer pays for the compile.
+- **Re-staging includes new pages** — after generation the wrapper collects `git diff --name-only -- wiki/ apps/web/src/config/how-it-works.json` **plus** `git ls-files --others --exclude-standard -- wiki/`, sorts and de-duplicates the union, and stages each path individually with `git add -- "$file"`. Newly created wiki pages are therefore committed alongside the code change, while the targeted-staging rule (no blanket `git add`) is preserved.
+
 ## Safety & Design
 
 - **Zero Local Compute**: No tier loads a model on the committing machine. The proxy tier is a plain HTTPS call, so contributors need neither a GPU nor a multi-GB model store to commit — `scripts/auto-wiki.sh` no longer starts or kills any local inference server.
@@ -69,3 +74,4 @@ This keeps auto-generated pages lint-clean without requiring the LLM to distingu
 - [[entities/wiki-linter]] — the structural lint that rejects file-path wikilinks
 - [[concepts/rag-strategy]] — context injection patterns used in the system prompt
 - [[concepts/tool-enforcement]] — similar pattern of LLM output validation
+- [[concepts/project-linting]] — pre-commit hook ordering

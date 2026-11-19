@@ -1,4 +1,7 @@
-name: Engine Testing CI
+name: CI
+
+permissions:
+  contents: read
 
 on:
   push:
@@ -34,3 +37,36 @@ jobs:
       - name: Run tests
         run: |
           python3 -m pytest -n auto
+
+  test-web:
+    name: Test & Build Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint web & packages
+        run: pnpm biome check
+
+      - name: Typecheck web
+        run: pnpm --filter web typecheck
+
+      - name: Run web tests
+        run: pnpm --filter web test --maxWorkers=2
+
+      - name: Build web
+        run: pnpm build:web

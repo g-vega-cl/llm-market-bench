@@ -16,7 +16,13 @@ A post-commit and post-merge automation that exports the full Git commit history
 
 ## Automation
 
-- **Post-commit**: `.husky/post-commit` regenerates history after every commit
+- **Post-commit (background)**: `.husky/post-commit` launches the export detached so the commit returns immediately:
+  ```sh
+  nohup flock -n /tmp/llm-market-bench-git-history.lock \
+    "$REPO_ROOT/apps/engine/.venv/bin/python3" "$REPO_ROOT/apps/engine/export_git_history.py" \
+    </dev/null > /tmp/llm-market-bench-git-history.log 2>&1 &
+  ```
+  `flock -n` makes a second concurrent export a no-op instead of racing the first (rapid successive commits therefore produce one export, not a pile-up), stdin is detached, and all output goes to `/tmp/llm-market-bench-git-history.log` rather than the terminal. Because the hook no longer blocks, a slow export can never delay or fail a commit.
 - **Post-merge**: `.husky/post-merge` regenerates history after pulls/merges
 - **Gitignore**: `git-history/` is automatically added to `.gitignore` as a generated cache
 

@@ -186,10 +186,15 @@ they have five daily observations with net movement.
 
 ## Pitfalls
 
-- DDL replicates to the MiniPC edge, but `NOTIFY pgrst, 'reload schema'` cannot be
-  executed on a standby (`cannot execute NOTIFY during recovery`) and does not
-  propagate. Issue it on the primary; the public edge (`benchify-archive-db.clvg.uk`)
-  is served by the primary's PostgREST.
+- **New objects need a replica restart, not just a NOTIFY.** `docker/archive/nginx.secondary.conf`
+  proxies `GET`/`HEAD` to the MiniPC replica's PostgREST, so anonymous page reads
+  resolve there. DDL replicates, but `NOTIFY pgrst, 'reload schema'` cannot run on a
+  standby (`cannot execute NOTIFY during recovery`) and does not propagate — the
+  replica keeps answering `PGRST205` for the new object while the primary answers
+  `200`. Restart it (`docker restart market-bench-archive-postgrest-replica`) and
+  probe it directly: `curl -H "apikey: $KEY" 'http://localhost:3001/<view>?select=*&limit=1'`
+  from the MiniPC. Probing only the public hostname proves nothing: it can be served
+  by the primary, which is how a missing replica view reached production once.
 - `CREATE OR REPLACE VIEW` cannot change column order or types; add a new column
   at the end or drop and recreate (this migration drops first).
 - `PERCENTILE_CONT` is an ordered-set aggregate and cannot be used as a window

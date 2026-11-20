@@ -189,18 +189,30 @@ async def _backfill_daily_prediction_trades(
 
             await execute_system_daily_bond_close_trade(prediction=pred, intraday_data=intraday_data)
         else:
+            from core.config import (
+                SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
+                SYS_DAILY_SPY_OWNER_PREFIX,
+                is_allowed_daily_spy_model,
+                resolve_daily_spy_owners,
+            )
             from execution.daily_trading import (
                 execute_system_daily_close_trade,
                 execute_system_daily_trade,
             )
 
+            raw_model = str(pred.get("model_name", "")).strip()
+            if not is_allowed_daily_spy_model(raw_model):
+                logger.info(f"Skipping system daily SPY backfill for non-SPY arena model '{raw_model}'.")
+                return
+
+            allowed_owners = set(resolve_daily_spy_owners(raw_model, expected_return_pct))
             trade_coros = []
-            pred_model = str(pred.get("model_name", "")).lower()
-            target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
-            if "jev" not in pred_model and target_pct > 0.0:
+            if f"{SYS_DAILY_SPY_OWNER_PREFIX}{raw_model}" in allowed_owners:
                 trade_coros.append(execute_system_daily_trade(prediction=pred, intraday_data=intraday_data))
-            trade_coros.append(execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data))
-            await asyncio.gather(*trade_coros)
+            if f"{SYS_DAILY_SPY_CLOSE_OWNER_PREFIX}{raw_model}" in allowed_owners:
+                trade_coros.append(execute_system_daily_close_trade(prediction=pred, intraday_data=intraday_data))
+            if trade_coros:
+                await asyncio.gather(*trade_coros)
     except Exception as e:
         logger.exception(f"Failed to execute system daily trade for prediction {pred['id']}: {e}")
 

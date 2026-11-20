@@ -248,6 +248,7 @@ Every page starts with YAML frontmatter:
   ---
 
 Cross-references use [[entities/page-name]] style. Naming is kebab-case.
+Always write codebase file paths relative to the repository root (e.g. `apps/engine/scripts/update_prices.py`, never `scripts/update_prices.py`).
 
 Pages must always reflect the current state of the codebase. Do not use strikethroughs
 or "mark superseded" — remove or rewrite outdated content directly. Git history is the
@@ -427,6 +428,15 @@ def _parse_llm_response(raw: str) -> dict:
 # write_log_entry deprecated
 
 
+_ACTIVE_RECORDED_PATHS: list[str] | None = None
+
+
+def _record_written_path(rel_path: str, recorded_paths: list[str] | None = None) -> None:
+    target_list = recorded_paths if recorded_paths is not None else _ACTIVE_RECORDED_PATHS
+    if target_list is not None:
+        target_list.append(rel_path)
+
+
 def apply_page_deletions(paths: list) -> None:
     """Delete wiki pages whose scope has been removed from the codebase.
 
@@ -459,6 +469,7 @@ def apply_page_deletions(paths: list) -> None:
         if target.exists():
             target.unlink()
             print(f"  [auto-wiki] deleted wiki/{rel_path}", file=sys.stderr)
+            _record_written_path(f"wiki/{rel_path}")
         else:
             print(f"  [auto-wiki] skip (already gone): wiki/{rel_path}", file=sys.stderr)
 
@@ -471,6 +482,7 @@ def apply_page_deletions(paths: list) -> None:
             if len(filtered_lines) != len(original.splitlines(keepends=True)):
                 index_path.write_text("".join(filtered_lines))
                 print(f"  [auto-wiki] index.md: removed entry for {rel_path}", file=sys.stderr)
+                _record_written_path("wiki/index.md")
 
 
 _FILE_PATH_LINK = re.compile(r"\[\[([^\[\]\n]*?\.(?:json|ya?ml|py|tsx?|sql|md|sh|toml|cfg|ini))\]\]")
@@ -505,7 +517,43 @@ def delink_missing_pages(content: str) -> str:
     return _WIKILINK.sub(replace, content)
 
 
-def write_new_page(rel_path: str, content: str) -> None:
+_CODE_REF_RE = re.compile(
+    r"(`|\()((?:apps|packages|scripts|supabase|wiki|\.github|\.agents)/[a-zA-Z0-9_\-\.\/]+)(`|\))"
+)
+
+
+def normalize_code_references(content: str, repo_root: Path = REPO_ROOT) -> str:
+    """Resolve engine/web-relative path references and strip backticks from nonexistent examples."""
+
+    def replace(match: re.Match[str]) -> str:
+        opener, raw_path, closer = match.groups()
+        cleaned = raw_path.rstrip(".,;")
+        suffix = raw_path[len(cleaned) :]
+        if (
+            "YYYY-MM" in cleaned
+            or "nonexistent" in cleaned
+            or "temp-broken" in cleaned
+            or ".env" in cleaned
+            or ".venv" in cleaned
+        ):
+            return match.group(0)
+        if (repo_root / cleaned).exists():
+            return match.group(0)
+        for app_prefix in ("apps/engine", "apps/web"):
+            if (repo_root / app_prefix / cleaned).exists():
+                return f"{opener}{app_prefix}/{cleaned}{suffix}{closer}"
+        if opener == "`" and closer == "`":
+            return raw_path
+        return match.group(0)
+
+    return _CODE_REF_RE.sub(replace, content)
+
+
+def write_new_page(
+    rel_path: str,
+    content: str,
+    recorded_paths: list[str] | None = None,
+) -> None:
     rel_path = rel_path.removeprefix("wiki/").removeprefix("/")
     if rel_path in ("index.md", "SCHEMA.md"):
         print(f"  [auto-wiki] SKIP: {rel_path} cannot be created as a new page", file=sys.stderr)
@@ -515,11 +563,12 @@ def write_new_page(rel_path: str, content: str) -> None:
         print(f"  [auto-wiki] ERROR: path traversal attempt: {rel_path}", file=sys.stderr)
         return
     target.parent.mkdir(parents=True, exist_ok=True)
-    content = delink_missing_pages(sanitize_wikilinks(content))
+    content = normalize_code_references(delink_missing_pages(sanitize_wikilinks(content)))
     if not content.endswith("\n"):
         content += "\n"
     target.write_text(content)
     print(f"  [auto-wiki] created wiki/{rel_path}", file=sys.stderr)
+    _record_written_path(f"wiki/{rel_path}", recorded_paths)
 
 
 def add_index_entries(entries: list) -> None:
@@ -580,9 +629,10 @@ def add_index_entries(entries: list) -> None:
 
     if modified:
         index_path.write_text("\n".join(lines))
+        _record_written_path("wiki/index.md")
 
 
-def apply_changes(result: dict) -> None:
+def apply_changes(result: dict, recorded_paths: list[str] | None = None) -> None:
     """Apply all wiki mutations described in *result* (from the LLM).
 
     Handles:
@@ -590,27 +640,33 @@ def apply_changes(result: dict) -> None:
     - Deleting pages whose scope was removed (via apply_page_deletions)
     - Adding entries to index.md
     """
+    global _ACTIVE_RECORDED_PATHS
+    prev_recorded = _ACTIVE_RECORDED_PATHS
+    if recorded_paths is not None:
+        _ACTIVE_RECORDED_PATHS = recorded_paths
+    try:
+        for page in result.get("new_pages", []):
+            if not isinstance(page, dict):
+                continue
+            path = page.get("path", "")
+            content = page.get("content", "")
+            if path and content:
+                write_new_page(path, content)
+            # Handle cases where LLMs nest deleted_pages or index_additions inside new_pages array
+            if "deleted_pages" in page and isinstance(page["deleted_pages"], list):
+                apply_page_deletions(page["deleted_pages"])
+            if "index_additions" in page and isinstance(page["index_additions"], list):
+                add_index_entries(page["index_additions"])
 
-    for page in result.get("new_pages", []):
-        if not isinstance(page, dict):
-            continue
-        path = page.get("path", "")
-        content = page.get("content", "")
-        if path and content:
-            write_new_page(path, content)
-        # Handle cases where LLMs nest deleted_pages or index_additions inside new_pages array
-        if "deleted_pages" in page and isinstance(page["deleted_pages"], list):
-            apply_page_deletions(page["deleted_pages"])
-        if "index_additions" in page and isinstance(page["index_additions"], list):
-            add_index_entries(page["index_additions"])
+        deleted = result.get("deleted_pages", [])
+        if deleted:
+            apply_page_deletions(deleted)
 
-    deleted = result.get("deleted_pages", [])
-    if deleted:
-        apply_page_deletions(deleted)
-
-    index_additions = result.get("index_additions", [])
-    if index_additions:
-        add_index_entries(index_additions)
+        index_additions = result.get("index_additions", [])
+        if index_additions:
+            add_index_entries(index_additions)
+    finally:
+        _ACTIVE_RECORDED_PATHS = prev_recorded
 
 
 def main():
@@ -639,6 +695,10 @@ def main():
         "--dry-run",
         action="store_true",
         help="Print what would be done but don't write files",
+    )
+    parser.add_argument(
+        "--written-files-out",
+        help="Optional file path to record repo-relative paths modified by auto_wiki",
     )
     args = parser.parse_args()
 
@@ -730,7 +790,12 @@ def main():
         print(json.dumps(result, indent=2))
         sys.exit(0)
 
-    apply_changes(result)
+    recorded_paths: list[str] = []
+    apply_changes(result, recorded_paths=recorded_paths)
+
+    if args.written_files_out:
+        unique_paths = list(dict.fromkeys(recorded_paths))
+        Path(args.written_files_out).write_text("\n".join(unique_paths) + ("\n" if unique_paths else ""))
 
     print("  [auto-wiki] done", file=sys.stderr)
     sys.exit(0)

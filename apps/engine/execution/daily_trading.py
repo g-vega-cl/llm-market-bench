@@ -13,23 +13,30 @@ from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
-from core.config import logger
+from core.config import (
+    ALLOWED_DAILY_SPY_MODELS,
+    SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
+    SYS_DAILY_SPY_OWNER_PREFIX,
+    assert_allowed_daily_spy_owner,
+    is_allowed_daily_spy_model,
+    is_allowed_daily_spy_owner,
+    logger,
+)
 from core.db import get_supabase_client
 from execution.portfolio import Portfolio
 
-SYS_DAILY_SPY_OWNER_PREFIX = "sys-daily-spy-"
-SYS_DAILY_SPY_CLOSE_OWNER_PREFIX = "sys-daily-spy-close-"
 DEFAULT_DAILY_SLIPPAGE_BPS = 5.0  # 5 bps = 0.05%
 DEFAULT_DAILY_CLOSE_SLIPPAGE_BPS = 2.0  # 2 bps = 0.02% for highly liquid SPY
 INITIAL_PORTFOLIO_CASH = 10000.00
 
 
-async def get_or_create_system_portfolio(owner_id: str) -> Portfolio:
-    """Load an existing system portfolio or initialize a new one in Supabase."""
+async def _load_or_create_system_portfolio(owner_id: str, client_getter: Callable) -> Portfolio:
+    """Shared implementation for loading or creating a validated system portfolio."""
+    assert_allowed_daily_spy_owner(owner_id)
     portfolio = Portfolio(owner_id)
     await portfolio.initialize()
     if not portfolio.id:
-        client = get_supabase_client()
+        client = client_getter()
         res = (
             client.table("portfolios")
             .insert(
@@ -49,6 +56,11 @@ async def get_or_create_system_portfolio(owner_id: str) -> Portfolio:
             portfolio.id = UUID(res.data[0]["id"])
             portfolio.cash_balance = INITIAL_PORTFOLIO_CASH
     return portfolio
+
+
+async def get_or_create_system_portfolio(owner_id: str) -> Portfolio:
+    """Load an existing system portfolio or initialize a new one in Supabase."""
+    return await _load_or_create_system_portfolio(owner_id, get_supabase_client)
 
 
 def compute_daily_trade_execution(
@@ -148,10 +160,18 @@ async def execute_daily_spy_trade(
     client_getter = get_supabase_client_fn or get_supabase_client
     portfolio_getter = get_or_create_system_portfolio_fn or get_or_create_system_portfolio
 
-    model_name = prediction.get("model_name", "unknown")
+    model_name = str(prediction.get("model_name") or "unknown").strip()
     owner_id = f"{owner_prefix}{model_name}"
     target_date_str = prediction.get("target_date") or date.today().isoformat()
     ticker = prediction.get("ticker", "SPY").upper()
+
+    if ticker != "SPY":
+        return {"status": "skipped", "reason": f"Ticker {ticker} is not SPY", "owner_id": owner_id}
+    if not is_allowed_daily_spy_owner(owner_id):
+        raise ValueError(
+            f"Refusing to execute daily SPY trade for unapproved portfolio '{owner_id}'. "
+            f"Allowed models: {sorted(ALLOWED_DAILY_SPY_MODELS)}"
+        )
 
     portfolio = await portfolio_getter(owner_id)
     current_cash = portfolio.cash_balance
@@ -380,11 +400,13 @@ from execution.daily_live_trading import (  # noqa: E402
 )
 
 __all__ = [
+    "ALLOWED_DAILY_SPY_MODELS",
     "DEFAULT_DAILY_CLOSE_SLIPPAGE_BPS",
     "DEFAULT_DAILY_SLIPPAGE_BPS",
     "INITIAL_PORTFOLIO_CASH",
     "SYS_DAILY_SPY_CLOSE_OWNER_PREFIX",
     "SYS_DAILY_SPY_OWNER_PREFIX",
+    "assert_allowed_daily_spy_owner",
     "compute_daily_trade_execution",
     "execute_daily_close_exits",
     "execute_daily_moo_entries",
@@ -393,6 +415,8 @@ __all__ = [
     "execute_system_daily_trade",
     "get_daily_session_open_price",
     "get_or_create_system_portfolio",
+    "is_allowed_daily_spy_model",
+    "is_allowed_daily_spy_owner",
     "place_daily_target_limit_orders",
     "reconcile_daily_open_trades",
 ]

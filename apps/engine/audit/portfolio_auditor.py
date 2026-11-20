@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from core.config import logger
+from core.config import logger, resolve_daily_spy_owners
 from core.db import get_supabase_client
 from execution.daily_bond_trading import (
     SYS_DAILY_TLT_CLOSE_OWNER_PREFIX,
@@ -23,7 +23,6 @@ from execution.daily_bond_trading import (
 from execution.daily_trading import (
     INITIAL_PORTFOLIO_CASH,
     SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
-    SYS_DAILY_SPY_OWNER_PREFIX,
     execute_system_daily_close_trade,
     execute_system_daily_trade,
 )
@@ -600,15 +599,14 @@ async def audit_system_portfolios(
         for pred in preds_res.data or []:
             model_name = str(pred.get("model_name", "unknown"))
             exp_ret_raw = pred.get("expected_return_pct")
-            target_pct = abs(float(exp_ret_raw)) if exp_ret_raw is not None else 0.0
             ticker = str(pred.get("ticker", "SPY")).upper()
 
             if ticker == "TLT":
                 target_owners = [f"{SYS_DAILY_TLT_CLOSE_OWNER_PREFIX}{model_name}"]
+            elif ticker == "SPY":
+                target_owners = resolve_daily_spy_owners(model_name, exp_ret_raw)
             else:
-                target_owners = [f"{SYS_DAILY_SPY_CLOSE_OWNER_PREFIX}{model_name}"]
-                if "jev" not in model_name.lower() and target_pct > 0.0:
-                    target_owners.append(f"{SYS_DAILY_SPY_OWNER_PREFIX}{model_name}")
+                continue
 
             for owner_id in target_owners:
                 p = port_by_owner.get(owner_id)

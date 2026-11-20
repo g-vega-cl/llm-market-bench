@@ -253,6 +253,56 @@ def is_archived_portfolio(owner_id: str | None) -> bool:
     return str(owner_id).strip() in ARCHIVED_PORTFOLIO_OWNER_IDS
 
 
+# Canonical Daily SPY system portfolio allowlist (derived from models.json; excludes OPENAI_MODEL / gpt-6-luna).
+SYS_DAILY_SPY_OWNER_PREFIX = "sys-daily-spy-"
+SYS_DAILY_SPY_CLOSE_OWNER_PREFIX = "sys-daily-spy-close-"
+ALLOWED_DAILY_SPY_MODELS: frozenset[str] = frozenset({DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, JEV_MODEL})
+
+
+def is_allowed_daily_spy_model(model_name: str | None) -> bool:
+    """Return True when model_name belongs to the active Daily SPY predictor arena."""
+    if not isinstance(model_name, str) or not model_name:
+        return False
+    return model_name in ALLOWED_DAILY_SPY_MODELS
+
+
+def is_allowed_daily_spy_owner(owner_id: str | None) -> bool:
+    """Return True when owner_id is an active, canonical Daily SPY system portfolio."""
+    if not isinstance(owner_id, str) or not owner_id or owner_id != owner_id.strip():
+        return False
+    if is_archived_portfolio(owner_id):
+        return False
+    if owner_id.startswith(SYS_DAILY_SPY_CLOSE_OWNER_PREFIX):
+        model_name = owner_id.removeprefix(SYS_DAILY_SPY_CLOSE_OWNER_PREFIX)
+        return is_allowed_daily_spy_model(model_name)
+    if owner_id.startswith(SYS_DAILY_SPY_OWNER_PREFIX):
+        model_name = owner_id.removeprefix(SYS_DAILY_SPY_OWNER_PREFIX)
+        return is_allowed_daily_spy_model(model_name) and "jev" not in model_name.lower()
+    return False
+
+
+def assert_allowed_daily_spy_owner(owner_id: str | None) -> None:
+    """Reject creating or initializing unapproved or archived sys-daily-spy* portfolios."""
+    raw = "" if owner_id is None else str(owner_id)
+    if raw.strip().startswith("sys-daily-spy") and not is_allowed_daily_spy_owner(owner_id):
+        raise ValueError(
+            f"Refusing to create or initialize unapproved daily SPY portfolio '{raw}'. "
+            f"Allowed models: {sorted(ALLOWED_DAILY_SPY_MODELS)}"
+        )
+
+
+def resolve_daily_spy_owners(model_name: str | None, expected_return_pct: float | None = 0.0) -> list[str]:
+    """Return the canonical active sys-daily-spy* owner IDs for an allowed Daily SPY model."""
+    clean_model = str(model_name or "").strip()
+    if not is_allowed_daily_spy_model(clean_model):
+        return []
+    target_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
+    candidates = [f"{SYS_DAILY_SPY_CLOSE_OWNER_PREFIX}{clean_model}"]
+    if target_pct > 0.0:
+        candidates.append(f"{SYS_DAILY_SPY_OWNER_PREFIX}{clean_model}")
+    return [oid for oid in candidates if is_allowed_daily_spy_owner(oid)]
+
+
 def is_verifier_enabled_for_owner(owner_id: str | None) -> bool:
     """Return True if second-step skeptical LLM verification is enabled for this portfolio owner."""
     if not owner_id:

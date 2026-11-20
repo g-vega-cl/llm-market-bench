@@ -705,7 +705,7 @@ async def test_audit_auto_heal_anchors_to_initial_capital_when_no_prior_history(
     target_date = "2026-10-27"
     pred = {
         "id": "pred-jev-1",
-        "model_name": "jev-four-regime-champion",
+        "model_name": "~typesafe/jev-latest",
         "predicted_direction": "UP",
         "expected_return_pct": 0.0,
         "target_date": target_date,
@@ -741,7 +741,7 @@ async def test_audit_auto_heal_anchors_to_initial_capital_when_no_prior_history(
                 data=[
                     {
                         "id": str(uuid4()),
-                        "owner_id": "sys-daily-spy-close-jev-four-regime-champion",
+                        "owner_id": "sys-daily-spy-close-~typesafe/jev-latest",
                         "cash_balance": 10025.21,
                         "total_equity": 10025.21,
                     },
@@ -770,7 +770,7 @@ async def test_audit_auto_heal_anchors_to_initial_capital_when_no_prior_history(
         )
 
     assert report["status"] == "healed"
-    healed = [h for h in report["healed"] if h["owner_id"] == "sys-daily-spy-close-jev-four-regime-champion"][0]
+    healed = [h for h in report["healed"] if h["owner_id"] == "sys-daily-spy-close-~typesafe/jev-latest"][0]
 
     # Starting from $10,000, 13 shares bought at 767.54, sold at 769.51 -> +$25.51 profit.
     # Total equity MUST be ~10,025.51, NOT 10,050.72 (which was 10,025.21 + 25.51).
@@ -828,7 +828,7 @@ def _create_desynced_equity_table_router(pred, trades, performance_updates):
             "portfolios": [
                 {
                     "id": "p-jev",
-                    "owner_id": "sys-daily-spy-close-jev-four-regime-champion",
+                    "owner_id": "sys-daily-spy-close-~typesafe/jev-latest",
                     "cash_balance": 10050.72,
                     "total_equity": 10050.72,
                 }
@@ -853,7 +853,7 @@ async def test_audit_detects_and_heals_desynced_performance_equity(mock_supabase
     target_date = "2026-10-28"
     pred = {
         "id": "pred-jev-2",
-        "model_name": "jev-four-regime-champion",
+        "model_name": "~typesafe/jev-latest",
         "predicted_direction": "UP",
         "expected_return_pct": 0.0,
         "target_date": target_date,
@@ -973,3 +973,80 @@ class TestPicksPortfolioAudit:
         assert flagged == []
         mock_exit.assert_awaited_once()
         assert mock_exit.await_args.args[1] == {"NVDA": 101.0}
+
+
+@pytest.mark.asyncio
+async def test_audit_skips_archived_and_non_spy_daily_portfolios(mock_supabase):
+    """Verify audit_system_portfolios never mutates archived or non-SPY sys-daily-spy* portfolios."""
+    from audit.portfolio_auditor import audit_system_portfolios
+
+    target_date = "2026-11-19"
+    preds = [
+        {
+            "id": "p-arch",
+            "model_name": "jev-four-regime-champion",
+            "ticker": "SPY",
+            "predicted_direction": "UP",
+            "expected_return_pct": 0.0,
+            "target_date": target_date,
+            "open_price": 500.0,
+            "high_price": 502.0,
+            "low_price": 499.0,
+            "close_price": 501.0,
+        },
+        {
+            "id": "p-luna-spy",
+            "model_name": "gpt-6-luna",
+            "ticker": "SPY",
+            "predicted_direction": "UP",
+            "expected_return_pct": 0.4,
+            "target_date": target_date,
+            "open_price": 500.0,
+            "high_price": 502.0,
+            "low_price": 499.0,
+            "close_price": 501.0,
+        },
+    ]
+
+    def table_router(table_name):
+        mock_t = MagicMock()
+        mock_t.select.return_value = mock_t
+        mock_t.eq.return_value = mock_t
+        mock_t.like.return_value = mock_t
+        mock_t.gte.return_value = mock_t
+        mock_t.lte.return_value = mock_t
+        if table_name == "daily_predictions":
+            mock_t.execute.return_value = MagicMock(data=preds)
+        elif table_name == "portfolios":
+            mock_t.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": "arch-1",
+                        "owner_id": "sys-daily-spy-close-jev-four-regime-champion",
+                        "cash_balance": 9505.61,
+                        "total_equity": 9505.61,
+                    },
+                    {
+                        "id": "luna-1",
+                        "owner_id": "sys-daily-spy-gpt-6-luna",
+                        "cash_balance": 10000.0,
+                        "total_equity": 10000.0,
+                    },
+                ]
+            )
+        else:
+            mock_t.execute.return_value = MagicMock(data=[])
+        return mock_t
+
+    mock_supabase.table.side_effect = table_router
+
+    report = await audit_system_portfolios(
+        target_date=target_date,
+        lookback_days=1,
+        auto_heal=True,
+        supabase_client=mock_supabase,
+    )
+
+    assert report["status"] == "clean"
+    assert report["anomalies"] == []
+    assert report["healed"] == []

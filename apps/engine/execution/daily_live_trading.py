@@ -13,16 +13,112 @@ from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-import execution.daily_trading as dt
-from core.config import logger
+from core.config import (
+    SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
+    SYS_DAILY_SPY_OWNER_PREFIX,
+    is_allowed_daily_spy_model,
+    is_allowed_daily_spy_owner,
+    logger,
+    resolve_daily_spy_owners,
+)
 from execution.daily_reconciliation import (
     get_daily_session_open_price,
     reconcile_daily_open_trades,
 )
-from execution.daily_trading import (
-    SYS_DAILY_SPY_CLOSE_OWNER_PREFIX,
-    SYS_DAILY_SPY_OWNER_PREFIX,
-)
+
+
+async def _execute_single_moo_portfolio_entry(
+    client: Any,
+    broker: Any,
+    owner_id: str,
+    ticker: str,
+    direction: str,
+    spy_price: float,
+    target_date_str: str,
+    dry_run: bool,
+) -> dict[str, Any] | None:
+    """Execute one idempotent MOO entry for a single allowed Daily SPY portfolio."""
+    if dry_run:
+        port_res = client.table("portfolios").select("id, cash_balance").eq("owner_id", owner_id).limit(1).execute()
+        if not port_res.data:
+            return None
+        portfolio_id = port_res.data[0]["id"]
+        current_cash = float(port_res.data[0].get("cash_balance") or 0.0)
+    else:
+        import execution.daily_trading as dt
+
+        portfolio = await dt.get_or_create_system_portfolio(owner_id)
+        portfolio_id = portfolio.id
+        current_cash = portfolio.cash_balance
+
+    # Idempotency check: verify if entry trade already exists for today
+    existing_res = (
+        client.table("trades")
+        .select("id")
+        .eq("portfolio_id", str(portfolio_id))
+        .gte("executed_at", f"{target_date_str}T00:00:00Z")
+        .lte("executed_at", f"{target_date_str}T23:59:59Z")
+        .execute()
+    )
+    if existing_res.data:
+        logger.info(f"Entry trade already exists for {owner_id} on {target_date_str}. Skipping re-entry.")
+        return None
+
+    shares = int(current_cash // spy_price) if spy_price > 0 else 0
+    if shares <= 0:
+        logger.info(f"Insufficient cash (${current_cash:.2f}) for {owner_id} to buy SPY @ ${spy_price:.2f}.")
+        return None
+
+    trade_id = str(uuid4())
+    signal = "BUY" if direction == "UP" else "SHORT"
+    entry_trade = {
+        "id": trade_id,
+        "portfolio_id": str(portfolio_id),
+        "ticker": ticker,
+        "signal": signal,
+        "quantity": shares,
+        "price": spy_price,
+        "total_cost": shares * spy_price,
+        "executed_at": f"{target_date_str}T13:30:00Z",
+    }
+
+    if not dry_run:
+        client.table("trades").insert(entry_trade).execute()
+        if direction == "UP":
+            client.table("portfolio_positions").upsert(
+                {
+                    "portfolio_id": str(portfolio_id),
+                    "ticker": ticker,
+                    "quantity": shares,
+                    "average_cost_basis": spy_price,
+                    "last_updated_at": datetime.now(UTC).isoformat(),
+                },
+                on_conflict="portfolio_id,ticker",
+            ).execute()
+            remaining_cash = max(0.0, current_cash - (shares * spy_price))
+            client.table("portfolios").update(
+                {
+                    "cash_balance": remaining_cash,
+                    "total_equity": current_cash,
+                    "last_updated_at": datetime.now(UTC).isoformat(),
+                }
+            ).eq("id", str(portfolio_id)).execute()
+
+            try:
+                from alpaca.trading.enums import TimeInForce
+
+                await broker.submit_market_order(
+                    trade_id=UUID(trade_id),
+                    ticker=ticker,
+                    quantity=shares,
+                    signal="BUY",
+                    agent_id=owner_id,
+                    time_in_force=TimeInForce.OPG,
+                )
+            except Exception as e:
+                logger.warning(f"Alpaca MOO order failed for {owner_id}: {e}")
+
+    return {"owner_id": owner_id, "signal": signal, "shares": shares, "price": spy_price}
 
 
 async def execute_daily_moo_entries(target_date: str | None = None, dry_run: bool = False) -> dict[str, Any]:
@@ -35,6 +131,8 @@ async def execute_daily_moo_entries(target_date: str | None = None, dry_run: boo
     - For DOWN predictions:
       - Logs virtual SHORT trade in trades table.
     """
+    import execution.daily_trading as dt
+
     client = dt.get_supabase_client()
     target_date_str = target_date or date.today().isoformat()
 
@@ -65,112 +163,40 @@ async def execute_daily_moo_entries(target_date: str | None = None, dry_run: boo
         ticker = str(pred.get("ticker", "SPY")).strip().upper()
         if ticker != "SPY":
             continue
-        model_name = str(pred.get("model_name", "unknown"))
+        model_name = str(pred.get("model_name", "unknown")).strip()
+        if not is_allowed_daily_spy_model(model_name):
+            logger.warning(
+                f"Skipping MOO entry for {model_name} on {target_date_str}: model is not in ALLOWED_DAILY_SPY_MODELS."
+            )
+            continue
         direction = str(pred.get("predicted_direction", "UP")).strip().upper()
         if direction == "HOLD":
             logger.info(f"Skipping MOO entry for {model_name} on {target_date_str}: Prediction is HOLD.")
             continue
         expected_ret_raw = pred.get("expected_return_pct")
-        expected_return_pct = abs(float(expected_ret_raw)) if expected_ret_raw is not None else 0.0
-
-        target_portfolios = [f"{SYS_DAILY_SPY_CLOSE_OWNER_PREFIX}{model_name}"]
-        if "jev" not in model_name.lower() and expected_return_pct > 0.0:
-            target_portfolios.append(f"{SYS_DAILY_SPY_OWNER_PREFIX}{model_name}")
+        target_portfolios = resolve_daily_spy_owners(model_name, expected_ret_raw)
 
         for owner_id in target_portfolios:
-            portfolio = await dt.get_or_create_system_portfolio(owner_id)
-            current_cash = portfolio.cash_balance
-
-            # Idempotency check: verify if entry trade already exists for today
-            existing_res = (
-                client.table("trades")
-                .select("id")
-                .eq("portfolio_id", str(portfolio.id))
-                .gte("executed_at", f"{target_date_str}T00:00:00Z")
-                .lte("executed_at", f"{target_date_str}T23:59:59Z")
-                .execute()
+            entry = await _execute_single_moo_portfolio_entry(
+                client=client,
+                broker=broker,
+                owner_id=owner_id,
+                ticker=ticker,
+                direction=direction,
+                spy_price=spy_price,
+                target_date_str=target_date_str,
+                dry_run=dry_run,
             )
-            if existing_res.data:
-                logger.info(f"Entry trade already exists for {owner_id} on {target_date_str}. Skipping re-entry.")
-                continue
-
-            shares = int(current_cash // spy_price) if spy_price > 0 else 0
-            if shares <= 0:
-                logger.info(f"Insufficient cash (${current_cash:.2f}) for {owner_id} to buy SPY @ ${spy_price:.2f}.")
-                continue
-
-            if direction == "UP":
-                trade_id = str(uuid4())
-                entry_trade = {
-                    "id": trade_id,
-                    "portfolio_id": str(portfolio.id),
-                    "ticker": ticker,
-                    "signal": "BUY",
-                    "quantity": shares,
-                    "price": spy_price,
-                    "total_cost": shares * spy_price,
-                    "executed_at": f"{target_date_str}T13:30:00Z",
-                }
-                if not dry_run:
-                    client.table("trades").insert(entry_trade).execute()
-                    client.table("portfolio_positions").upsert(
-                        {
-                            "portfolio_id": str(portfolio.id),
-                            "ticker": ticker,
-                            "quantity": shares,
-                            "average_cost_basis": spy_price,
-                            "last_updated_at": datetime.now(UTC).isoformat(),
-                        },
-                        on_conflict="portfolio_id,ticker",
-                    ).execute()
-                    remaining_cash = max(0.0, current_cash - (shares * spy_price))
-                    client.table("portfolios").update(
-                        {
-                            "cash_balance": remaining_cash,
-                            "total_equity": current_cash,
-                            "last_updated_at": datetime.now(UTC).isoformat(),
-                        }
-                    ).eq("id", str(portfolio.id)).execute()
-
-                    # Submit Alpaca OPG Market Order
-                    try:
-                        from alpaca.trading.enums import TimeInForce
-
-                        await broker.submit_market_order(
-                            trade_id=UUID(trade_id),
-                            ticker=ticker,
-                            quantity=shares,
-                            signal="BUY",
-                            agent_id=owner_id,
-                            time_in_force=TimeInForce.OPG,
-                        )
-                    except Exception as e:
-                        logger.warning(f"Alpaca MOO order failed for {owner_id}: {e}")
-
-                entries.append({"owner_id": owner_id, "signal": "BUY", "shares": shares, "price": spy_price})
-
-            else:  # DOWN
-                trade_id = str(uuid4())
-                entry_trade = {
-                    "id": trade_id,
-                    "portfolio_id": str(portfolio.id),
-                    "ticker": ticker,
-                    "signal": "SHORT",
-                    "quantity": shares,
-                    "price": spy_price,
-                    "total_cost": shares * spy_price,
-                    "executed_at": f"{target_date_str}T13:30:00Z",
-                }
-                if not dry_run:
-                    client.table("trades").insert(entry_trade).execute()
-
-                entries.append({"owner_id": owner_id, "signal": "SHORT", "shares": shares, "price": spy_price})
+            if entry is not None:
+                entries.append(entry)
 
     return {"status": "success", "entries": entries}
 
 
 async def place_daily_target_limit_orders(target_date: str | None = None, dry_run: bool = False) -> dict[str, Any]:
     """Place Alpaca limit sell order at profit target price for target-exit portfolios post-open (~9:35 AM)."""
+    import execution.daily_trading as dt
+
     client = dt.get_supabase_client()
     target_date_str = target_date or date.today().isoformat()
 
@@ -182,7 +208,10 @@ async def place_daily_target_limit_orders(target_date: str | None = None, dry_ru
         client.table("portfolios").select("id, owner_id").like("owner_id", f"{SYS_DAILY_SPY_OWNER_PREFIX}%").execute()
     )
     portfolios = [
-        p for p in (portfolios_res.data or []) if not p.get("owner_id", "").startswith(SYS_DAILY_SPY_CLOSE_OWNER_PREFIX)
+        p
+        for p in (portfolios_res.data or [])
+        if not p.get("owner_id", "").startswith(SYS_DAILY_SPY_CLOSE_OWNER_PREFIX)
+        and is_allowed_daily_spy_owner(p.get("owner_id"))
     ]
 
     from execution.alpaca_broker import AlpacaBroker
@@ -192,7 +221,7 @@ async def place_daily_target_limit_orders(target_date: str | None = None, dry_ru
 
     for p in portfolios:
         owner_id = p["owner_id"]
-        model_name = owner_id.replace(SYS_DAILY_SPY_OWNER_PREFIX, "")
+        model_name = owner_id.removeprefix(SYS_DAILY_SPY_OWNER_PREFIX)
 
         pos_res = (
             client.table("portfolio_positions")
@@ -213,6 +242,7 @@ async def place_daily_target_limit_orders(target_date: str | None = None, dry_ru
             client.table("daily_predictions")
             .select("expected_return_pct")
             .eq("target_date", target_date_str)
+            .eq("ticker", "SPY")
             .eq("model_name", model_name)
             .execute()
         )
@@ -255,6 +285,8 @@ async def execute_daily_close_exits(target_date: str | None = None, dry_run: boo
 
     Guarantees realized PnL is computed against the beginning-of-day session open price.
     """
+    import execution.daily_trading as dt
+
     client = dt.get_supabase_client()
     target_date_str = target_date or date.today().isoformat()
 
@@ -267,7 +299,7 @@ async def execute_daily_close_exits(target_date: str | None = None, dry_run: boo
         .like("owner_id", f"{SYS_DAILY_SPY_OWNER_PREFIX}%")
         .execute()
     )
-    portfolios = portfolios_res.data or []
+    portfolios = [p for p in (portfolios_res.data or []) if is_allowed_daily_spy_owner(p.get("owner_id"))]
 
     from execution.market_data import MarketDataManager
 

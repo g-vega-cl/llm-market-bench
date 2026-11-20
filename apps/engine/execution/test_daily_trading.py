@@ -460,3 +460,156 @@ async def test_execute_daily_spy_trade_hold_cleans_up_existing_same_day_trades()
     assert any(perf.get("total_equity") == 10000.0 for perf in upserted_performance), (
         "Performance record must reflect reverted cash"
     )
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_system_portfolio_blocks_unapproved_daily_spy_owners():
+    """Verify non-SPY models (e.g. gpt-6-luna) and archived SPY owners cannot be created."""
+    from execution.daily_trading import get_or_create_system_portfolio
+    from execution.system_portfolios import get_or_create_system_portfolio as sp_get_or_create
+
+    mock_client = MagicMock()
+    with (
+        patch("execution.daily_trading.get_supabase_client", return_value=mock_client),
+        patch("execution.system_portfolios.get_supabase_client", return_value=mock_client),
+        patch("execution.portfolio.Portfolio.initialize", new_callable=AsyncMock),
+    ):
+        for bad_owner in (
+            "sys-daily-spy-gpt-6-luna",
+            "sys-daily-spy-close-gpt-6-luna",
+            "sys-daily-spy-~typesafe/jev-latest",
+            "sys-daily-spy-MiniMax-M3",
+            "sys-daily-spy-close-unknown-model",
+        ):
+            with pytest.raises(ValueError, match="daily SPY"):
+                await get_or_create_system_portfolio(bad_owner)
+            with pytest.raises(ValueError, match="daily SPY"):
+                await sp_get_or_create(bad_owner)
+
+    mock_client.table.assert_not_called()
+
+
+def test_is_allowed_daily_spy_owner_allows_only_active_spy_arena_models():
+    """Verify canonical allowlist accepts active SPY owners and rejects non-SPY/archived owners."""
+    from execution.daily_trading import is_allowed_daily_spy_model, is_allowed_daily_spy_owner
+
+    assert is_allowed_daily_spy_model("deepseek-flash") is True
+    assert is_allowed_daily_spy_model("MiniMax-M3.1-Flash") is True
+    assert is_allowed_daily_spy_model("~typesafe/jev-latest") is True
+    assert is_allowed_daily_spy_model("gpt-6-luna") is False
+    assert is_allowed_daily_spy_model("laya-local-autoresearched") is False
+
+    for good_owner in (
+        "sys-daily-spy-deepseek-flash",
+        "sys-daily-spy-close-deepseek-flash",
+        "sys-daily-spy-MiniMax-M3.1-Flash",
+        "sys-daily-spy-close-MiniMax-M3.1-Flash",
+        "sys-daily-spy-close-~typesafe/jev-latest",
+    ):
+        assert is_allowed_daily_spy_owner(good_owner) is True, good_owner
+
+    for bad_owner in (
+        "sys-daily-spy-gpt-6-luna",
+        "sys-daily-spy-close-gpt-6-luna",
+        "sys-daily-spy-~typesafe/jev-latest",
+        "sys-daily-spy-MiniMax-M3",
+        "sys-daily-spy-close-deepseek-v4-flash",
+        "sys-daily-tlt-close-gpt-6-luna",
+        "",
+        None,
+    ):
+        assert is_allowed_daily_spy_owner(bad_owner) is False, bad_owner
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_system_portfolio_still_allows_non_spy_portfolios():
+    """Verify the SPY guard does not block TLT or Picks system portfolios (e.g. gpt-6-luna)."""
+    from execution.system_portfolios import get_or_create_system_portfolio as sp_get_or_create
+
+    mock_client = MagicMock()
+    uid = str(uuid4())
+    mock_client.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{"id": uid}])
+
+    with (
+        patch("execution.system_portfolios.get_supabase_client", return_value=mock_client),
+        patch("execution.portfolio.Portfolio.initialize", new_callable=AsyncMock),
+    ):
+        p = await sp_get_or_create("sys-daily-tlt-close-gpt-6-luna")
+
+    assert str(p.id) == uid
+    mock_client.table.return_value.insert.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_portfolio_initialize_and_whitespace_guard_block_unapproved_spy_owners():
+    """Verify Portfolio.initialize() and whitespace-padded/legacy names are blocked for unapproved SPY owners."""
+    from execution.daily_trading import assert_allowed_daily_spy_owner
+    from execution.portfolio import Portfolio
+
+    for bad_owner in (
+        " sys-daily-spy-gpt-6-luna",
+        " sys-daily-spy-deepseek-flash",
+        "sys-daily-spy- deepseek-flash",
+        "sys-daily-spy-deepseek-flash ",
+        "sys-daily-spy",
+        "sys-daily-spy2",
+        "sys-daily-spy-gpt-6-luna ",
+    ):
+        with pytest.raises(ValueError, match="daily SPY"):
+            assert_allowed_daily_spy_owner(bad_owner)
+
+    mock_client = MagicMock()
+    mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+    with patch("execution.portfolio.get_supabase_client", return_value=mock_client):
+        p = Portfolio("sys-daily-spy-gpt-6-luna")
+        with pytest.raises(ValueError, match="daily SPY"):
+            await p.initialize()
+
+    mock_client.table.return_value.insert.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_daily_spy_trade_rejects_unapproved_model_even_with_custom_getter():
+    """Verify execute_daily_spy_trade enforces allowlist even when a custom portfolio_getter is passed."""
+    pred = {
+        "id": str(uuid4()),
+        "model_name": "gpt-6-luna",
+        "target_date": "2026-11-20",
+        "ticker": "SPY",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.4,
+    }
+    intraday = {"open_price": 500.0, "high_price": 502.0, "low_price": 499.0, "close_price": 501.0}
+    custom_getter = AsyncMock()
+
+    with pytest.raises(ValueError, match="unapproved"):
+        await execute_daily_spy_trade(
+            prediction=pred,
+            intraday_data=intraday,
+            owner_prefix=SYS_DAILY_SPY_OWNER_PREFIX,
+            exit_on_target=True,
+            slippage_bps=5.0,
+            get_supabase_client_fn=MagicMock(),
+            get_or_create_system_portfolio_fn=custom_getter,
+        )
+    custom_getter.assert_not_called()
+
+    archived_pred = {
+        "id": str(uuid4()),
+        "model_name": "MiniMax-M3",
+        "target_date": "2026-11-20",
+        "ticker": "SPY",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.4,
+    }
+    with pytest.raises(ValueError, match="unapproved"):
+        await execute_daily_spy_trade(
+            prediction=archived_pred,
+            intraday_data=intraday,
+            owner_prefix=SYS_DAILY_SPY_OWNER_PREFIX,
+            exit_on_target=True,
+            slippage_bps=5.0,
+            get_supabase_client_fn=MagicMock(),
+            get_or_create_system_portfolio_fn=custom_getter,
+        )
+    custom_getter.assert_not_called()

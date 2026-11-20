@@ -156,3 +156,35 @@ async def test_reconcile_daily_open_trades_updates_trade_and_positions(mock_supa
     assert updated_rows["trades"]["price"] == actual_open
     assert abs(updated_rows["trades"]["total_cost"] - (shares * actual_open)) < 0.01
     assert updated_rows["portfolio_positions"]["average_cost_basis"] == actual_open
+
+
+@pytest.mark.asyncio
+async def test_reconcile_daily_open_trades_skips_unapproved_and_archived_spy_owners(mock_supabase):
+    """Verify reconcile_daily_open_trades ignores non-SPY models and archived SPY portfolios."""
+    from execution.daily_reconciliation import reconcile_daily_open_trades
+
+    target_date = "2026-11-20"
+    mock_portfolios = [
+        {"id": str(uuid4()), "owner_id": "sys-daily-spy-gpt-6-luna", "cash_balance": 10000.0},
+        {"id": str(uuid4()), "owner_id": "sys-daily-spy-MiniMax-M3", "cash_balance": 10000.0},
+    ]
+
+    def table_router(table_name):
+        t = MagicMock()
+        t.select.return_value = t
+        t.eq.return_value = t
+        t.like.return_value = t
+        if table_name == "portfolios":
+            t.execute.return_value = MagicMock(data=mock_portfolios)
+        elif table_name == "daily_predictions":
+            t.execute.return_value = MagicMock(data=[{"open_price": 500.0}])
+        else:
+            t.execute.return_value = MagicMock(data=[])
+        return t
+
+    mock_supabase.table.side_effect = table_router
+
+    with patch("execution.daily_trading.get_supabase_client", return_value=mock_supabase):
+        result = await reconcile_daily_open_trades(target_date=target_date)
+
+    assert result == {"status": "skipped", "reason": "No daily SPY portfolios"}

@@ -8,7 +8,7 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from core.config import logger
+from core.config import ALLOWED_DAILY_SPY_MODELS, is_allowed_daily_spy_owner, logger
 from core.db import get_supabase_client
 from execution.daily_trading import (
     DEFAULT_DAILY_CLOSE_SLIPPAGE_BPS,
@@ -19,6 +19,10 @@ from execution.daily_trading import (
 )
 
 START_DATE = "2026-08-21"
+_BACKFILL_COLUMNS = (
+    "id, model_name, target_date, ticker, predicted_direction, expected_return_pct, "
+    "open_price, high_price, low_price, close_price, intraday_hit"
+)
 
 
 async def backfill_daily_close_portfolios(
@@ -28,12 +32,13 @@ async def backfill_daily_close_portfolios(
     """Replay historical evaluated daily predictions into close-exit portfolios."""
     client = get_supabase_client()
 
-    # Query all evaluated SPY predictions on or after start_date
+    # Query evaluated SPY predictions for active SPY arena models on or after start_date
     res = (
         client.table("daily_predictions")
-        .select("*")
+        .select(_BACKFILL_COLUMNS)
         .eq("ticker", "SPY")
         .eq("status", "evaluated")
+        .in_("model_name", sorted(ALLOWED_DAILY_SPY_MODELS))
         .gte("target_date", start_date)
         .order("target_date", desc=False)
         .execute()
@@ -43,8 +48,15 @@ async def backfill_daily_close_portfolios(
         logger.info(f"No evaluated predictions found on or after {start_date}")
         return {"status": "skipped", "reason": "No predictions"}
 
-    # Group by model
-    models = sorted(list({p["model_name"] for p in predictions if p.get("model_name")}))
+    # Group by model, keeping only active Daily SPY arena models whose close owner is not archived
+    models = sorted(
+        {
+            str(p["model_name"]).strip()
+            for p in predictions
+            if p.get("model_name")
+            and is_allowed_daily_spy_owner(f"{SYS_DAILY_SPY_CLOSE_OWNER_PREFIX}{str(p['model_name']).strip()}")
+        }
+    )
     results = {}
 
     for model in models:

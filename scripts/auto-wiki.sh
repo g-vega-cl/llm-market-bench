@@ -10,11 +10,12 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 DIFF_FILE="$(mktemp /tmp/auto-wiki-diff.XXXXXX)"
+WRITTEN_LIST="$(mktemp /tmp/auto-wiki-written.XXXXXX)"
 PYTHON="${REPO_ROOT}/apps/engine/.venv/bin/python3"
 SCRIPT="${REPO_ROOT}/apps/engine/auto_wiki.py"
 
 cleanup() {
-    rm -f "$DIFF_FILE"
+    rm -f "$DIFF_FILE" "$WRITTEN_LIST"
 }
 trap cleanup EXIT
 
@@ -47,7 +48,7 @@ fi
 echo "[auto-wiki] analyzing staged changes..."
 
 # Run the auto-wiki script — BLOCKING
-"$PYTHON" "$SCRIPT" --diff-file "$DIFF_FILE" || {
+"$PYTHON" "$SCRIPT" --diff-file "$DIFF_FILE" --written-files-out "$WRITTEN_LIST" || {
     echo "[auto-wiki] documentation generation failed (commit BLOCKED)"
     exit 1
 }
@@ -57,15 +58,18 @@ if git diff --name-only -- wiki/entities/pipeline.md | grep -q . || git diff --c
     COMPILE_SCRIPT="${REPO_ROOT}/apps/engine/scripts/compile_how_it_works.py"
     if [ -f "$COMPILE_SCRIPT" ]; then
         echo "[auto-wiki] compiling How It Works page..."
-        "$PYTHON" "$COMPILE_SCRIPT" || echo "[auto-wiki] WARNING: How It Works compilation failed"
+        if "$PYTHON" "$COMPILE_SCRIPT"; then
+            echo "apps/web/src/config/how-it-works.json" >> "$WRITTEN_LIST"
+        else
+            echo "[auto-wiki] WARNING: How It Works compilation failed"
+        fi
     fi
 fi
 
-# Re-stage modified and newly created wiki/compiled files so they're included in the commit
-AUTO_WIKI_FILES="$( { git diff --name-only -- wiki/ apps/web/src/config/how-it-works.json; git ls-files --others --exclude-standard -- wiki/; } | sort -u )"
-if [ -n "$AUTO_WIKI_FILES" ]; then
+# Re-stage only the files modified/created/deleted by auto-wiki (never sweep unrelated concurrent wiki edits)
+if [ -s "$WRITTEN_LIST" ]; then
     echo "[auto-wiki] staging updated files..."
     while IFS= read -r file; do
         [ -n "$file" ] && git add -- "$file"
-    done <<< "$AUTO_WIKI_FILES"
+    done < <(sort -u "$WRITTEN_LIST")
 fi

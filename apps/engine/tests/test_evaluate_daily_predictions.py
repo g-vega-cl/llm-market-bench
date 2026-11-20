@@ -510,3 +510,28 @@ async def test_evaluate_daily_predictions_routes_tlt_to_bond_close_trade():
         mock_bond_trade.assert_called_once()
         mock_spy_target.assert_not_called()
         mock_spy_close.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_evaluate_daily_predictions_backfill_skips_non_spy_arena_models():
+    """Verify backfill skips non-SPY arena models (e.g. laya-local-autoresearched, gpt-6-luna) cleanly."""
+    from tasks.evaluate_daily_predictions import _backfill_daily_prediction_trades
+
+    with (
+        patch("execution.daily_trading.execute_system_daily_trade", new_callable=AsyncMock) as mock_spy_target,
+        patch("execution.daily_trading.execute_system_daily_close_trade", new_callable=AsyncMock) as mock_spy_close,
+    ):
+        for model_name in ("laya-local-autoresearched", "gpt-6-luna"):
+            await _backfill_daily_prediction_trades(
+                pred={"id": "p-1", "model_name": model_name, "ticker": "SPY", "predicted_direction": "UP"},
+                ticker="SPY",
+                expected_return_pct=0.25,
+                open_p=500.0,
+                high_p=502.0,
+                low_p=499.0,
+                close_p=501.0,
+                intraday_hit=True,
+            )
+
+        mock_spy_target.assert_not_called()
+        mock_spy_close.assert_not_called()

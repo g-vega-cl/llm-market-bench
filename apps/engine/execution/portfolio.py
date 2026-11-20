@@ -85,6 +85,9 @@ class Portfolio:
             # Load positions
             self._await_load_positions(supabase)
         else:
+            from core.config import assert_allowed_daily_spy_owner
+
+            assert_allowed_daily_spy_owner(self.owner_id)
             # Create new portfolio with full initial metrics
             self.sma = self.cash_balance
             self.calculate_reg_t_metrics({})

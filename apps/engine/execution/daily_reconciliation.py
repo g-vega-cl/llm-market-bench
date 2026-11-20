@@ -7,10 +7,7 @@ beginning-of-day (9:30 AM ET) regular session open price.
 from datetime import UTC, date, datetime
 from typing import Any
 
-from core.config import logger
-
-SYS_DAILY_SPY_CLOSE_OWNER_PREFIX = "sys-daily-spy-close-"
-SYS_DAILY_SPY_OWNER_PREFIX = "sys-daily-spy-"
+from core.config import is_allowed_daily_spy_owner, logger
 
 
 def _get_client(client: Any | None = None) -> Any:
@@ -114,7 +111,7 @@ async def reconcile_daily_open_trades(
     portfolios_res = (
         client.table("portfolios").select("id, owner_id, cash_balance").like("owner_id", "sys-daily-spy%").execute()
     )
-    portfolios = portfolios_res.data or []
+    portfolios = [p for p in (portfolios_res.data or []) if is_allowed_daily_spy_owner(p.get("owner_id"))]
     if not portfolios:
         return {"status": "skipped", "reason": "No daily SPY portfolios"}
 

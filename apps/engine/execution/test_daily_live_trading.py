@@ -54,7 +54,7 @@ async def test_execute_daily_moo_entries_up_and_down(mock_supabase):
     }
     pred_down = {
         "id": "pred-2",
-        "model_name": "minimax-m3",
+        "model_name": "MiniMax-M3.1-Flash",
         "predicted_direction": "DOWN",
         "expected_return_pct": -0.60,
         "target_date": target_date,
@@ -438,7 +438,7 @@ async def test_execute_daily_close_exits_for_short_trade_updates_entry_pnl(mock_
     mock_supabase.table.side_effect = table_router
 
     with (
-        patch("execution.daily_live_trading.dt.get_supabase_client", return_value=mock_supabase),
+        patch("execution.daily_trading.get_supabase_client", return_value=mock_supabase),
         patch("execution.market_data.MarketDataManager.get_quote", new=AsyncMock(return_value=MagicMock(price=771.40))),
         patch("execution.alpaca_broker.AlpacaBroker.cancel_open_orders_for_agent", new=AsyncMock()),
     ):
@@ -542,3 +542,67 @@ async def test_execute_daily_moo_entries_filters_only_spy_predictions(mock_supab
     assert all("luna" not in e["owner_id"] for e in result["entries"])
     assert all(t["ticker"] == "SPY" for t in inserted_trades)
     assert len([e for e in result["entries"] if "deepseek" in e["owner_id"]]) > 0
+
+
+@pytest.mark.asyncio
+async def test_execute_daily_moo_entries_skips_non_spy_arena_models(mock_supabase):
+    """Verify execute_daily_moo_entries never creates portfolios for non-SPY models (e.g. gpt-6-luna) even on SPY rows."""
+    from execution.daily_trading import execute_daily_moo_entries
+
+    target_date = "2026-11-20"
+    pred_luna_spy = {
+        "id": "pred-luna-spy",
+        "model_name": "gpt-6-luna",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.40,
+        "target_date": target_date,
+        "ticker": "SPY",
+    }
+    pred_deepseek_spy = {
+        "id": "pred-ds-spy",
+        "model_name": "deepseek-flash",
+        "predicted_direction": "UP",
+        "expected_return_pct": 0.35,
+        "target_date": target_date,
+        "ticker": "SPY",
+    }
+
+    def table_router(table_name):
+        t = MagicMock()
+        t.select.return_value = t
+        t.insert.return_value = t
+        t.upsert.return_value = t
+        t.update.return_value = t
+        t.delete.return_value = t
+        t.eq.return_value = t
+        t.gte.return_value = t
+        t.lte.return_value = t
+        if table_name == "daily_predictions":
+            t.execute.return_value = MagicMock(data=[pred_luna_spy, pred_deepseek_spy])
+        else:
+            t.execute.return_value = MagicMock(data=[])
+        return t
+
+    mock_supabase.table.side_effect = table_router
+
+    mock_portfolio = MagicMock()
+    mock_portfolio.id = uuid4()
+    mock_portfolio.cash_balance = 10000.0
+    mock_get_port = AsyncMock(return_value=mock_portfolio)
+
+    with (
+        patch("execution.daily_trading.get_supabase_client", return_value=mock_supabase),
+        patch("execution.daily_trading.get_or_create_system_portfolio", new=mock_get_port),
+        patch("execution.market_data.MarketDataManager.get_quote", new=AsyncMock(return_value=MagicMock(price=500.0))),
+        patch("execution.alpaca_broker.AlpacaBroker.submit_market_order", new=AsyncMock()),
+    ):
+        result = await execute_daily_moo_entries(target_date=target_date)
+
+    requested_owners = [call.args[0] for call in mock_get_port.call_args_list]
+    assert "sys-daily-spy-gpt-6-luna" not in requested_owners
+    assert "sys-daily-spy-close-gpt-6-luna" not in requested_owners
+    assert set(requested_owners) == {
+        "sys-daily-spy-deepseek-flash",
+        "sys-daily-spy-close-deepseek-flash",
+    }
+    assert all("gpt-6-luna" not in e["owner_id"] for e in result["entries"])

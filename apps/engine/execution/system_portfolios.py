@@ -7,7 +7,6 @@ Executes mechanical / rule-based portfolios that do not require independent LLM 
 
 from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
 
 from core.config import logger
 from core.db import get_supabase_client
@@ -229,29 +228,9 @@ def resolve_mechanical_sectors(
 
 async def get_or_create_system_portfolio(owner_id: str) -> Portfolio:
     """Load an existing system portfolio or initialize a new one in Supabase."""
-    portfolio = Portfolio(owner_id)
-    await portfolio.initialize()
-    if not portfolio.id:
-        client = get_supabase_client()
-        res = (
-            client.table("portfolios")
-            .insert(
-                {
-                    "owner_id": owner_id,
-                    "cash_balance": INITIAL_PORTFOLIO_CASH,
-                    "sma": 0.0,
-                    "total_equity": INITIAL_PORTFOLIO_CASH,
-                    "realized": INITIAL_PORTFOLIO_CASH,
-                    "buying_power": INITIAL_PORTFOLIO_CASH,
-                    "excess_liquidity": INITIAL_PORTFOLIO_CASH,
-                }
-            )
-            .execute()
-        )
-        if res.data:
-            portfolio.id = UUID(res.data[0]["id"])
-            portfolio.cash_balance = INITIAL_PORTFOLIO_CASH
-    return portfolio
+    from execution.daily_trading import _load_or_create_system_portfolio
+
+    return await _load_or_create_system_portfolio(owner_id, get_supabase_client)
 
 
 async def execute_system_sector_rebalance(

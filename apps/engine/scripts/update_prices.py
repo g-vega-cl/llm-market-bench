@@ -10,7 +10,7 @@ import math
 from datetime import UTC, datetime
 from typing import Any
 
-from core.config import is_archived_portfolio, logger
+from core.config import is_allowed_daily_spy_owner, is_archived_portfolio, logger
 from core.db import SUPABASE_RETRIES, get_supabase_client, is_transient_supabase_error
 from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
@@ -157,8 +157,13 @@ async def _fetch_portfolio_owners(sb_client: Any) -> list[str]:
         try:
             port_res = fetch_portfolios()
             owners = [p["owner_id"] for p in port_res.data] if port_res.data else []
-            # Archived portfolios keep every historical row but are never marked again.
-            return [owner for owner in owners if not is_archived_portfolio(owner)]
+            # Archived portfolios and unapproved sys-daily-spy* rows are never marked.
+            return [
+                owner
+                for owner in owners
+                if not is_archived_portfolio(owner)
+                and (not str(owner).startswith("sys-daily-spy") or is_allowed_daily_spy_owner(owner))
+            ]
         except Exception as exc:
             if not is_transient_supabase_error(exc):
                 logger.error(f"fetch_portfolios failed with non-transient error: {exc}")

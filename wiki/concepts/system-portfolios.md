@@ -39,7 +39,7 @@ System portfolios are automated, rule-based investment and trading strategies th
 
 ### 4. Daily S&P Intraday Trader (`sys-daily-spy-{model}`)
 - **Signal**: Daily 9:30 AM – 4:00 PM ET S&P 500 predictions (`UP` or `DOWN`, `expected_return_pct`, `confidence`) from `daily_predictions` table.
-- **Portfolios**: One dedicated system portfolio per model track with an explicit, non-zero profit target percentage (e.g. `sys-daily-spy-deepseek-flash`, `sys-daily-spy-minimax-m3`). Direction-only classifiers without a profit target percentage (such as Jev) are excluded.
+- **Portfolios**: One dedicated system portfolio per active SPY arena model with an explicit, non-zero profit target percentage (`sys-daily-spy-deepseek-flash`, `sys-daily-spy-MiniMax-M3.1-Flash`). Direction-only classifiers without a profit target percentage (such as Jev) and non-SPY models (`gpt-6-luna`) are excluded and blocked from creation by `ALLOWED_DAILY_SPY_MODELS` / `is_allowed_daily_spy_owner` in `apps/engine/execution/daily_trading.py`.
 - **Target Asset**: `SPY`
 - **Position Sizing**: 100% of available cash/equity allocated per session.
 - **Execution Mechanics**:
@@ -106,7 +106,7 @@ Currently archived: the retired model ids (`gpt-5.6-luna`, `deepseek-v4-flash`, 
 
 ### 10. Daily S&P Close Trader (`sys-daily-spy-close-{model}`)
 - **Signal**: Daily 9:30 AM – 4:00 PM ET S&P 500 predictions (`UP` or `DOWN`) from `daily_predictions` table.
-- **Portfolios**: Dedicated system portfolio per model track (e.g. `sys-daily-spy-close-deepseek-flash`, `sys-daily-spy-close-MiniMax-M3.1-Flash`, `sys-daily-spy-close-~typesafe/jev-latest`).
+- **Portfolios**: Dedicated system portfolio per active SPY arena model (`sys-daily-spy-close-deepseek-flash`, `sys-daily-spy-close-MiniMax-M3.1-Flash`, `sys-daily-spy-close-~typesafe/jev-latest`), gated by `ALLOWED_DAILY_SPY_MODELS` in `apps/engine/execution/daily_trading.py`. Non-SPY models (`gpt-6-luna`) and archived ids are rejected by `get_or_create_system_portfolio`.
 - **Target Asset**: `SPY`
 - **Position Sizing**: 100% of available cash/equity allocated per session.
 - **Execution Mechanics**:

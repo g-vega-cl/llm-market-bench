@@ -7,6 +7,8 @@ appear under /retired-agents, and are skipped by the price-update bulk
 mark-to-market loop so their performance history stays frozen.
 """
 
+import re
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -77,3 +79,40 @@ async def test_price_update_skips_archived_owners():
         owners = await _fetch_portfolio_owners(_Client())
 
     assert owners == ["sys-pead-drift", "gpt-6-luna"]
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+BOARD_MIGRATION_DIR = REPO_ROOT / "supabase" / "migrations"
+
+
+def _board_view_excluded_owners() -> set[str]:
+    """Owner ids the homepage leaderboard view refuses to rank."""
+    candidates = sorted(BOARD_MIGRATION_DIR.glob("*portfolio_leaderboard*.sql"))
+    owners: set[str] = set()
+    found_in: list[Path] = []
+    for path in candidates:
+        text = path.read_text()
+        start = text.find("excluded(owner_id) AS (")
+        if start == -1:
+            continue
+        # The CTE runs to the next CTE, not to the first "),": every value line
+        # ends with "),".
+        block = text[start : text.find("bounds AS (", start)]
+        ids = set(re.findall(r"\('([^']+)'\)", block))
+        if ids:
+            owners |= ids
+            found_in.append(path)
+    assert found_in, "no leaderboard migration declares an archived-owner exclusion"
+    return owners
+
+
+def test_leaderboard_excludes_every_declared_archived_owner():
+    """The board reads SQL, the engine reads models.json: they must agree.
+
+    A declared archived portfolio that the view still ranks is the exact defect
+    that shipped GPT 5.6 Luna at rank 3 and rank 29 of the same board.
+    """
+    declared = set(ARCHIVED_PORTFOLIO_OWNER_IDS)
+    excluded = _board_view_excluded_owners()
+
+    assert declared - excluded == set(), f"declared archived but still ranked: {sorted(declared - excluded)}"

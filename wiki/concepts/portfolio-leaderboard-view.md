@@ -191,9 +191,11 @@ they have five daily observations with net movement.
   resolve there. DDL replicates, but `NOTIFY pgrst, 'reload schema'` cannot run on a
   standby (`cannot execute NOTIFY during recovery`) and does not propagate — the
   replica keeps answering `PGRST205` for the new object while the primary answers
-  `200`. Restart it (`docker restart market-bench-archive-postgrest-replica`) and
-  probe it directly: `curl -H "apikey: $KEY" 'http://localhost:3001/<view>?select=*&limit=1'`
-  from the MiniPC. Probing only the public hostname proves nothing: it can be served
+  `200`. Run the mandated rollout — `./docker/archive/deploy_secondary.sh cv-minipc@minipc`,
+  which already restarts `archive-postgrest` — then probe it directly:
+  `curl -H "apikey: $KEY" 'http://localhost:3001/<view>?select=*&limit=1'` from the
+  MiniPC. A manual `docker restart market-bench-archive-postgrest-replica` is the
+  same thing with fewer checks; prefer the script. Probing only the public hostname proves nothing: it can be served
   by the primary, which is how a missing replica view reached production once.
 - `CREATE OR REPLACE VIEW` cannot change column order or types; add a new column
   at the end or drop and recreate (this migration drops first).

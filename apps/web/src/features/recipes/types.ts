@@ -301,6 +301,8 @@ export interface RecipeUserQuotaStatus {
     maxLiveRecipes: number;
     globalPendingBacktests: number;
     globalQueueCap: number;
+    turboUsedToday?: boolean;
+    lastTurboEtDate?: string | null;
 }
 
 export interface RecipeSummaryItem {
@@ -310,6 +312,7 @@ export interface RecipeSummaryItem {
     is_live: boolean;
     trial_count: number;
     updated_at: string;
+    turbo_expires_at?: string | null;
 }
 
 export interface LiveStageOutput {
@@ -344,9 +347,18 @@ export interface LivePortfolioSnapshot {
     trades: CompletedTradeRecord[];
 }
 
+export interface LiveStatusMeta {
+    recipeName: string;
+    isLive: boolean;
+    isOwner: boolean;
+    turboExpiresAt: string | null;
+    turboUsedToday: boolean;
+}
+
 export interface LivePortfolioAndRuns {
     portfolio: LivePortfolioSnapshot;
     recentLiveRuns: RecipeJobRecord[];
+    liveMeta?: LiveStatusMeta;
 }
 
 /**

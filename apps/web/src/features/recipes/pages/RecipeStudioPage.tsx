@@ -4,7 +4,11 @@ import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { track } from '~/lib/analytics';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
-import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
+import {
+    activateRecipeTurboFn,
+    fetchRecipeQuotaStatusFn,
+    toggleLiveScheduleFn,
+} from '../api/recipes-quota-api';
 import {
     fetchRecipeAlertsFn,
     markAlertReadFn,
@@ -102,6 +106,7 @@ export function RecipeStudioPage({
         }
     });
     const [isTogglingLive, setIsTogglingLive] = useState(false);
+    const [isActivatingTurbo, setIsActivatingTurbo] = useState(false);
     const [isRunningBacktest, setIsRunningBacktest] = useState(false);
 
     // Live switch confirmation state
@@ -307,7 +312,9 @@ export function RecipeStudioPage({
 
             setUserRecipes((prev) => {
                 const withoutOld = prev.map((r) =>
-                    r.id === conflictingLiveRecipe.id ? { ...r, is_live: false } : r,
+                    r.id === conflictingLiveRecipe.id
+                        ? { ...r, is_live: false, turbo_expires_at: null }
+                        : r,
                 );
                 return upsertSavedRecipeSummary(withoutOld, saved, updated.is_live);
             });
@@ -325,6 +332,27 @@ export function RecipeStudioPage({
 
     const handleCancelLiveSwitch = () => {
         setConflictingLiveRecipe(null);
+    };
+
+    const handleActivateTurbo = async () => {
+        if (isActivatingTurbo || !strategy.id || !isCurrentlyScheduledLive) return;
+        setIsActivatingTurbo(true);
+        setScheduleError(null);
+        setBacktestError(null);
+        try {
+            const res = await activateRecipeTurboFn({ data: { recipeId: strategy.id } });
+            setUserRecipes((prev) =>
+                prev.map((r) =>
+                    r.id === res.recipeId ? { ...r, turbo_expires_at: res.turboExpiresAt } : r,
+                ),
+            );
+            setQuotaStatus((prev) => (prev ? { ...prev, turboUsedToday: true } : prev));
+        } catch (err) {
+            applyScheduleError(err);
+        } finally {
+            setIsActivatingTurbo(false);
+            await refreshQuota();
+        }
     };
 
     const handleLoadAlerts = async () => {
@@ -367,12 +395,20 @@ export function RecipeStudioPage({
                         isTogglingLive={isTogglingLive}
                         isCurrentlyScheduledLive={isCurrentlyScheduledLive}
                         liveRecipeId={isCurrentlyScheduledLive ? strategy.id : undefined}
+                        turboExpiresAt={currentSavedRecord?.turbo_expires_at}
+                        turboUsedToday={quotaStatus?.turboUsedToday}
+                        isActivatingTurbo={isActivatingTurbo}
                         isRunningBacktest={isRunningBacktest}
                         backtestButtonLabel={backtestButtonLabel}
                         unreadAlerts={alerts.filter((a) => !a.is_read).length}
                         onOpenWaitlist={() => setShowPledgeModal(true)}
                         onOpenAlerts={handleLoadAlerts}
                         onToggleScheduledLive={handleToggleScheduledLive}
+                        onActivateTurbo={
+                            isCurrentlyScheduledLive && strategy.id
+                                ? handleActivateTurbo
+                                : undefined
+                        }
                         onBacktest={handleBacktest}
                     />
                 </div>

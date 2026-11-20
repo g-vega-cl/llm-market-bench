@@ -65,6 +65,7 @@ export function upsertSavedRecipeSummary(
 ): RecipeSummaryItem[] {
     const existing = prev.find((r) => r.id === saved.id);
     const nextLive = isLive ?? existing?.is_live ?? Boolean(saved.is_live);
+    const nextTurbo = nextLive ? existing?.turbo_expires_at : null;
     if (!existing) {
         return [
             {
@@ -74,13 +75,20 @@ export function upsertSavedRecipeSummary(
                 is_live: nextLive,
                 trial_count: saved.trial_count ?? 0,
                 updated_at: saved.updated_at ?? new Date().toISOString(),
+                turbo_expires_at: nextTurbo ?? null,
             },
             ...prev,
         ];
     }
     return prev.map((r) =>
         r.id === saved.id
-            ? { ...r, name: saved.name, cadence: saved.cadence, is_live: nextLive }
+            ? {
+                  ...r,
+                  name: saved.name,
+                  cadence: saved.cadence,
+                  is_live: nextLive,
+                  turbo_expires_at: nextLive ? (r.turbo_expires_at ?? null) : null,
+              }
             : r,
     );
 }

@@ -6,11 +6,19 @@ import {
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatEasternDateTime } from '~/utils/date';
+import { activateRecipeTurboFn } from '../api/recipes-quota-api';
 import { RecipePortfolioBlock } from '../components/RecipePortfolioBlock';
 import { TraceInspectorBlock } from '../components/TraceInspectorBlock';
-import type { LivePortfolioSnapshot, LiveRunResult, RecipeJobRecord } from '../types';
+import { TurboButton } from '../components/TurboButton';
+import type {
+    LivePortfolioSnapshot,
+    LiveRunResult,
+    LiveStatusMeta,
+    RecipeJobRecord,
+} from '../types';
+import { formatTurboRemainingLabel, getNextLiveSlotLabel } from '../utils/market-hours';
 
 const INLINE_LATEST_ID = 'inline-latest';
 
@@ -19,6 +27,7 @@ interface RecipeLivePageProps {
     initialData: {
         portfolio: LivePortfolioSnapshot;
         recentLiveRuns: RecipeJobRecord[];
+        liveMeta?: LiveStatusMeta;
     } | null;
 }
 
@@ -28,34 +37,6 @@ function extractLiveResult(job: RecipeJobRecord | undefined): LiveRunResult | nu
         return job.result_json as LiveRunResult;
     }
     return null;
-}
-
-function getNextSlotLabel(now: Date): string {
-    // 09:30, 12:30, 15:30 ET, Mon-Fri.
-    const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        weekday: 'short',
-        hour: 'numeric',
-        minute: 'numeric',
-        hourCycle: 'h23',
-    }).formatToParts(now);
-
-    const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
-    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
-    const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
-
-    if (weekday === 'Sat' || weekday === 'Sun') return '09:30 ET Monday';
-
-    const slotsET = [9.5, 12.5, 15.5];
-    const currentHour = hour + minute / 60;
-    const nextSlot = slotsET.find((s) => s > currentHour);
-    if (nextSlot === undefined) {
-        return weekday === 'Fri' ? '09:30 ET Monday' : '09:30 ET tomorrow';
-    }
-
-    const slotHour = Math.floor(nextSlot);
-    const slotMinute = Math.round((nextSlot - slotHour) * 60);
-    return `${slotHour.toString().padStart(2, '0')}:${slotMinute.toString().padStart(2, '0')} ET today`;
 }
 
 interface RunSelectorBarProps {
@@ -105,52 +86,154 @@ function RunSelectorBar({
     );
 }
 
+interface LiveStatusHeaderProps {
+    recipeId: string;
+    isLiveEnabled: boolean;
+    turboRemaining: string | null;
+    nextSlotLabel: string;
+    liveMeta?: LiveStatusMeta;
+    turboExpiresAt: string | null;
+    turboUsedToday: boolean;
+    isActivatingTurbo: boolean;
+    now: Date;
+    onActivateTurbo: () => void;
+}
+
+function LiveStatusHeader({
+    recipeId,
+    isLiveEnabled,
+    turboRemaining,
+    nextSlotLabel,
+    liveMeta,
+    turboExpiresAt,
+    turboUsedToday,
+    isActivatingTurbo,
+    now,
+    onActivateTurbo,
+}: LiveStatusHeaderProps) {
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-4">
+            <div className="flex items-center gap-3">
+                <Link
+                    to="/recipes"
+                    search={{ recipeId }}
+                    className="voxel-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-bold border border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated rounded-none"
+                >
+                    ← Back to Studio
+                </Link>
+                <div>
+                    <h1 className="type-heading text-voxel-ink">Live Status</h1>
+                    <span className="type-body text-voxel-muted">
+                        Recipe ID: {recipeId.slice(0, 8)}
+                    </span>
+                </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+                {!isLiveEnabled ? (
+                    <Badge variant="soft" colorScheme="neutral" size="sm">
+                        Live: PAUSED
+                    </Badge>
+                ) : turboRemaining ? (
+                    <Badge variant="solid" colorScheme="accent" size="sm" suppressHydrationWarning>
+                        Turbo: {turboRemaining} (5m)
+                    </Badge>
+                ) : (
+                    <Badge variant="soft" colorScheme="success" size="sm">
+                        Live: ON (30m)
+                    </Badge>
+                )}
+                <span className="type-body text-voxel-muted" suppressHydrationWarning>
+                    {!isLiveEnabled
+                        ? 'Next run: Paused'
+                        : `Next run: ${turboRemaining ? 'within 5m (Turbo)' : nextSlotLabel}`}
+                </span>
+                {liveMeta?.isOwner && liveMeta?.isLive && (
+                    <TurboButton
+                        turboExpiresAt={turboExpiresAt}
+                        turboUsedToday={turboUsedToday}
+                        isActivating={isActivatingTurbo}
+                        now={now}
+                        onActivate={onActivateTurbo}
+                    />
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function RecipeLivePage({ recipeId, initialData }: RecipeLivePageProps) {
     const [selectedRunId, setSelectedRunId] = useState<string | null>(
         () => initialData?.recentLiveRuns[0]?.id ?? null,
     );
+    const [turboExpiresAt, setTurboExpiresAt] = useState<string | null>(
+        () => initialData?.liveMeta?.turboExpiresAt ?? null,
+    );
+    const [turboUsedToday, setTurboUsedToday] = useState<boolean>(
+        () => initialData?.liveMeta?.turboUsedToday ?? false,
+    );
+    const [isActivatingTurbo, setIsActivatingTurbo] = useState(false);
+    const [turboError, setTurboError] = useState<string | null>(null);
+    const [now, setNow] = useState<Date>(() => new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 15_000);
+        return () => clearInterval(timer);
+    }, []);
 
     const recentLiveRuns = initialData?.recentLiveRuns ?? [];
     const portfolio = initialData?.portfolio ?? null;
+    const liveMeta = initialData?.liveMeta;
+    const isLiveEnabled = liveMeta ? liveMeta.isLive : true;
 
     const activeSelection = selectedRunId ?? recentLiveRuns[0]?.id ?? null;
     const activeJob = recentLiveRuns.find((run) => run.id === activeSelection) ?? recentLiveRuns[0];
-    const _isViewingInline = false; // No inline latest on this page
     const activeRun = extractLiveResult(activeJob);
 
     const hasPortfolio = portfolio !== null;
     const hasRuns = recentLiveRuns.length > 0;
 
-    const nextSlotLabel = getNextSlotLabel(new Date());
+    const nextSlotLabel = getNextLiveSlotLabel(now);
+    const turboRemaining = isLiveEnabled ? formatTurboRemainingLabel(turboExpiresAt, now) : null;
+
+    const handleActivateTurbo = async () => {
+        if (isActivatingTurbo) return;
+        setIsActivatingTurbo(true);
+        setTurboError(null);
+        try {
+            const res = await activateRecipeTurboFn({ data: { recipeId } });
+            setTurboExpiresAt(res.turboExpiresAt);
+            setTurboUsedToday(true);
+        } catch (err) {
+            setTurboError(err instanceof Error ? err.message : 'Failed activating Turbo mode');
+        } finally {
+            setIsActivatingTurbo(false);
+        }
+    };
 
     return (
         <PageLayout>
             <div className="flex flex-col gap-6">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-4">
-                    <div className="flex items-center gap-3">
-                        <Link
-                            to="/recipes"
-                            search={{ recipeId }}
-                            className="voxel-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-bold border border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated rounded-none"
-                        >
-                            ← Back to Studio
-                        </Link>
-                        <div>
-                            <h1 className="type-heading text-voxel-ink">Live Status</h1>
-                            <span className="type-body text-voxel-muted">
-                                Recipe ID: {recipeId.slice(0, 8)}
-                            </span>
-                        </div>
+                <LiveStatusHeader
+                    recipeId={recipeId}
+                    isLiveEnabled={isLiveEnabled}
+                    turboRemaining={turboRemaining}
+                    nextSlotLabel={nextSlotLabel}
+                    liveMeta={liveMeta}
+                    turboExpiresAt={turboExpiresAt}
+                    turboUsedToday={turboUsedToday}
+                    isActivatingTurbo={isActivatingTurbo}
+                    now={now}
+                    onActivateTurbo={handleActivateTurbo}
+                />
+
+                {turboError && (
+                    <div
+                        role="alert"
+                        className="border border-danger bg-voxel-surface p-3 text-xs font-normal text-danger rounded-none"
+                    >
+                        {turboError}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="soft" colorScheme="success" size="sm">
-                            Live: ON (3x/d)
-                        </Badge>
-                        <span className="type-body text-voxel-muted">
-                            Next run: {nextSlotLabel}
-                        </span>
-                    </div>
-                </div>
+                )}
 
                 {hasPortfolio && (
                     <RecipePortfolioBlock
@@ -168,8 +251,8 @@ export function RecipeLivePage({ recipeId, initialData }: RecipeLivePageProps) {
                                 <SectionHeading>Live Run Traces</SectionHeading>
                                 <span className="text-xs font-normal text-voxel-muted">
                                     Runs independently on clvg.uk auto-go against your isolated
-                                    $10,000 live paper ledger (scheduled 3x/day ET at 09:30, 12:30,
-                                    15:30).
+                                    $10,000 live paper ledger (every 30m during market hours
+                                    09:30–16:00 ET, or every 5m while Turbo is active).
                                 </span>
                             </div>
                             {activeRun && (
@@ -236,7 +319,7 @@ export function RecipeLivePage({ recipeId, initialData }: RecipeLivePageProps) {
                     <div className="voxel-trough bg-voxel-trough p-6 text-center">
                         <span className="text-xs font-normal text-voxel-muted">
                             No live runs yet. The first scheduled run will execute at the next
-                            3x/day ET slot (09:30, 12:30, 15:30).
+                            30-minute market-hours ET slot (09:30–16:00 ET).
                         </span>
                     </div>
                 )}

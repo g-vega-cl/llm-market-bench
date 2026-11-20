@@ -1,7 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { activateRecipeTurboFn } from '../api/recipes-quota-api';
 import type { LivePortfolioAndRuns } from '../types';
 import { RecipeLivePage } from './RecipeLivePage';
+
+vi.mock('../api/recipes-quota-api', () => ({
+    activateRecipeTurboFn: vi.fn(),
+}));
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({
@@ -132,14 +137,23 @@ describe('RecipeLivePage', () => {
         );
     });
 
-    describe('Next run schedule label (America/New_York)', () => {
+    describe('Next run schedule label & Turbo (America/New_York)', () => {
         afterEach(() => {
             vi.useRealTimers();
         });
 
-        it('shows 09:30 ET tomorrow at 15:50 EST on a Wednesday', () => {
+        it('shows 16:00 ET today at 15:50 EST on a Wednesday', () => {
             vi.useFakeTimers();
             vi.setSystemTime(new Date('2026-11-18T15:50:00-05:00'));
+
+            render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
+
+            expect(screen.getByText(/Next run: 16:00 ET today/i)).toBeInTheDocument();
+        });
+
+        it('shows 09:30 ET tomorrow at 16:05 EST on a Wednesday', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-11-18T16:05:00-05:00'));
 
             render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
 
@@ -155,9 +169,9 @@ describe('RecipeLivePage', () => {
             expect(screen.getByText(/Next run: 12:30 ET today/i)).toBeInTheDocument();
         });
 
-        it('shows 09:30 ET Monday on Friday after 15:30 EST', () => {
+        it('shows 09:30 ET Monday on Friday after 16:00 EST', () => {
             vi.useFakeTimers();
-            vi.setSystemTime(new Date('2026-11-20T16:00:00-05:00'));
+            vi.setSystemTime(new Date('2026-11-20T16:05:00-05:00'));
 
             render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
 
@@ -171,6 +185,86 @@ describe('RecipeLivePage', () => {
             render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
 
             expect(screen.getByText(/Next run: 09:30 ET Monday/i)).toBeInTheDocument();
+        });
+
+        it('activates Turbo for owner during market hours and shows countdown', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+            vi.setSystemTime(new Date('2026-11-18T11:00:00-05:00'));
+            vi.mocked(activateRecipeTurboFn).mockResolvedValue({
+                recipeId: 'rec-1',
+                turboExpiresAt: '2026-11-18T12:00:00-05:00',
+                enqueuedJobId: 'job-turbo-1',
+            });
+
+            render(
+                <RecipeLivePage
+                    recipeId="rec-1"
+                    initialData={{
+                        ...initialData,
+                        liveMeta: {
+                            recipeName: 'Momentum',
+                            isLive: true,
+                            isOwner: true,
+                            turboExpiresAt: null,
+                            turboUsedToday: false,
+                        },
+                    }}
+                />,
+            );
+
+            fireEvent.click(screen.getByRole('button', { name: /Turbo \(5m x 1h\)/i }));
+
+            await waitFor(() => {
+                expect(activateRecipeTurboFn).toHaveBeenCalledWith({ data: { recipeId: 'rec-1' } });
+                expect(
+                    screen.getByRole('button', { name: /Turbo: 60m left \(5m\)/i }),
+                ).toBeDisabled();
+            });
+        });
+
+        it('renders Live: PAUSED when liveMeta.isLive is false', () => {
+            render(
+                <RecipeLivePage
+                    recipeId="rec-1"
+                    initialData={{
+                        ...initialData,
+                        liveMeta: {
+                            recipeName: 'Momentum',
+                            isLive: false,
+                            isOwner: true,
+                            turboExpiresAt: null,
+                            turboUsedToday: false,
+                        },
+                    }}
+                />,
+            );
+
+            expect(screen.getByText('Live: PAUSED')).toBeInTheDocument();
+            expect(screen.getByText('Next run: Paused')).toBeInTheDocument();
+            expect(screen.queryByText(/Live: ON/i)).not.toBeInTheDocument();
+        });
+
+        it('disables Turbo button when market is closed', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-11-21T11:00:00-05:00'));
+
+            render(
+                <RecipeLivePage
+                    recipeId="rec-1"
+                    initialData={{
+                        ...initialData,
+                        liveMeta: {
+                            recipeName: 'Momentum',
+                            isLive: true,
+                            isOwner: true,
+                            turboExpiresAt: null,
+                            turboUsedToday: false,
+                        },
+                    }}
+                />,
+            );
+
+            expect(screen.getByRole('button', { name: /Turbo \(Market Closed\)/i })).toBeDisabled();
         });
     });
 });

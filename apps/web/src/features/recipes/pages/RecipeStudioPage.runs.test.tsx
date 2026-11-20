@@ -1,7 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
-import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
+import {
+    activateRecipeTurboFn,
+    fetchRecipeQuotaStatusFn,
+    toggleLiveScheduleFn,
+} from '../api/recipes-quota-api';
 import { RecipeStudioPage } from './RecipeStudioPage';
 
 const mockNavigate = vi.fn();
@@ -37,6 +41,7 @@ vi.mock('../api/recipes-api', () => ({
 }));
 
 vi.mock('../api/recipes-quota-api', () => ({
+    activateRecipeTurboFn: vi.fn(),
     fetchRecipeQuotaStatusFn: vi.fn(),
     toggleLiveScheduleFn: vi.fn(),
 }));
@@ -77,7 +82,7 @@ describe('RecipeStudioPage > basic rendering', () => {
     it('renders the Enable Live button instead of Run Live', () => {
         render(<RecipeStudioPage />);
 
-        expect(screen.getByRole('button', { name: 'Enable Live (3x/d)' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Enable Live (30m)' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Run Live/i })).not.toBeInTheDocument();
     });
 });
@@ -146,13 +151,13 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
         );
 
         expect(screen.getByText(/Backtests: 2\/2 left today/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(3x\/d\)/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
 
         await waitFor(() => {
             expect(toggleLiveScheduleFn).toHaveBeenCalledWith({
                 data: { recipeId: 'rec-sched-1', isLive: true },
             });
-            expect(screen.getByRole('button', { name: /Live: ON \(3x\/d\)/i })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Live: ON \(30m\)/i })).toBeInTheDocument();
         });
     });
 
@@ -195,7 +200,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
         );
 
         // Click Enable Live — should show confirmation trough
-        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(3x\/d\)/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
 
         await waitFor(() => {
             const alert = screen.getByRole('alert');
@@ -261,7 +266,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(3x\/d\)/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
 
         await waitFor(() => {
             expect(screen.getByRole('alert')).toBeInTheDocument();
@@ -378,7 +383,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
 
         render(<RecipeStudioPage />);
 
-        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(3x\/d\)/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
         await waitFor(() => {
             const alerts = screen.getAllByRole('alert');
             expect(alerts).toHaveLength(1);
@@ -388,5 +393,69 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
 
         expect(warnSpy).toHaveBeenCalled();
         warnSpy.mockRestore();
+    });
+
+    it('activates Turbo from Studio action bar when viewing a live bot during market hours', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        vi.setSystemTime(new Date('2026-11-18T11:00:00-05:00'));
+
+        vi.mocked(activateRecipeTurboFn).mockResolvedValue({
+            recipeId: 'rec-live-turbo',
+            turboExpiresAt: '2026-11-18T12:00:00-05:00',
+            enqueuedJobId: 'job-turbo-2',
+        });
+        vi.mocked(fetchRecipeQuotaStatusFn).mockResolvedValue({
+            tier: 'beta_starter',
+            activeBacktests: 0,
+            maxConcurrentBacktests: 1,
+            backtestsLast24h: 0,
+            dailyBacktestLimit: 2,
+            liveTurnsLast24h: 0,
+            dailyLiveTurnLimit: 3,
+            activeLiveRecipes: 1,
+            maxLiveRecipes: 3,
+            globalPendingBacktests: 0,
+            globalQueueCap: 20,
+            turboUsedToday: true,
+        });
+
+        render(
+            <RecipeStudioPage
+                initialStrategy={{
+                    id: 'rec-live-turbo',
+                    version: '2.0-push',
+                    name: 'Live Turbo Bot',
+                    description: 'Test',
+                    cadence: '3h',
+                    stages: [
+                        {
+                            id: 's1',
+                            selected_tools: [],
+                            blocks: [{ id: 'b1', type: 'prompt', text: 'Analyze NVDA' }],
+                        },
+                    ],
+                }}
+                initialUserRecipes={[
+                    {
+                        id: 'rec-live-turbo',
+                        name: 'Live Turbo Bot',
+                        cadence: '3h',
+                        is_live: true,
+                        trial_count: 1,
+                        updated_at: '',
+                    },
+                ]}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Turbo \(5m x 1h\)/i }));
+
+        await waitFor(() => {
+            expect(activateRecipeTurboFn).toHaveBeenCalledWith({
+                data: { recipeId: 'rec-live-turbo' },
+            });
+            expect(screen.getByRole('button', { name: /Turbo: 60m left \(5m\)/i })).toBeDisabled();
+        });
+        vi.useRealTimers();
     });
 });

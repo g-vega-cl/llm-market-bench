@@ -211,7 +211,7 @@ export function RecipeDeskHomePage({
                     {cards.length === 0 ? (
                         <EmptyState
                             title="No live recipes yet"
-                            subtitle="The board fills as recipes run at 09:30, 12:30 and 15:30 ET. Start from a starter recipe below and it will appear here once it trades."
+                            subtitle="The board fills as recipes run every 30 minutes during market hours (09:30–16:00 ET). Start from a starter recipe below and it will appear here once it trades."
                         />
                     ) : (
                         <ul className="flex flex-col gap-1">

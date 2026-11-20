@@ -92,7 +92,7 @@ describe('archiveRecipe', () => {
         // Hiding is not a content edit: bumping updated_at would trip the
         // showcase publisher's graph-drift guard.
         expect(recipeUpdate?.payload).not.toHaveProperty('updated_at');
-        expect(recipeUpdate?.payload).toMatchObject({ is_live: false });
+        expect(recipeUpdate?.payload).toMatchObject({ is_live: false, turbo_expires_at: null });
         expect(typeof recipeUpdate?.payload?.archived_at).toBe('string');
         expect(recipeUpdate?.filters).toMatchObject({ id: 'rec-1', user_id: 'user-1' });
 

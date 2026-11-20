@@ -7,6 +7,7 @@ import type {
     RecipeSummaryItem,
     RecipeUserQuotaStatus,
 } from '../types';
+import { canActivateTurboEt, getEtDateString } from '../utils/market-hours';
 import { assertNoPrevOutputPlaceholder, assertSingleLlmStage } from './recipes-validators';
 
 export const BETA_STARTER_LIMITS = {
@@ -14,8 +15,7 @@ export const BETA_STARTER_LIMITS = {
     maxConcurrentBacktests: 1,
     dailyBacktestLimit: 2,
     // Live turns are unbounded per user: the live-bot cap below already bounds
-    // the work at maxLiveRecipes x 3 ET slots per day. The column survives in
-    // recipe_user_quotas for old overrides but is no longer shown or enforced.
+    // regular 30m ET market-hours slots, and Turbo is capped at 1x/day per user.
     dailyLiveTurnLimit: Number.POSITIVE_INFINITY,
     maxLiveRecipes: 3,
     globalQueueCap: 20,
@@ -27,6 +27,7 @@ interface QuotaOverrideRow {
     daily_backtest_limit?: number;
     daily_live_turn_limit?: number;
     max_live_recipes?: number;
+    last_turbo_et_date?: string | null;
 }
 
 interface QueueQuotaRow {
@@ -52,7 +53,7 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
         db
             .from('recipe_user_quotas')
             .select(
-                'tier, max_concurrent_backtests, daily_backtest_limit, daily_live_turn_limit, max_live_recipes',
+                'tier, max_concurrent_backtests, daily_backtest_limit, daily_live_turn_limit, max_live_recipes, last_turbo_et_date',
             )
             .eq('user_id', userId)
             .maybeSingle(),
@@ -100,6 +101,9 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
     ).length;
     const liveTurnsLast24h = recent.filter((row) => row.mode === 'live_turn').length;
 
+    const lastTurboEtDate = override.last_turbo_et_date ?? null;
+    const todayEt = getEtDateString(new Date());
+
     return {
         tier: override.tier || BETA_STARTER_LIMITS.tier,
         activeBacktests,
@@ -114,6 +118,8 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
         maxLiveRecipes: override.max_live_recipes ?? BETA_STARTER_LIMITS.maxLiveRecipes,
         globalPendingBacktests: globalRows.length,
         globalQueueCap: BETA_STARTER_LIMITS.globalQueueCap,
+        lastTurboEtDate,
+        turboUsedToday: lastTurboEtDate === todayEt,
     };
 }
 
@@ -208,9 +214,18 @@ export async function toggleLiveSchedule(
         }
     }
 
+    const nowIso = new Date().toISOString();
+    const updatePayload: Record<string, unknown> = {
+        is_live: isLive,
+        updated_at: nowIso,
+    };
+    if (!isLive) {
+        updatePayload.turbo_expires_at = null;
+    }
+
     const { data: updated, error: updErr } = await db
         .from('strategy_recipes')
-        .update({ is_live: isLive, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', recipeId)
         .eq('user_id', userId)
         .select('id, is_live')
@@ -219,14 +234,62 @@ export async function toggleLiveSchedule(
     if (updErr || !updated) {
         throw new Error(updErr?.message || 'Failed updating live schedule');
     }
+
+    if (!isLive) {
+        const { error: cancelErr } = await db
+            .from('recipe_execution_queue')
+            .update({ status: 'cancelled', cancelled_at: nowIso })
+            .eq('recipe_id', recipeId)
+            .eq('user_id', userId)
+            .eq('mode', 'live_turn')
+            .eq('status', 'pending');
+        if (cancelErr) {
+            console.error('[recipes] failed cancelling pending live_turn jobs on pause', cancelErr);
+        }
+    }
+
     return updated as { id: string; is_live: boolean };
+}
+
+export async function activateRecipeTurbo(
+    recipeId: string,
+    userId: string,
+    now: Date = new Date(),
+): Promise<{ recipeId: string; turboExpiresAt: string; enqueuedJobId: string | null }> {
+    if (!canActivateTurboEt(now)) {
+        throw new Error('Turbo is only available during US market hours (Mon-Fri 09:30-15:55 ET).');
+    }
+
+    const db = getDbAdminClient();
+    const { data, error } = await db.rpc('activate_recipe_turbo', {
+        p_user_id: userId,
+        p_recipe_id: recipeId,
+    });
+
+    if (error) {
+        throw new Error(error.message || 'Failed activating Turbo mode');
+    }
+
+    const rows = Array.isArray(data) ? data : data ? [data] : [];
+    const row = rows[0] as
+        | { recipe_id?: string; turbo_expires_at?: string; enqueued_job_id?: string | null }
+        | undefined;
+    if (!row?.recipe_id || !row?.turbo_expires_at) {
+        throw new Error('Failed activating Turbo mode: empty response');
+    }
+
+    return {
+        recipeId: String(row.recipe_id),
+        turboExpiresAt: String(row.turbo_expires_at),
+        enqueuedJobId: row.enqueued_job_id ? String(row.enqueued_job_id) : null,
+    };
 }
 
 export async function fetchUserRecipes(userId: string): Promise<RecipeSummaryItem[]> {
     const db = getDbAdminClient();
     const { data, error } = await db
         .from('strategy_recipes')
-        .select('id, name, cadence, is_live, trial_count, updated_at')
+        .select('id, name, cadence, is_live, trial_count, updated_at, turbo_expires_at')
         .eq('user_id', userId)
         // Removed strategies stay in the database; they are only hidden here.
         .is('archived_at', null)
@@ -410,6 +473,17 @@ export const toggleLiveScheduleFn = createServerFn({ method: 'POST' })
         } = await auth.auth.getUser();
         if (!user?.id) throw new Error('Unauthorized: please sign in to manage live schedules');
         return toggleLiveSchedule(recipeId, isLive, user.id);
+    });
+
+export const activateRecipeTurboFn = createServerFn({ method: 'POST' })
+    .validator((d: { recipeId: string }) => d)
+    .handler(async ({ data: { recipeId } }) => {
+        const auth = getAuthServerClient();
+        const {
+            data: { user },
+        } = await auth.auth.getUser();
+        if (!user?.id) throw new Error('Unauthorized: please sign in to activate Turbo');
+        return activateRecipeTurbo(recipeId, user.id);
     });
 
 export const fetchUserRecipesFn = createServerFn({ method: 'GET' }).handler(async () => {

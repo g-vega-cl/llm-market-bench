@@ -50,6 +50,13 @@ The spotlight is the most recently active card that has a written description: i
 2. **Leaderboard** — `TopPortfolios` receives `rows`, `medianReturnPct`, `worst`, `spy`, `trackedCount`, `windowDays`, and `degraded` (see [[concepts/portfolio-leaderboard-view]]).
 3. **Live bots tape** — `BotRow` renders one `<li>` per bot: LIVE badge, name, the owner's description (or the last action), return, `vs SPY`, open-position count, the model label, and a Fork button.
 
+## Pagination Discipline
+
+The public-stats reads follow the same pagination discipline as the runner's enqueue path, because a PostgREST row cap silently truncates results rather than erroring:
+
+- `_fetch_last_results(sb, recipe_ids)` pages `completed` `live_turn` rows in 500-row windows (up to 10 pages), stopping early once every requested recipe has a result or a short page arrives. A mid-page read error logs and returns whatever it has, so a partial board still refreshes.
+- `_count_runs_today(sb, recipe_ids)` pages `completed` `live_turn` rows since midnight UTC in 1,000-row windows until a short page, so `runs_today` on the desk cannot quietly cap at 2,000.
+
 ## Analytics
 
 The activation funnel's client-side terminus is the `run_queued` event, added to `AnalyticsEvent` in `apps/web/src/lib/analytics.ts` and fired from `RecipeStudioPage` immediately after a backtest job is enqueued (`track(posthog, 'run_queued', { recipeId, jobId })`). The runner settles the job server-side, where no PostHog client exists.

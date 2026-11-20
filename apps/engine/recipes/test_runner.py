@@ -273,22 +273,37 @@ async def test_run_hourly_cycle_drains_real_worker_without_nested_event_loop_cra
     assert stats["jobs_failed"] == 0
 
 
-def test_due_trading_slot_matches_0930_1230_1530_et_only_once():
+def test_due_trading_slot_matches_30m_market_hours_et_only_once():
     from zoneinfo import ZoneInfo
 
-    from recipes.runner import due_trading_slot
+    from recipes.runner import LIVE_SLOTS_ET, due_trading_slot, is_us_market_hours_et
 
     et = ZoneInfo("America/New_York")
+    assert len(LIVE_SLOTS_ET) == 14
+    assert LIVE_SLOTS_ET[0] == (9, 30)
+    assert LIVE_SLOTS_ET[-1] == (16, 0)
+
     # Monday 2026-04-06 (EDT) -> 09:32 ET matches slot 09:30; second call w/ same key skipped
     slot1 = due_trading_slot(datetime(2026, 4, 6, 9, 32, tzinfo=et), last_slot_key=None)
     assert slot1 == "2026-04-06T09:30"
     assert due_trading_slot(datetime(2026, 4, 6, 9, 35, tzinfo=et), last_slot_key=slot1) is None
 
-    # 12:30 ET & 15:30 ET slots match; 11:00 ET & Saturday do NOT match
-    assert due_trading_slot(datetime(2026, 4, 6, 12, 31, tzinfo=et), last_slot_key=slot1) == "2026-04-06T12:30"
+    # 30-min slots throughout the session match; pre-open, post-close, weekends, and holidays do NOT
+    assert due_trading_slot(datetime(2026, 4, 6, 10, 2, tzinfo=et), last_slot_key=slot1) == "2026-04-06T10:00"
+    assert due_trading_slot(datetime(2026, 4, 6, 11, 5, tzinfo=et), last_slot_key=slot1) == "2026-04-06T11:00"
     assert due_trading_slot(datetime(2026, 4, 6, 15, 34, tzinfo=et), last_slot_key=None) == "2026-04-06T15:30"
-    assert due_trading_slot(datetime(2026, 4, 6, 11, 0, tzinfo=et), last_slot_key=None) is None
+    assert due_trading_slot(datetime(2026, 4, 6, 16, 1, tzinfo=et), last_slot_key=None) == "2026-04-06T16:00"
+    assert due_trading_slot(datetime(2026, 4, 6, 9, 15, tzinfo=et), last_slot_key=None) is None
+    assert due_trading_slot(datetime(2026, 4, 6, 16, 25, tzinfo=et), last_slot_key=None) is None
     assert due_trading_slot(datetime(2026, 4, 4, 9, 31, tzinfo=et), last_slot_key=None) is None  # Saturday
+    assert due_trading_slot(datetime(2026, 11, 26, 10, 0, tzinfo=et), last_slot_key=None) is None  # Thanksgiving
+    assert due_trading_slot(datetime(2026, 4, 3, 10, 0, tzinfo=et), last_slot_key=None) is None  # Good Friday
+
+    assert is_us_market_hours_et(datetime(2026, 4, 6, 11, 0, tzinfo=et)) is True
+    assert is_us_market_hours_et(datetime(2026, 4, 6, 9, 29, tzinfo=et)) is False
+    assert is_us_market_hours_et(datetime(2026, 4, 6, 16, 1, tzinfo=et)) is False
+    assert is_us_market_hours_et(datetime(2026, 11, 26, 11, 0, tzinfo=et)) is False
+    assert is_us_market_hours_et(datetime(2026, 4, 3, 11, 0, tzinfo=et)) is False
 
 
 def test_enqueue_live_recipes_dedups_already_enqueued_in_same_slot():
@@ -497,3 +512,190 @@ async def test_scheduled_slot_survives_a_stats_refresh_failure():
         stats = await run_scheduled_slot(sb, "2026-11-19T12:30", datetime(2026, 11, 19, 17, 30, tzinfo=UTC))
 
     assert stats["live_enqueued"] == 0
+
+
+def test_enqueue_turbo_recipes_enqueues_unexpired_during_market_hours_and_respects_5m_spacing():
+    from zoneinfo import ZoneInfo
+
+    from recipes.runner import enqueue_turbo_recipes
+
+    et = ZoneInfo("America/New_York")
+    now_et = datetime(2026, 4, 6, 10, 12, tzinfo=et)
+
+    sb = MagicMock()
+    recipes_tbl = MagicMock()
+    queue_tbl = MagicMock()
+
+    def _router(name: str):
+        if name == "strategy_recipes":
+            return recipes_tbl
+        if name == "recipe_execution_queue":
+            return queue_tbl
+        return MagicMock()
+
+    sb.table.side_effect = _router
+    recipes_tbl.select.return_value.eq.return_value.is_.return_value.gt.return_value.order.return_value.range.return_value.execute.return_value.data = [
+        {"id": "rec-turbo-1", "user_id": "u1", "name": "Turbo 1", "graph_json": {"stages": [{"id": "s1"}]}},
+        {"id": "rec-turbo-recent", "user_id": "u2", "name": "Turbo 2", "graph_json": {"stages": [{"id": "s1"}]}},
+    ]
+    queue_tbl.select.return_value.in_.return_value.order.return_value.range.return_value.execute.return_value.data = []
+    queue_tbl.select.return_value.eq.return_value.gte.return_value.order.return_value.range.return_value.execute.return_value.data = [
+        {"recipe_id": "rec-turbo-recent"}
+    ]
+
+    enqueued = enqueue_turbo_recipes(sb, now_utc=now_et.astimezone(UTC))
+    assert enqueued == 1
+    inserted = queue_tbl.insert.call_args[0][0]
+    assert [r["recipe_id"] for r in inserted] == ["rec-turbo-1"]
+    assert inserted[0]["mode"] == "live_turn"
+
+    # Outside market hours: does not query or enqueue
+    queue_tbl.insert.reset_mock()
+    after_hours = datetime(2026, 4, 6, 16, 15, tzinfo=et)
+    assert enqueue_turbo_recipes(sb, now_utc=after_hours.astimezone(UTC)) == 0
+    queue_tbl.insert.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_live_lane_tick_handles_turbo_throttles_and_slot_retry():
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+
+    from recipes.runner import LiveLaneState, run_live_lane_tick
+
+    et = ZoneInfo("America/New_York")
+    # 10:22 ET is outside the 20m window of 10:00 ET and before 10:30 ET -> idle/turbo tick
+    now_utc = datetime(2026, 4, 6, 10, 22, tzinfo=et).astimezone(UTC)
+    sb = MagicMock()
+    state = LiveLaneState(last_slot_key="2026-04-06T10:00")
+
+    with (
+        patch("recipes.runner._is_trading_day_et", new=AsyncMock(return_value=True)),
+        patch("recipes.runner.enqueue_turbo_recipes", return_value=1) as mock_turbo,
+        patch("recipes.runner.sync_live_news_to_corpus", new=AsyncMock(return_value={"inserted": 2})) as mock_news,
+        patch("recipes.runner.drain_lane", new=AsyncMock(return_value=1)) as mock_drain,
+        patch("recipes.runner.refresh_public_stats") as mock_stats,
+    ):
+        state = await run_live_lane_tick(sb, now_utc, state)
+
+    mock_turbo.assert_called_once_with(sb, now_utc=now_utc)
+    mock_news.assert_awaited_once()
+    mock_drain.assert_awaited_once()
+    mock_stats.assert_called_once_with(sb)
+    assert state.last_slot_key == "2026-04-06T10:00"
+    assert state.last_news_sync_utc == now_utc
+
+    # Second tick 10s later must NOT re-poll turbo or refresh stats within throttle windows
+    now_10s = now_utc + timedelta(seconds=10)
+    with (
+        patch("recipes.runner._is_trading_day_et", new=AsyncMock(return_value=True)),
+        patch("recipes.runner.enqueue_turbo_recipes", return_value=1) as mock_turbo_2,
+        patch("recipes.runner.sync_live_news_to_corpus", new=AsyncMock()) as mock_news_2,
+        patch("recipes.runner.drain_lane", new=AsyncMock(return_value=1)),
+        patch("recipes.runner.refresh_public_stats") as mock_stats_2,
+    ):
+        state = await run_live_lane_tick(sb, now_10s, state)
+
+    mock_turbo_2.assert_not_called()
+    mock_news_2.assert_not_awaited()
+    mock_stats_2.assert_not_called()
+
+    # Third tick 31s later re-polls turbo (but still throttles news & stats < 60s/300s)
+    now_31s = now_utc + timedelta(seconds=31)
+    with (
+        patch("recipes.runner._is_trading_day_et", new=AsyncMock(return_value=True)),
+        patch("recipes.runner.enqueue_turbo_recipes", return_value=1) as mock_turbo_3,
+        patch("recipes.runner.sync_live_news_to_corpus", new=AsyncMock()) as mock_news_3,
+        patch("recipes.runner.drain_lane", new=AsyncMock(return_value=0)),
+        patch("recipes.runner.refresh_public_stats") as mock_stats_3,
+    ):
+        state = await run_live_lane_tick(sb, now_31s, state)
+
+    mock_turbo_3.assert_called_once_with(sb, now_utc=now_31s)
+    mock_news_3.assert_not_awaited()
+    mock_stats_3.assert_not_called()
+
+    # Scheduled slot transient failure must NOT advance last_slot_key so it retries
+    slot_utc = datetime(2026, 4, 6, 10, 31, tzinfo=et).astimezone(UTC)
+    with (
+        patch("recipes.runner._is_trading_day_et", new=AsyncMock(return_value=True)),
+        patch("recipes.runner.run_scheduled_slot", new=AsyncMock(side_effect=RuntimeError("transient"))),
+    ):
+        state = await run_live_lane_tick(sb, slot_utc, state)
+    assert state.last_slot_key == "2026-04-06T10:00"
+
+
+@pytest.mark.asyncio
+async def test_run_scheduled_slot_passes_separate_recent_turbo_cutoff():
+    from recipes.runner import run_scheduled_slot
+
+    sb = MagicMock()
+    now_utc = datetime(2026, 11, 19, 15, 0, 10, tzinfo=UTC)  # 10:00:10 ET
+    with (
+        patch("recipes.runner.sync_live_news_to_corpus", new=AsyncMock(return_value={})),
+        patch("recipes.runner.enqueue_live_recipes", return_value=0) as mock_enqueue,
+        patch("recipes.runner.drain_lane", new=AsyncMock(return_value=0)),
+        patch("recipes.runner.snapshot_live_intraday_bars", new=AsyncMock(return_value=0)),
+        patch("recipes.runner._collect_recipe_watchlist", return_value=[]),
+        patch("recipes.runner.refresh_public_stats"),
+    ):
+        await run_scheduled_slot(sb, "2026-11-19T10:00", now_utc)
+
+    assert mock_enqueue.call_args.kwargs["slot_start_utc"] == datetime(2026, 11, 19, 15, 0, tzinfo=UTC)
+    assert mock_enqueue.call_args.kwargs["recent_turbo_cutoff_utc"] == datetime(2026, 11, 19, 14, 55, 10, tzinfo=UTC)
+
+
+def test_enqueue_live_recipes_with_stats_does_not_alert_when_skip_is_recent_turbo():
+    from recipes.runner import enqueue_live_recipes_with_stats
+
+    recipes = [
+        {"id": "rec-turbo", "user_id": "u1", "name": "Turbo", "graph_json": {"stages": [{"id": "s1"}]}},
+        {"id": "rec-normal", "user_id": "u2", "name": "Normal", "graph_json": {"stages": [{"id": "s1"}]}},
+    ]
+    sb = MagicMock()
+    recipes_tbl = MagicMock()
+    queue_tbl = MagicMock()
+    ops_tbl = MagicMock()
+
+    def _router(name: str):
+        return {
+            "strategy_recipes": recipes_tbl,
+            "recipe_execution_queue": queue_tbl,
+            "recipe_ops_events": ops_tbl,
+        }.get(name, MagicMock())
+
+    sb.table.side_effect = _router
+    recipes_tbl.select.return_value.eq.return_value.is_.return_value.order.return_value.range.return_value.execute.return_value.data = recipes
+    queue_tbl.select.return_value.in_.return_value.order.return_value.range.return_value.execute.return_value.data = []
+    # First gte call = slot_start_utc (empty), second gte call = recent_turbo_cutoff_utc (rec-turbo)
+    gte_slot = MagicMock()
+    gte_slot.order.return_value.range.return_value.execute.return_value.data = []
+    gte_turbo = MagicMock()
+    gte_turbo.order.return_value.range.return_value.execute.return_value.data = [{"recipe_id": "rec-turbo"}]
+    queue_tbl.select.return_value.eq.return_value.gte.side_effect = [gte_slot, gte_turbo]
+
+    stats = enqueue_live_recipes_with_stats(
+        sb,
+        slot_start_utc=datetime(2026, 11, 19, 15, 0, tzinfo=UTC),
+        recent_turbo_cutoff_utc=datetime(2026, 11, 19, 14, 55, tzinfo=UTC),
+    )
+
+    assert stats["enqueued"] == 1
+    assert stats["skipped_open"] == 0
+    ops_tbl.insert.assert_not_called()
+
+
+def test_insert_live_jobs_idempotent_falls_back_on_duplicate_key():
+    from recipes.runner import _insert_live_jobs_idempotent
+
+    sb = MagicMock()
+    tbl = MagicMock()
+    sb.table.return_value = tbl
+    tbl.insert.return_value.execute.side_effect = [
+        RuntimeError("duplicate key value violates unique constraint (23505)"),
+        RuntimeError("duplicate key value violates unique constraint (23505)"),
+        MagicMock(),
+    ]
+
+    inserted = _insert_live_jobs_idempotent(sb, [{"recipe_id": "r1"}, {"recipe_id": "r2"}])
+    assert inserted == 1

@@ -8,6 +8,7 @@ import type {
     RecipeUserQuotaStatus,
 } from '../types';
 import { isQuotaLimitMessage } from '../utils/live-studio-helpers';
+import { isTurboActive } from '../utils/market-hours';
 
 export function resolveBacktestButtonLabel(
     isStarting: boolean,
@@ -150,9 +151,10 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
                     </span>
                     <span className="text-xs font-normal text-voxel-muted leading-relaxed">
                         Runs independently on clvg.uk auto-go against your strategy’s isolated
-                        $10,000 paper ledger, so live turns never stall behind queued backtests. Use
-                        Run Live Now to test one slot immediately, or enable Scheduled Live (3x/day
-                        ET) on up to 1 saved strategy to log automatic alerts.
+                        $10,000 paper ledger, so live turns never stall behind queued backtests.
+                        Enable Live (30m) on up to 3 saved strategies to run every 30 minutes during
+                        US market hours (09:30–16:00 ET), plus 1 free daily Turbo boost for 5-minute
+                        runs over 1 hour.
                     </span>
                 </div>
             </div>
@@ -241,10 +243,19 @@ export function SavedRecipesStrip({
                                 {item.is_live && (
                                     <Badge
                                         variant={isActive ? 'solid' : 'soft'}
-                                        colorScheme={isActive ? 'neutral' : 'success'}
+                                        colorScheme={
+                                            isActive
+                                                ? 'neutral'
+                                                : isTurboActive(item.turbo_expires_at)
+                                                  ? 'accent'
+                                                  : 'success'
+                                        }
                                         size="xs"
+                                        suppressHydrationWarning
                                     >
-                                        LIVE 3x/d
+                                        {isTurboActive(item.turbo_expires_at)
+                                            ? 'TURBO 5m'
+                                            : 'LIVE 30m'}
                                     </Badge>
                                 )}
                             </Link>

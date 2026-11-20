@@ -75,7 +75,7 @@ describe('RecipeStudioPage', () => {
     it('renders the Enable Live button instead of Run Live', () => {
         render(<RecipeStudioPage />);
 
-        expect(screen.getByRole('button', { name: 'Enable Live (3x/d)' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Enable Live (30m)' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Run Live/i })).not.toBeInTheDocument();
     });
 });

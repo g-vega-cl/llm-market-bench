@@ -33,9 +33,8 @@ export function LiveSwitchConfirmation({
         >
             <span className="min-w-0 break-words">
                 <span className="font-bold text-warning">⚠</span>{' '}
-                <span className="font-bold">{conflictingRecipe.name}</span> is currently live
-                (3x/d). Enable live for <span className="font-bold">{targetRecipeName}</span>{' '}
-                instead?
+                <span className="font-bold">{conflictingRecipe.name}</span> is currently live (30m).
+                Enable live for <span className="font-bold">{targetRecipeName}</span> instead?
             </span>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <Button

@@ -11,6 +11,7 @@ import type {
     RecipeAlert,
     RecipeJobRecord,
 } from '../types';
+import { getEtDateString } from '../utils/market-hours';
 
 export async function fetchRecipeAlerts(userId: string): Promise<RecipeAlert[]> {
     const db = getDbAdminClient();
@@ -246,7 +247,7 @@ export async function fetchLivePortfolioAndRuns(
     const { data: recipeRow, error: recipeErr } = await db
         .from('strategy_recipes')
         .select(
-            'id, user_id, is_public, is_template, paper_cash, paper_positions, paper_trades, paper_equity_curve',
+            'id, user_id, name, is_live, turbo_expires_at, is_public, is_template, paper_cash, paper_positions, paper_trades',
         )
         .eq('id', recipeId)
         .single();
@@ -258,6 +259,9 @@ export async function fetchLivePortfolioAndRuns(
     const row = recipeRow as {
         id: string;
         user_id: string;
+        name?: string | null;
+        is_live?: boolean | null;
+        turbo_expires_at?: string | null;
         is_public: boolean;
         is_template: boolean;
         paper_cash?: number | null;
@@ -269,16 +273,33 @@ export async function fetchLivePortfolioAndRuns(
         throw new Error('Unauthorized: cannot view this recipe portfolio');
     }
 
-    const { data: runRows } = await db
-        .from('recipe_execution_queue')
-        .select(
-            'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at',
-        )
-        .eq('recipe_id', recipeId)
-        .eq('user_id', row.user_id)
-        .eq('mode', 'live_turn')
-        .order('created_at', { ascending: false })
-        .limit(10);
+    const [{ data: runRows }, quotaRes] = await Promise.all([
+        db
+            .from('recipe_execution_queue')
+            .select(
+                'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at',
+            )
+            .eq('recipe_id', recipeId)
+            .eq('user_id', row.user_id)
+            .eq('mode', 'live_turn')
+            .order('created_at', { ascending: false })
+            .limit(10),
+        isOwner
+            ? db
+                  .from('recipe_user_quotas')
+                  .select('last_turbo_et_date')
+                  .eq('user_id', userId)
+                  .limit(1)
+            : Promise.resolve({ data: [] as Array<{ last_turbo_et_date?: string | null }> }),
+    ]);
+
+    const todayEt = getEtDateString(new Date());
+    const quotaRow = Array.isArray(quotaRes.data) ? quotaRes.data[0] : null;
+    const turboUsedToday = Boolean(
+        isOwner &&
+            quotaRow &&
+            (quotaRow as { last_turbo_et_date?: string | null }).last_turbo_et_date === todayEt,
+    );
 
     const recentLiveRuns = (runRows || []) as RecipeJobRecord[];
     const rawPositions = Array.isArray(row.paper_positions) ? row.paper_positions : [];
@@ -299,6 +320,13 @@ export async function fetchLivePortfolioAndRuns(
             trades: Array.isArray(row.paper_trades) ? row.paper_trades : [],
         },
         recentLiveRuns,
+        liveMeta: {
+            recipeName: row.name ?? '',
+            isLive: Boolean(row.is_live),
+            isOwner,
+            turboExpiresAt: row.turbo_expires_at ?? null,
+            turboUsedToday,
+        },
     };
 }
 

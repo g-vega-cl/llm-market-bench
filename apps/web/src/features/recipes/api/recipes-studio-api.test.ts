@@ -164,6 +164,13 @@ describe('recipes-studio-api', () => {
         expect(liveState.portfolio.open_positions[0].current_price).toBe(220.0);
         expect(liveState.portfolio.open_positions[0].unrealized_pnl_net).toBeGreaterThan(240);
         expect(liveState.recentLiveRuns).toHaveLength(1);
+        expect(liveState.liveMeta).toEqual({
+            recipeName: '',
+            isLive: true,
+            isOwner: true,
+            turboExpiresAt: null,
+            turboUsedToday: false,
+        });
     });
 
     it('prefers newer live signal_prices over older intraday bars and bounds bar query with order and limit', async () => {

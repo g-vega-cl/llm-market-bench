@@ -38,7 +38,7 @@ export async function archiveRecipe(
     const archivedAt = new Date().toISOString();
     const { data, error } = await db
         .from('strategy_recipes')
-        .update({ archived_at: archivedAt, is_live: false })
+        .update({ archived_at: archivedAt, is_live: false, turbo_expires_at: null })
         .eq('id', recipeId)
         .eq('user_id', userId)
         .select('id, archived_at')

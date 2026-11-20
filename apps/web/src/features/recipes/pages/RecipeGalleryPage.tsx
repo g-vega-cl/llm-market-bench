@@ -1,10 +1,4 @@
-import {
-    Badge,
-    Button,
-    Card,
-    PageLayout,
-    SectionHeading,
-} from '@llm-market-bench/ui-design-system';
+import { Badge, Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { STARTER_RECIPES } from '../starter-templates';
 import type { PushStrategy } from '../types';
@@ -39,8 +33,8 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
                     <SectionHeading className="text-sm">Strategy recipes</SectionHeading>
                     <p className="text-xs font-normal text-voxel-muted max-w-prose">
                         Each recipe is a single LLM call over point-in-time news, memories and
-                        technical filters. Fork one, change one thing, and run it on paper cash
-                        three times a day.
+                        technical filters. Fork one, change one thing, and run it live on paper cash
+                        every 30 minutes during market hours.
                     </p>
                     <div className="flex flex-wrap gap-2">
                         <Link
@@ -70,7 +64,7 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
                                     {template.name}
                                 </span>
                                 <span className="text-xs font-normal text-voxel-muted">
-                                    {template.cadence} · one LLM call
+                                    Live: 30m · Backtest: {template.cadence} · one LLM call
                                 </span>
                             </div>
                             <div className="flex flex-wrap gap-1">

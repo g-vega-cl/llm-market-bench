@@ -43,7 +43,7 @@ export function StudioHeader({
             />
             <p className="text-xs font-normal text-voxel-muted">
                 Compose Prompt, News, Memories, Technicals, and Output Format blocks into a single
-                Long-Only LLM call (runs 3x/day ET at 09:30, 12:30, 15:30).
+                Long-Only LLM call (runs every 30m during market hours 09:30–16:00 ET).
             </p>
         </div>
     );

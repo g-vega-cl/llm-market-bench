@@ -1,4 +1,4 @@
-"""Hourly scheduler & queue worker daemon for Strategy Recipes (MiniPC runner)."""
+"""30-minute market-hours scheduler, 5-minute Turbo mode, & queue worker daemon."""
 
 from __future__ import annotations
 
@@ -7,14 +7,16 @@ import asyncio
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from core.config import logger
 from core.db import get_supabase_client
 from core.time_utils import EASTERN_TZ
-from recipes.intraday_bars import TRADING_SLOTS_ET, snapshot_live_intraday_bars
+from execution.market_session import MarketSessionManager
+from recipes.intraday_bars import snapshot_live_intraday_bars
 from recipes.news_corpus import sync_live_news_to_corpus
 from recipes.portfolio_engine import DEFAULT_CONCURRENCY_CONFIG
 from recipes.public_stats import refresh_public_stats
@@ -22,7 +24,27 @@ from recipes.push_schema import is_valid_single_stage_graph
 from recipes.worker import async_process_next_recipe_job, process_next_recipe_job
 
 ANONYMOUS_USER_ID = "00000000-0000-0000-0000-000000000000"
-SLOT_WINDOW_SECONDS = 1200  # 20-minute trigger window per 09:30 / 12:30 / 15:30 ET slot
+LIVE_SLOTS_ET: tuple[tuple[int, int], ...] = (
+    (9, 30),
+    (10, 0),
+    (10, 30),
+    (11, 0),
+    (11, 30),
+    (12, 0),
+    (12, 30),
+    (13, 0),
+    (13, 30),
+    (14, 0),
+    (14, 30),
+    (15, 0),
+    (15, 30),
+    (16, 0),
+)
+SLOT_WINDOW_SECONDS = 1200  # 20-minute trigger window per 30-minute ET slot (09:30..16:00)
+TURBO_INTERVAL_SECONDS = 300  # 5-minute cadence while Turbo is active
+TURBO_POLL_INTERVAL_SECONDS = 30  # Poll active Turbo bots at most once every 30s
+NEWS_SYNC_MIN_INTERVAL_SECONDS = 300
+PUBLIC_STATS_MIN_INTERVAL_SECONDS = 60
 POLL_INTERVAL_SECONDS = 5
 MAX_JOBS_PER_CYCLE = 25
 LIVE_TURN_CONCURRENCY = int(os.environ.get("RECIPE_LIVE_CONCURRENCY", "10"))
@@ -35,13 +57,50 @@ LIVE_TURN_CONCURRENCY = int(os.environ.get("RECIPE_LIVE_CONCURRENCY", "10"))
 BACKTEST_CONCURRENCY = min(3, max(1, int(os.environ.get("RECIPE_BACKTEST_CONCURRENCY", "3"))))
 
 
+def _to_et(now_dt: datetime) -> datetime:
+    return now_dt.astimezone(EASTERN_TZ) if now_dt.tzinfo else now_dt.replace(tzinfo=UTC).astimezone(EASTERN_TZ)
+
+
+def _good_friday_date(year: int) -> date:
+    """Compute Good Friday using the Anonymous Gregorian Easter algorithm."""
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    el = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * el) // 451
+    month = (h + el - 7 * m + 114) // 31
+    day = ((h + el - 7 * m + 114) % 31) + 1
+    return date(year, month, day) - timedelta(days=2)
+
+
+def _is_us_holiday_fallback(day_et: date) -> bool:
+    return day_et == _good_friday_date(day_et.year) or MarketSessionManager.is_known_us_market_holiday_fallback(day_et)
+
+
+def is_us_market_hours_et(now_dt: datetime) -> bool:
+    """True during regular Mon-Fri 09:30-16:00 ET equity market hours (excluding US holidays)."""
+    dt_et = _to_et(now_dt)
+    if dt_et.weekday() >= 5 or _is_us_holiday_fallback(dt_et.date()):
+        return False
+    market_open = dt_et.replace(hour=9, minute=30, second=0, microsecond=0)
+    market_close = dt_et.replace(hour=16, minute=0, second=0, microsecond=0)
+    return market_open <= dt_et <= market_close
+
+
 def due_trading_slot(now_dt: datetime, last_slot_key: str | None = None) -> str | None:
-    """Return 'YYYY-MM-DDTHH:MM' ET key when now_dt falls inside a 09:30/12:30/15:30 ET slot."""
-    dt_et = now_dt.astimezone(EASTERN_TZ) if now_dt.tzinfo else now_dt.replace(tzinfo=UTC).astimezone(EASTERN_TZ)
-    if dt_et.weekday() >= 5:
+    """Return 'YYYY-MM-DDTHH:MM' ET key when now_dt falls inside a 30-min market slot (09:30-16:00 ET)."""
+    dt_et = _to_et(now_dt)
+    if dt_et.weekday() >= 5 or _is_us_holiday_fallback(dt_et.date()):
         return None
     day_str = dt_et.date().isoformat()
-    for hour_et, minute_et in TRADING_SLOTS_ET:
+    for hour_et, minute_et in LIVE_SLOTS_ET:
         slot_start = dt_et.replace(hour=hour_et, minute=minute_et, second=0, microsecond=0)
         delta_sec = (dt_et - slot_start).total_seconds()
         if 0 <= delta_sec < SLOT_WINDOW_SECONDS:
@@ -203,18 +262,43 @@ def _fetch_open_recipe_ids(sb_client: Any, *, slot_start_utc: datetime | None = 
         offset += OPEN_JOBS_PAGE_SIZE
 
 
-def enqueue_live_recipes_with_stats(sb_client: Any, *, slot_start_utc: datetime | None = None) -> dict[str, int]:
+def _insert_live_jobs_idempotent(sb_client: Any, new_jobs: list[dict[str, Any]]) -> int:
+    """Insert live_turn jobs, tolerating 23505 unique-index conflicts under replica lag."""
+    if not new_jobs:
+        return 0
+    try:
+        sb_client.table("recipe_execution_queue").insert(new_jobs).execute()
+        return len(new_jobs)
+    except Exception as exc:
+        if "23505" not in str(exc) and "duplicate key" not in str(exc).lower():
+            raise
+        inserted = 0
+        for job in new_jobs:
+            try:
+                sb_client.table("recipe_execution_queue").insert(job).execute()
+                inserted += 1
+            except Exception as row_exc:
+                if "23505" in str(row_exc) or "duplicate key" in str(row_exc).lower():
+                    logger.debug("Skipped duplicate open live_turn for recipe %s", job.get("recipe_id"))
+                    continue
+                raise
+        return inserted
+
+
+def enqueue_live_recipes_with_stats(
+    sb_client: Any,
+    *,
+    slot_start_utc: datetime | None = None,
+    recent_turbo_cutoff_utc: datetime | None = None,
+) -> dict[str, int]:
     """Enqueue live_turn jobs and return the counters the scheduler health check needs.
 
     Recipes the owner removed from My Strategies keep their rows (archived_at is
     set) but must never be turned over again, so the query requires NULL there.
 
-    The previous implementation read at most 500 live recipes with a single
-    ``.limit(500)``, so with several live recipes per user the excess was
-    silently never scheduled. Everything is paged now, and the counters are
-    reconciled against what was seen: an accounting mismatch, or more than 10%
-    of live recipes skipped because they already had an open job, is recorded in
-    ``recipe_ops_events`` and logged as an error.
+    ``recent_turbo_cutoff_utc`` prevents double-firing bots that ran a 5m Turbo
+    turn immediately prior to a 30m slot without inflating ``skipped_open`` ops
+    alerts.
     """
     live_recipes = _fetch_live_recipes(sb_client)
     stats = {
@@ -227,14 +311,21 @@ def enqueue_live_recipes_with_stats(sb_client: Any, *, slot_start_utc: datetime 
         return stats
 
     open_ids = _fetch_open_recipe_ids(sb_client, slot_start_utc=slot_start_utc)
+    recent_turbo_ids: set[str] = set()
+    if recent_turbo_cutoff_utc is not None and (slot_start_utc is None or recent_turbo_cutoff_utc < slot_start_utc):
+        recent_turbo_ids = _fetch_open_recipe_ids(sb_client, slot_start_utc=recent_turbo_cutoff_utc) - open_ids
 
     new_jobs: list[dict[str, Any]] = []
+    skipped_recent_turbo = 0
     for rec in live_recipes:
         rec_id = str(rec.get("id", ""))
         if not rec_id:
             continue
         if rec_id in open_ids:
             stats["skipped_open"] += 1
+            continue
+        if rec_id in recent_turbo_ids:
+            skipped_recent_turbo += 1
             continue
         if not _is_valid_single_stage_graph(rec.get("graph_json")):
             logger.warning(
@@ -259,17 +350,16 @@ def enqueue_live_recipes_with_stats(sb_client: Any, *, slot_start_utc: datetime 
         )
 
     if new_jobs:
-        sb_client.table("recipe_execution_queue").insert(new_jobs).execute()
-        stats["enqueued"] = len(new_jobs)
-        logger.info("Enqueued %d hourly live_turn recipe jobs", len(new_jobs))
+        stats["enqueued"] = _insert_live_jobs_idempotent(sb_client, new_jobs)
+        logger.info("Enqueued %d scheduled live_turn recipe jobs", stats["enqueued"])
 
-    accounted = stats["enqueued"] + stats["skipped_open"] + stats["skipped_invalid_graph"]
+    accounted = stats["enqueued"] + stats["skipped_open"] + skipped_recent_turbo + stats["skipped_invalid_graph"]
     if accounted != stats["seen"]:
         _record_ops_event(
             sb_client,
             "live_enqueue_accounting_mismatch",
             severity="error",
-            detail={**stats, "accounted": accounted},
+            detail={**stats, "skipped_recent_turbo": skipped_recent_turbo, "accounted": accounted},
         )
     elif stats["seen"] and (stats["skipped_open"] / stats["seen"]) > SKIP_RATIO_ALERT:
         _record_ops_event(
@@ -282,9 +372,83 @@ def enqueue_live_recipes_with_stats(sb_client: Any, *, slot_start_utc: datetime 
     return stats
 
 
-def enqueue_live_recipes(sb_client: Any, *, slot_start_utc: datetime | None = None) -> int:
+def enqueue_live_recipes(
+    sb_client: Any,
+    *,
+    slot_start_utc: datetime | None = None,
+    recent_turbo_cutoff_utc: datetime | None = None,
+) -> int:
     """Backward-compatible wrapper returning only the enqueued count."""
-    return enqueue_live_recipes_with_stats(sb_client, slot_start_utc=slot_start_utc)["enqueued"]
+    return enqueue_live_recipes_with_stats(
+        sb_client,
+        slot_start_utc=slot_start_utc,
+        recent_turbo_cutoff_utc=recent_turbo_cutoff_utc,
+    )["enqueued"]
+
+
+def _fetch_active_turbo_recipes(sb_client: Any, now_utc: datetime) -> list[dict[str, Any]]:
+    """Fetch live, non-archived recipes with an unexpired Turbo window."""
+    collected: list[dict[str, Any]] = []
+    offset = 0
+    now_iso = now_utc.isoformat()
+    while True:
+        page = (
+            sb_client.table("strategy_recipes")
+            .select("id, user_id, name, graph_json, turbo_expires_at")
+            .eq("is_live", True)
+            .is_("archived_at", "null")
+            .gt("turbo_expires_at", now_iso)
+            .order("id")
+            .range(offset, offset + LIVE_PAGE_SIZE - 1)
+            .execute()
+        )
+        batch = page.data or []
+        collected.extend(batch)
+        if len(batch) < LIVE_PAGE_SIZE:
+            return collected
+        offset += LIVE_PAGE_SIZE
+
+
+def enqueue_turbo_recipes(sb_client: Any, *, now_utc: datetime | None = None) -> int:
+    """Enqueue 5-minute live_turn jobs for bots with an active Turbo window during market hours."""
+    current_utc = now_utc or datetime.now(UTC)
+    if not is_us_market_hours_et(current_utc):
+        return 0
+
+    turbo_recipes = _fetch_active_turbo_recipes(sb_client, current_utc)
+    if not turbo_recipes:
+        return 0
+
+    cutoff_utc = current_utc - timedelta(seconds=TURBO_INTERVAL_SECONDS)
+    skip_ids = _fetch_open_recipe_ids(sb_client, slot_start_utc=cutoff_utc)
+
+    new_jobs: list[dict[str, Any]] = []
+    for rec in turbo_recipes:
+        rec_id = str(rec.get("id", ""))
+        if not rec_id or rec_id in skip_ids:
+            continue
+        if not _is_valid_single_stage_graph(rec.get("graph_json")):
+            logger.warning("Skipping turbo recipe %s (%s): invalid Push v2 graph", rec.get("name"), rec_id)
+            continue
+        new_jobs.append(
+            {
+                "recipe_id": rec_id,
+                "user_id": rec.get("user_id") or ANONYMOUS_USER_ID,
+                "mode": "live_turn",
+                "priority": 1,
+                "status": "pending",
+                "provider": "free-llm-proxy",
+                "model": "auto-go",
+                "weeks_requested": [],
+                "progress_pct": 0,
+            }
+        )
+
+    if new_jobs:
+        inserted = _insert_live_jobs_idempotent(sb_client, new_jobs)
+        logger.info("Enqueued %d turbo (5m) live_turn recipe jobs", inserted)
+        return inserted
+    return 0
 
 
 async def run_hourly_cycle(
@@ -375,15 +539,36 @@ def _drain_sync_queue(sb_client: Any, max_jobs: int = MAX_JOBS_PER_CYCLE) -> Non
             break
 
 
-async def run_scheduled_slot(sb_client: Any, slot_key: str, now_utc: datetime) -> dict[str, int]:
-    """One 09:30/12:30/15:30 ET cycle: news, enqueue, drain, bars, public stats.
+@dataclass
+class LiveLaneState:
+    last_slot_key: str | None = None
+    last_news_sync_utc: datetime | None = None
+    last_turbo_poll_utc: datetime | None = None
+    last_stats_refresh_utc: datetime | None = None
 
-    Extracted from ``_live_lane_loop`` so the deployed daemon path is testable —
-    the board used to be materialised only on the ``--once`` path.
-    """
+
+async def _is_trading_day_et(now_utc: datetime) -> bool:
+    """Check FMP + fallback US holiday calendar for the current ET date."""
+    dt_et = _to_et(now_utc)
+    if dt_et.weekday() >= 5 or _is_us_holiday_fallback(dt_et.date()):
+        return False
+    try:
+        return await MarketSessionManager().is_trading_day(dt_et.date())
+    except Exception:
+        logger.debug("MarketSessionManager trading-day lookup failed; using fallback", exc_info=True)
+        return True
+
+
+async def run_scheduled_slot(sb_client: Any, slot_key: str, now_utc: datetime) -> dict[str, int]:
+    """One 30-min ET market slot (09:30..16:00): news, enqueue, drain, bars, public stats."""
     slot_dt_utc = _canonical_slot_utc(slot_key)
+    recent_turbo_cutoff = now_utc - timedelta(seconds=TURBO_INTERVAL_SECONDS)
     news_stats = await sync_live_news_to_corpus(sb_client, as_of_utc=now_utc)
-    live_enqueued = enqueue_live_recipes(sb_client, slot_start_utc=slot_dt_utc)
+    live_enqueued = enqueue_live_recipes(
+        sb_client,
+        slot_start_utc=slot_dt_utc,
+        recent_turbo_cutoff_utc=recent_turbo_cutoff,
+    )
     live_done = await drain_lane(sb_client, mode="live_turn", concurrency=LIVE_TURN_CONCURRENCY)
     snapped = await snapshot_live_intraday_bars(sb_client, _collect_recipe_watchlist(sb_client), slot_dt_utc)
     logger.info(
@@ -405,23 +590,64 @@ async def run_scheduled_slot(sb_client: Any, slot_key: str, now_utc: datetime) -
     }
 
 
+def _elapsed_at_least(prev: datetime | None, now_utc: datetime, seconds: int) -> bool:
+    return prev is None or (now_utc - prev).total_seconds() >= seconds
+
+
+async def run_live_lane_tick(
+    sb_client: Any,
+    now_utc: datetime,
+    state: LiveLaneState,
+) -> LiveLaneState:
+    """Execute one poll tick of the live lane: 30m slot, throttled 5m Turbo, or drain."""
+    slot_key = due_trading_slot(now_utc, state.last_slot_key)
+    if slot_key is not None:
+        if not await _is_trading_day_et(now_utc):
+            state.last_slot_key = slot_key
+            return state
+        try:
+            await run_scheduled_slot(sb_client, slot_key, now_utc)
+            state.last_slot_key = slot_key
+            state.last_news_sync_utc = now_utc
+            state.last_stats_refresh_utc = now_utc
+        except Exception:
+            logger.exception("Scheduled ET slot %s live cycle failed; will retry next tick", slot_key)
+        return state
+
+    try:
+        if (
+            is_us_market_hours_et(now_utc)
+            and _elapsed_at_least(state.last_turbo_poll_utc, now_utc, TURBO_POLL_INTERVAL_SECONDS)
+            and await _is_trading_day_et(now_utc)
+        ):
+            state.last_turbo_poll_utc = now_utc
+            turbo_enqueued = enqueue_turbo_recipes(sb_client, now_utc=now_utc)
+            if turbo_enqueued > 0 and _elapsed_at_least(
+                state.last_news_sync_utc, now_utc, NEWS_SYNC_MIN_INTERVAL_SECONDS
+            ):
+                await sync_live_news_to_corpus(sb_client, as_of_utc=now_utc)
+                state.last_news_sync_utc = now_utc
+
+        live_done = await drain_lane(sb_client, mode="live_turn", concurrency=LIVE_TURN_CONCURRENCY)
+        if live_done > 0 and _elapsed_at_least(
+            state.last_stats_refresh_utc, now_utc, PUBLIC_STATS_MIN_INTERVAL_SECONDS
+        ):
+            try:
+                refresh_public_stats(sb_client)
+                state.last_stats_refresh_utc = now_utc
+            except Exception:
+                logger.exception("Public stats refresh failed after turbo/live drain")
+    except Exception:
+        logger.exception("Live turn lane iteration failed")
+
+    return state
+
+
 async def _live_lane_loop(sb_client: Any) -> None:
-    """Run scheduled 3x/day ET cycles and non-blocking live_turn jobs on clvg.uk auto-go."""
-    last_slot_key: str | None = None
+    """Run scheduled 30m ET market cycles, 5m Turbo ticks, and immediate live_turn jobs."""
+    state = LiveLaneState()
     while True:
-        now_utc = datetime.now(UTC)
-        slot_key = due_trading_slot(now_utc, last_slot_key)
-        if slot_key is not None:
-            try:
-                await run_scheduled_slot(sb_client, slot_key, now_utc)
-            except Exception:
-                logger.exception("Scheduled ET slot %s live cycle failed", slot_key)
-            last_slot_key = slot_key
-        else:
-            try:
-                await drain_lane(sb_client, mode="live_turn")
-            except Exception:
-                logger.exception("Live turn lane iteration failed")
+        await run_live_lane_tick(sb_client, datetime.now(UTC), state)
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 
@@ -440,7 +666,7 @@ async def _async_daemon_loop(sb_client: Any) -> None:
 
 
 def _run_daemon_loop(sb_client: Any) -> None:
-    """Run dual-lane 3x/day ET scheduler + live_turn lane concurrently with strict 1x backtest lane."""
+    """Run dual-lane 30m ET + 5m Turbo live scheduler concurrently with backtest lane."""
     try:
         seed_starter_recipes(sb_client)
     except Exception:

@@ -107,6 +107,7 @@
 
 ## Concepts
 
+- [[concepts/recipe-turbo-mode]] — 5-minute Turbo live cadence (1 hour, 1×/ET day): atomic RPC, DB invariants, runner scheduling, market-hours helpers
 - [[concepts/daily-spy-owner-allowlist]] — fail-closed allowlist gate for `sys-daily-spy-*` portfolios across creation, trade, reconciliation, audit, marks, and backfill
 - [[concepts/sentiment-fader-reentry-cooldown]] — same-day ET exit cooldown and fail-closed ticks for the options sentiment fader
 - [[concepts/atomic-trade-execution]] — single-transaction `execute_portfolio_trade` RPC, idempotency keys, retry classification, and sandbox parity

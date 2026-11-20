@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StudioActionBar } from './StudioActionBar';
 
 vi.mock('@tanstack/react-router', () => ({
@@ -50,12 +50,16 @@ function renderBar(overrides: Partial<Parameters<typeof StudioActionBar>[0]> = {
 }
 
 describe('StudioActionBar', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('wires every action to its handler', () => {
         const handlers = renderBar();
 
         fireEvent.click(screen.getByRole('button', { name: '★ Waitlist' }));
         fireEvent.click(screen.getByRole('button', { name: 'Alerts (2)' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Enable Live (3x/d)' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Enable Live (30m)' }));
         fireEvent.click(screen.getByRole('button', { name: '▶ Backtest (Random 2W)' }));
 
         expect(handlers.onOpenWaitlist).toHaveBeenCalledTimes(1);
@@ -64,17 +68,24 @@ describe('StudioActionBar', () => {
         expect(handlers.onBacktest).toHaveBeenCalledTimes(1);
     });
 
-    it('reflects the live-on state and links to the live status page when liveRecipeId is provided', () => {
+    it('reflects the live-on state, links to live status, and wires Turbo during market hours', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-11-18T11:00:00-05:00'));
+        const onActivateTurbo = vi.fn();
+
         renderBar({
             isCurrentlyScheduledLive: true,
             liveRecipeId: 'rec-live-1',
+            onActivateTurbo,
         });
 
-        expect(screen.getByRole('button', { name: 'Live: ON (3x/d)' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Live: ON (30m)' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /Live Status/i })).toHaveAttribute(
             'href',
             '/recipes/live/rec-live-1',
         );
+        fireEvent.click(screen.getByRole('button', { name: /Turbo \(5m x 1h\)/i }));
+        expect(onActivateTurbo).toHaveBeenCalledTimes(1);
     });
 
     it('shows loading state on the live toggle button', () => {
@@ -82,7 +93,7 @@ describe('StudioActionBar', () => {
             isTogglingLive: true,
         });
 
-        const btn = screen.getByRole('button', { name: 'Enable Live (3x/d)' });
+        const btn = screen.getByRole('button', { name: 'Enable Live (30m)' });
         expect(btn).toBeDisabled();
         expect(btn).toHaveAttribute('aria-busy', 'true');
     });
@@ -103,7 +114,7 @@ describe('StudioActionBar', () => {
             isRunningBacktest: true,
         });
 
-        expect(screen.getByRole('button', { name: 'Enable Live (3x/d)' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Enable Live (30m)' })).toBeDisabled();
         expect(screen.getByRole('button', { name: '★ Waitlist' })).toBeEnabled();
     });
 

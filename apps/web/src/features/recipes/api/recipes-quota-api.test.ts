@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
 import {
+    activateRecipeTurbo,
     assertQuotaAllowsJob,
     cancelRecipeJob,
     fetchPublicShowcaseBacktest,
@@ -66,7 +67,10 @@ function createQuotaMockDb({
     queueRows = [] as QueueRow[],
     recipeRows = [] as Array<Record<string, unknown>>,
     singleRecipe = null as Record<string, unknown> | null,
-    updateResult = { data: { id: 'job-1', status: 'cancelled' }, error: null },
+    updateResult = { data: { id: 'job-1', status: 'cancelled' }, error: null } as {
+        data: Record<string, unknown>;
+        error: null;
+    },
     showcasePin = null as Record<string, unknown> | null,
     showcasePinError = null as { message: string } | null,
     jobsById = {} as Record<string, Record<string, unknown>>,
@@ -210,6 +214,8 @@ describe('recipes-quota-api', () => {
             maxLiveRecipes: 3,
             globalPendingBacktests: 1,
             globalQueueCap: 20,
+            lastTurboEtDate: null,
+            turboUsedToday: false,
         });
     });
 
@@ -341,6 +347,80 @@ describe('recipes-quota-api', () => {
         expect(list.map((r) => r.id)).toEqual(['rec-visible']);
         // The archived row still exists in the table: hiding is not deletion.
         expect(rows).toHaveLength(2);
+    });
+
+    it('activates Turbo during US market hours via 2-arg RPC and blocks outside 09:30-15:55 ET', async () => {
+        const rpc = vi.fn().mockResolvedValue({
+            data: [
+                {
+                    recipe_id: 'rec-live-1',
+                    turbo_expires_at: '2026-11-18T17:00:00.000Z',
+                    enqueued_job_id: 'job-turbo-1',
+                },
+            ],
+            error: null,
+        });
+        mockAdminDb = { rpc };
+
+        // Outside market hours (Saturday and <5m before close)
+        await expect(
+            activateRecipeTurbo('rec-live-1', 'user-1', new Date('2026-11-21T11:00:00-05:00')),
+        ).rejects.toThrow(/only available during US market hours/i);
+        await expect(
+            activateRecipeTurbo('rec-live-1', 'user-1', new Date('2026-11-18T15:56:00-05:00')),
+        ).rejects.toThrow(/only available during US market hours/i);
+        expect(rpc).not.toHaveBeenCalled();
+
+        // Inside market hours (Wednesday 11:00 EST) -> server derives ET date & expiry
+        const res = await activateRecipeTurbo(
+            'rec-live-1',
+            'user-1',
+            new Date('2026-11-18T11:00:00-05:00'),
+        );
+        expect(rpc).toHaveBeenCalledWith('activate_recipe_turbo', {
+            p_user_id: 'user-1',
+            p_recipe_id: 'rec-live-1',
+        });
+        expect(res).toEqual({
+            recipeId: 'rec-live-1',
+            turboExpiresAt: '2026-11-18T17:00:00.000Z',
+            enqueuedJobId: 'job-turbo-1',
+        });
+    });
+
+    it('clears turbo_expires_at and cancels pending live_turn jobs when disabling live schedule', async () => {
+        const { db, calls } = createQuotaMockDb({
+            singleRecipe: {
+                id: 'rec-1',
+                user_id: 'user-1',
+                is_live: true,
+                graph_json: STARTER_RECIPES[0],
+            },
+            updateResult: { data: { id: 'rec-1', is_live: false }, error: null },
+        });
+        // Support awaited `.update(...).eq(...)` without `.single()` on queue cancel
+        const origFrom = db.from.bind(db);
+        db.from = (table: string) => {
+            const chain = origFrom(table) as Record<string, unknown>;
+            if (table === 'recipe_execution_queue') {
+                // biome-ignore lint/suspicious/noThenProperty: mimics the thenable supabase-js query builder
+                chain.then = (onFulfilled?: (val: unknown) => unknown) => {
+                    calls.push({ table, op: 'cancel_pending_live_turn' });
+                    return Promise.resolve({ error: null }).then(onFulfilled);
+                };
+            }
+            return chain as never;
+        };
+        mockAdminDb = db;
+
+        await toggleLiveSchedule('rec-1', false, 'user-1');
+        const updateCall = calls.find((c) => c.table === 'strategy_recipes' && c.op === 'update');
+        expect(updateCall?.payload).toMatchObject({ is_live: false, turbo_expires_at: null });
+        expect(
+            calls.some(
+                (c) => c.table === 'recipe_execution_queue' && c.op === 'cancel_pending_live_turn',
+            ),
+        ).toBe(true);
     });
 });
 

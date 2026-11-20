@@ -294,57 +294,73 @@ def _fetch_spy_rows(sb_client: Any, first_date: str, last_date: str, ticker: str
 
 
 def _fetch_last_results(sb_client: Any, recipe_ids: list[str]) -> dict[str, dict[str, Any]]:
-    """Most recent completed live_turn result per recipe, from one batched queue read."""
+    """Most recent completed live_turn result per recipe, paginated past 500 rows."""
     if not recipe_ids:
         return {}
-    try:
-        res = (
-            sb_client.table("recipe_execution_queue")
-            .select("recipe_id, result_json, created_at")
-            .eq("mode", "live_turn")
-            .eq("status", "completed")
-            .in_("recipe_id", recipe_ids)
-            .order("created_at", desc=True)
-            .range(0, 499)
-            .execute()
-        )
-    except Exception:
-        logger.exception("Failed fetching recent live_turn results for public stats")
-        return {}
+    target_count = len(set(recipe_ids))
     latest: dict[str, dict[str, Any]] = {}
-    for row in res.data or []:
-        rid = str(row.get("recipe_id"))
-        if rid and rid not in latest:
-            result = row.get("result_json")
-            entry = result if isinstance(result, dict) else {}
-            entry["_created_at"] = row.get("created_at")
-            latest[rid] = entry
+    page_size = 500
+    offset = 0
+    for _ in range(10):
+        try:
+            res = (
+                sb_client.table("recipe_execution_queue")
+                .select("recipe_id, result_json, created_at")
+                .eq("mode", "live_turn")
+                .eq("status", "completed")
+                .in_("recipe_id", recipe_ids)
+                .order("created_at", desc=True)
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+        except Exception:
+            logger.exception("Failed fetching recent live_turn results for public stats")
+            return latest
+        rows = res.data or []
+        for row in rows:
+            rid = str(row.get("recipe_id"))
+            if rid and rid not in latest:
+                result = row.get("result_json")
+                entry = dict(result) if isinstance(result, dict) else {}
+                entry["_created_at"] = row.get("created_at")
+                latest[rid] = entry
+        if len(latest) >= target_count or len(rows) < page_size:
+            return latest
+        offset += page_size
     return latest
 
 
 def _count_runs_today(sb_client: Any, recipe_ids: list[str]) -> dict[str, int]:
+    """Count completed live_turn runs today UTC without 2,000-row silent truncation."""
     if not recipe_ids:
         return {}
     midnight = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-    try:
-        res = (
-            sb_client.table("recipe_execution_queue")
-            .select("recipe_id, created_at")
-            .eq("mode", "live_turn")
-            .eq("status", "completed")
-            .in_("recipe_id", recipe_ids)
-            .gte("created_at", midnight.isoformat())
-            .range(0, 1999)
-            .execute()
-        )
-    except Exception:
-        logger.exception("Failed counting live runs today for public stats")
-        return {}
     counts: dict[str, int] = {}
-    for row in res.data or []:
-        rid = str(row.get("recipe_id"))
-        counts[rid] = counts.get(rid, 0) + 1
-    return counts
+    page_size = 1000
+    offset = 0
+    while True:
+        try:
+            res = (
+                sb_client.table("recipe_execution_queue")
+                .select("recipe_id, created_at")
+                .eq("mode", "live_turn")
+                .eq("status", "completed")
+                .in_("recipe_id", recipe_ids)
+                .gte("created_at", midnight.isoformat())
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+        except Exception:
+            logger.exception("Failed counting live runs today for public stats")
+            return counts
+        rows = res.data or []
+        for row in rows:
+            rid = str(row.get("recipe_id"))
+            if rid:
+                counts[rid] = counts.get(rid, 0) + 1
+        if len(rows) < page_size:
+            return counts
+        offset += page_size
 
 
 def refresh_public_stats(

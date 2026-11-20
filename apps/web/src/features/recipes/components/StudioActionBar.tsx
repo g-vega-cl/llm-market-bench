@@ -1,30 +1,39 @@
 import { Button } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
+import { TurboButton } from './TurboButton';
 
 interface StudioActionBarProps {
     isTogglingLive: boolean;
     isCurrentlyScheduledLive: boolean;
     liveRecipeId?: string;
+    turboExpiresAt?: string | null;
+    turboUsedToday?: boolean;
+    isActivatingTurbo?: boolean;
     isRunningBacktest: boolean;
     backtestButtonLabel: string;
     unreadAlerts: number;
     onOpenWaitlist: () => void;
     onOpenAlerts: () => void;
     onToggleScheduledLive: () => void;
+    onActivateTurbo?: () => void;
     onBacktest: () => void;
 }
 
-/** Waitlist, alerts, live scheduling, and the backtest action for the studio. */
+/** Waitlist, alerts, live scheduling, Turbo boost, and backtest actions for the studio. */
 export function StudioActionBar({
     isTogglingLive,
     isCurrentlyScheduledLive,
     liveRecipeId,
+    turboExpiresAt,
+    turboUsedToday,
+    isActivatingTurbo,
     isRunningBacktest,
     backtestButtonLabel,
     unreadAlerts,
     onOpenWaitlist,
     onOpenAlerts,
     onToggleScheduledLive,
+    onActivateTurbo,
     onBacktest,
 }: StudioActionBarProps) {
     return (
@@ -40,10 +49,10 @@ export function StudioActionBar({
                 variant={isCurrentlyScheduledLive ? 'solid' : 'outline'}
                 colorScheme={isCurrentlyScheduledLive ? 'success' : 'neutral'}
                 onClick={onToggleScheduledLive}
-                disabled={isTogglingLive || isRunningBacktest}
+                disabled={isTogglingLive || isRunningBacktest || isActivatingTurbo}
                 isLoading={isTogglingLive}
             >
-                {isCurrentlyScheduledLive ? 'Live: ON (3x/d)' : 'Enable Live (3x/d)'}
+                {isCurrentlyScheduledLive ? 'Live: ON (30m)' : 'Enable Live (30m)'}
             </Button>
             {isCurrentlyScheduledLive && liveRecipeId && (
                 <Link
@@ -53,6 +62,15 @@ export function StudioActionBar({
                 >
                     Live Status →
                 </Link>
+            )}
+            {isCurrentlyScheduledLive && onActivateTurbo && (
+                <TurboButton
+                    turboExpiresAt={turboExpiresAt}
+                    turboUsedToday={turboUsedToday}
+                    isActivating={isActivatingTurbo}
+                    disabled={isTogglingLive || isRunningBacktest}
+                    onActivate={onActivateTurbo}
+                />
             )}
             <Button
                 size="sm"

@@ -172,7 +172,7 @@ function LeaderboardTableRow({
         <TableRow
             className={`transition-colors border-b border-voxel-bevel-lo ${isSelected ? 'bg-voxel-elevated' : ''}`}
         >
-            <TableCell className="text-center">
+            <TableCell align="center">
                 <input
                     type="checkbox"
                     aria-label={`Select ${info.name} for comparison`}
@@ -182,7 +182,7 @@ function LeaderboardTableRow({
                     className="h-4.5 w-4.5 rounded-none border-zinc-700 bg-zinc-800 text-accent focus:ring-accent accent-accent-hover disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
                 />
             </TableCell>
-            <TableCell className="font-mono font-bold">
+            <TableCell className="font-mono">
                 <Badge colorScheme={badgeColor} variant="soft" size="xs">
                     #{originalRank}
                 </Badge>
@@ -198,24 +198,22 @@ function LeaderboardTableRow({
                     </div>
                 </div>
             </TableCell>
-            <TableCell className="font-mono font-bold text-zinc-100 text-sm">
-                {model.composite_score.toFixed(1)}%
-            </TableCell>
-            <TableCell className="font-mono font-bold text-sm">
+            <TableCell className="font-mono">{model.composite_score.toFixed(1)}%</TableCell>
+            <TableCell className="font-mono">
                 <span className={model.return_pct >= 0 ? 'text-success' : 'text-danger'}>
                     {model.return_pct >= 0 ? '+' : ''}
                     {model.return_pct.toFixed(2)}%
                 </span>
             </TableCell>
-            <TableCell className="font-mono text-zinc-300 text-sm">
+            <TableCell tone="muted" className="font-mono">
                 {model.win_rate.toFixed(1)}%
             </TableCell>
-            <TableCell className="font-mono text-zinc-300 text-sm">
+            <TableCell tone="muted" className="font-mono">
                 {model.verifier_approval_rate !== null && model.verifier_approval_rate !== undefined
                     ? `${model.verifier_approval_rate.toFixed(1)}%`
                     : '—'}
             </TableCell>
-            <TableCell className="font-mono text-zinc-300 text-sm">
+            <TableCell tone="muted" className="font-mono">
                 {model.consistency_score.toFixed(1)}%
             </TableCell>
         </TableRow>

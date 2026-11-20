@@ -416,7 +416,9 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                         <TableRow>
                                             <TableCell
                                                 colSpan={16}
-                                                className="text-center py-8 text-voxel-muted"
+                                                align="center"
+                                                tone="muted"
+                                                className="py-8"
                                             >
                                                 No constituents match search criteria.
                                             </TableCell>
@@ -437,34 +439,34 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                     key={c.symbol}
                                                     className="border-b border-voxel-bevel-hi/40 transition-colors"
                                                 >
-                                                    <TableCell className="py-2.5 px-4 font-mono font-bold text-voxel-ink text-sm">
+                                                    <TableCell className="font-mono">
                                                         {c.symbol}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-voxel-ink max-w-48 truncate text-sm font-normal">
+                                                    <TableCell className="max-w-48 truncate">
                                                         {c.company_name || '—'}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         {formatMarketCap(c.market_cap)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         ${formatValue(c.price)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         {formatValue(c.pe)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         {formatValue(fwdPe)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         {formatValue(c.ps)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         {formatValue(c.pb)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         {formatValue(c.pfcf)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-center">
+                                                    <TableCell align="center">
                                                         {c.beat === true && (
                                                             <Badge
                                                                 colorScheme="success"
@@ -489,16 +491,16 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                             </span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-center font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="center" className="font-mono">
                                                         {c.earnings_date || '—'}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         {formatValue(c.eps_actual)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs font-normal">
+                                                    <TableCell align="right">
                                                         {formatValue(c.eps_estimated)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-center">
+                                                    <TableCell align="center">
                                                         {c.revenue_beat === true && (
                                                             <Badge
                                                                 colorScheme="success"
@@ -523,10 +525,10 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                             </span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs">
+                                                    <TableCell align="right">
                                                         {formatRevenue(c.revenue_actual)}
                                                     </TableCell>
-                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-voxel-ink text-xs">
+                                                    <TableCell align="right">
                                                         {formatRevenue(c.revenue_estimated)}
                                                     </TableCell>
                                                 </TableRow>

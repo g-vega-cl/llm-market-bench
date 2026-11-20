@@ -197,10 +197,10 @@ if [ "$FAST" = false ]; then
   if [ "$WEB" = true ]; then
     if [ "$SEQUENTIAL" = true ]; then
       echo "--> Running Web tests sequentially (1 worker, minimal CPU/RAM)..."
-      (cd apps/web && pnpm test -- --maxWorkers=1 --coverage)
+      (cd apps/web && pnpm test --maxWorkers=1 --coverage)
     else
       echo "--> Running Web tests with coverage..."
-      (cd apps/web && pnpm test -- --coverage)
+      (cd apps/web && pnpm test --coverage)
     fi
   fi
 fi

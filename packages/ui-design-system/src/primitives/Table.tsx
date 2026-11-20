@@ -101,16 +101,36 @@ TableHead.displayName = 'TableHead';
 export interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
     align?: 'left' | 'center' | 'right';
     numeric?: boolean;
+    /**
+     * Semantic text colour. The set is closed on purpose: `cn()` is plain clsx,
+     * so a `text-success` / `text-danger` class passed through `className` loses
+     * to the cell's own `text-voxel-ink` in the emitted stylesheet order.
+     * An explicit tone also overrides the muted colour an `isInactive` row sets,
+     * so a vivid cell inside a de-emphasised row must be avoided by the caller.
+     */
+    tone?: TableCellTone;
 }
 
+export const TABLE_CELL_TONES = ['positive', 'negative', 'muted'] as const;
+
+export type TableCellTone = (typeof TABLE_CELL_TONES)[number];
+
+const TONE_CLASSES: Record<TableCellTone, string> = {
+    positive: 'text-success',
+    negative: 'text-danger',
+    muted: 'text-voxel-muted',
+};
+
 export const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
-    ({ className, align = 'left', numeric = false, ...props }, ref) => {
+    ({ className, align = 'left', numeric = false, tone, ...props }, ref) => {
         const effectiveAlign = numeric ? 'right' : align;
         return (
             <td
                 ref={ref}
                 className={cn(
-                    'px-4 py-3 text-xs font-normal text-voxel-ink transition-colors',
+                    'px-4 py-3 text-xs transition-colors',
+                    tone ? TONE_CLASSES[tone] : 'text-voxel-ink',
+                    'font-normal',
                     effectiveAlign === 'center' && 'text-center',
                     effectiveAlign === 'right' && 'text-right font-mono tabular-nums',
                     className,

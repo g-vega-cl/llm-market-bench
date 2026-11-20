@@ -5,6 +5,7 @@ import {
     Table,
     TableBody,
     TableCell,
+    type TableCellTone,
     TableHead,
     TableHeader,
     TableRow,
@@ -35,7 +36,7 @@ function PredictionExpandedDetail({
 }) {
     return (
         <TableRow className="bg-voxel-trough border-b border-voxel-bevel-hi">
-            <TableCell colSpan={11} className="p-6">
+            <TableCell colSpan={11}>
                 <div className="flex flex-col gap-4">
                     {/* Rationale & Catalysts */}
                     <div>
@@ -182,27 +183,25 @@ function PredictionTableRowItem({
     onToggleExpand,
     matchingExp,
 }: PredictionRowProps) {
-    const dirClass =
+    const dirTone: TableCellTone | undefined =
         p.predicted_direction === 'UP'
-            ? 'text-success'
+            ? 'positive'
             : p.predicted_direction === 'HOLD'
-              ? 'text-accent'
-              : 'text-danger';
+              ? 'muted'
+              : 'negative';
 
     return (
         <>
             <TableRow className="border-b border-voxel-bevel-lo">
-                <TableCell className="font-bold text-sm text-voxel-ink font-mono">
-                    {p.target_date}
-                </TableCell>
+                <TableCell className="font-mono">{p.target_date}</TableCell>
                 <TableCell>{p.ticker}</TableCell>
-                <TableCell className={`font-bold ${dirClass}`}>{p.predicted_direction}</TableCell>
+                <TableCell tone={dirTone}>{p.predicted_direction}</TableCell>
                 <TableCell>{p.confidence}%</TableCell>
                 <TableCell>{p.open_price != null ? `$${p.open_price.toFixed(2)}` : '-'}</TableCell>
                 <TableCell>
                     {p.close_price != null ? `$${p.close_price.toFixed(2)}` : '-'}
                 </TableCell>
-                <TableCell className="font-bold text-sm">{p.actual_direction || '-'}</TableCell>
+                <TableCell>{p.actual_direction || '-'}</TableCell>
                 <TableCell>
                     <PredictionIntradayHitBadge p={p} />
                 </TableCell>
@@ -268,7 +267,7 @@ export function PredictionsTable({ predictions, experiments }: PredictionsTableP
 
                 {predictions.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={11} className="p-6 text-center text-voxel-muted">
+                        <TableCell colSpan={11} align="center" tone="muted">
                             No daily predictions logged yet. Run `python main.py --daily-predictor`
                             to generate one.
                         </TableCell>

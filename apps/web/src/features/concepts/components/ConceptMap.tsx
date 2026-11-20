@@ -409,7 +409,7 @@ export function ConceptMap({
                                         className="cursor-pointer group select-none"
                                         onClick={() => handleRowClick(concept)}
                                     >
-                                        <TableCell className="font-bold text-sm text-voxel-ink">
+                                        <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <span
                                                     className={`transition-transform duration-200 ${
@@ -437,13 +437,10 @@ export function ConceptMap({
 
                                         {activeTab === 'keep-an-eye' && concept.catalyst ? (
                                             <>
-                                                <TableCell className="font-bold text-sm text-voxel-ink">
+                                                <TableCell>
                                                     {concept.catalyst.catalyst_title}
                                                 </TableCell>
-                                                <TableCell
-                                                    align="right"
-                                                    className="text-voxel-ink font-mono text-xs font-normal"
-                                                >
+                                                <TableCell align="right">
                                                     {concept.catalyst.target_date} (
                                                     {concept.catalyst.date_offset_label})
                                                 </TableCell>
@@ -456,16 +453,10 @@ export function ConceptMap({
                                             </>
                                         ) : (
                                             <>
-                                                <TableCell
-                                                    align="right"
-                                                    className="text-voxel-ink font-mono text-xs font-normal"
-                                                >
+                                                <TableCell align="right">
                                                     {concept.mention_count}
                                                 </TableCell>
-                                                <TableCell
-                                                    align="right"
-                                                    className="text-voxel-ink font-mono text-xs font-normal"
-                                                >
+                                                <TableCell align="right">
                                                     {concept.velocity_score.toFixed(2)}
                                                 </TableCell>
                                                 <TableCell align="center">
@@ -479,7 +470,7 @@ export function ConceptMap({
                                         <TableRow isHoverable={false} className="bg-voxel-trough">
                                             <TableCell
                                                 colSpan={activeTab === 'keep-an-eye' ? 5 : 4}
-                                                className="px-3 sm:px-6 py-4"
+                                                className="py-4"
                                             >
                                                 <ConceptDetails
                                                     concept={concept}
@@ -499,7 +490,9 @@ export function ConceptMap({
                             <TableRow isHoverable={false}>
                                 <TableCell
                                     colSpan={activeTab === 'keep-an-eye' ? 5 : 4}
-                                    className="py-12 text-center text-xs font-normal text-voxel-muted"
+                                    align="center"
+                                    tone="muted"
+                                    className="py-12"
                                 >
                                     No concepts found matching your filters.
                                 </TableCell>

@@ -8,6 +8,7 @@ import {
     TableHeader,
     TableRow,
 } from '@llm-market-bench/ui-design-system';
+import { signToneOrMuted } from '~/lib/sign-tone';
 import { isExperimentColdStart } from '../utils/coldStart';
 import { formatTrackLabel } from './TrackTabs';
 
@@ -77,7 +78,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                             onClick={() => onSelect(exp)}
                             className={isSelected ? 'bg-voxel-elevated' : 'cursor-pointer'}
                         >
-                            <TableCell className="font-mono font-normal">
+                            <TableCell className="font-mono">
                                 <div className="flex items-center gap-2">
                                     <span>{exp.variant_tag}</span>
                                     {(exp.research_output as { selected_tools?: string[] })
@@ -120,18 +121,8 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                     {exp.experiment_type}
                                 </Badge>
                             </TableCell>
-                            <TableCell
-                                className={`font-bold ${
-                                    score === 'N/A'
-                                        ? 'text-voxel-muted font-normal'
-                                        : Number(score) > 0
-                                          ? 'text-emerald-400'
-                                          : 'text-rose-400'
-                                }`}
-                            >
-                                {score}
-                            </TableCell>
-                            <TableCell className="text-voxel-muted text-sm">
+                            <TableCell tone={signToneOrMuted(score)}>{score}</TableCell>
+                            <TableCell tone="muted">
                                 {formatStableDate(exp.week_start)} -{' '}
                                 {formatStableDate(exp.week_end)}
                             </TableCell>

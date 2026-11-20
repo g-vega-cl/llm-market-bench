@@ -7,11 +7,13 @@ import {
     Table,
     TableBody,
     TableCell,
+    type TableCellTone,
     TableHead,
     TableHeader,
     TableRow,
 } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
+import { signToneOrMuted } from '~/lib/sign-tone';
 import type { EarningsAlphaSnapshot, SectorBellwetherSignal } from '../api/fetch-earnings-audit';
 import type { EarningsPrediction } from '../api/fetch-earnings-predictions';
 import { EarningsArenaTab } from '../components/EarningsArenaTab';
@@ -23,48 +25,43 @@ export interface EarningsAuditPageProps {
 }
 
 function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
-    const sueColorClass = useMemo(() => {
-        if (item.sue_score === null) return 'text-zinc-400';
-        if (item.sue_score >= 2.0) return 'text-emerald-400';
-        if (item.sue_score < 0) return 'text-rose-400';
-        return 'text-zinc-300';
+    const sueTone: TableCellTone | undefined = useMemo(() => {
+        if (item.sue_score === null) return 'muted';
+        if (item.sue_score >= 2.0) return 'positive';
+        if (item.sue_score < 0) return 'negative';
+        return undefined;
     }, [item.sue_score]);
-
-    const revBeatClass = useMemo(() => {
-        if (item.revenue_surprise_pct === null) return 'text-zinc-400';
-        return item.revenue_surprise_pct >= 0 ? 'text-emerald-400' : 'text-rose-400';
-    }, [item.revenue_surprise_pct]);
 
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-voxel-ink">{item.ticker}</TableCell>
-            <TableCell className="text-zinc-300">
+            <TableCell>{item.ticker}</TableCell>
+            <TableCell>
                 <Badge variant="soft" colorScheme="neutral" size="xs">
                     {item.sector}
                 </Badge>
             </TableCell>
-            <TableCell className="text-zinc-400 text-xs">{item.report_date || 'N/A'}</TableCell>
-            <TableCell className="text-right font-mono text-zinc-200">
+            <TableCell tone="muted">{item.report_date || 'N/A'}</TableCell>
+            <TableCell align="right">
                 {item.actual_eps !== null ? `$${item.actual_eps.toFixed(2)}` : 'N/A'}
             </TableCell>
-            <TableCell className="text-right font-mono text-zinc-400">
+            <TableCell align="right" tone="muted">
                 {item.estimated_eps !== null ? `$${item.estimated_eps.toFixed(2)}` : 'N/A'}
             </TableCell>
-            <TableCell className={`text-right font-mono font-bold ${sueColorClass}`}>
+            <TableCell align="right" tone={sueTone}>
                 {item.sue_score !== null
                     ? item.sue_score >= 0
                         ? `+${item.sue_score.toFixed(2)}`
                         : item.sue_score.toFixed(2)
                     : 'N/A'}
             </TableCell>
-            <TableCell className={`text-right font-mono text-xs ${revBeatClass}`}>
+            <TableCell align="right" tone={signToneOrMuted(item.revenue_surprise_pct)}>
                 {item.revenue_surprise_pct !== null
                     ? item.revenue_surprise_pct >= 0
                         ? `+${item.revenue_surprise_pct.toFixed(1)}%`
                         : `${item.revenue_surprise_pct.toFixed(1)}%`
                     : 'N/A'}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell align="center">
                 {item.is_sloan_accrual_clean ? (
                     <Badge variant="soft" colorScheme="success" size="xs">
                         Clean Cash
@@ -75,7 +72,7 @@ function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
                     </Badge>
                 )}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell align="center">
                 {item.is_top_decile_sue ? (
                     <Badge variant="soft" colorScheme="success" size="xs">
                         Top Decile
@@ -91,9 +88,9 @@ function PeadTableRow({ item }: { item: EarningsAlphaSnapshot }) {
 function BellwetherTableRow({ b }: { b: SectorBellwetherSignal }) {
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-voxel-ink">{b.sector}</TableCell>
-            <TableCell className="font-mono text-zinc-200">{b.ticker}</TableCell>
-            <TableCell className="text-zinc-300 text-xs">
+            <TableCell>{b.sector}</TableCell>
+            <TableCell className="font-mono">{b.ticker}</TableCell>
+            <TableCell tone="muted">
                 {b.classification === 'EARLY_BELLWETHER' ? (
                     <Badge variant="soft" colorScheme="info" size="xs">
                         Early Bellwether
@@ -102,11 +99,11 @@ function BellwetherTableRow({ b }: { b: SectorBellwetherSignal }) {
                     <span className="text-voxel-muted">Downstream Peer</span>
                 )}
             </TableCell>
-            <TableCell className="text-right font-mono text-zinc-400">
+            <TableCell align="right" tone="muted">
                 #{b.market_cap_rank || '-'}
             </TableCell>
-            <TableCell className="text-zinc-400 text-xs">{b.report_date || 'Upcoming'}</TableCell>
-            <TableCell className="text-center">
+            <TableCell tone="muted">{b.report_date || 'Upcoming'}</TableCell>
+            <TableCell align="center">
                 {b.is_reported ? (
                     <Badge variant="soft" colorScheme="success" size="xs">
                         Reported
@@ -117,7 +114,7 @@ function BellwetherTableRow({ b }: { b: SectorBellwetherSignal }) {
                     </Badge>
                 )}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell align="center">
                 {b.is_active_bellwether_signal ? (
                     <Badge variant="soft" colorScheme="accent" size="xs">
                         Active Signal (14d)
@@ -131,27 +128,18 @@ function BellwetherTableRow({ b }: { b: SectorBellwetherSignal }) {
 }
 
 function RevisionTableRow({ item }: { item: EarningsAlphaSnapshot }) {
-    const upsideClass = useMemo(() => {
-        if (item.target_consensus_upside_pct === null) return 'text-zinc-400';
-        return item.target_consensus_upside_pct >= 0 ? 'text-emerald-400' : 'text-rose-400';
-    }, [item.target_consensus_upside_pct]);
-
     return (
         <TableRow className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-voxel-ink">{item.ticker}</TableCell>
-            <TableCell className="text-zinc-300 text-xs">{item.sector}</TableCell>
-            <TableCell className="text-zinc-200 text-xs font-normal">
-                {item.analyst_consensus || 'Unknown'}
-            </TableCell>
-            <TableCell className="text-right font-mono text-zinc-400">
-                {item.analyst_coverage_count} analysts
-            </TableCell>
-            <TableCell className="text-right font-mono">
+            <TableCell>{item.ticker}</TableCell>
+            <TableCell tone="muted">{item.sector}</TableCell>
+            <TableCell>{item.analyst_consensus || 'Unknown'}</TableCell>
+            <TableCell align="right">{item.analyst_coverage_count} analysts</TableCell>
+            <TableCell align="right">
                 <span
                     className={
                         item.analyst_buy_ratio_pct && item.analyst_buy_ratio_pct >= 60
-                            ? 'text-emerald-400'
-                            : 'text-zinc-300'
+                            ? 'text-success'
+                            : 'text-voxel-ink'
                     }
                 >
                     {item.analyst_buy_ratio_pct !== null
@@ -159,10 +147,10 @@ function RevisionTableRow({ item }: { item: EarningsAlphaSnapshot }) {
                         : 'N/A'}
                 </span>
             </TableCell>
-            <TableCell className="text-right font-mono text-zinc-300">
+            <TableCell align="right" tone="muted">
                 {item.target_consensus_price ? `$${item.target_consensus_price.toFixed(2)}` : 'N/A'}
             </TableCell>
-            <TableCell className={`text-right font-mono ${upsideClass}`}>
+            <TableCell align="right" tone={signToneOrMuted(item.target_consensus_upside_pct)}>
                 {item.target_consensus_upside_pct !== null
                     ? item.target_consensus_upside_pct >= 0
                         ? `+${item.target_consensus_upside_pct.toFixed(1)}%`
@@ -395,7 +383,9 @@ export function EarningsAuditPage({
                                     <TableRow>
                                         <TableCell
                                             colSpan={9}
-                                            className="text-center text-voxel-muted py-8"
+                                            align="center"
+                                            tone="muted"
+                                            className="py-8"
                                         >
                                             No earnings snapshots match your filters.
                                         </TableCell>
@@ -436,7 +426,9 @@ export function EarningsAuditPage({
                                     <TableRow>
                                         <TableCell
                                             colSpan={7}
-                                            className="text-center text-voxel-muted py-8"
+                                            align="center"
+                                            tone="muted"
+                                            className="py-8"
                                         >
                                             No sector bellwethers loaded yet.
                                         </TableCell>

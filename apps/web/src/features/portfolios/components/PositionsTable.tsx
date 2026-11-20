@@ -10,10 +10,28 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { useState } from 'react';
+import { signTone } from '~/lib/sign-tone';
 import { formatEasternDateTimeWithYear, formatEasternExactTime } from '~/utils/date';
 import type { FrontierTheme } from '../api/fetch-portfolios';
 
 export type Position = PositionWithReasoning;
+
+function formatPnlUsd(value: number | null | undefined): string {
+    if (value == null) return '—';
+    const amount = Number(value);
+    const digits = amount.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+    if (amount < 0) return `-$${digits.replace('-', '')}`;
+    return `+$${digits}`;
+}
+
+function formatPnlPct(value: number | null | undefined): string {
+    if (value == null) return '—';
+    const pct = Number(value);
+    return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+}
 
 interface PositionsTableProps {
     positions: Position[];
@@ -174,7 +192,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                             }
                             data-testid={`position-row-${pos.ticker}`}
                         >
-                            <TableCell className="font-bold text-voxel-ink">
+                            <TableCell>
                                 <div className="flex items-center gap-2">
                                     <span
                                         className={`transition-transform duration-200 ${expandedTicker === pos.ticker ? 'rotate-90' : ''}`}
@@ -213,17 +231,15 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                         )}
                                 </div>
                             </TableCell>
-                            <TableCell align="right" className="text-voxel-ink">
-                                {pos.quantity}
-                            </TableCell>
-                            <TableCell align="right" className="text-voxel-ink">
+                            <TableCell align="right">{pos.quantity}</TableCell>
+                            <TableCell align="right">
                                 $
                                 {Number(pos.average_cost_basis).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}
                             </TableCell>
-                            <TableCell align="right" className="text-voxel-ink">
+                            <TableCell align="right">
                                 $
                                 {Number(pos.current_price || pos.average_cost_basis).toLocaleString(
                                     'en-US',
@@ -233,7 +249,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                     },
                                 )}
                             </TableCell>
-                            <TableCell align="right" className="text-voxel-ink">
+                            <TableCell align="right">
                                 $
                                 {Math.abs(
                                     (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0),
@@ -242,7 +258,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                     maximumFractionDigits: 2,
                                 })}
                             </TableCell>
-                            <TableCell align="right" className="text-voxel-ink">
+                            <TableCell align="right">
                                 {totalInvestedCash
                                     ? `${(
                                           (Math.abs(
@@ -253,22 +269,11 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                       ).toFixed(2)}%`
                                     : '0%'}
                             </TableCell>
-                            <TableCell
-                                align="right"
-                                className={`font-bold ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-success' : 'text-danger'}`}
-                            >
-                                {Number(pos.unrealized_pnl_usd) >= 0 ? '+' : ''}$
-                                {Number(pos.unrealized_pnl_usd).toLocaleString('en-US', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
+                            <TableCell align="right" tone={signTone(pos.unrealized_pnl_usd)}>
+                                {formatPnlUsd(pos.unrealized_pnl_usd)}
                             </TableCell>
-                            <TableCell
-                                align="right"
-                                className={`font-bold ${Number(pos.unrealized_pnl_pct) >= 0 ? 'text-success' : 'text-danger'}`}
-                            >
-                                {Number(pos.unrealized_pnl_pct) >= 0 ? '+' : ''}
-                                {Number(pos.unrealized_pnl_pct).toFixed(2)}%
+                            <TableCell align="right" tone={signTone(pos.unrealized_pnl_pct)}>
+                                {formatPnlPct(pos.unrealized_pnl_pct)}
                             </TableCell>
                         </TableRow>
                         {expandedTicker === pos.ticker && (
@@ -277,7 +282,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                 className="bg-voxel-trough"
                                 data-testid={`reasoning-row-${pos.ticker}`}
                             >
-                                <TableCell colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
+                                <TableCell colSpan={8} className="py-4">
                                     <div className="flex flex-col gap-4">
                                         {pos.ticker &&
                                             tickerToTradeMap.has(pos.ticker.toUpperCase()) && (
@@ -327,7 +332,7 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                 ))}
                 {(!positions || positions.length === 0) && (
                     <TableRow isHoverable={false}>
-                        <TableCell colSpan={8} className="py-12 text-center text-voxel-muted">
+                        <TableCell colSpan={8} align="center" tone="muted" className="py-12">
                             No active positions in this portfolio.
                         </TableCell>
                     </TableRow>

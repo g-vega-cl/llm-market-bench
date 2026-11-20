@@ -55,11 +55,13 @@ export type { SkeletonProps } from './primitives/Skeleton';
 export { Skeleton } from './primitives/Skeleton';
 export type {
     TableCellProps,
+    TableCellTone,
     TableHeadProps,
     TableProps,
     TableRowProps,
 } from './primitives/Table';
 export {
+    TABLE_CELL_TONES,
     Table,
     TableBody,
     TableCell,

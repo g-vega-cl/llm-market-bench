@@ -92,8 +92,57 @@ describe('PositionsTable', () => {
         expect(screen.getByText('$160.00')).toBeInTheDocument();
         expect(screen.getByText((_, el) => el?.textContent === '+$100.00')).toBeInTheDocument();
         expect(screen.getByText((_, el) => el?.textContent === '+6.67%')).toBeInTheDocument();
-        expect(screen.getByText((_, el) => el?.textContent === '$-250.00')).toBeInTheDocument();
+        expect(screen.getByText((_, el) => el?.textContent === '-$250.00')).toBeInTheDocument();
         expect(screen.getByText((_, el) => el?.textContent === '-7.14%')).toBeInTheDocument();
+    });
+
+    it('colors the P/L columns green for gains and red for losses', () => {
+        render(<PositionsTable positions={mockPositions} />);
+
+        const gainUsd = screen
+            .getByText((_, el) => el?.textContent === '+$100.00')
+            .closest('td') as HTMLElement;
+        const gainPct = screen
+            .getByText((_, el) => el?.textContent === '+6.67%')
+            .closest('td') as HTMLElement;
+        const lossUsd = screen
+            .getByText((_, el) => el?.textContent === '-$250.00')
+            .closest('td') as HTMLElement;
+        const lossPct = screen
+            .getByText((_, el) => el?.textContent === '-7.14%')
+            .closest('td') as HTMLElement;
+
+        for (const cell of [gainUsd, gainPct]) {
+            expect(cell.className).toContain('text-success');
+            expect(cell.className).toContain('font-normal');
+            expect(cell.className).not.toContain('text-voxel-ink');
+            expect(cell.className).not.toContain('text-danger');
+        }
+        for (const cell of [lossUsd, lossPct]) {
+            expect(cell.className).toContain('text-danger');
+            expect(cell.className).toContain('font-normal');
+            expect(cell.className).not.toContain('text-voxel-ink');
+            expect(cell.className).not.toContain('text-success');
+        }
+    });
+
+    it('leaves the P/L columns neutral when the value is missing', () => {
+        const positionsWithUnknownPnl: Position[] = [
+            {
+                ...(mockPositions[0] as Position),
+                unrealized_pnl_usd: null,
+                unrealized_pnl_pct: null,
+            },
+        ];
+        render(<PositionsTable positions={positionsWithUnknownPnl} />);
+
+        const neutralCells = screen.getAllByText('—').map((el) => el.closest('td') as HTMLElement);
+        expect(neutralCells).toHaveLength(2);
+        for (const cell of neutralCells) {
+            expect(cell.className).toContain('text-voxel-ink');
+            expect(cell.className).not.toContain('text-success');
+            expect(cell.className).not.toContain('text-danger');
+        }
     });
 
     it('applies the min-width to the inner table rather than the container', () => {

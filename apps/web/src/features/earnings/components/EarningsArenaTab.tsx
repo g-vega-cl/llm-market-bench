@@ -10,6 +10,7 @@ import {
     TableRow,
 } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
+import { signToneOrMuted } from '~/lib/sign-tone';
 import { meanConvictionPoints, normalizeConvictionPoints } from '~/shared/conviction';
 import type { EarningsPrediction } from '../api/fetch-earnings-predictions';
 
@@ -32,17 +33,15 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
 
     return (
         <TableRow key={pred.id} className="border-zinc-800/50 hover:bg-zinc-800/30">
-            <TableCell className="font-bold text-voxel-ink">{pred.ticker}</TableCell>
-            <TableCell className="text-xs text-zinc-400">{pred.target_date}</TableCell>
-            <TableCell className="text-xs text-zinc-400">
+            <TableCell>{pred.ticker}</TableCell>
+            <TableCell tone="muted">{pred.target_date}</TableCell>
+            <TableCell>
                 <Badge variant="soft" colorScheme="neutral" size="sm">
                     {pred.report_timing}
                 </Badge>
             </TableCell>
-            <TableCell className="text-xs text-zinc-300">
-                {formatModelName(pred.model_name)}
-            </TableCell>
-            <TableCell className="text-center">
+            <TableCell tone="muted">{formatModelName(pred.model_name)}</TableCell>
+            <TableCell align="center">
                 <Badge
                     variant="soft"
                     colorScheme={pred.predicted_direction === 'UP' ? 'success' : 'danger'}
@@ -51,27 +50,17 @@ function PredictionTableRow({ pred }: { pred: EarningsPrediction }) {
                     {pred.predicted_direction}
                 </Badge>
             </TableCell>
-            <TableCell className="text-right font-mono text-xs text-zinc-300">
-                {Math.round(pred.confidence)}%
-            </TableCell>
-            <TableCell className="text-right font-mono text-xs text-zinc-400">
+            <TableCell align="right">{Math.round(pred.confidence)}%</TableCell>
+            <TableCell align="right" tone="muted">
                 {pred.open_price ? `$${pred.open_price.toFixed(2)}` : '—'}
             </TableCell>
-            <TableCell className="text-right font-mono text-xs text-zinc-400">
+            <TableCell align="right" tone="muted">
                 {pred.close_price ? `$${pred.close_price.toFixed(2)}` : '—'}
             </TableCell>
-            <TableCell
-                className={`text-right font-mono text-sm font-bold ${
-                    returnPct !== null
-                        ? returnPct >= 0
-                            ? 'text-emerald-400'
-                            : 'text-rose-400'
-                        : 'text-voxel-muted'
-                }`}
-            >
+            <TableCell align="right" tone={signToneOrMuted(returnPct)}>
                 {returnPct !== null ? `${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%` : '—'}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell align="center">
                 {pred.status === 'evaluated' ? (
                     pred.is_correct ? (
                         <Badge variant="soft" colorScheme="success" size="sm">
@@ -278,7 +267,9 @@ export function EarningsArenaTab({ predictions }: EarningsArenaTabProps) {
                             <TableRow>
                                 <TableCell
                                     colSpan={10}
-                                    className="py-8 text-center text-voxel-muted"
+                                    align="center"
+                                    tone="muted"
+                                    className="py-8"
                                 >
                                     No earnings predictions found matching filters.
                                 </TableCell>

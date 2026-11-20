@@ -34,17 +34,15 @@ function PredictionTableRow({ pred }: { pred: DailyPrediction }) {
 
     return (
         <TableRow>
-            <TableCell className="font-bold text-voxel-ink">
-                {pred.target_date || pred.prediction_date}
-            </TableCell>
-            <TableCell className="font-bold font-mono text-voxel-ink">{pred.ticker}</TableCell>
+            <TableCell>{pred.target_date || pred.prediction_date}</TableCell>
+            <TableCell className="font-mono">{pred.ticker}</TableCell>
             <TableCell>
                 <Badge colorScheme={isUp ? 'success' : 'danger'} variant="soft" size="xs">
                     {pred.predicted_direction}
                 </Badge>
             </TableCell>
-            <TableCell className="font-bold font-mono text-voxel-ink">{pred.confidence}%</TableCell>
-            <TableCell className="font-mono text-voxel-muted">
+            <TableCell className="font-mono">{pred.confidence}%</TableCell>
+            <TableCell tone="muted" className="font-mono">
                 {pred.open_price !== null && pred.close_price !== null ? (
                     <span>
                         ${pred.open_price.toFixed(2)} → ${pred.close_price.toFixed(2)}
@@ -62,12 +60,12 @@ function PredictionTableRow({ pred }: { pred: DailyPrediction }) {
                     <span className="text-voxel-muted">Pending</span>
                 )}
             </TableCell>
-            <TableCell className="font-mono text-voxel-muted">
+            <TableCell tone="muted" className="font-mono">
                 {pred.conviction_score !== null && pred.conviction_score !== undefined
                     ? `${pred.conviction_score >= 0 ? '+' : ''}${pred.conviction_score.toFixed(2)}`
                     : '-'}
             </TableCell>
-            <TableCell className="text-voxel-muted">
+            <TableCell tone="muted">
                 <code className="text-accent">{pred.prompt_variant_tag || 'baseline'}</code>
             </TableCell>
         </TableRow>

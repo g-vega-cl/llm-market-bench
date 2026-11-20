@@ -47,7 +47,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                             className="cursor-pointer group"
                             onClick={() => setExpandedId(expandedId === trade.id ? null : trade.id)}
                         >
-                            <TableCell className="text-voxel-muted text-sm whitespace-nowrap">
+                            <TableCell tone="muted" className="whitespace-nowrap">
                                 {trade.executed_at ? (
                                     <div className="flex flex-col">
                                         <span className="font-bold text-voxel-ink">
@@ -61,7 +61,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                     '-'
                                 )}
                             </TableCell>
-                            <TableCell className="font-bold text-voxel-ink">
+                            <TableCell>
                                 <div className="flex items-center gap-2">
                                     <span
                                         className={`transition-transform duration-200 ${expandedId === trade.id ? 'rotate-90' : ''}`}
@@ -144,17 +144,15 @@ export function TradesTable({ trades }: TradesTableProps) {
                                     <span className="text-voxel-muted">—</span>
                                 )}
                             </TableCell>
-                            <TableCell align="right" className="text-voxel-ink">
-                                {trade.quantity}
-                            </TableCell>
-                            <TableCell align="right" className="text-voxel-ink">
+                            <TableCell align="right">{trade.quantity}</TableCell>
+                            <TableCell align="right">
                                 $
                                 {Number(trade.price).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}
                             </TableCell>
-                            <TableCell align="right" className="text-voxel-ink font-bold">
+                            <TableCell align="right">
                                 $
                                 {Number(trade.total_cost).toLocaleString('en-US', {
                                     minimumFractionDigits: 2,
@@ -191,7 +189,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                         </TableRow>
                         {expandedId === trade.id && (
                             <TableRow isHoverable={false} className="bg-voxel-trough">
-                                <TableCell colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
+                                <TableCell colSpan={8} className="py-4">
                                     <div className="flex flex-col gap-4">
                                         <div className="flex flex-wrap items-center gap-4 text-xs border-b border-zinc-800 pb-3">
                                             {trade.executed_at && (
@@ -271,7 +269,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                 ))}
                 {(!trades || trades.length === 0) && (
                     <TableRow isHoverable={false}>
-                        <TableCell colSpan={8} className="py-12 text-center text-voxel-muted">
+                        <TableCell colSpan={8} align="center" tone="muted" className="py-12">
                             No recent trades found for this agent.
                         </TableCell>
                     </TableRow>

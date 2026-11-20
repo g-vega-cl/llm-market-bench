@@ -6,6 +6,7 @@ import {
     Table,
     TableBody,
     TableCell,
+    type TableCellTone,
     TableHead,
     TableHeader,
     TableRow,
@@ -65,17 +66,12 @@ export function UncorrelatedPairs({
             });
     }, [correlationData, maxCorrelation, minReturn, method, sortBy]);
 
-    const getCorrelationColor = (corr: number | null): string => {
-        if (corr === null) return 'text-voxel-muted';
-        if (Math.abs(corr) < 0.1) return 'text-info font-bold';
-        if (Math.abs(corr) < 0.3) return 'text-info';
-        return 'text-voxel-muted';
-    };
+    const getCorrelationTone = (corr: number | null): TableCellTone | undefined =>
+        corr !== null && Math.abs(corr) < 0.3 ? undefined : 'muted';
 
-    const getReturnColor = (ret: number | null): string => {
-        if (ret === null) return 'text-zinc-400';
-        if (ret > 0) return 'text-neon-green-500';
-        return 'text-alert-red-400';
+    const getReturnTone = (ret: number | null): TableCellTone | undefined => {
+        if (ret === null) return 'muted';
+        return ret > 0 ? 'positive' : 'negative';
     };
 
     return (
@@ -242,32 +238,31 @@ export function UncorrelatedPairs({
                                     </TableCell>
                                     <TableCell
                                         align="center"
-                                        className={`font-mono text-sm font-bold ${getCorrelationColor(pair.pearson_corr)}`}
+                                        tone={getCorrelationTone(pair.pearson_corr)}
+                                        className="font-mono"
                                     >
                                         {pair.pearson_corr?.toFixed(4) ?? 'N/A'}
                                     </TableCell>
                                     <TableCell
                                         align="center"
-                                        className={`font-mono text-sm font-bold ${getCorrelationColor(pair.spearman_corr)}`}
+                                        tone={getCorrelationTone(pair.spearman_corr)}
+                                        className="font-mono"
                                     >
                                         {pair.spearman_corr?.toFixed(4) ?? 'N/A'}
                                     </TableCell>
                                     <TableCell
                                         align="right"
-                                        className={`font-mono text-sm font-bold ${getReturnColor(pair.returns_a_90d)}`}
+                                        tone={getReturnTone(pair.returns_a_90d)}
                                     >
                                         {pair.returns_a_90d?.toFixed(2) ?? 'N/A'}%
                                     </TableCell>
                                     <TableCell
                                         align="right"
-                                        className={`font-mono text-sm font-bold ${getReturnColor(pair.returns_b_90d)}`}
+                                        tone={getReturnTone(pair.returns_b_90d)}
                                     >
                                         {pair.returns_b_90d?.toFixed(2) ?? 'N/A'}%
                                     </TableCell>
-                                    <TableCell
-                                        align="right"
-                                        className={`font-mono text-sm font-bold ${getReturnColor(pair.avgReturn)}`}
-                                    >
+                                    <TableCell align="right" tone={getReturnTone(pair.avgReturn)}>
                                         {pair.avgReturn.toFixed(2)}%
                                     </TableCell>
                                     <TableCell align="center">

@@ -243,7 +243,7 @@ function EvaluationAuditDrawer({
 }) {
     return (
         <TableRow className="bg-voxel-canvas border-b border-voxel-bevel-hi">
-            <TableCell colSpan={7} className="p-4 flex flex-col gap-3">
+            <TableCell colSpan={7} className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div className="flex flex-col gap-1 max-w-3xl">
                         <h4 className="text-sm font-bold uppercase tracking-wider text-accent">
@@ -334,7 +334,7 @@ function AIPredictionTableRow({
                 className="border-slate-800/60 hover:bg-slate-800/40 cursor-pointer transition-colors"
             >
                 {/* Model */}
-                <TableCell className="py-3">
+                <TableCell>
                     <div className="flex items-center gap-2">
                         <Badge colorScheme={colorScheme} variant="soft" className="px-2 py-0.5">
                             {displayName}
@@ -346,12 +346,12 @@ function AIPredictionTableRow({
                 </TableCell>
 
                 {/* Prediction Date */}
-                <TableCell className="text-xs font-normal text-voxel-ink py-3 whitespace-nowrap">
+                <TableCell className="whitespace-nowrap">
                     {formatDateShort(pred.prediction_date)}
                 </TableCell>
 
                 {/* Target Date & Status */}
-                <TableCell className="text-xs font-normal py-3 whitespace-nowrap">
+                <TableCell className="whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                         <span className="text-voxel-ink font-normal">
                             {formatDateShort(pred.target_date)}
@@ -369,12 +369,12 @@ function AIPredictionTableRow({
                 </TableCell>
 
                 {/* Predictions */}
-                <TableCell className="py-3">
+                <TableCell>
                     <PredictionValuesCell pred={pred} viewMode={viewMode} />
                 </TableCell>
 
                 {/* Confidence */}
-                <TableCell className="py-3 text-center whitespace-nowrap">
+                <TableCell align="center" className="whitespace-nowrap">
                     {pred.confidence != null ? (
                         <span className="text-xs font-normal text-voxel-ink">
                             {pred.confidence.toFixed(0)}%
@@ -385,17 +385,17 @@ function AIPredictionTableRow({
                 </TableCell>
 
                 {/* Performance */}
-                <TableCell className="py-3 text-right whitespace-nowrap">
+                <TableCell align="right" className="whitespace-nowrap">
                     <PerformanceValuesCell pred={pred} viewMode={viewMode} />
                 </TableCell>
 
                 {/* Alpha vs S&P 500 */}
-                <TableCell className="py-3 text-right whitespace-nowrap">
+                <TableCell align="right" className="whitespace-nowrap">
                     <AlphaValuesCell pred={pred} viewMode={viewMode} />
                 </TableCell>
 
                 {/* Score */}
-                <TableCell className="py-3 text-center">
+                <TableCell align="center">
                     {pred.sector_percentile_score != null ? (
                         <Badge
                             colorScheme={pred.sector_percentile_score >= 75 ? 'accent' : 'neutral'}
@@ -409,7 +409,7 @@ function AIPredictionTableRow({
                 </TableCell>
 
                 {/* Brier Score */}
-                <TableCell className="py-3 text-center whitespace-nowrap">
+                <TableCell align="center" className="whitespace-nowrap">
                     {pred.brier_score != null ? (
                         <span className="text-xs font-mono text-voxel-ink">
                             {pred.brier_score.toFixed(4)}
@@ -705,10 +705,7 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell
-                                    colSpan={7}
-                                    className="text-center py-8 text-slate-400 text-xs italic"
-                                >
+                                <TableCell colSpan={7} align="center" tone="muted" className="py-8">
                                     No predictions found matching the selected filters.
                                 </TableCell>
                             </TableRow>

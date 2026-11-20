@@ -18,6 +18,7 @@ import { PromptChanges } from '~/features/autoresearch/components/PromptChanges'
 import { ResearchRationaleCard } from '~/features/autoresearch/components/ResearchRationaleCard';
 import { isExperimentColdStart } from '~/features/autoresearch/utils/coldStart';
 import { splitPromptSections } from '~/features/autoresearch/utils/promptSections';
+import { signToneOrMuted } from '~/lib/sign-tone';
 import type { SectorPrediction } from '../api/fetch-predictions';
 import {
     calculateTrackBaselineScore,
@@ -123,9 +124,7 @@ function PredictorExperimentRow({
                     </Badge>
                 </TableCell>
             )}
-            <TableCell className="font-mono text-voxel-ink font-normal text-xs break-all max-w-[120px]">
-                {exp.variant_tag}
-            </TableCell>
+            <TableCell className="font-mono break-all max-w-32">{exp.variant_tag}</TableCell>
             <TableCell>
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <Badge variant={exp.experiment_type === 'baseline' ? 'solid' : 'soft'}>
@@ -138,18 +137,8 @@ function PredictorExperimentRow({
                     )}
                 </div>
             </TableCell>
-            <TableCell
-                className={`font-bold ${
-                    formattedScore === 'N/A'
-                        ? 'text-voxel-muted font-normal'
-                        : score > 0
-                          ? 'text-emerald-400'
-                          : 'text-rose-400'
-                }`}
-            >
-                {formattedScore}
-            </TableCell>
-            <TableCell className="text-slate-400 text-xs whitespace-nowrap">
+            <TableCell tone={signToneOrMuted(score)}>{formattedScore}</TableCell>
+            <TableCell className="whitespace-nowrap">
                 {formatStableDate(exp.week_start).split(',')[0]} -{' '}
                 {formatStableDate(exp.week_end).split(',')[0]}
             </TableCell>

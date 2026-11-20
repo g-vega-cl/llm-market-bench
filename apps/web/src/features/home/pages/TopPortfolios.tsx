@@ -30,13 +30,11 @@ function Spark({
     domain,
     label,
     lineClass,
-    dashed = false,
 }: {
     series: EquityPoint[];
     domain: ReturnType<typeof chartDomain>;
     label: string;
     lineClass: string;
-    dashed?: boolean;
 }) {
     const points = polylinePoints(series, SPARK, domain);
     const zeroY = valueToY(0, SPARK, domain);
@@ -116,6 +114,25 @@ function Row({
                 {formatPct(row.returnPct)}
             </span>
         </li>
+    );
+}
+
+/** Decorative cue that both calls to action lead somewhere. */
+function ArrowIcon() {
+    return (
+        <svg
+            className="w-4 h-4 shrink-0"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M5 12h14" />
+            <path d="M13 6l6 6-6 6" />
+        </svg>
     );
 }
 
@@ -220,30 +237,32 @@ export function TopPortfolios({
                     }
                 </p>
                 {starterNames.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-2">
                         {starterNames.map((name) => (
                             <Link
                                 key={name}
                                 to="/recipes"
-                                className="voxel-btn inline-flex items-center px-2 py-1 text-xs font-normal bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated"
+                                className="voxel-btn inline-flex items-center justify-center min-w-0 w-full px-2 py-1 text-xs font-normal bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated"
                             >
-                                {name}
+                                <span className="truncate">{name}</span>
                             </Link>
                         ))}
                     </div>
                 ) : null}
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-2">
                     <Link
                         to="/portfolios"
-                        className="voxel-btn inline-flex items-center px-3 py-1.5 text-xs font-normal bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated"
+                        className="voxel-btn inline-flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold uppercase tracking-wider bg-accent text-voxel-trough hover:bg-accent-hover"
                     >
                         See all portfolios
+                        <ArrowIcon />
                     </Link>
                     <Link
                         to="/recipes"
-                        className="voxel-btn inline-flex items-center px-3 py-1.5 text-xs font-normal bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated"
+                        className="voxel-btn inline-flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold uppercase tracking-wider border-2 border-accent text-accent bg-voxel-surface hover:bg-accent/10"
                     >
                         Need inspiration?
+                        <ArrowIcon />
                     </Link>
                 </div>
             </div>

@@ -4,8 +4,18 @@ import type { EquityPoint, LeaderboardRow } from '../api/portfolio-leaderboard';
 import { TopPortfolios } from './TopPortfolios';
 
 vi.mock('@tanstack/react-router', () => ({
-    Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-        <a href={to}>{children}</a>
+    Link: ({
+        children,
+        to,
+        className,
+    }: {
+        children: React.ReactNode;
+        to: string;
+        className?: string;
+    }) => (
+        <a href={to} className={className}>
+            {children}
+        </a>
     ),
 }));
 
@@ -107,6 +117,30 @@ describe('TopPortfolios', () => {
             'href',
             '/recipes',
         );
+    });
+
+    it('lays the templates and the two calls to action on equal-width grids', () => {
+        render(
+            <TopPortfolios
+                rows={rows}
+                trackedCount={28}
+                windowDays={30}
+                starterNames={['Quality Value Screener', 'Earnings Catalyst Hunter']}
+            />,
+        );
+
+        // Equal widths come from the grid, not from each label's own length.
+        const templateGrid = screen.getByText('Quality Value Screener').closest('div');
+        expect(templateGrid?.className).toContain('grid');
+
+        const ctaGrid = screen.getByText('See all portfolios').closest('a')?.parentElement;
+        expect(ctaGrid?.className).toContain('grid');
+
+        for (const label of ['See all portfolios', 'Need inspiration?']) {
+            const link = screen.getByText(label).closest('a');
+            expect(link?.className).toContain('w-full');
+            expect(link?.className).toContain('justify-center');
+        }
     });
 
     it('renders an empty state before the first close', () => {

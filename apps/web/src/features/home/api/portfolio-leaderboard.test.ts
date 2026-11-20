@@ -7,6 +7,9 @@ interface StubResult {
 }
 
 const tableResults: Record<string, StubResult> = {};
+// Per-table queue so one test can answer the ranked read and the worst read
+// differently; a single fixture would make the loser the winner.
+const stubState = vi.hoisted(() => ({ queue: {} as Record<string, unknown[]> }));
 
 function builder(result: StubResult) {
     const query: Record<string, unknown> = {};
@@ -22,7 +25,11 @@ function builder(result: StubResult) {
 
 vi.mock('~/lib/db', () => ({
     getDbAdminClient: () => ({
-        from: (table: string) => builder(tableResults[table] ?? { data: [] }),
+        from: (table: string) => {
+            const queued = stubState.queue[table]?.shift() as StubResult | undefined;
+            // biome-ignore lint/style/noNonNullAssertion: module-scope fixture map
+            return builder(queued ?? tableResults[table]! ?? { data: [] });
+        },
     }),
 }));
 
@@ -69,6 +76,7 @@ describe('normalizeRows', () => {
 describe('fetchPortfolioLeaderboard', () => {
     beforeEach(() => {
         for (const key of Object.keys(tableResults)) delete tableResults[key];
+        for (const key of Object.keys(stubState.queue)) delete stubState.queue[key];
         tableResults.portfolio_leaderboard = {
             data: [
                 {
@@ -143,6 +151,46 @@ describe('fetchPortfolioLeaderboard', () => {
         expect(board.spy).toEqual([]);
         expect(board.spyUnavailable).toBe(true);
         expect(board.degraded).toBe(false);
+    });
+
+    it('carries the lowest-ranked portfolio so the page publishes a loser', async () => {
+        const winner = {
+            portfolio_id: 'p1',
+            owner_id: 'sys-max-pain',
+            return_pct: 2.3,
+            observations: 19,
+            window_days: 30,
+            median_return_pct: -1.5,
+        };
+        stubState.queue.portfolio_leaderboard = [
+            { data: [winner] },
+            {
+                data: [
+                    {
+                        portfolio_id: 'p9',
+                        owner_id: 'sys-thesis-fader',
+                        return_pct: -6.1,
+                        observations: 22,
+                    },
+                ],
+            },
+            { count: 30 },
+        ];
+        tableResults.portfolio_leaderboard_series = {
+            data: [
+                { portfolio_id: 'p1', date: '2026-11-10', return_pct: 0 },
+                { portfolio_id: 'p9', date: '2026-11-10', return_pct: 0 },
+                { portfolio_id: 'p9', date: '2026-11-19', return_pct: -6.1 },
+            ],
+        };
+
+        const board = await fetchPortfolioLeaderboard();
+
+        expect(board.worst?.portfolioId).toBe('p9');
+        expect(board.worst?.label).toBe('Thesis Fader');
+        expect(board.worst?.series).toHaveLength(2);
+        // The loser is not duplicated into the top five.
+        expect(board.rows.map((row) => row.portfolioId)).toEqual(['p1']);
     });
 
     it('reports an unknown board size when the count read fails', async () => {

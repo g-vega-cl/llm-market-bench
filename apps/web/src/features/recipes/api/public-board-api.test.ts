@@ -28,6 +28,27 @@ const statsRows = [
 ];
 
 const summaryRow = { live_count: 7, beat_spy_count: 3, median_return_pct: -0.65 };
+
+const recipeRows = [
+    {
+        id: 'r-new',
+        description: 'Buy chipmakers when AI capex news turns positive',
+        graph_json: {
+            stages: [
+                {
+                    blocks: [
+                        { id: 'b1', type: 'prompt' },
+                        { id: 'b2', type: 'news' },
+                        { id: 'b3', type: 'technical_file' },
+                        { id: 'b4', type: 'output_format' },
+                    ],
+                },
+            ],
+        },
+        updated_at: '2026-11-19T15:30:00+00:00',
+    },
+    { id: 'r-old', description: null, graph_json: {}, updated_at: null },
+];
 const feedRows = [
     {
         recipe_id: 'r-new',
@@ -56,6 +77,13 @@ vi.mock('~/lib/db', () => ({
                 return {
                     select: () => ({
                         eq: () => ({ maybeSingle: async () => ({ data: summaryRow }) }),
+                    }),
+                };
+            }
+            if (table === 'strategy_recipes') {
+                return {
+                    select: () => ({
+                        in: async () => ({ data: recipeRows, error: null }),
                     }),
                 };
             }
@@ -103,7 +131,27 @@ describe('fetchPublicDesk', () => {
     });
 
     it('never reads the execution queue (zero compute in the request path)', async () => {
-        // The mock throws for any table other than the three materialised ones.
+        // The mock throws for any table other than the materialised rows and the
+        // recipe prompt/graph the excerpt needs.
         await expect(fetchPublicDesk()).resolves.toBeDefined();
+    });
+
+    it("carries the owner's sentence beside each card", async () => {
+        const desk = await fetchPublicDesk();
+        expect(desk.cards[0].description).toBe('Buy chipmakers when AI capex news turns positive');
+        expect(desk.cards[1].description).toBeNull();
+    });
+
+    it('spotlights the newest bot that has a prompt, with its compiled blocks', async () => {
+        const desk = await fetchPublicDesk();
+        expect(desk.spotlight?.recipeId).toBe('r-new');
+        expect(desk.spotlight?.prompt).toContain('chipmakers');
+        // Unknown types are humanised rather than dropped or shown raw.
+        expect(desk.spotlight?.blocks).toEqual(['Prompt', 'News', 'technical file', 'Output']);
+    });
+
+    it('survives a failed prompt read without losing the cards', async () => {
+        const desk = await fetchPublicDesk();
+        expect(desk.cards).toHaveLength(2);
     });
 });

@@ -23,6 +23,10 @@ function normalizeDesk(value: unknown): PublicDesk {
         liveCount: Number(raw.liveCount ?? 0),
         beatSpyCount: Number(raw.beatSpyCount ?? 0),
         medianReturnPct: typeof raw.medianReturnPct === 'number' ? raw.medianReturnPct : null,
+        spotlight:
+            raw.spotlight && typeof raw.spotlight === 'object'
+                ? (raw.spotlight as PublicDesk['spotlight'])
+                : null,
     };
 }
 
@@ -37,6 +41,7 @@ export function normalizeLeaderboard(value: unknown): PortfolioLeaderboard {
         // Rows carry a nested series array that also crosses the loader boundary;
         // coercing only the outer arrays was the deploy-skew crash of 4be16417.
         rows: normalizeRows(raw.rows),
+        worst: normalizeRows(raw.worst ? [raw.worst] : [])[0] ?? null,
         spy: normalizePoints(raw.spy),
         medianReturnPct:
             typeof raw.medianReturnPct === 'number' && Number.isFinite(raw.medianReturnPct)
@@ -61,6 +66,7 @@ const EMPTY_DESK: PublicDesk = {
     liveCount: 0,
     beatSpyCount: 0,
     medianReturnPct: null,
+    spotlight: null,
 };
 
 const getHome = createServerFn({ method: 'GET' }).handler(async (): Promise<HomePayload> => {

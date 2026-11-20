@@ -39,6 +39,7 @@ const desk: PublicDesk = {
         {
             recipeId: 'r-new',
             name: 'Chip Momentum',
+            description: 'Buy chipmakers when AI capex news turns positive',
             returnPct: 3.2,
             spyReturnPct: 1.1,
             tradeCount: 4,
@@ -51,6 +52,7 @@ const desk: PublicDesk = {
         {
             recipeId: 'r-old',
             name: 'Value Screener',
+            description: null,
             returnPct: -4.5,
             spyReturnPct: 3.1,
             tradeCount: 1,
@@ -73,6 +75,14 @@ const desk: PublicDesk = {
     liveCount: 2,
     beatSpyCount: 1,
     medianReturnPct: -0.65,
+    spotlight: {
+        recipeId: 'r-new',
+        name: 'Chip Momentum',
+        prompt: 'Buy chipmakers when AI capex news turns positive',
+        blocks: ['Prompt', 'News', 'Output'],
+        returnPct: 3.2,
+        spyReturnPct: 1.1,
+    },
 };
 
 describe('Recipe desk homepage', () => {
@@ -92,12 +102,24 @@ describe('Recipe desk homepage', () => {
         expect(screen.getByText(/1 beating SPY/)).toBeInTheDocument();
     });
 
-    it('shows the portfolio median in the hero, not the desk median', () => {
+    it('shows the board median with the leaderboard, not the desk median', () => {
         render(
             <RecipeDeskHomePage
                 desk={desk}
                 leaderboard={{
-                    rows: [],
+                    rows: [
+                        {
+                            portfolioId: 'p1',
+                            label: 'Max Pain',
+                            returnPct: -1.2,
+                            observations: 19,
+                            series: [
+                                { date: '2026-11-10', value: 0 },
+                                { date: '2026-11-19', value: -1.2 },
+                            ],
+                        },
+                    ],
+                    worst: null,
                     spy: [],
                     medianReturnPct: -2.55,
                     trackedCount: 30,
@@ -119,6 +141,7 @@ describe('Recipe desk homepage', () => {
                 desk={desk}
                 leaderboard={{
                     rows: [],
+                    worst: null,
                     spy: [],
                     medianReturnPct: null,
                     trackedCount: 0,

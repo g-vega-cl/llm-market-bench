@@ -1,38 +1,67 @@
 ---
-tags: [recipes, leaderboard, materialized-views, zero-frontend-compute, database]
+tags: [web, recipes, public-desk, api, analytics]
 category: concept
 ---
 
-# Recipe Public Stats
+# Recipe Public Stats & Desk
 
-The recipe desk's public homepage is backed by **runner-materialised tables** rather than browser-side computation. The recipe runner writes one row per live recipe into `public.recipe_public_stats` each cycle, plus a single-row `public.recipe_desk_summary` header and a `public.recipe_desk_feed` tape of same-day executed signals. The frontend reads these tables directly, honoring the repo's [[concepts/zero-frontend-compute]] mandate — no parsing of `strategy_recipes.paper_equity_curve` in the browser.
+`fetchPublicDesk` (`apps/web/src/features/recipes/api/public-board-api.ts`) assembles the public recipe desk payload served to the homepage. It reads only materialised rows — never the execution queue — so the request path performs zero compute.
 
-## Tables
+## PublicDesk Contract
 
-### `public.recipe_public_stats`
-One row per recipe (`recipe_id` PK, `ON DELETE CASCADE`). Columns: `name`, `is_live`, `return_pct`, `spy_return_pct`, `trade_count`, `open_positions`, `runs_today`, `first_equity_date`, `last_equity_date`, `last_run_at`, `last_action` (JSONB), `resolved_model`, `updated_at`. Indexed on `last_run_at DESC WHERE is_live = true`. Public read via RLS; service_role full access.
+```ts
+interface PublicDesk {
+    cards: PublicBoardCard[];
+    feed: PublicDeskFeedItem[];
+    liveCount: number;
+    beatSpyCount: number;
+    medianReturnPct: number | null;
+    spotlight: PublicSpotlight | null;
+}
+```
 
-### `public.recipe_desk_summary`
-Single-row (`id = 1` CHECK) header: `live_count`, `beat_spy_count`, `median_return_pct`, `updated_at`. Public read.
+`PublicBoardCard` carries `recipeId`, `name`, `description` (the owner's sentence, or `null`), `returnPct`, `spyReturnPct`, `tradeCount`, `lastAction`, `runsToday`, `openPositions`, and `resolvedModel`.
 
-### `public.recipe_desk_feed`
-Materialised same-day tape of executed signals: `recipe_id`, `recipe_name`, `action`, `ticker`, `at`, `created_at`. Indexed on `at DESC`. Public read.
+`PublicSpotlight` carries `recipeId`, `name`, `prompt`, `blocks: string[]`, `returnPct`, and `spyReturnPct`.
 
-## Builder (`apps/engine/recipes/runner.py`)
+`PublicDeskFeedItem` carries `recipeId`, `name`, `action`, and `ticker`.
 
-- `parse_equity_curve(curve)` — extracts `(date, equity)` pairs, skipping unreadable labels and null equity.
-- `return_pct(curve)` — first-to-last point return; `None` for empty or single-point curves; negative values survive (losers are published).
-- `spy_return_pct(rows, start, end)` — matching-window SPY closes; `None` without a matching start close.
-- `build_last_action(result)` — first executed signal, normalised ticker, whitespace-collapsed reason.
-- `build_public_stats(recipe, spy_rows, last_job_result, runs_today, resolved_model)` — assembles the row.
-- `refresh_public_stats(client)` — upserts one row per live recipe and prunes stale rows; returns `{live_recipes, rows_written, rows_pruned}`.
+## Sources
 
-`run_scheduled_slot` calls `refresh_public_stats(sb)` after draining the lane. A stats-refresh failure is caught and logged — a board write must never abort the trading cycle.
+- `recipe_desk_stats` (materialised) — cards and summary counts (`live_count`, `beat_spy_count`, `median_return_pct`)
+- `recipe_desk_feed` — the recent-fills feed
+- `strategy_recipes` — `id, description, graph_json, updated_at` for the card ids only
+
+The `strategy_recipes` read is best-effort: a failed read degrades to no excerpt and never costs the desk its cards.
+
+## blockLabels
+
+`blockLabels(graph)` walks `graph_json.stages[].blocks[]`, collects distinct block types in graph order, caps at five, and humanises them through `BLOCK_LABELS` (`memories` → `Memories`, `news` → `News`, `output_format` → `Output`, `prompt` → `Prompt`, `technicals` → `Technicals`). Unknown types fall back to `type.replace(/_/g, ' ')` rather than being dropped or shown raw.
+
+## Spotlight
+
+The spotlight is the most recently active card that has a written description: its `prompt` is that description and its `blocks` come from `blockLabels(graph_json)`. When no card has a description the spotlight is `null` — the proof shown above the fold must be real or absent.
+
+## Desk Rendering
+
+`RecipeDeskHomePage` renders three regions:
+
+1. **Hero proof** — `BuildProof` receives the spotlight and the fork handler, replacing the old equity-chart hero.
+2. **Leaderboard** — `TopPortfolios` receives `rows`, `medianReturnPct`, `worst`, `spy`, `trackedCount`, `windowDays`, and `degraded` (see [[concepts/portfolio-leaderboard-view]]).
+3. **Live bots tape** — `BotRow` renders one `<li>` per bot: LIVE badge, name, the owner's description (or the last action), return, `vs SPY`, open-position count, the model label, and a Fork button.
+
+## Analytics
+
+The activation funnel's client-side terminus is the `run_queued` event, added to `AnalyticsEvent` in `apps/web/src/lib/analytics.ts` and fired from `RecipeStudioPage` immediately after a backtest job is enqueued (`track(posthog, 'run_queued', { recipeId, jobId })`). The runner settles the job server-side, where no PostHog client exists.
+
+## Tests
+
+`public-board-api.test.ts` pins: the owner's sentence carried beside each card, the newest bot with a prompt spotlighted with its compiled blocks, unknown block types humanised, a failed prompt read surviving without losing cards, and zero reads of the execution queue.
 
 ## Related
 
-- [[concepts/zero-frontend-compute]] — the mandate these tables satisfy
-- concepts/recipe-ops-telemetry — the sibling durable ops table
-- [[entities/recipe-studio]] — the recipe builder UI
-- [[entities/recipe-live-status]] — live recipe status surface
-- [[entities/database]] — schema and RLS conventions
+- [[entities/web-app]] — dashboard hosting the desk
+- [[entities/recipe-studio]] — recipe builder that writes descriptions and enqueues runs
+- [[concepts/portfolio-leaderboard-view]] — leaderboard lanes rendered beside the desk
+- [[concepts/zero-frontend-compute]] — materialised rows only in the request path
+- [[concepts/recipe-public-stats]] — public stats surface

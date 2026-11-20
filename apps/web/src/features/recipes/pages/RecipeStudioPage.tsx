@@ -1,6 +1,8 @@
 import { PageLayout } from '@llm-market-bench/ui-design-system';
+import { usePostHog } from '@posthog/react';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { track } from '~/lib/analytics';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import { fetchRecipeQuotaStatusFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
 import {
@@ -77,6 +79,7 @@ export function RecipeStudioPage({
         clearLocalDraft();
     }, [initialStrategy, draft]);
     const strategy = draft.strategy;
+    const posthog = usePostHog();
     const [activeTemplateIdx, setActiveTemplateIdx] = useState<number>(() =>
         initialStrategy ? -1 : 0,
     );
@@ -185,6 +188,9 @@ export function RecipeStudioPage({
                 data: { recipeId: saved.id, mode: 'backtest' },
             })) as { id: string; status: string; result_json?: BacktestResultData };
             queuedBacktestJobId = job.id;
+            // The activation funnel ends here in the client: the runner settles the
+            // job server-side, where no PostHog client exists.
+            track(posthog, 'run_queued', { recipeId: saved.id, jobId: job.id });
             await navigate({ to: '/recipes/backtest/$jobId', params: { jobId: job.id } });
             didNavigate = true;
             return;

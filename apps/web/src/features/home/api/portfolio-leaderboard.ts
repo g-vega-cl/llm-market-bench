@@ -21,6 +21,8 @@ export interface LeaderboardRow {
 
 export interface PortfolioLeaderboard {
     rows: LeaderboardRow[];
+    /** Lowest-ranked portfolio over the same window, shown so the page publishes its losers. */
+    worst: LeaderboardRow | null;
     spy: EquityPoint[];
     medianReturnPct: number | null;
     /** Portfolios on the board, or null when the count read failed. */
@@ -35,6 +37,7 @@ export interface PortfolioLeaderboard {
 export function emptyLeaderboard(degraded = false): PortfolioLeaderboard {
     return {
         rows: [],
+        worst: null,
         spy: [],
         medianReturnPct: null,
         trackedCount: null,
@@ -97,6 +100,18 @@ async function loadRanked(db: Db): Promise<Array<Record<string, unknown>>> {
  * Percent series arrive pre-computed from `portfolio_leaderboard_series`, already
  * anchored on the same equity the ranking used — no arithmetic in this layer.
  */
+async function loadWorst(db: Db): Promise<Record<string, unknown> | null> {
+    const { data, error } = await db
+        .from('portfolio_leaderboard')
+        .select('portfolio_id, owner_id, return_pct, observations')
+        .order('rank', { ascending: false })
+        .order('portfolio_id', { ascending: true })
+        .limit(1);
+
+    if (error) return null;
+    return ((data || [])[0] as Record<string, unknown>) ?? null;
+}
+
 async function loadSeries(db: Db, ids: string[]): Promise<Map<string, EquityPoint[]>> {
     const { data, error } = await db
         .from('portfolio_leaderboard_series')
@@ -148,7 +163,11 @@ export async function fetchPortfolioLeaderboard(): Promise<PortfolioLeaderboard>
     const rows = await loadRanked(db);
     if (rows.length === 0) return emptyLeaderboard();
 
+    const worstRow = await loadWorst(db);
+    const worstId = worstRow ? String(worstRow.portfolio_id) : null;
     const ids = rows.map((row) => String(row.portfolio_id));
+    if (worstId && !ids.includes(worstId)) ids.push(worstId);
+
     const [series, spy, trackedCount] = await Promise.all([
         loadSeries(db, ids),
         loadSpy(db),
@@ -167,9 +186,20 @@ export async function fetchPortfolioLeaderboard(): Promise<PortfolioLeaderboard>
     });
 
     const median = rows[0]?.median_return_pct;
+    const worst =
+        worstRow && worstId && !boardRows.some((row) => row.portfolioId === worstId)
+            ? {
+                  portfolioId: worstId,
+                  label: portfolioLabel(String(worstRow.owner_id)),
+                  returnPct: Math.round(toNumber(worstRow.return_pct) * 100) / 100,
+                  observations: toNumber(worstRow.observations),
+                  series: series.get(worstId) || [],
+              }
+            : null;
 
     return {
         rows: boardRows,
+        worst,
         spy,
         medianReturnPct: median === null || median === undefined ? null : toNumber(median),
         trackedCount,

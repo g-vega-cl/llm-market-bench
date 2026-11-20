@@ -1,7 +1,6 @@
 import {
     Badge,
     Button,
-    Card,
     EmptyState,
     PageLayout,
     SectionHeading,
@@ -13,7 +12,7 @@ import type {
     LeaderboardRow,
     PortfolioLeaderboard,
 } from '../api/portfolio-leaderboard';
-import { EquityChart } from './EquityChart';
+import { BuildProof } from './BuildProof';
 import { formatPct } from './format-pct';
 import { HomeHero } from './HomeHero';
 import { modelLabel } from './model-label';
@@ -27,12 +26,16 @@ export interface RecipeDeskHomePageProps {
     error?: string | null;
 }
 
-function returnTone(value: number | null): 'success' | 'danger' | 'muted' {
-    if (value === null) return 'muted';
-    return value >= 0 ? 'success' : 'danger';
+function returnTone(value: number | null): string {
+    if (value === null) return 'text-voxel-muted';
+    return value >= 0 ? 'text-success' : 'text-danger';
 }
 
-function RecipeCard({
+/**
+ * One line per bot. The trough grid and the last-action paragraph were four
+ * numbers and a sentence in 220px; a builder desk should read like a tape.
+ */
+function BotRow({
     card,
     onFork,
     isForking,
@@ -41,77 +44,50 @@ function RecipeCard({
     onFork: (recipeId: string) => void;
     isForking: boolean;
 }) {
-    const tone = returnTone(card.returnPct);
+    const model = modelLabel(card.resolvedModel);
+
     return (
-        <Card padding="md" className="h-full min-w-0 flex flex-col gap-3">
-            <div className="flex flex-wrap items-start justify-between gap-2 pb-2 border-b-2 border-voxel-bevel-hi">
-                <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-sm font-bold text-voxel-ink break-words">
-                        {card.name}
-                    </span>
-                    <span className="text-xs font-normal text-voxel-muted">
-                        {card.lastAction
-                            ? `${card.lastAction.action} ${card.lastAction.ticker}`
-                            : 'No fills yet'}
-                        {card.runsToday > 0 ? ` · ${card.runsToday} runs today` : ''}
-                    </span>
-                </div>
-                <Badge colorScheme="accent" variant="soft" size="sm">
-                    LIVE
-                </Badge>
-            </div>
-
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-3">
-                <div className="voxel-trough p-2 flex flex-col gap-1 min-w-0">
-                    <span className="text-xs font-normal text-voxel-muted uppercase">Return</span>
-                    <span
-                        className={`font-mono text-sm font-bold tabular-nums ${
-                            tone === 'success'
-                                ? 'text-success'
-                                : tone === 'danger'
-                                  ? 'text-danger'
-                                  : 'text-voxel-muted'
-                        }`}
-                    >
-                        {formatPct(card.returnPct)}
-                    </span>
-                </div>
-                <div className="voxel-trough p-2 flex flex-col gap-1 min-w-0">
-                    <span className="text-xs font-normal text-voxel-muted uppercase">SPY</span>
-                    <span className="font-mono text-sm font-bold tabular-nums text-voxel-ink">
-                        {formatPct(card.spyReturnPct)}
-                    </span>
-                </div>
-                <div className="voxel-trough p-2 flex flex-col gap-1 min-w-0">
-                    <span className="text-xs font-normal text-voxel-muted uppercase">Open</span>
-                    <span className="font-mono text-sm font-bold tabular-nums text-voxel-ink">
-                        {card.openPositions}
-                    </span>
-                </div>
-            </div>
-
-            {card.lastAction?.reason ? (
-                <p className="voxel-trough p-2 text-xs font-normal text-voxel-muted whitespace-pre-wrap break-words line-clamp-3">
-                    {card.lastAction.reason}
-                </p>
-            ) : null}
-
-            <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
-                <span className="font-mono text-xs font-normal text-voxel-muted truncate">
-                    {modelLabel(card.resolvedModel)
-                        ? `run on ${modelLabel(card.resolvedModel)}`
-                        : 'no model recorded'}
+        <li className="voxel-trough px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+            <Badge colorScheme="accent" variant="soft" size="sm">
+                LIVE
+            </Badge>
+            <span className="text-sm font-bold text-voxel-ink shrink-0 max-w-56 truncate">
+                {card.name}
+            </span>
+            {card.description ? (
+                <span className="text-xs font-normal text-voxel-muted flex-1 min-w-40 truncate">
+                    “{card.description}”
                 </span>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    isLoading={isForking}
-                    onClick={() => onFork(card.recipeId)}
-                >
-                    Fork
-                </Button>
-            </div>
-        </Card>
+            ) : (
+                <span className="text-xs font-normal text-voxel-muted flex-1 min-w-40 truncate">
+                    {card.lastAction
+                        ? `${card.lastAction.action} ${card.lastAction.ticker}`
+                        : 'no fills yet'}
+                </span>
+            )}
+            <span
+                className={`font-mono text-xs font-normal tabular-nums shrink-0 ${returnTone(card.returnPct)}`}
+            >
+                {formatPct(card.returnPct)}
+            </span>
+            <span className="font-mono text-xs font-normal text-voxel-muted tabular-nums shrink-0">
+                vs SPY {formatPct(card.spyReturnPct)}
+            </span>
+            <span className="font-mono text-xs font-normal text-voxel-muted tabular-nums shrink-0">
+                {card.openPositions} open
+            </span>
+            <span className="font-mono text-xs font-normal text-voxel-muted shrink-0 max-w-40 truncate">
+                {model ? `run on ${model}` : 'no model recorded'}
+            </span>
+            <Button
+                variant="outline"
+                size="sm"
+                isLoading={isForking}
+                onClick={() => onFork(card.recipeId)}
+            >
+                Fork
+            </Button>
+        </li>
     );
 }
 
@@ -129,15 +105,20 @@ export function RecipeDeskHomePage({
     const boardRows: LeaderboardRow[] = Array.isArray(leaderboard?.rows) ? leaderboard.rows : [];
     const spySeries: EquityPoint[] = Array.isArray(leaderboard?.spy) ? leaderboard.spy : [];
     const windowDays = leaderboard?.windowDays ?? 30;
-    const medianReturnPct = leaderboard?.medianReturnPct ?? null;
 
     return (
         <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
             <PageLayout maxWidth="xl" paddingY="tight" className="flex flex-col gap-6">
                 <HomeHero
-                    chart={<EquityChart rows={boardRows} spy={spySeries} windowDays={windowDays} />}
-                    medianReturnPct={formatPct(medianReturnPct)}
-                    windowDays={windowDays}
+                    proof={
+                        <BuildProof
+                            spotlight={desk.spotlight ?? null}
+                            onFork={onFork}
+                            isForking={Boolean(
+                                desk.spotlight && forkingId === desk.spotlight.recipeId,
+                            )}
+                        />
+                    }
                 />
 
                 <section className="flex flex-col gap-3" aria-labelledby="portfolios-heading">
@@ -146,15 +127,14 @@ export function RecipeDeskHomePage({
                     </SectionHeading>
                     <TopPortfolios
                         rows={boardRows}
+                        medianReturnPct={leaderboard?.medianReturnPct ?? null}
+                        worst={leaderboard?.worst ?? null}
+                        spy={spySeries}
                         trackedCount={leaderboard?.trackedCount ?? null}
                         windowDays={windowDays}
                         degraded={leaderboard?.degraded ?? false}
                         starterNames={STARTER_RECIPES.map((template) => template.name)}
                     />
-                    <p className="text-xs font-normal text-voxel-muted">
-                        Start from a working recipe above. Two free backtests a day, three live
-                        bots, no card, paper only.
-                    </p>
                 </section>
 
                 {error ? (
@@ -179,16 +159,16 @@ export function RecipeDeskHomePage({
                             subtitle="The board fills as recipes run at 09:30, 12:30 and 15:30 ET. Start from a starter recipe and it will appear here once it trades."
                         />
                     ) : (
-                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 items-stretch">
+                        <ul className="flex flex-col gap-1">
                             {cards.map((card) => (
-                                <RecipeCard
+                                <BotRow
                                     key={card.recipeId}
                                     card={card}
                                     onFork={onFork}
                                     isForking={forkingId === card.recipeId}
                                 />
                             ))}
-                        </div>
+                        </ul>
                     )}
 
                     {feed.length > 0 ? (

@@ -1,11 +1,10 @@
-import { Button, Card, Input, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Button, Input } from '@llm-market-bench/ui-design-system';
 import { useRouter } from '@tanstack/react-router';
 import { type FormEvent, type ReactNode, useState } from 'react';
 
 export interface HomeHeroProps {
-    chart: ReactNode;
-    medianReturnPct: string;
-    windowDays: number;
+    /** The product's own artifact: a prompt, the graph it compiled to, its result. */
+    proof: ReactNode;
 }
 
 /**
@@ -13,7 +12,7 @@ export interface HomeHeroProps {
  * on wide screens and stack when the container is narrow (no viewport
  * breakpoints, per design spec §2).
  */
-export function HomeHero({ chart, medianReturnPct, windowDays }: HomeHeroProps) {
+export function HomeHero({ proof }: HomeHeroProps) {
     const router = useRouter();
     const [idea, setIdea] = useState('');
 
@@ -62,15 +61,7 @@ export function HomeHero({ chart, medianReturnPct, windowDays }: HomeHeroProps) 
                 </ul>
             </div>
 
-            <Card padding="md" className="h-full min-w-0 flex flex-col gap-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <SectionHeading>Top 5 portfolios</SectionHeading>
-                    <span className="font-mono text-xs font-normal text-voxel-muted">
-                        board median {medianReturnPct} · {windowDays}d
-                    </span>
-                </div>
-                {chart}
-            </Card>
+            {proof}
         </header>
     );
 }

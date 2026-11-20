@@ -26,27 +26,23 @@ vi.mock('~/lib/db', () => ({
     }),
 }));
 
-const { fetchPortfolioLeaderboard, normalizeRows, rebaseToAnchor } = await import(
+const { fetchPortfolioLeaderboard, normalizePoints, normalizeRows } = await import(
     './portfolio-leaderboard'
 );
 
-describe('rebaseToAnchor', () => {
-    it('measures every point against the supplied anchor', () => {
-        const series = rebaseToAnchor(
-            [
-                { date: '2026-11-10', equity: 9000 },
-                { date: '2026-11-19', equity: 10800 },
-            ],
-            10000,
-        );
-
-        expect(series[0].value).toBeCloseTo(-10);
-        expect(series[1].value).toBeCloseTo(8);
+describe('normalizePoints', () => {
+    it('keeps well-formed points', () => {
+        expect(normalizePoints([{ date: '2026-11-10', value: 1.5 }])).toEqual([
+            { date: '2026-11-10', value: 1.5 },
+        ]);
     });
 
-    it('returns nothing for a missing or non-positive anchor', () => {
-        expect(rebaseToAnchor([{ date: '2026-11-10', equity: 9000 }], 0)).toEqual([]);
-        expect(rebaseToAnchor([{ date: '2026-11-10', equity: 9000 }], null)).toEqual([]);
+    it('drops a point with a non-numeric value instead of plotting NaN', () => {
+        expect(normalizePoints([{ date: '2026-11-10', value: 'oops' }])).toEqual([]);
+    });
+
+    it('returns an empty series for a non-array payload', () => {
+        expect(normalizePoints(undefined)).toEqual([]);
     });
 });
 
@@ -80,29 +76,28 @@ describe('fetchPortfolioLeaderboard', () => {
                     owner_id: 'sys-max-pain',
                     return_pct: 2.3,
                     observations: 19,
-                    anchor_equity: 10000,
                     window_days: 30,
                     median_return_pct: -1.5,
                 },
             ],
             count: 30,
         };
-        tableResults.portfolio_performance = {
+        // The series view already returns percent return from the ranking anchor.
+        tableResults.portfolio_leaderboard_series = {
             data: [
-                { portfolio_id: 'p1', date: '2026-11-10', total_equity: 10000 },
-                { portfolio_id: 'p1', date: '2026-11-19', total_equity: 10230 },
+                { portfolio_id: 'p1', date: '2026-11-10', return_pct: 0 },
+                { portfolio_id: 'p1', date: '2026-11-19', return_pct: 2.3 },
             ],
         };
-        // The query asks for newest-first (desc + limit) and the loader reverses it.
-        tableResults.price_history = {
+        tableResults.spy_benchmark_series = {
             data: [
-                { price: 101, fetched_at: '2026-11-19T00:00:00Z' },
-                { price: 100, fetched_at: '2026-11-10T00:00:00Z' },
+                { date: '2026-11-10', return_pct: 0 },
+                { date: '2026-11-19', return_pct: 1 },
             ],
         };
     });
 
-    it('anchors the series on the equity the ranking used', async () => {
+    it('maps the pre-computed percent series onto each row', async () => {
         const board = await fetchPortfolioLeaderboard();
 
         expect(board.rows).toHaveLength(1);
@@ -121,16 +116,17 @@ describe('fetchPortfolioLeaderboard', () => {
         expect(board.degraded).toBe(false);
     });
 
-    it('rebases SPY from its own first close', async () => {
+    it('reads the SPY benchmark from its own view', async () => {
         const board = await fetchPortfolioLeaderboard();
 
         expect(board.spy).toHaveLength(2);
         expect(board.spy[0].value).toBeCloseTo(0);
         expect(board.spy[1].value).toBeCloseTo(1);
+        expect(board.spyUnavailable).toBe(false);
     });
 
     it('rejects when the series read fails instead of painting an empty chart', async () => {
-        tableResults.portfolio_performance = {
+        tableResults.portfolio_leaderboard_series = {
             data: null,
             error: { code: '42P01', message: 'boom' },
         };
@@ -139,7 +135,7 @@ describe('fetchPortfolioLeaderboard', () => {
     });
 
     it('keeps the rows and flags the benchmark when only SPY fails', async () => {
-        tableResults.price_history = { data: null, error: { message: 'spy down' } };
+        tableResults.spy_benchmark_series = { data: null, error: { message: 'spy down' } };
 
         const board = await fetchPortfolioLeaderboard();
 

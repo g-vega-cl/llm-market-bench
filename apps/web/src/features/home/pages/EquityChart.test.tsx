@@ -49,10 +49,13 @@ describe('EquityChart', () => {
             />,
         );
 
-        expect(screen.getByText('Max Pain')).toBeInTheDocument();
-        expect(screen.getByText('Daily SPY')).toBeInTheDocument();
+        expect(screen.getByText(/Max Pain/)).toBeInTheDocument();
+        expect(screen.getByText(/Daily SPY/)).toBeInTheDocument();
         // The caption is built from several interpolations, so match the text content.
         expect(container.textContent).toContain('SPY dashed · Nov 10 to Nov 19');
+        // Rank numbers give the lines an identity that does not rely on colour.
+        expect(container.textContent).toContain('1. Max Pain');
+        expect(screen.getByText('1')).toBeInTheDocument();
     });
 
     it('skips series with a single observation and shows the empty state when nothing is plottable', () => {

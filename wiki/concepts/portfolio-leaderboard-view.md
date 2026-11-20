@@ -48,9 +48,10 @@ open, falling back to the first in-window snapshot for a portfolio younger than
 30 days. Rebasing each series on its own first point hands a late starter a free
 0% head start and makes two portfolios' returns incomparable.
 
-The loader reads `anchor_date` from the view and starts the series (and the SPY
-benchmark) there. Do not derive the window in TypeScript: doing that put the
-benchmark one session after the portfolios for part of every UTC day.
+The anchor is applied in SQL, not in the loader: `portfolio_leaderboard_series`
+and `spy_benchmark_series` (below) already express every point as percent return
+from the ranking anchor, so the web layer does no percentage arithmetic and the
+chart cannot drift onto a different anchor than the ranking.
 
 ## Access
 
@@ -77,18 +78,21 @@ interface PortfolioLeaderboard {
 ```
 
 - **Ranked read** — `portfolio_leaderboard` ordered by `rank`, then `portfolio_id`,
-  limited to `BOARD_SIZE = 5`. A read error throws `dbError(error)`, which keeps the
-  PostgREST code (`PGRST205` stale schema cache vs `42P01` missing object need
-  different responses; the message alone hides that).
-- **Series read** — one `IN` query against `portfolio_performance` for the five ids,
-  starting at the earliest `anchor_date` the board used, then `rebaseToAnchor(series,
-  anchor_equity)` per row. An unchecked error here would paint a blank chart that
-  reads as "nothing traded yet", so it throws.
-- **Benchmark read** — `price_history` for `SPY` from the same start date, ordered
-  `fetched_at` **descending** with `limit(SPY_MAX_ROWS = 90)` and then reversed: an
-  ascending `LIMIT` would keep the oldest rows once `price_history` carries intraday
-  bars. SPY is rebased from its own first close. A benchmark failure returns `[]` and
-  sets `spyUnavailable` without failing the board.
+  limited to `BOARD_SIZE = 5`, selecting `portfolio_id, owner_id, return_pct,
+  observations, window_days, median_return_pct`. A read error throws `dbError(error)`,
+  which keeps the PostgREST code (`PGRST205` stale schema cache vs `42P01` missing
+  object need different responses; the message alone hides that).
+- **Series read** — one `IN` query against `portfolio_leaderboard_series` for the
+  five ids, ordered `date` ascending, mapping each row's pre-computed `return_pct`
+  straight onto the row's `series`. No `rebaseToAnchor` step: the view already
+  anchors every point on the same equity the ranking used. An unchecked error here
+  would paint a blank chart that reads as "nothing traded yet", so it throws.
+- **Benchmark read** — `spy_benchmark_series` ordered `date` ascending with
+  `limit(SPY_MAX_ROWS = 120)`, mapping `return_pct` directly. The view already
+  anchors SPY on the board's earliest `anchor_date` and keeps one row per session
+  (last price of the day wins), so the loader does no rebasing and no date
+  truncation. A benchmark failure returns `[]` and sets `spyUnavailable` without
+  failing the board.
 - **Count read** — `select('portfolio_id', { count: 'exact', head: true })`. It never
   falls back to the page length, which would report "1 portfolios" as fact; a failed
   count yields `trackedCount: null`.
@@ -124,16 +128,22 @@ renders the desk.
 - `polylinePoints(points, box, domain)` — SVG `points` string inside the box, dropping
   points with a non-finite value or unparseable date.
 - `valueToY(value, box, domain)` — used for the dashed zero baseline.
+- `lastPointXY(points, box, domain)` — the last plottable point's `{ x, y }`, used to
+  place each line's endpoint marker and rank label; returns `null` when no point is
+  plottable.
 
 `EquityChart.tsx` renders that geometry as a server-rendered inline SVG
 (`BOX = { width: 640, height: 160, padding: 12 }`) with `role="img"` and an
 accessible label, one polyline per portfolio (first series thicker) plus a dashed
 `stroke-voxel-muted` SPY line, a `figcaption` legend of literal `stroke-*`/`bg-*`
 class pairs (a runtime `stroke-` → `bg-` swap produces a class Tailwind never
-generates), and the axis caption `SPY dashed · <start> to <end> · scale …`. Series
-with a single observation are skipped; when nothing is plottable it renders
-`Equity curves appear after the first close.` No chart library, no hover tooltips
-(design spec §10).
+generates), and the axis caption `SPY dashed · <start> to <end> · scale …`. Each
+plotted line carries a numbered endpoint marker (`lastPointXY` → a `circle` plus a
+`fill-voxel-ink` rank `text`), and the legend prefixes each label with its rank
+(`1. Max Pain`), so a series can be identified without relying on colour alone
+(WCAG 1.4.1). Series with a single observation are skipped; when nothing is
+plottable it renders `Equity curves appear after the first close.` No chart library,
+no hover tooltips (design spec §10).
 
 `TopPortfolios.tsx` renders the ranked five with `formatPct` returns, the
 `trackedCount`/`windowDays` sentence, the starter-recipe chips, and the
@@ -144,6 +154,28 @@ with a single observation are skipped; when nothing is plottable it renders
 `HomeHero.tsx` hosts the idea form and the chart card, and prints the **board**
 median (`leaderboard.medianReturnPct`) — not the recipe-desk median, which stays on
 the desk header alongside the live and beat-SPY counts.
+
+## Companion series views
+
+`20261119060000_portfolio_leaderboard_series_views.sql` adds two read models so the
+web layer does no percentage arithmetic at all:
+
+- `portfolio_leaderboard_series` — one row per portfolio-day, already expressed as
+  percent return from that portfolio's ranking anchor (`ROUND(((total_equity /
+  NULLIF(anchor_equity, 0)) - 1) * 100, 4)`), joined to `portfolio_leaderboard` and
+  filtered to `date >= anchor_date`.
+- `spy_benchmark_series` — SPY, one row per session (last price of the day wins via
+  `DISTINCT ON (date_trunc('day', fetched_at)::date)`), anchored at the earliest
+  `anchor_date` the board used, so the benchmark starts on the same session as every
+  portfolio.
+
+Both are `security_invoker = true` and `GRANT SELECT` to `service_role` only, with
+`REVOKE ALL` from `anon` and `authenticated`. The loader reads them directly; the
+former `rebaseToAnchor` helper and the raw `portfolio_performance` / `price_history`
+reads are gone.
+
+The chart draws a numbered endpoint next to each line and a numbered legend, so a
+series can be identified without relying on colour alone (WCAG 1.4.1).
 
 ## Freshness
 

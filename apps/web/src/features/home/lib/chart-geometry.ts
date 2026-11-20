@@ -72,3 +72,26 @@ export function valueToY(value: number, box: ChartBox, domain: ChartDomain): num
     const ySpan = domain.max - domain.min || 1;
     return box.padding + (1 - (value - domain.min) / ySpan) * innerHeight;
 }
+
+/** Last plottable point, used to label a line's endpoint rather than its colour. */
+export function lastPointXY(
+    points: ChartPoint[],
+    box: ChartBox,
+    domain: ChartDomain,
+): { x: number; y: number } | null {
+    const usable = points.filter(
+        (point) => Number.isFinite(point.value) && Number.isFinite(Date.parse(point.date)),
+    );
+    const last = usable[usable.length - 1];
+    if (!last) return null;
+
+    const innerWidth = box.width - box.padding * 2;
+    const innerHeight = box.height - box.padding * 2;
+    const xSpan = domain.end - domain.start || 1;
+    const ySpan = domain.max - domain.min || 1;
+
+    return {
+        x: box.padding + ((Date.parse(last.date) - domain.start) / xSpan) * innerWidth,
+        y: box.padding + (1 - (last.value - domain.min) / ySpan) * innerHeight,
+    };
+}

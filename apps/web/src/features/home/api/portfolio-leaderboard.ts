@@ -2,7 +2,7 @@ import { getDbAdminClient } from '~/lib/db';
 import { portfolioLabel } from '../lib/portfolio-label';
 
 const BOARD_SIZE = 5;
-const SPY_MAX_ROWS = 90;
+const SPY_MAX_ROWS = 120;
 
 type Db = ReturnType<typeof getDbAdminClient>;
 
@@ -55,18 +55,6 @@ function dbError(error: { code?: string; message: string }): Error {
     return new Error(`${error.code ?? 'PGRST'}: ${error.message}`);
 }
 
-/** Rebase an equity series to percent return from the anchor the ranking used. */
-export function rebaseToAnchor(
-    series: Array<{ date: string; equity: number }>,
-    anchor: number | null,
-): EquityPoint[] {
-    if (!anchor || !Number.isFinite(anchor) || anchor <= 0) return [];
-    return series.map((point) => ({
-        date: point.date,
-        value: (point.equity / anchor - 1) * 100,
-    }));
-}
-
 /** Coerces chart points that crossed the loader boundary. */
 export function normalizePoints(value: unknown): EquityPoint[] {
     if (!Array.isArray(value)) return [];
@@ -96,9 +84,7 @@ export function normalizeRows(value: unknown): LeaderboardRow[] {
 async function loadRanked(db: Db): Promise<Array<Record<string, unknown>>> {
     const { data, error } = await db
         .from('portfolio_leaderboard')
-        .select(
-            'portfolio_id, owner_id, return_pct, observations, anchor_date, anchor_equity, window_days, median_return_pct',
-        )
+        .select('portfolio_id, owner_id, return_pct, observations, window_days, median_return_pct')
         .order('rank', { ascending: true })
         .order('portfolio_id', { ascending: true })
         .limit(BOARD_SIZE);
@@ -107,51 +93,45 @@ async function loadRanked(db: Db): Promise<Array<Record<string, unknown>>> {
     return (data || []) as Array<Record<string, unknown>>;
 }
 
-async function loadSeries(
-    db: Db,
-    ids: string[],
-    startDate: string,
-): Promise<Map<string, Array<{ date: string; equity: number }>>> {
+/**
+ * Percent series arrive pre-computed from `portfolio_leaderboard_series`, already
+ * anchored on the same equity the ranking used — no arithmetic in this layer.
+ */
+async function loadSeries(db: Db, ids: string[]): Promise<Map<string, EquityPoint[]>> {
     const { data, error } = await db
-        .from('portfolio_performance')
-        .select('portfolio_id, date, total_equity')
+        .from('portfolio_leaderboard_series')
+        .select('portfolio_id, date, return_pct')
         .in('portfolio_id', ids)
-        .gte('date', startDate)
         .order('date', { ascending: true });
 
     // An unchecked error here paints a blank chart that reads as "nothing traded yet".
     if (error) throw dbError(error);
 
-    const byPortfolio = new Map<string, Array<{ date: string; equity: number }>>();
+    const byPortfolio = new Map<string, EquityPoint[]>();
     for (const id of ids) byPortfolio.set(id, []);
     for (const point of (data || []) as Array<Record<string, unknown>>) {
         const bucket = byPortfolio.get(String(point.portfolio_id));
         if (bucket) {
-            bucket.push({ date: String(point.date), equity: toNumber(point.total_equity) });
+            bucket.push({ date: String(point.date), value: toNumber(point.return_pct) });
         }
     }
     return byPortfolio;
 }
 
-async function loadSpy(db: Db, startDate: string): Promise<EquityPoint[]> {
+/** SPY percent series, anchored in SQL on the board's earliest anchor date. */
+async function loadSpy(db: Db): Promise<EquityPoint[]> {
     const { data, error } = await db
-        .from('price_history')
-        .select('price, fetched_at')
-        .eq('ticker', 'SPY')
-        .gte('fetched_at', startDate)
-        // Newest-first then reversed: an ascending LIMIT would keep the oldest rows
-        // once price_history carries intraday bars.
-        .order('fetched_at', { ascending: false })
+        .from('spy_benchmark_series')
+        .select('date, return_pct')
+        .order('date', { ascending: true })
         .limit(SPY_MAX_ROWS);
 
     if (error) return [];
 
-    const rows = ((data || []) as Array<Record<string, unknown>>).reverse();
-    const series = rows.map((row) => ({
-        date: String(row.fetched_at).slice(0, 10),
-        equity: toNumber(row.price),
+    return ((data || []) as Array<Record<string, unknown>>).map((row) => ({
+        date: String(row.date),
+        value: toNumber(row.return_pct),
     }));
-    return rebaseToAnchor(series, series[0]?.equity ?? null);
 }
 
 async function loadCount(db: Db): Promise<number | null> {
@@ -169,17 +149,9 @@ export async function fetchPortfolioLeaderboard(): Promise<PortfolioLeaderboard>
     if (rows.length === 0) return emptyLeaderboard();
 
     const ids = rows.map((row) => String(row.portfolio_id));
-    // Start every series at the earliest anchor the board used: deriving it from the
-    // view, not a local clock, is what keeps the chart and the ranking on one window.
-    const startDate =
-        rows
-            .map((row) => String(row.anchor_date ?? ''))
-            .filter(Boolean)
-            .sort()[0] ?? '';
-
     const [series, spy, trackedCount] = await Promise.all([
-        loadSeries(db, ids, startDate),
-        loadSpy(db, startDate),
+        loadSeries(db, ids),
+        loadSpy(db),
         loadCount(db),
     ]);
 
@@ -190,7 +162,7 @@ export async function fetchPortfolioLeaderboard(): Promise<PortfolioLeaderboard>
             label: portfolioLabel(String(row.owner_id)),
             returnPct: Math.round(toNumber(row.return_pct) * 100) / 100,
             observations: toNumber(row.observations),
-            series: rebaseToAnchor(series.get(id) || [], toNumber(row.anchor_equity)),
+            series: series.get(id) || [],
         };
     });
 

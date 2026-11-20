@@ -27,7 +27,7 @@ const maxWidthMap = {
 
 const paddingYMap = {
     default: 'py-8 md:py-12',
-    tight: 'py-3 md:py-4',
+    tight: 'py-3',
 };
 
 export function PageLayout({

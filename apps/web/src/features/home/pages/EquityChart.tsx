@@ -1,5 +1,11 @@
 import type { EquityPoint, LeaderboardRow } from '../api/portfolio-leaderboard';
-import { type ChartBox, chartDomain, polylinePoints, valueToY } from '../lib/chart-geometry';
+import {
+    type ChartBox,
+    chartDomain,
+    lastPointXY,
+    polylinePoints,
+    valueToY,
+} from '../lib/chart-geometry';
 
 const BOX: ChartBox = { width: 640, height: 160, padding: 12 };
 
@@ -85,17 +91,40 @@ export function EquityChart({
                         strokeLinejoin="round"
                     />
                 ) : null}
-                {plotted.map((row, index) => (
-                    <polyline
-                        key={row.portfolioId}
-                        points={polylinePoints(row.series, BOX, domain)}
-                        fill="none"
-                        className={LINE_CLASSES[index % LINE_CLASSES.length]}
-                        strokeWidth={index === 0 ? 2.5 : 1.5}
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                    />
-                ))}
+                {plotted.map((row, index) => {
+                    const end = lastPointXY(row.series, BOX, domain);
+                    return (
+                        <g key={row.portfolioId}>
+                            <polyline
+                                points={polylinePoints(row.series, BOX, domain)}
+                                fill="none"
+                                className={LINE_CLASSES[index % LINE_CLASSES.length]}
+                                strokeWidth={index === 0 ? 2.5 : 1.5}
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                            />
+                            {end ? (
+                                <>
+                                    <circle
+                                        cx={end.x}
+                                        cy={end.y}
+                                        r={3}
+                                        className={SWATCH_CLASSES[index % SWATCH_CLASSES.length]}
+                                    />
+                                    {/* Rank label: identity without relying on colour alone. */}
+                                    <text
+                                        x={Math.min(end.x + 6, BOX.width - 4)}
+                                        y={end.y + 3}
+                                        fontSize={9}
+                                        className="fill-voxel-ink"
+                                    >
+                                        {index + 1}
+                                    </text>
+                                </>
+                            ) : null}
+                        </g>
+                    );
+                })}
             </svg>
             <figcaption className="flex flex-wrap gap-3">
                 {plotted.map((row, index) => (
@@ -107,7 +136,9 @@ export function EquityChart({
                             aria-hidden="true"
                             className={`inline-block w-2 h-2 ${SWATCH_CLASSES[index % SWATCH_CLASSES.length]}`}
                         />
-                        <span className="text-voxel-muted">{row.label}</span>
+                        <span className="text-voxel-muted">
+                            {index + 1}. {row.label}
+                        </span>
                     </span>
                 ))}
                 <span className="text-xs font-normal text-voxel-muted">

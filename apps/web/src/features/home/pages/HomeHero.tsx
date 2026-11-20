@@ -1,5 +1,5 @@
 import { Button, Input } from '@llm-market-bench/ui-design-system';
-import { useRouter } from '@tanstack/react-router';
+import { Link, useRouter } from '@tanstack/react-router';
 import { type FormEvent, type ReactNode, useState } from 'react';
 
 export interface HomeHeroProps {
@@ -8,7 +8,7 @@ export interface HomeHeroProps {
 }
 
 /**
- * Above-the-fold block: headline, idea form and the equity chart share one row
+ * Above-the-fold block: headline, idea form and live proof share one row
  * on wide screens and stack when the container is narrow (no viewport
  * breakpoints, per design spec §2).
  */
@@ -23,17 +23,17 @@ export function HomeHero({ proof }: HomeHeroProps) {
 
     return (
         <header className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,26rem),1fr))] gap-6 items-stretch pb-4 border-b-2 border-voxel-bevel-hi">
-            <div className="min-w-0 flex flex-col gap-3 justify-between">
+            <div className="min-w-0 flex flex-col gap-4 justify-between">
                 <p className="font-mono text-xs font-normal text-accent uppercase tracking-wide">
-                    Paper trading · three runs a day · no brokerage
+                    Verifiable AI trading · losers published next to winners
                 </p>
                 <h1 className="text-lg font-bold text-voxel-ink text-balance">
-                    Describe a trading bot. It runs three times a day on point-in-time news.
+                    Describe a trading bot. It runs live 3× a day with public receipts.
                 </h1>
                 <p className="text-xs font-normal text-voxel-muted">
-                    Every recipe is one LLM call over the same news corpus and memories the
-                    benchmark agents trade. Paper cash only, no brokerage account, and we publish
-                    the losers next to the winners.
+                    Every bot is one inspectable LLM call reading only news and market history
+                    available at that exact minute—zero lookahead. Paper cash only, two free
+                    backtests a day, and every trade and loser stays public.
                 </p>
                 <form className="flex flex-wrap items-stretch gap-2" onSubmit={submitIdea}>
                     <div className="flex-1 basis-64 min-w-0">
@@ -49,16 +49,37 @@ export function HomeHero({ proof }: HomeHeroProps) {
                         Build it
                     </Button>
                 </form>
-                <ul className="flex flex-wrap gap-2">
-                    {['3 runs a day', 'paper cash only', '0 brokerage'].map((fact) => (
-                        <li
-                            key={fact}
-                            className="voxel-trough px-2 py-1 font-mono text-xs font-normal text-voxel-muted"
+                <div className="flex flex-col gap-2">
+                    <ul className="flex flex-wrap gap-2">
+                        {[
+                            '2 free backtests/day',
+                            '3 live bots',
+                            '0 lookahead',
+                            'paper cash only',
+                        ].map((fact) => (
+                            <li
+                                key={fact}
+                                className="voxel-trough px-2 py-1 font-mono text-xs font-normal text-voxel-muted whitespace-nowrap"
+                            >
+                                {fact}
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs font-normal">
+                        <Link
+                            to="/recipes-demo"
+                            className="text-accent hover:underline whitespace-nowrap"
                         >
-                            {fact}
-                        </li>
-                    ))}
-                </ul>
+                            See a finished backtest →
+                        </Link>
+                        <Link
+                            to="/reasoning"
+                            className="text-voxel-muted hover:text-voxel-ink hover:underline whitespace-nowrap"
+                        >
+                            Read live reasoning logs →
+                        </Link>
+                    </div>
+                </div>
             </div>
 
             {proof}

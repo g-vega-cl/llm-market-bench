@@ -7,16 +7,26 @@ vi.mock('@tanstack/react-router', () => ({
     Link: ({
         children,
         to,
+        params,
         className,
     }: {
         children: React.ReactNode;
         to: string;
+        params?: Record<string, string>;
         className?: string;
-    }) => (
-        <a href={to} className={className}>
-            {children}
-        </a>
-    ),
+    }) => {
+        const href = params
+            ? Object.entries(params).reduce(
+                  (acc, [key, value]) => acc.replace(`$${key}`, value),
+                  to,
+              )
+            : to;
+        return (
+            <a href={href} className={className}>
+                {children}
+            </a>
+        );
+    },
 }));
 
 const series = (values: number[]): EquityPoint[] =>
@@ -106,37 +116,55 @@ describe('TopPortfolios', () => {
         expect(screen.getByText(/median -2\.55%/)).toBeInTheDocument();
     });
 
-    it('links to the full board and the recipe gallery', () => {
+    it('links ranked and worst portfolio rows to their receipt pages, leaving SPY and blank IDs non-linked', () => {
+        render(
+            <TopPortfolios
+                rows={[
+                    ...rows,
+                    {
+                        portfolioId: '   ',
+                        label: 'Skewed Row',
+                        returnPct: 0.1,
+                        observations: 2,
+                        series: series([0, 0.1]),
+                    },
+                ]}
+                worst={worst}
+                spy={spy}
+                trackedCount={28}
+                windowDays={30}
+            />,
+        );
+
+        expect(screen.getByText('Max Pain').closest('a')).toHaveAttribute('href', '/portfolios/a');
+        expect(screen.getByText('Thesis Fader').closest('a')).toHaveAttribute(
+            'href',
+            '/portfolios/c',
+        );
+        expect(screen.getByText('Skewed Row').closest('a')).toBeNull();
+        expect(screen.getByText('SPY (benchmark)').closest('a')).toBeNull();
+    });
+
+    it('links to the full board and the reasoning logs', () => {
         render(<TopPortfolios rows={rows} trackedCount={28} windowDays={30} />);
 
         expect(screen.getByText('See all portfolios').closest('a')).toHaveAttribute(
             'href',
             '/portfolios',
         );
-        expect(screen.getByText('Need inspiration?').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Read reasoning logs').closest('a')).toHaveAttribute(
             'href',
-            '/recipes',
+            '/reasoning',
         );
     });
 
-    it('lays the templates and the two calls to action on equal-width grids', () => {
-        render(
-            <TopPortfolios
-                rows={rows}
-                trackedCount={28}
-                windowDays={30}
-                starterNames={['Quality Value Screener', 'Earnings Catalyst Hunter']}
-            />,
-        );
-
-        // Equal widths come from the grid, not from each label's own length.
-        const templateGrid = screen.getByText('Quality Value Screener').closest('div');
-        expect(templateGrid?.className).toContain('grid');
+    it('lays the two calls to action on an equal-width grid', () => {
+        render(<TopPortfolios rows={rows} trackedCount={28} windowDays={30} />);
 
         const ctaGrid = screen.getByText('See all portfolios').closest('a')?.parentElement;
         expect(ctaGrid?.className).toContain('grid');
 
-        for (const label of ['See all portfolios', 'Need inspiration?']) {
+        for (const label of ['See all portfolios', 'Read reasoning logs']) {
             const link = screen.getByText(label).closest('a');
             expect(link?.className).toContain('w-full');
             expect(link?.className).toContain('justify-center');

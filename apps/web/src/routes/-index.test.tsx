@@ -205,6 +205,29 @@ describe('Recipe desk homepage', () => {
         expect(screen.getByText('No live recipes yet')).toBeInTheDocument();
     });
 
+    it('surfaces public receipt links and starter studio CTA with mobile wrapping classes', () => {
+        render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} />);
+
+        const backtestLink = screen.getByText(/See a finished backtest/i).closest('a');
+        expect(backtestLink).toHaveAttribute('href', '/recipes-demo');
+        expect(backtestLink?.className).toContain('whitespace-nowrap');
+        expect(backtestLink?.parentElement?.className).toContain('flex-wrap');
+
+        const reasoningLinks = screen.getAllByText(/Read live reasoning logs/i);
+        expect(reasoningLinks[0].closest('a')).toHaveAttribute('href', '/reasoning');
+        expect(reasoningLinks[0].closest('a')?.className).toContain('whitespace-nowrap');
+
+        const auditsLink = screen.getByText(/Trade audits/i).closest('a');
+        expect(auditsLink).toHaveAttribute('href', '/audits');
+        expect(auditsLink?.className).toContain('whitespace-nowrap');
+        expect(auditsLink?.parentElement?.className).toContain('flex-wrap');
+
+        const starterLink = screen.getByText(/Browse starter recipes/i).closest('a');
+        expect(starterLink).toHaveAttribute('href', '/recipes');
+        expect(starterLink?.className).toContain('whitespace-nowrap');
+        expect(starterLink?.parentElement?.className).toContain('flex-wrap');
+    });
+
     it('surfaces a fork failure in-flow', () => {
         render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} error="Fork failed: network" />);
 

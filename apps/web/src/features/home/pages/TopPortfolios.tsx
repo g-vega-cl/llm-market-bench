@@ -13,7 +13,6 @@ export interface TopPortfoliosProps {
     trackedCount: number | null;
     windowDays: number;
     degraded?: boolean;
-    starterNames?: string[];
 }
 
 function returnClass(value: number | null): string {
@@ -72,16 +71,16 @@ function Spark({
     );
 }
 
-/** A leaderboard row, or the benchmark row, which has no return of its own. */
+/** A leaderboard row, or the benchmark row, which has no portfolio receipt. */
 type RowData = {
-    portfolioId: string;
     label: string;
     returnPct: number | null;
     observations: number;
     series: EquityPoint[];
+    receiptPortfolioId?: string;
 };
 
-function Row({
+function RowContent({
     rank,
     row,
     domain,
@@ -95,7 +94,7 @@ function Row({
     suffix?: string;
 }) {
     return (
-        <li className="voxel-trough px-3 py-2 flex items-center gap-3 min-w-0">
+        <>
             <span className="font-mono text-xs font-normal text-voxel-muted tabular-nums w-6 shrink-0">
                 {rank}
             </span>
@@ -113,6 +112,54 @@ function Row({
             >
                 {formatPct(row.returnPct)}
             </span>
+        </>
+    );
+}
+
+function Row({
+    rank,
+    row,
+    domain,
+    lineClass,
+    suffix,
+}: {
+    rank: string;
+    row: RowData;
+    domain: ReturnType<typeof chartDomain>;
+    lineClass: string;
+    suffix?: string;
+}) {
+    const sharedClass = 'voxel-trough px-3 py-2 flex items-center gap-3 min-w-0';
+
+    if (row.receiptPortfolioId) {
+        return (
+            <li>
+                <Link
+                    to="/portfolios/$portfolioId"
+                    params={{ portfolioId: row.receiptPortfolioId }}
+                    className={`${sharedClass} w-full hover:bg-voxel-elevated transition-colors`}
+                >
+                    <RowContent
+                        rank={rank}
+                        row={row}
+                        domain={domain}
+                        lineClass={lineClass}
+                        suffix={suffix}
+                    />
+                </Link>
+            </li>
+        );
+    }
+
+    return (
+        <li className={sharedClass}>
+            <RowContent
+                rank={rank}
+                row={row}
+                domain={domain}
+                lineClass={lineClass}
+                suffix={suffix}
+            />
         </li>
     );
 }
@@ -136,6 +183,17 @@ function ArrowIcon() {
     );
 }
 
+function toReceiptRow(row: LeaderboardRow): RowData {
+    const id = row.portfolioId.trim();
+    return {
+        label: row.label,
+        returnPct: row.returnPct,
+        observations: row.observations,
+        series: row.series,
+        receiptPortfolioId: id || undefined,
+    };
+}
+
 export function TopPortfolios({
     rows,
     medianReturnPct = null,
@@ -144,7 +202,6 @@ export function TopPortfolios({
     trackedCount,
     windowDays,
     degraded = false,
-    starterNames = [],
 }: TopPortfoliosProps) {
     if (degraded) {
         return (
@@ -168,7 +225,6 @@ export function TopPortfolios({
     const domain = chartDomain(seriesList);
     const lastSpy = spy.length > 0 ? spy[spy.length - 1].value : null;
     const spyRow: RowData = {
-        portfolioId: 'spy',
         label: 'SPY',
         returnPct: lastSpy,
         observations: spy.length,
@@ -181,9 +237,9 @@ export function TopPortfolios({
                 <ul className="flex flex-col gap-1">
                     {rows.map((row, index) => (
                         <Row
-                            key={row.portfolioId}
+                            key={row.portfolioId || `${row.label}-${index}`}
                             rank={String(index + 1)}
-                            row={row}
+                            row={toReceiptRow(row)}
                             domain={domain}
                             lineClass="stroke-accent"
                         />
@@ -200,7 +256,7 @@ export function TopPortfolios({
                         <ul className="flex flex-col gap-1">
                             <Row
                                 rank={trackedCount === null ? '—' : String(trackedCount)}
-                                row={worst}
+                                row={toReceiptRow(worst)}
                                 domain={domain}
                                 lineClass="stroke-danger"
                             />
@@ -222,33 +278,20 @@ export function TopPortfolios({
 
                 <figcaption className="text-xs font-normal text-voxel-muted">
                     {windowDays} days from each portfolio's window open · one shared scale · the
-                    dashed line is zero.
+                    dashed line is zero. Click any portfolio row to inspect its trades.
                 </figcaption>
             </figure>
 
-            <div className="flex flex-col gap-3 voxel-trough p-3 min-w-0">
+            <div className="flex flex-col gap-4 voxel-trough p-3 min-w-0">
                 <p className="text-xs font-normal text-voxel-muted">
                     {trackedCount === null
                         ? `Portfolios ranked on the ${windowDays}-day board`
                         : `${trackedCount} portfolios on the ${windowDays}-day board`}
                     {medianReturnPct === null ? '' : ` · median ${formatPct(medianReturnPct)}`}
                     {
-                        ': the return each carried from the window open, and the loser at the bottom of it.'
+                        ': winners, the worst loser, and SPY on one scale. Click any portfolio to inspect its positions, fills, and LLM reasoning.'
                     }
                 </p>
-                {starterNames.length > 0 ? (
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-2">
-                        {starterNames.map((name) => (
-                            <Link
-                                key={name}
-                                to="/recipes"
-                                className="voxel-btn inline-flex items-center justify-center min-w-0 w-full px-2 py-1 text-xs font-normal bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated"
-                            >
-                                <span className="truncate">{name}</span>
-                            </Link>
-                        ))}
-                    </div>
-                ) : null}
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-2">
                     <Link
                         to="/portfolios"
@@ -258,10 +301,10 @@ export function TopPortfolios({
                         <ArrowIcon />
                     </Link>
                     <Link
-                        to="/recipes"
+                        to="/reasoning"
                         className="voxel-btn inline-flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold uppercase tracking-wider border-2 border-accent text-accent bg-voxel-surface hover:bg-accent/10"
                     >
-                        Need inspiration?
+                        Read reasoning logs
                         <ArrowIcon />
                     </Link>
                 </div>

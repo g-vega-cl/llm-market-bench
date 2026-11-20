@@ -5,8 +5,8 @@ import {
     PageLayout,
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
+import { Link } from '@tanstack/react-router';
 import type { PublicBoardCard, PublicDesk } from '~/features/recipes/api/public-board-api';
-import { STARTER_RECIPES } from '~/features/recipes/starter-templates';
 import type {
     EquityPoint,
     LeaderboardRow,
@@ -91,6 +91,54 @@ function BotRow({
     );
 }
 
+function StarterTemplatesStrip() {
+    return (
+        <div className="voxel-trough p-3 flex flex-wrap items-baseline justify-between gap-2 min-w-0">
+            <span className="text-xs font-normal text-voxel-muted">
+                Might as well try it out — fork a live bot above or pick a starter strategy in the
+                studio.
+            </span>
+            <Link
+                to="/recipes"
+                className="text-xs font-normal text-accent hover:underline whitespace-nowrap"
+            >
+                Browse starter recipes →
+            </Link>
+        </div>
+    );
+}
+
+function TodayFeed({ feed }: { feed: PublicDesk['feed'] }) {
+    if (feed.length === 0) return null;
+    return (
+        <div className="flex flex-col gap-2">
+            <SectionHeading className="text-sm">
+                <span id="feed-heading">Today</span>
+            </SectionHeading>
+            <ul className="flex flex-col gap-1">
+                {feed.map((item) => (
+                    <li
+                        key={`${item.recipeId}-${item.at}-${item.ticker}-${item.action}`}
+                        className="voxel-trough px-3 py-2 flex flex-wrap items-baseline gap-2 text-xs"
+                    >
+                        <span className="font-mono text-voxel-muted whitespace-nowrap">
+                            {new Date(item.at).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZone: 'America/New_York',
+                            })}{' '}
+                            ET
+                        </span>
+                        <span className="font-bold text-voxel-ink">{item.action}</span>
+                        <span className="font-mono text-voxel-ink">{item.ticker}</span>
+                        <span className="text-voxel-muted break-words">{item.recipeName}</span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
 export function RecipeDeskHomePage({
     desk,
     leaderboard,
@@ -133,7 +181,6 @@ export function RecipeDeskHomePage({
                         trackedCount={leaderboard?.trackedCount ?? null}
                         windowDays={windowDays}
                         degraded={leaderboard?.degraded ?? false}
-                        starterNames={STARTER_RECIPES.map((template) => template.name)}
                     />
                 </section>
 
@@ -148,15 +195,23 @@ export function RecipeDeskHomePage({
                         <SectionHeading className="text-sm">
                             <span id="desk-heading">Live desk</span>
                         </SectionHeading>
-                        <p className="font-mono text-xs font-normal text-voxel-muted">
-                            {desk.liveCount ?? 0} live · {desk.beatSpyCount ?? 0} beating SPY
-                        </p>
+                        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs font-normal">
+                            <p className="font-mono text-voxel-muted whitespace-nowrap">
+                                {desk.liveCount ?? 0} live · {desk.beatSpyCount ?? 0} beating SPY
+                            </p>
+                            <Link
+                                to="/audits"
+                                className="text-voxel-muted hover:text-voxel-ink hover:underline whitespace-nowrap"
+                            >
+                                Trade audits →
+                            </Link>
+                        </div>
                     </div>
 
                     {cards.length === 0 ? (
                         <EmptyState
                             title="No live recipes yet"
-                            subtitle="The board fills as recipes run at 09:30, 12:30 and 15:30 ET. Start from a starter recipe and it will appear here once it trades."
+                            subtitle="The board fills as recipes run at 09:30, 12:30 and 15:30 ET. Start from a starter recipe below and it will appear here once it trades."
                         />
                     ) : (
                         <ul className="flex flex-col gap-1">
@@ -171,39 +226,9 @@ export function RecipeDeskHomePage({
                         </ul>
                     )}
 
-                    {feed.length > 0 ? (
-                        <div className="flex flex-col gap-2">
-                            <SectionHeading className="text-sm">
-                                <span id="feed-heading">Today</span>
-                            </SectionHeading>
-                            <ul className="flex flex-col gap-1">
-                                {feed.map((item) => (
-                                    <li
-                                        key={`${item.recipeId}-${item.at}-${item.ticker}-${item.action}`}
-                                        className="voxel-trough px-3 py-2 flex flex-wrap items-baseline gap-2 text-xs"
-                                    >
-                                        <span className="font-mono text-voxel-muted">
-                                            {new Date(item.at).toLocaleTimeString('en-US', {
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                                timeZone: 'America/New_York',
-                                            })}{' '}
-                                            ET
-                                        </span>
-                                        <span className="font-bold text-voxel-ink">
-                                            {item.action}
-                                        </span>
-                                        <span className="font-mono text-voxel-ink">
-                                            {item.ticker}
-                                        </span>
-                                        <span className="text-voxel-muted break-words">
-                                            {item.recipeName}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ) : null}
+                    <StarterTemplatesStrip />
+
+                    <TodayFeed feed={feed} />
                 </section>
             </PageLayout>
         </div>

@@ -99,7 +99,6 @@ interface TopPortfoliosProps {
     trackedCount: number | null;
     windowDays: number;
     degraded?: boolean;
-    starterNames?: string[];
 }
 ```
 
@@ -115,7 +114,7 @@ The domain is computed once from every series on the board — `rows`, the optio
 
 ## Row Layout
 
-A row is a `voxel-trough` `<li>`: a fixed-width mono rank column, a truncating bold label, the sparkline, and the return coloured by `returnClass` (`null` → `text-voxel-muted`, `>= 0` → `text-success`, else `text-danger`).
+A row is a `voxel-trough` `<li>`: a fixed-width mono rank column, a truncating bold label, the sparkline, and the return coloured by `returnClass` (`null` → `text-voxel-muted`, `>= 0` → `text-success`, else `text-danger`). Ranked and `worst` rows map through `toReceiptRow` to populate `receiptPortfolioId` when `portfolioId.trim()` is non-empty, wrapping the row contents in `<Link to="/portfolios/$portfolioId">` so visitors can open any portfolio's positions, fills, and reasoning receipts directly.
 
 ## Worst Row
 
@@ -123,21 +122,17 @@ When `worst` is supplied it is published beneath the winners behind a `border-t-
 
 ## SPY Benchmark Row
 
-When `spy.length > 0` the benchmark gets its own row: rank `—`, suffix `(benchmark)`, `stroke-voxel-muted` line, and `returnPct` taken from the last SPY point.
+When `spy.length > 0` the benchmark gets its own row (`receiptPortfolioId` omitted so it remains non-linked): rank `—`, suffix `(benchmark)`, `stroke-voxel-muted` line, and `returnPct` taken from the last SPY point.
 
 ## Caption And Summary
 
-The `figcaption` reads `"{windowDays} days from each portfolio's window open · one shared scale · the dashed line is zero."` The summary paragraph beside the lanes reads `"{trackedCount} portfolios on the {windowDays}-day board"` (or the count-less variant), appends `· median {formatPct(medianReturnPct)}` when a median is present, and closes with `": the return each carried from the window open, and the loser at the bottom of it."`
+The `figcaption` reads `"{windowDays} days from each portfolio's window open · one shared scale · the dashed line is zero. Click any portfolio row to inspect its trades."` The summary paragraph beside the lanes reads `"{trackedCount} portfolios on the {windowDays}-day board"` (or the count-less variant), appends `· median {formatPct(medianReturnPct)}` when a median is present, and closes with `": winners, the worst loser, and SPY on one scale. Click any portfolio to inspect its positions, fills, and LLM reasoning."`
 
-## Templates And Calls To Action
+## Calls To Action
 
-The summary panel ends with two grids, never a wrapping `flex` row:
+The summary panel ends with an equal-width CTA grid (`minmax(min(100%,14rem),1fr)`), so the pair sits side by side while there is room and stacks on a phone instead of wrapping `SEE ALL PORTFOLIOS` onto two lines:
 
-- **Templates** — `grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-2`, each starter link `w-full justify-center` with the name in a `truncate` span. Five starter names at a 657px panel give two 310px columns, so a chip is the same width whatever its title is, and the width matches the CTA columns below it. The 18rem floor is not arbitrary: at three 204px columns the longest title (`Trump & Chips News Momentum`, 187px) overflowed its 184px border-box content and rendered an ellipsis.
-- **Calls to action** — `minmax(min(100%,14rem),1fr)`, so the pair sits side by side while there is room and stacks on a phone instead of wrapping `SEE ALL PORTFOLIOS` onto two lines (measured: 310×40 each at 1440px, 314×40 stacked at 390px).
-- **Emphasis** — *See all portfolios* is `bg-accent text-voxel-trough` solid with an arrow `<svg>` (`aria-hidden`, no `<title>` — the link already has a name); *Need inspiration?* is `border-2 border-accent text-accent` on the surface. Both use `text-sm font-bold uppercase tracking-wider`, which is the file's second typography combo, so the variant budget stays at two. Before this the pair was `text-xs font-normal` on `bg-voxel-surface` at 32px tall — indistinguishable from the template chips above them.
-
-An odd chip count leaves one empty grid cell in the last row; equal widths and complete labels take precedence over filling it.
+- **Emphasis** — *See all portfolios* (`/portfolios`) is `bg-accent text-voxel-trough` solid with an arrow `<svg>` (`aria-hidden`, no `<title>` — the link already has a name); *Read reasoning logs* (`/reasoning`) is `border-2 border-accent text-accent` on the surface. Both use `text-sm font-bold uppercase tracking-wider`, keeping the file's typography variant budget at two.
 
 ## Degraded And Empty States
 
@@ -150,7 +145,7 @@ An odd chip count leaves one empty grid cell in the last row; equal widths and c
 
 ## Tests
 
-`TopPortfolios.test.tsx` pins: one lane per portfolio (no six-line overlay), the loser published under the winners, the dashed muted benchmark polyline, per-sparkline screen-reader titles, the board median beside the count, the empty state, and the equal-width grids — the templates and the two calls to action each render as a `grid` container whose links carry `w-full justify-center`.
+`TopPortfolios.test.tsx` pins: one lane per portfolio (no six-line overlay), the loser published under the winners, clickable portfolio receipt links for ranked and worst rows (while leaving `SPY` and blank `portfolioId` values non-linked), the dashed muted benchmark polyline, per-sparkline screen-reader titles, the board median beside the count, the empty state, and the equal-width CTA grid (`w-full justify-center`).
 
 `apps/engine/tests/test_archived_portfolios.py` pins the config/view parity of the archived-owner exclusion (see above).
 
